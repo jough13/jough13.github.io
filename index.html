@@ -221,7 +221,7 @@
             border-left: 2px solid #a9a9a9; 
             padding-left: 0.5em;
         }
-        .log-area p.class-choice-message { 
+        .log-area p.class-choice-message, .log-area p.name-choice-message { 
             color: #90ee90; 
             font-weight: bold;
             border-left: 2px solid #3cb371; 
@@ -281,6 +281,15 @@
             margin-bottom: 0.5rem;
             white-space: pre-wrap; 
         }
+        #playerNameInput { 
+            background-color: #100510;
+            color: #f0e8f0;
+            border: 1px solid #660066;
+            padding: 0.25rem;
+            margin-bottom: 0.5rem;
+            font-family: 'VT323', monospace;
+            width: 70%;
+        }
     </style>
 </head>
 <body>
@@ -288,7 +297,7 @@
 
     <div class="game-container">
         <div id="stats-bar" class="stats-bar">
-            Zone: <span id="zone-name">Loading...</span> | Explored: <span id="explored-percentage">0</span>% | Speed: <span id="exploration-speed">1</span>x
+            Name: <span id="player-name-display">Wanderer</span> | Zone: <span id="zone-name">Loading...</span> | Explored: <span id="explored-percentage">0</span>%
             <br>
             HP: <span id="player-hp">0</span>/<span id="player-max-hp">0</span> | Level: <span id="player-level">1</span> | XP: <span id="player-xp">0</span>/<span id="xp-to-next-level">100</span>
             <br>
@@ -298,7 +307,7 @@
             | <span id="void-essence-display" style="display:none;">VE: <span id="void-essence">0</span> | </span>Runes: <span id="runes-collected">None</span>
             <br>
             <span id="companion-display" style="display:none;">Companion: <span id="companion-info"></span></span>
-            | Artifacts: <span id="artifacts-collected">0/0</span>
+            | Artifacts: <span id="artifacts-collected">0/0</span> | Speed: <span id="exploration-speed">1</span>x
         </div>
 
         <div id="game-screen" class="game-screen">
@@ -343,7 +352,9 @@
         const LEGACY_WITS_KEY = 'rrnr_legacy_wits';
         const LEGACY_SPIRIT_KEY = 'rrnr_legacy_spirit';
         const TRANSCEND_LEVEL_THRESHOLD = 3; 
+        const NAME_CHOICE_EVENT_X_POS = 25; 
         const CLASS_CHOICE_EVENT_X_POS = 75; 
+        const MAX_NAME_LENGTH = 20;
 
 
         const NUM_LANES = 5;
@@ -514,6 +525,7 @@
 
         // --- Game State ---
         let gameState = {
+            playerName: "Wanderer", 
             playerZoneX: 0, playerLane: PLAYER_INITIAL_LANE, currentZoneIndex: 0,
             explorationSpeedMultiplier: 1,
             resources: { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 },
@@ -980,6 +992,7 @@
         const playerHpDisplay = document.getElementById('player-hp'); 
         const playerMaxHpDisplay = document.getElementById('player-max-hp'); 
         const playerClassDisplay = document.getElementById('player-class');
+        const playerNameDisplay = document.getElementById('player-name-display'); 
         const logArea = document.getElementById('log-area');
         const pauseResumeButton = document.getElementById('pause-resume-button');
         const upgradeSpeedButton = document.getElementById('upgrade-speed-button');
@@ -1063,6 +1076,7 @@
             if (type === "combat-defeat") classAttribute = "class='combat-defeat'";
             if (type === "quest") classAttribute = "class='quest-message'"; 
             if (type === "class-choice") classAttribute = "class='class-choice-message'";
+            if (type === "name-choice") classAttribute = "class='name-choice-message'"; 
             
             gameState.logMessages.unshift(`<p ${classAttribute}>${message}</p>`); 
             if (gameState.logMessages.length > gameState.maxLogMessages) {
@@ -1091,7 +1105,8 @@
                 !firstLogEntry.classList.contains('combat-victory') &&
                 !firstLogEntry.classList.contains('combat-defeat') &&
                 !firstLogEntry.classList.contains('quest-message') &&
-                !firstLogEntry.classList.contains('class-choice-message')
+                !firstLogEntry.classList.contains('class-choice-message') &&
+                !firstLogEntry.classList.contains('name-choice-message') 
                 ) {
                 const zone = getCurrentZone();
                 if(zone) firstLogEntry.style.color = lightenDarkenColor(zone.color, 60); 
@@ -1109,6 +1124,7 @@
                 statsExploredPercentage.textContent = exploredPercentage;
             }
 
+            playerNameDisplay.textContent = gameState.playerName; 
             playerHpDisplay.textContent = gameState.currentHp;
             playerMaxHpDisplay.textContent = gameState.maxHp;
             playerClassDisplay.textContent = gameState.playerClass || "None"; 
