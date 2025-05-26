@@ -93,8 +93,8 @@
         .runic-etching-tile { color: #afeeee; } 
         .whispering-totem-tile { color: #dda0dd; } 
         .whispering-echo-tile { color: #e0ffff; } 
-        .chest-tile { color: #daa520; } 
-        .weaver-tile { color: #ba55d3; } 
+        .chest-tile { color: #daa520; } /* Gold for Chest */
+        .weaver-tile { color: #ba55d3; } /* MediumOrchid for Weaver Tapestry */
 
 
         .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
@@ -134,7 +134,7 @@
             padding-left: 0.5em;
         }
         .log-area p.puzzle-fail-message { 
-             color: #f08080; 
+             color: #f08080; /* LightCoral */
              font-style: italic;
         }
         .log-area p.artifact-synergy-message { 
@@ -1931,6 +1931,7 @@
         
         function generateCharacterSummary() {
             let summary = `=== Journey's Echo ===\n`;
+            summary += `Name: ${gameState.playerName}\n`; 
             summary += `World Seed: ${gameState.initialGameSeed}\n`;
             summary += `Level: ${gameState.level} (${gameState.xp}/${gameState.xpToNextLevel} XP)\n`;
             const lastZone = ZONES[gameState.lastExploredZoneIndex !== undefined ? gameState.lastExploredZoneIndex : gameState.currentZoneIndex] || {name: "An Unknown Place"};
@@ -1990,8 +1991,47 @@
             updateUIAccentColors(); 
             renderAll(); 
         }
+
+        function presentNameChoice() {
+            pauseGameForDecision(true);
+            decisionPromptText.textContent = "The wind whispers through the charred trees... it seems to carry a sound... a name you faintly recall. What is it? Or will you remain the Wanderer?";
+            
+            decisionButtonsContainer.innerHTML = ''; 
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.id = 'playerNameInput';
+            nameInput.placeholder = 'Enter your name...';
+            nameInput.maxLength = MAX_NAME_LENGTH;
+            decisionButtonsContainer.appendChild(nameInput);
+
+            const confirmNameButton = document.createElement('button');
+            confirmNameButton.textContent = "This is My Name";
+            confirmNameButton.onclick = () => {
+                const chosenName = nameInput.value.trim();
+                gameState.playerName = chosenName || "Wanderer"; // Default to Wanderer if empty
+                addLogMessage(`You are known as ${gameState.playerName}. The name feels... right.`, "name-choice");
+                decisionArea.style.display = 'none';
+                gameState.activeDecision = null;
+                renderAll();
+                pauseGameForDecision(false);
+            };
+            decisionButtonsContainer.appendChild(confirmNameButton);
+            
+            decisionArea.style.display = 'block';
+            updateUIAccentColors();
+            nameInput.focus(); 
+        }
+
         function gameLoop() { 
             if (gameState.isPaused || gameState.activeDecision || gameState.currentZoneIndex === -1 || gameState.inCombat) return; 
+
+            // Name Choice Event
+            if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === NAME_CHOICE_EVENT_X_POS && !gameState.narrativeFlags.nameChoiceOffered) {
+                presentNameChoice();
+                gameState.narrativeFlags.nameChoiceOffered = true;
+                return; 
+            }
 
             // Class Choice Event
             if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === CLASS_CHOICE_EVENT_X_POS && !gameState.playerClass && !gameState.narrativeFlags.classChoiceOffered) {
@@ -2103,7 +2143,6 @@
                     else if (cls.stat === "wits") gameState.stats.wits++;
                     else if (cls.stat === "spirit") gameState.stats.spirit++;
 
-                    // HP bonus is already factored into calculateMaxHp if class is Stalwart
                     gameState.maxHp = calculateMaxHp(); 
                     gameState.currentHp = gameState.maxHp; 
 
@@ -2188,6 +2227,7 @@
                  addLogMessage("Echoes of your past empower your new beginning...", "legacy-message");
             } 
             
+            gameState.playerName = "Wanderer"; 
             gameState.playerZoneX = 0;
             gameState.playerLane = PLAYER_INITIAL_LANE;
             gameState.currentZoneIndex = 0;
