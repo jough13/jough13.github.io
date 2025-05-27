@@ -93,8 +93,10 @@
         .runic-etching-tile { color: #afeeee; } 
         .whispering-totem-tile { color: #dda0dd; } 
         .whispering-echo-tile { color: #e0ffff; } 
-        .chest-tile { color: #daa520; } /* Gold for Chest */
-        .weaver-tile { color: #ba55d3; } /* MediumOrchid for Weaver Tapestry */
+        .chest-tile { color: #daa520; } 
+        .weaver-tile { color: #ba55d3; } 
+        .sword-stone-tile { color: #c0c0c0; font-weight: bold; } /* Silver */
+        .dying-creature-tile { color: #cd853f; } /* Peruvian Brown */
 
 
         .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
@@ -134,7 +136,7 @@
             padding-left: 0.5em;
         }
         .log-area p.puzzle-fail-message { 
-             color: #f08080; /* LightCoral */
+             color: #f08080; 
              font-style: italic;
         }
         .log-area p.artifact-synergy-message { 
@@ -2026,7 +2028,7 @@
         function gameLoop() { 
             if (gameState.isPaused || gameState.activeDecision || gameState.currentZoneIndex === -1 || gameState.inCombat) return; 
 
-            // Name Choice Event
+            // Name Choice Event - Should trigger before class choice if both are at same X
             if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === NAME_CHOICE_EVENT_X_POS && !gameState.narrativeFlags.nameChoiceOffered) {
                 presentNameChoice();
                 gameState.narrativeFlags.nameChoiceOffered = true;
