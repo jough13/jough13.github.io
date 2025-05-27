@@ -380,6 +380,8 @@
         const WHISPERING_ECHO_COLOR_STYLE = "color: #e0ffff;"; 
         const CHEST_TILE_STYLE = "color: #daa520;"; 
         const WEAVER_TILE_STYLE = "color: #ba55d3;"; 
+        const SWORD_STONE_TILE_STYLE = "color: #c0c0c0; font-weight: bold;";
+        const DYING_CREATURE_TILE_STYLE = "color: #cd853f;";
 
 
         const COMPANION_FIND_CHANCE = 0.1; 
@@ -398,6 +400,9 @@
         const MGT_BLOCKED_PATH_THRESHOLD = 5;
         const WIT_ETCHINGS_THRESHOLD = 5;
         const SPR_TOTEM_THRESHOLD = 5;
+        const SWORD_PULL_MIGHT_REQ = 7; // New
+        const SWORD_PULL_HP_COST = 5;   // New
+        const CREATURE_DUST_COST = 1;   // New
 
 
         // --- Seeded RNG (Mulberry32) ---
@@ -1017,7 +1022,11 @@
         function calculateMaxHp() {
             let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
             if (gameState.playerClass === "Stalwart") hp += 5;
-            return hp;
+            // Apply penalty for Ancient Blade if equipped
+            if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
+                hp -= 2;
+            }
+            return Math.max(1, hp); // Ensure HP doesn't drop below 1
         }
 
         function awardXP(amount) {
@@ -1061,7 +1070,8 @@
             let classAttribute = "";
             if (type === "lore") classAttribute = "class='lore-message'";
             if (type === "world_lore") classAttribute = "class='world-lore-message'"; 
-            if (type === "synergy") classAttribute = "class='synergy-message'"; 
+            if (type === "synergy" || type === "puzzle-success") classAttribute = "class='synergy-message'"; 
+            if (type === "puzzle-fail") classAttribute = "class='puzzle-fail-message'";
             if (type === "artifact_synergy") classAttribute = "class='artifact-synergy-message'";
             if (type === "artifact") classAttribute = "class='artifact-message'";
             if (type === "npc") classAttribute = "class='npc-message'";
@@ -1092,6 +1102,8 @@
             if (firstLogEntry && !firstLogEntry.classList.contains('lore-message') && 
                 !firstLogEntry.classList.contains('world-lore-message') && 
                 !firstLogEntry.classList.contains('synergy-message') &&
+                !firstLogEntry.classList.contains('puzzle-success-message') &&
+                !firstLogEntry.classList.contains('puzzle-fail-message') &&
                 !firstLogEntry.classList.contains('artifact-synergy-message') &&
                 !firstLogEntry.classList.contains('artifact-message') &&
                 !firstLogEntry.classList.contains('npc-message') &&
@@ -1252,6 +1264,8 @@
                                 else if (element.char === 'B') displayChar = `<span style="${BLOCKED_PATH_COLOR_STYLE}">B</span>`;
                                 else if (element.char === '?') displayChar = `<span style="${RUNIC_ETCHING_COLOR_STYLE}">?</span>`;
                                 else if (element.char === '!') displayChar = `<span style="${WHISPERING_TOTEM_COLOR_STYLE}">!</span>`;
+                                else if (element.char === '¥') displayChar = `<span style="${SWORD_STONE_TILE_STYLE}">¥</span>`;
+                                else if (element.char === 'd') displayChar = `<span style="${DYING_CREATURE_TILE_STYLE}">d</span>`;
                                 screenLines[element.lane][screenX] = displayChar;
                             }
                         }
@@ -1416,11 +1430,11 @@
             if (!zone) return;
             
             const elementsAtCurrentX = zone.foregroundElements[gameState.playerZoneX] || [];
-            const npcEncounterKeyBase = `${gameState.currentZoneIndex}-${gameState.playerZoneX}`;
+            const encounterKeyBase = `${gameState.currentZoneIndex}_${gameState.playerZoneX}`;
 
             elementsAtCurrentX.forEach(element => {
                 const currentElementChar = element.char;
-                const npcSpecificKey = npcEncounterKeyBase + '-' + element.lane; 
+                const specificEncounterKey = `${encounterKeyBase}_${element.lane}_${currentElementChar}`; 
 
                 if (element.lane === gameState.playerLane && (currentElementChar === '~' || currentElementChar === 'M')) {
                     return; 
@@ -1433,66 +1447,84 @@
                         }
                         break;
                     case 'B': 
-                        if (element.lane === gameState.playerLane) {
-                            const pathKey = `BLOCKED_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
-                            if (!gameState.narrativeFlags[pathKey]) {
-                                if (gameState.stats.might >= MGT_BLOCKED_PATH_THRESHOLD) {
-                                    addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_SUCCESS, "synergy");
-                                    const bonusDust = seededRandomInt(5, 10);
-                                    gameState.resources.glimmeringDust += bonusDust;
-                                    addLogMessage(`You find ${bonusDust} Glimmering Dust!`, "lore");
-                                    awardXP(10);
-                                    gameState.narrativeFlags[pathKey] = true;
-                                } else {
-                                    addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_FAIL, "lore");
+                        if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                            presentStatChallengeDecision(
+                                specificEncounterKey,
+                                "A jumble of heavy boulders blocks the path. Attempt to clear it with Might?",
+                                "You decide to leave the boulders undisturbed.",
+                                () => { // Success condition
+                                    if (gameState.stats.might >= MGT_BLOCKED_PATH_THRESHOLD) {
+                                        addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_SUCCESS, "puzzle-success");
+                                        const bonusDust = seededRandomInt(5, 10);
+                                        gameState.resources.glimmeringDust += bonusDust;
+                                        addLogMessage(`You find ${bonusDust} Glimmering Dust!`, "lore");
+                                        awardXP(10);
+                                        return true;
+                                    }
+                                    return false;
+                                },
+                                () => { // Failure message
+                                    addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_FAIL, "puzzle-fail");
                                 }
-                            } else {
-                                addLogMessage("This path has already been cleared.", "lore");
-                            }
+                            );
+                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
+                            addLogMessage("This path has already been cleared or left undisturbed.", "lore");
                         }
                         break;
                     case '?': 
-                        if (element.lane === gameState.playerLane) {
-                            const etchingKey = `ETCHING_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
-                            if (!gameState.narrativeFlags[etchingKey]) {
-                                if (gameState.stats.wits >= WIT_ETCHINGS_THRESHOLD) {
-                                    const zoneSpecificHints = {
-                                        "The Ashen Woods": "a forgotten ember still glowing faintly.",
-                                        "The Crimson Depths": "a hidden vein of purest crystal.",
-                                        "The Volcanic Wastes": "a path through the lava flows unseen by most.",
-                                        "The Starfall Crater": "the true trajectory of a falling star.",
-                                        "The Sunken Archives": "a lost page detailing a forgotten Lumina ritual.",
-                                        "The Sky-Temple Aerie": "a celestial alignment of great import."
-                                    };
-                                    const hint = zoneSpecificHints[zone.name] || "a forgotten secret of this place.";
-                                    addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_SUCCESS.replace("[a short, unique seeded lore snippet about the zone's deeper history or a nearby secret - TBD]", hint) , "synergy");
-                                    awardXP(15);
-                                    gameState.narrativeFlags[etchingKey] = true;
-                                } else {
-                                    addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_FAIL, "lore");
+                         if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                            presentStatChallengeDecision(
+                                specificEncounterKey,
+                                "Faded etchings cover this ancient stone. Try to decipher them with Wits?",
+                                "You leave the etchings to their mystery.",
+                                () => { // Success condition
+                                    if (gameState.stats.wits >= WIT_ETCHINGS_THRESHOLD) {
+                                        const zoneSpecificHints = {
+                                            "The Ashen Woods": "a forgotten ember still glowing faintly.",
+                                            "The Crimson Depths": "a hidden vein of purest crystal.",
+                                            "The Volcanic Wastes": "a path through the lava flows unseen by most.",
+                                            "The Starfall Crater": "the true trajectory of a falling star.",
+                                            "The Sunken Archives": "a lost page detailing a forgotten Lumina ritual.",
+                                            "The Sky-Temple Aerie": "a celestial alignment of great import."
+                                        };
+                                        const hint = zoneSpecificHints[zone.name] || "a forgotten secret of this place.";
+                                        addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_SUCCESS.replace("[a short, unique seeded lore snippet about the zone's deeper history or a nearby secret - TBD]", hint) , "puzzle-success");
+                                        awardXP(15);
+                                        return true;
+                                    }
+                                    return false;
+                                },
+                                () => { // Failure message
+                                    addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_FAIL, "puzzle-fail");
                                 }
-                            } else {
-                                 addLogMessage("You've already gleaned all you can from these etchings.", "lore");
-                            }
+                            );
+                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
+                             addLogMessage("You've already gleaned all you can from these etchings, or chosen to ignore them.", "lore");
                         }
                         break;
                     case '!': 
-                        if (element.lane === gameState.playerLane) {
-                             const totemKey = `TOTEM_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
-                             if (!gameState.narrativeFlags[totemKey]) {
-                                if (gameState.stats.spirit >= SPR_TOTEM_THRESHOLD) {
-                                    addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_SUCCESS, "synergy");
-                                    awardXP(10); 
-                                    const bonusScraps = seededRandomInt(1, 3);
-                                    gameState.resources.ancientScraps += bonusScraps;
-                                    addLogMessage(`The totem grants you ${bonusScraps} Ancient Scraps for your attentiveness.`, "lore");
-                                    gameState.narrativeFlags[totemKey] = true;
-                                } else {
-                                    addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_FAIL, "lore");
+                        if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                            presentStatChallengeDecision(
+                                specificEncounterKey,
+                                "A strange totem hums with faint whispers. Attempt to attune to it with Spirit?",
+                                "You step away from the unsettling totem.",
+                                () => { // Success condition
+                                    if (gameState.stats.spirit >= SPR_TOTEM_THRESHOLD) {
+                                        addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_SUCCESS, "puzzle-success");
+                                        awardXP(10); 
+                                        const bonusScraps = seededRandomInt(1, 3);
+                                        gameState.resources.ancientScraps += bonusScraps;
+                                        addLogMessage(`The totem grants you ${bonusScraps} Ancient Scraps for your attentiveness.`, "lore");
+                                        return true;
+                                    }
+                                    return false;
+                                },
+                                () => { // Failure message
+                                    addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_FAIL, "puzzle-fail");
                                 }
-                            } else {
-                                addLogMessage("The totem's whispers are silent now, having shared their secrets.", "lore");
-                            }
+                            );
+                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
+                            addLogMessage("The totem's whispers are silent now, having shared their secrets or been left alone.", "lore");
                         }
                         break;
                     case 'O': 
