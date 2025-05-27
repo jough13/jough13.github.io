@@ -95,8 +95,13 @@
         .whispering-echo-tile { color: #e0ffff; } 
         .chest-tile { color: #daa520; } 
         .weaver-tile { color: #ba55d3; } 
-        .sword-stone-tile { color: #c0c0c0; font-weight: bold; } /* Silver */
-        .dying-creature-tile { color: #cd853f; } /* Peruvian Brown */
+        .sword-stone-tile { color: #c0c0c0; font-weight: bold; } 
+        .dying-creature-tile { color: #cd853f; } 
+        .abandoned-shrine-tile { color: #8fbc8f; } 
+        .hermit-cave-tile { color: #a0522d; } 
+        .armory-tile { color: #778899; font-weight: bold; } 
+        .gambler-tile { color: #40e0d0; font-weight: bold; } /* Turquoise for Gambler */
+        .collapsing-bridge-tile { color: #d2691e; font-weight: bold; } /* Chocolate for Bridge */
 
 
         .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
@@ -357,6 +362,13 @@
         const NAME_CHOICE_EVENT_X_POS = 25; 
         const CLASS_CHOICE_EVENT_X_POS = 75; 
         const MAX_NAME_LENGTH = 20;
+        const SWORD_STONE_EVENT_X_POS = 120; 
+        const DYING_CREATURE_EVENT_X_POS = 180; 
+        const GAMBLER_GHOST_EVENT_X_POS = 150; 
+        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; 
+        const ABANDONED_SHRINE_EVENT_X_POS = 100; 
+        const STARVING_HERMIT_EVENT_X_POS = 90; 
+        const ANCIENT_ARMORY_EVENT_X_POS = 250; 
 
 
         const NUM_LANES = 5;
@@ -382,6 +394,11 @@
         const WEAVER_TILE_STYLE = "color: #ba55d3;"; 
         const SWORD_STONE_TILE_STYLE = "color: #c0c0c0; font-weight: bold;";
         const DYING_CREATURE_TILE_STYLE = "color: #cd853f;";
+        const ABANDONED_SHRINE_TILE_STYLE = "color: #8fbc8f;"; 
+        const HERMIT_CAVE_TILE_STYLE = "color: #a0522d;";
+        const ARMORY_TILE_STYLE = "color: #778899; font-weight: bold;"; 
+        const GAMBLER_TILE_STYLE = "color: #40e0d0; font-weight: bold;"; 
+        const COLLAPSING_BRIDGE_TILE_STYLE = "color: #d2691e; font-weight: bold;";
 
 
         const COMPANION_FIND_CHANCE = 0.1; 
@@ -400,9 +417,12 @@
         const MGT_BLOCKED_PATH_THRESHOLD = 5;
         const WIT_ETCHINGS_THRESHOLD = 5;
         const SPR_TOTEM_THRESHOLD = 5;
-        const SWORD_PULL_MIGHT_REQ = 7; // New
-        const SWORD_PULL_HP_COST = 5;   // New
-        const CREATURE_DUST_COST = 1;   // New
+        const SWORD_PULL_MIGHT_REQ = 7; 
+        const SWORD_PULL_HP_COST = 5;   
+        const CREATURE_DUST_COST = 1;   
+        const BRIDGE_REINFORCE_SCRAP_COST = 10;
+        const ABANDONED_SHRINE_DUST_COST = 15; 
+        const HERMIT_FOOD_COST = 10; 
 
 
         // --- Seeded RNG (Mulberry32) ---
@@ -554,7 +574,9 @@
             inCombat: false,
             isMuted: false, 
             lastStepSoundTime: 0,
-            lastExploredZoneIndex: 0 
+            lastExploredZoneIndex: 0,
+            cursedLuckTurns: 0,
+            tempSpiritBoostTurns: 0 
         };
 
         // --- Lore & Content Definitions ---
@@ -806,7 +828,10 @@
             { key: "ART_STAR_METAL_INGOT", name: "Star-Metal Ingot", description: "Impossibly dense and cool to the touch, this ingot seems to have fallen from the heavens. It resonates with a strange, silent power." },
             { key: "ART_LUMINA_MOURNING_VEIL", name: "Lumina Mourning Veil", description: "A delicate, almost translucent fabric, embroidered with patterns of weeping stars. It carries an almost unbearable weight of sorrow." },
             { key: "ART_SEED_OF_THE_FIRST_TREE", name: "Seed of the First Tree", description: "A perfectly smooth, obsidian-black seed, warm to the touch. It feels ancient, potent, and full of a quiet, resilient life." },
-            { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." }
+            { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." },
+            { key: "ART_ANCIENT_BLADE", name: "Ancient Blade", description: "A blade of forgotten make, humming with faint power. (+1 Might, -2 Max HP)." }, 
+            { key: "ART_LUCKY_CHARM", name: "Lucky Charm", description: "A small, oddly warm trinket. You feel a bit luckier just holding it. (Slightly increases chances of positive outcomes in some random events)." },
+            { key: "ART_RUNEFORGED_GAUNTLETS", name: "Runeforged Gauntlets", description: "Heavy gauntlets etched with dormant runes. They feel powerful. (+1 Might, +5 Max HP)." } // New
         ];
         const DECISIONS = {
             "END_OF_ASHEN_WOODS": {
@@ -1025,6 +1050,10 @@
             // Apply penalty for Ancient Blade if equipped
             if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
                 hp -= 2;
+            }
+            // Apply bonus for Runeforged Gauntlets if equipped
+            if (gameState.collectedArtifacts.includes("ART_RUNEFORGED_GAUNTLETS")) {
+                hp += 5;
             }
             return Math.max(1, hp); // Ensure HP doesn't drop below 1
         }
@@ -1266,6 +1295,11 @@
                                 else if (element.char === '!') displayChar = `<span style="${WHISPERING_TOTEM_COLOR_STYLE}">!</span>`;
                                 else if (element.char === '¥') displayChar = `<span style="${SWORD_STONE_TILE_STYLE}">¥</span>`;
                                 else if (element.char === 'd') displayChar = `<span style="${DYING_CREATURE_TILE_STYLE}">d</span>`;
+                                else if (element.char === '_') displayChar = `<span style="${ABANDONED_SHRINE_TILE_STYLE}">_</span>`;
+                                else if (element.char === 'h') displayChar = `<span style="${HERMIT_CAVE_TILE_STYLE}">h</span>`;
+                                else if (element.char === '‡') displayChar = `<span style="${ARMORY_TILE_STYLE}">‡</span>`;
+                                else if (element.char === '&') displayChar = `<span style="${GAMBLER_TILE_STYLE}">&</span>`;
+                                else if (element.char === '}') displayChar = `<span style="${COLLAPSING_BRIDGE_TILE_STYLE}">}</span>`;
                                 screenLines[element.lane][screenX] = displayChar;
                             }
                         }
@@ -1667,14 +1701,14 @@
                         }
                         break;
                     case 'N': 
-                        if (!gameState.encounteredNPCs[npcSpecificKey] && element.npcType) { 
+                        if (!gameState.encounteredNPCs[specificEncounterKey] && element.npcType) { 
                             const npcData = NPCS[element.npcType];
                             if (npcData) {
                                 const dialogueIndex = seededRandomInt(0, npcData.dialogue.length - 1);
                                 const dialogue = npcData.dialogue[dialogueIndex];
                                 addLogMessage(`${npcData.name}: "${dialogue}"`, "npc");
                                 awardXP(8); 
-                                gameState.encounteredNPCs[npcSpecificKey] = true; 
+                                gameState.encounteredNPCs[specificEncounterKey] = true; 
 
                                 if (gameState.companion && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type] && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType]) {
                                     addLogMessage(COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType], "companion");
@@ -2060,7 +2094,7 @@
         function gameLoop() { 
             if (gameState.isPaused || gameState.activeDecision || gameState.currentZoneIndex === -1 || gameState.inCombat) return; 
 
-            // Name Choice Event - Should trigger before class choice if both are at same X
+            // Name Choice Event
             if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === NAME_CHOICE_EVENT_X_POS && !gameState.narrativeFlags.nameChoiceOffered) {
                 presentNameChoice();
                 gameState.narrativeFlags.nameChoiceOffered = true;
@@ -2073,6 +2107,30 @@
                 gameState.narrativeFlags.classChoiceOffered = true; 
                 return; 
             }
+
+            // Gambler's Ghost Event (Zone 3 - Starfall Crater)
+            if (gameState.currentZoneIndex === 3 && gameState.playerZoneX === GAMBLER_GHOST_EVENT_X_POS && !gameState.narrativeFlags.gamblerGhostEncountered) {
+                presentGamblerDecision();
+                gameState.narrativeFlags.gamblerGhostEncountered = true;
+                return;
+            }
+
+            // Collapsing Bridge Event (Zone 2 - Volcanic Wastes)
+            if (gameState.currentZoneIndex === 2 && gameState.playerZoneX === COLLAPSING_BRIDGE_EVENT_X_POS && !gameState.narrativeFlags.collapsingBridgeEncountered) {
+                presentBridgeDecision();
+                gameState.narrativeFlags.collapsingBridgeEncountered = true;
+                return;
+            }
+            
+            // Decrement cursed luck turns
+            if (gameState.cursedLuckTurns > 0) {
+                gameState.cursedLuckTurns--;
+                if (gameState.cursedLuckTurns === 0) {
+                    addLogMessage("The feeling of ill fortune seems to have lifted.", "synergy");
+                    gameState.narrativeFlags.cursedLuck = false;
+                }
+            }
+
 
             gameState.playerZoneX++;
             playSound('step'); 
@@ -2290,6 +2348,7 @@
             gameState.inCombat = false;
             gameState.lastStepSoundTime = 0;
             gameState.lastExploredZoneIndex = 0;
+            gameState.cursedLuckTurns = 0; 
 
             gameState.initialGameSeed = Date.now() % 2147483647; 
             initializeSeed(gameState.initialGameSeed);
