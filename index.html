@@ -346,7 +346,8 @@
             <button id="pause-resume-button">Pause</button>
             <button id="upgrade-speed-button" disabled>Upgrade Speed (Cost: 50<span class="resource-icon">.</span>)</button>
             <button id="mute-button">Mute Sounds</button> 
-            <button id="dev-speed-button">Dev Speed: 1x</button> </div>
+            <button id="dev-speed-button">Dev Speed: 1x</button> 
+        </div>
     </div>
 
     <script>
@@ -364,12 +365,12 @@
         const MAX_NAME_LENGTH = 20;
         const SWORD_STONE_EVENT_X_POS = 120; 
         const DYING_CREATURE_EVENT_X_POS = 180; 
-        const GAMBLER_GHOST_EVENT_X_POS = 150; 
-        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; 
-        const ABANDONED_SHRINE_EVENT_X_POS = 100; 
-        const STARVING_HERMIT_EVENT_X_POS = 90; 
-        const ANCIENT_ARMORY_EVENT_X_POS = 250; 
-        const DEV_SPEED_MULTIPLIERS = [1, 2, 5, 10, 20]; // New
+        const GAMBLER_GHOST_EVENT_X_POS = 150; // Zone 3 (Starfall Crater)
+        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; // Zone 2 (Volcanic Wastes)
+        const ABANDONED_SHRINE_EVENT_X_POS = 100; // Zone 1 (Crimson Depths)
+        const STARVING_HERMIT_EVENT_X_POS = 90; // Zone 0 (Ashen Woods)
+        const ANCIENT_ARMORY_EVENT_X_POS = 250; // Zone 2 (Volcanic Wastes)
+        const DEV_SPEED_MULTIPLIERS = [1, 2, 5, 10, 20]; 
 
 
         const NUM_LANES = 5;
@@ -556,8 +557,8 @@
             playerName: "Wanderer", 
             playerZoneX: 0, playerLane: PLAYER_INITIAL_LANE, currentZoneIndex: 0,
             explorationSpeedMultiplier: 1,
-            devSpeedMultiplier: 1, // New
-            devSpeedIndex: 0, // New
+            devSpeedMultiplier: 1, 
+            devSpeedIndex: 0, 
             resources: { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 },
             stats: { 
                 might: BASE_STAT_VALUE,
@@ -1005,44 +1006,14 @@
         ];
 
         // --- DOM Elements ---
-        const gameScreenContent = document.getElementById('game-screen-content'); 
-        const gameScreen = document.getElementById('game-screen');
-        const statsZoneName = document.getElementById('zone-name');
-        const statsExploredPercentage = document.getElementById('explored-percentage');
-        const statsExplorationSpeed = document.getElementById('exploration-speed');
-        const statsGlimmeringDust = document.getElementById('glimmering-dust');
-        const statsAncientScraps = document.getElementById('ancient-scraps');
-        const statsRunesCollected = document.getElementById('runes-collected');
-        const voidEssenceDisplay = document.getElementById('void-essence-display');
-        const statsVoidEssence = document.getElementById('void-essence');
-        const companionDisplay = document.getElementById('companion-display');
-        const companionInfo = document.getElementById('companion-info');
-        const artifactsCollectedDisplay = document.getElementById('artifacts-collected'); 
-        const statMightDisplay = document.getElementById('stat-might'); 
-        const statWitsDisplay = document.getElementById('stat-wits');   
-        const statSpiritDisplay = document.getElementById('stat-spirit'); 
-        const playerLevelDisplay = document.getElementById('player-level'); 
-        const playerXpDisplay = document.getElementById('player-xp');       
-        const xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
-        const playerHpDisplay = document.getElementById('player-hp'); 
-        const playerMaxHpDisplay = document.getElementById('player-max-hp'); 
-        const playerClassDisplay = document.getElementById('player-class');
-        const playerNameDisplay = document.getElementById('player-name-display'); 
-        const logArea = document.getElementById('log-area');
-        const pauseResumeButton = document.getElementById('pause-resume-button');
-        const upgradeSpeedButton = document.getElementById('upgrade-speed-button');
-        const decisionArea = document.getElementById('decision-area');
-        const decisionPromptText = document.getElementById('decision-prompt-text');
-        const decisionButtonsContainer = document.getElementById('decision-buttons-container');
-        const messageInputArea = document.getElementById('message-input-area');
-        const futureSelfTextarea = document.getElementById('future-self-textarea');
-        const saveMessageButton = document.getElementById('save-message-button');
-        const skipMessageButton = document.getElementById('skip-message-button');
-        const summaryArea = document.getElementById('summary-area'); 
-        const journeySummaryTextarea = document.getElementById('journey-summary-textarea'); 
-        const newJourneyButton = document.getElementById('new-journey-button'); 
-        const transcendButton = document.getElementById('transcend-button');
-        const devSpeedButton = document.getElementById('dev-speed-button'); // New
+        let gameScreenContent, gameScreen, statsZoneName, statsExploredPercentage, statsExplorationSpeed,
+            statsGlimmeringDust, statsAncientScraps, statsRunesCollected, voidEssenceDisplay, statsVoidEssence,
+            companionDisplay, companionInfo, artifactsCollectedDisplay, statMightDisplay, statWitsDisplay,
+            statSpiritDisplay, playerLevelDisplay, playerXpDisplay, xpToNextLevelDisplay, playerHpDisplay,
+            playerMaxHpDisplay, playerClassDisplay, playerNameDisplay, logArea, pauseResumeButton,
+            upgradeSpeedButton, decisionArea, decisionPromptText, decisionButtonsContainer, messageInputArea,
+            futureSelfTextarea, saveMessageButton, skipMessageButton, summaryArea, journeySummaryTextarea,
+            newJourneyButton, transcendButton, devSpeedButton, muteButton;
 
 
         // --- Game Logic Functions ---
@@ -1051,15 +1022,13 @@
         function calculateMaxHp() {
             let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
             if (gameState.playerClass === "Stalwart") hp += 5;
-            // Apply penalty for Ancient Blade if equipped
             if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
                 hp -= 2;
             }
-            // Apply bonus for Runeforged Gauntlets if equipped
             if (gameState.collectedArtifacts.includes("ART_RUNEFORGED_GAUNTLETS")) {
                 hp += 5;
             }
-            return Math.max(1, hp); // Ensure HP doesn't drop below 1
+            return Math.max(1, hp); 
         }
 
         function awardXP(amount) {
@@ -1175,7 +1144,7 @@
             playerHpDisplay.textContent = gameState.currentHp;
             playerMaxHpDisplay.textContent = gameState.maxHp;
             playerClassDisplay.textContent = gameState.playerClass || "None"; 
-            statsExplorationSpeed.textContent = `${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`; // Updated
+            statsExplorationSpeed.textContent = `${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`; 
             statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
             statsAncientScraps.textContent = gameState.resources.ancientScraps;
             statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
@@ -2310,18 +2279,18 @@
 
 
         let gameInterval;
-        const muteButton = document.getElementById('mute-button');
+        // const muteButton = document.getElementById('mute-button'); // Declared in DOMContentLoaded
 
-        muteButton.addEventListener('click', () => {
-            gameState.isMuted = !gameState.isMuted;
-            muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
-            if (Tone && Tone.Destination) { 
-                Tone.Destination.mute = gameState.isMuted;
-            }
-            if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
-                Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
-            }
-        });
+        // muteButton.addEventListener('click', () => { // Moved to DOMContentLoaded
+        //     gameState.isMuted = !gameState.isMuted;
+        //     muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
+        //     if (Tone && Tone.Destination) { 
+        //         Tone.Destination.mute = gameState.isMuted;
+        //     }
+        //     if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
+        //         Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
+        //     }
+        // });
 
         function resetGame(isTranscendence = false, chosenLegacyStat = null) {
             if (gameInterval) clearInterval(gameInterval);
@@ -2350,8 +2319,8 @@
             gameState.playerLane = PLAYER_INITIAL_LANE;
             gameState.currentZoneIndex = 0;
             gameState.explorationSpeedMultiplier = 1; 
-            gameState.devSpeedMultiplier = 1; // Reset dev speed
-            gameState.devSpeedIndex = 0;    // Reset dev speed index
+            gameState.devSpeedMultiplier = 1; 
+            gameState.devSpeedIndex = 0;    
             gameState.resources = { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 };
             
             gameState.stats = {
@@ -2393,7 +2362,7 @@
             pauseResumeButton.textContent = "Pause";
             pauseResumeButton.disabled = false;
             upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < (50 * gameState.explorationSpeedMultiplier);
-            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`; // Reset dev speed button text
+            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`; 
 
 
             const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
@@ -2450,18 +2419,49 @@
         }
 
 
-        if(newJourneyButton) { 
-            newJourneyButton.addEventListener('click', () => resetGame(false)); 
-        }
-        if(transcendButton) { 
-            transcendButton.addEventListener('click', handleTranscendence);
-        }
-        if(devSpeedButton) { // New
-            devSpeedButton.addEventListener('click', toggleDevSpeed);
-        }
-
-
         document.addEventListener('DOMContentLoaded', () => { 
+            // Initialize DOM element constants
+            gameScreenContent = document.getElementById('game-screen-content'); 
+            gameScreen = document.getElementById('game-screen');
+            statsZoneName = document.getElementById('zone-name');
+            statsExploredPercentage = document.getElementById('explored-percentage');
+            statsExplorationSpeed = document.getElementById('exploration-speed');
+            statsGlimmeringDust = document.getElementById('glimmering-dust');
+            statsAncientScraps = document.getElementById('ancient-scraps');
+            statsRunesCollected = document.getElementById('runes-collected');
+            voidEssenceDisplay = document.getElementById('void-essence-display');
+            statsVoidEssence = document.getElementById('void-essence');
+            companionDisplay = document.getElementById('companion-display');
+            companionInfo = document.getElementById('companion-info');
+            artifactsCollectedDisplay = document.getElementById('artifacts-collected'); 
+            statMightDisplay = document.getElementById('stat-might'); 
+            statWitsDisplay = document.getElementById('stat-wits');   
+            statSpiritDisplay = document.getElementById('stat-spirit'); 
+            playerLevelDisplay = document.getElementById('player-level'); 
+            playerXpDisplay = document.getElementById('player-xp');       
+            xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
+            playerHpDisplay = document.getElementById('player-hp'); 
+            playerMaxHpDisplay = document.getElementById('player-max-hp'); 
+            playerClassDisplay = document.getElementById('player-class');
+            playerNameDisplay = document.getElementById('player-name-display'); 
+            logArea = document.getElementById('log-area');
+            pauseResumeButton = document.getElementById('pause-resume-button');
+            upgradeSpeedButton = document.getElementById('upgrade-speed-button');
+            decisionArea = document.getElementById('decision-area');
+            decisionPromptText = document.getElementById('decision-prompt-text');
+            decisionButtonsContainer = document.getElementById('decision-buttons-container');
+            messageInputArea = document.getElementById('message-input-area');
+            futureSelfTextarea = document.getElementById('future-self-textarea');
+            saveMessageButton = document.getElementById('save-message-button');
+            skipMessageButton = document.getElementById('skip-message-button');
+            summaryArea = document.getElementById('summary-area'); 
+            journeySummaryTextarea = document.getElementById('journey-summary-textarea'); 
+            newJourneyButton = document.getElementById('new-journey-button'); 
+            transcendButton = document.getElementById('transcend-button');
+            devSpeedButton = document.getElementById('dev-speed-button');
+            muteButton = document.getElementById('mute-button');
+
+
             initializeSounds(); 
             
             gameState.initialGameSeed = Date.now() % 2147483647; 
@@ -2486,7 +2486,7 @@
                 return ' '.repeat(SCREEN_WIDTH);
             }).join('\n');
             addLogMessage(selectedStartupMessage, "startup"); 
-            addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed"); 
+            addLogMessage(`New World Seed: ${gameState.initialGameSeed}`, "seed"); 
             if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
                  addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
             }
@@ -2515,8 +2515,25 @@
             updateUIAccentColors(); 
             renderAll(); 
             
-            pauseResumeButton.addEventListener('click', togglePause);
-            upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+            // Attach event listeners
+            if(pauseResumeButton) pauseResumeButton.addEventListener('click', togglePause);
+            if(upgradeSpeedButton) upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+            if(newJourneyButton) newJourneyButton.addEventListener('click', () => resetGame(false)); 
+            if(transcendButton) transcendButton.addEventListener('click', handleTranscendence);
+            if(devSpeedButton) devSpeedButton.addEventListener('click', toggleDevSpeed);
+            if(muteButton) {
+                muteButton.addEventListener('click', () => {
+                    gameState.isMuted = !gameState.isMuted;
+                    muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
+                    if (Tone && Tone.Destination) { 
+                        Tone.Destination.mute = gameState.isMuted;
+                    }
+                    if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
+                        Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
+                    }
+                });
+            }
+
 
             if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
                  gameInterval = setInterval(gameLoop, gameState.gameTickMs);
