@@ -100,8 +100,8 @@
         .abandoned-shrine-tile { color: #8fbc8f; } 
         .hermit-cave-tile { color: #a0522d; } 
         .armory-tile { color: #778899; font-weight: bold; } 
-        .gambler-tile { color: #40e0d0; font-weight: bold; } /* Turquoise for Gambler */
-        .collapsing-bridge-tile { color: #d2691e; font-weight: bold; } /* Chocolate for Bridge */
+        .gambler-tile { color: #40e0d0; font-weight: bold; } 
+        .collapsing-bridge-tile { color: #d2691e; font-weight: bold; }
 
 
         .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
@@ -346,7 +346,7 @@
             <button id="pause-resume-button">Pause</button>
             <button id="upgrade-speed-button" disabled>Upgrade Speed (Cost: 50<span class="resource-icon">.</span>)</button>
             <button id="mute-button">Mute Sounds</button> 
-        </div>
+            <button id="dev-speed-button">Dev Speed: 1x</button> </div>
     </div>
 
     <script>
@@ -369,6 +369,7 @@
         const ABANDONED_SHRINE_EVENT_X_POS = 100; 
         const STARVING_HERMIT_EVENT_X_POS = 90; 
         const ANCIENT_ARMORY_EVENT_X_POS = 250; 
+        const DEV_SPEED_MULTIPLIERS = [1, 2, 5, 10, 20]; // New
 
 
         const NUM_LANES = 5;
@@ -555,6 +556,8 @@
             playerName: "Wanderer", 
             playerZoneX: 0, playerLane: PLAYER_INITIAL_LANE, currentZoneIndex: 0,
             explorationSpeedMultiplier: 1,
+            devSpeedMultiplier: 1, // New
+            devSpeedIndex: 0, // New
             resources: { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 },
             stats: { 
                 might: BASE_STAT_VALUE,
@@ -831,7 +834,7 @@
             { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." },
             { key: "ART_ANCIENT_BLADE", name: "Ancient Blade", description: "A blade of forgotten make, humming with faint power. (+1 Might, -2 Max HP)." }, 
             { key: "ART_LUCKY_CHARM", name: "Lucky Charm", description: "A small, oddly warm trinket. You feel a bit luckier just holding it. (Slightly increases chances of positive outcomes in some random events)." },
-            { key: "ART_RUNEFORGED_GAUNTLETS", name: "Runeforged Gauntlets", description: "Heavy gauntlets etched with dormant runes. They feel powerful. (+1 Might, +5 Max HP)." } // New
+            { key: "ART_RUNEFORGED_GAUNTLETS", name: "Runeforged Gauntlets", description: "Heavy gauntlets etched with dormant runes. They feel powerful. (+1 Might, +5 Max HP)." } 
         ];
         const DECISIONS = {
             "END_OF_ASHEN_WOODS": {
@@ -1039,6 +1042,7 @@
         const journeySummaryTextarea = document.getElementById('journey-summary-textarea'); 
         const newJourneyButton = document.getElementById('new-journey-button'); 
         const transcendButton = document.getElementById('transcend-button');
+        const devSpeedButton = document.getElementById('dev-speed-button'); // New
 
 
         // --- Game Logic Functions ---
@@ -1171,7 +1175,7 @@
             playerHpDisplay.textContent = gameState.currentHp;
             playerMaxHpDisplay.textContent = gameState.maxHp;
             playerClassDisplay.textContent = gameState.playerClass || "None"; 
-            statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
+            statsExplorationSpeed.textContent = `${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`; // Updated
             statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
             statsAncientScraps.textContent = gameState.resources.ancientScraps;
             statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
@@ -1889,8 +1893,9 @@
             };
             return descriptions[elementChar] || 'mysterious object';
         }
-        function updateGameTickSpeed() { /* ... (same) ... */ 
-            gameState.gameTickMs = INITIAL_GAME_TICK_MS / gameState.explorationSpeedMultiplier;
+        function updateGameTickSpeed() { 
+            const effectiveSpeedMultiplier = gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier;
+            gameState.gameTickMs = INITIAL_GAME_TICK_MS / effectiveSpeedMultiplier;
             if (gameInterval) { 
                 clearInterval(gameInterval);
                 if (!gameState.isPaused && !gameState.activeDecision && gameState.currentZoneIndex !== -1) { 
@@ -2130,6 +2135,15 @@
                     gameState.narrativeFlags.cursedLuck = false;
                 }
             }
+            // Decrement temporary spirit boost
+            if (gameState.tempSpiritBoostTurns > 0) {
+                gameState.tempSpiritBoostTurns--;
+                if (gameState.tempSpiritBoostTurns === 0) {
+                    gameState.stats.spirit--; // Revert temporary boost
+                    addLogMessage("The heightened spiritual awareness fades...", "synergy");
+                    renderStats(); // Update UI
+                }
+            }
 
 
             gameState.playerZoneX++;
@@ -2283,6 +2297,18 @@
             }
         }
 
+        function toggleDevSpeed() {
+            if (gameState.currentZoneIndex === -1) return; // Don't allow speed change if game ended
+            gameState.devSpeedIndex = (gameState.devSpeedIndex + 1) % DEV_SPEED_MULTIPLIERS.length;
+            gameState.devSpeedMultiplier = DEV_SPEED_MULTIPLIERS[gameState.devSpeedIndex];
+            
+            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`;
+            addLogMessage(`Developer speed set to ${gameState.devSpeedMultiplier}x. Effective speed: ${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`, "synergy");
+            updateGameTickSpeed();
+            renderStats();
+        }
+
+
         let gameInterval;
         const muteButton = document.getElementById('mute-button');
 
@@ -2324,6 +2350,8 @@
             gameState.playerLane = PLAYER_INITIAL_LANE;
             gameState.currentZoneIndex = 0;
             gameState.explorationSpeedMultiplier = 1; 
+            gameState.devSpeedMultiplier = 1; // Reset dev speed
+            gameState.devSpeedIndex = 0;    // Reset dev speed index
             gameState.resources = { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 };
             
             gameState.stats = {
@@ -2349,6 +2377,9 @@
             gameState.lastStepSoundTime = 0;
             gameState.lastExploredZoneIndex = 0;
             gameState.cursedLuckTurns = 0; 
+            gameState.tempSpiritBoostTurns = 0;
+            gameState.narrativeFlags.divineFavorActive = false;
+
 
             gameState.initialGameSeed = Date.now() % 2147483647; 
             initializeSeed(gameState.initialGameSeed);
@@ -2362,6 +2393,8 @@
             pauseResumeButton.textContent = "Pause";
             pauseResumeButton.disabled = false;
             upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < (50 * gameState.explorationSpeedMultiplier);
+            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`; // Reset dev speed button text
+
 
             const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
             const selectedStartupMessage = STARTUP_MESSAGES[startupMessageIndex];
@@ -2422,6 +2455,9 @@
         }
         if(transcendButton) { 
             transcendButton.addEventListener('click', handleTranscendence);
+        }
+        if(devSpeedButton) { // New
+            devSpeedButton.addEventListener('click', toggleDevSpeed);
         }
 
 
