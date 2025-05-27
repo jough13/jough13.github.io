@@ -363,13 +363,13 @@
         const NAME_CHOICE_EVENT_X_POS = 25; 
         const CLASS_CHOICE_EVENT_X_POS = 75; 
         const MAX_NAME_LENGTH = 20;
-        const SWORD_STONE_EVENT_X_POS = 120; // Example: Zone 0
-        const DYING_CREATURE_EVENT_X_POS = 180; // Example: Zone 1
-        const ABANDONED_SHRINE_EVENT_X_POS = 100; // Example: Zone 1
-        const STARVING_HERMIT_EVENT_X_POS = 90; // Example: Zone 0
-        const ANCIENT_ARMORY_EVENT_X_POS = 250; // Example: Zone 2
-        const GAMBLER_GHOST_EVENT_X_POS = 150; // Example: Zone 3
-        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; // Example: Zone 2
+        const SWORD_STONE_EVENT_X_POS = 100; // Zone 0
+        const DYING_CREATURE_EVENT_X_POS = 150; // Zone 1
+        const ABANDONED_SHRINE_EVENT_X_POS = 100; // Zone 1
+        const STARVING_HERMIT_EVENT_X_POS = 90; // Zone 0
+        const ANCIENT_ARMORY_EVENT_X_POS = 250; // Zone 2
+        const GAMBLER_GHOST_EVENT_X_POS = 150; // Zone 3
+        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; // Zone 2
         const DEV_SPEED_MULTIPLIERS = [1, 2, 5, 10, 20]; 
 
 
@@ -884,12 +884,12 @@
                     65: [ { lane: 4, char: '~' } ], 70: [ { lane: 2, char: 'm' },{ lane: 4, char: '~' }, { lane: 0, char: 'F' } ], 
                     75: [ { lane: 4, char: 'L' } ], 80: [ { lane: 0, char: 'T' } ], 
                     85: [ { lane: 0, char: '~' },{ lane: 1, char: '=' },{ lane: 2, char: '~' } ], 
-                    [STARVING_HERMIT_EVENT_X_POS]: [ { lane: 1, char: 'h'}, { lane: 3, char: 'h'} ], // Starving Hermit
+                    [STARVING_HERMIT_EVENT_X_POS]: [ { lane: 1, char: 'h'}, { lane: 3, char: 'h'} ], 
                     90: [ { lane: 2, char: '#' } ], 95: [ { lane: 3, char: '+' } ], 
                     100: [ { lane: 4, char: 'F'} ], 
                     105: [ { lane: 0, char: '0'} ], 
                     110: [ { lane: 2, char: 'H' } ], 
-                    [SWORD_STONE_EVENT_X_POS]: [ { lane: 2, char: '¥'} ], // Sword in the Stone
+                    [SWORD_STONE_EVENT_X_POS]: [ { lane: 2, char: '¥'} ], 
                     120: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
                     125: [ { lane: 4, char: 'M'} ], 130: [ { lane: 4, char: 'A' } ], 
                     140: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 145: [ { lane: 3, char: 'T' } ], 150: [ { lane: 1, char: '.' }, { lane: 0, char: 'F'} ], 
@@ -908,11 +908,12 @@
                     35: [ { lane: 0, char: 'M' }, { lane: 1, char: 'M' } ], 
                     40: [ { lane: 1, char: 'L' }, { lane: 0, char: 'M' } ], 50: [ { lane: 3, char: 'A' } ], 60: [ { lane: 2, char: '#' } ], 
                     70: [ { lane: 0, char: 'f' } ], 80: [ { lane: 4, char: 'N', npcType: "HERMIT_RUNESMITH" } ], 90: [ { lane: 2, char: 'Φ' } ],
-                    [ABANDONED_SHRINE_EVENT_X_POS]: [ { lane: 1, char: '_'}, { lane: 4, char: '_'} ], // Abandoned Shrine
+                    [ABANDONED_SHRINE_EVENT_X_POS]: [ { lane: 1, char: '_'}, { lane: 4, char: '_'} ], 
                     100: [ { lane: 3, char: 'L' } ], 110: [ { lane: 1, char: '+' } ], 115: [ { lane: 4, char: '0'} ],
                     120: [ { lane: 2, char: '.' } ], 
                     130: [ { lane: 0, char: '✧' } ], 140: [ { lane: 4, char: 'A' } ], 
-                    150: [ { lane: 2, char: 'P' }, { lane: 1, char: 'd'} ], // Dying Creature
+                    150: [ { lane: 2, char: 'P' } ], 
+                    [DYING_CREATURE_EVENT_X_POS]: [ { lane: 1, char: 'd'} ], 
                     160: [ { lane: 1, char: 'L' } ], 170: [ { lane: 3, char: '#' } ], 180: [ { lane: 0, char: '◊' } ], 
                     190: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 200: [ { lane: 4, char: '✧' } ], 210: [ { lane: 1, char: 'f' } ], 
                     220: [ { lane: 2, char: 'Δ' } ], 230: [ { lane: 3, char: 'H' } ], 240: [ { lane: 0, char: 'A' } ], 
@@ -934,7 +935,7 @@
                     170: [ { lane: 2, char: 'H' } ], 180: [ { lane: 0, char: '#' } ], 190: [ { lane: 3, char: 's' } ], 
                     200: [ { lane: 4, char: '[' } ], 210: [ { lane: 1, char: '+' } ], 220: [ { lane: 2, char: 'A' } ], 
                     230: [ { lane: 0, char: '¦' } ], 240: [ { lane: 3, char: 'L' } ], 
-                    [ANCIENT_ARMORY_EVENT_X_POS]: [ { lane: 1, char: '‡'} ], // Ancient Armory
+                    [ANCIENT_ARMORY_EVENT_X_POS]: [ { lane: 1, char: '‡'} ], 
                     250: [ { lane: 2, char: 'Φ' } ], 
                     260: [ { lane: 4, char: 'L' } ], 270: [ { lane: 1, char: 'N', npcType: "ECHO_LUMINA" } ], 280: [ { lane: 0, char: 's' } ], 
                     290: [ { lane: 2, char: 'L' } ], 300: [ { lane: 3, char: '+' } ], 310: [ { lane: 4, char: 'A' } ], 
