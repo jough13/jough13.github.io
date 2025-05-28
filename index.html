@@ -100,8 +100,8 @@
         .abandoned-shrine-tile { color: #8fbc8f; } 
         .hermit-cave-tile { color: #a0522d; } 
         .armory-tile { color: #778899; font-weight: bold; } 
-        .gambler-tile { color: #40e0d0; font-weight: bold; } 
-        .collapsing-bridge-tile { color: #d2691e; font-weight: bold; }
+        .gambler-tile { color: #40e0d0; font-weight: bold; } /* Turquoise for Gambler */
+        .collapsing-bridge-tile { color: #d2691e; font-weight: bold; } /* Chocolate for Bridge */
 
 
         .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
@@ -346,7 +346,6 @@
             <button id="pause-resume-button">Pause</button>
             <button id="upgrade-speed-button" disabled>Upgrade Speed (Cost: 50<span class="resource-icon">.</span>)</button>
             <button id="mute-button">Mute Sounds</button> 
-            <button id="dev-speed-button">Dev Speed: 1x</button> 
         </div>
     </div>
 
@@ -363,14 +362,13 @@
         const NAME_CHOICE_EVENT_X_POS = 25; 
         const CLASS_CHOICE_EVENT_X_POS = 75; 
         const MAX_NAME_LENGTH = 20;
-        const SWORD_STONE_EVENT_X_POS = 100; 
-        const DYING_CREATURE_EVENT_X_POS = 150; 
+        const SWORD_STONE_EVENT_X_POS = 120; 
+        const DYING_CREATURE_EVENT_X_POS = 180; 
+        const GAMBLER_GHOST_EVENT_X_POS = 150; 
+        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; 
         const ABANDONED_SHRINE_EVENT_X_POS = 100; 
         const STARVING_HERMIT_EVENT_X_POS = 90; 
         const ANCIENT_ARMORY_EVENT_X_POS = 250; 
-        const GAMBLER_GHOST_EVENT_X_POS = 150; 
-        const COLLAPSING_BRIDGE_EVENT_X_POS = 180; 
-        const DEV_SPEED_MULTIPLIERS = [1, 2, 5, 10, 20]; 
 
 
         const NUM_LANES = 5;
@@ -557,8 +555,6 @@
             playerName: "Wanderer", 
             playerZoneX: 0, playerLane: PLAYER_INITIAL_LANE, currentZoneIndex: 0,
             explorationSpeedMultiplier: 1,
-            devSpeedMultiplier: 1, 
-            devSpeedIndex: 0, 
             resources: { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 },
             stats: { 
                 might: BASE_STAT_VALUE,
@@ -835,7 +831,7 @@
             { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." },
             { key: "ART_ANCIENT_BLADE", name: "Ancient Blade", description: "A blade of forgotten make, humming with faint power. (+1 Might, -2 Max HP)." }, 
             { key: "ART_LUCKY_CHARM", name: "Lucky Charm", description: "A small, oddly warm trinket. You feel a bit luckier just holding it. (Slightly increases chances of positive outcomes in some random events)." },
-            { key: "ART_RUNEFORGED_GAUNTLETS", name: "Runeforged Gauntlets", description: "Heavy gauntlets etched with dormant runes. They feel powerful. (+1 Might, +5 Max HP)." } 
+            { key: "ART_RUNEFORGED_GAUNTLETS", name: "Runeforged Gauntlets", description: "Heavy gauntlets etched with dormant runes. They feel powerful. (+1 Might, +5 Max HP)." } // New
         ];
         const DECISIONS = {
             "END_OF_ASHEN_WOODS": {
@@ -884,13 +880,9 @@
                     65: [ { lane: 4, char: '~' } ], 70: [ { lane: 2, char: 'm' },{ lane: 4, char: '~' }, { lane: 0, char: 'F' } ], 
                     75: [ { lane: 4, char: 'L' } ], 80: [ { lane: 0, char: 'T' } ], 
                     85: [ { lane: 0, char: '~' },{ lane: 1, char: '=' },{ lane: 2, char: '~' } ], 
-                    [STARVING_HERMIT_EVENT_X_POS]: [ { lane: 1, char: 'h'}, { lane: 3, char: 'h'} ], 
-                    90: [ { lane: 2, char: '#' } ], 95: [ { lane: 3, char: '+' } ], 
-                    [SWORD_STONE_EVENT_X_POS]: [ { lane: 2, char: '¥'} ], 
-                    100: [ { lane: 4, char: 'F'} ], 
+                    90: [ { lane: 2, char: '#' } ], 95: [ { lane: 3, char: '+' } ], 100: [ { lane: 1, char: 'Y' }, { lane: 4, char: 'F'} ], 
                     105: [ { lane: 0, char: '0'} ], 
-                    110: [ { lane: 2, char: 'H' } ], 
-                    120: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
+                    110: [ { lane: 2, char: 'H' } ], 120: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
                     125: [ { lane: 4, char: 'M'} ], 130: [ { lane: 4, char: 'A' } ], 
                     140: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 145: [ { lane: 3, char: 'T' } ], 150: [ { lane: 1, char: '.' }, { lane: 0, char: 'F'} ], 
                     160: [ { lane: 0, char: 'L' }, {lane: 4, char: '.'} ], 170: [ { lane: 2, char: 'm' } ], 175: [ { lane: 1, char: '+' } ], 
@@ -908,12 +900,9 @@
                     35: [ { lane: 0, char: 'M' }, { lane: 1, char: 'M' } ], 
                     40: [ { lane: 1, char: 'L' }, { lane: 0, char: 'M' } ], 50: [ { lane: 3, char: 'A' } ], 60: [ { lane: 2, char: '#' } ], 
                     70: [ { lane: 0, char: 'f' } ], 80: [ { lane: 4, char: 'N', npcType: "HERMIT_RUNESMITH" } ], 90: [ { lane: 2, char: 'Φ' } ],
-                    [ABANDONED_SHRINE_EVENT_X_POS]: [ { lane: 1, char: '_'}, { lane: 4, char: '_'} ], 
                     100: [ { lane: 3, char: 'L' } ], 110: [ { lane: 1, char: '+' } ], 115: [ { lane: 4, char: '0'} ],
                     120: [ { lane: 2, char: '.' } ], 
-                    130: [ { lane: 0, char: '✧' } ], 140: [ { lane: 4, char: 'A' } ], 
-                    [DYING_CREATURE_EVENT_X_POS]: [ { lane: 1, char: 'd'} ], 
-                    150: [ { lane: 2, char: 'P' } ], 
+                    130: [ { lane: 0, char: '✧' } ], 140: [ { lane: 4, char: 'A' } ], 150: [ { lane: 2, char: 'P' } ], 
                     160: [ { lane: 1, char: 'L' } ], 170: [ { lane: 3, char: '#' } ], 180: [ { lane: 0, char: '◊' } ], 
                     190: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 200: [ { lane: 4, char: '✧' } ], 210: [ { lane: 1, char: 'f' } ], 
                     220: [ { lane: 2, char: 'Δ' } ], 230: [ { lane: 3, char: 'H' } ], 240: [ { lane: 0, char: 'A' } ], 
@@ -934,9 +923,7 @@
                     140: [ { lane: 2, char: 'P' } ], 150: [ { lane: 4, char: ']' } ], 160: [ { lane: 1, char: 'L' } ], 
                     170: [ { lane: 2, char: 'H' } ], 180: [ { lane: 0, char: '#' } ], 190: [ { lane: 3, char: 's' } ], 
                     200: [ { lane: 4, char: '[' } ], 210: [ { lane: 1, char: '+' } ], 220: [ { lane: 2, char: 'A' } ], 
-                    230: [ { lane: 0, char: '¦' } ], 240: [ { lane: 3, char: 'L' } ], 
-                    [ANCIENT_ARMORY_EVENT_X_POS]: [ { lane: 1, char: '‡'} ], 
-                    250: [ { lane: 2, char: 'Φ' } ], 
+                    230: [ { lane: 0, char: '¦' } ], 240: [ { lane: 3, char: 'L' } ], 250: [ { lane: 2, char: 'Φ' } ], 
                     260: [ { lane: 4, char: 'L' } ], 270: [ { lane: 1, char: 'N', npcType: "ECHO_LUMINA" } ], 280: [ { lane: 0, char: 's' } ], 
                     290: [ { lane: 2, char: 'L' } ], 300: [ { lane: 3, char: '+' } ], 310: [ { lane: 4, char: 'A' } ], 
                     320: [ { lane: 1, char: 'P' } ], 330: [ { lane: 2, char: 'L' } ]
@@ -1015,14 +1002,43 @@
         ];
 
         // --- DOM Elements ---
-        let gameScreenContent, gameScreen, statsZoneName, statsExploredPercentage, statsExplorationSpeed,
-            statsGlimmeringDust, statsAncientScraps, statsRunesCollected, voidEssenceDisplay, statsVoidEssence,
-            companionDisplay, companionInfo, artifactsCollectedDisplay, statMightDisplay, statWitsDisplay,
-            statSpiritDisplay, playerLevelDisplay, playerXpDisplay, xpToNextLevelDisplay, playerHpDisplay,
-            playerMaxHpDisplay, playerClassDisplay, playerNameDisplay, logArea, pauseResumeButton,
-            upgradeSpeedButton, decisionArea, decisionPromptText, decisionButtonsContainer, messageInputArea,
-            futureSelfTextarea, saveMessageButton, skipMessageButton, summaryArea, journeySummaryTextarea,
-            newJourneyButton, transcendButton, devSpeedButton, muteButton;
+        const gameScreenContent = document.getElementById('game-screen-content'); 
+        const gameScreen = document.getElementById('game-screen');
+        const statsZoneName = document.getElementById('zone-name');
+        const statsExploredPercentage = document.getElementById('explored-percentage');
+        const statsExplorationSpeed = document.getElementById('exploration-speed');
+        const statsGlimmeringDust = document.getElementById('glimmering-dust');
+        const statsAncientScraps = document.getElementById('ancient-scraps');
+        const statsRunesCollected = document.getElementById('runes-collected');
+        const voidEssenceDisplay = document.getElementById('void-essence-display');
+        const statsVoidEssence = document.getElementById('void-essence');
+        const companionDisplay = document.getElementById('companion-display');
+        const companionInfo = document.getElementById('companion-info');
+        const artifactsCollectedDisplay = document.getElementById('artifacts-collected'); 
+        const statMightDisplay = document.getElementById('stat-might'); 
+        const statWitsDisplay = document.getElementById('stat-wits');   
+        const statSpiritDisplay = document.getElementById('stat-spirit'); 
+        const playerLevelDisplay = document.getElementById('player-level'); 
+        const playerXpDisplay = document.getElementById('player-xp');       
+        const xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
+        const playerHpDisplay = document.getElementById('player-hp'); 
+        const playerMaxHpDisplay = document.getElementById('player-max-hp'); 
+        const playerClassDisplay = document.getElementById('player-class');
+        const playerNameDisplay = document.getElementById('player-name-display'); 
+        const logArea = document.getElementById('log-area');
+        const pauseResumeButton = document.getElementById('pause-resume-button');
+        const upgradeSpeedButton = document.getElementById('upgrade-speed-button');
+        const decisionArea = document.getElementById('decision-area');
+        const decisionPromptText = document.getElementById('decision-prompt-text');
+        const decisionButtonsContainer = document.getElementById('decision-buttons-container');
+        const messageInputArea = document.getElementById('message-input-area');
+        const futureSelfTextarea = document.getElementById('future-self-textarea');
+        const saveMessageButton = document.getElementById('save-message-button');
+        const skipMessageButton = document.getElementById('skip-message-button');
+        const summaryArea = document.getElementById('summary-area'); 
+        const journeySummaryTextarea = document.getElementById('journey-summary-textarea'); 
+        const newJourneyButton = document.getElementById('new-journey-button'); 
+        const transcendButton = document.getElementById('transcend-button');
 
 
         // --- Game Logic Functions ---
@@ -1031,13 +1047,15 @@
         function calculateMaxHp() {
             let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
             if (gameState.playerClass === "Stalwart") hp += 5;
+            // Apply penalty for Ancient Blade if equipped
             if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
                 hp -= 2;
             }
+            // Apply bonus for Runeforged Gauntlets if equipped
             if (gameState.collectedArtifacts.includes("ART_RUNEFORGED_GAUNTLETS")) {
                 hp += 5;
             }
-            return Math.max(1, hp); 
+            return Math.max(1, hp); // Ensure HP doesn't drop below 1
         }
 
         function awardXP(amount) {
@@ -1153,7 +1171,7 @@
             playerHpDisplay.textContent = gameState.currentHp;
             playerMaxHpDisplay.textContent = gameState.maxHp;
             playerClassDisplay.textContent = gameState.playerClass || "None"; 
-            statsExplorationSpeed.textContent = `${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`; 
+            statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
             statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
             statsAncientScraps.textContent = gameState.resources.ancientScraps;
             statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
@@ -1871,9 +1889,8 @@
             };
             return descriptions[elementChar] || 'mysterious object';
         }
-        function updateGameTickSpeed() { 
-            const effectiveSpeedMultiplier = gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier;
-            gameState.gameTickMs = INITIAL_GAME_TICK_MS / effectiveSpeedMultiplier;
+        function updateGameTickSpeed() { /* ... (same) ... */ 
+            gameState.gameTickMs = INITIAL_GAME_TICK_MS / gameState.explorationSpeedMultiplier;
             if (gameInterval) { 
                 clearInterval(gameInterval);
                 if (!gameState.isPaused && !gameState.activeDecision && gameState.currentZoneIndex !== -1) { 
@@ -2113,15 +2130,6 @@
                     gameState.narrativeFlags.cursedLuck = false;
                 }
             }
-            // Decrement temporary spirit boost
-            if (gameState.tempSpiritBoostTurns > 0) {
-                gameState.tempSpiritBoostTurns--;
-                if (gameState.tempSpiritBoostTurns === 0) {
-                    gameState.stats.spirit--; // Revert temporary boost
-                    addLogMessage("The heightened spiritual awareness fades...", "synergy");
-                    renderStats(); // Update UI
-                }
-            }
 
 
             gameState.playerZoneX++;
@@ -2275,31 +2283,19 @@
             }
         }
 
-        function toggleDevSpeed() {
-            if (gameState.currentZoneIndex === -1) return; // Don't allow speed change if game ended
-            gameState.devSpeedIndex = (gameState.devSpeedIndex + 1) % DEV_SPEED_MULTIPLIERS.length;
-            gameState.devSpeedMultiplier = DEV_SPEED_MULTIPLIERS[gameState.devSpeedIndex];
-            
-            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`;
-            addLogMessage(`Developer speed set to ${gameState.devSpeedMultiplier}x. Effective speed: ${(gameState.explorationSpeedMultiplier * gameState.devSpeedMultiplier).toFixed(1)}x`, "synergy");
-            updateGameTickSpeed();
-            renderStats();
-        }
-
-
         let gameInterval;
-        // const muteButton = document.getElementById('mute-button'); // Declared in DOMContentLoaded
+        const muteButton = document.getElementById('mute-button');
 
-        // muteButton.addEventListener('click', () => { // Moved to DOMContentLoaded
-        //     gameState.isMuted = !gameState.isMuted;
-        //     muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
-        //     if (Tone && Tone.Destination) { 
-        //         Tone.Destination.mute = gameState.isMuted;
-        //     }
-        //     if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
-        //         Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
-        //     }
-        // });
+        muteButton.addEventListener('click', () => {
+            gameState.isMuted = !gameState.isMuted;
+            muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
+            if (Tone && Tone.Destination) { 
+                Tone.Destination.mute = gameState.isMuted;
+            }
+            if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
+                Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
+            }
+        });
 
         function resetGame(isTranscendence = false, chosenLegacyStat = null) {
             if (gameInterval) clearInterval(gameInterval);
@@ -2328,8 +2324,6 @@
             gameState.playerLane = PLAYER_INITIAL_LANE;
             gameState.currentZoneIndex = 0;
             gameState.explorationSpeedMultiplier = 1; 
-            gameState.devSpeedMultiplier = 1; 
-            gameState.devSpeedIndex = 0;    
             gameState.resources = { glimmeringDust: 0, ancientScraps: 0, voidEssence: 0 };
             
             gameState.stats = {
@@ -2355,9 +2349,6 @@
             gameState.lastStepSoundTime = 0;
             gameState.lastExploredZoneIndex = 0;
             gameState.cursedLuckTurns = 0; 
-            gameState.tempSpiritBoostTurns = 0;
-            gameState.narrativeFlags.divineFavorActive = false;
-
 
             gameState.initialGameSeed = Date.now() % 2147483647; 
             initializeSeed(gameState.initialGameSeed);
@@ -2371,8 +2362,6 @@
             pauseResumeButton.textContent = "Pause";
             pauseResumeButton.disabled = false;
             upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < (50 * gameState.explorationSpeedMultiplier);
-            devSpeedButton.textContent = `Dev Speed: ${gameState.devSpeedMultiplier}x`; 
-
 
             const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
             const selectedStartupMessage = STARTUP_MESSAGES[startupMessageIndex];
@@ -2428,49 +2417,15 @@
         }
 
 
+        if(newJourneyButton) { 
+            newJourneyButton.addEventListener('click', () => resetGame(false)); 
+        }
+        if(transcendButton) { 
+            transcendButton.addEventListener('click', handleTranscendence);
+        }
+
+
         document.addEventListener('DOMContentLoaded', () => { 
-            // Initialize DOM element constants
-            gameScreenContent = document.getElementById('game-screen-content'); 
-            gameScreen = document.getElementById('game-screen');
-            statsZoneName = document.getElementById('zone-name');
-            statsExploredPercentage = document.getElementById('explored-percentage');
-            statsExplorationSpeed = document.getElementById('exploration-speed');
-            statsGlimmeringDust = document.getElementById('glimmering-dust');
-            statsAncientScraps = document.getElementById('ancient-scraps');
-            statsRunesCollected = document.getElementById('runes-collected');
-            voidEssenceDisplay = document.getElementById('void-essence-display');
-            statsVoidEssence = document.getElementById('void-essence');
-            companionDisplay = document.getElementById('companion-display');
-            companionInfo = document.getElementById('companion-info');
-            artifactsCollectedDisplay = document.getElementById('artifacts-collected'); 
-            statMightDisplay = document.getElementById('stat-might'); 
-            statWitsDisplay = document.getElementById('stat-wits');   
-            statSpiritDisplay = document.getElementById('stat-spirit'); 
-            playerLevelDisplay = document.getElementById('player-level'); 
-            playerXpDisplay = document.getElementById('player-xp');       
-            xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
-            playerHpDisplay = document.getElementById('player-hp'); 
-            playerMaxHpDisplay = document.getElementById('player-max-hp'); 
-            playerClassDisplay = document.getElementById('player-class');
-            playerNameDisplay = document.getElementById('player-name-display'); 
-            logArea = document.getElementById('log-area');
-            pauseResumeButton = document.getElementById('pause-resume-button');
-            upgradeSpeedButton = document.getElementById('upgrade-speed-button');
-            decisionArea = document.getElementById('decision-area');
-            decisionPromptText = document.getElementById('decision-prompt-text');
-            decisionButtonsContainer = document.getElementById('decision-buttons-container');
-            messageInputArea = document.getElementById('message-input-area');
-            futureSelfTextarea = document.getElementById('future-self-textarea');
-            saveMessageButton = document.getElementById('save-message-button');
-            skipMessageButton = document.getElementById('skip-message-button');
-            summaryArea = document.getElementById('summary-area'); 
-            journeySummaryTextarea = document.getElementById('journey-summary-textarea'); 
-            newJourneyButton = document.getElementById('new-journey-button'); 
-            transcendButton = document.getElementById('transcend-button');
-            devSpeedButton = document.getElementById('dev-speed-button');
-            muteButton = document.getElementById('mute-button');
-
-
             initializeSounds(); 
             
             gameState.initialGameSeed = Date.now() % 2147483647; 
@@ -2495,7 +2450,7 @@
                 return ' '.repeat(SCREEN_WIDTH);
             }).join('\n');
             addLogMessage(selectedStartupMessage, "startup"); 
-            addLogMessage(`New World Seed: ${gameState.initialGameSeed}`, "seed"); 
+            addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed"); 
             if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
                  addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
             }
@@ -2524,25 +2479,8 @@
             updateUIAccentColors(); 
             renderAll(); 
             
-            // Attach event listeners
-            if(pauseResumeButton) pauseResumeButton.addEventListener('click', togglePause);
-            if(upgradeSpeedButton) upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
-            if(newJourneyButton) newJourneyButton.addEventListener('click', () => resetGame(false)); 
-            if(transcendButton) transcendButton.addEventListener('click', handleTranscendence);
-            if(devSpeedButton) devSpeedButton.addEventListener('click', toggleDevSpeed);
-            if(muteButton) {
-                muteButton.addEventListener('click', () => {
-                    gameState.isMuted = !gameState.isMuted;
-                    muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
-                    if (Tone && Tone.Destination) { 
-                        Tone.Destination.mute = gameState.isMuted;
-                    }
-                    if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
-                        Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
-                    }
-                });
-            }
-
+            pauseResumeButton.addEventListener('click', togglePause);
+            upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
 
             if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
                  gameInterval = setInterval(gameLoop, gameState.gameTickMs);
