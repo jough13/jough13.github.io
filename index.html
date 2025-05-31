@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.2 (Mining Key Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.3 (Content & Lore Expansion VI)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
-            color: #C0C0C0; 
+            color: #D0D0D0; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -25,7 +25,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 220, 220, 0.25); 
-            border: 1px solid #2a2a5a; 
+            border: 1px solid #303060; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -35,7 +35,7 @@
             white-space: pre;
             font-size: 18px; 
             line-height: 1.1; 
-            border: 1px solid #333355; 
+            border: 1px solid #303060; 
             padding: 10px;
             border-radius: 5px;
             background-color: #000000; 
@@ -78,8 +78,9 @@
             margin-bottom: 2px; 
         }
         .sector-coords {
-            font-size: 0.7em; 
-            color: #777799; 
+            font-size: 0.75em; 
+            color: #6A6A8A; 
+            margin-top: 1px;
         }
         #messageArea {
             min-height: 120px; 
@@ -89,28 +90,28 @@
             width: 100%;
             max-width: 720px; 
             padding: 15px; 
-            border: 1px dashed #4a4a6a;
+            border: 1px dashed #404070; 
             border-radius: 8px;
-            background-color: #101020;
-            line-height: 1.4; 
+            background-color: #101022; 
+            line-height: 1.45; 
         }
         .game-title {
             font-size: 2.8rem; 
             font-weight: 700;
-            color: #00E0E0;
-            text-shadow: 0 0 12px #00E0E0, 0 0 20px #00E0E0; 
+            color: #00E8E8;
+            text-shadow: 0 0 8px #00E8E8, 0 0 15px #00A0A0, 0 0 25px #007070; 
             margin-bottom: 25px;
         }
         .controls-info {
             margin-top: 20px;
             font-size: 0.9rem;
-            color: #8888AA;
+            color: #707090; 
             text-align: center;
         }
         #versionInfo {
             margin-top: 15px;
             font-size: 0.8rem;
-            color: #555577; 
+            color: #404050; 
             text-align: center;
         }
 
@@ -133,21 +134,21 @@
         .codex-list-item.active { background-color: #00E0E0; color: #0f0f1a; }
         #codexCloseButton { position: absolute; top: 15px; right: 20px; font-size: 1.5em; color: #ff4444; cursor: pointer; background: none; border: none; }
 
-        .player-char { color: #FFFFFF; text-shadow: 0 0 5px #FFFFFF; } 
-        .star-char { color: #FFFF99; } 
-        .planet-char { color: #66CCFF; } 
-        .starbase-char { color: #FF66FF; } 
-        .outpost-char { color: #99FF99; } 
-        .asteroid-char { color: #FF9966; } 
-        .nebula-char { color: #CC99FF; }
-        .empty-space-char { color: #A0A0A0; } 
-        .pirate-char { color: #FF4444; font-weight: bold; text-shadow: 0 0 3px #FF0000; }
-        .derelict-char { color: #77AADD; } 
-        .anomaly-char { color: #FF00FF; font-weight: bold; animation: pulse-magenta 1.5s infinite; } 
-        .wormhole-char { color: #FFA500; font-weight: bold; animation: pulse-orange 1.5s infinite; } 
+        .player-char { color: #FFFFFF; text-shadow: 0 0 6px #FFFFFF, 0 0 10px #00FFFF; } 
+        .star-char { color: #FFFF99; text-shadow: 0 0 3px #FFFF00; } 
+        .planet-char { color: #88CCFF; } 
+        .starbase-char { color: #FF88FF; text-shadow: 0 0 3px #FF00FF; } 
+        .outpost-char { color: #AADD99; } 
+        .asteroid-char { color: #FFAA66; } 
+        .nebula-char { color: #DD99FF; }
+        .empty-space-char { color: #909090; } 
+        .pirate-char { color: #FF5555; font-weight: bold; text-shadow: 0 0 5px #FF0000; }
+        .derelict-char { color: #88AACC; } 
+        .anomaly-char { color: #FF33FF; font-weight: bold; animation: pulse-magenta 1.3s infinite; } 
+        .wormhole-char { color: #FFB800; font-weight: bold; animation: pulse-orange 1.3s infinite; } 
 
-        @keyframes pulse-orange { 0% { opacity: 1; text-shadow: 0 0 5px #FFA500; } 50% { opacity: 0.6; text-shadow: 0 0 10px #FF8C00; } 100% { opacity: 1; text-shadow: 0 0 5px #FFA500; } }
-        @keyframes pulse-magenta { 0% { opacity: 1; text-shadow: 0 0 5px #FF00FF; } 50% { opacity: 0.6; text-shadow: 0 0 10px #DD00DD; } 100% { opacity: 1; text-shadow: 0 0 5px #FF00FF; } }
+        @keyframes pulse-orange { 0% { opacity: 1; text-shadow: 0 0 6px #FFA500, 0 0 10px #FF8C00; } 50% { opacity: 0.7; text-shadow: 0 0 12px #FF8C00, 0 0 18px #FF7700; } 100% { opacity: 1; text-shadow: 0 0 6px #FFA500, 0 0 10px #FF8C00; } }
+        @keyframes pulse-magenta { 0% { opacity: 1; text-shadow: 0 0 6px #FF00FF, 0 0 10px #DD00DD; } 50% { opacity: 0.7; text-shadow: 0 0 12px #DD00DD, 0 0 18px #CC00CC; } 100% { opacity: 1; text-shadow: 0 0 6px #FF00FF, 0 0 10px #DD00DD; } }
     </style>
 </head>
 <body>
@@ -156,7 +157,7 @@
     <div id="gameContainer">
         <div id="playerStats">
             <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-            <div class="stat-item sector-stat"> 
+            <div class="stat-item"> 
                 <span class="stat-label">Current Sector</span>
                 <span id="sectorNameStat" class="stat">Sol Sector</span>
                 <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
@@ -190,11 +191,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | L: Leave <br>
         Combat - F: Fight | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.2</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.2"; 
+        const GAME_VERSION = "v0.7.3"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -1252,7 +1253,7 @@
                 case 'w':case 'arrowup':dy=-1;break; case 's':case 'arrowdown':dy=1;break;
                 case 'a':case 'arrowleft':dx=-1;break; case 'd':case 'arrowright':dx=1;break;
                 case 'e':scanLocation();break; case 'h': scoopHydrogen(); break; 
-                case 'm': mineAsteroid(); break; // Added mining action
+                case 'm': mineAsteroid(); break; 
                 case 'j': toggleCodex(true); break; 
                 case 'i': displayCargoHold(); break; 
                 case 't': const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)==='wormhole')traverseWormhole();else updateMessage("No wormhole here.");break;
