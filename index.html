@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII Space Explorer - v0.6.12 (Deep Content & Lore Pass V)</title>
+    <title>Wayfinder: Echoes of the Void</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -82,10 +82,10 @@
         #messageArea {
             min-height: 120px; 
             color: #ffcc00;
-            text-align: center;
+            text-align: right; 
             font-size: 16px;
             width: 100%;
-            max-width: 680px; 
+            max-width: 720px; /* Adjusted for potentially wider map */
             padding: 10px;
             border: 1px dashed #4a4a6a;
             border-radius: 5px;
@@ -135,14 +135,20 @@
             overflow-y: auto;
             display: flex;
         }
-        #codexCategories, #codexEntries, #codexEntryText {
+        #codexCategories, #codexEntries {
             padding: 10px;
-            border-right: 1px solid #4a4a6a; /* Separator */
+            border-right: 1px solid #4a4a6a; 
             overflow-y: auto;
+        }
+        #codexEntryText {
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            text-align: right; 
         }
         #codexCategories { flex-basis: 25%; }
         #codexEntries { flex-basis: 30%; border-right: 1px solid #4a4a6a; }
-        #codexEntryText { flex-basis: 45%; border-right: none; white-space: pre-wrap; }
+        #codexEntryText { flex-basis: 45%; border-right: none; }
 
         .codex-list-item {
             padding: 8px;
@@ -151,6 +157,7 @@
             margin-bottom: 5px;
             background-color: #2a2a4a;
             transition: background-color 0.2s;
+            text-align: left; 
         }
         .codex-list-item:hover {
             background-color: #3a3a5a;
@@ -188,7 +195,7 @@
     </style>
 </head>
 <body>
-    <h1 class="game-title">ASCII Space Explorer</h1>
+    <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
 
     <div id="gameContainer">
         <div id="playerStats">
@@ -222,8 +229,8 @@
 
     <script>
         // --- Game Configuration ---
-        const MAP_WIDTH = 40; 
-        const MAP_HEIGHT = 20; 
+        const MAP_WIDTH = 50; // Increased from 40
+        const MAP_HEIGHT = 15; // Decreased from 20
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
         const STAR_CHAR_VAL = '*'; const PLANET_CHAR_VAL = 'O';
         const STARBASE_CHAR_VAL = '#'; 
@@ -269,7 +276,7 @@
         const XP_WORMHOLE_TRAVERSE = 15;
 
 
-        const COMMODITIES = {
+        const COMMODITIES = { /* Same as v0.6.11 */
             FUEL_CELLS: { name: "Fuel Cells", basePrice: 10, description: "Standard hyper-refined hydrogen fuel cells. The lifeblood of interstellar travel. Always a steady demand, especially in remote sectors far from scoopable stars. Some black market variants promise higher energy density but are notoriously unstable, prone to catastrophic failure." },
             MINERALS: { name: "Minerals", basePrice: 25, description: "A mix of common industrial ores - iron, bauxite, silicates. Essential for construction and basic manufacturing. Bulk haulers make their fortunes on these, supplying the ever-expanding Concord infrastructure projects and the insatiable war machines of various factions." },
             FOOD_SUPPLIES: { name: "Food Supplies", basePrice: 15, description: "Nutrient paste, hydroponic vegetables, and recycled protein. Keeps the void-sickness at bay on long voyages. Quality varies greatly from 'edible' to 'surprisingly tasty', depending on the chef-bot and source system. Some luxury brands are considered delicacies." },
@@ -307,21 +314,21 @@
                     { id: "WAYFINDER_CORE", priceMod: 5.0, stock: 1 }, { id: "SENTIENT_MYCELIUM", priceMod: 1.2, stock: 4 },
                     { id: "PRECURSOR_STAR_MAP_FRAGMENT", priceMod: 4.0, stock: 1}, { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 0.5, stock: 1 } 
                 ],
-                scanFlavor: "Starbase Alpha: A major trade and logistics hub for the sector. Its beacons pulse with welcoming light. The Galactic Concord maintains a strong presence here, ensuring (relative) peace and facilitating interstellar commerce. Rumor has it, their archives hold secrets dating back to the First Expansion, and they pay top credit for Precursor artifacts. The station commander, Evelyn Hayes, is known for her strict adherence to Concord law, but some say she has a soft spot for independent explorers who bring back valuable intel or Precursor tech. The station's motto: 'Order Through Strength, Progress Through Unity'. Recent Concord directives have increased patrols in nearby sectors due to rising K'tharr activity and whispers of a 'Void Cult' resurgence. The Xeno-Archaeology department here is always looking for Precursor items and offers substantial rewards for unique finds like Wayfinder Cores or Star Map Fragments. The station also houses a heavily guarded Concord 'Obsidian Directorate' wing, its purpose unknown; some say they experiment with captured K'tharr technology or even Precursor FTL drives. The 'Oracle of Cygnus' is a permanent resident in the station's 'Mystic Quarter', offering cryptic advice for a price, usually rare Xeno-Antiques."
+                scanFlavor: "Starbase Alpha: Major Concord trade hub. Known for its extensive archives and the 'Oracle of Cygnus' in the Mystic Quarter. The Obsidian Directorate wing here is rumored to conduct secret FTL research."
             },
             "Planet Omega": { 
                 coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL,
                 sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ],
                 buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ],
-                scanFlavor: "Planet Omega: Known for its rich Dilithium Crystal deposits and ancient, dormant structures believed to be of 'Precursor' origin. The silent cities hum with an almost imperceptible energy. Atmosphere: Thin but breathable. Surface temperature: Moderate. Independent prospectors often disappear exploring the ruins, some say the Precursors left guardians, or that the planet itself is awakening. Strange glyphs cover the Precursor structures, undeciphered, though some xeno-linguists believe they are star charts to lost Precursor worlds or warnings about 'The Silencers' - a Precursor term for an unknown cosmic threat that led to their decline. The Concord has established a small, heavily armed research outpost near the largest ruin, entry forbidden, claiming to study 'anomalous geological formations'. They are rumored to be excavating a massive Precursor device."
+                scanFlavor: "Planet Omega: Rich Dilithium deposits. Significant Precursor ruins present, Concord research outpost active nearby. Atmosphere: Thin, breathable. Surface: Moderate."
             },
             "Planet Xerxes": { 
                 coords: { y: 3, x: MAP_WIDTH - 5 }, type: PLANET_CHAR_VAL, sells: [], buys: [], 
-                scanFlavor: "Planet Xerxes: High concentrations of Xenon Gas and exotic heavy metals. Atmosphere: Highly corrosive. Surface temperature: Extreme. Unsuitable for EVA. Rumored to be a former pirate hideout, its canyons are said to hide forgotten stashes and deadly traps. Some say Voidfang herself uses it as a resupply point, and that the K'tharr avoid it for 'spiritual reasons', calling it a 'world of bad spirits' due to ancient battles fought there against a foe they will not name. Concord deep-scans have detected unusual subterranean energy signatures, possibly a hidden K'tharr listening post or something far older, perhaps a dormant Precursor weapon or a sealed Precursor tomb containing a 'Star Eater' device. K'tharr legends say it's where one of their gods was imprisoned by the Precursors."
+                scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere. High Xenon Gas and heavy metal concentrations. Rumored pirate haven and site of ancient K'tharr battles."
             }
         };
         let currentSectorOutpostData = null; 
-        const RUMORS = [ 
+        const RUMORS = [ /* Same extensive list as v0.6.11 */
             "Captain 'Voidfang' still plagues the Kepler Nebula. They say her ship, the 'Nightreaver', is faster than any Concord patrol, and she's looking for a legendary Precursor map that leads to the 'Silentium Expanse'. She supposedly has a K'tharr first mate, a disgraced warrior seeking redemption, who knows the old K'tharr star-paths. Some say she's already found a Precursor Star Map Fragment, and is seeking more to complete a 'Cosmic Sextant'.",
             "That derelict capital ship in Gamma-7? Some say it's a 'Precursor' vessel, others claim it's a military ghost from the old Terran Wars, its AI still active and hostile. A few brave souls tried to board it... none returned. They say it 'sings' on subspace frequencies, a song of madness that lures ships to their doom. Some say it guards a stable wormhole to an unknown galaxy, or a cache of Phase-Shifted Alloy that keeps it partially out of phase with reality.",
             "Young stars in the Orion Spur sectors often have asteroid belts rich in Iridium. Risky, but profitable. Watch for claim jumpers and the K'tharr mining guilds, who consider those belts sacred ground, burial sites of their ancestors. They guard them fiercely and are known to use phase-cloaked mines. They say some asteroids there are not asteroids at all, but dormant K'tharr bio-weapons or eggs of stellar creatures.",
@@ -706,6 +713,13 @@
             const cT=gameMapGrid[playerY][playerX];
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
+            
+            if (cT.scoopedThisVisit) {
+                updateMessage("This star's corona has been depleted for this visit.");
+                renderGame();
+                return;
+            }
+
             const sR=(typeof cT.richness==='number')?cT.richness:0.3;
             let fG=MIN_SCOOP_YIELD+Math.floor(sR*MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
             fG+=Math.floor(Math.random()*SCOOP_RANDOM_BONUS);
@@ -713,8 +727,13 @@
             const oF=playerFuel;
             playerFuel=Math.min(MAX_FUEL,playerFuel+fG);
             const aG=playerFuel-oF;
-            if(aG>0)updateMessage(`Scooped ${aG} units of hydrogen.\nFuel: ${playerFuel}/${MAX_FUEL}`);
-            else updateMessage("Scooping yielded no fuel. Tanks full or star depleted.");
+
+            if(aG>0) {
+                updateMessage(`Scooped ${aG} units of hydrogen.\nFuel: ${playerFuel}/${MAX_FUEL}`);
+                cT.scoopedThisVisit = true; 
+            } else {
+                 updateMessage("Scooping yielded no fuel. Tanks full or star already depleted this visit.");
+            }
             renderGame();
         }
         function calculatePrice(bP,pM){return Math.round(bP*pM);}
@@ -837,3 +856,4 @@
     </script>
 </body>
 </html>
+
