@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.0</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.0 (QoL Updates)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -164,15 +164,15 @@
     </div>
 
     <div class="controls-info">
-        WASD: Move | E: Scan | H: Scoop Fuel (at Star) | T: Traverse Wormhole | J: Codex <br> 
+        WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo <br> 
         Docked - B: Buy | S: Sell | O: Outfit Ship | L: Leave <br>
         Combat - F: Fight | R: Run
     </div>
 
     <script>
         // --- Game Configuration ---
-        const MAP_WIDTH = 55; // Increased from 50
-        const MAP_HEIGHT = 14; // Decreased from 15
+        const MAP_WIDTH = 55; 
+        const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
         const STAR_CHAR_VAL = '*'; const PLANET_CHAR_VAL = 'O';
         const STARBASE_CHAR_VAL = '#'; 
@@ -184,7 +184,7 @@
         let INITIAL_FUEL; 
         let MAX_FUEL;     
         const INITIAL_CREDITS = 1000; const PLAYER_CARGO_CAPACITY = 50;
-        const FUEL_PER_MOVE = 1; 
+        const BASE_FUEL_PER_MOVE = 1; 
         let INITIAL_SHIELDS; 
         let MAX_SHIELDS;     
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
@@ -222,16 +222,25 @@
         
         // --- Ship Components Database ---
         const COMPONENTS_DATABASE = {
-            WEAPON_PULSE_LASER_MK1: { id: "WEAPON_PULSE_LASER_MK1", name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", description: "Standard issue civilian pulse laser. Reliable but low power.", cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "COMPONENT_PULSE_LASER" },
-            WEAPON_PULSE_LASER_MK2: { id: "WEAPON_PULSE_LASER_MK2", name: "Pulse Laser Mk2", type: "weapon", slot: "weapon", description: "Upgraded pulse laser with improved focusing coils for higher damage.", cost: 2000, stats: { damage: 12, hitChance: 0.75 }, loreKey: "COMPONENT_PULSE_LASER" },
-            WEAPON_KINETIC_IMPULSOR_MK1: { id: "WEAPON_KINETIC_IMPULSOR_MK1", name: "Kinetic Impulsor Mk1", type: "weapon", slot: "weapon", description: "Fires solid slugs. Decent against unshielded hulls.", cost: 1800, stats: { damage: 15, hitChance: 0.65 }, loreKey: "COMPONENT_KINETIC_WEAPON" },
-            WEAPON_ION_CANNON_MK1: { id: "WEAPON_ION_CANNON_MK1", name: "Ion Cannon Mk1", type: "weapon", slot: "weapon", description: "Disrupts shields effectively, less hull damage.", cost: 2200, stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 8 }, loreKey: "COMPONENT_ION_WEAPON" }, 
-            SHIELD_BASIC_ARRAY_A: { id: "SHIELD_BASIC_ARRAY_A", name: "Basic Deflector Array A", type: "shield", slot: "shield", description: "Entry-level shield generator. Offers minimal protection.", cost: 0, stats: { maxShields: 50 }, loreKey: "COMPONENT_SHIELD_GENERATOR" },
-            SHIELD_GUARDIAN_B: { id: "SHIELD_GUARDIAN_B", name: "Guardian Shield Emitter B", type: "shield", slot: "shield", description: "Military surplus shield, offering better resilience and faster recharge.", cost: 2500, stats: { maxShields: 80, rechargeRate: 2 }, loreKey: "COMPONENT_SHIELD_GENERATOR" }, 
-            SHIELD_AEGIS_C: { id: "SHIELD_AEGIS_C", name: "Aegis Shield Projector C", type: "shield", slot: "shield", description: "Top-tier Concord shield tech. Excellent protection.", cost: 5000, stats: { maxShields: 120, rechargeRate: 3 }, loreKey: "COMPONENT_SHIELD_GENERATOR" },
-            ENGINE_STD_DRIVE_MK1: { id: "ENGINE_STD_DRIVE_MK1", name: "Standard Drive Mk1", type: "engine", slot: "engine", description: "Common civilian stardrive. Gets you there, eventually.", cost: 0, stats: { maxFuel: 200, fuelEfficiency: 1.0 }, loreKey: "COMPONENT_ENGINE" }, 
-            ENGINE_RANGEPLUS_MK1: { id: "ENGINE_RANGEPLUS_MK1", name: "RangePlus Drive Mk1", type: "engine", slot: "engine", description: "Larger fuel tank for extended travel, standard efficiency.", cost: 3000, stats: { maxFuel: 300, fuelEfficiency: 1.0 }, loreKey: "COMPONENT_ENGINE" },
-            ENGINE_IONFLOW_MK2: { id: "ENGINE_IONFLOW_MK2", name: "IonFlow Drive Mk2", type: "engine", slot: "engine", description: "Advanced ion engine, slightly better fuel efficiency.", cost: 4000, stats: { maxFuel: 250, fuelEfficiency: 0.9 }, loreKey: "COMPONENT_ENGINE" } 
+            WEAPON_PULSE_LASER_MK1: { name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", description: "Standard civilian laser.", cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "LORE_COMP_PULSE_LASER" },
+            WEAPON_PULSE_LASER_MK2: { name: "Pulse Laser Mk2", type: "weapon", slot: "weapon", description: "Improved focusing, better damage.", cost: 2000, stats: { damage: 12, hitChance: 0.75 }, loreKey: "LORE_COMP_PULSE_LASER" },
+            WEAPON_PULSE_LASER_MK3: { name: "Pulse Laser Mk3", type: "weapon", slot: "weapon", description: "Military-grade pulse laser.", cost: 5500, stats: { damage: 18, hitChance: 0.78 }, loreKey: "LORE_COMP_PULSE_LASER" },
+            WEAPON_KINETIC_IMPULSOR_MK1: { name: "Kinetic Impulsor Mk1", type: "weapon", slot: "weapon", description: "Fires solid slugs.", cost: 1800, stats: { damage: 15, hitChance: 0.65 }, loreKey: "LORE_COMP_KINETIC_WEAPON" },
+            WEAPON_ION_CANNON_MK1: { name: "Ion Cannon Mk1", type: "weapon", slot: "weapon", description: "Disrupts shields effectively.", cost: 2200, stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 10 }, loreKey: "LORE_COMP_ION_WEAPON" }, 
+            WEAPON_BEAM_LASER_MK1: { name: "Beam Laser Mk1", type: "weapon", slot: "weapon", description: "Sustained energy beam, accurate.", cost: 2800, stats: { damage: 10, hitChance: 0.85 }, loreKey: "LORE_COMP_BEAM_LASER" },
+            WEAPON_MASS_DRIVER_MK1: { name: "Mass Driver Mk1", type: "weapon", slot: "weapon", description: "High hull damage, slow fire rate.", cost: 3800, stats: { damage: 25, hitChance: 0.60 }, loreKey: "LORE_COMP_MASS_DRIVER" },
+            WEAPON_MISSILE_LAUNCHER_MK1: { name: "Missile Launcher Mk1", type: "weapon", slot: "weapon", description: "High damage, limited ammo (flavor).", cost: 4500, stats: { damage: 30, hitChance: 0.60 }, loreKey: "LORE_COMP_MISSILE_LAUNCHER" },
+            SHIELD_BASIC_ARRAY_A: { name: "Basic Deflector Array A", type: "shield", slot: "shield", description: "Entry-level shield generator.", cost: 0, stats: { maxShields: 50, rechargeRate: 1 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
+            SHIELD_GUARDIAN_B: { name: "Guardian Shield Emitter B", type: "shield", slot: "shield", description: "Military surplus, better resilience.", cost: 2500, stats: { maxShields: 80, rechargeRate: 2 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" }, 
+            SHIELD_AEGIS_C: { name: "Aegis Shield Projector C", type: "shield", slot: "shield", description: "Top-tier Concord shield tech.", cost: 5000, stats: { maxShields: 120, rechargeRate: 3 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
+            SHIELD_RAPID_CYCLE_A: { name: "Rapid-Cycle Unit A", type: "shield", slot: "shield", description: "Lower capacity, fast regeneration.", cost: 3000, stats: { maxShields: 65, rechargeRate: 4 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
+            SHIELD_FORTRESS_GRID_A: { name: "Fortress Grid A", type: "shield", slot: "shield", description: "Extremely high capacity, slow regen.", cost: 4500, stats: { maxShields: 150, rechargeRate: 1 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
+            ENGINE_STD_DRIVE_MK1: { name: "Standard Drive Mk1", type: "engine", slot: "engine", description: "Common civilian stardrive.", cost: 0, stats: { maxFuel: 200, fuelEfficiency: 1.0 }, loreKey: "LORE_COMP_ENGINE" }, 
+            ENGINE_RANGEPLUS_MK1: { name: "RangePlus Drive Mk1", type: "engine", slot: "engine", description: "Larger fuel tank, standard efficiency.", cost: 3000, stats: { maxFuel: 300, fuelEfficiency: 1.0 }, loreKey: "LORE_COMP_ENGINE" },
+            ENGINE_IONFLOW_MK2: { name: "IonFlow Drive Mk2", type: "engine", slot: "engine", description: "Advanced ion engine, better efficiency.", cost: 4000, stats: { maxFuel: 250, fuelEfficiency: 0.8 }, loreKey: "LORE_COMP_ENGINE" }, 
+            ENGINE_HIGH_THRUST_MK1: { name: "High-Thrust Drive Mk1", type: "engine", slot: "engine", description: "Powerful, standard fuel, hints at speed.", cost: 3500, stats: { maxFuel: 200, fuelEfficiency: 1.1 }, loreKey: "LORE_COMP_ENGINE" },
+            SCANNER_BASIC_SUITE: { name: "Standard Sensor Suite", type: "scanner", slot: "scanner", description: "Basic sensor package.", cost: 0, stats: { scanBonus: 0 }, loreKey: "LORE_COMP_SCANNER" },
+            SCANNER_DEEP_RANGE_A: { name: "Deep-Range Array A", type: "scanner", slot: "scanner", description: "Improved resolution, may find rarer items.", cost: 1500, stats: { scanBonus: 0.05 }, loreKey: "LORE_COMP_SCANNER" } 
         };
 
 
@@ -329,7 +338,8 @@
         let playerShip = { 
             weapon: "WEAPON_PULSE_LASER_MK1",
             shield: "SHIELD_BASIC_ARRAY_A",
-            engine: "ENGINE_STD_DRIVE_MK1"
+            engine: "ENGINE_STD_DRIVE_MK1",
+            scanner: "SCANNER_BASIC_SUITE" 
         };
         let playerLevel = 1; 
         let playerXP = 0;    
@@ -346,6 +356,7 @@
         let scannedObjectTypes = new Set(); 
         let discoveredLocations = new Set(); 
         let sectorCache = {}; 
+        let currentQuantityInput = ""; 
 
         // Mystery State
         let mystery_wayfinder_progress = 0; 
@@ -409,7 +420,8 @@
             playerShip = { 
                 weapon: "WEAPON_PULSE_LASER_MK1", 
                 shield: "SHIELD_BASIC_ARRAY_A", 
-                engine: "ENGINE_STD_DRIVE_MK1" 
+                engine: "ENGINE_STD_DRIVE_MK1",
+                scanner: "SCANNER_BASIC_SUITE" 
             };
             applyPlayerShipStats(); 
 
@@ -426,7 +438,7 @@
             unlockLoreEntry("FACTION_CONCORD"); 
             unlockLoreEntry("XENO_PRECURSORS"); 
             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
-            Object.keys(COMPONENTS_DATABASE).forEach(key => { // Unlock lore for starting components
+            Object.keys(COMPONENTS_DATABASE).forEach(key => { 
                 if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
             });
 
@@ -450,7 +462,7 @@
         function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
-        function renderGame() { /* Same as v0.6.12 (Sector Persistence - Fix) - fuel/shield display corrected */
+        function renderGame() { /* Same as v0.6.8 */
             gameMapElement.innerHTML = ''; 
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 const rD = document.createElement('div'); 
@@ -489,7 +501,7 @@
 
         function traverseWormhole() { /* Same as v0.6.11 */
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
-                updateMessage("Not enough fuel to stabilize the wormhole for transit!");
+                updateMessage(`Cannot traverse: Requires ${WORMHOLE_TRAVEL_FUEL_COST} fuel, you have ${playerFuel}.`); // More informative
                 renderGame();
                 return;
             }
@@ -524,9 +536,13 @@
 
 
         function movePlayer(dx, dy) { 
-            if(currentTradeContext){updateMessage("Press 'L' to leave trading first.");renderGame();return;}
+            if(currentTradeContext || currentOutfitContext){updateMessage("Complete current action (L to leave).");renderGame();return;} 
             if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
-            if(playerFuel<FUEL_PER_MOVE&&(dx!==0||dy!==0)){updateMessage("Out of fuel!");renderGame();return;}
+            
+            const currentEngine = COMPONENTS_DATABASE[playerShip.engine];
+            const actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
+
+            if(playerFuel < actualFuelPerMove &&(dx!==0||dy!==0)){updateMessage("Out of fuel!");renderGame();return;}
             
             let nX=playerX+dx; let nY=playerY+dy; let sC=false;
             
@@ -536,7 +552,7 @@
             else if(nY>=MAP_HEIGHT){currentSectorY++;nY=0;sC=true;}
             
             playerX=nX;playerY=nY;
-            if(dx!==0||dy!==0){playerFuel-=FUEL_PER_MOVE;if(playerFuel<0)playerFuel=0;}
+            if(dx!==0||dy!==0){playerFuel-=actualFuelPerMove;if(playerFuel<0)playerFuel=0;}
             
             if(sC){
                 loadOrGenerateSectorMap(currentSectorX,currentSectorY); 
@@ -568,9 +584,15 @@
             let bM=`Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
             if(l){
                 bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
-                if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0))bM+="\nTrade (B/S). Outfit (O). Leave (L).";
+                let actionsAvailable = "";
+                if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0)) actionsAvailable += "Trade (B/S). ";
+                if (l.isMajorHub) actionsAvailable += "Outfit (O). "; 
+                actionsAvailable += "Leave (L).";
+                bM += "\nActions: " + actionsAvailable;
+
                 if(l.type===STARBASE_CHAR_VAL||l.type===OUTPOST_CHAR_VAL){ 
                     playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS;bM+=`\nFuel replenished & Shields repaired to max!`;
+                    applyPlayerShipStats(); // Ensure MAX values are up-to-date after potential component change elsewhere
                 }
                 if(l.rumor) bM+= `\n<span style='color:#AAAAFF;'>Local Chatter: "${l.rumor}"</span>`;
                 if(!discoveredLocations.has(l.name)){
@@ -593,27 +615,69 @@
             updateMessage(bM); 
         }
         
-        function scanLocation() { /* Same detailed scan as v0.6.11 */ 
-            if (currentTradeContext || currentCombatContext) { updateMessage("Cannot scan now."); renderGame(); return; }
+        function scanLocation() { 
+            if (currentTradeContext || currentCombatContext || currentOutfitContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
             let scanMessage = `Scan Report - Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`;
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
             let isMysteryClue = false;
+            let actionsAvailable = "";
 
-            if (location) { /* Same as v0.6.11 */ scanMessage+=`Location: ${location.name} (${location.type}).\n`;scanMessage+=location.scanFlavor||"Standard readings for this type of installation/outpost.";if(location.rumor)scanMessage+=`\n<span style='color:#AAAAFF;'>Intercepted Local Comm: "${location.rumor}"</span>`;if((location.sells&&location.sells.length>0)||(location.buys&&location.buys.length>0)){scanMessage+="\n<span style='color:#66FF66;'>Trade Analysis:</span>";if(location.sells.length>0)scanMessage+=`\n  Exports: ${location.sells.map(item=>COMMODITIES[item.id].name).join(', ')}.`;if(location.buys.length>0)scanMessage+=`\n  Imports: ${location.buys.map(item=>COMMODITIES[item.id].name).join(', ')}.`;}else{scanMessage+="\nNo active trade facilities detected.";}objectTypeForXP=location.type; } 
-            else { 
+            if (location) { 
+                scanMessage+=`Location: ${location.name} (${location.type}).\n`;
+                scanMessage+=location.scanFlavor||"Standard readings for this type of installation/outpost.";
+                if(location.rumor)scanMessage+=`\n<span style='color:#AAAAFF;'>Intercepted Local Comm: "${location.rumor}"</span>`;
+                if((location.sells&&location.sells.length>0)||(location.buys&&location.buys.length>0)){scanMessage+="\n<span style='color:#66FF66;'>Trade Analysis:</span>";if(location.sells.length>0)scanMessage+=`\n  Exports: ${location.sells.map(item=>COMMODITIES[item.id].name).join(', ')}.`;if(location.buys.length>0)scanMessage+=`\n  Imports: ${location.buys.map(item=>COMMODITIES[item.id].name).join(', ')}.`;}else{scanMessage+="\nNo active trade facilities detected.";}
+                objectTypeForXP=location.type; 
+                 if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
+                    if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) actionsAvailable += "Trade (B/S). ";
+                    if (location.isMajorHub) actionsAvailable += "Outfit (O). "; 
+                    actionsAvailable += "Leave (L).";
+                }
+            } else { 
                 switch (tileChar) { 
                     case EMPTY_SPACE_CHAR_VAL: /* Same as v0.6.11 */ const eF=["Vast emptiness. Faint cosmic background radiation. The universe feels ancient here.","Cold and silent void. Distant quasar flicker, a beacon from billions of years past.","Deep space. Unknown navigational beacons at extreme range, their origin a mystery.","Faint gravimetric distortions. Ancient... or nothing. Perhaps a Precursor hyperlane, long collapsed.","Star-dusted canvas. Quiet contemplation, or ambush. The patterns of the stars seem to shift slightly.","The silence here is profound, almost deafening. A lone comet streaks by in the far distance, its tail a whisper of ice and dust.","Echoes of ancient warp signatures, long faded. This area feels... watched. As if by unseen eyes.","A faint trail of exotic particles suggests something passed through here recently. Something big, and not of Concord design.","Sensors detect a faint, repeating energy pulse. Too weak to pinpoint, but it's out there... somewhere. It calls to something deep within your ship's core.","The void stretches on, indifferent. A perfect place to lose oneself, or be lost."];scanMessage+=eF[Math.floor(Math.random()*eF.length)];objectTypeForXP='empty_space';break;
-                    case STAR_CHAR_VAL: /* Same as v0.6.11 */ const sF=["Brilliant G-type star...","Red dwarf...","Blue giant...","Binary star system...","Young protostar...","Neutron star remnant...","White dwarf...","Pulsar...","Star with stellar engineering...","Variable star...","Wolf-Rayet star...","Rogue star..."];let sD=sF[Math.floor(Math.random()*sF.length)];if(tileObject&&tileObject.type==='star'&&tileObject.starType==='Binary'&&mystery_wayfinder_progress<2&&(Math.abs(currentSectorX)+Math.abs(currentSectorY)>=MYSTERY_WAYFINDER_TARGET_SECTOR_VOLATILITY)){sD+="\n<span style='color:#FFD700;'>A faint, repeating energy signature emanates from this binary system... it seems artificial. It pulses with a resonance matching unstable warp energies.</span>";mystery_wayfinder_progress=2;isMysteryClue=true;}scanMessage+=sD;if(tileObject&&tileObject.type==='star'&&typeof tileObject.richness==='number'){if(tileObject.richness>0.75)scanMessage+="\n<span style='color:#FFFF99;'>High hydrogen concentrations detected! Ideal for scooping.</span>";else if(tileObject.richness>0.4)scanMessage+="\n<span style='color:#FFFFE0;'>Moderate hydrogen concentrations. Scooping viable.</span>";else scanMessage+="\n<span style='color:#FFFACD;'>Low hydrogen concentrations. Scooping may be inefficient.</span>";}break;
+                    case STAR_CHAR_VAL: 
+                        const starFlavor = ["Brilliant G-type star...","Red dwarf...","Blue giant...","Binary star system...","Young protostar...","Neutron star remnant...","White dwarf...","Pulsar...","Star with stellar engineering...","Variable star...","Wolf-Rayet star...","Rogue star..."];
+                        let starDesc = starFlavor[Math.floor(Math.random() * starFlavor.length)];
+                        if (tileObject && tileObject.type === 'star' && tileObject.starType === 'Binary' && mystery_wayfinder_progress < 2 && (Math.abs(currentSectorX) + Math.abs(currentSectorY) >= MYSTERY_WAYFINDER_TARGET_SECTOR_VOLATILITY)) {
+                            starDesc += "\n<span style='color:#FFD700;'>A faint, repeating energy signature emanates from this binary system... it seems artificial. It pulses with a resonance matching unstable warp energies.</span>";
+                            mystery_wayfinder_progress = 2; isMysteryClue = true;
+                        }
+                        scanMessage += starDesc;
+                        if (tileObject && tileObject.type === 'star') {
+                             if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected! Ideal for scooping.</span>";
+                             else if (tileObject.richness > 0.4) scanMessage += "\n<span style='color:#FFFFE0;'>Moderate hydrogen concentrations. Scooping viable.</span>";
+                             else scanMessage += "\n<span style='color:#FFFACD;'>Low hydrogen concentrations. Scooping may be inefficient.</span>";
+                             if (tileObject.scoopedThisVisit) {
+                                scanMessage += "\n<span style='color:#999999;'>Corona appears depleted from recent scooping this visit.</span>";
+                             }
+                        }
+                        actionsAvailable += "Scoop Fuel (H).";
+                        break;
                     case ASTEROID_CHAR_VAL: /* Same as v0.6.11 */ const aF=["Dense silicate/carbonaceous...","Sparse icy field...","Shattered moon remnants...","Rich common ores...","Patrolled belt (pirates?)...","Ancient cratered rocks...","Rogue asteroid...","Too quiet field...","Crystalline asteroids...","Radioactive field...","Living asteroid?...","K'tharr ambush point?..."];scanMessage+=aF[Math.floor(Math.random()*aF.length)];break;
                     case NEBULA_CHAR_VAL: /* Same as v0.6.11 */ const nF=["Vibrant emission nebula...","Dark nebula...","Planetary nebula...","Reflection nebula...","Calm gaseous expanse...","Stellar nursery...","Bok globule...","Void Crystal concentration...","Forbidden nebula...","Singing nebula?...","Sentient Mycelium filaments..."];scanMessage+=nF[Math.floor(Math.random()*nF.length)];break;
-                    case DERELICT_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let dM="Scanners detect a derelict ship. ";if(tileObject&&tileObject.type==='derelict'&&tileObject.subtype){dM+=`Appears to be a ${tileObject.subtype}. `;objectTypeForXP=`derelict_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===3&&tileObject.subtype===MYSTERY_WAYFINDER_DERELICT_HINT_TYPE&&currentSectorX>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MIN&&currentSectorX<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MAX&&currentSectorY>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MIN&&currentSectorY<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX){const fSX=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fSY=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fX=Math.floor(Math.random()*MAP_WIDTH);const fY=Math.floor(Math.random()*MAP_HEIGHT);mystery_wayfinder_finalLocation={sectorX:fSX,sectorY:fSY,x:fX,y:fY};dM+=`\n<span style='color:#FFD700;'>The ship's damaged logs contain a startling discovery! A Precursor Wayfinder signal has been pinpointed to Sector (${fSX},${fSY}), coordinates [${fX},${fY}].</span>`;mystery_wayfinder_progress=4;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'freighter': dM += "Hull breaches... K'tharr Spices scent."; break; case 'explorer': dM += "Shattered sensors... Silentium Expanse charts."; break; default: dM += "Origin unknown."; break;}}}else{dM+="Its origin and purpose are unknown.";}if(Math.random()<0.20&&!isMysteryClue){/* loot logic */}scanMessage+=dM;break;
-                    case ANOMALY_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let anoM="Unusual energy readings detected. This is an anomaly. ";if(tileObject&&tileObject.type==='anomaly'&&tileObject.subtype){anoM+=`Identified as a ${tileObject.subtype}. `;objectTypeForXP=`anomaly_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===2&&tileObject.subtype===MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE){anoM+=`\n<span style='color:#FFD700;'>The anomaly resonates with the Precursor signal! A fragmented data packet is recovered: 'Seek the lost explorer... Concord designation 'Pathfinder' (${MYSTERY_WAYFINDER_DERELICT_HINT_TYPE})... last seen in the negative X, positive Y quadrant sectors... carrying vital charts.'</span>`;mystery_wayfinder_progress=3;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'gravimetric wave': anoM += "Space ripples... temporal displacement."; break; case 'temporal distortion': anoM += "Chroniton interference... time flows erratically."; break; default: anoM += "Nature beyond current sensors."; break;}}}else{anoM+="Its nature is beyond current sensor capabilities. Approach with extreme caution.";}if(Math.random()<0.05&&!isMysteryClue){/* unique signature log */}else if(Math.random()<0.03&&playerCargo.VOID_CRYSTALS<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* void crystal */}else if(Math.random()<0.01&&playerCargo.PRECURSOR_DATACUBE<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* datacube */}else if(Math.random()<0.02&&playerCargo.PHASE_SHIFTED_ALLOY<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* phase alloy */}scanMessage+=anoM;break;
-                    case WORMHOLE_CHAR_VAL: /* Same as v0.6.11 */ let wMsg="Detected an unstable Wormhole! ";if(tileObject&&tileObject.type==='wormhole'&&typeof tileObject.stability==='number'){if(tileObject.stability>0.7)wMsg+="Appears relatively stable...";else if(tileObject.stability>0.3)wMsg+="Fluctuating energy readings...";else wMsg+="Highly unstable! Enter at extreme peril!";}scanMessage+=wMsg;objectTypeForXP='wormhole';break;
+                    case DERELICT_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let dM="Scanners detect a derelict ship. ";if(tileObject&&tileObject.type==='derelict'&&tileObject.subtype){dM+=`Appears to be a ${tileObject.subtype}. `;objectTypeForXP=`derelict_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===3&&tileObject.subtype===MYSTERY_WAYFINDER_DERELICT_HINT_TYPE&&currentSectorX>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MIN&&currentSectorX<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MAX&&currentSectorY>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MIN&&currentSectorY<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX){const fSX=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fSY=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fX=Math.floor(Math.random()*MAP_WIDTH);const fY=Math.floor(Math.random()*MAP_HEIGHT);mystery_wayfinder_finalLocation={sectorX:fSX,sectorY:fSY,x:fX,y:fY};dM+=`\n<span style='color:#FFD700;'>The ship's damaged logs contain a startling discovery! A Precursor Wayfinder signal has been pinpointed to Sector (${fSX},${fSY}), coordinates [${fX},${fY}].</span>`;mystery_wayfinder_progress=4;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'freighter': dM += "Hull breaches... K'tharr Spices scent."; break; case 'explorer': dM += "Shattered sensors... Silentium Expanse charts."; break; default: dM += "Origin unknown."; break;}}}else{dM+="Its origin and purpose are unknown.";}if(Math.random() < (0.20 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) && !isMysteryClue){/* loot logic */}scanMessage+=dM;break;
+                    case ANOMALY_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let anoM="Unusual energy readings detected. This is an anomaly. ";if(tileObject&&tileObject.type==='anomaly'&&tileObject.subtype){anoM+=`Identified as a ${tileObject.subtype}. `;objectTypeForXP=`anomaly_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===2&&tileObject.subtype===MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE){anoM+=`\n<span style='color:#FFD700;'>The anomaly resonates with the Precursor signal! A fragmented data packet is recovered: 'Seek the lost explorer... Concord designation 'Pathfinder' (${MYSTERY_WAYFINDER_DERELICT_HINT_TYPE})... last seen in the negative X, positive Y quadrant sectors... carrying vital charts.'</span>`;mystery_wayfinder_progress=3;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'gravimetric wave': anoM += "Space ripples... temporal displacement."; break; case 'temporal distortion': anoM += "Chroniton interference... time flows erratically."; break; default: anoM += "Nature beyond current sensors."; break;}}}else{anoM+="Its nature is beyond current sensor capabilities. Approach with extreme caution.";}if(Math.random() < (0.05 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) &&!isMysteryClue){/* unique signature log */}else if(Math.random()<(0.03+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.VOID_CRYSTALS<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* void crystal */}else if(Math.random()<(0.01+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PRECURSOR_DATACUBE<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* datacube */}else if(Math.random()<(0.02+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PHASE_SHIFTED_ALLOY<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* phase alloy */}scanMessage+=anoM;break;
+                    case WORMHOLE_CHAR_VAL: 
+                        let wMsg="Detected an unstable Wormhole! ";
+                        if (tileObject && tileObject.type === 'wormhole' && typeof tileObject.stability === 'number') {
+                            if (tileObject.stability > 0.7) wMsg += "Appears relatively stable...";
+                            else if (tileObject.stability > 0.3) wMsg += "Fluctuating energy readings...";
+                            else wMsg += "Highly unstable! Enter at extreme peril!";
+                        }
+                        scanMessage += wMsg;
+                        actionsAvailable += "Traverse Wormhole (T).";
+                        objectTypeForXP = 'wormhole';
+                        break;
                     default: scanMessage += "Unknown anomaly detected. Sensor readings inconclusive."; break;
                 }
+            }
+
+            if (actionsAvailable) {
+                scanMessage += "\nAvailable Actions: " + actionsAvailable;
             }
 
             if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP) && !isMysteryClue) { 
@@ -635,7 +699,7 @@
         }
 
         function scoopHydrogen() { 
-            if(currentTradeContext||currentCombatContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
+            if(currentTradeContext||currentCombatContext||currentOutfitContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
             const cT=gameMapGrid[playerY][playerX];
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
@@ -680,83 +744,169 @@
             });
             tM+="\nEnter # to select, or 'L' to leave.";updateMessage(tM);renderGame();
         }
-        function handleTradeSelection(input){ /* Same as v0.6.7 */ if(!currentTradeContext||currentTradeContext.step!=='selectItem')return;const lD=currentTradeContext.locationData;const items=currentTradeContext.mode==='buy'?lD.sells:lD.buys;const sel=parseInt(input);if(isNaN(sel)||sel<1||sel>items.length){updateMessage("Invalid selection. # or 'L'.");renderGame();return;}currentTradeContext.itemIndex=sel-1;currentTradeContext.step='selectQuantity';const sIE=items[currentTradeContext.itemIndex];const com=COMMODITIES[sIE.id];const pr=calculatePrice(com.basePrice,sIE.priceMod);let pM=`How many ${com.name} to ${currentTradeContext.mode}? (Price: ${pr}c)\n`;if(currentTradeContext.mode==='buy')pM+=`Max: ${sIE.stock}, Afford: ${Math.floor(playerCredits/pr)}, Space: ${PLAYER_CARGO_CAPACITY-currentCargoLoad}\n`;else pM+=`You have: ${playerCargo[sIE.id]||0}, Demand: ${sIE.stock}\n`;pM+="Enter quantity, or '0' to cancel.";updateMessage(pM);renderGame();}
-        function handleTradeQuantity(input){ /* Same as v0.6.8 */ if(!currentTradeContext||currentTradeContext.step!=='selectQuantity')return;const qty=parseInt(input);if(isNaN(qty)||qty<0){updateMessage("Invalid qty. # or '0'.");renderGame();return;}if(qty===0){displayTradeScreen(currentTradeContext.mode);return;}const lD=currentTradeContext.locationData;const iL=currentTradeContext.mode==='buy'?lD.sells:lD.buys;const iE=iL[currentTradeContext.itemIndex];const cID=iE.id;const com=COMMODITIES[cID];const pr=calculatePrice(com.basePrice,iE.priceMod);let fM="";let xAGT=0;if(currentTradeContext.mode==='buy'){const tC=pr*qty;if(qty>iE.stock)fM="Not enough stock.";else if(tC>playerCredits)fM="Not enough credits.";else if(currentCargoLoad+qty>PLAYER_CARGO_CAPACITY)fM="No cargo space.";else{playerCredits-=tC;playerCargo[cID]=(playerCargo[cID]||0)+qty;iE.stock-=qty;updateCurrentCargoLoad();fM=`Bought ${qty} ${com.name} for ${tC}c.`;}}else{if(qty>(playerCargo[cID]||0))fM=`Not enough ${com.name} to sell.`;else if(qty>iE.stock)fM=`${lD.name} doesn't demand that many.`;else{const tG=pr*qty;playerCredits+=tG;playerCargo[cID]-=qty;iE.stock-=qty;updateCurrentCargoLoad();fM=`Sold ${qty} ${com.name} for ${tG}c.`;const pPU=pr-com.basePrice;if(pPU>0){xAGT=Math.floor(pPU*qty*XP_PER_PROFIT_UNIT);playerXP+=xAGT;fM+=`\n<span style='color:#00FF00;'>+${xAGT} XP for profitable trade!</span>`;checkLevelUp();}}}updateMessage(fM);currentTradeContext=null;if(!currentCombatContext&&!message.includes("LEVEL UP!")){handleInteraction();}renderGame();}
+        function handleTradeSelection(input){ 
+            if(!currentTradeContext||currentTradeContext.step!=='selectItem')return;
+            const lD = currentTradeContext.locationData; 
+            const items=currentTradeContext.mode==='buy'?lD.sells:lD.buys;const sel=parseInt(input);
+            if(isNaN(sel)||sel<1||sel>items.length){updateMessage("Invalid selection. # or 'L'.");renderGame();return;}
+            currentTradeContext.itemIndex=sel-1;currentTradeContext.step='selectQuantity';
+            const sIE=items[currentTradeContext.itemIndex];const com=COMMODITIES[sIE.id];const pr=calculatePrice(com.basePrice,sIE.priceMod);
+            let pM=`How many ${com.name} to ${currentTradeContext.mode}? (Price: ${pr}c)\n`;
+            if(currentTradeContext.mode==='buy'){pM+=`Max: ${sIE.stock}, Afford: ${Math.floor(playerCredits/pr)}, Space: ${PLAYER_CARGO_CAPACITY-currentCargoLoad}\n`;}
+            else{pM+=`You have: ${playerCargo[sIE.id]||0}, Demand: ${sIE.stock}\n`;}
+            pM+="Enter quantity (then Enter), or '0' to cancel item."; 
+            currentQuantityInput = ""; 
+            updateMessage(pM);renderGame();
+        }
+        function handleTradeQuantity(inputString){ 
+            if(!currentTradeContext||currentTradeContext.step!=='selectQuantity')return;
+            const qty=parseInt(inputString); 
+            currentQuantityInput = ""; 
+
+            if(isNaN(qty)||qty<0){updateMessage("Invalid qty. # or '0'.");displayTradeScreen(currentTradeContext.mode);renderGame();return;} 
+            if(qty===0){displayTradeScreen(currentTradeContext.mode);return;}
+            
+            const lD = currentTradeContext.locationData; 
+            const iL=currentTradeContext.mode==='buy'?lD.sells:lD.buys;const iE=iL[currentTradeContext.itemIndex];
+            const cID=iE.id;const com=COMMODITIES[cID];const pr=calculatePrice(com.basePrice,iE.priceMod);let fM="";let xAGT=0;
+            if(currentTradeContext.mode==='buy'){const tC=pr*qty;if(qty>iE.stock)fM="Not enough stock.";else if(tC>playerCredits)fM="Not enough credits.";else if(currentCargoLoad+qty>PLAYER_CARGO_CAPACITY)fM="No cargo space.";else{playerCredits-=tC;playerCargo[cID]=(playerCargo[cID]||0)+qty;iE.stock-=qty;updateCurrentCargoLoad();fM=`Bought ${qty} ${com.name} for ${tC}c.`;}}
+            else{if(qty>(playerCargo[cID]||0))fM=`Not enough ${com.name} to sell.`;else if(qty>iE.stock)fM=`${lD.name} doesn't demand that many.`;else{const tG=pr*qty;playerCredits+=tG;playerCargo[cID]-=qty;iE.stock-=qty;updateCurrentCargoLoad();fM=`Sold ${qty} ${com.name} for ${tG}c.`;const pPU=pr-com.basePrice;if(pPU>0){xAGT=Math.floor(pPU*qty*XP_PER_PROFIT_UNIT);playerXP+=xAGT;fM+=`\n<span style='color:#00FF00;'>+${xAGT} XP for profitable trade!</span>`;checkLevelUp();}}}
+            
+            currentTradeContext = null; 
+            updateMessage(fM, message.includes("LEVEL UP!")); 
+            if(!message.includes("LEVEL UP!")) handleInteraction(); 
+            renderGame();
+        }
         function checkLevelUp() { /* Same as v0.6.8 */ if(playerXP>=xpToNextLevel){playerLevel++;playerXP-=xpToNextLevel;xpToNextLevel=calculateXpToNextLevel(playerLevel);updateMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`,true);playerShields=MAX_SHIELDS;playerFuel=MAX_FUEL;}}
         function startCombat() { /* Same as v0.6.8 */ const pS=PIRATE_BASE_SHIELDS_MIN+Math.floor(Math.random()*(PIRATE_BASE_SHIELDS_MAX-PIRATE_BASE_SHIELDS_MIN+1));currentCombatContext={pirateShields:pS,pirateMaxShields:pS};const tS=["Your cargo or your life, spacer!","Heh, fresh meat for the void!","This sector is ours! Pay the toll.","Look what the stardrive dragged in!","Prepare to be boarded, scum!","Another lamb to the slaughter!","Your ship looks like a fine prize!","Time to lighten your load, friend!","Don't make this harder than it has to be.","Another shiny target for my lasers!","Hope you've made your peace!","Your ship's paint job offends me! Prepare to die!","The Void Vultures are hungry!","Just hand over the valuables, and maybe you'll see tomorrow!","This is a shakedown! Don't try anything heroic."];const pT=tS[Math.floor(Math.random()*tS.length)];updateMessage(`"${pT}"\nHostile Pirate ${PIRATE_CHAR_VAL} encountered!\nPirate Shields: ${currentCombatContext.pirateShields}\nYour Shields: ${playerShields}\n(F)ight or (R)un?`);renderGame();}
-        function handleCombatAction(action) { /* Same as v0.6.8 */ if(!currentCombatContext)return;let cL="";if(action==='fight'){if(Math.random()<PLAYER_HIT_CHANCE){currentCombatContext.pirateShields-=PLAYER_ATTACK_DAMAGE;cL+=`Hit pirate for ${PLAYER_ATTACK_DAMAGE}!`;}else{cL+="Your attack missed!";}cL+=` Pirate Sh: ${Math.max(0,currentCombatContext.pirateShields)}.\n`;if(currentCombatContext.pirateShields<=0){const cW=PIRATE_CREDIT_REWARD_MIN+Math.floor(Math.random()*(PIRATE_CREDIT_REWARD_MAX-PIRATE_CREDIT_REWARD_MIN+1));const xG=XP_PER_PIRATE_MIN+Math.floor(Math.random()*(XP_PER_PIRATE_MAX-XP_PER_PIRATE_MIN+1));playerCredits+=cW;playerXP+=xG;cL+=`Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`;currentCombatContext=null;updateMessage(cL);checkLevelUp();if(!message.includes("LEVEL UP!")){handleInteraction();}renderGame();return;}if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}!`;}else{cL+="Pirate attack missed!";}cL+=` Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){playerShields=0;cL+=`Ship critically damaged! Emergency warp to Starbase Alpha...`;let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);cL+=`\nLost ${cLs}c.`;playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}cL+="(F)ight or (R)un?";}else if(action==='run'){if(playerFuel<RUN_FUEL_COST){cL="Not enough fuel to run!\n";if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!";playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate missed!\n";}cL+="(F)ight or (R)un?";}else{playerFuel-=RUN_FUEL_COST;if(Math.random()<RUN_ESCAPE_CHANCE){cL=`Escaped! Used ${RUN_FUEL_COST} fuel.`;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}else{cL=`Failed to escape! Pirate attacks!\n`;if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!";playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate attack missed!\n";}cL+="(F)ight or (R)un?";}}}updateMessage(cL);renderGame();}
+        function handleCombatAction(action) { 
+            if (!currentCombatContext) return; let cL = "";
+            if (action === 'fight') {
+                const weaponStats = COMPONENTS_DATABASE[playerShip.weapon].stats;
+                let damageDealt = weaponStats.damage;
+                
+                if (Math.random() < weaponStats.hitChance) {
+                    if (weaponStats.vsShieldBonus && currentCombatContext.pirateShields > 0) {
+                        damageDealt += weaponStats.vsShieldBonus;
+                    }
+                    currentCombatContext.pirateShields -= damageDealt; 
+                    cL += `Hit pirate for ${damageDealt}!`; 
+                } else { cL += "Your attack missed!"; }
+
+                cL += ` Pirate Sh: ${Math.max(0, currentCombatContext.pirateShields)}.\n`;
+                if (currentCombatContext.pirateShields <= 0) { const cW = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random()*(PIRATE_CREDIT_REWARD_MAX-PIRATE_CREDIT_REWARD_MIN+1)); const xG = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1)); playerCredits+=cW; playerXP += xG; cL+=`Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`; currentCombatContext=null; updateMessage(cL); checkLevelUp(); if(!message.includes("LEVEL UP!")){handleInteraction();} renderGame(); return; }
+                if (Math.random() < PIRATE_HIT_CHANCE) { const pD = PIRATE_ATTACK_DAMAGE_MIN + Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1)); playerShields-=pD; cL+=`Pirate hits for ${pD}!`; } else { cL+="Pirate attack missed!"; }
+                cL += ` Your Sh: ${Math.max(0, playerShields)}.\n`;
+                if (playerShields <= 0) { playerShields=0; cL+=`Ship critically damaged! Emergency warp to Starbase Alpha...`; let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);cL+=`\nLost ${cLs}c.`; playerShields=1; currentSectorX=0; currentSectorY=0; loadOrGenerateSectorMap(0,0); const sA=LOCATIONS_DATA["Starbase Alpha"].coords; playerX=sA.x;playerY=sA.y; currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return; }
+                cL += "(F)ight or (R)un?";
+            } else if (action === 'run') { /* Same as v0.6.8 */ if(playerFuel<RUN_FUEL_COST){cL="Not enough fuel to run!\n";if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!";playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate missed!\n";}cL+="(F)ight or (R)un?";}else{playerFuel-=RUN_FUEL_COST;if(Math.random()<RUN_ESCAPE_CHANCE){cL=`Escaped! Used ${RUN_FUEL_COST} fuel.`;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}else{cL=`Failed to escape! Pirate attacks!\n`;if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!";playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate attack missed!\n";}cL+="(F)ight or (R)un?";}}}
+            updateMessage(cL); renderGame();
+        }
         
+        // --- Outfitting Functions ---
+        function displayOutfittingScreen() {
+            currentOutfitContext = { step: 'selectSlot' };
+            let outfitMsg = "--- Ship Outfitting ---\n";
+            outfitMsg += "Current Loadout:\n";
+            outfitMsg += ` Weapon: ${COMPONENTS_DATABASE[playerShip.weapon].name}\n`;
+            outfitMsg += ` Shield: ${COMPONENTS_DATABASE[playerShip.shield].name}\n`;
+            outfitMsg += ` Engine: ${COMPONENTS_DATABASE[playerShip.engine].name}\n`;
+            outfitMsg += ` Scanner: ${COMPONENTS_DATABASE[playerShip.scanner].name}\n\n`;
+            outfitMsg += "Select slot to upgrade:\n";
+            outfitMsg += "1. Weapon\n2. Shield Generator\n3. Engine\n4. Scanner\nL. Leave Outfitting";
+            updateMessage(outfitMsg);
+            renderGame();
+        }
+
+        function displayComponentsForSlot(slotType) {
+            currentOutfitContext.step = 'selectComponent';
+            currentOutfitContext.selectedSlot = slotType;
+            let componentMsg = `--- Upgrading ${slotType.toUpperCase()} ---\nAvailable components (Cr: ${playerCredits}):\n`;
+            let componentIndex = 1;
+            currentOutfitContext.availableComponents = [];
+
+            for (const compId in COMPONENTS_DATABASE) {
+                const comp = COMPONENTS_DATABASE[compId];
+                if (comp.slot === slotType) {
+                    componentMsg += `${componentIndex}. ${comp.name} (${comp.cost}c) - ${comp.description}\n`;
+                    componentMsg += `   Stats: `;
+                    let statsStr = [];
+                    for(const stat in comp.stats) {
+                        statsStr.push(`${stat}: ${comp.stats[stat]}`);
+                    }
+                    componentMsg += statsStr.join(', ') + "\n";
+                    currentOutfitContext.availableComponents.push(comp);
+                    componentIndex++;
+                }
+            }
+            if (currentOutfitContext.availableComponents.length === 0) {
+                componentMsg += "No upgrades currently available for this slot.\n";
+            }
+            componentMsg += "\nEnter # to purchase, or 'L' to go back.";
+            updateMessage(componentMsg);
+            renderGame();
+        }
+
+        function buyComponent(componentId) {
+            const component = COMPONENTS_DATABASE[componentId];
+            if (!component) {
+                updateMessage("Invalid component selection.");
+                displayComponentsForSlot(currentOutfitContext.selectedSlot); // Re-display previous screen
+                return;
+            }
+
+            if (playerCredits < component.cost) {
+                updateMessage("Not enough credits to purchase " + component.name + ".", true);
+                displayComponentsForSlot(currentOutfitContext.selectedSlot);
+                return;
+            }
+
+            const oldComponent = COMPONENTS_DATABASE[playerShip[component.slot]];
+            playerCredits -= component.cost;
+            playerShip[component.slot] = componentId;
+            applyPlayerShipStats(); // Update ship stats immediately
+            unlockLoreEntry(component.loreKey);
+
+            updateMessage(`Installed ${component.name}. Old ${oldComponent.name} unequipped.\nCredits: ${playerCredits}`, true);
+            currentOutfitContext = null; // Exit outfitting fully after purchase
+            handleInteraction(); // Go back to docking message
+            renderGame();
+        }
+
+
         // --- Codex Functions ---
         let currentCodexCategory = null;
-        function toggleCodex(show) {
-            if (show) {
-                codexOverlayElement.style.display = 'flex';
-                renderCodexCategories();
-                renderCodexEntries(null); 
-                codexEntryTextElement.innerHTML = "Select a category, then an entry.";
-            } else {
-                codexOverlayElement.style.display = 'none';
-                currentCodexCategory = null; 
-            }
-        }
-
-        function renderCodexCategories() {
-            codexCategoriesElement.innerHTML = '';
-            const categories = new Set();
-            Object.values(LORE_DATABASE).forEach(entry => {
-                if (discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(key => LORE_DATABASE[key] === entry))) { 
-                    categories.add(entry.category);
-                }
-            });
-            
-            Array.from(categories).sort().forEach(category => {
-                const catDiv = document.createElement('div');
-                catDiv.textContent = category;
-                catDiv.className = 'codex-list-item';
-                if (category === currentCodexCategory) {
-                    catDiv.classList.add('active');
-                }
-                catDiv.onclick = () => {
-                    currentCodexCategory = category;
-                    renderCodexCategories(); 
-                    renderCodexEntries(category);
-                    codexEntryTextElement.innerHTML = "Select an entry.";
-                };
-                codexCategoriesElement.appendChild(catDiv);
-            });
-        }
-
-        function renderCodexEntries(category) {
-            codexEntriesElement.innerHTML = '';
-            if (!category) return;
-
-            Object.entries(LORE_DATABASE).forEach(([key, entry]) => {
-                if (entry.category === category && discoveredLoreEntries.has(key)) {
-                    const entryDiv = document.createElement('div');
-                    entryDiv.textContent = entry.title;
-                    entryDiv.className = 'codex-list-item';
-                    entryDiv.onclick = () => {
-                        codexEntryTextElement.innerHTML = `<strong>${entry.title}</strong><hr style="margin: 5px 0; border-color: #4a4a6a;"><p>${entry.text.replace(/\n/g, '<br>')}</p>`;
-                        document.querySelectorAll('#codexEntries .codex-list-item').forEach(el => el.classList.remove('active'));
-                        entryDiv.classList.add('active');
-                    };
-                    codexEntriesElement.appendChild(entryDiv);
-                }
-            });
-        }
+        function toggleCodex(show) { /* Same as v0.6.11 */ if(show){codexOverlayElement.style.display='flex';renderCodexCategories();renderCodexEntries(null);codexEntryTextElement.innerHTML="Select a category, then an entry.";}else{codexOverlayElement.style.display='none';currentCodexCategory=null;}}
+        function renderCodexCategories() { /* Same as v0.6.11 */ codexCategoriesElement.innerHTML='';const cats=new Set();Object.values(LORE_DATABASE).forEach(e=>{if(discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k=>LORE_DATABASE[k]===e)))cats.add(e.category);});Array.from(cats).sort().forEach(cat=>{const cD=document.createElement('div');cD.textContent=cat;cD.className='codex-list-item';if(cat===currentCodexCategory)cD.classList.add('active');cD.onclick=()=>{currentCodexCategory=cat;renderCodexCategories();renderCodexEntries(cat);codexEntryTextElement.innerHTML="Select an entry.";};codexCategoriesElement.appendChild(cD);});}
+        function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category===category&&discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}});}
 
 
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
             if (codexOverlayElement.style.display === 'flex') { 
-                if (key === 'escape' || key === 'j') {
-                    toggleCodex(false);
-                }
-                event.preventDefault();
-                return;
+                if (key === 'escape' || key === 'j') { toggleCodex(false); }
+                event.preventDefault(); return;
             }
 
-            if (currentTradeContext) { if(key==='l'){currentTradeContext=null;handleInteraction();renderGame();}else if(currentTradeContext.step==='selectItem'&&!isNaN(parseInt(key))){handleTradeSelection(key);}else if(currentTradeContext.step==='selectQuantity'&&(!isNaN(parseInt(key))||key.length===1)){handleTradeQuantity(key);}event.preventDefault();return; }
+            if (currentOutfitContext) {
+                if (currentOutfitContext.step === 'selectSlot') {
+                    if (key === '1') displayComponentsForSlot('weapon');
+                    else if (key === '2') displayComponentsForSlot('shield');
+                    else if (key === '3') displayComponentsForSlot('engine');
+                    else if (key === '4') displayComponentsForSlot('scanner');
+                    else if (key === 'l') { currentOutfitContext = null; handleInteraction(); renderGame(); }
+                } else if (currentOutfitContext.step === 'selectComponent') {
+                    const selection = parseInt(key);
+                    if (!isNaN(selection) && selection > 0 && selection <= currentOutfitContext.availableComponents.length) {
+                        buyComponent(currentOutfitContext.availableComponents[selection - 1].id);
+                    } else if (key === 'l') {
+                        displayOutfittingScreen(); // Go back to slot selection
+                    }
+                }
+                event.preventDefault(); return;
+            }
+            
+            if (currentTradeContext) { /* Same as v0.6.11 */ if (currentTradeContext.step === 'selectQuantity') { if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { currentQuantityInput += key; const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'backspace' && currentQuantityInput.length > 0) { currentQuantityInput = currentQuantityInput.slice(0, -1); const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); } } else if (currentTradeContext.step === 'selectItem') { if (!isNaN(parseInt(key))) handleTradeSelection(key); else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame();} } event.preventDefault();return;  }
             if (currentCombatContext) { if (key === 'f') handleCombatAction('fight'); else if (key === 'r') handleCombatAction('run'); event.preventDefault(); return; }
             
             let dx=0,dy=0; 
@@ -765,14 +915,21 @@
                 case 'a':case 'arrowleft':dx=-1;break; case 'd':case 'arrowright':dx=1;break;
                 case 'e':scanLocation();break; case 'h': scoopHydrogen(); break; 
                 case 'j': toggleCodex(true); break; 
-                case 't': 
-                    const currentTile = gameMapGrid[playerY][playerX];
-                    if (getTileType(currentTile) === 'wormhole') traverseWormhole();
-                    else updateMessage("No wormhole here to traverse.");
-                    break;
+                case 't': const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)==='wormhole')traverseWormhole();else updateMessage("No wormhole here.");break;
                 case 'b':const lB=getCombinedLocationData(playerY,playerX);if(lB&&((lB.sells&&lB.sells.length>0)||(lB.buys&&lB.buys.length>0)))displayTradeScreen('buy');else updateMessage("Cannot trade here.");break;
                 case 's':const lS=getCombinedLocationData(playerY,playerX);if(lS&&((lS.sells&&lS.sells.length>0)||(lS.buys&&lS.buys.length>0)))displayTradeScreen('sell');else updateMessage("Cannot trade here.");break;
-                case 'l':handleInteraction();break; 
+                case 'o': // Outfit Ship
+                    const locForOutfit = getCombinedLocationData(playerY, playerX);
+                    if (locForOutfit && locForOutfit.isMajorHub) { // Only at major hubs for now
+                        displayOutfittingScreen();
+                    } else {
+                        updateMessage("Ship outfitting not available here.");
+                    }
+                    break;
+                case 'l':
+                    if (currentOutfitContext) { currentOutfitContext = null; handleInteraction(); renderGame(); } 
+                    else { handleInteraction(); } // General leave/refresh if not in specific context
+                    break; 
                 default:return; 
             }
             if(dx!==0||dy!==0)movePlayer(dx,dy); else renderGame(); 
