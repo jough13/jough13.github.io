@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -29,7 +29,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative; /* For codex positioning */
+            position: relative; 
         }
         #gameMap {
             white-space: pre;
@@ -107,76 +107,22 @@
 
         /* Codex Styles */
         #codexOverlay {
-            position: absolute;
-            top: 10%;
-            left: 10%;
-            width: 80%;
-            height: 80%;
-            background-color: rgba(10, 10, 20, 0.95);
-            border: 2px solid #00ffff;
-            border-radius: 10px;
-            z-index: 1000;
-            color: #e0e0e0;
-            padding: 20px;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            font-size: 16px;
+            position: absolute; top: 10%; left: 10%; width: 80%; height: 80%;
+            background-color: rgba(10, 10, 20, 0.95); border: 2px solid #00ffff;
+            border-radius: 10px; z-index: 1000; color: #e0e0e0; padding: 20px;
+            display: none; flex-direction: column; font-size: 16px;
         }
-        #codexTitle {
-            font-size: 1.8em;
-            color: #00ffff;
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #4a4a6a;
-            padding-bottom: 10px;
-        }
-        #codexContent {
-            flex-grow: 1;
-            overflow-y: auto;
-            display: flex;
-        }
-        #codexCategories, #codexEntries {
-            padding: 10px;
-            border-right: 1px solid #4a4a6a; 
-            overflow-y: auto;
-        }
-        #codexEntryText {
-            padding: 10px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            text-align: left; 
-        }
+        #codexTitle { font-size: 1.8em; color: #00ffff; text-align: center; margin-bottom: 15px; border-bottom: 1px solid #4a4a6a; padding-bottom: 10px; }
+        #codexContent { flex-grow: 1; overflow-y: auto; display: flex; }
+        #codexCategories, #codexEntries { padding: 10px; border-right: 1px solid #4a4a6a; overflow-y: auto; }
+        #codexEntryText { padding: 10px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
         #codexCategories { flex-basis: 25%; }
         #codexEntries { flex-basis: 30%; border-right: 1px solid #4a4a6a; }
         #codexEntryText { flex-basis: 45%; border-right: none; }
-
-        .codex-list-item {
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            background-color: #2a2a4a;
-            transition: background-color 0.2s;
-            text-align: left; 
-        }
-        .codex-list-item:hover {
-            background-color: #3a3a5a;
-        }
-        .codex-list-item.active {
-            background-color: #00ffff;
-            color: #0f0f1a;
-        }
-        #codexCloseButton {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 1.5em;
-            color: #ff4444;
-            cursor: pointer;
-            background: none;
-            border: none;
-        }
-
+        .codex-list-item { padding: 8px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; background-color: #2a2a4a; transition: background-color 0.2s; text-align: left; }
+        .codex-list-item:hover { background-color: #3a3a5a; }
+        .codex-list-item.active { background-color: #00ffff; color: #0f0f1a; }
+        #codexCloseButton { position: absolute; top: 15px; right: 20px; font-size: 1.5em; color: #ff4444; cursor: pointer; background: none; border: none; }
 
         .player-char { color: #FFFFFF; } .star-char { color: #FFFF99; }
         .planet-char { color: #66CCFF; } .starbase-char { color: #FF66FF; } 
@@ -187,11 +133,7 @@
         .anomaly-char { color: #FF00FF; font-weight: bold;} 
         .wormhole-char { color: #FFA500; font-weight: bold; animation: pulse 1.5s infinite; } 
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -199,7 +141,7 @@
 
     <div id="gameContainer">
         <div id="playerStats">
-            <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0</span></div>
+            <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
             <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
             <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
             <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
@@ -229,8 +171,8 @@
 
     <script>
         // --- Game Configuration ---
-        const MAP_WIDTH = 50; 
-        const MAP_HEIGHT = 15; 
+        const MAP_WIDTH = 55; // Increased from 50
+        const MAP_HEIGHT = 14; // Decreased from 15
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
         const STAR_CHAR_VAL = '*'; const PLANET_CHAR_VAL = 'O';
         const STARBASE_CHAR_VAL = '#'; 
@@ -239,17 +181,17 @@
         const PIRATE_CHAR_VAL = 'X'; const DERELICT_CHAR_VAL = 'D'; 
         const ANOMALY_CHAR_VAL = '?'; const WORMHOLE_CHAR_VAL = 'W'; 
 
-        let INITIAL_FUEL = 200; 
-        let MAX_FUEL = 200;     
+        let INITIAL_FUEL; 
+        let MAX_FUEL;     
         const INITIAL_CREDITS = 1000; const PLAYER_CARGO_CAPACITY = 50;
         const FUEL_PER_MOVE = 1; 
-        let INITIAL_SHIELDS = 50; 
-        let MAX_SHIELDS = 50; 
+        let INITIAL_SHIELDS; 
+        let MAX_SHIELDS;     
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
         const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
 
-        let PLAYER_ATTACK_DAMAGE = 10; 
-        let PLAYER_HIT_CHANCE = 0.75; 
+        let PLAYER_ATTACK_DAMAGE; 
+        let PLAYER_HIT_CHANCE;  
         const PIRATE_BASE_SHIELDS_MIN = 15; 
         const PIRATE_BASE_SHIELDS_MAX = 35; 
         const PIRATE_ATTACK_DAMAGE_MIN = 5;
@@ -280,13 +222,16 @@
         
         // --- Ship Components Database ---
         const COMPONENTS_DATABASE = {
-            WEAPON_LASER_MK1: { id: "WEAPON_LASER_MK1", name: "Pulse Laser Mk1", type: "weapon", description: "Standard issue civilian pulse laser. Reliable but low power.", cost: 0, stats: { damage: 8, hitChance: 0.70 } },
-            WEAPON_LASER_MK2: { id: "WEAPON_LASER_MK2", name: "Pulse Laser Mk2", type: "weapon", description: "Upgraded pulse laser with improved focusing coils for higher damage.", cost: 1500, stats: { damage: 12, hitChance: 0.75 } },
-            WEAPON_SCATTER_GUN_MK1: { id: "WEAPON_SCATTER_GUN_MK1", name: "Scatter Gun Mk1", type: "weapon", description: "Short-range kinetic weapon, fires a spread of projectiles. Less accurate but can be devastating up close.", cost: 1200, stats: { damage: 15, hitChance: 0.60 } }, 
-            SHIELD_STD_A: { id: "SHIELD_STD_A", name: "Standard Shield Array Type A", type: "shield", description: "Basic civilian shield generator. Offers minimal protection.", cost: 0, stats: { maxShields: 50 } },
-            SHIELD_REINFORCED_B: { id: "SHIELD_REINFORCED_B", name: "Reinforced Shield Emitter B", type: "shield", description: "Military surplus shield, offering better resilience.", cost: 2000, stats: { maxShields: 75 } },
-            ENGINE_STD_A: { id: "ENGINE_STD_A", name: "Standard Drive Mk1", type: "engine", description: "Common civilian stardrive. Gets you there, eventually.", cost: 0, stats: { maxFuel: 200 } }, 
-            ENGINE_LONGHAUL_B: { id: "ENGINE_LONGHAUL_B", name: "LongHaul Drive Mk2", type: "engine", description: "Efficient engine designed for extended voyages. Larger fuel capacity.", cost: 2500, stats: { maxFuel: 300 } },
+            WEAPON_PULSE_LASER_MK1: { id: "WEAPON_PULSE_LASER_MK1", name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", description: "Standard issue civilian pulse laser. Reliable but low power.", cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "COMPONENT_PULSE_LASER" },
+            WEAPON_PULSE_LASER_MK2: { id: "WEAPON_PULSE_LASER_MK2", name: "Pulse Laser Mk2", type: "weapon", slot: "weapon", description: "Upgraded pulse laser with improved focusing coils for higher damage.", cost: 2000, stats: { damage: 12, hitChance: 0.75 }, loreKey: "COMPONENT_PULSE_LASER" },
+            WEAPON_KINETIC_IMPULSOR_MK1: { id: "WEAPON_KINETIC_IMPULSOR_MK1", name: "Kinetic Impulsor Mk1", type: "weapon", slot: "weapon", description: "Fires solid slugs. Decent against unshielded hulls.", cost: 1800, stats: { damage: 15, hitChance: 0.65 }, loreKey: "COMPONENT_KINETIC_WEAPON" },
+            WEAPON_ION_CANNON_MK1: { id: "WEAPON_ION_CANNON_MK1", name: "Ion Cannon Mk1", type: "weapon", slot: "weapon", description: "Disrupts shields effectively, less hull damage.", cost: 2200, stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 8 }, loreKey: "COMPONENT_ION_WEAPON" }, 
+            SHIELD_BASIC_ARRAY_A: { id: "SHIELD_BASIC_ARRAY_A", name: "Basic Deflector Array A", type: "shield", slot: "shield", description: "Entry-level shield generator. Offers minimal protection.", cost: 0, stats: { maxShields: 50 }, loreKey: "COMPONENT_SHIELD_GENERATOR" },
+            SHIELD_GUARDIAN_B: { id: "SHIELD_GUARDIAN_B", name: "Guardian Shield Emitter B", type: "shield", slot: "shield", description: "Military surplus shield, offering better resilience and faster recharge.", cost: 2500, stats: { maxShields: 80, rechargeRate: 2 }, loreKey: "COMPONENT_SHIELD_GENERATOR" }, 
+            SHIELD_AEGIS_C: { id: "SHIELD_AEGIS_C", name: "Aegis Shield Projector C", type: "shield", slot: "shield", description: "Top-tier Concord shield tech. Excellent protection.", cost: 5000, stats: { maxShields: 120, rechargeRate: 3 }, loreKey: "COMPONENT_SHIELD_GENERATOR" },
+            ENGINE_STD_DRIVE_MK1: { id: "ENGINE_STD_DRIVE_MK1", name: "Standard Drive Mk1", type: "engine", slot: "engine", description: "Common civilian stardrive. Gets you there, eventually.", cost: 0, stats: { maxFuel: 200, fuelEfficiency: 1.0 }, loreKey: "COMPONENT_ENGINE" }, 
+            ENGINE_RANGEPLUS_MK1: { id: "ENGINE_RANGEPLUS_MK1", name: "RangePlus Drive Mk1", type: "engine", slot: "engine", description: "Larger fuel tank for extended travel, standard efficiency.", cost: 3000, stats: { maxFuel: 300, fuelEfficiency: 1.0 }, loreKey: "COMPONENT_ENGINE" },
+            ENGINE_IONFLOW_MK2: { id: "ENGINE_IONFLOW_MK2", name: "IonFlow Drive Mk2", type: "engine", slot: "engine", description: "Advanced ion engine, slightly better fuel efficiency.", cost: 4000, stats: { maxFuel: 250, fuelEfficiency: 0.9 }, loreKey: "COMPONENT_ENGINE" } 
         };
 
 
@@ -381,6 +326,11 @@
 
         // --- Game State ---
         let playerX, playerY, playerFuel, playerCredits, playerShields;
+        let playerShip = { 
+            weapon: "WEAPON_PULSE_LASER_MK1",
+            shield: "SHIELD_BASIC_ARRAY_A",
+            engine: "ENGINE_STD_DRIVE_MK1"
+        };
         let playerLevel = 1; 
         let playerXP = 0;    
         let xpToNextLevel = BASE_XP_TO_LEVEL; 
@@ -391,10 +341,11 @@
         let message = "";
         let currentTradeContext = null;
         let currentCombatContext = null;
+        let currentOutfitContext = null; 
         let visitedSectors = new Set(); 
         let scannedObjectTypes = new Set(); 
         let discoveredLocations = new Set(); 
-        let sectorCache = {}; // New: Cache for sector data
+        let sectorCache = {}; 
 
         // Mystery State
         let mystery_wayfinder_progress = 0; 
@@ -429,6 +380,21 @@
         function calculateXpToNextLevel(level) {
             return Math.floor(BASE_XP_TO_LEVEL * Math.pow(level, XP_LEVEL_EXPONENT)); 
         }
+        
+        function applyPlayerShipStats() {
+            const weapon = COMPONENTS_DATABASE[playerShip.weapon];
+            const shield = COMPONENTS_DATABASE[playerShip.shield];
+            const engine = COMPONENTS_DATABASE[playerShip.engine];
+
+            PLAYER_ATTACK_DAMAGE = weapon.stats.damage;
+            PLAYER_HIT_CHANCE = weapon.stats.hitChance;
+            MAX_SHIELDS = shield.stats.maxShields;
+            MAX_FUEL = engine.stats.maxFuel;
+
+            if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
+            if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
+        }
+
 
         function unlockLoreEntry(entryKey) {
             if (LORE_DATABASE[entryKey] && !discoveredLoreEntries.has(entryKey)) {
@@ -440,16 +406,29 @@
 
 
         function initializeGame() {
-            playerFuel = INITIAL_FUEL; playerCredits = INITIAL_CREDITS; playerShields = INITIAL_SHIELDS;
+            playerShip = { 
+                weapon: "WEAPON_PULSE_LASER_MK1", 
+                shield: "SHIELD_BASIC_ARRAY_A", 
+                engine: "ENGINE_STD_DRIVE_MK1" 
+            };
+            applyPlayerShipStats(); 
+
+            playerFuel = MAX_FUEL; 
+            playerCredits = INITIAL_CREDITS; 
+            playerShields = MAX_SHIELDS; 
+
             playerLevel = 1; playerXP = 0; xpToNextLevel = calculateXpToNextLevel(playerLevel);
             visitedSectors.add("0,0"); 
             scannedObjectTypes.clear();
             discoveredLocations.clear();
             discoveredLoreEntries.clear(); 
-            sectorCache = {}; // Initialize sector cache
+            sectorCache = {}; 
             unlockLoreEntry("FACTION_CONCORD"); 
             unlockLoreEntry("XENO_PRECURSORS"); 
             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
+            Object.keys(COMPONENTS_DATABASE).forEach(key => { // Unlock lore for starting components
+                if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
+            });
 
 
             mystery_wayfinder_progress = 0; 
@@ -457,64 +436,21 @@
             currentSectorX = 0; currentSectorY = 0; 
             playerCargo = {}; Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
             updateCurrentCargoLoad();
-            loadOrGenerateSectorMap(currentSectorX, currentSectorY); // Use new function
+            loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
             ensurePlayerStartNotOccupied(); 
-            currentTradeContext = null; currentCombatContext = null;
+            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null;
             updateMessage(`Welcome to Sector (${currentSectorX},${currentSectorY})! Use WASD to move.`);
             renderGame();
         }
         
-        function loadOrGenerateSectorMap(sX, sY) {
-            const sectorKey = `${sX},${sY}`;
-            if (sectorCache[sectorKey]) {
-                // Load from cache
-                const cachedSector = sectorCache[sectorKey];
-                gameMapGrid = JSON.parse(JSON.stringify(cachedSector.grid)); // Deep copy
-                currentSectorOutpostData = cachedSector.outpostData ? JSON.parse(JSON.stringify(cachedSector.outpostData)) : null;
-                
-                // Reset scoopedThisVisit for stars when loading from cache for a new visit
-                for (let y = 0; y < MAP_HEIGHT; y++) {
-                    for (let x = 0; x < MAP_WIDTH; x++) {
-                        const tile = gameMapGrid[y][x];
-                        if (typeof tile === 'object' && tile !== null && tile.type === 'star') {
-                            tile.scoopedThisVisit = false;
-                        }
-                    }
-                }
-            } else {
-                // Generate new and cache
-                generateNewSectorMapData(sX, sY);
-                sectorCache[sectorKey] = { 
-                    grid: JSON.parse(JSON.stringify(gameMapGrid)), 
-                    outpostData: currentSectorOutpostData ? JSON.parse(JSON.stringify(currentSectorOutpostData)) : null 
-                };
-            }
-        }
-
-        function generateNewSectorMapData(sX, sY) { 
-            gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}
-            if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}
-            else{
-                if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}
-                if(Math.random() < WORMHOLE_SPAWN_CHANCE && !currentSectorOutpostData) { 
-                     const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;
-                     if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL) {
-                        gameMapGrid[rY][rX] = { char: WORMHOLE_CHAR_VAL, type: 'wormhole', stability: Math.random() };
-                     }
-                }
-            }
-            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary', 'Neutron Star', 'White Dwarf', 'Pulsar', 'Protostar', 'Wolf-Rayet', 'Rogue Star', 'Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)], scoopedThisVisit: false };}
-            const numAsteroids=Math.floor(Math.random()*3);for(let i=0;i<numAsteroids;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random()};}
-            if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}
-            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft', 'diplomatic courier', 'generation ship fragment', 'orbital habitat shard', 'research outpost remains', 'K\'tharr broodship fragment', 'Concord black ops vessel', 'derelict Precursor surveyor', 'ancient stellar observatory', 'lost K\'tharr honor guard ship', 'abandoned listening post', 'deep space prison barge', 'ancient Precursor arkship', 'K\'tharr \'Shadow Hunter\' stealth vessel', 'Concord \'Aegis\' class cruiser fragment', 'lost generation ship', 'Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}
-            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket', 'null-space bubble', 'precursor energy field', 'memory of a star', 'song of the void', 'echoes of a dying god', 'localized chronal stutter', 'reality bloom', 'dimensional bleed', 'psionic storm front', 'causal loop fragment', 'void bloom', 'K\'tharr void rift', 'Concord FTL test site (failed)', 'Precursor defense grid node', 'echoes of a Precursor battle', 'localized sentience field', 'K\'tharr ritual site echo', 'chroniton feedback loop', 'sentient solar flare', 'void organism spoor field', 'fragmented Precursor archive', 'Concord FTL catastrophe echo', 'K\'tharr ancestral echo', 'Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}
-        }
-
+        function loadOrGenerateSectorMap(sX, sY) { /* Same as v0.6.12 */ const sK=`${sX},${sY}`;if(sectorCache[sK]){const cS=sectorCache[sK];gameMapGrid=JSON.parse(JSON.stringify(cS.grid));currentSectorOutpostData=cS.outpostData?JSON.parse(JSON.stringify(cS.outpostData)):null;for(let y=0;y<MAP_HEIGHT;y++){for(let x=0;x<MAP_WIDTH;x++){const t=gameMapGrid[y][x];if(typeof t==='object'&&t!==null&&t.type==='star'){t.scoopedThisVisit=false;}}}}else{generateNewSectorMapData(sX,sY);sectorCache[sK]={grid:JSON.parse(JSON.stringify(gameMapGrid)),outpostData:currentSectorOutpostData?JSON.parse(JSON.stringify(currentSectorOutpostData)):null};}}
+        function generateNewSectorMapData(sX, sY) { /* Same as v0.6.12 (Deep Content & Lore Pass IV) */ gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}else{if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}const numAsteroids=Math.floor(Math.random()*3);for(let i=0;i<numAsteroids;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random()};}if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}}
+        function generateOutpostMarket() { /* Same as v0.6.11 */ const cK=Object.keys(COMMODITIES);let sI=null,bI=null;const sLb=cK.filter(id=>!["RARE_METALS","TECH_PARTS","ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(sLb.length>0){const sID=sLb[Math.floor(Math.random()*sLb.length)];sI={id:sID,priceMod:1.0+(Math.random()*0.2-0.1),stock:10+Math.floor(Math.random()*21)};}const bLb=cK.filter(id=>(!sI||id!==sI.id)&&!["ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(bLb.length>0){const bID=bLb[Math.floor(Math.random()*bLb.length)];bI={id:bID,priceMod:1.0+(Math.random()*0.2-0.05),stock:15+Math.floor(Math.random()*26)};}return{sells:sI?[sI]:[],buys:bI?[bI]:[]};}
         function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
-        function renderGame() { /* Same as v0.6.8 */
+        function renderGame() { /* Same as v0.6.12 (Sector Persistence - Fix) - fuel/shield display corrected */
             gameMapElement.innerHTML = ''; 
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 const rD = document.createElement('div'); 
@@ -566,7 +502,7 @@
             currentSectorY += jumpY;
             playerX = Math.floor(MAP_WIDTH / 2);
             playerY = Math.floor(MAP_HEIGHT / 2);
-            loadOrGenerateSectorMap(currentSectorX, currentSectorY); // Use new function
+            loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             ensurePlayerStartNotOccupied(); 
             let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in Sector (${currentSectorX},${currentSectorY}).`;
             const newSectorKey = `${currentSectorX},${currentSectorY}`;
@@ -612,9 +548,9 @@
                 const nSTO=gameMapGrid[playerY][playerX];const nSTC=getTileChar(nSTO);const nSTT=getTileType(nSTO);
                 if((nSTC===EMPTY_SPACE_CHAR_VAL||nSTT==='asteroid'||nSTT==='derelict'||nSTT==='anomaly'|| nSTT==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
             } else { 
-                const currentTileObject = gameMapGrid[playerY][playerX]; 
-                const currentTileChar = getTileChar(currentTileObject); 
-                const currentTileType = getTileType(currentTileObject);
+                const currentTileObjectInternal = gameMapGrid[playerY][playerX]; 
+                const currentTileCharInternal = getTileChar(currentTileObjectInternal); 
+                const currentTileTypeInternal = getTileType(currentTileObjectInternal);
 
                 if(mystery_wayfinder_progress===4&&mystery_wayfinder_finalLocation&&currentSectorX===mystery_wayfinder_finalLocation.sectorX&&currentSectorY===mystery_wayfinder_finalLocation.sectorY&&playerX===mystery_wayfinder_finalLocation.x&&playerY===mystery_wayfinder_finalLocation.y){
                     updateMessage(`You've arrived at the precise coordinates. A hidden Precursor Wayfinder activates!\nIts energy core hums, revealing fragmented charts pointing towards the Silentium Expanse and a 'First Nexus'.\n<span style='color:#DA70D6;'>+5000 Credits! +${XP_MYSTERY_REWARD} XP! Wayfinder Core acquired!</span>`);
@@ -622,7 +558,7 @@
                     if(playerCargo.WAYFINDER_CORE<PLAYER_CARGO_CAPACITY-currentCargoLoad){playerCargo.WAYFINDER_CORE=(playerCargo.WAYFINDER_CORE||0)+1;updateCurrentCargoLoad();}else{updateMessage("Wayfinder Core acquired, but no cargo space! It's left floating here.",true);}
                     mystery_wayfinder_progress=5;checkLevelUp();
                     unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED"); 
-                }else if((currentTileChar===EMPTY_SPACE_CHAR_VAL||currentTileType==='asteroid'||currentTileType==='derelict'||currentTileType==='anomaly'|| currentTileType==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
+                }else if((currentTileCharInternal===EMPTY_SPACE_CHAR_VAL||currentTileTypeInternal==='asteroid'||currentTileTypeInternal==='derelict'||currentTileTypeInternal==='anomaly'|| currentTileTypeInternal==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
             }renderGame();
         }
         function handleInteraction() { 
