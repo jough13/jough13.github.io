@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.1 (Notoriety System)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.3 (Deep Content & Lore Pass VI)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Roboto Mono', monospace;
-            background-color: #1a1a2e;
-            color: #e0e0e0;
+            background-color: #0D0D1A; 
+            color: #C0C0C0; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -21,11 +21,11 @@
             box-sizing: border-box;
         }
         #gameContainer {
-            background-color: #0f0f1a;
+            background-color: #101022; 
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-            border: 1px solid rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 220, 220, 0.25); 
+            border: 1px solid #2a2a5a; 
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -35,11 +35,11 @@
             white-space: pre;
             font-size: 18px; 
             line-height: 1.1; 
-            border: 1px solid #4a4a6a;
+            border: 1px solid #333355; 
             padding: 10px;
             border-radius: 5px;
-            background-color: #000;
-            color: #B0B0B0; 
+            background-color: #000000; 
+            color: #A0A0A0; 
             margin-bottom: 15px;
             display: flex;
             flex-direction: column;
@@ -51,92 +51,103 @@
         #playerStats {
             display: grid;
             grid-template-columns: repeat(3, 1fr); 
-            gap: 10px 15px; 
+            gap: 8px 12px; 
             width: 100%;
-            max-width: 550px; 
-            padding: 10px;
-            background-color: #2a2a4a;
-            border-radius: 5px;
-            margin-bottom: 15px;
+            max-width: 580px; 
+            padding: 12px; 
+            background-color: #181830; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
             text-align: center;
+            border: 1px solid #2a2a5a;
         }
         .stat-item {
              display: flex;
              flex-direction: column;
              align-items: center;
-        }
-        .stat-item.sector-stat { 
-            /* No special styling needed now */
+             padding: 3px 0; 
         }
         .stat {
-            color: #00ffff;
+            color: #00E0E0; 
             font-weight: bold;
+            font-size: 1em; 
         }
         .stat-label {
-            color: #aaa;
-            font-size: 0.9em;
+            color: #8888AA; 
+            font-size: 0.8em; 
+            margin-bottom: 2px; 
+        }
+        .sector-coords {
+            font-size: 0.7em; 
+            color: #777799; 
         }
         #messageArea {
             min-height: 120px; 
-            color: #ffcc00;
+            color: #FFD700; 
             text-align: left; 
             font-size: 16px;
             width: 100%;
             max-width: 720px; 
-            padding: 10px;
+            padding: 15px; 
             border: 1px dashed #4a4a6a;
-            border-radius: 5px;
+            border-radius: 8px;
             background-color: #101020;
+            line-height: 1.4; 
         }
         .game-title {
-            font-size: 2.5rem;
+            font-size: 2.8rem; 
             font-weight: 700;
-            color: #00ffff;
-            text-shadow: 0 0 10px #00ffff;
-            margin-bottom: 20px;
+            color: #00E0E0;
+            text-shadow: 0 0 12px #00E0E0, 0 0 20px #00E0E0; 
+            margin-bottom: 25px;
         }
         .controls-info {
             margin-top: 20px;
             font-size: 0.9rem;
-            color: #aaa;
+            color: #8888AA;
             text-align: center;
         }
         #versionInfo {
             margin-top: 15px;
             font-size: 0.8rem;
-            color: #666; 
+            color: #555577; 
             text-align: center;
         }
 
         /* Codex Styles */
         #codexOverlay {
-            position: absolute; top: 10%; left: 10%; width: 80%; height: 80%;
-            background-color: rgba(10, 10, 20, 0.95); border: 2px solid #00ffff;
-            border-radius: 10px; z-index: 1000; color: #e0e0e0; padding: 20px;
+            position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; 
+            background-color: rgba(10, 10, 25, 0.97); border: 2px solid #00E0E0;
+            border-radius: 10px; z-index: 1000; color: #C0C0C0; padding: 20px;
             display: none; flex-direction: column; font-size: 16px;
         }
-        #codexTitle { font-size: 1.8em; color: #00ffff; text-align: center; margin-bottom: 15px; border-bottom: 1px solid #4a4a6a; padding-bottom: 10px; }
+        #codexTitle { font-size: 1.8em; color: #00E0E0; text-align: center; margin-bottom: 15px; border-bottom: 1px solid #333355; padding-bottom: 10px; }
         #codexContent { flex-grow: 1; overflow-y: auto; display: flex; }
-        #codexCategories, #codexEntries { padding: 10px; border-right: 1px solid #4a4a6a; overflow-y: auto; }
-        #codexEntryText { padding: 10px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
+        #codexCategories, #codexEntries { padding: 10px; border-right: 1px solid #333355; overflow-y: auto; }
+        #codexEntryText { padding: 10px; overflow-y: auto; white-space: pre-wrap; text-align: left; line-height: 1.5; }
         #codexCategories { flex-basis: 25%; }
-        #codexEntries { flex-basis: 30%; border-right: 1px solid #4a4a6a; }
+        #codexEntries { flex-basis: 30%; border-right: 1px solid #333355; }
         #codexEntryText { flex-basis: 45%; border-right: none; }
-        .codex-list-item { padding: 8px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; background-color: #2a2a4a; transition: background-color 0.2s; text-align: left; }
-        .codex-list-item:hover { background-color: #3a3a5a; }
-        .codex-list-item.active { background-color: #00ffff; color: #0f0f1a; }
+        .codex-list-item { padding: 8px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; background-color: #181830; transition: background-color 0.2s; text-align: left; }
+        .codex-list-item:hover { background-color: #282848; }
+        .codex-list-item.active { background-color: #00E0E0; color: #0f0f1a; }
         #codexCloseButton { position: absolute; top: 15px; right: 20px; font-size: 1.5em; color: #ff4444; cursor: pointer; background: none; border: none; }
 
-        .player-char { color: #FFFFFF; } .star-char { color: #FFFF99; }
-        .planet-char { color: #66CCFF; } .starbase-char { color: #FF66FF; } 
+        .player-char { color: #FFFFFF; text-shadow: 0 0 5px #FFFFFF; } 
+        .star-char { color: #FFFF99; } 
+        .planet-char { color: #66CCFF; } 
+        .starbase-char { color: #FF66FF; } 
         .outpost-char { color: #99FF99; } 
-        .asteroid-char { color: #FF9966; } .nebula-char { color: #CC99FF; }
-        .empty-space-char { color: #B0B0B0; } .pirate-char { color: #FF4444; font-weight: bold; }
+        .asteroid-char { color: #FF9966; } 
+        .nebula-char { color: #CC99FF; }
+        .empty-space-char { color: #A0A0A0; } 
+        .pirate-char { color: #FF4444; font-weight: bold; text-shadow: 0 0 3px #FF0000; }
         .derelict-char { color: #77AADD; } 
-        .anomaly-char { color: #FF00FF; font-weight: bold;} 
-        .wormhole-char { color: #FFA500; font-weight: bold; animation: pulse 1.5s infinite; } 
+        .anomaly-char { color: #FF00FF; font-weight: bold; animation: pulse-magenta 1.5s infinite; } 
+        .wormhole-char { color: #FFA500; font-weight: bold; animation: pulse-orange 1.5s infinite; } 
 
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes pulse-orange { 0% { opacity: 1; text-shadow: 0 0 5px #FFA500; } 50% { opacity: 0.6; text-shadow: 0 0 10px #FF8C00; } 100% { opacity: 1; text-shadow: 0 0 5px #FFA500; } }
+        @keyframes pulse-magenta { 0% { opacity: 1; text-shadow: 0 0 5px #FF00FF; } 50% { opacity: 0.6; text-shadow: 0 0 10px #DD00DD; } 100% { opacity: 1; text-shadow: 0 0 5px #FF00FF; } }
     </style>
 </head>
 <body>
@@ -145,7 +156,11 @@
     <div id="gameContainer">
         <div id="playerStats">
             <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-            <div class="stat-item sector-stat"> <span class="stat-label">Current Sector</span><span id="sectorStat" class="stat">(0,0)</span></div>
+            <div class="stat-item sector-stat"> 
+                <span class="stat-label">Current Sector</span>
+                <span id="sectorNameStat" class="stat">Sol Sector</span>
+                <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+            </div>
             <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
             
             <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
@@ -171,15 +186,15 @@
     </div>
 
     <div class="controls-info">
-        WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo <br> 
+        WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
         Docked - B: Buy | S: Sell | O: Outfit Ship | L: Leave <br>
         Combat - F: Fight | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.1</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.1"; 
+        const GAME_VERSION = "v0.7.3"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -228,17 +243,19 @@
         const XP_PER_PROFIT_UNIT = 0.1;   
         const XP_MYSTERY_REWARD = 200;      
         const XP_WORMHOLE_TRAVERSE = 15;
+        const XP_PER_MINING_OP = 3; 
+        const XP_BONUS_RARE_MINERAL = 5; 
 
         // Notoriety Configuration
         const NOTORIETY_TITLES = [
-            { score: -Infinity, title: "Enemy of the Concord" }, // Should be first for logic
+            { score: -Infinity, title: "Enemy of the Concord" }, 
             { score: -200, title: "Wanted Outlaw" },
             { score: -50,  title: "Troublemaker" },
             { score: 0,    title: "Rookie Spacer" },
             { score: 50,   title: "Known Freelancer" },
             { score: 200,  title: "Respected Captain" },
             { score: 500,  title: "Galactic Hero" }
-        ]; // Sorted by score ascending for easier lookup
+        ]; 
         
         // --- Ship Components Database ---
         const COMPONENTS_DATABASE = {
@@ -264,7 +281,7 @@
         };
 
 
-        const COMMODITIES = { /* Same as v0.6.11 */
+        const COMMODITIES = { 
             FUEL_CELLS: { name: "Fuel Cells", basePrice: 10, description: "Standard hyper-refined hydrogen fuel cells. The lifeblood of interstellar travel. Always a steady demand, especially in remote sectors far from scoopable stars. Some black market variants promise higher energy density but are notoriously unstable, prone to catastrophic failure." },
             MINERALS: { name: "Minerals", basePrice: 25, description: "A mix of common industrial ores - iron, bauxite, silicates. Essential for construction and basic manufacturing. Bulk haulers make their fortunes on these, supplying the ever-expanding Concord infrastructure projects and the insatiable war machines of various factions." },
             FOOD_SUPPLIES: { name: "Food Supplies", basePrice: 15, description: "Nutrient paste, hydroponic vegetables, and recycled protein. Keeps the void-sickness at bay on long voyages. Quality varies greatly from 'edible' to 'surprisingly tasty', depending on the chef-bot and source system. Some luxury brands are considered delicacies." },
@@ -283,14 +300,26 @@
             PHASE_SHIFTED_ALLOY: { name: "Phase-Shifted Alloy", basePrice: 400, description: "An incredibly rare Precursor material that flickers in and out of normal spacetime. Almost impossible to work with, but invaluable for advanced shield tech or experimental FTL drives. Rumored to be unstable and require specialized containment fields. Some say ships made of it can pass through normal matter, or even between dimensions, but the process is... unsettling for organic minds." },
             WAYFINDER_CORE: { name: "Wayfinder Core", basePrice: 1000, description: "The heart of a Precursor Wayfinder. Pulsates with ancient energy and contains fragmented star charts leading to unknown regions. Highly coveted by the Concord and other factions. Its purpose remains a profound mystery, but it's said to respond to other Precursor artifacts and guide ships through impossible spaces. It feels warm to the touch, almost alive, and sometimes projects faint, alien constellations onto nearby surfaces." },
             KTHARR_ANCESTRAL_BLADE: { name: "K'tharr Ancestral Blade", basePrice: 275, description: "An ancient, energy-edged blade passed down through K'tharr warrior lineages. More than a weapon, it's a symbol of honor and a conduit to ancestral spirits. Highly illegal for non-K'tharr to possess, and the Hegemony will go to great lengths to recover one. Each blade is said to contain the 'soul' of its previous wielders and can only be truly mastered by one of K'tharr blood." },
-            PRECURSOR_STAR_MAP_FRAGMENT: { name: "Precursor Star Map Fragment", basePrice: 650, description: "A crystalline shard that projects a partial, holographic star chart of an unknown, impossibly distant region of space. Clearly Precursor in origin, it could lead to untold discoveries... or dangers beyond imagining. These are pieces of a larger, galaxy-spanning map, possibly leading to the Precursor homeworld or their greatest creations. Some fragments are said to actively resist being joined with others."}
+            PRECURSOR_STAR_MAP_FRAGMENT: { name: "Precursor Star Map Fragment", basePrice: 650, description: "A crystalline shard that projects a partial, holographic star chart of an unknown, impossibly distant region of space. Clearly Precursor in origin, it could lead to untold discoveries... or dangers beyond imagining. These are pieces of a larger, galaxy-spanning map, possibly leading to the Precursor homeworld or their greatest creations. Some fragments are said to actively resist being joined with others."},
+            GOLD: { name: "Gold Bullion", basePrice: 100, description: "Universally valued heavy metal, often used as a stable currency reserve or for high-end decorative purposes. Less industrially useful than some rare metals, but always in demand." },
+            PLATINUM_ORE: { name: "Platinum Ore", basePrice: 60, description: "Unrefined ore containing platinum group metals. Requires significant processing but yields highly valuable materials for catalysts and advanced electronics." },
+            HYDROGEN_3: { name: "Hydrogen-3", basePrice: 300, description: "A rare and stable isotope of hydrogen, prized for its use in advanced fusion reactors and experimental FTL drives. Extremely difficult to find and extract." }
         };
         const LOCATIONS_DATA = { 
             "Starbase Alpha": { 
                 coords: { y: MAP_HEIGHT - 5, x: MAP_WIDTH - 7 }, type: STARBASE_CHAR_VAL, 
                 isMajorHub: true, 
                 sells: [ { id: "FUEL_CELLS", priceMod: 0.9, stock: 100 }, { id: "TECH_PARTS", priceMod: 1.1, stock: 30 }, { id: "MEDICAL_SUPPLIES", priceMod: 1.0, stock: 25 }, { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: 50 } ],
-                buys: [ { id: "MINERALS", priceMod: 1.2, stock: 50 }, { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 50 }, { id: "RARE_METALS", priceMod: 1.3, stock: 15 }, { id: "ARTIFACT_SHARDS", priceMod: 1.5, stock: 5 }, { id: "XENO_ANTIQUES", priceMod: 1.8, stock: 2 }, { id: "PRECURSOR_DATACUBE", priceMod: 2.5, stock: 1}, { id: "VOID_CRYSTALS", priceMod: 1.6, stock: 3}, { id: "GENETIC_SAMPLES", priceMod: 1.4, stock: 10}, { id: "FORBIDDEN_TEXTS", priceMod: 0.7, stock: 3 }, { id: "PHASE_SHIFTED_ALLOY", priceMod: 3.0, stock: 1}, { id: "WAYFINDER_CORE", priceMod: 5.0, stock: 1 }, { id: "SENTIENT_MYCELIUM", priceMod: 1.2, stock: 4 }, { id: "PRECURSOR_STAR_MAP_FRAGMENT", priceMod: 4.0, stock: 1}, { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 0.5, stock: 1 } ],
+                buys: [ 
+                    { id: "MINERALS", priceMod: 1.2, stock: 50 }, { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 50 }, 
+                    { id: "RARE_METALS", priceMod: 1.3, stock: 15 }, { id: "ARTIFACT_SHARDS", priceMod: 1.5, stock: 5 }, 
+                    { id: "XENO_ANTIQUES", priceMod: 1.8, stock: 2 }, { id: "PRECURSOR_DATACUBE", priceMod: 2.5, stock: 1}, 
+                    { id: "VOID_CRYSTALS", priceMod: 1.6, stock: 3}, { id: "GENETIC_SAMPLES", priceMod: 1.4, stock: 10},
+                    { id: "FORBIDDEN_TEXTS", priceMod: 0.7, stock: 3 }, { id: "PHASE_SHIFTED_ALLOY", priceMod: 3.0, stock: 1},
+                    { id: "WAYFINDER_CORE", priceMod: 5.0, stock: 1 }, { id: "SENTIENT_MYCELIUM", priceMod: 1.2, stock: 4 }, 
+                    { id: "PRECURSOR_STAR_MAP_FRAGMENT", priceMod: 4.0, stock: 1}, { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 0.5, stock: 1 },
+                    { id: "GOLD", priceMod: 1.1, stock: 30 }, { id: "PLATINUM_ORE", priceMod: 1.2, stock: 20 }, { id: "HYDROGEN_3", priceMod: 2.0, stock: 5 }
+                ],
                 scanFlavor: "Starbase Alpha: Major Concord trade hub. Known for its extensive archives and the 'Oracle of Cygnus' in the Mystic Quarter. The Obsidian Directorate wing here is rumored to conduct secret FTL research."
             },
             "Planet Omega": { coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL, sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ], buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ], scanFlavor: "Planet Omega: Rich Dilithium deposits. Significant Precursor ruins present, Concord research outpost active nearby. Atmosphere: Thin, breathable. Surface: Moderate." },
@@ -401,11 +430,12 @@
         const creditsStatElement = document.getElementById('creditsStat');
         const cargoStatElement = document.getElementById('cargoStat');
         const shieldsStatElement = document.getElementById('shieldsStat');
-        const sectorStatElement = document.getElementById('sectorStat');
+        const sectorNameStatElement = document.getElementById('sectorNameStat'); 
+        const sectorCoordsStatElement = document.getElementById('sectorCoordsStat'); 
         const levelStatElement = document.getElementById('levelStat'); 
         const xpStatElement = document.getElementById('xpStat');    
         const shipClassStatElement = document.getElementById('shipClassStat'); 
-        const notorietyStatElement = document.getElementById('notorietyStat'); // New
+        const notorietyStatElement = document.getElementById('notorietyStat'); 
         const codexOverlayElement = document.getElementById('codexOverlay');
         const codexCategoriesElement = document.getElementById('codexCategories');
         const codexEntriesElement = document.getElementById('codexEntries');
@@ -445,19 +475,14 @@
                     break;
                 }
             }
-            // Special case if score is very low, it might select the lowest threshold incorrectly.
-            // This loop structure should find the highest applicable title for positive scores
-            // and the most "severe" applicable title for negative scores.
-            // For negative, we want the title whose threshold is *greater than or equal to* the score, but closest.
-            // Let's refine this:
             if (playerNotoriety < 0) {
                  for (let i = 0; i < NOTORIETY_TITLES.length; i++) {
-                    if (playerNotoriety <= NOTORIETY_TITLES[i].score) { // For negative, find first one it's less than or equal to
+                    if (playerNotoriety <= NOTORIETY_TITLES[i].score) { 
                         currentTitle = NOTORIETY_TITLES[i].title;
                         break; 
                     }
                  }
-            } else { // For positive or zero
+            } else { 
                  for (let i = NOTORIETY_TITLES.length - 1; i >= 0; i--) {
                     if (playerNotoriety >= NOTORIETY_TITLES[i].score) {
                         currentTitle = NOTORIETY_TITLES[i].title;
@@ -504,7 +529,7 @@
             unlockLoreEntry("FACTION_CONCORD"); 
             unlockLoreEntry("XENO_PRECURSORS"); 
             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
-            unlockLoreEntry("LORE_NOTORIETY_SYSTEM"); // Unlock general notoriety info
+            unlockLoreEntry("LORE_NOTORIETY_SYSTEM"); 
             Object.keys(COMPONENTS_DATABASE).forEach(key => { 
                 if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
             });
@@ -523,8 +548,71 @@
             renderGame();
         }
         
-        function loadOrGenerateSectorMap(sX, sY) { /* Same as v0.6.12 */ const sK=`${sX},${sY}`;if(sectorCache[sK]){const cS=sectorCache[sK];gameMapGrid=JSON.parse(JSON.stringify(cS.grid));currentSectorOutpostData=cS.outpostData?JSON.parse(JSON.stringify(cS.outpostData)):null;for(let y=0;y<MAP_HEIGHT;y++){for(let x=0;x<MAP_WIDTH;x++){const t=gameMapGrid[y][x];if(typeof t==='object'&&t!==null&&t.type==='star'){t.scoopedThisVisit=false;}}}}else{generateNewSectorMapData(sX,sY);sectorCache[sK]={grid:JSON.parse(JSON.stringify(gameMapGrid)),outpostData:currentSectorOutpostData?JSON.parse(JSON.stringify(currentSectorOutpostData)):null};}}
+        function loadOrGenerateSectorMap(sX, sY) { 
+            const sectorKey = `${sX},${sY}`;
+            if (sectorCache[sectorKey]) {
+                const cachedSector = sectorCache[sectorKey];
+                gameMapGrid = JSON.parse(JSON.stringify(cachedSector.grid)); 
+                currentSectorOutpostData = cachedSector.outpostData ? JSON.parse(JSON.stringify(cachedSector.outpostData)) : null;
+                currentSectorName = cachedSector.name; 
+                
+                for (let y = 0; y < MAP_HEIGHT; y++) {
+                    for (let x = 0; x < MAP_WIDTH; x++) {
+                        const tile = gameMapGrid[y][x];
+                        if (typeof tile === 'object' && tile !== null && tile.type === 'star') {
+                            tile.scoopedThisVisit = false;
+                        }
+                    }
+                }
+            } else {
+                generateNewSectorMapData(sX, sY);
+                currentSectorName = generateSectorName(sX, sY); 
+                sectorCache[sectorKey] = { 
+                    grid: JSON.parse(JSON.stringify(gameMapGrid)), 
+                    outpostData: currentSectorOutpostData ? JSON.parse(JSON.stringify(currentSectorOutpostData)) : null,
+                    name: currentSectorName 
+                };
+            }
+        }
         function generateNewSectorMapData(sX, sY) { /* Same as v0.6.12 (Deep Content & Lore Pass IV) */ gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}else{if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}const numAsteroids=Math.floor(Math.random()*3);for(let i=0;i<numAsteroids;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random()};}if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}}
+        
+        const SECTOR_NAME_PARTS = {
+            TIER1_PREFIX: ["Nova", "Kepler", "Orion", "Cygnus", "Lyra", "Terra", "Sol", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega", "Centauri", "Proxima", "Sirius", "Vega", "Altair", "Regulus", "Spica", "Arcturus", "Capella", "Rigel", "Betelgeuse", "Aldebaran", "Pollux", "Castor", "Deneb", "Fomalhaut", "Antares", "Canopus"],
+            TIER1_ROOT: ["Reach", "Spur", "Arm", "Belt", "Cluster", "Expanse", "Frontier", "Verge", "Fields", "Plains", "Depths", "Shallows", "Haven", "Port", "Gate", "Passage", "Crossing", "Junction", "Nexus", "Hub", "Core", "Heart", "Prime", "Minor", "Major", "Central", "Inner", "Outer", "Drift", "Currents", "Flow", "Stream", "Shoals", "Banks", "Flats", "Heights", "Ridge", "Valley", "Canyon", "Basin"],
+            TIER2_PREFIX: ["Serpentis", "Draco", "Hydra", "Lupus", "Corvus", "Volans", "Crux", "Carina", "Vela", "Pictor", "Indus", "Pavo", "Tucana", "Grus", "Phoenix", "Horologium", "Reticulum", "Dorado", "Mensa", "Chamaeleon", "Apus", "Musca", "Circinus", "Triangulum", "Norma", "Ara", "Telescopium", "Corona", "Fornax", "Sculptor", "Caelum", "Eridanus", "Cetus", "Aquarius", "Capricornus", "Sagittarius", "Scorpius", "Libra", "Virgo", "Leo", "Cancer", "Gemini", "Taurus", "Aries", "Pisces", "Ophiuchus", "Lyra Minor", "Ursa Major", "Ursa Minor", "Canis Major", "Canis Minor", "Perseus", "Andromeda", "Cassiopeia", "Cepheus", "Lacerta", "Pegasus", "Delphinus", "Equuleus", "Aquila", "Sagitta", "Vulpecula", "Cygnus Minor"],
+            TIER2_ROOT: ["Void", "Abyss", "Chasm", "Gulf", "Maelstrom", "Nebula", "Wastes", "Badlands", "Peril", "Hazard", "Brink", "Edge", "Terminus", "Limit", "Maw", "Jaws", "Teeth", "Claws", "Fangs", "Spines", "Thorns", "Barrens", "Wilds", "Expanse", "Deeps", "Shroud", "Veil", "Mist", "Gloom", "Shadow", "Dark", "Grim", "Bleak", "Despair", "Sorrow", "Fear", "Dread", "Terror", "Whispers", "Echoes", "Silence", "Stillness", "Emptiness"],
+            TIER3_PREFIX: ["Xylos", "Zylos", "Varkos", "Kryll", "Ghor", "Thrax", "Zargon", "Vorlag", "Nyx", "Erebus", "Tartarus", "Styx", "Acheron", "Phlegethon", "Cocytus", "Lethe", "Hades", "Gehenna", "Sheol", "Abaddon", "Apollyon", "Azrael", "Thanatos", "Moros", "Ker", "Keres", "Yama", "Hel", "Niflheim", "Muspelheim", "Jotunheim", "Svartalfheim", "Yomi", "Kur", "Irkalla", "Duat", "Xibalba", "Mictlan", "Naraka", "Patala", "Annwn", "Tuonela", "Adlivun", "Ukhu Pacha", "Chinvat", "Hamistagan", "Pescha", "Arqa", "Diyu"],
+            TIER3_ROOT: ["Oblivion", "Annihilation", "Desolation", "Ruin", "Terror", "Horror", "Madness", "Silence", "Emptiness", "Nothingness", "End", "Omega", "Ultima", "Finality", "Doom", "Blight", "Scourge", "Plague", "Curse", "Hex", "Bane", "Wrath", "Fury", "Storm", "Tempest", "Vortex", "Singularity", "Anomaly", "Paradox", "Enigma", "Labyrinth", "Maze", "Prison", "Tomb", "Crypt", "Sepulcher", "Citadel", "Fortress", "Bastion", "Stronghold", "Domain", "Realm", "Kingdom", "Empire", "Cataclysm", "Apocalypse", "Judgement", "Nadir", "Zero"]
+        };
+
+        function generateSectorName(sX, sY) {
+            if (sX === 0 && sY === 0) return "Sol Sector"; 
+
+            const absX = Math.abs(sX);
+            const absY = Math.abs(sY);
+            const maxCoord = Math.max(absX, absY);
+
+            let prefixList, rootList;
+
+            if (maxCoord < 5) {
+                prefixList = SECTOR_NAME_PARTS.TIER1_PREFIX;
+                rootList = SECTOR_NAME_PARTS.TIER1_ROOT;
+            } else if (maxCoord < 15) {
+                prefixList = SECTOR_NAME_PARTS.TIER2_PREFIX;
+                rootList = SECTOR_NAME_PARTS.TIER2_ROOT;
+            } else {
+                prefixList = SECTOR_NAME_PARTS.TIER3_PREFIX;
+                rootList = SECTOR_NAME_PARTS.TIER3_ROOT;
+            }
+            
+            const prefix = prefixList[Math.floor(Math.random() * prefixList.length)];
+            const root = rootList[Math.floor(Math.random() * rootList.length)];
+            
+            return `${prefix} ${root}`;
+        }
+        let currentSectorName = "Sol Sector"; 
+
+
         function generateOutpostMarket() { /* Same as v0.6.11 */ const cK=Object.keys(COMMODITIES);let sI=null,bI=null;const sLb=cK.filter(id=>!["RARE_METALS","TECH_PARTS","ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(sLb.length>0){const sID=sLb[Math.floor(Math.random()*sLb.length)];sI={id:sID,priceMod:1.0+(Math.random()*0.2-0.1),stock:10+Math.floor(Math.random()*21)};}const bLb=cK.filter(id=>(!sI||id!==sI.id)&&!["ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(bLb.length>0){const bID=bLb[Math.floor(Math.random()*bLb.length)];bI={id:bID,priceMod:1.0+(Math.random()*0.2-0.05),stock:15+Math.floor(Math.random()*26)};}return{sells:sI?[sI]:[],buys:bI?[bI]:[]};}
         function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
@@ -560,8 +648,9 @@
             levelStatElement.textContent = playerLevel; 
             xpStatElement.textContent = `${playerXP}/${xpToNextLevel}`; 
             shipClassStatElement.textContent = playerShipClass;
-            notorietyStatElement.textContent = playerNotorietyTitle; // Display Notoriety Title
-            sectorStatElement.textContent = `(${currentSectorX},${currentSectorY})`;
+            notorietyStatElement.textContent = playerNotorietyTitle; 
+            sectorNameStatElement.textContent = currentSectorName; 
+            sectorCoordsStatElement.textContent = `(${currentSectorX},${currentSectorY})`; 
             messageAreaElement.innerHTML = message.replace(/\n/g, '<br>');
             document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         }
@@ -586,11 +675,11 @@
             playerY = Math.floor(MAP_HEIGHT / 2);
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             ensurePlayerStartNotOccupied(); 
-            let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in Sector (${currentSectorX},${currentSectorY}).`;
+            let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in Sector ${currentSectorName} (${currentSectorX},${currentSectorY}).`;
             const newSectorKey = `${currentSectorX},${currentSectorY}`;
             if (!visitedSectors.has(newSectorKey)) {
                 visitedSectors.add(newSectorKey);
-                updatePlayerNotoriety(1); // Notoriety for new sector via wormhole
+                updatePlayerNotoriety(1); 
                 playerXP += XP_PER_NEW_SECTOR_DISCOVERY + XP_WORMHOLE_TRAVERSE; 
                 warpMessage += `\n<span style='color:#00FF00;'>New Sector Discovered via Wormhole! +${XP_PER_NEW_SECTOR_DISCOVERY + XP_WORMHOLE_TRAVERSE} XP!</span>`;
                 checkLevelUp();
@@ -628,12 +717,12 @@
             if(sC){
                 loadOrGenerateSectorMap(currentSectorX,currentSectorY); 
                 ensurePlayerStartNotOccupied();
-                let wM=`Warped to Sector (${currentSectorX},${currentSectorY}).`;
+                let wM=`Warped to Sector ${currentSectorName} (${currentSectorX},${currentSectorY}).`;
                 const nSK=`${currentSectorX},${currentSectorY}`;
                 if(!visitedSectors.has(nSK)&&(currentSectorX!==0||currentSectorY!==0)){
                     visitedSectors.add(nSK);
                     playerXP+=XP_PER_NEW_SECTOR_DISCOVERY;
-                    updatePlayerNotoriety(1); // Notoriety for new sector
+                    updatePlayerNotoriety(1); 
                     wM+=`\n<span style='color:#00FF00;'>New Sector Discovered! +${XP_PER_NEW_SECTOR_DISCOVERY} XP!</span>`;
                     checkLevelUp();
                 }
@@ -648,7 +737,7 @@
                 if(mystery_wayfinder_progress===4&&mystery_wayfinder_finalLocation&&currentSectorX===mystery_wayfinder_finalLocation.sectorX&&currentSectorY===mystery_wayfinder_finalLocation.sectorY&&playerX===mystery_wayfinder_finalLocation.x&&playerY===mystery_wayfinder_finalLocation.y){
                     updateMessage(`You've arrived at the precise coordinates. A hidden Precursor Wayfinder activates!\nIts energy core hums, revealing fragmented charts pointing towards the Silentium Expanse and a 'First Nexus'.\n<span style='color:#DA70D6;'>+5000 Credits! +${XP_MYSTERY_REWARD} XP! Wayfinder Core acquired!</span>`);
                     playerCredits+=5000;playerXP+=XP_MYSTERY_REWARD;
-                    updatePlayerNotoriety(100); // Big notoriety boost for mystery
+                    updatePlayerNotoriety(100); 
                     if(playerCargo.WAYFINDER_CORE<PLAYER_CARGO_CAPACITY-currentCargoLoad){playerCargo.WAYFINDER_CORE=(playerCargo.WAYFINDER_CORE||0)+1;updateCurrentCargoLoad();}else{updateMessage("Wayfinder Core acquired, but no cargo space! It's left floating here.",true);}
                     mystery_wayfinder_progress=5;checkLevelUp();
                     unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED"); 
@@ -659,7 +748,7 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
-            let bM=`Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
+            let bM=`Sector ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
             if(l){
                 bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
                 let actionsAvailable = "";
@@ -683,7 +772,7 @@
             } else {
                 switch(tileChar){ 
                     case STAR_CHAR_VAL:bM+=` Near star. (H to Scoop Fuel)`; unlockLoreEntry("PHENOMENON_STAR"); break; 
-                    case ASTEROID_CHAR_VAL:bM+=` Asteroids.`; unlockLoreEntry("PHENOMENON_ASTEROID"); break;
+                    case ASTEROID_CHAR_VAL:bM+=` Asteroids. (M to Mine)`; unlockLoreEntry("PHENOMENON_ASTEROID"); break;
                     case NEBULA_CHAR_VAL:bM+=` Nebula.`; unlockLoreEntry("PHENOMENON_NEBULA"); break;
                     case DERELICT_CHAR_VAL:bM+=` Near a derelict ship.`; unlockLoreEntry("XENO_DERELICTS"); break;
                     case ANOMALY_CHAR_VAL:bM+=` Near a strange anomaly.`; unlockLoreEntry("XENO_ANOMALIES"); break;
@@ -696,7 +785,7 @@
         function scanLocation() { 
             if (currentTradeContext || currentCombatContext || currentOutfitContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
-            let scanMessage = `Scan Report - Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`;
+            let scanMessage = `Scan Report - Sector ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`;
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
@@ -730,7 +819,28 @@
                         }
                         actionsAvailable += "Scoop Fuel (H).";
                         break;
-                    case ASTEROID_CHAR_VAL: /* Same as v0.6.11 */ const aF=["Dense silicate/carbonaceous...","Sparse icy field...","Shattered moon remnants...","Rich common ores...","Patrolled belt (pirates?)...","Ancient cratered rocks...","Rogue asteroid...","Too quiet field...","Crystalline asteroids...","Radioactive field...","Living asteroid?...","K'tharr ambush point?..."];scanMessage+=aF[Math.floor(Math.random()*aF.length)];break;
+                    case ASTEROID_CHAR_VAL: 
+                        let asteroidMsg = "Asteroid field detected. ";
+                        if (tileObject && tileObject.asteroidType) {
+                            asteroidMsg += `Type: ${tileObject.asteroidType}. `;
+                            if (tileObject.resources && tileObject.resources.length > 0) {
+                                const primaryResource = COMMODITIES[tileObject.resources[0].id].name;
+                                asteroidMsg += `Primary resource signature: ${primaryResource}. `;
+                                if (tileObject.resources.length > 1 && (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0) > 0.01) { 
+                                     asteroidMsg += `Faint traces of other materials.`;
+                                }
+                            } else {
+                                asteroidMsg += "Appears mostly barren.";
+                            }
+                        } else {
+                            asteroidMsg += "Composition unknown.";
+                        }
+                        if (tileObject && tileObject.minedThisVisit) {
+                            scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
+                        }
+                        scanMessage += asteroidMsg;
+                        actionsAvailable += "Mine Asteroid (M).";
+                        break;
                     case NEBULA_CHAR_VAL: /* Same as v0.6.11 */ const nF=["Vibrant emission nebula...","Dark nebula...","Planetary nebula...","Reflection nebula...","Calm gaseous expanse...","Stellar nursery...","Bok globule...","Void Crystal concentration...","Forbidden nebula...","Singing nebula?...","Sentient Mycelium filaments..."];scanMessage+=nF[Math.floor(Math.random()*nF.length)];break;
                     case DERELICT_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let dM="Scanners detect a derelict ship. ";if(tileObject&&tileObject.type==='derelict'&&tileObject.subtype){dM+=`Appears to be a ${tileObject.subtype}. `;objectTypeForXP=`derelict_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===3&&tileObject.subtype===MYSTERY_WAYFINDER_DERELICT_HINT_TYPE&&currentSectorX>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MIN&&currentSectorX<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MAX&&currentSectorY>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MIN&&currentSectorY<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX){const fSX=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fSY=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fX=Math.floor(Math.random()*MAP_WIDTH);const fY=Math.floor(Math.random()*MAP_HEIGHT);mystery_wayfinder_finalLocation={sectorX:fSX,sectorY:fSY,x:fX,y:fY};dM+=`\n<span style='color:#FFD700;'>The ship's damaged logs contain a startling discovery! A Precursor Wayfinder signal has been pinpointed to Sector (${fSX},${fSY}), coordinates [${fX},${fY}].</span>`;mystery_wayfinder_progress=4;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'freighter': dM += "Hull breaches... K'tharr Spices scent."; break; case 'explorer': dM += "Shattered sensors... Silentium Expanse charts."; break; default: dM += "Origin unknown."; break;}}}else{dM+="Its origin and purpose are unknown.";}if(Math.random() < (0.20 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) && !isMysteryClue){/* loot logic */}scanMessage+=dM;break;
                     case ANOMALY_CHAR_VAL: /* Same as v0.6.11, with mystery check */ let anoM="Unusual energy readings detected. This is an anomaly. ";if(tileObject&&tileObject.type==='anomaly'&&tileObject.subtype){anoM+=`Identified as a ${tileObject.subtype}. `;objectTypeForXP=`anomaly_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;if(mystery_wayfinder_progress===2&&tileObject.subtype===MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE){anoM+=`\n<span style='color:#FFD700;'>The anomaly resonates with the Precursor signal! A fragmented data packet is recovered: 'Seek the lost explorer... Concord designation 'Pathfinder' (${MYSTERY_WAYFINDER_DERELICT_HINT_TYPE})... last seen in the negative X, positive Y quadrant sectors... carrying vital charts.'</span>`;mystery_wayfinder_progress=3;isMysteryClue=true;}else{switch(tileObject.subtype){/* detailed descriptions */ case 'gravimetric wave': anoM += "Space ripples... temporal displacement."; break; case 'temporal distortion': anoM += "Chroniton interference... time flows erratically."; break; default: anoM += "Nature beyond current sensors."; break;}}}else{anoM+="Its nature is beyond current sensor capabilities. Approach with extreme caution.";}if(Math.random() < (0.05 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) &&!isMysteryClue){/* unique signature log */}else if(Math.random()<(0.03+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.VOID_CRYSTALS<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* void crystal */}else if(Math.random()<(0.01+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PRECURSOR_DATACUBE<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* datacube */}else if(Math.random()<(0.02+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PHASE_SHIFTED_ALLOY<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* phase alloy */}scanMessage+=anoM;break;
