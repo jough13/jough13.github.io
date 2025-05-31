@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.3 (Content & Lore Expansion VI)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.4 (Dynamic Combat)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -189,13 +189,13 @@
     <div class="controls-info">
         WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
         Docked - B: Buy | S: Sell | O: Outfit Ship | L: Leave <br>
-        Combat - F: Fight | R: Run
+        Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.4</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.3"; 
+        const GAME_VERSION = "v0.7.4"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -214,6 +214,11 @@
         let MAX_SHIELDS;     
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
         const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
+        const EVASION_FUEL_COST = 3;
+        const EVASION_DODGE_BONUS = 0.35; // Enemy hit chance reduced by this amount
+        const CHARGE_DAMAGE_MULTIPLIER = 1.5;
+        const CHARGE_HIT_BONUS = 0.15;
+
 
         let PLAYER_ATTACK_DAMAGE; 
         let PLAYER_HIT_CHANCE;  
@@ -394,6 +399,8 @@
         let playerShipClass = "Light Freighter"; 
         let playerNotoriety = 0;
         let playerNotorietyTitle = "Rookie Spacer";
+        let playerIsChargingAttack = false; // For combat
+        let playerIsEvading = false;      // For combat
 
         let playerLevel = 1; 
         let playerXP = 0;    
@@ -1057,59 +1064,109 @@
             renderGame();
         }
         function checkLevelUp() { /* Same as v0.6.8 */ if(playerXP>=xpToNextLevel){playerLevel++;playerXP-=xpToNextLevel;xpToNextLevel=calculateXpToNextLevel(playerLevel);updateMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`,true);playerShields=MAX_SHIELDS;playerFuel=MAX_FUEL;}}
-        function startCombat() { /* Same as v0.6.8 */ const pS=PIRATE_BASE_SHIELDS_MIN+Math.floor(Math.random()*(PIRATE_BASE_SHIELDS_MAX-PIRATE_BASE_SHIELDS_MIN+1));currentCombatContext={pirateShields:pS,pirateMaxShields:pS};const tS=["Your cargo or your life, spacer!","Heh, fresh meat for the void!","This sector is ours! Pay the toll.","Look what the stardrive dragged in!","Prepare to be boarded, scum!","Another lamb to the slaughter!","Your ship looks like a fine prize!","Time to lighten your load, friend!","Don't make this harder than it has to be.","Another shiny target for my lasers!","Hope you've made your peace!","Your ship's paint job offends me! Prepare to die!","The Void Vultures are hungry!","Just hand over the valuables, and maybe you'll see tomorrow!","This is a shakedown! Don't try anything heroic."];const pT=tS[Math.floor(Math.random()*tS.length)];updateMessage(`"${pT}"\nHostile Pirate ${PIRATE_CHAR_VAL} encountered!\nPirate Shields: ${currentCombatContext.pirateShields}\nYour Shields: ${playerShields}\n(F)ight or (R)un?`);renderGame();}
+        function startCombat() { /* Same as v0.6.8 */ const pS=PIRATE_BASE_SHIELDS_MIN+Math.floor(Math.random()*(PIRATE_BASE_SHIELDS_MAX-PIRATE_BASE_SHIELDS_MIN+1));currentCombatContext={pirateShields:pS,pirateMaxShields:pS};const tS=["Your cargo or your life, spacer!","Heh, fresh meat for the void!","This sector is ours! Pay the toll.","Look what the stardrive dragged in!","Prepare to be boarded, scum!","Another lamb to the slaughter!","Your ship looks like a fine prize!","Time to lighten your load, friend!","Don't make this harder than it has to be.","Another shiny target for my lasers!","Hope you've made your peace!","Your ship's paint job offends me! Prepare to die!","The Void Vultures are hungry!","Just hand over the valuables, and maybe you'll see tomorrow!","This is a shakedown! Don't try anything heroic."];const pT=tS[Math.floor(Math.random()*tS.length)];updateMessage(`"${pT}"\nHostile Pirate ${PIRATE_CHAR_VAL} encountered!\nPirate Shields: ${currentCombatContext.pirateShields}\nYour Shields: ${playerShields}\n(F)ight, (C)harge, (V)evade, (R)un?`);renderGame();} // Updated prompt
         function handleCombatAction(action) { 
-            if (!currentCombatContext) return; let cL = "";
+            if (!currentCombatContext) return; 
+            let combatLog = "";
+            let enemyAttacks = true; // Assume enemy attacks unless player runs successfully or pirate is defeated
+
+            // Player's action
             if (action === 'fight') {
                 const weaponStats = COMPONENTS_DATABASE[playerShip.weapon].stats;
                 let damageDealt = weaponStats.damage;
-                
-                if (Math.random() < weaponStats.hitChance) {
-                    if (weaponStats.vsShieldBonus && currentCombatContext.pirateShields > 0) {
-                        damageDealt += weaponStats.vsShieldBonus;
-                    }
-                    currentCombatContext.pirateShields -= damageDealt; 
-                    cL += `Hit pirate for ${damageDealt}!`; 
-                } else { cL += "Your attack missed!"; }
+                let currentHitChance = weaponStats.hitChance;
 
-                cL += ` Pirate Sh: ${Math.max(0, currentCombatContext.pirateShields)}.\n`;
-                if (currentCombatContext.pirateShields <= 0) { 
+                if (playerIsChargingAttack) {
+                    damageDealt = Math.floor(damageDealt * CHARGE_DAMAGE_MULTIPLIER);
+                    currentHitChance += CHARGE_HIT_BONUS;
+                    combatLog += "Charged shot unleashed! ";
+                    playerIsChargingAttack = false; // Reset charge
+                }
+
+                if (Math.random() < currentHitChance) {
+                    let actualDamage = damageDealt;
+                    if (weaponStats.vsShieldBonus && currentCombatContext.pirateShields > 0) {
+                        actualDamage += weaponStats.vsShieldBonus;
+                    }
+                    currentCombatContext.pirateShields -= actualDamage; 
+                    combatLog += `Hit pirate for ${actualDamage}!`; 
+                } else { 
+                    combatLog += "Your attack missed!"; 
+                }
+                combatLog += ` Pirate Sh: ${Math.max(0, currentCombatContext.pirateShields)}.\n`;
+                if (currentCombatContext.pirateShields <= 0) {
                     const cW = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random()*(PIRATE_CREDIT_REWARD_MAX-PIRATE_CREDIT_REWARD_MIN+1)); 
                     const xG = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1)); 
                     playerCredits+=cW; playerXP += xG; 
-                    updatePlayerNotoriety(5); // +5 notoriety for defeating pirate
-                    cL+=`Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`; 
-                    currentCombatContext=null; updateMessage(cL); checkLevelUp(); 
+                    updatePlayerNotoriety(5); 
+                    combatLog+=`Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`; 
+                    currentCombatContext=null; updateMessage(combatLog); checkLevelUp(); 
                     if(!message.includes("LEVEL UP!")){handleInteraction();} renderGame(); return; 
                 }
-                if (Math.random() < PIRATE_HIT_CHANCE) { const pD = PIRATE_ATTACK_DAMAGE_MIN + Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1)); playerShields-=pD; cL+=`Pirate hits for ${pD}!`; } else { cL+="Pirate attack missed!"; }
-                cL += ` Your Sh: ${Math.max(0, playerShields)}.\n`;
-                if (playerShields <= 0) { 
-                    playerShields=0; cL+=`Ship critically damaged! Emergency warp to Starbase Alpha...`; 
-                    let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);cL+=`\nLost ${cLs}c.`; 
-                    updatePlayerNotoriety(-10); // -10 notoriety for critical damage
-                    playerShields=1; currentSectorX=0; currentSectorY=0; loadOrGenerateSectorMap(0,0); 
-                    const sA=LOCATIONS_DATA["Starbase Alpha"].coords; playerX=sA.x;playerY=sA.y; 
-                    currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return; 
-                }
-                cL += "(F)ight or (R)un?";
-            } else if (action === 'run') { 
-                if(playerFuel<RUN_FUEL_COST){
-                    cL="Not enough fuel to run!\n";
-                    if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!"; updatePlayerNotoriety(-10); playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate missed!\n";}cL+="(F)ight or (R)un?";
+            } else if (action === 'charge') {
+                if (playerIsChargingAttack) {
+                    combatLog += "Weapon systems already charging!\n";
                 } else {
+                    playerIsChargingAttack = true;
+                    combatLog += "Charging weapon systems... (Attack next turn for bonus!)\n";
+                }
+                enemyAttacks = true; // Enemy still attacks
+            } else if (action === 'evade') {
+                if (playerFuel < EVASION_FUEL_COST) {
+                    combatLog += `Not enough fuel for evasive maneuvers! (Requires ${EVASION_FUEL_COST})\n`;
+                } else {
+                    playerFuel -= EVASION_FUEL_COST;
+                    playerIsEvading = true;
+                    combatLog += `Attempting evasive maneuvers... (Fuel: ${playerFuel})\n`;
+                }
+                enemyAttacks = true; // Enemy still attacks
+            } else if (action === 'run') {
+                if(playerFuel<RUN_FUEL_COST){combatLog="Not enough fuel to run!\n";}
+                else{
                     playerFuel-=RUN_FUEL_COST;
                     if(Math.random()<RUN_ESCAPE_CHANCE){
-                        cL=`Escaped! Used ${RUN_FUEL_COST} fuel.`;
-                        updatePlayerNotoriety(-1); // -1 notoriety for running
-                        currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;
-                    } else {
-                        cL=`Failed to escape! Pirate attacks!\n`;
-                        if(Math.random()<PIRATE_HIT_CHANCE){const pD=PIRATE_ATTACK_DAMAGE_MIN+Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1));playerShields-=pD;cL+=`Pirate hits for ${pD}! Your Sh: ${Math.max(0,playerShields)}.\n`;if(playerShields<=0){cL="Ship critically damaged!"; updatePlayerNotoriety(-10); playerShields=1;currentSectorX=0;currentSectorY=0;generateSectorMap(0,0);const sA=LOCATIONS_DATA["Starbase Alpha"].coords;playerX=sA.x;playerY=sA.y;currentCombatContext=null;updateMessage(cL);handleInteraction();renderGame();return;}}else{cL+="Pirate attack missed!\n";}cL+="(F)ight or (R)un?";
-                    }
+                        combatLog=`Escaped! Used ${RUN_FUEL_COST} fuel.`;
+                        updatePlayerNotoriety(-1); 
+                        currentCombatContext=null; playerIsChargingAttack = false; playerIsEvading = false; 
+                        updateMessage(combatLog);handleInteraction();renderGame();return;
+                    } else { combatLog=`Failed to escape! Pirate attacks!\n`; }
+                }
+                enemyAttacks = true; // If run fails, enemy attacks
+            }
+
+            // Pirate's turn (if combat continues)
+            if (currentCombatContext && enemyAttacks) {
+                let pirateEffectiveHitChance = PIRATE_HIT_CHANCE;
+                if (playerIsEvading) {
+                    pirateEffectiveHitChance -= EVASION_DODGE_BONUS;
+                    combatLog += "Your evasive maneuvers make you a harder target! ";
+                }
+
+                if (Math.random() < pirateEffectiveHitChance) { 
+                    const pD = PIRATE_ATTACK_DAMAGE_MIN + Math.floor(Math.random()*(PIRATE_ATTACK_DAMAGE_MAX-PIRATE_ATTACK_DAMAGE_MIN+1)); 
+                    playerShields-=pD; combatLog+=`Pirate hits for ${pD}!`; 
+                } else { 
+                    combatLog+="Pirate attack missed!"; 
+                }
+                combatLog += ` Your Sh: ${Math.max(0, playerShields)}.\n`;
+                if (playerShields <= 0) { 
+                    playerShields=0; combatLog+=`Ship critically damaged! Emergency warp to Starbase Alpha...`; 
+                    let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);combatLog+=`\nLost ${cLs}c.`; 
+                    updatePlayerNotoriety(-10); 
+                    playerShields=1; currentSectorX=0; currentSectorY=0; loadOrGenerateSectorMap(0,0); 
+                    const sA=LOCATIONS_DATA["Starbase Alpha"].coords; playerX=sA.x;playerY=sA.y; 
+                    currentCombatContext=null;playerIsChargingAttack = false; playerIsEvading = false; 
+                    updateMessage(combatLog);handleInteraction();renderGame();return; 
                 }
             }
-            updateMessage(cL); renderGame();
+            
+            playerIsEvading = false; // Evasion only lasts for one enemy attack
+            
+            if (currentCombatContext) { // If combat is still ongoing
+                 combatLog += "\n(F)ight, (C)harge, (V)evade, (R)un?";
+            }
+            updateMessage(combatLog); 
+            renderGame();
         }
         
         // --- Outfitting Functions ---
@@ -1246,7 +1303,13 @@
             }
             
             if (currentTradeContext) { /* Same as v0.6.11 */ if (currentTradeContext.step === 'selectQuantity') { if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { currentQuantityInput += key; const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'backspace' && currentQuantityInput.length > 0) { currentQuantityInput = currentQuantityInput.slice(0, -1); const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); } } else if (currentTradeContext.step === 'selectItem') { if (!isNaN(parseInt(key))) handleTradeSelection(key); else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame();} } event.preventDefault();return;  }
-            if (currentCombatContext) { if (key === 'f') handleCombatAction('fight'); else if (key === 'r') handleCombatAction('run'); event.preventDefault(); return; }
+            if (currentCombatContext) { 
+                if (key === 'f') handleCombatAction('fight'); 
+                else if (key === 'c') handleCombatAction('charge'); 
+                else if (key === 'v') handleCombatAction('evade'); 
+                else if (key === 'r') handleCombatAction('run'); 
+                event.preventDefault(); return; 
+            }
             
             let dx=0,dy=0; 
             switch(key){
