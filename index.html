@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.3 (Deep Content & Lore Pass VI)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.2 (Mining Key Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -190,11 +190,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | L: Leave <br>
         Combat - F: Fight | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.2</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.3"; 
+        const GAME_VERSION = "v0.7.2"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -562,6 +562,9 @@
                         if (typeof tile === 'object' && tile !== null && tile.type === 'star') {
                             tile.scoopedThisVisit = false;
                         }
+                         if (typeof tile === 'object' && tile !== null && tile.type === 'asteroid') { 
+                            tile.minedThisVisit = false;
+                        }
                     }
                 }
             } else {
@@ -574,7 +577,34 @@
                 };
             }
         }
-        function generateNewSectorMapData(sX, sY) { /* Same as v0.6.12 (Deep Content & Lore Pass IV) */ gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}else{if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}const numAsteroids=Math.floor(Math.random()*3);for(let i=0;i<numAsteroids;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random()};}if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}}
+        function generateNewSectorMapData(sX, sY) { 
+            gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}
+            if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}
+            else{
+                if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}
+                if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}
+            
+            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}
+            
+            const ASTEROID_TYPES = {
+                "Common Silicate": [{id: "MINERALS", chance: 0.9, minYield: 5, maxYield: 20}],
+                "Metallic Core": [{id: "MINERALS", chance: 0.5, minYield: 10, maxYield: 25}, {id: "RARE_METALS", chance: 0.3, minYield: 1, maxYield: 5}, {id: "GOLD", chance: 0.15, minYield: 1, maxYield: 3}],
+                "Icy Cluster": [{id: "MINERALS", chance: 0.4, minYield: 3, maxYield: 10}, {id: "HYDROGEN_3", chance: 0.05, minYield: 1, maxYield: 2}], 
+                "Exotic Crystalline": [{id: "PLATINUM_ORE", chance: 0.4, minYield: 1, maxYield: 4}, {id: "VOID_CRYSTALS", chance: 0.02, minYield: 1, maxYield: 1}] 
+            };
+            const asteroidTypeKeys = Object.keys(ASTEROID_TYPES);
+            const numAsteroids=Math.floor(Math.random()*3);
+            for(let i=0;i<numAsteroids;i++){
+                const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);
+                if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){
+                    const chosenTypeKey = asteroidTypeKeys[Math.floor(Math.random() * asteroidTypeKeys.length)];
+                    gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random(), asteroidType: chosenTypeKey, resources: ASTEROID_TYPES[chosenTypeKey], minedThisVisit: false};
+                }
+            }
+
+            if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}
+            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}
+            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}}
         
         const SECTOR_NAME_PARTS = {
             TIER1_PREFIX: ["Nova", "Kepler", "Orion", "Cygnus", "Lyra", "Terra", "Sol", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega", "Centauri", "Proxima", "Sirius", "Vega", "Altair", "Regulus", "Spica", "Arcturus", "Capella", "Rigel", "Betelgeuse", "Aldebaran", "Pollux", "Castor", "Deneb", "Fomalhaut", "Antares", "Canopus"],
@@ -909,6 +939,71 @@
             }
             renderGame();
         }
+
+        function mineAsteroid() {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext) {
+                updateMessage("Cannot mine now.");
+                renderGame();
+                return;
+            }
+            const asteroid = gameMapGrid[playerY][playerX];
+            if (getTileType(asteroid) !== 'asteroid') {
+                updateMessage("No asteroid field here to mine.");
+                renderGame();
+                return;
+            }
+            if (asteroid.minedThisVisit) {
+                updateMessage("This asteroid field has been depleted for this visit.");
+                renderGame();
+                return;
+            }
+
+            let minedResourcesMessage = "Mining operation yields:\n";
+            let totalMinedWeight = 0;
+            let minedSomething = false;
+            let gainedRareXP = false;
+
+            if (asteroid.resources && asteroid.resources.length > 0) {
+                asteroid.resources.forEach(resourceData => {
+                    if (Math.random() < resourceData.chance) {
+                        let yieldAmount = resourceData.minYield + Math.floor(Math.random() * (resourceData.maxYield - resourceData.minYield + 1));
+                        yieldAmount = Math.floor(yieldAmount * (asteroid.density || 0.5)); 
+                        yieldAmount = Math.max(0, yieldAmount); 
+
+                        if (yieldAmount > 0) {
+                            if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+                                playerCargo[resourceData.id] = (playerCargo[resourceData.id] || 0) + yieldAmount;
+                                totalMinedWeight += yieldAmount;
+                                minedResourcesMessage += ` ${yieldAmount} ${COMMODITIES[resourceData.id].name}\n`;
+                                minedSomething = true;
+                                unlockLoreEntry(`COMMODITY_${resourceData.id}`);
+                                if (["GOLD", "PLATINUM_ORE", "HYDROGEN_3", "RARE_METALS"].includes(resourceData.id)) {
+                                    gainedRareXP = true;
+                                }
+                            } else {
+                                minedResourcesMessage += ` Not enough cargo space for ${COMMODITIES[resourceData.id].name}.\n`;
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (minedSomething) {
+                updateCurrentCargoLoad();
+                playerXP += XP_PER_MINING_OP;
+                if (gainedRareXP) playerXP += XP_BONUS_RARE_MINERAL;
+                minedResourcesMessage += `\n+${XP_PER_MINING_OP + (gainedRareXP ? XP_BONUS_RARE_MINERAL : 0)} XP.`;
+                checkLevelUp();
+            } else {
+                minedResourcesMessage = "Mining yielded nothing of value this attempt.";
+            }
+            
+            asteroid.minedThisVisit = true;
+            updateMessage(minedResourcesMessage);
+            renderGame();
+        }
+
+
         function calculatePrice(bP,pM){return Math.round(bP*pM);}
         function displayTradeScreen(mode){ 
             const l=getCombinedLocationData(playerY,playerX);
@@ -1157,6 +1252,7 @@
                 case 'w':case 'arrowup':dy=-1;break; case 's':case 'arrowdown':dy=1;break;
                 case 'a':case 'arrowleft':dx=-1;break; case 'd':case 'arrowright':dx=1;break;
                 case 'e':scanLocation();break; case 'h': scoopHydrogen(); break; 
+                case 'm': mineAsteroid(); break; // Added mining action
                 case 'j': toggleCodex(true); break; 
                 case 'i': displayCargoHold(); break; 
                 case 't': const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)==='wormhole')traverseWormhole();else updateMessage("No wormhole here.");break;
