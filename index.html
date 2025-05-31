@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII Space Explorer - v0.6.12 (Deeper Content & Lore Pass IV)</title>
+    <title>ASCII Space Explorer - v0.6.12 (Deep Content & Lore Pass V)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -232,7 +232,8 @@
         const PIRATE_CHAR_VAL = 'X'; const DERELICT_CHAR_VAL = 'D'; 
         const ANOMALY_CHAR_VAL = '?'; const WORMHOLE_CHAR_VAL = 'W'; 
 
-        const INITIAL_FUEL = 100; const MAX_FUEL = 100;
+        const INITIAL_FUEL = 200; 
+        const MAX_FUEL = 200;     
         const INITIAL_CREDITS = 1000; const PLAYER_CARGO_CAPACITY = 50;
         const FUEL_PER_MOVE = 1; const INITIAL_SHIELDS = 50; const MAX_SHIELDS = 50;
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
@@ -248,8 +249,8 @@
         const XP_PER_PIRATE_MIN = 10; 
         const XP_PER_PIRATE_MAX = 25; 
 
-        const MIN_SCOOP_YIELD = 3; 
-        const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 12; 
+        const MIN_SCOOP_YIELD = 8; 
+        const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 15; 
         const SCOOP_RANDOM_BONUS = 3; 
 
         const OUTPOST_SPAWN_CHANCE = 0.08; 
@@ -306,17 +307,17 @@
                     { id: "WAYFINDER_CORE", priceMod: 5.0, stock: 1 }, { id: "SENTIENT_MYCELIUM", priceMod: 1.2, stock: 4 },
                     { id: "PRECURSOR_STAR_MAP_FRAGMENT", priceMod: 4.0, stock: 1}, { id: "KTHARR_ANCESTRAL_BLADE", priceMod: 0.5, stock: 1 } 
                 ],
-                scanFlavor: "Starbase Alpha: A major trade and logistics hub for the sector. Its beacons pulse with welcoming light. The Galactic Concord maintains a strong presence here, ensuring (relative) peace and facilitating interstellar commerce. Rumor has it, their archives hold secrets dating back to the First Expansion, and they pay top credit for Precursor artifacts. The station commander, Evelyn Hayes, is known for her strict adherence to Concord law, but some say she has a soft spot for independent explorers who bring back valuable intel or Precursor tech. The station's motto: 'Order Through Strength, Progress Through Unity'. Recent Concord directives have increased patrols in nearby sectors due to rising K'tharr activity and whispers of a 'Void Cult' resurgence. The Xeno-Archaeology department here is always looking for Precursor items and offers substantial rewards for unique finds like Wayfinder Cores or Star Map Fragments. The station also houses a heavily guarded Concord 'Special Research' wing, its purpose unknown; some say they experiment with captured K'tharr technology or even Precursor FTL drives. The 'Oracle of Cygnus' is a permanent resident, offering cryptic advice for a price."
+                scanFlavor: "Starbase Alpha: A major trade and logistics hub for the sector. Its beacons pulse with welcoming light. The Galactic Concord maintains a strong presence here, ensuring (relative) peace and facilitating interstellar commerce. Rumor has it, their archives hold secrets dating back to the First Expansion, and they pay top credit for Precursor artifacts. The station commander, Evelyn Hayes, is known for her strict adherence to Concord law, but some say she has a soft spot for independent explorers who bring back valuable intel or Precursor tech. The station's motto: 'Order Through Strength, Progress Through Unity'. Recent Concord directives have increased patrols in nearby sectors due to rising K'tharr activity and whispers of a 'Void Cult' resurgence. The Xeno-Archaeology department here is always looking for Precursor items and offers substantial rewards for unique finds like Wayfinder Cores or Star Map Fragments. The station also houses a heavily guarded Concord 'Obsidian Directorate' wing, its purpose unknown; some say they experiment with captured K'tharr technology or even Precursor FTL drives. The 'Oracle of Cygnus' is a permanent resident in the station's 'Mystic Quarter', offering cryptic advice for a price, usually rare Xeno-Antiques."
             },
             "Planet Omega": { 
                 coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL,
                 sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ],
                 buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ],
-                scanFlavor: "Planet Omega: Known for its rich Dilithium Crystal deposits and ancient, dormant structures believed to be of 'Precursor' origin. The silent cities hum with an almost imperceptible energy. Atmosphere: Thin but breathable. Surface temperature: Moderate. Independent prospectors often disappear exploring the ruins, some say the Precursors left guardians, or that the planet itself is awakening. Strange glyphs cover the Precursor structures, undeciphered, though some xeno-linguists believe they are star charts to lost Precursor worlds or warnings about 'The Silencers' - a Precursor term for an unknown cosmic threat that led to their decline. The Concord has established a small, heavily armed research outpost near the largest ruin, entry forbidden, claiming to study 'anomalous geological formations'."
+                scanFlavor: "Planet Omega: Known for its rich Dilithium Crystal deposits and ancient, dormant structures believed to be of 'Precursor' origin. The silent cities hum with an almost imperceptible energy. Atmosphere: Thin but breathable. Surface temperature: Moderate. Independent prospectors often disappear exploring the ruins, some say the Precursors left guardians, or that the planet itself is awakening. Strange glyphs cover the Precursor structures, undeciphered, though some xeno-linguists believe they are star charts to lost Precursor worlds or warnings about 'The Silencers' - a Precursor term for an unknown cosmic threat that led to their decline. The Concord has established a small, heavily armed research outpost near the largest ruin, entry forbidden, claiming to study 'anomalous geological formations'. They are rumored to be excavating a massive Precursor device."
             },
             "Planet Xerxes": { 
                 coords: { y: 3, x: MAP_WIDTH - 5 }, type: PLANET_CHAR_VAL, sells: [], buys: [], 
-                scanFlavor: "Planet Xerxes: High concentrations of Xenon Gas and exotic heavy metals. Atmosphere: Highly corrosive. Surface temperature: Extreme. Unsuitable for EVA. Rumored to be a former pirate hideout, its canyons are said to hide forgotten stashes and deadly traps. Some say Voidfang herself uses it as a resupply point, and that the K'tharr avoid it for 'spiritual reasons', calling it a 'world of bad spirits' due to ancient battles fought there against a foe they will not name. Concord deep-scans have detected unusual subterranean energy signatures, possibly a hidden K'tharr listening post or something far older, perhaps a dormant Precursor weapon or a sealed Precursor tomb containing a 'Star Eater' device. K'tharr legends say it's where one of their gods was imprisoned."
+                scanFlavor: "Planet Xerxes: High concentrations of Xenon Gas and exotic heavy metals. Atmosphere: Highly corrosive. Surface temperature: Extreme. Unsuitable for EVA. Rumored to be a former pirate hideout, its canyons are said to hide forgotten stashes and deadly traps. Some say Voidfang herself uses it as a resupply point, and that the K'tharr avoid it for 'spiritual reasons', calling it a 'world of bad spirits' due to ancient battles fought there against a foe they will not name. Concord deep-scans have detected unusual subterranean energy signatures, possibly a hidden K'tharr listening post or something far older, perhaps a dormant Precursor weapon or a sealed Precursor tomb containing a 'Star Eater' device. K'tharr legends say it's where one of their gods was imprisoned by the Precursors."
             }
         };
         let currentSectorOutpostData = null; 
@@ -337,7 +338,7 @@
             "The K'tharr are a proud, warrior race. Their spices are potent, but their justice is swift for those caught smuggling them into Concord space. Their homeworld is said to be a fortress, built around a black hole, powered by its accretion disk. They view the Precursors as heretics, and any who traffic in their tech as blasphemers. Their Ancestral Blades are said to be forged from fallen stars and can cut through Concord armor like paper, resonating with the wielder's 'Ki' or life-force.",
             "Void Crystals? Nasty stuff. Heard they can warp reality locally. Some cults use them in their rituals, trying to contact entities from 'beyond the veil'. Stay clear if you value your sanity. They say the crystals whisper your deepest fears and desires, and sometimes, grant them, at a terrible price. They are also a key component in some experimental Concord weapons designed to breach other dimensions.",
             "Some say the derelict ships aren't all accidental. There are whispers of 'ship-breakers', pirates who disable vessels and leave them for scavengers... after taking the best loot and sometimes, the crew for 'other purposes', like selling them to the K'tharr or using them in dark rituals involving Sentient Mycelium. Voidfang is rumored to be a master of this tactic, leaving no witnesses.",
-            "The Galactic Concord is rumored to be developing a new type of FTL drive, one that doesn't rely on Dilithium. They're desperate for Precursor Datacubes to complete it, and they'll pay anything, or take it by force. Section 31 of Concord Intelligence is said to be leading this effort, and they don't play by the rules. They're also trying to weaponize Phase-Shifted Alloys for their new 'Nova' class destroyers, capable of phasing through enemy shields.",
+            "The Galactic Concord is rumored to be developing a new type of FTL drive, one that doesn't rely on Dilithium. They're desperate for Precursor Datacubes to complete it, and they'll pay anything, or take it by force. The Obsidian Directorate is said to be leading this effort, and they don't play by the rules. They're also trying to weaponize Phase-Shifted Alloys for their new 'Nova' class destroyers, capable of phasing through enemy shields.",
             "There's a legend of a 'Genesis Planet' hidden deep within an uncharted nebula, a world teeming with life and untouched by any known civilization. Many have sought it; none have returned with proof. Some say it's guarded by a sentient nebula that tests the worthiness of visitors, or that it's made entirely of Sentient Mycelium, a single, planet-sized organism that dreams the universe into being, and can reshape reality within its domain.",
             "Sentient Mycelium networks are said to span entire star systems, hidden within dense nebulae. Touching them can grant visions, or madness. Some traders pay highly for samples, believing it can unlock psychic potential or even allow communication across vast distances instantaneously. The K'tharr consider it a sacred plant, a gift from their void gods, used in their most sacred rituals.",
             "Phase-Shifted Alloys are the holy grail for shipwrights. A hull made of it could theoretically pass through solid matter. Finding even a scrap is like finding a king's ransom. The Precursors used it extensively in their most advanced constructs, including their Wayfinders and city-ships. Some say it's not an alloy at all, but a form of stabilized exotic matter from another dimension, and it slowly 'learns' to adapt to its environment.",
@@ -350,21 +351,21 @@
 
         // --- Lore Database ---
         const LORE_DATABASE = { 
-            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars. It strives to maintain peace and facilitate trade across thousands of member systems. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. Section 31 is its shadowy intelligence agency, rumored to operate outside normal legal channels.", unlocked: false },
-            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes and warrior traditions. They are deeply spiritual, worshipping the void and celestial bodies, and view Precursor technology as heretical. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes. Their ships are fast, well-armed, and often utilize cloaking technology.", unlocked: false },
-            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae.", unlocked: false },
-            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals.", unlocked: false },
+            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions.", unlocked: false },
+            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes and warrior traditions. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans.", unlocked: false },
+            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
+            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space.", unlocked: false },
             LOCATION_STARBASE_ALPHA: { title: "Starbase Alpha", category: "Locations", text: LOCATIONS_DATA["Starbase Alpha"].scanFlavor, unlocked: false },
             LOCATION_PLANET_OMEGA: { title: "Planet Omega", category: "Locations", text: LOCATIONS_DATA["Planet Omega"].scanFlavor, unlocked: false },
             LOCATION_PLANET_XERXES: { title: "Planet Xerxes", category: "Locations", text: LOCATIONS_DATA["Planet Xerxes"].scanFlavor, unlocked: false },
-            LOCATION_OUTPOST: { title: "Outposts", category: "Locations", text: "Scattered throughout the void, outposts are small, often independent stations that serve as vital resupply points, trading posts, or havens for those on the fringes of society. Their markets are limited, but they often have unique local rumors and a character all their own.", unlocked: false },
-            PHENOMENON_STAR: { title: "Stars", category: "Phenomena", text: "Suns are the hearts of stellar systems, providing light, heat, and the raw hydrogen fuel essential for FTL travel. They come in many types, from stable G-type stars like Sol to volatile blue giants and dying red dwarfs. Some, like pulsars or neutron stars, are extreme cosmic objects with unique properties and dangers.", unlocked: false },
-            PHENOMENON_ASTEROID: { title: "Asteroid Fields", category: "Phenomena", text: "Belts of rock, ice, and metal, often remnants of planetary formation or shattered celestial bodies. They can be rich in minerals but are also hazardous to navigate and popular hiding spots for pirates.", unlocked: false },
-            PHENOMENON_NEBULA: { title: "Nebulae", category: "Phenomena", text: "Vast clouds of interstellar gas and dust. Emission nebulae glow brightly from ionized gas, reflection nebulae shine with light from nearby stars, and dark nebulae obscure what lies within. They can interfere with sensors and hide many secrets, from stellar nurseries to pirate bases.", unlocked: false },
-            PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits'.", unlocked: false },
-            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries.", unlocked: false },
-            XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, others are ancient mysteries. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active defenses, hostile lifeforms, or be booby-trapped.", unlocked: false },
-            XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions and temporal loops to strange energy fields and tears in reality. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments or natural phenomena beyond current comprehension.", unlocked: false },
+            LOCATION_OUTPOST: { title: "Outposts", category: "Locations", text: "Scattered throughout the void, outposts are small, often independent stations that serve as vital resupply points, trading posts, or havens for those on the fringes of society. Their markets are limited, but they often have unique local rumors and a character all their own. Some are havens for smugglers and pirates, others are lonely research stations or struggling colonies.", unlocked: false },
+            PHENOMENON_STAR: { title: "Stars", category: "Phenomena", text: "Suns are the hearts of stellar systems, providing light, heat, and the raw hydrogen fuel essential for FTL travel. They come in many types, from stable G-type stars like Sol to volatile blue giants and dying red dwarfs. Some, like pulsars or neutron stars, are extreme cosmic objects with unique properties and dangers. Ancient civilizations often worshipped their stars, and some Precursor structures seem designed to harness stellar energy directly.", unlocked: false },
+            PHENOMENON_ASTEROID: { title: "Asteroid Fields", category: "Phenomena", text: "Belts of rock, ice, and metal, often remnants of planetary formation or shattered celestial bodies. They can be rich in minerals but are also hazardous to navigate and popular hiding spots for pirates. Some fields contain unique crystalline structures or are known to be ancient battlefields, littered with the debris of forgotten wars.", unlocked: false },
+            PHENOMENON_NEBULA: { title: "Nebulae", category: "Phenomena", text: "Vast clouds of interstellar gas and dust. Emission nebulae glow brightly from ionized gas, reflection nebulae shine with light from nearby stars, and dark nebulae obscure what lies within. They can interfere with sensors and hide many secrets, from stellar nurseries to pirate bases, and even pockets of unique lifeforms or strange, psychoactive gases like those that form Sentient Mycelium.", unlocked: false },
+            PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence.", unlocked: false },
+            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a catastrophic war against an unknown enemy ('The Silencers') or even a self-inflicted technological cataclysm. Their understanding of spacetime and energy was profound.", unlocked: false },
+            XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, others are ancient mysteries from forgotten eras or unknown civilizations. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active defenses, hostile lifeforms, or be booby-trapped by their former owners or later scavengers.", unlocked: false },
+            XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions and temporal loops to strange energy fields and tears in reality. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars of cosmic entities.", unlocked: false },
             COMMODITY_WAYFINDER_CORE: { title: "Wayfinder Core", category: "Commodities", text: COMMODITIES.WAYFINDER_CORE.description, unlocked: false },
             COMMODITY_SENTIENT_MYCELIUM: { title: "Sentient Mycelium", category: "Commodities", text: COMMODITIES.SENTIENT_MYCELIUM.description, unlocked: false },
             COMMODITY_PHASE_SHIFTED_ALLOY: { title: "Phase-Shifted Alloy", category: "Commodities", text: COMMODITIES.PHASE_SHIFTED_ALLOY.description, unlocked: false },
@@ -462,12 +463,45 @@
 
         function generateOutpostMarket() { 
             const commodityKeys = Object.keys(COMMODITIES);
-            let sellsItem = null; let buysItem = null;
-            const sellable = commodityKeys.filter(id => !["RARE_METALS", "TECH_PARTS", "ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", "PRECURSOR_DATACUBE", "VOID_CRYSTALS", "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));
-            if (sellable.length > 0) { const sID = sellable[Math.floor(Math.random() * sellable.length)]; sellsItem = { id: sID, priceMod: 1.0 + (Math.random() * 0.2 - 0.1), stock: 10 + Math.floor(Math.random() * 21) }; }
-            const buyable = commodityKeys.filter(id => (!sellsItem || id !== sellsItem.id) && !["ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", "PRECURSOR_DATACUBE", "VOID_CRYSTALS", "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT"].includes(id)); 
-            if (buyable.length > 0) { const bID = buyable[Math.floor(Math.random()*buyable.length)]; buysItem = {id: bID, priceMod: 1.0 + (Math.random()*0.2 - 0.05), stock: 15 + Math.floor(Math.random()*26)};}
-            return { sells: sellsItem ? [sellsItem] : [], buys: buysItem ? [buysItem] : [] };
+            let outpostSells = [];
+            let buysItem = null;
+
+            // High chance for Fuel Cells
+            if (Math.random() < 0.75) { 
+                outpostSells.push({ 
+                    id: "FUEL_CELLS", 
+                    priceMod: 1.0 + (Math.random() * 0.1 - 0.05), 
+                    stock: 20 + Math.floor(Math.random() * 21)  
+                });
+            }
+
+            const commonSellable = commodityKeys.filter(id => 
+                !["RARE_METALS", "TECH_PARTS", "ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", 
+                  "PRECURSOR_DATACUBE", "VOID_CRYSTALS", "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", 
+                  "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT", "FUEL_CELLS"]
+                  .includes(id) && id !== (outpostSells.length > 0 ? outpostSells[0].id : null) 
+            );
+
+            if (commonSellable.length > 0 && Math.random() < 0.6) { 
+                const sID = commonSellable[Math.floor(Math.random() * commonSellable.length)];
+                outpostSells.push({ 
+                    id: sID, 
+                    priceMod: 1.0 + (Math.random() * 0.2 - 0.1), 
+                    stock: 10 + Math.floor(Math.random() * 11) 
+                });
+            }
+            
+            const buyable = commodityKeys.filter(id => 
+                !outpostSells.some(item => item.id === id) && 
+                !["ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", "PRECURSOR_DATACUBE", "VOID_CRYSTALS", 
+                  "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT"]
+                  .includes(id)
+            ); 
+            if (buyable.length > 0) { 
+                const bID = buyable[Math.floor(Math.random()*buyable.length)]; 
+                buysItem = {id: bID, priceMod: 1.0 + (Math.random()*0.2 - 0.05), stock: 15 + Math.floor(Math.random()*26)};
+            }
+            return { sells: outpostSells, buys: buysItem ? [buysItem] : [] };
         }
 
         function generateSectorMap(sX, sY) { 
@@ -482,11 +516,11 @@
                      }
                 }
             }
-            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary', 'Neutron Star', 'White Dwarf', 'Pulsar', 'Protostar', 'Wolf-Rayet', 'Rogue Star'][Math.floor(Math.random()*10)]};}
+            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary', 'Neutron Star', 'White Dwarf', 'Pulsar', 'Protostar', 'Wolf-Rayet', 'Rogue Star', 'Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)]};}
             const numAsteroids=Math.floor(Math.random()*3);for(let i=0;i<numAsteroids;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random()};}
             if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}
-            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft', 'diplomatic courier', 'generation ship fragment', 'orbital habitat shard', 'research outpost remains', 'K\'tharr broodship fragment', 'Concord black ops vessel', 'derelict Precursor surveyor', 'ancient stellar observatory', 'lost K\'tharr honor guard ship', 'abandoned listening post', 'deep space prison barge', 'ancient Precursor arkship', 'K\'tharr \'Shadow Hunter\' stealth vessel', 'Concord \'Aegis\' class cruiser fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}
-            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket', 'null-space bubble', 'precursor energy field', 'memory of a star', 'song of the void', 'echoes of a dying god', 'localized chronal stutter', 'reality bloom', 'dimensional bleed', 'psionic storm front', 'causal loop fragment', 'void bloom', 'K\'tharr void rift', 'Concord FTL test site (failed)', 'Precursor defense grid node', 'echoes of a Precursor battle', 'localized sentience field', 'K\'tharr ritual site echo', 'chroniton feedback loop', 'sentient solar flare', 'void organism spoor field', 'fragmented Precursor archive', 'Concord FTL catastrophe echo'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}
+            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft', 'diplomatic courier', 'generation ship fragment', 'orbital habitat shard', 'research outpost remains', 'K\'tharr broodship fragment', 'Concord black ops vessel', 'derelict Precursor surveyor', 'ancient stellar observatory', 'lost K\'tharr honor guard ship', 'abandoned listening post', 'deep space prison barge', 'ancient Precursor arkship', 'K\'tharr \'Shadow Hunter\' stealth vessel', 'Concord \'Aegis\' class cruiser fragment', 'lost generation ship', 'Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}
+            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket', 'null-space bubble', 'precursor energy field', 'memory of a star', 'song of the void', 'echoes of a dying god', 'localized chronal stutter', 'reality bloom', 'dimensional bleed', 'psionic storm front', 'causal loop fragment', 'void bloom', 'K\'tharr void rift', 'Concord FTL test site (failed)', 'Precursor defense grid node', 'echoes of a Precursor battle', 'localized sentience field', 'K\'tharr ritual site echo', 'chroniton feedback loop', 'sentient solar flare', 'void organism spoor field', 'fragmented Precursor archive', 'Concord FTL catastrophe echo', 'K\'tharr ancestral echo', 'Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}
         }
         function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
@@ -515,7 +549,7 @@
                     cS.textContent = cTD_char; if (cC) cS.className = cC; rD.appendChild(cS);
                 } gameMapElement.appendChild(rD);
             }
-            fuelStatElement.textContent = playerFuel;
+            fuelStatElement.textContent = `${playerFuel}/${MAX_FUEL}`; 
             shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
             creditsStatElement.textContent = playerCredits;
             cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
@@ -598,12 +632,12 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
-            let bM=`Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}. Sh:${playerShields}.`;
+            let bM=`Sector (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
             if(l){
-                bM=`Arrived at ${l.name}. Fuel:${playerFuel}. Sh:${playerShields}.`;
+                bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
                 if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0))bM+="\nTrade (B/S). Leave (L).";
                 if(l.type===STARBASE_CHAR_VAL||l.type===OUTPOST_CHAR_VAL){ 
-                    playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS;bM+="\nFuel replenished & Shields repaired!";
+                    playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS;bM+=`\nFuel replenished & Shields repaired to max!`;
                 }
                 if(l.rumor) bM+= `\n<span style='color:#AAAAFF;'>Local Chatter: "${l.rumor}"</span>`;
                 if(!discoveredLocations.has(l.name)){
@@ -667,7 +701,22 @@
             renderGame();
         }
 
-        function scoopHydrogen() { /* Same as v0.6.7 */ if(currentTradeContext||currentCombatContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}const sR=(typeof cT.richness==='number')?cT.richness:0.3;let fG=MIN_SCOOP_YIELD+Math.floor(sR*MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);fG+=Math.floor(Math.random()*SCOOP_RANDOM_BONUS);fG=Math.max(1,fG);const oF=playerFuel;playerFuel=Math.min(MAX_FUEL,playerFuel+fG);const aG=playerFuel-oF;if(aG>0)updateMessage(`Scooped ${aG} units of hydrogen.\nFuel: ${playerFuel}/${MAX_FUEL}`);else updateMessage("Scooping yielded no fuel. Tanks full or star depleted.");renderGame();}
+        function scoopHydrogen() { 
+            if(currentTradeContext||currentCombatContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
+            const cT=gameMapGrid[playerY][playerX];
+            if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
+            if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
+            const sR=(typeof cT.richness==='number')?cT.richness:0.3;
+            let fG=MIN_SCOOP_YIELD+Math.floor(sR*MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
+            fG+=Math.floor(Math.random()*SCOOP_RANDOM_BONUS);
+            fG=Math.max(1,fG);
+            const oF=playerFuel;
+            playerFuel=Math.min(MAX_FUEL,playerFuel+fG);
+            const aG=playerFuel-oF;
+            if(aG>0)updateMessage(`Scooped ${aG} units of hydrogen.\nFuel: ${playerFuel}/${MAX_FUEL}`);
+            else updateMessage("Scooping yielded no fuel. Tanks full or star depleted.");
+            renderGame();
+        }
         function calculatePrice(bP,pM){return Math.round(bP*pM);}
         function displayTradeScreen(mode){ 
             const l=getCombinedLocationData(playerY,playerX);
