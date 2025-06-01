@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.7 (Global State Init Fix Attempt 6)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.7 (Global State Init Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -725,7 +725,7 @@
                     cS.textContent = cTD_char; if (cC) cS.className = cC; rD.appendChild(cS);
                 } gameMapElement.appendChild(rD);
             }
-            fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL}`; 
+            fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`; 
             shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
             hullStatElement.textContent = `${playerHull}/${MAX_PLAYER_HULL}`; 
             creditsStatElement.textContent = playerCredits;
@@ -837,9 +837,9 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
-            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
+            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
             if(l){
-                bM=`Arrived at ${l.name}. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
+                bM=`Arrived at ${l.name}. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
                 let actionsAvailable = "";
                 if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0)) actionsAvailable += "Trade (B/S). ";
                 if (l.isMajorHub) {
@@ -999,7 +999,7 @@
             const aG=playerFuel-oF;
 
             if(aG>0) {
-                updateMessage(`Scooped ${aG.toFixed(1)} units of hydrogen.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL}`);
+                updateMessage(`Scooped ${aG.toFixed(1)} units of hydrogen.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
                 cT.scoopedThisVisit = true; 
             } else {
                  updateMessage("Scooping yielded no fuel. Tanks full or star already depleted this visit.");
