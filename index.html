@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.0 (Missions & Bounties I)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.3 (Global State Init Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -192,11 +192,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
         Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.0</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.0"; 
+        const GAME_VERSION = "v0.7.3"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -207,12 +207,12 @@
         const PIRATE_CHAR_VAL = 'X'; const DERELICT_CHAR_VAL = 'D'; 
         const ANOMALY_CHAR_VAL = '?'; const WORMHOLE_CHAR_VAL = 'W'; 
 
-        let INITIAL_FUEL; 
-        let MAX_FUEL;     
+        var INITIAL_FUEL; 
+        var MAX_FUEL;     
         const INITIAL_CREDITS = 1000; const PLAYER_CARGO_CAPACITY = 50;
         const BASE_FUEL_PER_MOVE = 0.8; 
-        let INITIAL_SHIELDS; 
-        let MAX_SHIELDS;     
+        var INITIAL_SHIELDS; 
+        var MAX_SHIELDS;     
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
         const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
         const EVASION_FUEL_COST = 3;
@@ -221,8 +221,8 @@
         const CHARGE_HIT_BONUS = 0.15;
 
 
-        let PLAYER_ATTACK_DAMAGE; 
-        let PLAYER_HIT_CHANCE;  
+        var PLAYER_ATTACK_DAMAGE; 
+        var PLAYER_HIT_CHANCE;  
         const PIRATE_BASE_SHIELDS_MIN = 15; 
         const PIRATE_BASE_SHIELDS_MAX = 35; 
         const PIRATE_ATTACK_DAMAGE_MIN = 5;
@@ -333,7 +333,7 @@
             "Planet Omega": { coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL, sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ], buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ], scanFlavor: "Planet Omega: Rich Dilithium deposits. Significant Precursor ruins dot the landscape; some whisper of a dormant 'World Engine' beneath the surface. Concord research outposts monitor unusual energy fluctuations, wary of what they call 'Silencer Echoes'." },
             "Planet Xerxes": {  coords: { y: 3, x: MAP_WIDTH - 5 }, type: PLANET_CHAR_VAL, sells: [], buys: [], scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere. High Xenon Gas and heavy metal concentrations. Rumored pirate haven and site of ancient K'tharr battles; some say the 'bad spirits' here are echoes of failed K'tharr rituals or a malfunctioning Precursor 'guardian' system that affects psionic minds." }
         };
-        let currentSectorOutpostData = null; 
+        var currentSectorOutpostData = null; 
         const RUMORS = [ /* Same extensive list as v0.6.11 */
             "Captain 'Voidfang' still plagues the Kepler Nebula. They say her ship, the 'Nightreaver', is faster than any Concord patrol, and she's looking for a legendary Precursor map that leads to the 'Silentium Expanse'. She supposedly has a K'tharr first mate, a disgraced warrior seeking redemption, who knows the old K'tharr star-paths. Some say she's already found a Precursor Star Map Fragment, and is seeking more to complete a 'Cosmic Sextant'.",
             "That derelict capital ship in Gamma-7? Some say it's a 'Precursor' vessel, others claim it's a military ghost from the old Terran Wars, its AI still active and hostile. A few brave souls tried to board it... none returned. They say it 'sings' on subspace frequencies, a song of madness that lures ships to their doom. Some say it guards a stable wormhole to an unknown galaxy, or a cache of Phase-Shifted Alloy that keeps it partially out of phase with reality.",
@@ -387,43 +387,47 @@
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
             MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
         };
-        let discoveredLoreEntries = new Set();
+        var discoveredLoreEntries = new Set(); 
 
 
         // --- Game State ---
-        let playerX, playerY, playerFuel, playerCredits, playerShields;
-        let playerShip = { 
+        var playerX, playerY, playerFuel, playerCredits, playerShields; 
+        var playerShip = { 
             weapon: "WEAPON_PULSE_LASER_MK1",
             shield: "SHIELD_BASIC_ARRAY_A",
             engine: "ENGINE_STD_DRIVE_MK1",
             scanner: "SCANNER_BASIC_SUITE" 
         };
-        let playerShipClass = "Light Freighter"; 
-        let playerNotoriety = 0;
-        let playerNotorietyTitle = "Rookie Spacer";
-        let playerIsChargingAttack = false; 
-        let playerIsEvading = false;      
+        var playerShipClass = "Light Freighter"; 
+        var playerNotoriety = 0; 
+        var playerNotorietyTitle = "Rookie Spacer"; 
+        var playerIsChargingAttack = false; 
+        var playerIsEvading = false;      
 
-        let playerLevel = 1; 
-        let playerXP = 0;    
-        let xpToNextLevel = BASE_XP_TO_LEVEL; 
-        let currentSectorX = 0; let currentSectorY = 0; 
-        let playerCargo = {}; 
-        let currentCargoLoad = 0;
-        let gameMapGrid = []; 
-        let message = "";
-        let currentTradeContext = null;
-        let currentCombatContext = null;
-        let currentOutfitContext = null; 
-        let visitedSectors = new Set(); 
-        let scannedObjectTypes = new Set(); 
-        let discoveredLocations = new Set(); 
-        let sectorCache = {}; 
-        let currentQuantityInput = ""; 
+        var playerLevel = 1; 
+        var playerXP = 0;    
+        var xpToNextLevel = BASE_XP_TO_LEVEL; 
+        var currentSectorX = 0; var currentSectorY = 0; 
+        var playerCargo = {}; 
+        var currentCargoLoad = 0; 
+        var gameMapGrid = []; 
+        var message = ""; 
+        var currentTradeContext = null; 
+        var currentCombatContext = null; 
+        var currentOutfitContext = null; 
+        var currentMissionContext = null; 
+        var playerActiveMission = null; 
+        var playerCompletedMissions = new Set(); 
+        var scannedObjectTypes = new Set(); 
+        var discoveredLocations = new Set(); 
+        var sectorCache = {}; 
+        var currentQuantityInput = ""; 
+        var currentSectorName = "Sol Sector"; 
+
 
         // Mystery State
-        let mystery_wayfinder_progress = 0; 
-        let mystery_wayfinder_finalLocation = null; 
+        var mystery_wayfinder_progress = 0; 
+        var mystery_wayfinder_finalLocation = null; 
         const MYSTERY_WAYFINDER_TARGET_SECTOR_VOLATILITY = 5; 
         const MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE = 'unstable warp pocket'; 
         const MYSTERY_WAYFINDER_DERELICT_HINT_TYPE = 'Concord patrol craft'; 
@@ -514,6 +518,15 @@
 
 
         function initializeGame() {
+            // Initialize/Re-initialize collections at the VERY START of the function
+            visitedSectors = new Set();
+            scannedObjectTypes = new Set();
+            discoveredLocations = new Set();
+            playerCompletedMissions = new Set();
+            sectorCache = {};
+            playerCargo = {};
+            discoveredLoreEntries = new Set();
+
             playerShip = { 
                 weapon: "WEAPON_PULSE_LASER_MK1", 
                 shield: "SHIELD_BASIC_ARRAY_A", 
@@ -528,14 +541,11 @@
             playerShipClass = "Light Freighter"; 
             playerNotoriety = 0;
             updateNotorietyTitle();
-
-
+            playerActiveMission = null;
+            
             playerLevel = 1; playerXP = 0; xpToNextLevel = calculateXpToNextLevel(playerLevel);
             visitedSectors.add("0,0"); 
-            scannedObjectTypes.clear();
-            discoveredLocations.clear();
-            discoveredLoreEntries.clear(); 
-            sectorCache = {}; 
+            
             unlockLoreEntry("FACTION_CONCORD"); 
             unlockLoreEntry("XENO_PRECURSORS"); 
             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
@@ -548,13 +558,13 @@
             mystery_wayfinder_progress = 0; 
             mystery_wayfinder_finalLocation = null;
             currentSectorX = 0; currentSectorY = 0; 
-            playerCargo = {}; Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
+            Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
             updateCurrentCargoLoad();
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
             ensurePlayerStartNotOccupied(); 
-            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null;
-            updateMessage(`Welcome to Sector ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
+            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null; currentMissionContext = null;
+            updateMessage(`Welcome to ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
             renderGame();
         }
         
@@ -650,7 +660,7 @@
             
             return `${prefix} ${root}`;
         }
-        let currentSectorName = "Sol Sector"; 
+        var currentSectorName = "Sol Sector"; // Changed to var
 
 
         function generateOutpostMarket() { /* Same as v0.6.11 */ const cK=Object.keys(COMMODITIES);let sI=null,bI=null;const sLb=cK.filter(id=>!["RARE_METALS","TECH_PARTS","ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(sLb.length>0){const sID=sLb[Math.floor(Math.random()*sLb.length)];sI={id:sID,priceMod:1.0+(Math.random()*0.2-0.1),stock:10+Math.floor(Math.random()*21)};}const bLb=cK.filter(id=>(!sI||id!==sI.id)&&!["ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(bLb.length>0){const bID=bLb[Math.floor(Math.random()*bLb.length)];bI={id:bID,priceMod:1.0+(Math.random()*0.2-0.05),stock:15+Math.floor(Math.random()*26)};}return{sells:sI?[sI]:[],buys:bI?[bI]:[]};}
@@ -698,7 +708,7 @@
         function updateMessage(newMessage, append = false) { /* Same as v0.6.8 */ if (append) message += "\n" + newMessage; else message = newMessage; }
         function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
 
-        function traverseWormhole() { /* Same as v0.6.11 */
+        function traverseWormhole() { 
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
                 updateMessage(`Cannot traverse: Requires ${WORMHOLE_TRAVEL_FUEL_COST} fuel, you have ${playerFuel}.`); 
                 renderGame();
@@ -715,7 +725,7 @@
             playerY = Math.floor(MAP_HEIGHT / 2);
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             ensurePlayerStartNotOccupied(); 
-            let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in Sector ${currentSectorName} (${currentSectorX},${currentSectorY}).`;
+            let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in ${currentSectorName} (${currentSectorX},${currentSectorY}).`; 
             const newSectorKey = `${currentSectorX},${currentSectorY}`;
             if (!visitedSectors.has(newSectorKey)) {
                 visitedSectors.add(newSectorKey);
@@ -736,7 +746,7 @@
 
 
         function movePlayer(dx, dy) { 
-            if(currentTradeContext || currentOutfitContext){updateMessage("Complete current action (L to leave).");renderGame();return;} 
+            if(currentTradeContext || currentOutfitContext || currentMissionContext){updateMessage("Complete current action (L to leave).");renderGame();return;} 
             if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
             
             const currentEngine = COMPONENTS_DATABASE[playerShip.engine];
@@ -757,7 +767,7 @@
             if(sC){
                 loadOrGenerateSectorMap(currentSectorX,currentSectorY); 
                 ensurePlayerStartNotOccupied();
-                let wM=`Warped to Sector ${currentSectorName} (${currentSectorX},${currentSectorY}).`;
+                let wM=`Warped to ${currentSectorName} (${currentSectorX},${currentSectorY}).`; 
                 const nSK=`${currentSectorX},${currentSectorY}`;
                 if(!visitedSectors.has(nSK)&&(currentSectorX!==0||currentSectorY!==0)){
                     visitedSectors.add(nSK);
@@ -788,12 +798,15 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
-            let bM=`Sector ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
+            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`; 
             if(l){
                 bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
                 let actionsAvailable = "";
                 if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0)) actionsAvailable += "Trade (B/S). ";
-                if (l.isMajorHub) actionsAvailable += "Outfit (O). "; 
+                if (l.isMajorHub) {
+                    actionsAvailable += "Outfit (O). "; 
+                    actionsAvailable += "Missions (K). ";
+                }
                 actionsAvailable += "Leave (L).";
                 bM += "\nActions: " + actionsAvailable;
 
@@ -825,7 +838,7 @@
         function scanLocation() { 
             if (currentTradeContext || currentCombatContext || currentOutfitContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
-            let scanMessage = `Scan Report - Sector ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`;
+            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`; 
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
@@ -835,7 +848,10 @@
             if (location) { /* Same as v0.6.11 */ scanMessage+=`Location: ${location.name} (${location.type}).\n`;scanMessage+=location.scanFlavor||"Standard readings for this type of installation/outpost.";if(location.rumor)scanMessage+=`\n<span style='color:#AAAAFF;'>Intercepted Local Comm: "${location.rumor}"</span>`;if((location.sells&&location.sells.length>0)||(location.buys&&location.buys.length>0)){scanMessage+="\n<span style='color:#66FF66;'>Trade Analysis:</span>";if(location.sells.length>0)scanMessage+=`\n  Exports: ${location.sells.map(item=>COMMODITIES[item.id].name).join(', ')}.`;if(location.buys.length>0)scanMessage+=`\n  Imports: ${location.buys.map(item=>COMMODITIES[item.id].name).join(', ')}.`;}else{scanMessage+="\nNo active trade facilities detected.";}objectTypeForXP=location.type; 
                  if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
                     if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) actionsAvailable += "Trade (B/S). ";
-                    if (location.isMajorHub) actionsAvailable += "Outfit (O). "; 
+                    if (location.isMajorHub) {
+                        actionsAvailable += "Outfit (O). "; 
+                        actionsAvailable += "Missions (K). ";
+                    }
                     actionsAvailable += "Leave (L).";
                 }
             } else { 
