@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.6 (DOM Element Init Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.7 (Global State Init Fix Attempt 5)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -196,11 +195,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
         Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.6</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.7</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.6"; 
+        const GAME_VERSION = "v0.7.7"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -530,7 +529,16 @@
 
 
         function initializeGame() {
-            // Assign DOM elements now that DOM is loaded
+            // Initialize collections FIRST
+            visitedSectors = new Set();
+            scannedObjectTypes = new Set();
+            discoveredLocations = new Set();
+            playerCompletedMissions = new Set();
+            sectorCache = {};
+            playerCargo = {};
+            discoveredLoreEntries = new Set();
+
+            // THEN assign DOM elements
             gameMapElement = document.getElementById('gameMap');
             messageAreaElement = document.getElementById('messageArea');
             fuelStatElement = document.getElementById('fuelStat');
@@ -547,15 +555,6 @@
             codexCategoriesElement = document.getElementById('codexCategories');
             codexEntriesElement = document.getElementById('codexEntries');
             codexEntryTextElement = document.getElementById('codexEntryText');   
-
-            // Initialize/Re-initialize collections 
-            visitedSectors = new Set();
-            scannedObjectTypes = new Set();
-            discoveredLocations = new Set();
-            playerCompletedMissions = new Set();
-            sectorCache = {};
-            playerCargo = {};
-            discoveredLoreEntries = new Set();
 
             playerShip = { 
                 weapon: "WEAPON_PULSE_LASER_MK1", 
