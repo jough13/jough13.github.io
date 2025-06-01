@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.7.3 (Global State Init Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.7.6 (DOM Element Init Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -167,9 +168,12 @@
             
             <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
             <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
-            <div class="stat-item"><span class="stat-label">Level</span><span id="levelStat" class="stat">1</span></div>
+            <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div> 
             
-            <div class="stat-item"><span class="stat-label">XP</span><span id="xpStat" class="stat">0/0</span></div>
+            <div class="stat-item">
+                <span class="stat-label">Level / XP</span>
+                <span id="levelXpStat" class="stat">1 (0/0)</span>
+            </div>
             <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
             <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
         </div>
@@ -192,11 +196,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
         Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.3</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.7.6</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.7.3"; 
+        const GAME_VERSION = "v0.7.6"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -213,18 +217,24 @@
         const BASE_FUEL_PER_MOVE = 0.8; 
         var INITIAL_SHIELDS; 
         var MAX_SHIELDS;     
+        const MAX_PLAYER_HULL = 100; 
+        var playerHull; 
+
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
         const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
         const EVASION_FUEL_COST = 3;
         const EVASION_DODGE_BONUS = 0.35; 
         const CHARGE_DAMAGE_MULTIPLIER = 1.5;
         const CHARGE_HIT_BONUS = 0.15;
+        const HULL_DAMAGE_BONUS_MULTIPLIER = 1.25; 
 
 
         var PLAYER_ATTACK_DAMAGE; 
         var PLAYER_HIT_CHANCE;  
         const PIRATE_BASE_SHIELDS_MIN = 15; 
         const PIRATE_BASE_SHIELDS_MAX = 35; 
+        const PIRATE_BASE_HULL_MIN = 40; 
+        const PIRATE_BASE_HULL_MAX = 70; 
         const PIRATE_ATTACK_DAMAGE_MIN = 5;
         const PIRATE_ATTACK_DAMAGE_MAX = 12; 
         const PIRATE_HIT_CHANCE = 0.6;
@@ -403,6 +413,7 @@
         var playerNotorietyTitle = "Rookie Spacer"; 
         var playerIsChargingAttack = false; 
         var playerIsEvading = false;      
+        var playerHull;
 
         var playerLevel = 1; 
         var playerXP = 0;    
@@ -438,22 +449,22 @@
 
 
         // --- DOM Elements ---
-        const gameMapElement = document.getElementById('gameMap');
-        const messageAreaElement = document.getElementById('messageArea');
-        const fuelStatElement = document.getElementById('fuelStat');
-        const creditsStatElement = document.getElementById('creditsStat');
-        const cargoStatElement = document.getElementById('cargoStat');
-        const shieldsStatElement = document.getElementById('shieldsStat');
-        const sectorNameStatElement = document.getElementById('sectorNameStat'); 
-        const sectorCoordsStatElement = document.getElementById('sectorCoordsStat'); 
-        const levelStatElement = document.getElementById('levelStat'); 
-        const xpStatElement = document.getElementById('xpStat');    
-        const shipClassStatElement = document.getElementById('shipClassStat'); 
-        const notorietyStatElement = document.getElementById('notorietyStat'); 
-        const codexOverlayElement = document.getElementById('codexOverlay');
-        const codexCategoriesElement = document.getElementById('codexCategories');
-        const codexEntriesElement = document.getElementById('codexEntries');
-        const codexEntryTextElement = document.getElementById('codexEntryText');   
+        var gameMapElement;
+        var messageAreaElement;
+        var fuelStatElement;
+        var creditsStatElement;
+        var cargoStatElement;
+        var shieldsStatElement;
+        var hullStatElement; 
+        var sectorNameStatElement; 
+        var sectorCoordsStatElement; 
+        var levelXpStatElement; 
+        var shipClassStatElement; 
+        var notorietyStatElement; 
+        var codexOverlayElement;
+        var codexCategoriesElement;
+        var codexEntriesElement;
+        var codexEntryTextElement;   
 
         function getTileChar(tile) { if (typeof tile === 'object' && tile !== null && tile.char) return tile.char; return tile; }
         function getTileType(tile) { if (typeof tile === 'object' && tile !== null && tile.type) return tile.type; return null; }
@@ -474,6 +485,7 @@
 
             if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
             if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
+            // Hull is not directly tied to components in this version, but could be in the future
         }
 
         function updatePlayerNotoriety(amount) {
@@ -518,7 +530,25 @@
 
 
         function initializeGame() {
-            // Initialize/Re-initialize collections at the VERY START of the function
+            // Assign DOM elements now that DOM is loaded
+            gameMapElement = document.getElementById('gameMap');
+            messageAreaElement = document.getElementById('messageArea');
+            fuelStatElement = document.getElementById('fuelStat');
+            creditsStatElement = document.getElementById('creditsStat');
+            cargoStatElement = document.getElementById('cargoStat');
+            shieldsStatElement = document.getElementById('shieldsStat');
+            hullStatElement = document.getElementById('hullStat');
+            sectorNameStatElement = document.getElementById('sectorNameStat'); 
+            sectorCoordsStatElement = document.getElementById('sectorCoordsStat'); 
+            levelXpStatElement = document.getElementById('levelXpStat'); 
+            shipClassStatElement = document.getElementById('shipClassStat'); 
+            notorietyStatElement = document.getElementById('notorietyStat'); 
+            codexOverlayElement = document.getElementById('codexOverlay');
+            codexCategoriesElement = document.getElementById('codexCategories');
+            codexEntriesElement = document.getElementById('codexEntries');
+            codexEntryTextElement = document.getElementById('codexEntryText');   
+
+            // Initialize/Re-initialize collections 
             visitedSectors = new Set();
             scannedObjectTypes = new Set();
             discoveredLocations = new Set();
@@ -538,6 +568,7 @@
             playerFuel = MAX_FUEL; 
             playerCredits = INITIAL_CREDITS; 
             playerShields = MAX_SHIELDS; 
+            playerHull = MAX_PLAYER_HULL; 
             playerShipClass = "Light Freighter"; 
             playerNotoriety = 0;
             updateNotorietyTitle();
@@ -693,10 +724,10 @@
             }
             fuelStatElement.textContent = `${playerFuel}/${MAX_FUEL}`; 
             shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
+            hullStatElement.textContent = `${playerHull}/${MAX_PLAYER_HULL}`; // Display Hull
             creditsStatElement.textContent = playerCredits;
             cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
-            levelStatElement.textContent = playerLevel; 
-            xpStatElement.textContent = `${playerXP}/${xpToNextLevel}`; 
+            levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`; // Merged Level/XP
             shipClassStatElement.textContent = playerShipClass;
             notorietyStatElement.textContent = playerNotorietyTitle; 
             sectorNameStatElement.textContent = currentSectorName; 
@@ -798,9 +829,9 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
-            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`; 
+            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
             if(l){
-                bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}.`;
+                bM=`Arrived at ${l.name}. Fuel:${playerFuel}/${MAX_FUEL}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
                 let actionsAvailable = "";
                 if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0)) actionsAvailable += "Trade (B/S). ";
                 if (l.isMajorHub) {
@@ -811,7 +842,8 @@
                 bM += "\nActions: " + actionsAvailable;
 
                 if(l.type===STARBASE_CHAR_VAL||l.type===OUTPOST_CHAR_VAL){ 
-                    playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS;bM+=`\nFuel replenished & Shields repaired to max!`;
+                    playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS; playerHull = MAX_PLAYER_HULL; // Full repair
+                    bM+=`\nFuel, Shields, and Hull fully repaired!`;
                     applyPlayerShipStats(); 
                 }
                 if(l.rumor) bM+= `\n<span style='color:#AAAAFF;'>Local Chatter: "${l.rumor}"</span>`;
@@ -838,7 +870,7 @@
         function scanLocation() { 
             if (currentTradeContext || currentCombatContext || currentOutfitContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
-            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}.\n`; 
+            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
