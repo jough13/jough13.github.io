@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.0 (UI Jerkiness Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.1 (UI Stability Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -83,8 +83,8 @@
             margin-top: 1px;
         }
         #messageArea {
-            height: 120px; /* Changed from min-height to fixed height */
-            overflow-y: auto; /* Added for scrolling */
+            height: 120px; 
+            overflow-y: scroll; /* Changed from auto to scroll */
             color: #FFD700; 
             text-align: left; 
             font-size: 16px;
@@ -196,11 +196,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
         Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.0</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.1</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.0"; 
+        const GAME_VERSION = "v0.8.1"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -397,10 +397,8 @@
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
             MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
         };
-        var discoveredLoreEntries = new Set(); 
-
-
-        // --- Game State ---
+        
+        // --- Global State Variables - Declared globally, instantiated in initializeGame ---
         var playerX, playerY, playerFuel, playerCredits, playerShields; 
         var playerShip;
         var playerShipClass; 
@@ -409,12 +407,10 @@
         var playerIsChargingAttack; 
         var playerIsEvading;      
         var playerHull;
-
         var playerLevel; 
         var playerXP;    
         var xpToNextLevel; 
         var currentSectorX, currentSectorY; 
-        
         var playerCargo; 
         var currentCargoLoad; 
         var gameMapGrid; 
@@ -424,14 +420,14 @@
         var currentOutfitContext; 
         var currentMissionContext; 
         var playerActiveMission; 
-        var missionsAvailableAtStation = []; // Initialize as an empty array
-        
-        var playerCompletedMissions = new Set(); 
-        var scannedObjectTypes = new Set(); 
-        var discoveredLocations = new Set(); 
-        var sectorCache = {}; 
-        var currentQuantityInput = ""; 
-        var currentSectorName = "Sol Sector"; 
+        var missionsAvailableAtStation;
+        var playerCompletedMissions; 
+        var scannedObjectTypes; 
+        var discoveredLocations; 
+        var sectorCache; 
+        var currentQuantityInput; 
+        var currentSectorName; 
+        var discoveredLoreEntries;
 
 
         // Mystery State
