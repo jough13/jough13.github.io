@@ -7,23 +7,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        html, body {
+        html {
             height: 100%;
             overflow: hidden; /* Prevent main page scrollbars */
             margin: 0;
             padding: 0;
+            box-sizing: border-box; /* Apply to html as well */
         }
         body {
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
             color: #D0D0D0; 
+            display: flex; /* For centering the wrapper */
+            align-items: center; /* Vertical centering for the wrapper */
+            justify-content: center; /* Horizontal centering for the wrapper */
+            height: 100%; 
+            margin: 0;
+            padding: 0; /* No padding on body itself */
+            overflow: hidden; /* Reinforce no scrollbars on body */
+            box-sizing: border-box;
+        }
+        #page-wrapper { /* New wrapper for all content */
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            /* min-height: 100vh; /* Replaced by height: 100% on html, body */
-            /* padding: 20px; /* Padding moved to a wrapper if needed, or ensure content fits */
-            box-sizing: border-box;
+            /* Optional: Add a max-width if you want to constrain the overall width on very wide screens */
+            /* max-width: 1000px; */ 
         }
         #gameContainer {
             background-color: #101022; 
@@ -107,25 +116,25 @@
             background-color: #101022; 
         }
         .game-title {
-            font-size: 44px; /* Changed from 2.8rem */
-            line-height: 48px; /* Added integer line-height */
+            font-size: 44px; 
+            line-height: 48px; 
             font-weight: 700;
             color: #00E8E8;
             text-shadow: 0 0 8px #00E8E8, 0 0 15px #00A0A0, 0 0 25px #007070; 
-            margin-bottom: 15px; /* Reduced margin slightly */
-            margin-top: 10px; /* Added a bit of top margin */
+            margin-top: 10px; /* Adjusted margin */
+            margin-bottom: 15px; 
         }
         .controls-info {
-            margin-top: 15px; /* Reduced margin slightly */
+            margin-top: 10px; /* Adjusted margin */
             font-size: 13px; 
             line-height: 20px; 
             color: #707090; 
             text-align: center;
         }
         #versionInfo {
-            margin-top: 10px; /* Reduced margin slightly */
-            font-size: 13px;  /* Changed from 0.8rem */
-            line-height: 16px; /* Added integer line-height */
+            margin-top: 10px; /* Adjusted margin */
+            font-size: 13px;  
+            line-height: 16px; 
             color: #404050; 
             text-align: center;
         }
@@ -167,53 +176,55 @@
     </style>
 </head>
 <body>
-    <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
+    <div id="page-wrapper">
+        <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
 
-    <div id="gameContainer">
-        <div id="playerStats">
-            <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-            <div class="stat-item"> 
-                <span class="stat-label">Current Sector</span>
-                <span id="sectorNameStat" class="stat">Sol Sector</span>
-                <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+        <div id="gameContainer">
+            <div id="playerStats">
+                <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
+                <div class="stat-item"> 
+                    <span class="stat-label">Current Sector</span>
+                    <span id="sectorNameStat" class="stat">Sol Sector</span>
+                    <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+                </div>
+                <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
+                
+                <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
+                <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
+                <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div> 
+                
+                <div class="stat-item">
+                    <span class="stat-label">Level / XP</span>
+                    <span id="levelXpStat" class="stat">1 (0/0)</span>
+                </div>
+                <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
+                <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
             </div>
-            <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
-            
-            <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
-            <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
-            <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div> 
-            
-            <div class="stat-item">
-                <span class="stat-label">Level / XP</span>
-                <span id="levelXpStat" class="stat">1 (0/0)</span>
+            <div id="gameMap"></div>
+            <div id="messageArea">Welcome, Explorer!</div>
+
+            <div id="codexOverlay">
+                <button id="codexCloseButton" onclick="toggleCodex(false)">&times;</button>
+                <div id="codexTitle">Codex Galactica</div>
+                <div id="codexContent">
+                    <div id="codexCategories"></div>
+                    <div id="codexEntries"></div>
+                    <div id="codexEntryText">Select an entry to read.</div>
+                </div>
             </div>
-            <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
-            <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
         </div>
-        <div id="gameMap"></div>
-        <div id="messageArea">Welcome, Explorer!</div>
 
-        <div id="codexOverlay">
-            <button id="codexCloseButton" onclick="toggleCodex(false)">&times;</button>
-            <div id="codexTitle">Codex Galactica</div>
-            <div id="codexContent">
-                <div id="codexCategories"></div>
-                <div id="codexEntries"></div>
-                <div id="codexEntryText">Select an entry to read.</div>
-            </div>
+        <div class="controls-info">
+            WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
+            Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
+            Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.3</div>
     </div>
-
-    <div class="controls-info">
-        WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
-        Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
-        Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
-    </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.2</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.2"; 
+        const GAME_VERSION = "v0.8.3"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
