@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.2 (UI Stability Fix III)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.3 (UI Stability Fix IV)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent main page scrollbars */
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
@@ -15,9 +21,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
+            /* min-height: 100vh; /* Replaced by height: 100% on html, body */
+            /* padding: 20px; /* Padding moved to a wrapper if needed, or ensure content fits */
             box-sizing: border-box;
         }
         #gameContainer {
@@ -30,13 +35,13 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; /* Added fixed height */
-            overflow: hidden; /* Added to prevent internal shifts affecting container size */
+            height: 680px; 
+            overflow: hidden; 
         }
         #gameMap {
             white-space: pre;
             font-size: 18px; 
-            line-height: 1; /* Ensures integer pixel height for map rows */
+            line-height: 1; 
             border: 1px solid #303060; 
             padding: 10px;
             border-radius: 5px;
@@ -93,7 +98,7 @@
             color: #FFD700; 
             text-align: left; 
             font-size: 16px;
-            line-height: 23px; /* Changed from 1.45 to integer */
+            line-height: 23px; 
             width: 100%;
             max-width: 720px; 
             padding: 15px; 
@@ -102,22 +107,25 @@
             background-color: #101022; 
         }
         .game-title {
-            font-size: 2.8rem; 
+            font-size: 44px; /* Changed from 2.8rem */
+            line-height: 48px; /* Added integer line-height */
             font-weight: 700;
             color: #00E8E8;
             text-shadow: 0 0 8px #00E8E8, 0 0 15px #00A0A0, 0 0 25px #007070; 
-            margin-bottom: 25px;
+            margin-bottom: 15px; /* Reduced margin slightly */
+            margin-top: 10px; /* Added a bit of top margin */
         }
         .controls-info {
-            margin-top: 20px;
-            font-size: 13px; /* Changed from 0.8rem */
-            line-height: 20px; /* Changed from 1.5 */
+            margin-top: 15px; /* Reduced margin slightly */
+            font-size: 13px; 
+            line-height: 20px; 
             color: #707090; 
             text-align: center;
         }
         #versionInfo {
-            margin-top: 15px;
-            font-size: 0.8rem;
+            margin-top: 10px; /* Reduced margin slightly */
+            font-size: 13px;  /* Changed from 0.8rem */
+            line-height: 16px; /* Added integer line-height */
             color: #404050; 
             text-align: center;
         }
