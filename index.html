@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.1 (UI Stability Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.2 (UI Stability Fix II)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -34,7 +34,7 @@
         #gameMap {
             white-space: pre;
             font-size: 18px; 
-            line-height: 1; /* Changed from 1.1 to 1 for integer pixel height */
+            line-height: 1; /* Ensures integer pixel height for map rows */
             border: 1px solid #303060; 
             padding: 10px;
             border-radius: 5px;
@@ -70,15 +70,15 @@
         .stat {
             color: #00E0E0; 
             font-weight: bold;
-            font-size: 1em; 
+            font-size: 1em; /* Relative to parent, should be fine if parent is stable */
         }
         .stat-label {
             color: #8888AA; 
-            font-size: 0.8em; 
+            font-size: 13px; /* Changed from 0.8em to fixed px */
             margin-bottom: 2px; 
         }
         .sector-coords {
-            font-size: 0.75em; 
+            font-size: 0.75em; /* This is 12px if base is 16px, usually stable */
             color: #6A6A8A; 
             margin-top: 1px;
         }
