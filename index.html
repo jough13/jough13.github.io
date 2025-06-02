@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.0 (Mission System - Robust Init)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.0 (UI Jerkiness Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -83,7 +83,8 @@
             margin-top: 1px;
         }
         #messageArea {
-            min-height: 120px; 
+            height: 120px; /* Changed from min-height to fixed height */
+            overflow-y: auto; /* Added for scrolling */
             color: #FFD700; 
             text-align: left; 
             font-size: 16px;
@@ -396,7 +397,7 @@
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
             MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
         };
-        var discoveredLoreEntries; 
+        var discoveredLoreEntries = new Set(); 
 
 
         // --- Game State ---
@@ -423,14 +424,14 @@
         var currentOutfitContext; 
         var currentMissionContext; 
         var playerActiveMission; 
-        var missionsAvailableAtStation;
+        var missionsAvailableAtStation = []; // Initialize as an empty array
         
-        var playerCompletedMissions; 
-        var scannedObjectTypes; 
-        var discoveredLocations; 
-        var sectorCache; 
-        var currentQuantityInput; 
-        var currentSectorName; 
+        var playerCompletedMissions = new Set(); 
+        var scannedObjectTypes = new Set(); 
+        var discoveredLocations = new Set(); 
+        var sectorCache = {}; 
+        var currentQuantityInput = ""; 
+        var currentSectorName = "Sol Sector"; 
 
 
         // Mystery State
@@ -788,7 +789,7 @@
             }
             // If not in a special context and a mission is active, append mission status
             if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && playerActiveMission) {
-                message += `\n<span style='color:#FFFF00;'>Current Mission: ${playerActiveMission.title}</span>`;
+                message += `\n<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}</span>`;
             }
         }
         function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
