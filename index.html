@@ -70,15 +70,18 @@
         .stat {
             color: #00E0E0; 
             font-weight: bold;
-            font-size: 1em; /* Relative to parent, should be fine if parent is stable */
+            font-size: 16px; /* Changed from 1em to fixed px */
+            line-height: 18px; /* Added integer line-height */
         }
         .stat-label {
             color: #8888AA; 
-            font-size: 13px; /* Changed from 0.8em to fixed px */
+            font-size: 12px; /* Changed from 13px for consistency */
+            line-height: 14px; /* Added integer line-height */
             margin-bottom: 2px; 
         }
         .sector-coords {
-            font-size: 0.75em; /* This is 12px if base is 16px, usually stable */
+            font-size: 12px; /* Changed from 0.75em to fixed px */
+            line-height: 14px; /* Added integer line-height */
             color: #6A6A8A; 
             margin-top: 1px;
         }
@@ -196,11 +199,11 @@
         Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
         Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
     </div>
-    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.1</div>
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.2</div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.1"; 
+        const GAME_VERSION = "v0.8.2"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
