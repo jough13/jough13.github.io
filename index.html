@@ -31,10 +31,10 @@
             display: flex;
             flex-direction: column;
             align-items: center; 
-            justify-content: center; /* Center content vertically if it's less than viewport */
+            justify-content: center; 
             width: 100%;
             max-width: 800px; 
-            height: 100vh; /* Make wrapper fill viewport height */
+            height: 100vh; 
             overflow-y: auto; /* This wrapper scrolls if its content is too tall */
             padding: 15px; 
             box-sizing: border-box;
@@ -49,8 +49,8 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; /* Reinstated fixed height */
-            overflow: hidden; /* Prevent internal content from expanding container */
+            height: 680px; /* Fixed height for the game container itself */
+            overflow: hidden; /* Content within gameContainer should not cause it to resize */
             width: 100%; 
             margin-bottom: 15px; 
         }
@@ -228,12 +228,12 @@
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.6</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.7</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.6"; 
+        const GAME_VERSION = "v0.8.7"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
