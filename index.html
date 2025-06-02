@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.0 (Mission System - Phase 1)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.0 (Mission System - Robust Init)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -396,50 +396,46 @@
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
             MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
         };
-        var discoveredLoreEntries = new Set(); 
+        var discoveredLoreEntries; 
 
 
         // --- Game State ---
         var playerX, playerY, playerFuel, playerCredits, playerShields; 
-        var playerShip = { 
-            weapon: "WEAPON_PULSE_LASER_MK1",
-            shield: "SHIELD_BASIC_ARRAY_A",
-            engine: "ENGINE_STD_DRIVE_MK1",
-            scanner: "SCANNER_BASIC_SUITE" 
-        };
-        var playerShipClass = "Light Freighter"; 
-        var playerNotoriety = 0; 
-        var playerNotorietyTitle = "Rookie Spacer"; 
-        var playerIsChargingAttack = false; 
-        var playerIsEvading = false;      
+        var playerShip;
+        var playerShipClass; 
+        var playerNotoriety; 
+        var playerNotorietyTitle; 
+        var playerIsChargingAttack; 
+        var playerIsEvading;      
         var playerHull;
 
-        var playerLevel = 1; 
-        var playerXP = 0;    
-        var xpToNextLevel = BASE_XP_TO_LEVEL; 
-        var currentSectorX = 0; var currentSectorY = 0; 
+        var playerLevel; 
+        var playerXP;    
+        var xpToNextLevel; 
+        var currentSectorX, currentSectorY; 
         
-        var playerCargo = {}; 
-        var currentCargoLoad = 0; 
-        var gameMapGrid = []; 
-        var message = ""; 
-        var currentTradeContext = null; 
-        var currentCombatContext = null; 
-        var currentOutfitContext = null; 
-        var currentMissionContext = null; 
-        var playerActiveMission = null; 
+        var playerCargo; 
+        var currentCargoLoad; 
+        var gameMapGrid; 
+        var message; 
+        var currentTradeContext; 
+        var currentCombatContext; 
+        var currentOutfitContext; 
+        var currentMissionContext; 
+        var playerActiveMission; 
+        var missionsAvailableAtStation;
         
-        var playerCompletedMissions = new Set(); 
-        var scannedObjectTypes = new Set(); 
-        var discoveredLocations = new Set(); 
-        var sectorCache = {}; 
-        var currentQuantityInput = ""; 
-        var currentSectorName = "Sol Sector"; 
+        var playerCompletedMissions; 
+        var scannedObjectTypes; 
+        var discoveredLocations; 
+        var sectorCache; 
+        var currentQuantityInput; 
+        var currentSectorName; 
 
 
         // Mystery State
-        var mystery_wayfinder_progress = 0; 
-        var mystery_wayfinder_finalLocation = null; 
+        var mystery_wayfinder_progress; 
+        var mystery_wayfinder_finalLocation; 
         const MYSTERY_WAYFINDER_TARGET_SECTOR_VOLATILITY = 5; 
         const MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE = 'unstable warp pocket'; 
         const MYSTERY_WAYFINDER_DERELICT_HINT_TYPE = 'Concord patrol craft'; 
@@ -447,6 +443,49 @@
         const MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MAX = -1;
         const MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MIN = 1;
         const MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX = 5;
+
+        // --- Mission Data ---
+        const MISSIONS_DATABASE = {
+            "Starbase Alpha": [ // Missions available at Starbase Alpha
+                {
+                    id: "BOUNTY_SOL_PIRATES_1",
+                    title: "Sol Sector Cleanup",
+                    briefing: "Concord Security offers a reward for eliminating pirate threats in the Sol sector.",
+                    description: "Pirate activity has been reported in the Sol sector (0,0). Eliminate 3 pirate vessels to claim your reward. This is a standard Concord security contract.",
+                    type: "BOUNTY",
+                    giver: "Starbase Alpha Security Chief",
+                    objectives: [{ type: "ELIMINATE", targetName: "Pirate", count: 3, targetSectorKey: "0,0" }], // targetSectorKey can be null for "anywhere" or specific
+                    rewards: { credits: 300, xp: 50, notoriety: 5 },
+                    prerequisites: null, // e.g., { level: 2, completedMission: "ANOTHER_MISSION_ID" }
+                    isRepeatable: false
+                },
+                {
+                    id: "DELIVERY_OMEGA_TECH",
+                    title: "Tech Parts for Omega",
+                    briefing: "Planet Omega's research division requires urgent tech parts.",
+                    description: "Deliver 5 units of Tech Parts to Planet Omega in the Sol sector (0,0). The science teams are waiting for these components for critical research.",
+                    type: "DELIVERY",
+                    giver: "Starbase Alpha Trade Authority",
+                    objectives: [{ type: "DELIVER", itemID: "TECH_PARTS", count: 5, destinationName: "Planet Omega", destinationSectorKey: "0,0" }],
+                    rewards: { credits: 200, xp: 40, notoriety: 2 },
+                    prerequisites: null,
+                    isRepeatable: false
+                },
+                {
+                    id: "SURVEY_SOL_ANOMALY",
+                    title: "Survey Gravimetric Anomaly",
+                    briefing: "Concord Science Division seeks data on a nearby gravimetric wave.",
+                    description: "Scan a 'gravimetric wave' type anomaly. Any sector will do for initial data, but higher sensor readings are appreciated.",
+                    type: "SURVEY",
+                    giver: "Concord Science Division (Starbase Alpha Branch)",
+                    objectives: [{ type: "SCAN_OBJECT", targetType: "anomaly", subtype: "gravimetric wave", sectorKey: "ANY" }], // ANY means any sector
+                    rewards: { credits: 150, xp: 60, notoriety: 1 },
+                    prerequisites: null,
+                    isRepeatable: false
+                }
+            ]
+            // Can add more stations and their missions here later: "Outpost Kepler-2314": [ ... ]
+        };
 
 
         // --- DOM Elements ---
@@ -538,8 +577,9 @@
             playerCompletedMissions = new Set();
             sectorCache = {};
             playerCargo = {};
-            Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0); // Ensure all commodities exist
+            Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0); 
             discoveredLoreEntries = new Set();
+            missionsAvailableAtStation = [];
 
 
             // THEN assign DOM elements
@@ -576,6 +616,7 @@
             playerNotoriety = 0;
             updateNotorietyTitle();
             playerActiveMission = null;
+            currentMissionContext = null; 
             
             playerLevel = 1; playerXP = 0; xpToNextLevel = calculateXpToNextLevel(playerLevel);
             visitedSectors.add("0,0"); 
@@ -597,7 +638,7 @@
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
             ensurePlayerStartNotOccupied(); 
-            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null; currentMissionContext = null;
+            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null; 
             updateMessage(`Welcome to ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
             renderGame();
         }
@@ -739,7 +780,17 @@
             document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         }
 
-        function updateMessage(newMessage, append = false) { /* Same as v0.6.8 */ if (append) message += "\n" + newMessage; else message = newMessage; }
+        function updateMessage(newMessage, append = false) { 
+            if (append) {
+                 message += "\n" + newMessage;
+            } else {
+                message = newMessage;
+            }
+            // If not in a special context and a mission is active, append mission status
+            if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && playerActiveMission) {
+                message += `\n<span style='color:#FFFF00;'>Current Mission: ${playerActiveMission.title}</span>`;
+            }
+        }
         function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
 
         function traverseWormhole() { 
@@ -872,11 +923,14 @@
                     case WORMHOLE_CHAR_VAL:bM+=` Unstable Wormhole detected! (T to Traverse)`; unlockLoreEntry("PHENOMENON_WORMHOLE"); break;
                 }
             }
+             if (playerActiveMission) { // Display active mission info
+                bM += `\n<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}</span>`;
+            }
             updateMessage(bM); 
         }
         
         function scanLocation() { 
-            if (currentTradeContext || currentCombatContext || currentOutfitContext) { updateMessage("Cannot scan now."); renderGame(); return; }
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
             let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             const tileObject = gameMapGrid[playerY][playerX];
@@ -978,7 +1032,7 @@
         }
 
         function scoopHydrogen() { 
-            if(currentTradeContext||currentCombatContext||currentOutfitContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
+            if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
             const cT=gameMapGrid[playerY][playerX];
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
@@ -1008,7 +1062,7 @@
         }
 
         function mineAsteroid() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
                 updateMessage("Cannot mine now.");
                 renderGame();
                 return;
@@ -1333,7 +1387,7 @@
         }
 
         function displayCargoHold() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
                 updateMessage("Cannot view cargo hold now.");
                 renderGame();
                 return;
@@ -1363,6 +1417,132 @@
         function renderCodexCategories() { /* Same as v0.6.11 */ codexCategoriesElement.innerHTML='';const cats=new Set();Object.values(LORE_DATABASE).forEach(e=>{if(discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k=>LORE_DATABASE[k]===e)))cats.add(e.category);});Array.from(cats).sort().forEach(cat=>{const cD=document.createElement('div');cD.textContent=cat;cD.className='codex-list-item';if(cat===currentCodexCategory)cD.classList.add('active');cD.onclick=()=>{currentCodexCategory=cat;renderCodexCategories();renderCodexEntries(cat);codexEntryTextElement.innerHTML="Select an entry.";};codexCategoriesElement.appendChild(cD);});}
         function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category===category&&discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}});}
 
+        // --- Mission Functions ---
+        function displayMissionBoard() {
+            const currentLocation = getCombinedLocationData(playerY, playerX);
+            if (!currentLocation || !currentLocation.isMajorHub) {
+                updateMessage("Mission board not accessible here.");
+                currentMissionContext = null; 
+                renderGame();
+                return;
+            }
+
+            missionsAvailableAtStation = []; 
+            const stationName = currentLocation.name;
+            const stationMissions = MISSIONS_DATABASE[stationName] || [];
+            
+            stationMissions.forEach(mission => {
+                if (!playerCompletedMissions.has(mission.id)) {
+                    let meetsPrereqs = true;
+                    if (mission.prerequisites) {
+                        if (mission.prerequisites.level && playerLevel < mission.prerequisites.level) meetsPrereqs = false;
+                        if (mission.prerequisites.completedMission && !playerCompletedMissions.has(mission.prerequisites.completedMission)) meetsPrereqs = false;
+                    }
+                    if (meetsPrereqs) {
+                        missionsAvailableAtStation.push(mission);
+                    }
+                }
+            });
+
+            let missionMsg = `--- ${stationName} Mission Board ---\n`;
+            if (playerActiveMission) {
+                missionMsg += `Current Active Mission: ${playerActiveMission.title}\n(Complete or abandon current mission to accept a new one.)\n\n`;
+            }
+            
+            if (missionsAvailableAtStation.length === 0) {
+                missionMsg += "No new missions currently available.\n";
+            } else {
+                missionMsg += "Available Contracts:\n";
+                missionsAvailableAtStation.forEach((mission, index) => {
+                    missionMsg += `${index + 1}. ${mission.title} - Reward: ${mission.rewards.credits}c, ${mission.rewards.xp}XP\n`;
+                });
+            }
+            missionMsg += "\nEnter # to view details, or (L) to leave.";
+            
+            currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation, stationName: stationName };
+            updateMessage(missionMsg);
+            renderGame();
+        }
+
+        function displayMissionDetails(selectedIndex) {
+            if (!currentMissionContext || currentMissionContext.step !== 'selectMission' || !currentMissionContext.availableMissions) {
+                handleInteraction(); 
+                return;
+            }
+            const mission = currentMissionContext.availableMissions[selectedIndex];
+            if (!mission) {
+                updateMessage("Invalid mission selection.");
+                displayMissionBoard(); 
+                return;
+            }
+
+            let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
+            detailMsg += `From: ${mission.giver}\n\n`;
+            detailMsg += `Description:\n${mission.description}\n\n`;
+            detailMsg += `Objectives:\n`;
+            mission.objectives.forEach(obj => {
+                if (obj.type === "ELIMINATE") detailMsg += ` - Eliminate ${obj.count} ${obj.targetName}(s) in sector ${obj.targetSectorKey === "ANY" ? "anywhere" : obj.targetSectorKey}.\n`;
+                else if (obj.type === "DELIVER") detailMsg += ` - Deliver ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName} (Sector ${obj.destinationSectorKey}).\n`;
+                else if (obj.type === "SCAN_OBJECT") detailMsg += ` - Scan a ${obj.subtype} ${obj.targetType} in sector ${obj.sectorKey === "ANY" ? "anywhere" : obj.sectorKey}.\n`;
+            });
+            detailMsg += `\nRewards: ${mission.rewards.credits} Credits, ${mission.rewards.xp} XP, ${mission.rewards.notoriety} Notoriety.\n\n`;
+            
+            if (playerActiveMission) {
+                detailMsg += "\n<span style='color:yellow;'>Note: You must complete or abandon your current mission before accepting this one.</span>\n";
+                detailMsg += "\n(L) to go back to mission board.";
+                currentMissionContext.step = 'viewOnlyDetails'; 
+            } else {
+                detailMsg += "Accept this mission? (Y/N) or (L) to go back.";
+                currentMissionContext.step = 'confirmMission';
+            }
+            currentMissionContext.selectedMission = mission; 
+            updateMessage(detailMsg);
+            renderGame();
+        }
+
+        function acceptMission() {
+            if (!currentMissionContext || currentMissionContext.step !== 'confirmMission' || !currentMissionContext.selectedMission) {
+                displayMissionBoard(); 
+                return;
+            }
+            if (playerActiveMission) { 
+                updateMessage("You already have an active mission. Complete or abandon it first.");
+                displayMissionBoard(); 
+                return;
+            }
+
+            playerActiveMission = JSON.parse(JSON.stringify(currentMissionContext.selectedMission)); 
+            playerActiveMission.progress = {};
+            playerActiveMission.objectives.forEach(obj => {
+                if (obj.type === "ELIMINATE") {
+                    playerActiveMission.progress.eliminated = 0;
+                }
+                 // TODO: Initialize progress for DELIVERY (e.g., itemsCollected) and SURVEY (e.g., scanned: false)
+            });
+
+            updateMessage(`Mission Accepted: ${playerActiveMission.title}\nCheck your logs for details (Feature TBD).`);
+            currentMissionContext = null;
+            handleInteraction(); 
+            renderGame();
+        }
+
+        function checkMissionCompletion() {
+            // This function will be expanded in Phase 2 to check objectives and grant rewards.
+            // For now, it's a placeholder.
+            if (!playerActiveMission) return;
+
+            // Example (very basic, needs actual objective checking):
+            // if (playerActiveMission.type === "BOUNTY" && playerActiveMission.progress.eliminated >= playerActiveMission.objectives[0].count) {
+            //     updateMessage(`Mission Complete: ${playerActiveMission.title}! Rewards: ${playerActiveMission.rewards.credits}c, ${playerActiveMission.rewards.xp}XP`, true);
+            //     playerCredits += playerActiveMission.rewards.credits;
+            //     playerXP += playerActiveMission.rewards.xp;
+            //     updatePlayerNotoriety(playerActiveMission.rewards.notoriety);
+            //     playerCompletedMissions.add(playerActiveMission.id);
+            //     playerActiveMission = null;
+            //     checkLevelUp();
+            // }
+        }
+
 
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
@@ -1377,6 +1557,39 @@
                 event.preventDefault();
                 return;
             }
+
+            if (currentMissionContext) {
+                if (currentMissionContext.step === 'selectMission') {
+                    const selection = parseInt(key);
+                    if (!isNaN(selection) && selection > 0 && selection <= currentMissionContext.availableMissions.length) {
+                        displayMissionDetails(selection - 1);
+                    } else if (key === 'l') {
+                        currentMissionContext = null;
+                        handleInteraction(); 
+                        renderGame();
+                    }
+                } else if (currentMissionContext.step === 'confirmMission') {
+                    if (key === 'y') {
+                        if (!playerActiveMission) {
+                           acceptMission();
+                        } else {
+                            updateMessage("Cannot accept: Another mission is already active.");
+                            displayMissionBoard(); 
+                        }
+                    } else if (key === 'n' || key === 'l') {
+                        displayMissionBoard(); 
+                    }
+                } else if (currentMissionContext.step === 'viewOnlyDetails' || currentMissionContext.step === 'noMissions') {
+                     if (key === 'l') {
+                        currentMissionContext = null;
+                        handleInteraction(); 
+                        renderGame();
+                    }
+                }
+                event.preventDefault(); 
+                return;
+            }
+
 
             if (currentOutfitContext) { 
                 if (currentOutfitContext.step === 'selectSlot') {
@@ -1417,9 +1630,28 @@
                 case 'b':const lB=getCombinedLocationData(playerY,playerX);if(lB&&((lB.sells&&lB.sells.length>0)||(lB.buys&&lB.buys.length>0)))displayTradeScreen('buy');else updateMessage("Cannot trade here.");break;
                 case 's':const lS=getCombinedLocationData(playerY,playerX);if(lS&&((lS.sells&&lS.sells.length>0)||(lS.buys&&lS.buys.length>0)))displayTradeScreen('sell');else updateMessage("Cannot trade here.");break;
                 case 'o': const locOutfit = getCombinedLocationData(playerY, playerX); if (locOutfit && locOutfit.isMajorHub) { displayOutfittingScreen(); } else { updateMessage("Ship outfitting not available here."); } break;
+                case 'k': 
+                    const locMissions = getCombinedLocationData(playerY, playerX);
+                    if (locMissions && locMissions.isMajorHub) {
+                        if (!currentTradeContext && !currentOutfitContext && !currentCombatContext) { 
+                           if (!currentMissionContext || (currentMissionContext.step !== 'selectMission' && currentMissionContext.step !== 'confirmMission' && currentMissionContext.step !== 'viewOnlyDetails')) {
+                                displayMissionBoard();
+                           } else {
+                                updateMessage("Viewing missions. Press (L) to leave mission board.");
+                           }
+                        } else {
+                            updateMessage("Cannot access missions while in another menu."); 
+                        }
+                    } else if (locMissions && !locMissions.isMajorHub) {
+                        updateMessage("No mission board available at this remote outpost.");
+                    } else if (!locMissions) { 
+                        updateMessage("You need to be docked at a station to access missions.");
+                    }
+                    break;
                 case 'l':
                     if(currentOutfitContext) { currentOutfitContext = null; handleInteraction(); renderGame(); }
                     else if(currentTradeContext) { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); }
+                    else if(currentMissionContext) { currentMissionContext = null; handleInteraction(); renderGame(); } // Added this
                     else { handleInteraction(); } 
                     break; 
                 default:return; 
