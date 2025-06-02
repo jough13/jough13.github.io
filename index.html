@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.7 (UI Stability Fix VII)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.8 (Map Rendering Optimization)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -49,8 +49,8 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; /* Fixed height for the game container itself */
-            overflow: hidden; /* Content within gameContainer should not cause it to resize */
+            /* height: 680px; Let content define height, page-wrapper handles overflow */
+            overflow: hidden; 
             width: 100%; 
             margin-bottom: 15px; 
         }
@@ -68,8 +68,9 @@
             flex-direction: column;
             align-items: center;
         }
-        #gameMap > div {
+        #gameMap > div { /* Rows in the map */
             text-align: center;
+            height: 18px; /* Match font-size * line-height */
         }
         #playerStats {
             display: grid;
@@ -448,6 +449,7 @@
         var playerCargo = {}; 
         var currentCargoLoad = 0; 
         var gameMapGrid = []; 
+        var gameMapCellElements = []; // For storing references to map cell <span> elements
         var message = ""; 
         var currentTradeContext = null; 
         var currentCombatContext = null; 
@@ -612,6 +614,8 @@
             Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0); 
             discoveredLoreEntries = new Set();
             missionsAvailableAtStation = [];
+            gameMapGrid = []; // Initialize as empty array
+            gameMapCellElements = []; // Initialize for storing span references
 
 
             // THEN assign DOM elements
@@ -631,6 +635,21 @@
             codexCategoriesElement = document.getElementById('codexCategories');
             codexEntriesElement = document.getElementById('codexEntries');
             codexEntryTextElement = document.getElementById('codexEntryText');   
+
+            // Create map cells once
+            gameMapElement.innerHTML = ''; // Clear any previous static content
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                const rowDiv = document.createElement('div');
+                gameMapCellElements[y] = [];
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    const cellSpan = document.createElement('span');
+                    // cellSpan.textContent = EMPTY_SPACE_CHAR_VAL; // Initial placeholder
+                    rowDiv.appendChild(cellSpan);
+                    gameMapCellElements[y][x] = cellSpan;
+                }
+                gameMapElement.appendChild(rowDiv);
+            }
+
 
             playerShip = { 
                 weapon: "WEAPON_PULSE_LASER_MK1", 
@@ -775,29 +794,40 @@
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
         function renderGame() { 
-            gameMapElement.innerHTML = ''; 
+            // Optimized map rendering: Only update textContent and className of existing cells
             for (let y = 0; y < MAP_HEIGHT; y++) {
-                const rD = document.createElement('div'); 
                 for (let x = 0; x < MAP_WIDTH; x++) {
-                    const cS = document.createElement('span'); 
-                    let cTD_val = gameMapGrid[y][x]; 
-                    let cTD_char = getTileChar(cTD_val); 
-                    let cC = '';
-                    if (currentCombatContext && x === playerX && y === playerY) { cTD_char = PIRATE_CHAR_VAL; cC = 'pirate-char';} 
-                    else if (x === playerX && y === playerY) { cTD_char = PLAYER_CHAR_VAL; cC = 'player-char'; } 
-                    else { 
-                        switch(cTD_char) { 
-                            case STAR_CHAR_VAL: cC = 'star-char'; break; case PLANET_CHAR_VAL: cC = 'planet-char'; break;
-                            case STARBASE_CHAR_VAL: cC = 'starbase-char'; break; case OUTPOST_CHAR_VAL: cC = 'outpost-char'; break; 
-                            case ASTEROID_CHAR_VAL: cC = 'asteroid-char'; break; case NEBULA_CHAR_VAL: cC = 'nebula-char'; break; 
-                            case DERELICT_CHAR_VAL: cC = 'derelict-char'; break; case ANOMALY_CHAR_VAL: cC = 'anomaly-char'; break; 
-                            case WORMHOLE_CHAR_VAL: cC = 'wormhole-char'; break;
-                            case EMPTY_SPACE_CHAR_VAL: cC = 'empty-space-char'; break; default: cC = 'empty-space-char'; 
+                    const cellSpan = gameMapCellElements[y][x];
+                    let tileData = gameMapGrid[y][x];
+                    let tileChar = getTileChar(tileData);
+                    let className = '';
+
+                    if (currentCombatContext && x === playerX && y === playerY) {
+                        tileChar = PIRATE_CHAR_VAL;
+                        className = 'pirate-char';
+                    } else if (x === playerX && y === playerY) {
+                        tileChar = PLAYER_CHAR_VAL;
+                        className = 'player-char';
+                    } else {
+                        switch(tileChar) {
+                            case STAR_CHAR_VAL: className = 'star-char'; break;
+                            case PLANET_CHAR_VAL: className = 'planet-char'; break;
+                            case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
+                            case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
+                            case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
+                            case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
+                            case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
+                            case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
+                            case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
+                            case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
+                            default: className = 'empty-space-char'; 
                         }
                     }
-                    cS.textContent = cTD_char; if (cC) cS.className = cC; rD.appendChild(cS);
-                } gameMapElement.appendChild(rD);
+                    if (cellSpan.textContent !== tileChar) cellSpan.textContent = tileChar;
+                    if (cellSpan.className !== className) cellSpan.className = className;
+                }
             }
+
             fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`; 
             shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
             hullStatElement.textContent = `${playerHull}/${MAX_PLAYER_HULL}`; 
