@@ -34,7 +34,7 @@
         #gameMap {
             white-space: pre;
             font-size: 18px; 
-            line-height: 1.1; 
+            line-height: 1; /* Changed from 1.1 to 1 for integer pixel height */
             border: 1px solid #303060; 
             padding: 10px;
             border-radius: 5px;
@@ -84,7 +84,7 @@
         }
         #messageArea {
             height: 120px; 
-            overflow-y: scroll; /* Changed from auto to scroll */
+            overflow-y: scroll; 
             color: #FFD700; 
             text-align: left; 
             font-size: 16px;
@@ -398,7 +398,7 @@
             MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
         };
         
-        // --- Global State Variables - Declared globally, instantiated in initializeGame ---
+        // --- Global State Variables - Declare globally, instantiate in initializeGame ---
         var playerX, playerY, playerFuel, playerCredits, playerShields; 
         var playerShip;
         var playerShipClass; 
@@ -411,23 +411,25 @@
         var playerXP;    
         var xpToNextLevel; 
         var currentSectorX, currentSectorY; 
-        var playerCargo; 
-        var currentCargoLoad; 
-        var gameMapGrid; 
-        var message; 
-        var currentTradeContext; 
-        var currentCombatContext; 
-        var currentOutfitContext; 
-        var currentMissionContext; 
-        var playerActiveMission; 
-        var missionsAvailableAtStation;
-        var playerCompletedMissions; 
-        var scannedObjectTypes; 
-        var discoveredLocations; 
-        var sectorCache; 
-        var currentQuantityInput; 
-        var currentSectorName; 
-        var discoveredLoreEntries;
+        
+        var playerCargo = {}; 
+        var currentCargoLoad = 0; 
+        var gameMapGrid = []; 
+        var message = ""; 
+        var currentTradeContext = null; 
+        var currentCombatContext = null; 
+        var currentOutfitContext = null; 
+        var currentMissionContext = null; 
+        var playerActiveMission = null; 
+        var missionsAvailableAtStation = [];
+        
+        var playerCompletedMissions = new Set(); 
+        var scannedObjectTypes = new Set(); 
+        var discoveredLocations = new Set(); 
+        var sectorCache = {}; 
+        var currentQuantityInput = ""; 
+        var currentSectorName = "Sol Sector"; 
+        var discoveredLoreEntries = new Set();
 
 
         // Mystery State
