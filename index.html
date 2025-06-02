@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.5 (UI Stability Fix VI)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.6 (UI Stability Fix V)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -18,24 +18,24 @@
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
             color: #D0D0D0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
             height: 100%; 
             margin: 0;
             padding: 0; 
             overflow: hidden; /* Reinforce no scrollbars on body */
             box-sizing: border-box;
+            /* Removed display:flex and centering properties from body */
         }
         #page-wrapper { 
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center; 
-            width: 100%; 
-            height: 100vh; 
-            overflow-y: hidden; /* Changed from auto to hidden */
-            padding: 10px 0; 
+            align-items: center; /* Center direct children horizontally */
+            justify-content: flex-start; /* Align content to the top */
+            width: 100%;
+            max-width: 800px; /* Constrain width of the main content block */
+            margin: 0 auto; /* Center the wrapper itself if viewport is wider than max-width */
+            height: 100vh; /* Make wrapper fill viewport height */
+            overflow-y: auto; /* This wrapper scrolls if its content is too tall */
+            padding: 15px; /* Padding inside the scrollable area */
             box-sizing: border-box;
         }
         #gameContainer {
@@ -48,11 +48,11 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; 
+            /* height: 680px; REMOVED fixed height */
             overflow: hidden; 
             width: 100%; 
-            max-width: 760px; 
-            margin-bottom: 10px; 
+            /* max-width: 760px; Max width is now on page-wrapper */
+            margin-bottom: 15px; 
         }
         #gameMap {
             white-space: pre;
@@ -128,23 +128,24 @@
             font-weight: 700;
             color: #00E8E8;
             text-shadow: 0 0 8px #00E8E8, 0 0 15px #00A0A0, 0 0 25px #007070; 
-            margin-top: 10px; 
-            margin-bottom: 10px; 
+            margin-top: 0; /* Rely on page-wrapper padding */
+            margin-bottom: 15px; 
         }
         .controls-info {
-            margin-top: 10px; 
+            margin-top: 0; /* Rely on gameContainer margin-bottom */
+            margin-bottom: 15px; 
             font-size: 13px; 
             line-height: 20px; 
             color: #707090; 
             text-align: center;
         }
         #versionInfo {
-            margin-top: 10px; 
+            margin-top: 0; /* Rely on controls-info margin-bottom */
+            margin-bottom: 0; /* Rely on page-wrapper padding */
             font-size: 13px;  
             line-height: 16px; 
             color: #404050; 
             text-align: center;
-            margin-bottom: 10px;
         }
 
         /* Codex Styles */
@@ -227,12 +228,12 @@
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.4</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.5</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.4"; 
+        const GAME_VERSION = "v0.8.5"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
