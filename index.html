@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.3 (UI Stability Fix IV)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.4 (UI Stability Fix V)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -12,27 +12,31 @@
             overflow: hidden; /* Prevent main page scrollbars */
             margin: 0;
             padding: 0;
-            box-sizing: border-box; /* Apply to html as well */
+            box-sizing: border-box; 
         }
         body {
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
             color: #D0D0D0; 
-            display: flex; /* For centering the wrapper */
-            align-items: center; /* Vertical centering for the wrapper */
-            justify-content: center; /* Horizontal centering for the wrapper */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
             height: 100%; 
             margin: 0;
-            padding: 0; /* No padding on body itself */
+            padding: 0; 
             overflow: hidden; /* Reinforce no scrollbars on body */
             box-sizing: border-box;
         }
-        #page-wrapper { /* New wrapper for all content */
+        #page-wrapper { 
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Optional: Add a max-width if you want to constrain the overall width on very wide screens */
-            /* max-width: 1000px; */ 
+            justify-content: center; /* Center content vertically if it's less than viewport */
+            width: 100%; /* Take full width */
+            height: 100vh; /* Take full viewport height */
+            overflow-y: auto; /* Allow scrolling within the wrapper if content overflows */
+            padding: 10px 0; /* Add some vertical padding if needed, but be mindful of total height */
+            box-sizing: border-box;
         }
         #gameContainer {
             background-color: #101022; 
@@ -44,8 +48,11 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; 
-            overflow: hidden; 
+            height: 680px; /* Fixed height for the game container itself */
+            overflow: hidden; /* Content within gameContainer should not cause it to resize */
+            width: 100%; /* Ensure it doesn't exceed page-wrapper width */
+            max-width: 760px; /* Max width for the game content area */
+            margin-bottom: 10px; /* Consistent margin */
         }
         #gameMap {
             white-space: pre;
@@ -121,22 +128,23 @@
             font-weight: 700;
             color: #00E8E8;
             text-shadow: 0 0 8px #00E8E8, 0 0 15px #00A0A0, 0 0 25px #007070; 
-            margin-top: 10px; /* Adjusted margin */
-            margin-bottom: 15px; 
+            margin-top: 10px; 
+            margin-bottom: 10px; 
         }
         .controls-info {
-            margin-top: 10px; /* Adjusted margin */
+            margin-top: 10px; 
             font-size: 13px; 
             line-height: 20px; 
             color: #707090; 
             text-align: center;
         }
         #versionInfo {
-            margin-top: 10px; /* Adjusted margin */
+            margin-top: 10px; 
             font-size: 13px;  
             line-height: 16px; 
             color: #404050; 
             text-align: center;
+            margin-bottom: 10px;
         }
 
         /* Codex Styles */
