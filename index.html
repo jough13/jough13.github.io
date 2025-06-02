@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.6 (UI Stability Fix VI)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.7 (UI Stability Fix VII)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -18,9 +18,9 @@
             font-family: 'Roboto Mono', monospace;
             background-color: #0D0D1A; 
             color: #D0D0D0; 
-            display: flex; /* For centering the wrapper */
-            align-items: center; /* Vertical centering for the wrapper */
-            justify-content: center; /* Horizontal centering for the wrapper */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
             height: 100%; 
             margin: 0;
             padding: 0; 
@@ -30,14 +30,13 @@
         #page-wrapper { 
             display: flex;
             flex-direction: column;
-            align-items: center; /* Center direct children horizontally */
-            /* justify-content: flex-start; /* Align content to the top - can be center if preferred */
+            align-items: center; 
+            justify-content: center; /* Center content vertically if it's less than viewport */
             width: 100%;
-            max-width: 800px; /* Constrain width of the main content block */
-            margin: 0 auto; /* Center the wrapper itself if viewport is wider than max-width */
-            max-height: 100vh; /* Make wrapper not exceed viewport height */
+            max-width: 800px; 
+            height: 100vh; /* Make wrapper fill viewport height */
             overflow-y: auto; /* This wrapper scrolls if its content is too tall */
-            padding: 15px; /* Padding inside the scrollable area */
+            padding: 15px; 
             box-sizing: border-box;
         }
         #gameContainer {
@@ -50,10 +49,9 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            /* height: 680px; REMOVED fixed height */
-            overflow: visible; /* Changed from hidden to allow natural height */
+            height: 680px; /* Reinstated fixed height */
+            overflow: hidden; /* Prevent internal content from expanding container */
             width: 100%; 
-            /* max-width: 760px; Max width is now on page-wrapper */
             margin-bottom: 15px; 
         }
         #gameMap {
