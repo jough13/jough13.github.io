@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.4 (UI Stability Fix V)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.5 (UI Stability Fix VI)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -31,11 +31,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* Center content vertically if it's less than viewport */
-            width: 100%; /* Take full width */
-            height: 100vh; /* Take full viewport height */
-            overflow-y: auto; /* Allow scrolling within the wrapper if content overflows */
-            padding: 10px 0; /* Add some vertical padding if needed, but be mindful of total height */
+            justify-content: center; 
+            width: 100%; 
+            height: 100vh; 
+            overflow-y: hidden; /* Changed from auto to hidden */
+            padding: 10px 0; 
             box-sizing: border-box;
         }
         #gameContainer {
@@ -48,11 +48,11 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            height: 680px; /* Fixed height for the game container itself */
-            overflow: hidden; /* Content within gameContainer should not cause it to resize */
-            width: 100%; /* Ensure it doesn't exceed page-wrapper width */
-            max-width: 760px; /* Max width for the game content area */
-            margin-bottom: 10px; /* Consistent margin */
+            height: 680px; 
+            overflow: hidden; 
+            width: 100%; 
+            max-width: 760px; 
+            margin-bottom: 10px; 
         }
         #gameMap {
             white-space: pre;
@@ -227,12 +227,12 @@
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.3</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.4</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.3"; 
+        const GAME_VERSION = "v0.8.4"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -1659,7 +1659,7 @@
                 case 'i': displayCargoHold(); break; 
                 case 't': const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)==='wormhole')traverseWormhole();else updateMessage("No wormhole here.");break;
                 case 'b':const lB=getCombinedLocationData(playerY,playerX);if(lB&&((lB.sells&&lB.sells.length>0)||(lB.buys&&lB.buys.length>0)))displayTradeScreen('buy');else updateMessage("Cannot trade here.");break;
-                case 's':const lS=getCombinedLocationData(playerY,playerX);if(lS&&((lS.sells&&lS.sells.length>0)||(lS.buys&&lS.buys.length>0)))displayTradeScreen('sell');else updateMessage("Cannot trade here.");break;
+                case 's':const lS=getCombinedLocationData(playerY,playerX);if(lS&&((lS.sells&&lS.sells.length>0)||(lS.buys&&lB.buys.length>0)))displayTradeScreen('sell');else updateMessage("Cannot trade here.");break; // Corrected lB.buys to lS.buys
                 case 'o': const locOutfit = getCombinedLocationData(playerY, playerX); if (locOutfit && locOutfit.isMajorHub) { displayOutfittingScreen(); } else { updateMessage("Ship outfitting not available here."); } break;
                 case 'k': 
                     const locMissions = getCombinedLocationData(playerY, playerX);
