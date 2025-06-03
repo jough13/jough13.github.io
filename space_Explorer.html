@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.12 (Lore & Mystery Expansion I)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.12 (Delivery Missions)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html {
             height: 100%;
-            overflow: hidden; /* Prevent main page scrollbars */
+            overflow: hidden; 
             margin: 0;
             padding: 0;
             box-sizing: border-box; 
@@ -24,7 +24,7 @@
             height: 100%; 
             margin: 0;
             padding: 0; 
-            overflow: hidden; /* Reinforce no scrollbars on body */
+            overflow: hidden; 
             box-sizing: border-box;
         }
         #page-wrapper { 
@@ -42,28 +42,28 @@
 
         /* Custom Scrollbar Styles for WebKit browsers */
         #page-wrapper::-webkit-scrollbar {
-            width: 10px; /* Width of the vertical scrollbar */
+            width: 10px; 
         }
 
         #page-wrapper::-webkit-scrollbar-track {
-            background: #101022; /* Dark background for the track */
+            background: #101022; 
             border-radius: 5px;
         }
 
         #page-wrapper::-webkit-scrollbar-thumb {
-            background-color: #00A0A0; /* Cyan/Teal color for the thumb */
+            background-color: #00A0A0; 
             border-radius: 5px;
-            border: 2px solid #101022; /* Creates a small border around the thumb */
+            border: 2px solid #101022; 
         }
 
         #page-wrapper::-webkit-scrollbar-thumb:hover {
-            background-color: #00E0E0; /* Brighter cyan/teal on hover */
+            background-color: #00E0E0; 
         }
         
-        /* Firefox scrollbar styling (less customizable) */
+        /* Firefox scrollbar styling */
         #page-wrapper {
-            scrollbar-width: thin; /* "auto" or "thin" */
-            scrollbar-color: #00A0A0 #101022; /* thumb color track color */
+            scrollbar-width: thin; 
+            scrollbar-color: #00A0A0 #101022; 
         }
 
 
@@ -255,14 +255,15 @@
         <div class="controls-info">
             WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
+            Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.11</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.12</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.11"; 
+        const GAME_VERSION = "v0.8.12"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -526,7 +527,7 @@
                     briefing: "Concord Security offers a reward for eliminating pirate threats in the Sol sector.",
                     description: "Pirate activity has been reported in the Sol sector (0,0). Eliminate 3 pirate vessels to claim your reward. This is a standard Concord security contract.",
                     type: "BOUNTY",
-                    giver: "Starbase Alpha Security Chief", // For turn-in, this should match a location name
+                    giver: "Starbase Alpha", // Giver should match a location name for turn-in
                     objectives: [{ type: "ELIMINATE", targetName: "Pirate", count: 3, targetSectorKey: "0,0" }], 
                     rewards: { credits: 300, xp: 50, notoriety: 5 },
                     prerequisites: null, 
@@ -536,9 +537,9 @@
                     id: "DELIVERY_OMEGA_TECH",
                     title: "Tech Parts for Omega",
                     briefing: "Planet Omega's research division requires urgent tech parts.",
-                    description: "Deliver 5 units of Tech Parts to Planet Omega in the Sol sector (0,0). The science teams are waiting for these components for critical research.",
+                    description: "Deliver 5 units of Tech Parts to Planet Omega in the Sol sector (0,0). The science teams are waiting for these components for critical research. Return to Starbase Alpha Trade Authority for payment.",
                     type: "DELIVERY",
-                    giver: "Starbase Alpha Trade Authority",
+                    giver: "Starbase Alpha", // Giver for final turn-in
                     objectives: [{ type: "DELIVER", itemID: "TECH_PARTS", count: 5, destinationName: "Planet Omega", destinationSectorKey: "0,0" }],
                     rewards: { credits: 200, xp: 40, notoriety: 2 },
                     prerequisites: null,
@@ -550,7 +551,7 @@
                     briefing: "Concord Science Division seeks data on a nearby gravimetric wave.",
                     description: "Scan a 'gravimetric wave' type anomaly. Any sector will do for initial data, but higher sensor readings are appreciated. Return to Starbase Alpha with your findings.",
                     type: "SURVEY",
-                    giver: "Starbase Alpha Science Officer", // For turn-in
+                    giver: "Starbase Alpha", // Giver for final turn-in
                     objectives: [{ type: "SCAN_OBJECT", targetType: "anomaly", subtype: "gravimetric wave", sectorKey: "ANY" }], 
                     rewards: { credits: 150, xp: 60, notoriety: 1 },
                     prerequisites: null,
@@ -882,15 +883,15 @@
             if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && playerActiveMission) {
                 let missionStatus = `<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}`;
                 if (playerActiveMission.isComplete) {
-                    missionStatus += ` - Ready to turn in at ${playerActiveMission.giver}.</span>`;
+                    missionStatus += ` - Ready to turn in at ${playerActiveMission.giver}. (Press G)</span>`;
                 } else {
                     let firstIncompleteObjective = "";
                     for(let i=0; i < playerActiveMission.objectives.length; i++) {
                         const obj = playerActiveMission.objectives[i];
-                        const progressKey = `${obj.type.toLowerCase()}_${i}`; // Ensure progressKey matches initialization
+                        const progressKey = `${obj.type.toLowerCase()}_${i}`; 
                         const objectiveProgress = playerActiveMission.progress[progressKey];
                         
-                        if (objectiveProgress && !objectiveProgress.complete) { // Check if objectiveProgress exists
+                        if (objectiveProgress && !objectiveProgress.complete) { 
                             if (obj.type === "ELIMINATE") {
                                 firstIncompleteObjective = ` - Eliminate ${objectiveProgress.required - objectiveProgress.current} more ${obj.targetName}(s)`;
                                 if (obj.targetSectorKey !== "ANY") firstIncompleteObjective += ` in ${obj.targetSectorKey}`;
@@ -1017,6 +1018,22 @@
                     actionsAvailable += "Missions (K). ";
                 }
                 actionsAvailable += "Leave (L).";
+                
+                // Check for mission-specific actions
+                if (playerActiveMission && !playerActiveMission.isComplete) {
+                    playerActiveMission.objectives.forEach((obj, index) => {
+                        const progressKey = `${obj.type.toLowerCase()}_${index}`;
+                        const objectiveProgress = playerActiveMission.progress[progressKey];
+                        if (obj.type === "DELIVERY" && objectiveProgress && !objectiveProgress.complete &&
+                            l.name === obj.destinationName && `${currentSectorX},${currentSectorY}` === obj.destinationSectorKey) {
+                            actionsAvailable += ` Complete Delivery for '${playerActiveMission.title}' (C).`;
+                        }
+                    });
+                }
+                if (playerActiveMission && playerActiveMission.isComplete && l.name === playerActiveMission.giver) {
+                     actionsAvailable += ` <span style='color:#00FF00;'>Claim Reward for '${playerActiveMission.title}' (G).</span>`;
+                }
+
                 bM += "\nActions: " + actionsAvailable;
 
                 if(l.type===STARBASE_CHAR_VAL||l.type===OUTPOST_CHAR_VAL){ 
@@ -1032,10 +1049,6 @@
                     unlockLoreEntry(`LOCATION_${l.name.replace(/\s+/g, '_').toUpperCase()}`); 
                     checkLevelUp();
                 }
-                 // Check for mission turn-in availability
-                if (playerActiveMission && playerActiveMission.isComplete && l.name === playerActiveMission.giver) {
-                    bM += `\n<span style='color:#00FF00;'>Claim Reward for '${playerActiveMission.title}' (Press G).</span>`;
-                }
             } else {
                 switch(tileChar){ 
                     case STAR_CHAR_VAL:bM+=` Near star. (H to Scoop Fuel)`; unlockLoreEntry("PHENOMENON_STAR"); break; 
@@ -1046,7 +1059,6 @@
                     case WORMHOLE_CHAR_VAL:bM+=` Unstable Wormhole detected! (T to Traverse)`; unlockLoreEntry("PHENOMENON_WORMHOLE"); break;
                 }
             }
-            // This will be updated by updateMessage if a mission is active
             updateMessage(bM); 
         }
         
@@ -1214,12 +1226,12 @@
                     if (obj.type === "SCAN_OBJECT") {
                         const progressKey = `survey_${index}`;
                         const objectiveProgress = playerActiveMission.progress[progressKey];
-                        if (objectiveProgress && !objectiveProgress.scanned && // Check if objectiveProgress exists
+                        if (objectiveProgress && !objectiveProgress.scanned && 
                             tileObject && getTileType(tileObject) === obj.targetType && tileObject.subtype === obj.subtype &&
                             (obj.sectorKey === "ANY" || obj.sectorKey === `${currentSectorX},${currentSectorY}`)) {
                             
                             objectiveProgress.scanned = true;
-                            objectiveProgress.complete = true;
+                            objectiveProgress.complete = true; // Mark this specific objective as complete
                             scanMessage += `\n<span style='color:#00FF00;'>Mission Objective Update: ${obj.subtype} ${obj.targetType} scanned for "${playerActiveMission.title}".</span>`;
                         }
                     }
@@ -1650,7 +1662,7 @@
             const stationMissions = MISSIONS_DATABASE[stationName] || [];
             
             stationMissions.forEach(mission => {
-                if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id) ) { // Don't show active mission as available
+                if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id) ) { 
                     let meetsPrereqs = true;
                     if (mission.prerequisites) {
                         if (mission.prerequisites.level && playerLevel < mission.prerequisites.level) meetsPrereqs = false;
@@ -1695,7 +1707,7 @@
             }
 
             let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
-            detailMsg += `From: ${mission.giver}\n\n`;
+            detailMsg += `From: ${mission.giver}\n\n`; // Giver is the station name for turn-in
             detailMsg += `Description:\n${mission.description}\n\n`;
             detailMsg += `Objectives:\n`;
             mission.objectives.forEach(obj => {
@@ -1730,7 +1742,7 @@
             }
 
             playerActiveMission = JSON.parse(JSON.stringify(currentMissionContext.selectedMission)); 
-            playerActiveMission.isComplete = false; // Explicitly set
+            playerActiveMission.isComplete = false; 
             playerActiveMission.progress = {};
             playerActiveMission.objectives.forEach((obj, index) => {
                 const progressKeyBase = obj.type.toLowerCase();
@@ -1745,9 +1757,55 @@
 
             updateMessage(`Mission Accepted: ${playerActiveMission.title}`);
             currentMissionContext = null;
-            handleInteraction(); // This will call updateMessage again, which will append the active mission status
+            handleInteraction(); 
             renderGame();
         }
+        
+        function handleCompleteDelivery() {
+            if (!playerActiveMission || playerActiveMission.type !== "DELIVERY" || playerActiveMission.isComplete) {
+                updateMessage("No active delivery to complete here.");
+                renderGame();
+                return;
+            }
+
+            const currentLocation = getCombinedLocationData(playerY, playerX);
+            if (!currentLocation) {
+                updateMessage("Error: Not currently at a recognized location.");
+                renderGame();
+                return;
+            }
+
+            let deliveryMade = false;
+            playerActiveMission.objectives.forEach((obj, index) => {
+                if (obj.type === "DELIVERY") {
+                    const progressKey = `delivery_${index}`;
+                    const objectiveProgress = playerActiveMission.progress[progressKey];
+
+                    if (objectiveProgress && !objectiveProgress.complete &&
+                        currentLocation.name === obj.destinationName &&
+                        `${currentSectorX},${currentSectorY}` === obj.destinationSectorKey) {
+                        
+                        if (playerCargo[obj.itemID] >= obj.count) {
+                            playerCargo[obj.itemID] -= obj.count;
+                            updateCurrentCargoLoad();
+                            objectiveProgress.delivered = obj.count; // Mark this objective's delivery as done
+                            objectiveProgress.complete = true;
+                            updateMessage(`Delivered ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.`, true);
+                            deliveryMade = true;
+                        } else {
+                            updateMessage(`You don't have enough ${COMMODITIES[obj.itemID].name}. Required: ${obj.count}, You have: ${playerCargo[obj.itemID] || 0}.`, true);
+                        }
+                    }
+                }
+            });
+
+            if (deliveryMade) {
+                checkMissionObjectiveCompletion();
+            }
+            handleInteraction(); // Refresh docked message
+            renderGame();
+        }
+
 
         function checkMissionObjectiveCompletion() {
             if (!playerActiveMission || playerActiveMission.isComplete) return false;
@@ -1758,46 +1816,29 @@
                 const progressKey = `${objective.type.toLowerCase()}_${i}`;
                 const objectiveProgress = playerActiveMission.progress[progressKey];
 
-                if (!objectiveProgress) { 
+                if (!objectiveProgress || !objectiveProgress.complete) { 
                     allObjectivesNowComplete = false; 
-                    break;
-                }
-
-                if (objective.type === "ELIMINATE") {
-                    if (objectiveProgress.current < objective.required) {
-                        allObjectivesNowComplete = false; break;
-                    } else if (!objectiveProgress.complete) {
-                        objectiveProgress.complete = true; 
-                    }
-                } else if (objective.type === "SURVEY") {
-                    if (!objectiveProgress.scanned) {
-                        allObjectivesNowComplete = false; break;
-                    } else if (!objectiveProgress.complete) {
-                         objectiveProgress.complete = true; 
-                    }
-                } else if (objective.type === "DELIVERY") {
-                    if (objectiveProgress.delivered < objective.required) {
-                        allObjectivesNowComplete = false; break;
-                    } else if (!objectiveProgress.complete) {
-                        objectiveProgress.complete = true;
-                    }
-                }
-                 if (!objectiveProgress.complete) { 
-                    allObjectivesNowComplete = false;
                     break;
                 }
             }
 
             if (allObjectivesNowComplete && !playerActiveMission.isComplete) { 
                 playerActiveMission.isComplete = true;
-                updateMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} at ${LOCATIONS_DATA[playerActiveMission.giver] ? LOCATIONS_DATA[playerActiveMission.giver].name : playerActiveMission.giver} to claim your reward.`, true);
-                renderGame(); 
+                updateMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
+                // No need to call renderGame() here, updateMessage will trigger it via handleInteraction or next player input
             }
             return allObjectivesNowComplete;
         }
         
         function grantMissionRewards() {
             if (!playerActiveMission || !playerActiveMission.isComplete) return;
+            const currentLocation = getCombinedLocationData(playerY, playerX);
+            if (!currentLocation || currentLocation.name !== playerActiveMission.giver) {
+                updateMessage("You must be at " + playerActiveMission.giver + " to claim this reward.");
+                renderGame();
+                return;
+            }
+
 
             const mission = playerActiveMission; 
             playerCredits += mission.rewards.credits;
@@ -1913,25 +1954,29 @@
                     case 'b':
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('buy'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); }
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
                         break;
                     case 's': 
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('sell'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); }
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
                         break;
                     case 'o': 
                         if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } 
-                        else { updateMessage("Ship outfitting not available here."); }
+                        else { updateMessage("Ship outfitting not available here."); actionTaken = true; }
                         break;
                     case 'k':
                         if (currentLocation.isMajorHub) { displayMissionBoard(); actionTaken = true; } 
-                        else { updateMessage("No mission board available at this remote outpost."); }
+                        else { updateMessage("No mission board available at this remote outpost."); actionTaken = true; }
+                        break;
+                    case 'c': // Complete Delivery
+                        if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
+                            handleCompleteDelivery(); actionTaken = true;
+                        }
                         break;
                     case 'g': // Grant mission rewards / Turn in
                         if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                            grantMissionRewards();
-                            actionTaken = true;
+                            grantMissionRewards(); actionTaken = true;
                         }
                         break;
                     case 'l': 
