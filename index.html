@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.8 (Map Rendering Optimization)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.8 (Lore Expansion I)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -35,7 +35,7 @@
             width: 100%;
             max-width: 800px; 
             height: 100vh; 
-            overflow-y: auto; /* This wrapper scrolls if its content is too tall */
+            overflow-y: auto; 
             padding: 15px; 
             box-sizing: border-box;
         }
@@ -49,7 +49,7 @@
             flex-direction: column;
             align-items: center;
             position: relative; 
-            /* height: 680px; Let content define height, page-wrapper handles overflow */
+            height: 680px; 
             overflow: hidden; 
             width: 100%; 
             margin-bottom: 15px; 
@@ -68,9 +68,9 @@
             flex-direction: column;
             align-items: center;
         }
-        #gameMap > div { /* Rows in the map */
+        #gameMap > div { 
             text-align: center;
-            height: 18px; /* Match font-size * line-height */
+            height: 18px; 
         }
         #playerStats {
             display: grid;
@@ -229,12 +229,12 @@
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.7</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.8</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.7"; 
+        const GAME_VERSION = "v0.8.8"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -408,10 +408,10 @@
 
         // --- Lore Database ---
         const LORE_DATABASE = { 
-            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions.", unlocked: false },
-            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes and warrior traditions. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans.", unlocked: false },
-            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
-            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space.", unlocked: false },
+            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions. Publicly, the Concord promotes ideals of unity and progress, but critics point to its vast surveillance network and the suppression of dissenting voices on fringe worlds.", unlocked: false },
+            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes, warrior traditions, and a rigid caste system. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans. They view most other sentient species as 'unworthy' or 'inferior,' a stance that often complicates diplomatic relations.", unlocked: false },
+            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae, utilizing hit-and-run tactics and often disabling ships to plunder them rather than outright destroying them, unless provoked. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
+            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space. Some say their ultimate goal is to achieve a collective apotheosis by merging with the void itself, a concept most find terrifying.", unlocked: false },
             LOCATION_STARBASE_ALPHA: { title: "Starbase Alpha", category: "Locations", text: LOCATIONS_DATA["Starbase Alpha"].scanFlavor, unlocked: false },
             LOCATION_PLANET_OMEGA: { title: "Planet Omega", category: "Locations", text: LOCATIONS_DATA["Planet Omega"].scanFlavor, unlocked: false },
             LOCATION_PLANET_XERXES: { title: "Planet Xerxes", category: "Locations", text: LOCATIONS_DATA["Planet Xerxes"].scanFlavor, unlocked: false },
@@ -420,12 +420,17 @@
             PHENOMENON_ASTEROID: { title: "Asteroid Fields", category: "Phenomena", text: "Belts of rock, ice, and metal, often remnants of planetary formation or shattered celestial bodies. They can be rich in minerals but are also hazardous to navigate and popular hiding spots for pirates. Some fields contain unique crystalline structures or are known to be ancient battlefields, littered with the debris of forgotten wars.", unlocked: false },
             PHENOMENON_NEBULA: { title: "Nebulae", category: "Phenomena", text: "Vast clouds of interstellar gas and dust. Emission nebulae glow brightly from ionized gas, reflection nebulae shine with light from nearby stars, and dark nebulae obscure what lies within. They can interfere with sensors and hide many secrets, from stellar nurseries to pirate bases, and even pockets of unique lifeforms or strange, psychoactive gases like those that form Sentient Mycelium.", unlocked: false },
             PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence.", unlocked: false },
-            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a catastrophic war against an unknown enemy ('The Silencers') or even a self-inflicted technological cataclysm. Their understanding of spacetime and energy was profound.", unlocked: false },
+            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), to a self-inflicted technological cataclysm, or even a voluntary departure from this dimension. Some believe they seeded the galaxy with life, or that they await a time to return, judging the civilizations that followed. The concept of the 'Great Filter' is often associated with their fate.", unlocked: false },
             XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, others are ancient mysteries from forgotten eras or unknown civilizations. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active defenses, hostile lifeforms, or be booby-trapped by their former owners or later scavengers.", unlocked: false },
             XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions and temporal loops to strange energy fields and tears in reality. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars of cosmic entities.", unlocked: false },
+            
+            TECH_FTL_DRIVES: { title: "FTL Drives", category: "Technology", text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives utilize controlled warp field manipulation, requiring Dilithium crystals as a focusing agent. Older, less stable 'jump drive' technology exists but is unpredictable. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel, and K'tharr ships are known for their unique FTL signatures that defy easy Concord tracking.", unlocked: false },
+            TECH_PHASE_SHIFT_ALLOY: { title: "Phase-Shifted Alloy", category: "Technology", text: COMMODITIES.PHASE_SHIFTED_ALLOY.description + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions. Concord scientists have tried for decades to replicate it with limited success, often resulting in catastrophic instability.", unlocked: false },
+            
+            LEGEND_VOID_KRAKEN: { title: "The Void Kraken", category: "Myths & Legends", text: "A chilling legend among deep-space haulers and explorers. Said to be a colossal, energy-based or etheric lifeform inhabiting the darkest nebulae or the void between galaxies. Descriptions vary wildly, from a creature of pure shadow with glowing eyes to a being of shifting, impossible geometries. Most dismiss it as space-madness or misidentified sensor ghosts, but some derelicts are found with strange, energy-based scarring and no trace of their crews, fueling the terrifying myth.", unlocked: false },
+            LEGEND_SENTIENT_MYCELIUM_NETWORK: { title: "Sentient Mycelium Network", category: "Myths & Legends", text: COMMODITIES.SENTIENT_MYCELIUM.description + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe, or at least observes it with an alien intellect. Contact is said to be transformative, but often at the cost of sanity.", unlocked: false },
+
             COMMODITY_WAYFINDER_CORE: { title: "Wayfinder Core", category: "Commodities", text: COMMODITIES.WAYFINDER_CORE.description, unlocked: false },
-            COMMODITY_SENTIENT_MYCELIUM: { title: "Sentient Mycelium", category: "Commodities", text: COMMODITIES.SENTIENT_MYCELIUM.description, unlocked: false },
-            COMMODITY_PHASE_SHIFTED_ALLOY: { title: "Phase-Shifted Alloy", category: "Commodities", text: COMMODITIES.PHASE_SHIFTED_ALLOY.description, unlocked: false },
             COMMODITY_KTHARR_ANCESTRAL_BLADE: { title: "K'tharr Ancestral Blade", category: "Commodities", text: COMMODITIES.KTHARR_ANCESTRAL_BLADE.description, unlocked: false },
             COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT: { title: "Precursor Star Map Fragment", category: "Commodities", text: COMMODITIES.PRECURSOR_STAR_MAP_FRAGMENT.description, unlocked: false },
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
