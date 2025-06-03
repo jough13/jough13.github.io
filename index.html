@@ -30,6 +30,9 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             animation: gradientAnimation 10s ease infinite;
+            /* Added padding to prevent clipping of descenders like 'g' */
+            padding-bottom: 0.1em; /* Adjust as needed */
+            display: inline-block; /* Ensures padding is applied correctly with background-clip */
         }
         @keyframes gradientAnimation {
             0% { background-position: 0% 50%; }
@@ -45,7 +48,9 @@
 
         <!-- Header Title -->
         <header class="mb-10">
-            <h1 class="text-4xl sm:text-5xl font-bold gradient-text">My Coding Adventures</h1>
+            <h1 class="text-4xl sm:text-5xl font-bold">
+                <span class="gradient-text">My Coding Adventures</span>
+            </h1>
             <p class="text-gray-400 mt-3 text-lg">Explore my latest projects!</p>
         </header>
 
@@ -68,7 +73,7 @@
 
         <!-- Footer -->
         <footer class="mt-12 text-gray-500 text-sm">
-            <p>&copy; <span id="currentYear"></span> Jough Donakowski. All rights reserved.</p>
+            <p>&copy; <span id="currentYear"></span> Your Name Here. All rights reserved.</p>
             <p>Powered by imagination and code.</p>
         </footer>
     </div>
