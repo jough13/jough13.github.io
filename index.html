@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.8 (Lore Expansion I)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.11 (Lore Expansion II)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -39,6 +39,34 @@
             padding: 15px; 
             box-sizing: border-box;
         }
+
+        /* Custom Scrollbar Styles for WebKit browsers */
+        #page-wrapper::-webkit-scrollbar {
+            width: 10px; /* Width of the vertical scrollbar */
+        }
+
+        #page-wrapper::-webkit-scrollbar-track {
+            background: #101022; /* Dark background for the track */
+            border-radius: 5px;
+        }
+
+        #page-wrapper::-webkit-scrollbar-thumb {
+            background-color: #00A0A0; /* Cyan/Teal color for the thumb */
+            border-radius: 5px;
+            border: 2px solid #101022; /* Creates a small border around the thumb */
+        }
+
+        #page-wrapper::-webkit-scrollbar-thumb:hover {
+            background-color: #00E0E0; /* Brighter cyan/teal on hover */
+        }
+        
+        /* Firefox scrollbar styling (less customizable) */
+        #page-wrapper {
+            scrollbar-width: thin; /* "auto" or "thin" */
+            scrollbar-color: #00A0A0 #101022; /* thumb color track color */
+        }
+
+
         #gameContainer {
             background-color: #101022; 
             padding: 20px;
@@ -229,12 +257,12 @@
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.8</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.10</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.8"; 
+        const GAME_VERSION = "v0.8.10"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -408,10 +436,10 @@
 
         // --- Lore Database ---
         const LORE_DATABASE = { 
-            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions. Publicly, the Concord promotes ideals of unity and progress, but critics point to its vast surveillance network and the suppression of dissenting voices on fringe worlds.", unlocked: false },
-            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes, warrior traditions, and a rigid caste system. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans. They view most other sentient species as 'unworthy' or 'inferior,' a stance that often complicates diplomatic relations.", unlocked: false },
-            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae, utilizing hit-and-run tactics and often disabling ships to plunder them rather than outright destroying them, unless provoked. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
-            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space. Some say their ultimate goal is to achieve a collective apotheosis by merging with the void itself, a concept most find terrifying.", unlocked: false },
+            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. Governed by a High Council and enforced by Sector Commands, its influence is vast. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions. Publicly, the Concord promotes ideals of unity and progress, but critics point to its vast surveillance network and the suppression of dissenting voices on fringe worlds. Many citizens, however, appreciate the stability and relative safety the Concord provides compared to the lawless outer rim.", unlocked: false },
+            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes, warrior traditions, and a rigid caste system dictated by bloodline and combat prowess. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans, said to contain the 'Ancestral Echoes' of past wielders. They view most other sentient species as 'unworthy' or 'inferior,' a stance that often complicates diplomatic relations, though they maintain pragmatic trade relations when it suits their interests.", unlocked: false },
+            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae, utilizing hit-and-run tactics with retrofitted freighters and agile interceptors. They often disable ships to plunder them rather than outright destroying them, unless provoked or if a bounty is high enough. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
+            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space. Some say their ultimate goal is to achieve a collective apotheosis by merging with the void itself, a concept most find terrifying. They refer to this event as the 'Great Awakening' or 'Final Silence'.", unlocked: false },
             LOCATION_STARBASE_ALPHA: { title: "Starbase Alpha", category: "Locations", text: LOCATIONS_DATA["Starbase Alpha"].scanFlavor, unlocked: false },
             LOCATION_PLANET_OMEGA: { title: "Planet Omega", category: "Locations", text: LOCATIONS_DATA["Planet Omega"].scanFlavor, unlocked: false },
             LOCATION_PLANET_XERXES: { title: "Planet Xerxes", category: "Locations", text: LOCATIONS_DATA["Planet Xerxes"].scanFlavor, unlocked: false },
@@ -419,16 +447,22 @@
             PHENOMENON_STAR: { title: "Stars", category: "Phenomena", text: "Suns are the hearts of stellar systems, providing light, heat, and the raw hydrogen fuel essential for FTL travel. They come in many types, from stable G-type stars like Sol to volatile blue giants and dying red dwarfs. Some, like pulsars or neutron stars, are extreme cosmic objects with unique properties and dangers. Ancient civilizations often worshipped their stars, and some Precursor structures seem designed to harness stellar energy directly.", unlocked: false },
             PHENOMENON_ASTEROID: { title: "Asteroid Fields", category: "Phenomena", text: "Belts of rock, ice, and metal, often remnants of planetary formation or shattered celestial bodies. They can be rich in minerals but are also hazardous to navigate and popular hiding spots for pirates. Some fields contain unique crystalline structures or are known to be ancient battlefields, littered with the debris of forgotten wars.", unlocked: false },
             PHENOMENON_NEBULA: { title: "Nebulae", category: "Phenomena", text: "Vast clouds of interstellar gas and dust. Emission nebulae glow brightly from ionized gas, reflection nebulae shine with light from nearby stars, and dark nebulae obscure what lies within. They can interfere with sensors and hide many secrets, from stellar nurseries to pirate bases, and even pockets of unique lifeforms or strange, psychoactive gases like those that form Sentient Mycelium.", unlocked: false },
-            PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence.", unlocked: false },
-            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), to a self-inflicted technological cataclysm, or even a voluntary departure from this dimension. Some believe they seeded the galaxy with life, or that they await a time to return, judging the civilizations that followed. The concept of the 'Great Filter' is often associated with their fate.", unlocked: false },
-            XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, others are ancient mysteries from forgotten eras or unknown civilizations. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active defenses, hostile lifeforms, or be booby-trapped by their former owners or later scavengers.", unlocked: false },
-            XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions and temporal loops to strange energy fields and tears in reality. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars of cosmic entities.", unlocked: false },
+            PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence, classifying any verified sightings as 'localized gravimetric shear events'.", unlocked: false },
+            PHENOMENON_VOID_CRYSTALS: { title: "Void Crystals", category: "Technology & Phenomena", text: COMMODITIES.VOID_CRYSTALS.description + " These strange formations are often found near intense gravitational anomalies or within the hearts of particularly dense dark nebulae. They defy easy analysis, absorbing most sensor scans. Some theorize they are a form of exotic matter, or even biological in origin, perhaps the dormant state of some void-dwelling lifeform. Their value lies in their rarity and the esoteric research being conducted by fringe science groups and cults like the Children of the Void.", unlocked: false },
+            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers' or 'Star-Eaters'), a self-inflicted technological cataclysm due to experiments with spacetime, or even a voluntary departure from this dimension to escape an even greater threat. Some believe they seeded the galaxy with life, or that they await a time to return, judging the civilizations that followed. The concept of the 'Great Filter' – a hypothetical barrier to the long-term survival of intelligent life – is often associated with their fate.", unlocked: false },
+            XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, their emergency beacons long dead. Others are ancient mysteries from forgotten eras or unknown civilizations, their hulls scarred by weapons beyond current comprehension or simply worn down by eons adrift. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active (and often hostile) automated defenses, dormant alien lifeforms, or be booby-trapped by their former owners or later scavengers.", unlocked: false },
+            XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions that crush hulls, temporal loops that replay moments in time, subspace echoes that whisper maddening secrets, to exotic particle clouds that interfere with ship systems or even induce mutations in organic matter. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars left by cosmic entities of unimaginable power.", unlocked: false },
             
-            TECH_FTL_DRIVES: { title: "FTL Drives", category: "Technology", text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives utilize controlled warp field manipulation, requiring Dilithium crystals as a focusing agent. Older, less stable 'jump drive' technology exists but is unpredictable. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel, and K'tharr ships are known for their unique FTL signatures that defy easy Concord tracking.", unlocked: false },
-            TECH_PHASE_SHIFT_ALLOY: { title: "Phase-Shifted Alloy", category: "Technology", text: COMMODITIES.PHASE_SHIFTED_ALLOY.description + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions. Concord scientists have tried for decades to replicate it with limited success, often resulting in catastrophic instability.", unlocked: false },
+            TECH_FTL_DRIVES: { title: "FTL Drives", category: "Technology & Phenomena", text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives, like the standard Alcubierre-Ishikawa Warp Drive, utilize controlled warp field manipulation to contract spacetime ahead of the vessel and expand it behind, requiring Dilithium crystals as a focusing agent and energy conduit. Older, less stable 'jump drive' technology exists but is highly unpredictable and prone to misjumps into uncharted (and often hostile) territory. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel between fixed points, and K'tharr ships are known for their unique FTL signatures that defy easy Concord tracking, possibly utilizing localized wormhole generation or a form of non-linear spacetime navigation.", unlocked: false },
+            TECH_PHASE_SHIFT_ALLOY: { title: "Phase-Shifted Alloy", category: "Technology & Phenomena", text: COMMODITIES.PHASE_SHIFTED_ALLOY.description + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Concord scientists have tried for decades to replicate it with limited success, often resulting in catastrophic instability or the alloy simply vanishing from this dimension. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.", unlocked: false },
             
-            LEGEND_VOID_KRAKEN: { title: "The Void Kraken", category: "Myths & Legends", text: "A chilling legend among deep-space haulers and explorers. Said to be a colossal, energy-based or etheric lifeform inhabiting the darkest nebulae or the void between galaxies. Descriptions vary wildly, from a creature of pure shadow with glowing eyes to a being of shifting, impossible geometries. Most dismiss it as space-madness or misidentified sensor ghosts, but some derelicts are found with strange, energy-based scarring and no trace of their crews, fueling the terrifying myth.", unlocked: false },
-            LEGEND_SENTIENT_MYCELIUM_NETWORK: { title: "Sentient Mycelium Network", category: "Myths & Legends", text: COMMODITIES.SENTIENT_MYCELIUM.description + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe, or at least observes it with an alien intellect. Contact is said to be transformative, but often at the cost of sanity.", unlocked: false },
+            LEGEND_VOID_KRAKEN: { title: "The Void Kraken", category: "Myths & Legends", text: "A chilling legend among deep-space haulers and explorers. Said to be a colossal, energy-based or etheric lifeform inhabiting the darkest nebulae or the void between galaxies. Descriptions vary wildly: some claim it's a creature of pure shadow with glowing, malevolent eyes, others a being of shifting, impossible geometries that defy perception. Most dismiss it as space-madness, sensor ghosts, or misidentified stellar phenomena. However, some derelicts are found with strange, energy-based scarring that no known weapon could inflict, their logs wiped, and their crews invariably missing without a trace, fueling the terrifying myth of the Kraken's hunger.", unlocked: false },
+            LEGEND_SENTIENT_MYCELIUM_NETWORK: { title: "Sentient Mycelium Network", category: "Myths & Legends", text: COMMODITIES.SENTIENT_MYCELIUM.description + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe, or at least observes it with an alien intellect. Contact is said to be transformative, offering glimpses of other realities or profound cosmic truths, but often at the cost of sanity or one's individual consciousness being subsumed into the network. The K'tharr revere it as a sacred entity, while the Concord views it as a dangerous biological hazard.", unlocked: false },
+            
+            REGION_SOL_SECTOR: { title: "Sol Sector (0,0)", category: "Notable Star Systems/Regions", text: "The birthplace of humanity's interstellar expansion and the heart of the Galactic Concord. Home to Starbase Alpha, the primary administrative and commercial hub of this region of space. While heavily patrolled by the CDF, its high traffic makes it a target for opportunistic pirates and smugglers. Contains several well-charted planets, including Planet Omega, a key research and resource center.", unlocked: true }, // Unlocked by default
+            REGION_KEPLER_NEBULA: { title: "Kepler Nebula", category: "Notable Star Systems/Regions", text: "A dense, turbulent nebula known for its rich mineral deposits and treacherous navigation. Its sensor-baffling properties make it a favored hiding spot for pirate clans, particularly the infamous Void Vultures. Concord patrols are infrequent and often meet with heavy resistance. Many a fortune has been made and lost in its swirling, irradiated clouds.", unlocked: false },
+            REGION_SILENTIUM_EXPANSE: { title: "The Silentium Expanse", category: "Notable Star Systems/Regions", text: "A vast, largely uncharted region of space beyond the Concord's established borders. Long-range scans show an unusual dearth of stellar activity, and ships that venture too far often fail to return. Legends speak of it as the Precursors' 'Great Filter' or a domain of entities that predate the current universe. What secrets or horrors it holds remains one of the galaxy's greatest and most terrifying mysteries.", unlocked: false },
+
 
             COMMODITY_WAYFINDER_CORE: { title: "Wayfinder Core", category: "Commodities", text: COMMODITIES.WAYFINDER_CORE.description, unlocked: false },
             COMMODITY_KTHARR_ANCESTRAL_BLADE: { title: "K'tharr Ancestral Blade", category: "Commodities", text: COMMODITIES.KTHARR_ANCESTRAL_BLADE.description, unlocked: false },
@@ -681,6 +715,7 @@
             unlockLoreEntry("XENO_PRECURSORS"); 
             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
             unlockLoreEntry("LORE_NOTORIETY_SYSTEM"); 
+            unlockLoreEntry("REGION_SOL_SECTOR"); // Sol Sector lore unlocked by default
             Object.keys(COMPONENTS_DATABASE).forEach(key => { 
                 if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
             });
@@ -1613,6 +1648,7 @@
 
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
+            // --- Top-level context checks first ---
             if (codexOverlayElement.style.display === 'flex') { 
                 if (key === 'escape' || key === 'j') { toggleCodex(false); }
                 event.preventDefault(); return;
@@ -1621,43 +1657,28 @@
                 currentOutfitContext = null; 
                 handleInteraction(); 
                 renderGame();
-                event.preventDefault();
-                return;
+                event.preventDefault(); return;
             }
-
             if (currentMissionContext) {
                 if (currentMissionContext.step === 'selectMission') {
                     const selection = parseInt(key);
                     if (!isNaN(selection) && selection > 0 && selection <= currentMissionContext.availableMissions.length) {
                         displayMissionDetails(selection - 1);
                     } else if (key === 'l') {
-                        currentMissionContext = null;
-                        handleInteraction(); 
-                        renderGame();
+                        currentMissionContext = null; handleInteraction(); renderGame();
                     }
                 } else if (currentMissionContext.step === 'confirmMission') {
                     if (key === 'y') {
-                        if (!playerActiveMission) {
-                           acceptMission();
-                        } else {
-                            updateMessage("Cannot accept: Another mission is already active.");
-                            displayMissionBoard(); 
-                        }
+                        if (!playerActiveMission) { acceptMission(); } 
+                        else { updateMessage("Cannot accept: Another mission is already active."); displayMissionBoard(); }
                     } else if (key === 'n' || key === 'l') {
                         displayMissionBoard(); 
                     }
                 } else if (currentMissionContext.step === 'viewOnlyDetails' || currentMissionContext.step === 'noMissions') {
-                     if (key === 'l') {
-                        currentMissionContext = null;
-                        handleInteraction(); 
-                        renderGame();
-                    }
+                     if (key === 'l') { currentMissionContext = null; handleInteraction(); renderGame(); }
                 }
-                event.preventDefault(); 
-                return;
+                event.preventDefault(); return;
             }
-
-
             if (currentOutfitContext) { 
                 if (currentOutfitContext.step === 'selectSlot') {
                     if (key === '1') displayComponentsForSlot('weapon');
@@ -1668,15 +1689,38 @@
                 } else if (currentOutfitContext.step === 'selectComponent') {
                     const selection = parseInt(key);
                     if (!isNaN(selection) && selection > 0 && selection <= currentOutfitContext.availableComponents.length) {
-                        buyComponent(currentOutfitContext.availableComponents[selection - 1].id);
+                        buyComponent(Object.keys(COMPONENTS_DATABASE).find(k => COMPONENTS_DATABASE[k] === currentOutfitContext.availableComponents[selection - 1]));
                     } else if (key === 'l') {
                         displayOutfittingScreen(); 
                     }
                 }
                 event.preventDefault(); return;
             }
-            
-            if (currentTradeContext) { /* Same as v0.6.11 */ if (currentTradeContext.step === 'selectQuantity') { if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { currentQuantityInput += key; const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'backspace' && currentQuantityInput.length > 0) { currentQuantityInput = currentQuantityInput.slice(0, -1); const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); } } else if (currentTradeContext.step === 'selectItem') { if (!isNaN(parseInt(key))) handleTradeSelection(key); else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame();} } event.preventDefault();return;  }
+            if (currentTradeContext) { 
+                if (currentTradeContext.step === 'selectQuantity') { 
+                    if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { 
+                        currentQuantityInput += key; 
+                        const lD = currentTradeContext.locationData; 
+                        const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; 
+                        const itemEntry = itemsList[currentTradeContext.itemIndex]; 
+                        const commodity = COMMODITIES[itemEntry.id]; 
+                        const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); 
+                        let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; 
+                        if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } 
+                        else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } 
+                        promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; 
+                        updateMessage(promptMsg); renderGame(); 
+                    } else if (key === 'backspace' && currentQuantityInput.length > 0) { 
+                        currentQuantityInput = currentQuantityInput.slice(0, -1); 
+                        const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; updateMessage(promptMsg); renderGame(); 
+                    } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); 
+                    } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); } 
+                } else if (currentTradeContext.step === 'selectItem') { 
+                    if (!isNaN(parseInt(key))) handleTradeSelection(key); 
+                    else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame();} 
+                } 
+                event.preventDefault();return;  
+            }
             if (currentCombatContext) { 
                 if (key === 'f') handleCombatAction('fight'); 
                 else if (key === 'c') handleCombatAction('charge'); 
@@ -1685,44 +1729,62 @@
                 event.preventDefault(); return; 
             }
             
-            let dx=0,dy=0; 
+            // --- General Gameplay (Docked or In Space) ---
+            const currentLocation = getCombinedLocationData(playerY, playerX);
+            let actionTaken = false;
+            let dx = 0, dy = 0;
+
+            if (currentLocation) { // Player is docked
+                switch (key) {
+                    case 'b':
+                        if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
+                            displayTradeScreen('buy'); actionTaken = true;
+                        } else { updateMessage("Cannot trade here."); }
+                        break;
+                    case 's': 
+                        if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
+                            displayTradeScreen('sell'); actionTaken = true;
+                        } else { updateMessage("Cannot trade here."); }
+                        break;
+                    case 'o': 
+                        if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } 
+                        else { updateMessage("Ship outfitting not available here."); }
+                        break;
+                    case 'k':
+                        if (currentLocation.isMajorHub) { displayMissionBoard(); actionTaken = true; } 
+                        else { updateMessage("No mission board available at this remote outpost."); }
+                        break;
+                    case 'l': 
+                        handleInteraction(); actionTaken = true; 
+                        break;
+                }
+            }
+
+            if (actionTaken) {
+                renderGame();
+                event.preventDefault();
+                return;
+            }
+
+            // If no docked action was taken, or not docked, process movement and other global keys
             switch(key){
-                case 'w':case 'arrowup':dy=-1;break; case 's':case 'arrowdown':dy=1;break;
-                case 'a':case 'arrowleft':dx=-1;break; case 'd':case 'arrowright':dx=1;break;
-                case 'e':scanLocation();break; case 'h': scoopHydrogen(); break; 
+                case 'w':case 'arrowup':dy=-1;break; 
+                case 's':case 'arrowdown':dy=1;break; 
+                case 'a':case 'arrowleft':dx=-1;break; 
+                case 'd':case 'arrowright':dx=1;break;
+                case 'e':scanLocation();break; 
+                case 'h': scoopHydrogen(); break; 
                 case 'm': mineAsteroid(); break; 
                 case 'j': toggleCodex(true); break; 
                 case 'i': displayCargoHold(); break; 
-                case 't': const cT=gameMapGrid[playerY][playerX];if(getTileType(cT)==='wormhole')traverseWormhole();else updateMessage("No wormhole here.");break;
-                case 'b':const lB=getCombinedLocationData(playerY,playerX);if(lB&&((lB.sells&&lB.sells.length>0)||(lB.buys&&lB.buys.length>0)))displayTradeScreen('buy');else updateMessage("Cannot trade here.");break;
-                case 's':const lS=getCombinedLocationData(playerY,playerX);if(lS&&((lS.sells&&lS.sells.length>0)||(lS.buys&&lB.buys.length>0)))displayTradeScreen('sell');else updateMessage("Cannot trade here.");break; // Corrected lB.buys to lS.buys
-                case 'o': const locOutfit = getCombinedLocationData(playerY, playerX); if (locOutfit && locOutfit.isMajorHub) { displayOutfittingScreen(); } else { updateMessage("Ship outfitting not available here."); } break;
-                case 'k': 
-                    const locMissions = getCombinedLocationData(playerY, playerX);
-                    if (locMissions && locMissions.isMajorHub) {
-                        if (!currentTradeContext && !currentOutfitContext && !currentCombatContext) { 
-                           if (!currentMissionContext || (currentMissionContext.step !== 'selectMission' && currentMissionContext.step !== 'confirmMission' && currentMissionContext.step !== 'viewOnlyDetails')) {
-                                displayMissionBoard();
-                           } else {
-                                updateMessage("Viewing missions. Press (L) to leave mission board.");
-                           }
-                        } else {
-                            updateMessage("Cannot access missions while in another menu."); 
-                        }
-                    } else if (locMissions && !locMissions.isMajorHub) {
-                        updateMessage("No mission board available at this remote outpost.");
-                    } else if (!locMissions) { 
-                        updateMessage("You need to be docked at a station to access missions.");
-                    }
+                case 't': 
+                    const cT=gameMapGrid[playerY][playerX];
+                    if(getTileType(cT)==='wormhole')traverseWormhole();
+                    else updateMessage("No wormhole here.");
                     break;
-                case 'l':
-                    if(currentOutfitContext) { currentOutfitContext = null; handleInteraction(); renderGame(); }
-                    else if(currentTradeContext) { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); renderGame(); }
-                    else if(currentMissionContext) { currentMissionContext = null; handleInteraction(); renderGame(); } // Added this
-                    else { handleInteraction(); } 
-                    break; 
                 default:return; 
             }
+
             if(dx!==0||dy!==0)movePlayer(dx,dy); else renderGame(); 
             event.preventDefault();
         });
