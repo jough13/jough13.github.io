@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.13 (Victory Screen & Salvage)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.12 (Delivery Missions)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html {
             height: 100%;
-            overflow: hidden; 
+            overflow: hidden; /* Prevent main page scrollbars */
             margin: 0;
             padding: 0;
             box-sizing: border-box; 
@@ -24,7 +24,7 @@
             height: 100%; 
             margin: 0;
             padding: 0; 
-            overflow: hidden; 
+            overflow: hidden; /* Reinforce no scrollbars on body */
             box-sizing: border-box;
         }
         #page-wrapper { 
@@ -258,12 +258,12 @@
             Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run | Enter: Continue (after battle)
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.13</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.12</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.13"; 
+        const GAME_VERSION = "v0.8.12"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -1427,6 +1427,12 @@
             }
 
             checkLevelUp(); // Check for level up after XP gain
+            
+            // Check mission objectives after rewards are applied and before clearing victory context
+            if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
+                 checkMissionObjectiveCompletion(); // This might set playerActiveMission.isComplete
+            }
+
             currentVictoryContext = null;
             handleInteraction(); // Refresh the standard message
             renderGame();
@@ -1483,14 +1489,14 @@
                     victoryMessage += `  + ${xpGained} XP\n`;
 
                     let salvagedItems = [];
-                    const SALVAGE_CHANCE = 0.6; // 60% chance of salvage
+                    const SALVAGE_CHANCE = 0.6; 
                     const SALVAGEABLE_COMMODITIES = ["MINERALS", "TECH_PARTS", "FOOD_SUPPLIES"];
 
                     if (Math.random() < SALVAGE_CHANCE) {
-                        const numSalvageTypes = 1 + Math.floor(Math.random() * 2); // 1 or 2 types
+                        const numSalvageTypes = 1 + Math.floor(Math.random() * 2); 
                         for (let i = 0; i < numSalvageTypes; i++) {
                             const itemID = SALVAGEABLE_COMMODITIES[Math.floor(Math.random() * SALVAGEABLE_COMMODITIES.length)];
-                            const count = 1 + Math.floor(Math.random() * 3); // 1-3 units
+                            const count = 1 + Math.floor(Math.random() * 3); 
                             if (currentCargoLoad + count <= PLAYER_CARGO_CAPACITY) {
                                 salvagedItems.push({ itemID: itemID, count: count, name: COMMODITIES[itemID].name });
                                 victoryMessage += `  + Salvaged: ${count} ${COMMODITIES[itemID].name}\n`;
@@ -1499,7 +1505,7 @@
                             }
                         }
                     }
-                    if (salvagedItems.length === 0 && Math.random() < SALVAGE_CHANCE) { // If no commodity salvage, small chance for just credits
+                    if (salvagedItems.length === 0 && Math.random() < SALVAGE_CHANCE) { 
                          victoryMessage += `  + Found a small stash of credits on the wreck!\n`;
                     }
 
@@ -1513,7 +1519,7 @@
                         salvage: salvagedItems
                     };
                     
-                    // Mission Progress for ELIMINATE
+                    // Update Mission Progress for ELIMINATE *before* clearing combat context
                     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
                         playerActiveMission.objectives.forEach((obj, index) => {
                             if (obj.type === "ELIMINATE") {
@@ -1524,11 +1530,9 @@
                                     (obj.targetSectorKey === "ANY" || obj.targetSectorKey === `${currentSectorX},${currentSectorY}`)) {
                                     
                                     objectiveProgress.current++;
-                                    // This message will be shown after the victory screen
                                 }
                             }
                         });
-                        // checkMissionObjectiveCompletion(); // This will be called after victory screen dismissal
                     }
                     currentCombatContext=null; 
                     renderGame(); // Show victory screen
@@ -1839,8 +1843,7 @@
             }
 
             let deliveryMadeThisInteraction = false;
-            let allDeliveriesForMissionDone = true; // Assume true until proven otherwise
-
+            
             playerActiveMission.objectives.forEach((obj, index) => {
                 if (obj.type === "DELIVERY") {
                     const progressKey = `delivery_${index}`;
@@ -1859,20 +1862,15 @@
                             deliveryMadeThisInteraction = true;
                         } else {
                             updateMessage(`You don't have enough ${COMMODITIES[obj.itemID].name}. Required: ${obj.count}, You have: ${playerCargo[obj.itemID] || 0}.`, true);
-                            allDeliveriesForMissionDone = false; // Can't complete overall mission if one part fails
                         }
-                    }
-                    // Check if this objective is now complete
-                    if (objectiveProgress && !objectiveProgress.complete) {
-                        allDeliveriesForMissionDone = false;
                     }
                 }
             });
 
             if (deliveryMadeThisInteraction) {
-                checkMissionObjectiveCompletion(); // This will update playerActiveMission.isComplete if all objectives are done
+                checkMissionObjectiveCompletion(); 
             }
-            handleInteraction(); // Refresh docked message to show updated actions
+            handleInteraction(); 
             renderGame();
         }
 
