@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.12 (Delivery Missions)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.13 (Victory Screen & Salvage)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -256,14 +256,14 @@
             WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
-            Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
+            Combat - F: Fight | C: Charge Attack | V: Evade | R: Run | Enter: Continue (after battle)
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.12</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.13</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.12"; 
+        const GAME_VERSION = "v0.8.13"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -497,6 +497,7 @@
         var currentMissionContext = null; 
         var playerActiveMission = null; 
         var missionsAvailableAtStation = [];
+        var currentVictoryContext = null; // For post-battle screen
         
         var playerCompletedMissions = new Set(); 
         var scannedObjectTypes = new Set(); 
@@ -520,14 +521,14 @@
 
         // --- Mission Data ---
         const MISSIONS_DATABASE = {
-            "Starbase Alpha": [ // Missions available at Starbase Alpha
+            "Starbase Alpha": [ 
                 {
                     id: "BOUNTY_SOL_PIRATES_1",
                     title: "Sol Sector Cleanup",
                     briefing: "Concord Security offers a reward for eliminating pirate threats in the Sol sector.",
                     description: "Pirate activity has been reported in the Sol sector (0,0). Eliminate 3 pirate vessels to claim your reward. This is a standard Concord security contract.",
                     type: "BOUNTY",
-                    giver: "Starbase Alpha", // Giver should match a location name for turn-in
+                    giver: "Starbase Alpha", 
                     objectives: [{ type: "ELIMINATE", targetName: "Pirate", count: 3, targetSectorKey: "0,0" }], 
                     rewards: { credits: 300, xp: 50, notoriety: 5 },
                     prerequisites: null, 
@@ -539,7 +540,7 @@
                     briefing: "Planet Omega's research division requires urgent tech parts.",
                     description: "Deliver 5 units of Tech Parts to Planet Omega in the Sol sector (0,0). The science teams are waiting for these components for critical research. Return to Starbase Alpha Trade Authority for payment.",
                     type: "DELIVERY",
-                    giver: "Starbase Alpha", // Giver for final turn-in
+                    giver: "Starbase Alpha", 
                     objectives: [{ type: "DELIVER", itemID: "TECH_PARTS", count: 5, destinationName: "Planet Omega", destinationSectorKey: "0,0" }],
                     rewards: { credits: 200, xp: 40, notoriety: 2 },
                     prerequisites: null,
@@ -551,7 +552,7 @@
                     briefing: "Concord Science Division seeks data on a nearby gravimetric wave.",
                     description: "Scan a 'gravimetric wave' type anomaly. Any sector will do for initial data, but higher sensor readings are appreciated. Return to Starbase Alpha with your findings.",
                     type: "SURVEY",
-                    giver: "Starbase Alpha", // Giver for final turn-in
+                    giver: "Starbase Alpha", 
                     objectives: [{ type: "SCAN_OBJECT", targetType: "anomaly", subtype: "gravimetric wave", sectorKey: "ANY" }], 
                     rewards: { credits: 150, xp: 60, notoriety: 1 },
                     prerequisites: null,
@@ -653,6 +654,8 @@
             missionsAvailableAtStation = [];
             gameMapGrid = []; 
             gameMapCellElements = []; 
+            currentVictoryContext = null;
+
 
             gameMapElement = document.getElementById('gameMap');
             messageAreaElement = document.getElementById('messageArea');
@@ -825,38 +828,43 @@
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
         function renderGame() { 
-            // Optimized map rendering: Only update textContent and className of existing cells
-            for (let y = 0; y < MAP_HEIGHT; y++) {
-                for (let x = 0; x < MAP_WIDTH; x++) {
-                    const cellSpan = gameMapCellElements[y][x];
-                    let tileData = gameMapGrid[y][x];
-                    let tileChar = getTileChar(tileData);
-                    let className = '';
+            if (currentVictoryContext) {
+                messageAreaElement.innerHTML = currentVictoryContext.message.replace(/\n/g, '<br>');
+            } else {
+                // Optimized map rendering: Only update textContent and className of existing cells
+                for (let y = 0; y < MAP_HEIGHT; y++) {
+                    for (let x = 0; x < MAP_WIDTH; x++) {
+                        const cellSpan = gameMapCellElements[y][x];
+                        let tileData = gameMapGrid[y][x];
+                        let tileChar = getTileChar(tileData);
+                        let className = '';
 
-                    if (currentCombatContext && x === playerX && y === playerY) {
-                        tileChar = PIRATE_CHAR_VAL;
-                        className = 'pirate-char';
-                    } else if (x === playerX && y === playerY) {
-                        tileChar = PLAYER_CHAR_VAL;
-                        className = 'player-char';
-                    } else {
-                        switch(tileChar) {
-                            case STAR_CHAR_VAL: className = 'star-char'; break;
-                            case PLANET_CHAR_VAL: className = 'planet-char'; break;
-                            case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
-                            case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
-                            case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
-                            case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
-                            case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
-                            case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
-                            case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
-                            case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
-                            default: className = 'empty-space-char'; 
+                        if (currentCombatContext && x === playerX && y === playerY) {
+                            tileChar = PIRATE_CHAR_VAL;
+                            className = 'pirate-char';
+                        } else if (x === playerX && y === playerY) {
+                            tileChar = PLAYER_CHAR_VAL;
+                            className = 'player-char';
+                        } else {
+                            switch(tileChar) {
+                                case STAR_CHAR_VAL: className = 'star-char'; break;
+                                case PLANET_CHAR_VAL: className = 'planet-char'; break;
+                                case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
+                                case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
+                                case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
+                                case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
+                                case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
+                                case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
+                                case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
+                                case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
+                                default: className = 'empty-space-char'; 
+                            }
                         }
+                        if (cellSpan.textContent !== tileChar) cellSpan.textContent = tileChar;
+                        if (cellSpan.className !== className) cellSpan.className = className;
                     }
-                    if (cellSpan.textContent !== tileChar) cellSpan.textContent = tileChar;
-                    if (cellSpan.className !== className) cellSpan.className = className;
                 }
+                messageAreaElement.innerHTML = message.replace(/\n/g, '<br>');
             }
 
             fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`; 
@@ -869,11 +877,12 @@
             notorietyStatElement.textContent = playerNotorietyTitle; 
             sectorNameStatElement.textContent = currentSectorName; 
             sectorCoordsStatElement.textContent = `(${currentSectorX},${currentSectorY})`; 
-            messageAreaElement.innerHTML = message.replace(/\n/g, '<br>');
             document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         }
 
         function updateMessage(newMessage, append = false) { 
+            if (currentVictoryContext) return; // Don't update main message if victory screen is up
+
             if (append) {
                  message += "\n" + newMessage;
             } else {
@@ -952,7 +961,7 @@
 
 
         function movePlayer(dx, dy) { 
-            if(currentTradeContext || currentOutfitContext || currentMissionContext){updateMessage("Complete current action (L to leave).");renderGame();return;} 
+            if(currentTradeContext || currentOutfitContext || currentMissionContext || currentVictoryContext){updateMessage("Complete current action (L to leave, Enter to continue).");renderGame();return;} 
             if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
             
             const currentEngine = COMPONENTS_DATABASE[playerShip.engine];
@@ -1063,7 +1072,7 @@
         }
         
         function scanLocation() { 
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) { updateMessage("Cannot scan now."); renderGame(); return; }
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentVictoryContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
             let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             const tileObject = gameMapGrid[playerY][playerX];
@@ -1243,7 +1252,7 @@
         }
 
         function scoopHydrogen() { 
-            if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
+            if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext || currentVictoryContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
             const cT=gameMapGrid[playerY][playerX];
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
@@ -1273,7 +1282,7 @@
         }
 
         function mineAsteroid() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentVictoryContext) {
                 updateMessage("Cannot mine now.");
                 renderGame();
                 return;
@@ -1388,6 +1397,7 @@
             renderGame();
         }
         function checkLevelUp() { /* Same as v0.6.8 */ if(playerXP>=xpToNextLevel){playerLevel++;playerXP-=xpToNextLevel;xpToNextLevel=calculateXpToNextLevel(playerLevel);updateMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`,true);playerShields=MAX_SHIELDS;playerFuel=MAX_FUEL;}}
+        
         function startCombat() { 
             const pirateMaxHull = PIRATE_BASE_HULL_MIN + Math.floor(Math.random() * (PIRATE_BASE_HULL_MAX - PIRATE_BASE_HULL_MIN + 1));
             const pirateMaxShields = PIRATE_BASE_SHIELDS_MIN + Math.floor(Math.random() * (PIRATE_BASE_SHIELDS_MAX - PIRATE_BASE_SHIELDS_MIN + 1));
@@ -1402,6 +1412,26 @@
             updateMessage(`"${pT}"\nHostile Pirate ${PIRATE_CHAR_VAL} encountered!\nPirate Sh: ${currentCombatContext.pirateShields}/${currentCombatContext.pirateMaxShields} | Hull: ${currentCombatContext.pirateHull}/${currentCombatContext.pirateMaxHull}\nYour Sh: ${playerShields}/${MAX_SHIELDS} | Hull: ${playerHull}/${MAX_PLAYER_HULL}\n(F)ight, (C)harge, (V)evade, (R)un?`);
             renderGame();
         } 
+
+        function handleVictoryScreen() {
+            if (!currentVictoryContext) return;
+
+            playerXP += currentVictoryContext.xpReward;
+            playerCredits += currentVictoryContext.creditReward;
+            
+            if (currentVictoryContext.salvage && currentVictoryContext.salvage.length > 0) {
+                currentVictoryContext.salvage.forEach(item => {
+                    playerCargo[item.itemID] = (playerCargo[item.itemID] || 0) + item.count;
+                });
+                updateCurrentCargoLoad();
+            }
+
+            checkLevelUp(); // Check for level up after XP gain
+            currentVictoryContext = null;
+            handleInteraction(); // Refresh the standard message
+            renderGame();
+        }
+
         function handleCombatAction(action) { 
             if (!currentCombatContext) return; 
             let combatLog = "";
@@ -1444,11 +1474,44 @@
                 combatLog += ` Pirate Sh: ${currentCombatContext.pirateShields}/${currentCombatContext.pirateMaxShields} | Hull: ${Math.max(0, currentCombatContext.pirateHull)}/${currentCombatContext.pirateMaxHull}.\n`;
                 
                 if (currentCombatContext.pirateHull <= 0) {
-                    const cW = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random()*(PIRATE_CREDIT_REWARD_MAX-PIRATE_CREDIT_REWARD_MIN+1)); 
-                    const xG = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1)); 
-                    playerCredits+=cW; playerXP += xG; 
+                    const creditsWon = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random()*(PIRATE_CREDIT_REWARD_MAX-PIRATE_CREDIT_REWARD_MIN+1)); 
+                    const xpGained = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1)); 
                     updatePlayerNotoriety(5); 
-                    combatLog+=`Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`; 
+                    
+                    let victoryMessage = `<span style='color:#00FF00;'>*** VICTORY! ***</span>\nPirate defeated!\n`;
+                    victoryMessage += `  + ${creditsWon} Credits\n`;
+                    victoryMessage += `  + ${xpGained} XP\n`;
+
+                    let salvagedItems = [];
+                    const SALVAGE_CHANCE = 0.6; // 60% chance of salvage
+                    const SALVAGEABLE_COMMODITIES = ["MINERALS", "TECH_PARTS", "FOOD_SUPPLIES"];
+
+                    if (Math.random() < SALVAGE_CHANCE) {
+                        const numSalvageTypes = 1 + Math.floor(Math.random() * 2); // 1 or 2 types
+                        for (let i = 0; i < numSalvageTypes; i++) {
+                            const itemID = SALVAGEABLE_COMMODITIES[Math.floor(Math.random() * SALVAGEABLE_COMMODITIES.length)];
+                            const count = 1 + Math.floor(Math.random() * 3); // 1-3 units
+                            if (currentCargoLoad + count <= PLAYER_CARGO_CAPACITY) {
+                                salvagedItems.push({ itemID: itemID, count: count, name: COMMODITIES[itemID].name });
+                                victoryMessage += `  + Salvaged: ${count} ${COMMODITIES[itemID].name}\n`;
+                            } else {
+                                victoryMessage += `  - Found ${COMMODITIES[itemID].name}, but cargo hold is full!\n`;
+                            }
+                        }
+                    }
+                    if (salvagedItems.length === 0 && Math.random() < SALVAGE_CHANCE) { // If no commodity salvage, small chance for just credits
+                         victoryMessage += `  + Found a small stash of credits on the wreck!\n`;
+                    }
+
+
+                    victoryMessage += "\nPress Enter to Continue...";
+                    
+                    currentVictoryContext = {
+                        message: victoryMessage,
+                        xpReward: xpGained,
+                        creditReward: creditsWon,
+                        salvage: salvagedItems
+                    };
                     
                     // Mission Progress for ELIMINATE
                     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
@@ -1461,15 +1524,15 @@
                                     (obj.targetSectorKey === "ANY" || obj.targetSectorKey === `${currentSectorX},${currentSectorY}`)) {
                                     
                                     objectiveProgress.current++;
-                                    combatLog += `\n<span style='color:#00FF00;'>Mission Update: ${objectiveProgress.current}/${objectiveProgress.required} ${obj.targetName}s eliminated.</span>`;
+                                    // This message will be shown after the victory screen
                                 }
                             }
                         });
-                        checkMissionObjectiveCompletion(); 
+                        // checkMissionObjectiveCompletion(); // This will be called after victory screen dismissal
                     }
-
-                    currentCombatContext=null; updateMessage(combatLog); checkLevelUp(); 
-                    if(!message.includes("LEVEL UP!")){handleInteraction();} renderGame(); return; 
+                    currentCombatContext=null; 
+                    renderGame(); // Show victory screen
+                    return; 
                 }
             } else if (action === 'charge') {
                 if (playerIsChargingAttack) {
@@ -1514,7 +1577,7 @@
                         playerShields -= pD;
                         combatLog += `Pirate hits your shields for ${pD}!`;
                         if (playerShields < 0) {
-                            playerHull += playerShields; // Apply remaining damage to hull
+                            playerHull += playerShields; 
                             playerShields = 0;
                             combatLog += ` Shields down! Hull takes ${-playerShields} spillover damage!`;
                         }
@@ -1530,7 +1593,7 @@
                     playerHull=0; combatLog+=`Ship critically damaged! Hull breach! Emergency warp to Starbase Alpha...`; 
                     let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);combatLog+=`\nLost ${cLs}c.`; 
                     updatePlayerNotoriety(-10); 
-                    playerShields=1; playerHull = 1; // Minimal hull on return
+                    playerShields=1; playerHull = 1; 
                     currentSectorX=0; currentSectorY=0; loadOrGenerateSectorMap(0,0); 
                     const sA=LOCATIONS_DATA["Starbase Alpha"].coords; playerX=sA.x;playerY=sA.y; 
                     currentCombatContext=null;playerIsChargingAttack = false; playerIsEvading = false; 
@@ -1578,7 +1641,7 @@
                         statsStr.push(`${stat}: ${comp.stats[stat]}`);
                     }
                     componentMsg += statsStr.join(', ') + "\n";
-                    currentOutfitContext.availableComponents.push({id: compId, ...comp }); // Store ID with component
+                    currentOutfitContext.availableComponents.push({id: compId, ...comp }); 
                     componentIndex++;
                 }
             }
@@ -1590,7 +1653,7 @@
             renderGame();
         }
 
-        function buyComponent(selectedComponentId) { // Expecting the ID now
+        function buyComponent(selectedComponentId) { 
             const component = COMPONENTS_DATABASE[selectedComponentId];
             if (!component) {
                 updateMessage("Invalid component selection.");
@@ -1606,7 +1669,7 @@
 
             const oldComponent = COMPONENTS_DATABASE[playerShip[component.slot]];
             playerCredits -= component.cost;
-            playerShip[component.slot] = selectedComponentId; // Use the ID
+            playerShip[component.slot] = selectedComponentId; 
             applyPlayerShipStats(); 
             unlockLoreEntry(component.loreKey);
 
@@ -1617,7 +1680,7 @@
         }
 
         function displayCargoHold() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentVictoryContext) {
                 updateMessage("Cannot view cargo hold now.");
                 renderGame();
                 return;
@@ -1707,7 +1770,7 @@
             }
 
             let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
-            detailMsg += `From: ${mission.giver}\n\n`; // Giver is the station name for turn-in
+            detailMsg += `From: ${mission.giver}\n\n`; 
             detailMsg += `Description:\n${mission.description}\n\n`;
             detailMsg += `Objectives:\n`;
             mission.objectives.forEach(obj => {
@@ -1775,7 +1838,9 @@
                 return;
             }
 
-            let deliveryMade = false;
+            let deliveryMadeThisInteraction = false;
+            let allDeliveriesForMissionDone = true; // Assume true until proven otherwise
+
             playerActiveMission.objectives.forEach((obj, index) => {
                 if (obj.type === "DELIVERY") {
                     const progressKey = `delivery_${index}`;
@@ -1788,21 +1853,26 @@
                         if (playerCargo[obj.itemID] >= obj.count) {
                             playerCargo[obj.itemID] -= obj.count;
                             updateCurrentCargoLoad();
-                            objectiveProgress.delivered = obj.count; // Mark this objective's delivery as done
+                            objectiveProgress.delivered = obj.count; 
                             objectiveProgress.complete = true;
                             updateMessage(`Delivered ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.`, true);
-                            deliveryMade = true;
+                            deliveryMadeThisInteraction = true;
                         } else {
                             updateMessage(`You don't have enough ${COMMODITIES[obj.itemID].name}. Required: ${obj.count}, You have: ${playerCargo[obj.itemID] || 0}.`, true);
+                            allDeliveriesForMissionDone = false; // Can't complete overall mission if one part fails
                         }
+                    }
+                    // Check if this objective is now complete
+                    if (objectiveProgress && !objectiveProgress.complete) {
+                        allDeliveriesForMissionDone = false;
                     }
                 }
             });
 
-            if (deliveryMade) {
-                checkMissionObjectiveCompletion();
+            if (deliveryMadeThisInteraction) {
+                checkMissionObjectiveCompletion(); // This will update playerActiveMission.isComplete if all objectives are done
             }
-            handleInteraction(); // Refresh docked message
+            handleInteraction(); // Refresh docked message to show updated actions
             renderGame();
         }
 
@@ -1825,7 +1895,6 @@
             if (allObjectivesNowComplete && !playerActiveMission.isComplete) { 
                 playerActiveMission.isComplete = true;
                 updateMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
-                // No need to call renderGame() here, updateMessage will trigger it via handleInteraction or next player input
             }
             return allObjectivesNowComplete;
         }
@@ -1863,6 +1932,15 @@
 
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
+            
+            if (currentVictoryContext) {
+                if (key === 'enter') {
+                    handleVictoryScreen();
+                }
+                event.preventDefault();
+                return;
+            }
+
             // --- Top-level context checks first ---
             if (codexOverlayElement.style.display === 'flex') { 
                 if (key === 'escape' || key === 'j') { toggleCodex(false); }
@@ -1954,12 +2032,12 @@
                     case 'b':
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('buy'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; } 
                         break;
                     case 's': 
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('sell'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; } 
                         break;
                     case 'o': 
                         if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } 
