@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.13 (NPC Traders I)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.14 (Emergency Map Render Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -98,7 +98,7 @@
         }
         #gameMap > div { 
             text-align: center;
-            height: 18px; 
+            height: 18px; /* Should match font-size * line-height for map spans */
         }
         #playerStats {
             display: grid;
@@ -260,12 +260,12 @@
             Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run | Enter: Continue (after battle)
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.13</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.14</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.13"; 
+        const GAME_VERSION = "v0.8.14"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -503,7 +503,7 @@
         var currentVictoryContext = null; 
         var currentNPCTradeContext = null;
         var currentSectorNPCs = [];
-        var interactionTargetNPC = null; // To store the NPC the player is on top of
+        var interactionTargetNPC = null; 
         
         var playerCompletedMissions = new Set(); 
         var scannedObjectTypes = new Set(); 
@@ -739,7 +739,7 @@
         
         function loadOrGenerateSectorMap(sX, sY) { 
             const sectorKey = `${sX},${sY}`;
-            currentSectorNPCs = []; // Clear NPCs when changing sectors
+            currentSectorNPCs = []; 
             interactionTargetNPC = null;
 
             if (sectorCache[sectorKey]) {
@@ -768,7 +768,7 @@
                     name: currentSectorName 
                 };
             }
-            spawnNPCsForSector(sX, sY); // Spawn NPCs after map grid is ready
+            spawnNPCsForSector(sX, sY); 
         }
         function generateNewSectorMapData(sX, sY) { 
             gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}
@@ -843,7 +843,10 @@
         function renderGame() { 
             if (currentVictoryContext) {
                 messageAreaElement.innerHTML = currentVictoryContext.message.replace(/\n/g, '<br>');
-            } else {
+            } else if (currentNPCTradeContext) {
+                // Message area is handled by NPC trade functions
+            }
+             else {
                 // Optimized map rendering: Only update textContent and className of existing cells
                 for (let y = 0; y < MAP_HEIGHT; y++) {
                     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -863,7 +866,7 @@
                             className = 'player-char';
                         } else if (npcOnTile) {
                             tileChar = npcOnTile.char;
-                            className = 'npc-trader-char'; // Assuming all NPCs are traders for now
+                            className = 'npc-trader-char'; 
                         } else {
                             switch(tileChar) {
                                 case STAR_CHAR_VAL: className = 'star-char'; break;
@@ -938,7 +941,17 @@
                 message += "\n" + missionStatus;
             }
         }
-        function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
+        function getCombinedLocationData(y,x) { 
+            if (currentSectorX === 0 && currentSectorY === 0) { 
+                for(const n in LOCATIONS_DATA) {
+                    if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};
+                }
+            } 
+            if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) {
+                return currentSectorOutpostData;
+            } 
+            return null;
+        }
 
         function traverseWormhole() { 
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
@@ -997,7 +1010,7 @@
             playerX=nX;playerY=nY;
             if(dx!==0||dy!==0){
                 playerFuel-=actualFuelPerMove;
-                playerFuel = parseFloat(playerFuel.toFixed(1)); // Round fuel
+                playerFuel = parseFloat(playerFuel.toFixed(1)); 
                 if(playerFuel<0)playerFuel=0;
             }
             
@@ -1028,9 +1041,9 @@
                     if(playerCargo.WAYFINDER_CORE<PLAYER_CARGO_CAPACITY-currentCargoLoad){playerCargo.WAYFINDER_CORE=(playerCargo.WAYFINDER_CORE||0)+1;updateCurrentCargoLoad();}else{updateMessage("Wayfinder Core acquired, but no cargo space! It's left floating here.",true);}
                     mystery_wayfinder_progress=5;checkLevelUp();
                     unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED"); 
-                }else if((currentTileCharInternal===EMPTY_SPACE_CHAR_VAL||currentTileTypeInternal==='asteroid'||currentTileTypeInternal==='derelict'||currentTileTypeInternal==='anomaly'|| currentTileTypeInternal==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
+                }else if((currentTileCharInternal===EMPTY_SPACE_CHAR_VAL||currentTileTypeInternal==='asteroid'||currentTileTypeInternal==='derelict'||currentTileTypeInternal==='anomaly'|| currentTileTypeInternal==='wormhole') && !currentSectorNPCs.find(npc => npc.x === playerX && npc.y === playerY) && Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
             }
-            moveNPCs(); // Move NPCs after player moves
+            moveNPCs(); 
             renderGame();
         }
         function handleInteraction() { 
@@ -1126,7 +1139,6 @@
                     actionsAvailable += "Leave (L).";
                 }
             } else { 
-                // Check for NPC at player's location
                 const npcAtLocation = currentSectorNPCs.find(npc => npc.x === playerX && npc.y === playerY);
                 if (npcAtLocation) {
                     scanMessage += `Detected: ${npcAtLocation.faction} Trader vessel. Standard freighter configuration. Mild energy signature from cargo hold.`;
@@ -1535,7 +1547,7 @@
                             }
                         }
                     }
-                    if (salvagedItems.length === 0 && Math.random() < SALVAGE_CHANCE * 0.5) { // Reduced chance for just credits if no items
+                    if (salvagedItems.length === 0 && Math.random() < SALVAGE_CHANCE * 0.5) { 
                          victoryMessage += `  + Found a small stash of credits on the wreck!\n`;
                     }
 
@@ -1549,8 +1561,6 @@
                         salvage: salvagedItems
                     };
                     
-                    // Update Mission Progress for ELIMINATE *before* clearing combat context
-                    // This progress will be applied when the victory screen is dismissed.
                     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
                         playerActiveMission.objectives.forEach((obj, index) => {
                             if (obj.type === "ELIMINATE") {
@@ -1560,13 +1570,13 @@
                                     (obj.targetName === "Pirate") && 
                                     (obj.targetSectorKey === "ANY" || obj.targetSectorKey === `${currentSectorX},${currentSectorY}`)) {
                                     
-                                    objectiveProgress.current++; // This will be used by handleVictoryScreen
+                                    objectiveProgress.current++;
                                 }
                             }
                         });
                     }
                     currentCombatContext=null; 
-                    renderGame(); // Show victory screen
+                    renderGame(); 
                     return; 
                 }
             } else if (action === 'charge') {
