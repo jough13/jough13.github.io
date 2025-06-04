@@ -260,12 +260,12 @@
             Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run | Enter: Continue (after battle)
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.15</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.16</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.15"; 
+        const GAME_VERSION = "v0.8.16"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -659,7 +659,7 @@
             discoveredLoreEntries = new Set();
             missionsAvailableAtStation = [];
             gameMapGrid = []; 
-            // gameMapCellElements = []; // Removed for reverted map rendering
+            // gameMapCellElements = []; // Removed
             currentVictoryContext = null;
             currentNPCTradeContext = null;
             currentSectorNPCs = [];
@@ -829,7 +829,7 @@
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
         function renderGame() { 
-             // Reverted map rendering: Clear and recreate map elements on each render
+            // Reverted map rendering: Clear and recreate map elements on each render
             gameMapElement.innerHTML = ''; 
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 const rowDiv = document.createElement('div');
