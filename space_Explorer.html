@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.14 (Emergency Map Render Fix)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.15 (Map Rendering Revert & Fix)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -98,7 +98,7 @@
         }
         #gameMap > div { 
             text-align: center;
-            height: 18px; /* Should match font-size * line-height for map spans */
+            height: 18px; 
         }
         #playerStats {
             display: grid;
@@ -260,12 +260,12 @@
             Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run | Enter: Continue (after battle)
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.14</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.15</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.14"; 
+        const GAME_VERSION = "v0.8.15"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -492,7 +492,7 @@
         var playerCargo = {}; 
         var currentCargoLoad = 0; 
         var gameMapGrid = []; 
-        var gameMapCellElements = []; 
+        // var gameMapCellElements = []; // Removed for reverted map rendering
         var message = ""; 
         var currentTradeContext = null; 
         var currentCombatContext = null; 
@@ -659,7 +659,7 @@
             discoveredLoreEntries = new Set();
             missionsAvailableAtStation = [];
             gameMapGrid = []; 
-            gameMapCellElements = []; 
+            // gameMapCellElements = []; // Removed for reverted map rendering
             currentVictoryContext = null;
             currentNPCTradeContext = null;
             currentSectorNPCs = [];
@@ -682,18 +682,6 @@
             codexCategoriesElement = document.getElementById('codexCategories');
             codexEntriesElement = document.getElementById('codexEntries');
             codexEntryTextElement = document.getElementById('codexEntryText');   
-
-            gameMapElement.innerHTML = ''; 
-            for (let y = 0; y < MAP_HEIGHT; y++) {
-                const rowDiv = document.createElement('div');
-                gameMapCellElements[y] = [];
-                for (let x = 0; x < MAP_WIDTH; x++) {
-                    const cellSpan = document.createElement('span');
-                    rowDiv.appendChild(cellSpan);
-                    gameMapCellElements[y][x] = cellSpan;
-                }
-                gameMapElement.appendChild(rowDiv);
-            }
 
             playerShip = { 
                 weapon: "WEAPON_PULSE_LASER_MK1", 
@@ -841,51 +829,55 @@
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
         function renderGame() { 
+             // Reverted map rendering: Clear and recreate map elements on each render
+            gameMapElement.innerHTML = ''; 
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                const rowDiv = document.createElement('div');
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    const cellSpan = document.createElement('span');
+                    let tileData = gameMapGrid[y][x];
+                    let tileChar = getTileChar(tileData);
+                    let className = '';
+
+                    let npcOnTile = currentSectorNPCs.find(npc => npc.x === x && npc.y === y);
+
+                    if (currentCombatContext && x === playerX && y === playerY) {
+                        tileChar = PIRATE_CHAR_VAL;
+                        className = 'pirate-char';
+                    } else if (x === playerX && y === playerY) {
+                        tileChar = PLAYER_CHAR_VAL;
+                        className = 'player-char';
+                    } else if (npcOnTile) {
+                        tileChar = npcOnTile.char;
+                        className = 'npc-trader-char'; 
+                    } else {
+                        switch(tileChar) {
+                            case STAR_CHAR_VAL: className = 'star-char'; break;
+                            case PLANET_CHAR_VAL: className = 'planet-char'; break;
+                            case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
+                            case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
+                            case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
+                            case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
+                            case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
+                            case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
+                            case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
+                            case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
+                            default: className = 'empty-space-char'; 
+                        }
+                    }
+                    cellSpan.textContent = tileChar;
+                    if (className) cellSpan.className = className;
+                    rowDiv.appendChild(cellSpan);
+                }
+                gameMapElement.appendChild(rowDiv);
+            }
+
             if (currentVictoryContext) {
                 messageAreaElement.innerHTML = currentVictoryContext.message.replace(/\n/g, '<br>');
             } else if (currentNPCTradeContext) {
-                // Message area is handled by NPC trade functions
+                // Message area is handled by NPC trade functions, no need to overwrite here
             }
              else {
-                // Optimized map rendering: Only update textContent and className of existing cells
-                for (let y = 0; y < MAP_HEIGHT; y++) {
-                    for (let x = 0; x < MAP_WIDTH; x++) {
-                        const cellSpan = gameMapCellElements[y][x];
-                        let tileData = gameMapGrid[y][x];
-                        let tileChar = getTileChar(tileData);
-                        let className = '';
-
-                        // Check for NPC at this location first
-                        let npcOnTile = currentSectorNPCs.find(npc => npc.x === x && npc.y === y);
-
-                        if (currentCombatContext && x === playerX && y === playerY) {
-                            tileChar = PIRATE_CHAR_VAL;
-                            className = 'pirate-char';
-                        } else if (x === playerX && y === playerY) {
-                            tileChar = PLAYER_CHAR_VAL;
-                            className = 'player-char';
-                        } else if (npcOnTile) {
-                            tileChar = npcOnTile.char;
-                            className = 'npc-trader-char'; 
-                        } else {
-                            switch(tileChar) {
-                                case STAR_CHAR_VAL: className = 'star-char'; break;
-                                case PLANET_CHAR_VAL: className = 'planet-char'; break;
-                                case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
-                                case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
-                                case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
-                                case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
-                                case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
-                                case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
-                                case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
-                                case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
-                                default: className = 'empty-space-char'; 
-                            }
-                        }
-                        if (cellSpan.textContent !== tileChar) cellSpan.textContent = tileChar;
-                        if (cellSpan.className !== className) cellSpan.className = className;
-                    }
-                }
                 messageAreaElement.innerHTML = message.replace(/\n/g, '<br>');
             }
 
