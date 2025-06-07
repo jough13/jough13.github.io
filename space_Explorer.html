@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.13 (Dynamic Missions)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.14 (Interactive Encounters)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -253,17 +253,17 @@
         </div>
 
         <div class="controls-info">
-            WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
+            WASD: Move | E: Scan/Interact | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
             Docked Mission Actions - C: Complete Delivery | G: Claim Reward / Turn-in <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.13</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.14</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.13"; 
+        const GAME_VERSION = "v0.8.14"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -1075,7 +1075,7 @@
 
 
         function movePlayer(dx, dy) { 
-            if(currentTradeContext || currentOutfitContext || currentMissionContext){updateMessage("Complete current action (L to leave).");renderGame();return;} 
+            if(currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext){updateMessage("Complete current action first.");renderGame();return;} 
             if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
             
             const currentEngine = COMPONENTS_DATABASE[playerShip.engine];
@@ -1182,8 +1182,8 @@
                     case STAR_CHAR_VAL:bM+=` Near star. (H to Scoop Fuel)`; unlockLoreEntry("PHENOMENON_STAR"); break; 
                     case ASTEROID_CHAR_VAL:bM+=` Asteroids. (M to Mine)`; unlockLoreEntry("PHENOMENON_ASTEROID"); break;
                     case NEBULA_CHAR_VAL:bM+=` Nebula.`; unlockLoreEntry("PHENOMENON_NEBULA"); break;
-                    case DERELICT_CHAR_VAL:bM+=` Near a derelict ship.`; unlockLoreEntry("XENO_DERELICTS"); break;
-                    case ANOMALY_CHAR_VAL:bM+=` Near a strange anomaly.`; unlockLoreEntry("XENO_ANOMALIES"); break;
+                    case DERELICT_CHAR_VAL:bM+=` Near a derelict ship. (E to Interact)`; unlockLoreEntry("XENO_DERELICTS"); break;
+                    case ANOMALY_CHAR_VAL:bM+=` Near a strange anomaly. (E to Interact)`; unlockLoreEntry("XENO_ANOMALIES"); break;
                     case WORMHOLE_CHAR_VAL:bM+=` Unstable Wormhole detected! (T to Traverse)`; unlockLoreEntry("PHENOMENON_WORMHOLE"); break;
                 }
             }
@@ -1191,13 +1191,20 @@
         }
         
         function scanLocation() { 
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) { updateMessage("Cannot scan now."); renderGame(); return; }
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { updateMessage("Cannot scan now."); renderGame(); return; }
             const location = getCombinedLocationData(playerY, playerX); 
-            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             const tileObject = gameMapGrid[playerY][playerX];
+            const tileType = getTileType(tileObject);
+
+            // NEW: Divert to encounter system for interactable objects
+            if ((tileType === 'derelict' && !tileObject.looted) || (tileType === 'anomaly' && !tileObject.studied)) {
+                startEncounter(tileObject);
+                return;
+            }
+
+            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             const tileChar = getTileChar(tileObject);
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
-            let isMysteryClue = false;
             let actionsAvailable = "";
 
             if (location) { 
@@ -1223,109 +1230,30 @@
             } else { 
                 switch (tileChar) { 
                     case EMPTY_SPACE_CHAR_VAL: 
-                        const eF=["Vast emptiness. Faint cosmic background radiation. The universe feels ancient here.","Cold and silent void. Distant quasar flicker, a beacon from billions of years past.","Deep space. Unknown navigational beacons at extreme range, their origin a mystery.","Faint gravimetric distortions. Ancient... or nothing. Perhaps a Precursor hyperlane, long collapsed.","Star-dusted canvas. Quiet contemplation, or ambush. The patterns of the stars seem to shift slightly.","The silence here is profound, almost deafening. A lone comet streaks by in the far distance, its tail a whisper of ice and dust.","Echoes of ancient warp signatures, long faded. This area feels... watched. As if by unseen eyes.","A faint trail of exotic particles suggests something passed through here recently. Something big, and not of Concord design.","Sensors detect a faint, repeating energy pulse. Too weak to pinpoint, but it's out there... somewhere. It calls to something deep within your ship's core.","The void stretches on, indifferent. A perfect place to lose oneself, or be lost."];
+                        const eF=["Vast emptiness. Faint cosmic background radiation. The universe feels ancient here.","Cold and silent void. Distant quasar flicker, a beacon from billions of years past.","Deep space. Unknown navigational beacons at extreme range, their origin a mystery."];
                         scanMessage+=eF[Math.floor(Math.random()*eF.length)];
                         objectTypeForXP='empty_space';
                         break;
                     case STAR_CHAR_VAL: 
-                        const starFlavor = ["Brilliant G-type star...","Red dwarf...","Blue giant...","Binary star system...","Young protostar...","Neutron star remnant...","White dwarf...","Pulsar...","Star with stellar engineering...","Variable star...","Wolf-Rayet star...","Rogue star..."];
-                        let starDesc = starFlavor[Math.floor(Math.random() * starFlavor.length)];
-                        if (tileObject && tileObject.type === 'star' && tileObject.starType === 'Binary' && mystery_wayfinder_progress < 2 && (Math.abs(currentSectorX) + Math.abs(currentSectorY) >= MYSTERY_WAYFINDER_TARGET_SECTOR_VOLATILITY)) {
-                            starDesc += "\n<span style='color:#FFD700;'>A faint, repeating energy signature emanates from this binary system... it seems artificial. It pulses with a resonance matching unstable warp energies.</span>";
-                            mystery_wayfinder_progress = 2; isMysteryClue = true;
-                        }
-                        scanMessage += starDesc;
-                        if (tileObject && tileObject.type === 'star') {
-                             if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected! Ideal for scooping.</span>";
-                             else if (tileObject.richness > 0.4) scanMessage += "\n<span style='color:#FFFFE0;'>Moderate hydrogen concentrations. Scooping viable.</span>";
-                             else scanMessage += "\n<span style='color:#FFFACD;'>Low hydrogen concentrations. Scooping may be inefficient.</span>";
-                             if (tileObject.scoopedThisVisit) {
-                                scanMessage += "\n<span style='color:#999999;'>Corona appears depleted from recent scooping this visit.</span>";
-                             }
-                        }
+                        scanMessage += `Brilliant ${tileObject.starType || 'star'}.`;
+                        if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected! Ideal for scooping.</span>";
+                        else scanMessage += "\n<span style='color:#FFFACD;'>Moderate hydrogen concentrations.</span>";
+                        if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
                         actionsAvailable += "Scoop Fuel (H).";
                         break;
                     case ASTEROID_CHAR_VAL: 
-                        let asteroidMsg = "Asteroid field detected. ";
-                        if (tileObject && tileObject.asteroidType) {
-                            asteroidMsg += `Type: ${tileObject.asteroidType}. `;
-                            if (tileObject.resources && tileObject.resources.length > 0) {
-                                const primaryResource = COMMODITIES[tileObject.resources[0].id].name;
-                                asteroidMsg += `Primary resource signature: ${primaryResource}. `;
-                                if (tileObject.resources.length > 1 && (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0) > 0.01) { 
-                                     asteroidMsg += `Faint traces of other materials.`;
-                                }
-                            } else {
-                                asteroidMsg += "Appears mostly barren.";
-                            }
-                        } else {
-                            asteroidMsg += "Composition unknown.";
-                        }
-                        if (tileObject && tileObject.minedThisVisit) {
-                            scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
-                        }
-                        scanMessage += asteroidMsg;
+                        scanMessage += `Asteroid field. Type: ${tileObject.asteroidType || 'Unknown'}.`;
+                         if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
                         actionsAvailable += "Mine Asteroid (M).";
                         break;
-                    case NEBULA_CHAR_VAL: 
-                        const nF=["Vibrant emission nebula...","Dark nebula...","Planetary nebula...","Reflection nebula...","Calm gaseous expanse...","Stellar nursery...","Bok globule...","Void Crystal concentration...","Forbidden nebula...","Singing nebula?...","Sentient Mycelium filaments..."];
-                        scanMessage+=nF[Math.floor(Math.random()*nF.length)];
+                     case DERELICT_CHAR_VAL:
+                        scanMessage += `Scanners detect a derelict ${tileObject.subtype || 'ship'}. It appears to have been thoroughly salvaged already.`;
                         break;
-                    case DERELICT_CHAR_VAL: 
-                        let dM="Scanners detect a derelict ship. ";
-                        if(tileObject&&tileObject.type==='derelict'&&tileObject.subtype){
-                            dM+=`Appears to be a ${tileObject.subtype}. `;
-                            objectTypeForXP=`derelict_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;
-                            if(mystery_wayfinder_progress===3&&tileObject.subtype===MYSTERY_WAYFINDER_DERELICT_HINT_TYPE&&currentSectorX>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MIN&&currentSectorX<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_X_MAX&&currentSectorY>=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MIN&&currentSectorY<=MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX){
-                                const fSX=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fSY=Math.floor(Math.random()*10)+10*(Math.random()<0.5?1:-1);const fX=Math.floor(Math.random()*MAP_WIDTH);const fY=Math.floor(Math.random()*MAP_HEIGHT);
-                                mystery_wayfinder_finalLocation={sectorX:fSX,sectorY:fSY,x:fX,y:fY};
-                                dM+=`\n<span style='color:#FFD700;'>The ship's damaged logs contain a startling discovery! A Precursor Wayfinder signal has been pinpointed to Sector (${fSX},${fSY}), coordinates [${fX},${fY}].</span>`;
-                                mystery_wayfinder_progress=4;isMysteryClue=true;
-                            } else {
-                                switch(tileObject.subtype){
-                                    case 'freighter': dM += "Hull breaches... K'tharr Spices scent."; break; 
-                                    case 'explorer': dM += "Shattered sensors... Silentium Expanse charts."; break; 
-                                    default: dM += "Origin unknown."; break;
-                                }
-                            }
-                        } else {
-                            dM+="Its origin and purpose are unknown.";
-                        }
-                        if(Math.random() < (0.20 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) && !isMysteryClue){/* loot logic */}
-                        scanMessage+=dM;
-                        break;
-                    case ANOMALY_CHAR_VAL: 
-                        let anoM="Unusual energy readings detected. This is an anomaly. ";
-                        if(tileObject&&tileObject.type==='anomaly'&&tileObject.subtype){
-                            anoM+=`Identified as a ${tileObject.subtype}. `;
-                            objectTypeForXP=`anomaly_${tileObject.subtype.replace(/\s+/g,'_').toLowerCase()}`;
-                            if(mystery_wayfinder_progress===2&&tileObject.subtype===MYSTERY_WAYFINDER_ANOMALY_HINT_TYPE){
-                                anoM+=`\n<span style='color:#FFD700;'>The anomaly resonates with the Precursor signal! A fragmented data packet is recovered: 'Seek the lost explorer... Concord designation 'Pathfinder' (${MYSTERY_WAYFINDER_DERELICT_HINT_TYPE})... last seen in the negative X, positive Y quadrant sectors... carrying vital charts.'</span>`;
-                                mystery_wayfinder_progress=3;isMysteryClue=true;
-                            } else {
-                                switch(tileObject.subtype){
-                                     case 'gravimetric wave': anoM += "Space ripples... temporal displacement."; break; 
-                                     case 'temporal distortion': anoM += "Chroniton interference... time flows erratically."; break; 
-                                     default: anoM += "Nature beyond current sensors."; break;
-                                }
-                            }
-                        } else {
-                            anoM+="Its nature is beyond current sensor capabilities. Approach with extreme caution.";
-                        }
-                        if(Math.random() < (0.05 + (COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus || 0)) &&!isMysteryClue){/* unique signature log */}
-                        else if(Math.random()<(0.03+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.VOID_CRYSTALS<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* void crystal */}
-                        else if(Math.random()<(0.01+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PRECURSOR_DATACUBE<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* datacube */}
-                        else if(Math.random()<(0.02+(COMPONENTS_DATABASE[playerShip.scanner].stats.scanBonus||0))&&playerCargo.PHASE_SHIFTED_ALLOY<PLAYER_CARGO_CAPACITY-currentCargoLoad&&!isMysteryClue){/* phase alloy */}
-                        scanMessage+=anoM;
+                    case ANOMALY_CHAR_VAL:
+                         scanMessage += `The residual energy of a ${tileObject.subtype || 'anomaly'} is fading. Whatever secrets it held are gone.`;
                         break;
                     case WORMHOLE_CHAR_VAL: 
-                        let wMsg="Detected an unstable Wormhole! ";
-                        if (tileObject && tileObject.type === 'wormhole' && typeof tileObject.stability === 'number') {
-                            if (tileObject.stability > 0.7) wMsg += "Appears relatively stable...";
-                            else if (tileObject.stability > 0.3) wMsg += "Fluctuating energy readings...";
-                            else wMsg += "Highly unstable! Enter at extreme peril!";
-                        }
-                        scanMessage += wMsg;
+                        scanMessage += "Detected an unstable Wormhole!";
                         actionsAvailable += "Traverse Wormhole (T).";
                         objectTypeForXP = 'wormhole';
                         break;
@@ -1337,41 +1265,20 @@
                 scanMessage += "\nAvailable Actions: " + actionsAvailable;
             }
 
-            if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP) && !isMysteryClue) { 
+            if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) { 
                 scannedObjectTypes.add(objectTypeForXP);
                 playerXP += XP_PER_FIRST_SCAN_TYPE;
                 scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
                 unlockLoreEntry(`PHENOMENON_${objectTypeForXP.toUpperCase()}`); 
-                if (tileObject && tileObject.subtype) {
-                    unlockLoreEntry(`${getTileType(tileObject).toUpperCase()}_${tileObject.subtype.replace(/\s+/g, '_').toUpperCase()}`); 
-                }
                 checkLevelUp();
             }
             
-            // Mission Progress for SURVEY
-            if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
-                playerActiveMission.objectives.forEach((obj, index) => {
-                    if (obj.type === "SCAN_OBJECT") {
-                        const progressKey = `survey_${index}`;
-                        const objectiveProgress = playerActiveMission.progress[progressKey];
-                        if (objectiveProgress && !objectiveProgress.scanned && 
-                            tileObject && getTileType(tileObject) === obj.targetType && tileObject.subtype === obj.subtype &&
-                            (obj.sectorKey === "ANY" || obj.sectorKey === `${currentSectorX},${currentSectorY}`)) {
-                            
-                            objectiveProgress.scanned = true;
-                            objectiveProgress.complete = true; // Mark this specific objective as complete
-                            scanMessage += `\n<span style='color:#00FF00;'>Mission Objective Update: ${obj.subtype} ${obj.targetType} scanned for "${playerActiveMission.title}".</span>`;
-                        }
-                    }
-                });
-                checkMissionObjectiveCompletion();
-            }
             updateMessage(scanMessage);
             renderGame();
         }
 
         function scoopHydrogen() { 
-            if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
+            if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext || currentEncounterContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
             const cT=gameMapGrid[playerY][playerX];
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
@@ -1401,7 +1308,7 @@
         }
 
         function mineAsteroid() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
                 updateMessage("Cannot mine now.");
                 renderGame();
                 return;
@@ -1758,7 +1665,7 @@
         }
 
         function displayCargoHold() {
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext) {
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
                 updateMessage("Cannot view cargo hold now.");
                 renderGame();
                 return;
