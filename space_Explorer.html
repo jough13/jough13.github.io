@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.12 (Expanded Lore)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.13 (Dynamic Missions)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -255,15 +255,15 @@
         <div class="controls-info">
             WASD: Move | E: Scan | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
             Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
-            Docked Mission Actions - C: Complete Delivery (at destination) | G: Claim Reward (at giver) <br>
+            Docked Mission Actions - C: Complete Delivery | G: Claim Reward / Turn-in <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.12</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.13</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.12"; 
+        const GAME_VERSION = "v0.8.13"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -521,46 +521,48 @@
         const MYSTERY_WAYFINDER_DERELICT_SECTOR_QUADRANT_Y_MAX = 5;
 
         // --- Mission Data ---
-        const MISSIONS_DATABASE = {
-            "Starbase Alpha": [ // Missions available at Starbase Alpha
-                {
-                    id: "BOUNTY_SOL_PIRATES_1",
-                    title: "Sol Sector Cleanup",
-                    briefing: "Concord Security offers a reward for eliminating pirate threats in the Sol sector.",
-                    description: "Pirate activity has been reported in the Sol sector (0,0). Eliminate 3 pirate vessels to claim your reward. This is a standard Concord security contract.",
-                    type: "BOUNTY",
-                    giver: "Starbase Alpha", // Giver should match a location name for turn-in
-                    objectives: [{ type: "ELIMINATE", targetName: "Pirate", count: 3, targetSectorKey: "0,0" }], 
-                    rewards: { credits: 300, xp: 50, notoriety: 5 },
-                    prerequisites: null, 
-                    isRepeatable: false
-                },
-                {
-                    id: "DELIVERY_OMEGA_TECH",
-                    title: "Tech Parts for Omega",
-                    briefing: "Planet Omega's research division requires urgent tech parts.",
-                    description: "Deliver 5 units of Tech Parts to Planet Omega in the Sol sector (0,0). The science teams are waiting for these components for critical research. Return to Starbase Alpha Trade Authority for payment.",
-                    type: "DELIVERY",
-                    giver: "Starbase Alpha", // Giver for final turn-in
-                    objectives: [{ type: "DELIVER", itemID: "TECH_PARTS", count: 5, destinationName: "Planet Omega", destinationSectorKey: "0,0" }],
-                    rewards: { credits: 200, xp: 40, notoriety: 2 },
-                    prerequisites: null,
-                    isRepeatable: false
-                },
-                {
-                    id: "SURVEY_SOL_ANOMALY",
-                    title: "Survey Gravimetric Anomaly",
-                    briefing: "Concord Science Division seeks data on a nearby gravimetric wave.",
-                    description: "Scan a 'gravimetric wave' type anomaly. Any sector will do for initial data, but higher sensor readings are appreciated. Return to Starbase Alpha with your findings.",
-                    type: "SURVEY",
-                    giver: "Starbase Alpha", // Giver for final turn-in
-                    objectives: [{ type: "SCAN_OBJECT", targetType: "anomaly", subtype: "gravimetric wave", sectorKey: "ANY" }], 
-                    rewards: { credits: 150, xp: 60, notoriety: 1 },
-                    prerequisites: null,
-                    isRepeatable: false
-                }
-            ]
-        };
+        const MISSION_TEMPLATES = [
+    {
+        id_prefix: "BOUNTY_PIRATE_",
+        type: "BOUNTY",
+        title_template: "Pirate Cull in {sectorName}",
+        briefing_template: "Concord Security is offering a bounty for pirate vessels in the {sectorName} sector.",
+        description_template: "Increased pirate activity in the {sectorName} ({sectorCoords}) sector is disrupting trade. Eliminate {count} pirate threats to secure the area and claim your reward.",
+        objective_templates: [{ type: "ELIMINATE", targetName: "Pirate", count: [2, 4], targetSectorKey: "CURRENT" }],
+        rewards_template: { credits: [250, 500], xp: [40, 75], notoriety: [3, 6] },
+        prerequisites: { minLevel: 1 }
+    },
+    {
+        id_prefix: "DELIVERY_",
+        type: "DELIVERY",
+        title_template: "Urgent Delivery to {destinationName}",
+        briefing_template: "{destinationName} requires an immediate shipment of {itemName}.",
+        description_template: "A priority one request from {destinationName}. They need {count} units of {itemName} for critical operations. Deliver the goods and return here for payment.",
+        objective_templates: [{ type: "DELIVER", itemID: "ANY_LEGAL", count: [5, 15], destinationType: ["PLANET", "OUTPOST"] }],
+        rewards_template: { credits: [150, 400], xp: [30, 60], notoriety: [1, 3] },
+        prerequisites: { minLevel: 1 }
+    },
+    {
+        id_prefix: "SURVEY_ANOMALY_",
+        type: "SURVEY",
+        title_template: "Investigate {subtype} Anomaly",
+        briefing_template: "Concord Science Division requires scan data on a nearby anomaly.",
+        description_template: "We've detected a faint {subtype} signature. We need a ship on-site to perform a detailed scan. The anomaly could be anywhere, so keep your sensors active. Return here with the data.",
+        objective_templates: [{ type: "SCAN_OBJECT", targetType: "anomaly", subtype: "ANY_ANOMALY", sectorKey: "ANY" }],
+        rewards_template: { credits: [200, 350], xp: [50, 80], notoriety: [1, 2] },
+        prerequisites: { minLevel: 2 }
+    },
+    {
+        id_prefix: "ACQUIRE_RESOURCES_",
+        type: "ACQUIRE", // New type
+        title_template: "Resource Acquisition: {itemName}",
+        briefing_template: "We need a contractor to acquire a shipment of {itemName}.",
+        description_template: "Our operations require {count} units of {itemName}. We don't care where you get it - mine it, trade for it, or 'find' it. Just bring the specified amount back here for a generous reward.",
+        objective_templates: [{ type: "ACQUIRE", itemID: "ANY_RARE", count: [3, 8] }],
+        rewards_template: { credits: [500, 1200], xp: [70, 150], notoriety: [2, 4] },
+        prerequisites: { minLevel: 3 }
+    }
+];
 
 
         // --- DOM Elements ---
@@ -991,7 +993,7 @@
             if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && playerActiveMission) {
                 let missionStatus = `<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}`;
                 if (playerActiveMission.isComplete) {
-                    missionStatus += ` - Ready to turn in at ${playerActiveMission.giver}. (Press G)</span>`;
+                     missionStatus += ` - Ready to turn in at ${playerActiveMission.giver}. (Press G)</span>`;
                 } else {
                     let firstIncompleteObjective = "";
                     for(let i=0; i < playerActiveMission.objectives.length; i++) {
@@ -1002,14 +1004,16 @@
                         if (objectiveProgress && !objectiveProgress.complete) { 
                             if (obj.type === "ELIMINATE") {
                                 firstIncompleteObjective = ` - Eliminate ${objectiveProgress.required - objectiveProgress.current} more ${obj.targetName}(s)`;
-                                if (obj.targetSectorKey !== "ANY") firstIncompleteObjective += ` in ${obj.targetSectorKey}`;
+                                if (obj.targetSectorKey !== "ANY") firstIncompleteObjective += ` in sector ${obj.targetSectorKey}`;
                                  firstIncompleteObjective += ".";
                             } else if (obj.type === "SURVEY") {
-                                firstIncompleteObjective = ` - Scan ${obj.subtype} ${obj.targetType}`;
-                                 if (obj.sectorKey !== "ANY") firstIncompleteObjective += ` in ${obj.sectorKey}`;
+                                firstIncompleteObjective = ` - Scan a ${obj.subtype} ${obj.targetType}`;
+                                 if (obj.sectorKey !== "ANY") firstIncompleteObjective += ` in sector ${obj.sectorKey}`;
                                  firstIncompleteObjective += ".";
                             } else if (obj.type === "DELIVERY") {
                                 firstIncompleteObjective = ` - Deliver ${objectiveProgress.required - (objectiveProgress.delivered || 0)} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.`;
+                            } else if (obj.type === "ACQUIRE") {
+                                firstIncompleteObjective = ` - Acquire ${objectiveProgress.required - (playerCargo[obj.itemID] || 0)} more ${COMMODITIES[obj.itemID].name}.`;
                             }
                             break;
                         }
@@ -1127,6 +1131,11 @@
             const tileObject = gameMapGrid[playerY][playerX];
             const tileChar = getTileChar(tileObject);
             const l=getCombinedLocationData(playerY,playerX); 
+
+            if (playerActiveMission) {
+                checkMissionObjectiveCompletion();
+            }
+            
             let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
             if(l){
                 bM=`Arrived at ${l.name}. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
@@ -1592,6 +1601,7 @@
                                     (obj.targetSectorKey === "ANY" || obj.targetSectorKey === `${currentSectorX},${currentSectorY}`)) {
                                     
                                     objectiveProgress.current++;
+                                    objectiveProgress.complete = (objectiveProgress.current >= objectiveProgress.required);
                                     combatLog += `\n<span style='color:#00FF00;'>Mission Update: ${objectiveProgress.current}/${objectiveProgress.required} ${obj.targetName}s eliminated.</span>`;
                                 }
                             }
@@ -1832,31 +1842,15 @@
                 renderGame();
                 return;
             }
+            generateMissionsForStation(currentLocation);
 
-            missionsAvailableAtStation = []; 
-            const stationName = currentLocation.name;
-            const stationMissions = MISSIONS_DATABASE[stationName] || [];
-            
-            stationMissions.forEach(mission => {
-                if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id) ) { 
-                    let meetsPrereqs = true;
-                    if (mission.prerequisites) {
-                        if (mission.prerequisites.level && playerLevel < mission.prerequisites.level) meetsPrereqs = false;
-                        if (mission.prerequisites.completedMission && !playerCompletedMissions.has(mission.prerequisites.completedMission)) meetsPrereqs = false;
-                    }
-                    if (meetsPrereqs) {
-                        missionsAvailableAtStation.push(mission);
-                    }
-                }
-            });
-
-            let missionMsg = `--- ${stationName} Mission Board ---\n`;
+            let missionMsg = `--- ${currentLocation.name} Mission Board ---\n`;
             if (playerActiveMission) {
                 missionMsg += `Current Active Mission: ${playerActiveMission.title}\n(Complete or abandon current mission to accept a new one.)\n\n`;
             }
             
             if (missionsAvailableAtStation.length === 0) {
-                missionMsg += "No new missions currently available.\n";
+                missionMsg += "No new missions currently available. Check back later.\n";
             } else {
                 missionMsg += "Available Contracts:\n";
                 missionsAvailableAtStation.forEach((mission, index) => {
@@ -1865,7 +1859,7 @@
             }
             missionMsg += "\nEnter # to view details, or (L) to leave.";
             
-            currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation, stationName: stationName };
+            currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation, stationName: currentLocation.name };
             updateMessage(missionMsg);
             renderGame();
         }
@@ -1883,12 +1877,13 @@
             }
 
             let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
-            detailMsg += `From: ${mission.giver}\n\n`; // Giver is the station name for turn-in
+            detailMsg += `From: ${mission.giver}\n\n`;
             detailMsg += `Description:\n${mission.description}\n\n`;
             detailMsg += `Objectives:\n`;
             mission.objectives.forEach(obj => {
                 if (obj.type === "ELIMINATE") detailMsg += ` - Eliminate ${obj.count} ${obj.targetName}(s) in sector ${obj.targetSectorKey === "ANY" ? "anywhere" : obj.targetSectorKey}.\n`;
                 else if (obj.type === "DELIVER") detailMsg += ` - Deliver ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName} (Sector ${obj.destinationSectorKey}).\n`;
+                else if (obj.type === "ACQUIRE") detailMsg += ` - Acquire ${obj.count} ${COMMODITIES[obj.itemID].name} and return them here.\n`;
                 else if (obj.type === "SCAN_OBJECT") detailMsg += ` - Scan a ${obj.subtype} ${obj.targetType} in sector ${obj.sectorKey === "ANY" ? "anywhere" : obj.sectorKey}.\n`;
             });
             detailMsg += `\nRewards: ${mission.rewards.credits} Credits, ${mission.rewards.xp} XP, ${mission.rewards.notoriety} Notoriety.\n\n`;
@@ -1928,6 +1923,8 @@
                     playerActiveMission.progress[`${progressKeyBase}_${index}`] = { scanned: false, targetType: obj.targetType, subtype: obj.subtype, sectorKey: obj.sectorKey, complete: false };
                 } else if (obj.type === "DELIVERY") {
                     playerActiveMission.progress[`${progressKeyBase}_${index}`] = { delivered: 0, required: obj.count, itemID: obj.itemID, destinationName: obj.destinationName, destinationSectorKey: obj.destinationSectorKey, complete: false };
+                } else if (obj.type === "ACQUIRE") {
+                    playerActiveMission.progress[`${progressKeyBase}_${index}`] = { required: obj.count, itemID: obj.itemID, complete: (playerCargo[obj.itemID] || 0) >= obj.count };
                 }
             });
 
@@ -1964,7 +1961,7 @@
                         if (playerCargo[obj.itemID] >= obj.count) {
                             playerCargo[obj.itemID] -= obj.count;
                             updateCurrentCargoLoad();
-                            objectiveProgress.delivered = obj.count; // Mark this objective's delivery as done
+                            objectiveProgress.delivered = obj.count;
                             objectiveProgress.complete = true;
                             updateMessage(`Delivered ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.`, true);
                             deliveryMade = true;
@@ -1978,7 +1975,7 @@
             if (deliveryMade) {
                 checkMissionObjectiveCompletion();
             }
-            handleInteraction(); // Refresh docked message
+            handleInteraction();
             renderGame();
         }
 
@@ -1986,27 +1983,33 @@
         function checkMissionObjectiveCompletion() {
             if (!playerActiveMission || playerActiveMission.isComplete) return false;
 
-            let allObjectivesNowComplete = true;
-            for (let i = 0; i < playerActiveMission.objectives.length; i++) {
-                const objective = playerActiveMission.objectives[i];
-                const progressKey = `${objective.type.toLowerCase()}_${i}`;
+            let allObjectivesMet = true;
+            playerActiveMission.objectives.forEach((obj, index) => {
+                const progressKey = `${obj.type.toLowerCase()}_${index}`;
                 const objectiveProgress = playerActiveMission.progress[progressKey];
+                let isObjectiveComplete = objectiveProgress.complete; 
 
-                if (!objectiveProgress || !objectiveProgress.complete) { 
-                    allObjectivesNowComplete = false; 
-                    break;
+                if (obj.type === "ACQUIRE") {
+                    isObjectiveComplete = (playerCargo[obj.itemID] || 0) >= objectiveProgress.required;
+                    objectiveProgress.complete = isObjectiveComplete; 
                 }
-            }
+                if (!isObjectiveComplete) {
+                    allObjectivesMet = false;
+                }
+            });
 
-            if (allObjectivesNowComplete && !playerActiveMission.isComplete) { 
+            if (allObjectivesMet) { 
                 playerActiveMission.isComplete = true;
                 updateMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
+            } else {
+                playerActiveMission.isComplete = false;
             }
-            return allObjectivesNowComplete;
+            return allObjectivesMet;
         }
         
         function grantMissionRewards() {
             if (!playerActiveMission || !playerActiveMission.isComplete) return;
+
             const currentLocation = getCombinedLocationData(playerY, playerX);
             if (!currentLocation || currentLocation.name !== playerActiveMission.giver) {
                 updateMessage("You must be at " + playerActiveMission.giver + " to claim this reward.");
@@ -2014,8 +2017,36 @@
                 return;
             }
 
-
             const mission = playerActiveMission; 
+
+            // For ACQUIRE missions, verify and take the items.
+            if (mission.type === "ACQUIRE") {
+                let canComplete = true;
+                mission.objectives.forEach(obj => {
+                    if (obj.type === "ACQUIRE") {
+                        if ((playerCargo[obj.itemID] || 0) < obj.count) {
+                            canComplete = false;
+                        }
+                    }
+                });
+
+                if (!canComplete) {
+                    updateMessage(`You no longer have the required items for '${mission.title}'. Mission status reset.`);
+                    playerActiveMission.isComplete = false; 
+                    checkMissionObjectiveCompletion(); 
+                    handleInteraction();
+                    renderGame();
+                    return;
+                }
+                
+                mission.objectives.forEach(obj => {
+                    if (obj.type === "ACQUIRE") {
+                        playerCargo[obj.itemID] -= obj.count;
+                    }
+                });
+                updateCurrentCargoLoad();
+            }
+            
             playerCredits += mission.rewards.credits;
             playerXP += mission.rewards.xp;
             updatePlayerNotoriety(mission.rewards.notoriety);
@@ -2034,7 +2065,6 @@
             handleInteraction(); 
             renderGame();
         }
-
 
         document.addEventListener('keydown', function(event) {
             const key = event.key.toLowerCase();
@@ -2129,12 +2159,12 @@
                     case 'b':
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('buy'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; } 
                         break;
                     case 's': 
                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
                             displayTradeScreen('sell'); actionTaken = true;
-                        } else { updateMessage("Cannot trade here."); actionTaken = true; } // Ensure actionTaken is true
+                        } else { updateMessage("Cannot trade here."); actionTaken = true; }
                         break;
                     case 'o': 
                         if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } 
