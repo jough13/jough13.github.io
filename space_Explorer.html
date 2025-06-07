@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.12 (Delivery Missions)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.12 (Expanded Lore)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -435,12 +435,14 @@
             "There's a black market for 'Precursor Navigational Cores' on some remote outposts. They say these cores can interface with ancient Precursor hyperlanes, allowing for instantaneous travel across vast distances... if you can survive the trip and the entities that guard those lanes. They are often found within Precursor Star Map Fragments, and are said to sing to those who can listen, a song that charts paths through the impossible."
         ];
 
-        // --- Lore Database ---
+        // --- Lore Database (EXPANDED) ---
         const LORE_DATABASE = { 
-            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The Galactic Concord is the dominant interstellar government, formed after the Terran Wars some three centuries ago. It strives to maintain peace and facilitate trade across thousands of member systems. Governed by a High Council and enforced by Sector Commands, its influence is vast. While generally seen as a force for order, its bureaucracy can be stifling, and its military arm, Concord Defense Force (CDF), is known for its efficiency and sometimes ruthless enforcement of Concord law. The Obsidian Directorate is its shadowy intelligence agency, rumored to operate outside normal legal channels, often dealing with threats deemed too sensitive for public knowledge, such as dangerous Precursor technologies or K'tharr incursions. Publicly, the Concord promotes ideals of unity and progress, but critics point to its vast surveillance network and the suppression of dissenting voices on fringe worlds. Many citizens, however, appreciate the stability and relative safety the Concord provides compared to the lawless outer rim.", unlocked: false },
-            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "The K'tharr are a proud, militaristic saurian species from the Serpentis Cluster. Their society is built on strict honor codes, warrior traditions, and a rigid caste system dictated by bloodline and combat prowess. They are deeply spiritual, worshipping the void and celestial bodies (which they call 'Sky-Gods'), and view Precursor technology as heretical, believing it led to the Precursors' own destruction. The Hegemony is often in a state of cold war with the Concord, with frequent border skirmishes over resources and ideology. Their ships are fast, well-armed, and often utilize cloaking technology. K'tharr Ancestral Blades are symbols of immense power and status within their clans, said to contain the 'Ancestral Echoes' of past wielders. They view most other sentient species as 'unworthy' or 'inferior,' a stance that often complicates diplomatic relations, though they maintain pragmatic trade relations when it suits their interests.", unlocked: false },
-            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "Not a unified faction, but a loose confederation of pirate clans and individual reavers who prey on shipping lanes. The 'Void Vultures' are one of the more notorious groups, known for their ruthlessness and distinctive black-and-red ship markings. They often operate from hidden bases in asteroid fields or dark nebulae, utilizing hit-and-run tactics with retrofitted freighters and agile interceptors. They often disable ships to plunder them rather than outright destroying them, unless provoked or if a bounty is high enough. Captain Voidfang is their most infamous leader, a cunning tactician with a reputation for always being one step ahead of the Concord.", unlocked: false },
-            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A secretive cult that worships cosmic anomalies and the void itself. They believe these phenomena are manifestations of a higher consciousness or gateways to other realities. Their motives are often inscrutable, and they can be either helpful or hostile to those who encounter them near anomalies. They are known to collect Void Crystals for their rituals, which they claim allow them to 'hear the whispers of the universe' and predict future events or navigate hidden pathways through space. Some say their ultimate goal is to achieve a collective apotheosis by merging with the void itself, a concept most find terrifying. They refer to this event as the 'Great Awakening' or 'Final Silence'.", unlocked: false },
+            FACTION_CONCORD: { title: "Galactic Concord", category: "Factions", text: "The dominant interstellar government, the Galactic Concord projects an image of peace, prosperity, and order. Formed from the ashes of the Terran Wars, it oversees trade, diplomacy, and law across thousands of systems. However, beneath the polished veneer lies a sprawling bureaucracy and the shadowy operations of the Obsidian Directorate, its clandestine intelligence and black-ops division. The Directorate answers only to the highest echelons of the High Council and is tasked with neutralizing threats to Concord stability by any means necessary—often operating outside the very laws the Concord purports to uphold. They are particularly interested in controlling the flow of Precursor technology, suppressing 'dangerous' knowledge, and eliminating existential threats before the public is even aware of them.", unlocked: false },
+            FACTION_KTHARR: { title: "K'tharr Hegemony", category: "Factions", text: "A proud, martial saurian species governed by a strict honor-based caste system. The K'tharr are deeply spiritual, viewing the cosmos as a pantheon of 'Sky-Gods' and the void between them as a sacred, living entity. They consider Precursor technology to be the ultimate heresy, a corrupting influence that led to the downfall of the ancients, and a threat to cosmic balance. K'tharr warriors, bound by the rigid codes of their clan, seek glory in battle and live to serve the Hegemony. Their 'Void Priests' guide their civilization, interpreting cosmic signs and guarding against blasphemous tech. To possess a K'tharr Ancestral Blade is the highest honor, as it is believed to hold the spirits of all its previous wielders.", unlocked: false },
+            FACTION_PIRATES_VOID_VULTURES: { title: "Void Vultures", category: "Factions", text: "A catch-all term for the myriad lawless clans, freebooters, and renegades who haunt the fringes of civilized space. The Void Vultures are one of the most infamous confederations, known for their audacious raids and distinctive ship markings. They are not a unified government but a loose alliance of captains, each with their own ambitions. Their bases are hidden in uncharted nebulae and dense asteroid fields, from which they launch hit-and-run attacks on vulnerable shipping lanes. While most are driven by profit, some, like the notorious Captain Voidfang, seem to have grander, more mysterious goals.", unlocked: false },
+            FACTION_CHILDREN_OF_THE_VOID: { title: "Children of the Void", category: "Factions", text: "A cryptic cult that sees divinity in cosmic anomalies, black holes, and the endless vacuum of space itself. They believe these phenomena are not just physical occurrences, but the thoughts of a sleeping cosmic consciousness. Members of the cult seek to 'harmonize' with the void, often through dangerous rituals involving Void Crystals and exposure to anomalies. Their ultimate goal is apotheosis—to shed their physical forms and merge with the cosmic mind. They can be unpredictable allies or terrifying foes, often protecting anomalies they deem 'sacred' from interference by corporations or the Concord.", unlocked: false },
+            FACTION_XYCORP: { title: "Xy-Corp", category: "Factions", text: "A hyper-capitalist corporate entity with its own private military. Xy-Corp's official motto is 'Progress Through Profit,' but their unofficial creed is 'Acquire and Control.' They are a major player in resource extraction, technology development, and shipping. Xy-Corp is notoriously aggressive in its pursuit of new resources and technologies, often clashing with the K'tharr over mineral rights and with the Concord over their ethically dubious research into Precursor artifacts. Their R&D division is rumored to be light-years ahead of the competition, and they will stop at nothing to maintain their technological edge.", unlocked: false },
+
             LOCATION_STARBASE_ALPHA: { title: "Starbase Alpha", category: "Locations", text: LOCATIONS_DATA["Starbase Alpha"].scanFlavor, unlocked: false },
             LOCATION_PLANET_OMEGA: { title: "Planet Omega", category: "Locations", text: LOCATIONS_DATA["Planet Omega"].scanFlavor, unlocked: false },
             LOCATION_PLANET_XERXES: { title: "Planet Xerxes", category: "Locations", text: LOCATIONS_DATA["Planet Xerxes"].scanFlavor, unlocked: false },
@@ -450,7 +452,7 @@
             PHENOMENON_NEBULA: { title: "Nebulae", category: "Phenomena", text: "Vast clouds of interstellar gas and dust. Emission nebulae glow brightly from ionized gas, reflection nebulae shine with light from nearby stars, and dark nebulae obscure what lies within. They can interfere with sensors and hide many secrets, from stellar nurseries to pirate bases, and even pockets of unique lifeforms or strange, psychoactive gases like those that form Sentient Mycelium.", unlocked: false },
             PHENOMENON_WORMHOLE: { title: "Wormholes", category: "Phenomena", text: "Unstable tears in spacetime that can connect distant points in the galaxy, or perhaps even other realities. Traversing them is dangerous and consumes significant fuel, with unpredictable exit points. Precursor texts hint at a network of stable 'Conduits' they used for rapid transit across their empire, but none have ever been found by modern civilizations. The Concord officially denies their existence, classifying any verified sightings as 'localized gravimetric shear events'.", unlocked: false },
             PHENOMENON_VOID_CRYSTALS: { title: "Void Crystals", category: "Technology & Phenomena", text: COMMODITIES.VOID_CRYSTALS.description + " These strange formations are often found near intense gravitational anomalies or within the hearts of particularly dense dark nebulae. They defy easy analysis, absorbing most sensor scans. Some theorize they are a form of exotic matter, or even biological in origin, perhaps the dormant state of some void-dwelling lifeform. Their value lies in their rarity and the esoteric research being conducted by fringe science groups and cults like the Children of the Void.", unlocked: false },
-            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers' or 'Star-Eaters'), a self-inflicted technological cataclysm due to experiments with spacetime, or even a voluntary departure from this dimension to escape an even greater threat. Some believe they seeded the galaxy with life, or that they await a time to return, judging the civilizations that followed. The concept of the 'Great Filter' – a hypothetical barrier to the long-term survival of intelligent life – is often associated with their fate.", unlocked: false },
+            XENO_PRECURSORS: { title: "The Precursors", category: "Xeno-Archaeology", text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), a self-inflicted technological cataclysm, or even a voluntary departure from this dimension to escape a greater threat. Some Precursor data fragments hint that the 'Silencers' are not a species, but a cosmic principle—a recurring, galaxy-wide extinction event, a 'Great Filter' that they ultimately failed to overcome.", unlocked: false },
             XENO_DERELICTS: { title: "Derelict Ships", category: "Xeno-Archaeology", text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, their emergency beacons long dead. Others are ancient mysteries from forgotten eras or unknown civilizations, their hulls scarred by weapons beyond current comprehension or simply worn down by eons adrift. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active (and often hostile) automated defenses, dormant alien lifeforms, or be booby-trapped by their former owners or later scavengers.", unlocked: false },
             XENO_ANOMALIES: { title: "Cosmic Anomalies", category: "Xeno-Archaeology", text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions that crush hulls, temporal loops that replay moments in time, subspace echoes that whisper maddening secrets, to exotic particle clouds that interfere with ship systems or even induce mutations in organic matter. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars left by cosmic entities.", unlocked: false },
             
@@ -642,7 +644,7 @@
 
 
         function initializeGame() {
-            visitedSectors = new Set();
+            var visitedSectors = new Set();
             scannedObjectTypes = new Set();
             discoveredLocations = new Set();
             playerCompletedMissions = new Set();
@@ -754,34 +756,89 @@
                 };
             }
         }
-        function generateNewSectorMapData(sX, sY) { 
-            gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}
-            if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}
-            else{
-                if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}
-                if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}
-            
-            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}
-            
-            const ASTEROID_TYPES = {
-                "Common Silicate": [{id: "MINERALS", chance: 0.9, minYield: 5, maxYield: 20}],
-                "Metallic Core": [{id: "MINERALS", chance: 0.5, minYield: 10, maxYield: 25}, {id: "RARE_METALS", chance: 0.3, minYield: 1, maxYield: 5}, {id: "GOLD", chance: 0.15, minYield: 1, maxYield: 3}],
-                "Icy Cluster": [{id: "MINERALS", chance: 0.4, minYield: 3, maxYield: 10}, {id: "HYDROGEN_3", chance: 0.05, minYield: 1, maxYield: 2}], 
-                "Exotic Crystalline": [{id: "PLATINUM_ORE", chance: 0.4, minYield: 1, maxYield: 4}, {id: "VOID_CRYSTALS", chance: 0.02, minYield: 1, maxYield: 1}] 
-            };
-            const asteroidTypeKeys = Object.keys(ASTEROID_TYPES);
-            const numAsteroids=Math.floor(Math.random()*3);
-            for(let i=0;i<numAsteroids;i++){
-                const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);
-                if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){
-                    const chosenTypeKey = asteroidTypeKeys[Math.floor(Math.random() * asteroidTypeKeys.length)];
-                    gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random(), asteroidType: chosenTypeKey, resources: ASTEROID_TYPES[chosenTypeKey], minedThisVisit: false};
+
+        function generateNewSectorMapData(sX, sY) {
+            gameMapGrid = [];
+            currentSectorOutpostData = null;
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                const r = [];
+                for (let x = 0; x < MAP_WIDTH; x++) r.push(EMPTY_SPACE_CHAR_VAL);
+                gameMapGrid.push(r);
+            }
+            if (sX === 0 && sY === 0) {
+                for (const lN in LOCATIONS_DATA) {
+                    const l = LOCATIONS_DATA[lN];
+                    if (l.coords && l.type) gameMapGrid[l.coords.y][l.coords.x] = l.type;
+                }
+            } else {
+                if (Math.random() < OUTPOST_SPAWN_CHANCE) {
+                    const rX = Math.floor(Math.random() * (MAP_WIDTH - 4)) + 2;
+                    const rY = Math.floor(Math.random() * (MAP_HEIGHT - 4)) + 2;
+                    if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
+                        gameMapGrid[rY][rX] = OUTPOST_CHAR_VAL;
+                        currentSectorOutpostData = {
+                            name: `Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,
+                            coords: { y: rY, x: rX },
+                            type: OUTPOST_CHAR_VAL,
+                            isMajorHub: false,
+                            ...generateOutpostMarket(),
+                            scanFlavor: "A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",
+                            rumor: RUMORS[Math.floor(Math.random() * RUMORS.length)]
+                        };
+                    }
+                }
+                if (Math.random() < WORMHOLE_SPAWN_CHANCE && !currentSectorOutpostData) {
+                    const rX = Math.floor(Math.random() * (MAP_WIDTH - 4)) + 2;
+                    const rY = Math.floor(Math.random() * (MAP_HEIGHT - 4)) + 2;
+                    if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
+                        gameMapGrid[rY][rX] = { char: WORMHOLE_CHAR_VAL, type: 'wormhole', stability: Math.random() };
+                    }
                 }
             }
-
-            if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}
-            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)]};}}
-            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)]};}}}
+            const numStars = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numStars; i++) {
+                const rX = Math.floor(Math.random() * MAP_WIDTH);
+                const rY = Math.floor(Math.random() * MAP_HEIGHT);
+                if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) gameMapGrid[rY][rX] = { char: STAR_CHAR_VAL, type: 'star', richness: Math.random(), starType: ['G-type', 'Red dwarf', 'Blue giant', 'Binary', 'Neutron Star', 'White Dwarf', 'Pulsar', 'Protostar', 'Wolf-Rayet', 'Rogue Star', 'Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random() * 11)], scoopedThisVisit: false };
+            }
+            const ASTEROID_TYPES = {
+                "Common Silicate": [{ id: "MINERALS", chance: 0.9, minYield: 5, maxYield: 20 }],
+                "Metallic Core": [{ id: "MINERALS", chance: 0.5, minYield: 10, maxYield: 25 }, { id: "RARE_METALS", chance: 0.3, minYield: 1, maxYield: 5 }, { id: "GOLD", chance: 0.15, minYield: 1, maxYield: 3 }],
+                "Icy Cluster": [{ id: "MINERALS", chance: 0.4, minYield: 3, maxYield: 10 }, { id: "HYDROGEN_3", chance: 0.05, minYield: 1, maxYield: 2 }],
+                "Exotic Crystalline": [{ id: "PLATINUM_ORE", chance: 0.4, minYield: 1, maxYield: 4 }, { id: "VOID_CRYSTALS", chance: 0.02, minYield: 1, maxYield: 1 }]
+            };
+            const asteroidTypeKeys = Object.keys(ASTEROID_TYPES);
+            const numAsteroids = Math.floor(Math.random() * 3);
+            for (let i = 0; i < numAsteroids; i++) {
+                const rX = Math.floor(Math.random() * MAP_WIDTH);
+                const rY = Math.floor(Math.random() * MAP_HEIGHT);
+                if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
+                    const chosenTypeKey = asteroidTypeKeys[Math.floor(Math.random() * asteroidTypeKeys.length)];
+                    gameMapGrid[rY][rX] = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: Math.random(), asteroidType: chosenTypeKey, resources: ASTEROID_TYPES[chosenTypeKey], minedThisVisit: false };
+                }
+            }
+            if (Math.random() < 0.20) {
+                const rX = Math.floor(Math.random() * MAP_WIDTH);
+                const rY = Math.floor(Math.random() * MAP_HEIGHT);
+                if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) gameMapGrid[rY][rX] = { char: NEBULA_CHAR_VAL, type: 'nebula', density: Math.random() };
+            }
+            if (Math.random() < 0.15) {
+                const rX = Math.floor(Math.random() * MAP_WIDTH);
+                const rY = Math.floor(Math.random() * MAP_HEIGHT);
+                if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
+                    const dS = ['freighter', 'explorer', 'corvette', 'science vessel', 'luxury liner', 'mining barge', 'unknown wreckage', 'ancient probe', 'ghost ship', 'colony transport', 'prison hulk', 'sleeper ship', 'medical frigate', 'smuggler runabout', 'precursor sentinel', 'K\'tharr warscout', 'Concord patrol craft', 'diplomatic courier', 'generation ship fragment', 'orbital habitat shard', 'research outpost remains', 'K\'tharr broodship fragment', 'Concord black ops vessel', 'derelict Precursor surveyor', 'ancient stellar observatory', 'lost K\'tharr honor guard ship', 'abandoned listening post', 'deep space prison barge', 'ancient Precursor arkship', 'K\'tharr \'Shadow Hunter\' stealth vessel', 'Concord \'Aegis\' class cruiser fragment', 'lost generation ship', 'Precursor \'World Shaper\' fragment'];
+                    gameMapGrid[rY][rX] = { char: DERELICT_CHAR_VAL, type: 'derelict', subtype: dS[Math.floor(Math.random() * dS.length)] };
+                }
+            }
+            if (Math.random() < 0.10) {
+                const rX = Math.floor(Math.random() * MAP_WIDTH);
+                const rY = Math.floor(Math.random() * MAP_HEIGHT);
+                if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
+                    const aS = ['gravimetric wave', 'temporal distortion', 'subspace echo', 'exotic particle cloud', 'void fissure', 'rogue sensor ghost', 'energy surge', 'whispering void', 'chromatic shimmer', 'localized reality shear', 'sentient stardust cloud', 'echoes of creation', 'cosmic string fragment', 'unstable warp pocket', 'null-space bubble', 'precursor energy field', 'memory of a star', 'song of the void', 'echoes of a dying god', 'localized chronal stutter', 'reality bloom', 'dimensional bleed', 'psionic storm front', 'causal loop fragment', 'void bloom', 'K\'tharr void rift', 'Concord FTL test site (failed)', 'Precursor defense grid node', 'echoes of a Precursor battle', 'localized sentience field', 'K\'tharr ritual site echo', 'chroniton feedback loop', 'sentient solar flare', 'void organism spoor field', 'fragmented Precursor archive', 'Concord FTL catastrophe echo', 'K\'tharr ancestral echo', 'Precursor dreamscape fragment'];
+                    gameMapGrid[rY][rX] = { char: ANOMALY_CHAR_VAL, type: 'anomaly', subtype: aS[Math.floor(Math.random() * aS.length)] };
+                }
+            }
+        }
         
         const SECTOR_NAME_PARTS = {
             TIER1_PREFIX: ["Nova", "Kepler", "Orion", "Cygnus", "Lyra", "Terra", "Sol", "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon", "Phi", "Chi", "Psi", "Omega", "Centauri", "Proxima", "Sirius", "Vega", "Altair", "Regulus", "Spica", "Arcturus", "Capella", "Rigel", "Betelgeuse", "Aldebaran", "Pollux", "Castor", "Deneb", "Fomalhaut", "Antares", "Canopus"],
@@ -817,12 +874,63 @@
             
             return `${prefix} ${root}`;
         }
-        var currentSectorName = "Sol Sector"; // Changed to var
 
+        function generateOutpostMarket() {
+            const cK = Object.keys(COMMODITIES);
+            let sI = null,
+                bI = null;
+            const sLb = cK.filter(id => !["RARE_METALS", "TECH_PARTS", "ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", "PRECURSOR_DATACUBE", "VOID_CRYSTALS", "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));
+            if (sLb.length > 0) {
+                const sID = sLb[Math.floor(Math.random() * sLb.length)];
+                sI = { id: sID, priceMod: 1.0 + (Math.random() * 0.2 - 0.1), stock: 10 + Math.floor(Math.random() * 21) };
+            }
+            const bLb = cK.filter(id => (!sI || id !== sI.id) && !["ARTIFACT_SHARDS", "XENO_ANTIQUES", "FORBIDDEN_TEXTS", "PRECURSOR_DATACUBE", "VOID_CRYSTALS", "SENTIENT_MYCELIUM", "PHASE_SHIFTED_ALLOY", "WAYFINDER_CORE", "KTHARR_ANCESTRAL_BLADE", "PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));
+            if (bLb.length > 0) {
+                const bID = bLb[Math.floor(Math.random() * bLb.length)];
+                bI = { id: bID, priceMod: 1.0 + (Math.random() * 0.2 - 0.05), stock: 15 + Math.floor(Math.random() * 26) };
+            }
+            return { sells: sI ? [sI] : [], buys: bI ? [bI] : [] };
+        }
+        
+        function ensurePlayerStartNotOccupied() {
+            if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) {
+                let fE = false;
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue;
+                        const cY = playerY + i,
+                            cX = playerX + j;
+                        if (cY >= 0 && cY < MAP_HEIGHT && cX >= 0 && cX < MAP_WIDTH && getTileChar(gameMapGrid[cY][cX]) === EMPTY_SPACE_CHAR_VAL) {
+                            playerX = cX;
+                            playerY = cY;
+                            fE = true;
+                            break;
+                        }
+                    }
+                    if (fE) break;
+                }
+                if (!fE) {
+                    if (getTileChar(gameMapGrid[0][0]) === EMPTY_SPACE_CHAR_VAL) {
+                        playerX = 0;
+                        playerY = 0;
+                    } else {
+                        for (let r = 0; r < MAP_HEIGHT; r++) {
+                            for (let c = 0; c < MAP_WIDTH; c++) {
+                                if (getTileChar(gameMapGrid[r][c]) === EMPTY_SPACE_CHAR_VAL) {
+                                    playerX = c;
+                                    playerY = r;
+                                    fE = true;
+                                    break;
+                                }
+                            }
+                            if (fE) break;
+                        }
+                    }
+                }
+            }
+        }
 
-        function generateOutpostMarket() { /* Same as v0.6.11 */ const cK=Object.keys(COMMODITIES);let sI=null,bI=null;const sLb=cK.filter(id=>!["RARE_METALS","TECH_PARTS","ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(sLb.length>0){const sID=sLb[Math.floor(Math.random()*sLb.length)];sI={id:sID,priceMod:1.0+(Math.random()*0.2-0.1),stock:10+Math.floor(Math.random()*21)};}const bLb=cK.filter(id=>(!sI||id!==sI.id)&&!["ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(bLb.length>0){const bID=bLb[Math.floor(Math.random()*bLb.length)];bI={id:bID,priceMod:1.0+(Math.random()*0.2-0.05),stock:15+Math.floor(Math.random()*26)};}return{sells:sI?[sI]:[],buys:bI?[bI]:[]};}
-        function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
-        function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
+        function updateCurrentCargoLoad() { currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
 
         function renderGame() { 
             // Optimized map rendering: Only update textContent and className of existing cells
@@ -911,7 +1019,18 @@
                 message += "\n" + missionStatus;
             }
         }
-        function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
+
+        function getCombinedLocationData(y,x) { 
+            if (currentSectorX === 0 && currentSectorY === 0) { 
+                for(const n in LOCATIONS_DATA) {
+                    if(LOCATIONS_DATA[n].coords.y === y && LOCATIONS_DATA[n].coords.x === x) return {name:n, ...LOCATIONS_DATA[n]};
+                }
+            } 
+            if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) {
+                return currentSectorOutpostData;
+            }
+            return null;
+        }
 
         function traverseWormhole() { 
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
@@ -1387,7 +1506,18 @@
             if(!message.includes("LEVEL UP!")) handleInteraction(); 
             renderGame();
         }
-        function checkLevelUp() { /* Same as v0.6.8 */ if(playerXP>=xpToNextLevel){playerLevel++;playerXP-=xpToNextLevel;xpToNextLevel=calculateXpToNextLevel(playerLevel);updateMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`,true);playerShields=MAX_SHIELDS;playerFuel=MAX_FUEL;}}
+        
+        function checkLevelUp() { 
+            if(playerXP>=xpToNextLevel){
+                playerLevel++;
+                playerXP-=xpToNextLevel;
+                xpToNextLevel=calculateXpToNextLevel(playerLevel);
+                updateMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`,true);
+                playerShields=MAX_SHIELDS;
+                playerFuel=MAX_FUEL;
+            }
+        }
+
         function startCombat() { 
             const pirateMaxHull = PIRATE_BASE_HULL_MIN + Math.floor(Math.random() * (PIRATE_BASE_HULL_MAX - PIRATE_BASE_HULL_MIN + 1));
             const pirateMaxShields = PIRATE_BASE_SHIELDS_MIN + Math.floor(Math.random() * (PIRATE_BASE_SHIELDS_MAX - PIRATE_BASE_SHIELDS_MIN + 1));
@@ -1402,6 +1532,7 @@
             updateMessage(`"${pT}"\nHostile Pirate ${PIRATE_CHAR_VAL} encountered!\nPirate Sh: ${currentCombatContext.pirateShields}/${currentCombatContext.pirateMaxShields} | Hull: ${currentCombatContext.pirateHull}/${currentCombatContext.pirateMaxHull}\nYour Sh: ${playerShields}/${MAX_SHIELDS} | Hull: ${playerHull}/${MAX_PLAYER_HULL}\n(F)ight, (C)harge, (V)evade, (R)un?`);
             renderGame();
         } 
+
         function handleCombatAction(action) { 
             if (!currentCombatContext) return; 
             let combatLog = "";
@@ -1643,9 +1774,54 @@
 
         // --- Codex Functions ---
         let currentCodexCategory = null;
-        function toggleCodex(show) { /* Same as v0.6.11 */ if(show){codexOverlayElement.style.display='flex';renderCodexCategories();renderCodexEntries(null);codexEntryTextElement.innerHTML="Select a category, then an entry.";}else{codexOverlayElement.style.display='none';currentCodexCategory=null;}}
-        function renderCodexCategories() { /* Same as v0.6.11 */ codexCategoriesElement.innerHTML='';const cats=new Set();Object.values(LORE_DATABASE).forEach(e=>{if(discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k=>LORE_DATABASE[k]===e)))cats.add(e.category);});Array.from(cats).sort().forEach(cat=>{const cD=document.createElement('div');cD.textContent=cat;cD.className='codex-list-item';if(cat===currentCodexCategory)cD.classList.add('active');cD.onclick=()=>{currentCodexCategory=cat;renderCodexCategories();renderCodexEntries(cat);codexEntryTextElement.innerHTML="Select an entry.";};codexCategoriesElement.appendChild(cD);});}
-        function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category===category&&discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}});}
+        function toggleCodex(show) {
+             if (show) {
+                codexOverlayElement.style.display = 'flex';
+                renderCodexCategories();
+                renderCodexEntries(null);
+                codexEntryTextElement.innerHTML = "Select a category, then an entry.";
+            } else {
+                codexOverlayElement.style.display = 'none';
+                currentCodexCategory = null;
+            }
+        }
+        function renderCodexCategories() { 
+            codexCategoriesElement.innerHTML = '';
+            const cats = new Set();
+            Object.values(LORE_DATABASE).forEach(e => {
+                if (discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k => LORE_DATABASE[k] === e))) cats.add(e.category);
+            });
+            Array.from(cats).sort().forEach(cat => {
+                const cD = document.createElement('div');
+                cD.textContent = cat;
+                cD.className = 'codex-list-item';
+                if (cat === currentCodexCategory) cD.classList.add('active');
+                cD.onclick = () => {
+                    currentCodexCategory = cat;
+                    renderCodexCategories();
+                    renderCodexEntries(cat);
+                    codexEntryTextElement.innerHTML = "Select an entry.";
+                };
+                codexCategoriesElement.appendChild(cD);
+            });
+        }
+        function renderCodexEntries(category) { 
+            codexEntriesElement.innerHTML = '';
+            if (!category) return;
+            Object.entries(LORE_DATABASE).forEach(([k, e]) => {
+                if (e.category === category && discoveredLoreEntries.has(k)) {
+                    const eD = document.createElement('div');
+                    eD.textContent = e.title;
+                    eD.className = 'codex-list-item';
+                    eD.onclick = () => {
+                        codexEntryTextElement.innerHTML = `<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;
+                        document.querySelectorAll('#codexEntries .codex-list-item').forEach(el => el.classList.remove('active'));
+                        eD.classList.add('active');
+                    };
+                    codexEntriesElement.appendChild(eD);
+                }
+            });
+        }
 
         // --- Mission Functions ---
         function displayMissionBoard() {
@@ -1825,7 +2001,6 @@
             if (allObjectivesNowComplete && !playerActiveMission.isComplete) { 
                 playerActiveMission.isComplete = true;
                 updateMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
-                // No need to call renderGame() here, updateMessage will trigger it via handleInteraction or next player input
             }
             return allObjectivesNowComplete;
         }
