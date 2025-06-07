@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.14 (Interactive Encounters)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.15 (Ship Customization)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -254,16 +254,16 @@
 
         <div class="controls-info">
             WASD: Move | E: Scan/Interact | H: Scoop Fuel | T: Traverse Wormhole | J: Codex | I: Cargo | M: Mine Asteroid <br> 
-            Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | L: Leave <br>
+            Docked - B: Buy | S: Sell | O: Outfit Ship | K: Missions | Y: Shipyard | L: Leave <br>
             Docked Mission Actions - C: Complete Delivery | G: Claim Reward / Turn-in <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.14</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.15</div>
     </div>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.14"; 
+        const GAME_VERSION = "v0.8.15"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -274,13 +274,12 @@
         const PIRATE_CHAR_VAL = 'X'; const DERELICT_CHAR_VAL = 'D'; 
         const ANOMALY_CHAR_VAL = '?'; const WORMHOLE_CHAR_VAL = 'W'; 
 
-        var INITIAL_FUEL; 
         var MAX_FUEL;     
-        const INITIAL_CREDITS = 1000; const PLAYER_CARGO_CAPACITY = 50;
+        const INITIAL_CREDITS = 1000;
+        var PLAYER_CARGO_CAPACITY;
         const BASE_FUEL_PER_MOVE = 0.8; 
-        var INITIAL_SHIELDS; 
         var MAX_SHIELDS;     
-        const MAX_PLAYER_HULL = 100; 
+        var MAX_PLAYER_HULL; 
         var playerHull; 
 
         const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
@@ -338,6 +337,43 @@
             { score: 500,  title: "Galactic Hero" }
         ]; 
         
+        // --- Ship Classes Database ---
+        const SHIP_CLASSES = {
+            LIGHT_FREIGHTER: {
+                name: "Light Freighter",
+                baseHull: 100,
+                cargoCapacity: 50,
+                baseCost: 0, // Starter ship
+                description: "A reliable, jack-of-all-trades vessel. Not the fastest or the toughest, but she'll get you there.",
+                loreKey: "LORE_SHIP_LIGHT_FREIGHTER"
+            },
+            INTERCEPTOR: {
+                name: "Interceptor",
+                baseHull: 75,
+                cargoCapacity: 20,
+                baseCost: 8000,
+                description: "Built for speed and maneuverability. Sacrifices durability and cargo space for superior combat agility.",
+                loreKey: "LORE_SHIP_INTERCEPTOR"
+            },
+            EXPLORER: {
+                name: "Explorer",
+                baseHull: 120,
+                cargoCapacity: 40,
+                baseCost: 10000,
+                description: "A sturdy vessel with expanded fuel tanks and advanced sensor mounts, perfect for long-range voyages into the unknown.",
+                loreKey: "LORE_SHIP_EXPLORER"
+            },
+            HEAVY_HAULER: {
+                name: "Heavy Hauler",
+                baseHull: 150,
+                cargoCapacity: 120,
+                baseCost: 15000,
+                description: "A veritable fortress with massive cargo holds. What it lacks in grace, it makes up for in sheer capacity and resilience.",
+                loreKey: "LORE_SHIP_HEAVY_HAULER"
+            }
+        };
+
+
         // --- Ship Components Database ---
         const COMPONENTS_DATABASE = {
             WEAPON_PULSE_LASER_MK1: { name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", description: "Standard issue civilian pulse laser. Reliable but low power.", cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "LORE_COMP_PULSE_LASER" },
@@ -507,6 +543,7 @@
         var currentQuantityInput = ""; 
         var currentSectorName = "Sol Sector"; 
         var discoveredLoreEntries = new Set();
+        var currentEncounterContext = null;
 
 
         // Mystery State
@@ -591,15 +628,20 @@
         }
         
         function applyPlayerShipStats() {
-            const weapon = COMPONENTS_DATABASE[playerShip.weapon];
-            const shield = COMPONENTS_DATABASE[playerShip.shield];
-            const engine = COMPONENTS_DATABASE[playerShip.engine];
+            const shipClassData = SHIP_CLASSES[playerShip.shipClass];
+            MAX_PLAYER_HULL = shipClassData.baseHull;
+            PLAYER_CARGO_CAPACITY = shipClassData.cargoCapacity;
+
+            const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+            const shield = COMPONENTS_DATABASE[playerShip.components.shield];
+            const engine = COMPONENTS_DATABASE[playerShip.components.engine];
 
             PLAYER_ATTACK_DAMAGE = weapon.stats.damage;
             PLAYER_HIT_CHANCE = weapon.stats.hitChance;
             MAX_SHIELDS = shield.stats.maxShields;
             MAX_FUEL = engine.stats.maxFuel;
 
+            if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
             if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
             if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
         }
@@ -688,18 +730,21 @@
             }
 
             playerShip = { 
-                weapon: "WEAPON_PULSE_LASER_MK1", 
-                shield: "SHIELD_BASIC_ARRAY_A", 
-                engine: "ENGINE_STD_DRIVE_MK1",
-                scanner: "SCANNER_BASIC_SUITE" 
+                shipClass: "LIGHT_FREIGHTER",
+                components: {
+                    weapon: "WEAPON_PULSE_LASER_MK1", 
+                    shield: "SHIELD_BASIC_ARRAY_A", 
+                    engine: "ENGINE_STD_DRIVE_MK1",
+                    scanner: "SCANNER_BASIC_SUITE" 
+                }
             };
-            applyPlayerShipStats(); 
 
+            applyPlayerShipStats(); 
+            
             playerFuel = MAX_FUEL; 
             playerCredits = INITIAL_CREDITS; 
-            playerShields = MAX_SHIELDS; 
             playerHull = MAX_PLAYER_HULL; 
-            playerShipClass = "Light Freighter"; 
+            playerShields = MAX_SHIELDS; 
             playerNotoriety = 0;
             updateNotorietyTitle();
             playerActiveMission = null;
@@ -715,6 +760,9 @@
             Object.keys(COMPONENTS_DATABASE).forEach(key => { 
                 if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
             });
+            Object.keys(SHIP_CLASSES).forEach(key => {
+                 if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey);
+            });
 
             mystery_wayfinder_progress = 0; 
             mystery_wayfinder_finalLocation = null;
@@ -724,7 +772,10 @@
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
             playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
             ensurePlayerStartNotOccupied(); 
-            currentTradeContext = null; currentCombatContext = null; currentOutfitContext = null; 
+            currentTradeContext = null; 
+            currentCombatContext = null; 
+            currentOutfitContext = null; 
+            currentEncounterContext = null;
             updateMessage(`Welcome to ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
             renderGame();
         }
@@ -740,11 +791,9 @@
                 for (let y = 0; y < MAP_HEIGHT; y++) {
                     for (let x = 0; x < MAP_WIDTH; x++) {
                         const tile = gameMapGrid[y][x];
-                        if (typeof tile === 'object' && tile !== null && tile.type === 'star') {
-                            tile.scoopedThisVisit = false;
-                        }
-                         if (typeof tile === 'object' && tile !== null && tile.type === 'asteroid') { 
-                            tile.minedThisVisit = false;
+                        if (typeof tile === 'object' && tile !== null) {
+                           if(tile.type === 'star') tile.scoopedThisVisit = false;
+                           if(tile.type === 'asteroid') tile.minedThisVisit = false;
                         }
                     }
                 }
@@ -829,7 +878,7 @@
                 const rY = Math.floor(Math.random() * MAP_HEIGHT);
                 if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
                     const dS = ['freighter', 'explorer', 'corvette', 'science vessel', 'luxury liner', 'mining barge', 'unknown wreckage', 'ancient probe', 'ghost ship', 'colony transport', 'prison hulk', 'sleeper ship', 'medical frigate', 'smuggler runabout', 'precursor sentinel', 'K\'tharr warscout', 'Concord patrol craft', 'diplomatic courier', 'generation ship fragment', 'orbital habitat shard', 'research outpost remains', 'K\'tharr broodship fragment', 'Concord black ops vessel', 'derelict Precursor surveyor', 'ancient stellar observatory', 'lost K\'tharr honor guard ship', 'abandoned listening post', 'deep space prison barge', 'ancient Precursor arkship', 'K\'tharr \'Shadow Hunter\' stealth vessel', 'Concord \'Aegis\' class cruiser fragment', 'lost generation ship', 'Precursor \'World Shaper\' fragment'];
-                    gameMapGrid[rY][rX] = { char: DERELICT_CHAR_VAL, type: 'derelict', subtype: dS[Math.floor(Math.random() * dS.length)] };
+                    gameMapGrid[rY][rX] = { char: DERELICT_CHAR_VAL, type: 'derelict', subtype: dS[Math.floor(Math.random() * dS.length)], looted: false };
                 }
             }
             if (Math.random() < 0.10) {
@@ -837,7 +886,7 @@
                 const rY = Math.floor(Math.random() * MAP_HEIGHT);
                 if (getTileChar(gameMapGrid[rY][rX]) === EMPTY_SPACE_CHAR_VAL) {
                     const aS = ['gravimetric wave', 'temporal distortion', 'subspace echo', 'exotic particle cloud', 'void fissure', 'rogue sensor ghost', 'energy surge', 'whispering void', 'chromatic shimmer', 'localized reality shear', 'sentient stardust cloud', 'echoes of creation', 'cosmic string fragment', 'unstable warp pocket', 'null-space bubble', 'precursor energy field', 'memory of a star', 'song of the void', 'echoes of a dying god', 'localized chronal stutter', 'reality bloom', 'dimensional bleed', 'psionic storm front', 'causal loop fragment', 'void bloom', 'K\'tharr void rift', 'Concord FTL test site (failed)', 'Precursor defense grid node', 'echoes of a Precursor battle', 'localized sentience field', 'K\'tharr ritual site echo', 'chroniton feedback loop', 'sentient solar flare', 'void organism spoor field', 'fragmented Precursor archive', 'Concord FTL catastrophe echo', 'K\'tharr ancestral echo', 'Precursor dreamscape fragment'];
-                    gameMapGrid[rY][rX] = { char: ANOMALY_CHAR_VAL, type: 'anomaly', subtype: aS[Math.floor(Math.random() * aS.length)] };
+                    gameMapGrid[rY][rX] = { char: ANOMALY_CHAR_VAL, type: 'anomaly', subtype: aS[Math.floor(Math.random() * aS.length)], studied: false };
                 }
             }
         }
@@ -975,7 +1024,7 @@
             creditsStatElement.textContent = playerCredits;
             cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
             levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`; 
-            shipClassStatElement.textContent = playerShipClass;
+            shipClassStatElement.textContent = SHIP_CLASSES[playerShip.shipClass].name;
             notorietyStatElement.textContent = playerNotorietyTitle; 
             sectorNameStatElement.textContent = currentSectorName; 
             sectorCoordsStatElement.textContent = `(${currentSectorX},${currentSectorY})`; 
@@ -990,7 +1039,7 @@
                 message = newMessage;
             }
             // If not in a special context and a mission is active, append mission status
-            if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && playerActiveMission) {
+            if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && !currentEncounterContext && playerActiveMission) {
                 let missionStatus = `<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}`;
                 if (playerActiveMission.isComplete) {
                      missionStatus += ` - Ready to turn in at ${playerActiveMission.giver}. (Press G)</span>`;
@@ -1078,7 +1127,7 @@
             if(currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext){updateMessage("Complete current action first.");renderGame();return;} 
             if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
             
-            const currentEngine = COMPONENTS_DATABASE[playerShip.engine];
+            const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
             const actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
 
             if(playerFuel < actualFuelPerMove &&(dx!==0||dy!==0)){updateMessage("Out of fuel!");renderGame();return;}
@@ -1144,6 +1193,7 @@
                 if (l.isMajorHub) {
                     actionsAvailable += "Outfit (O). "; 
                     actionsAvailable += "Missions (K). ";
+                    actionsAvailable += "Shipyard (Y). ";
                 }
                 actionsAvailable += "Leave (L).";
                 
@@ -1455,7 +1505,7 @@
             let enemyAttacks = true; 
 
             if (action === 'fight') {
-                const weaponStats = COMPONENTS_DATABASE[playerShip.weapon].stats;
+                const weaponStats = COMPONENTS_DATABASE[playerShip.components.weapon].stats;
                 let damageDealt = weaponStats.damage;
                 let currentHitChance = weaponStats.hitChance;
 
@@ -1600,10 +1650,10 @@
             currentOutfitContext = { step: 'selectSlot' };
             let outfitMsg = "--- Ship Outfitting ---\n";
             outfitMsg += "Current Loadout:\n";
-            outfitMsg += ` 1. Weapon: ${COMPONENTS_DATABASE[playerShip.weapon].name}\n`;
-            outfitMsg += ` 2. Shield: ${COMPONENTS_DATABASE[playerShip.shield].name}\n`;
-            outfitMsg += ` 3. Engine: ${COMPONENTS_DATABASE[playerShip.engine].name}\n`;
-            outfitMsg += ` 4. Scanner: ${COMPONENTS_DATABASE[playerShip.scanner].name}\n\n`;
+            outfitMsg += ` 1. Weapon: ${COMPONENTS_DATABASE[playerShip.components.weapon].name}\n`;
+            outfitMsg += ` 2. Shield: ${COMPONENTS_DATABASE[playerShip.components.shield].name}\n`;
+            outfitMsg += ` 3. Engine: ${COMPONENTS_DATABASE[playerShip.components.engine].name}\n`;
+            outfitMsg += ` 4. Scanner: ${COMPONENTS_DATABASE[playerShip.components.scanner].name}\n\n`;
             outfitMsg += "Select slot # to upgrade, or (L) to Leave.";
             updateMessage(outfitMsg);
             renderGame();
@@ -1618,7 +1668,7 @@
 
             for (const compId in COMPONENTS_DATABASE) {
                 const comp = COMPONENTS_DATABASE[compId];
-                if (comp.slot === slotType && playerShip[slotType] !== compId) { 
+                if (comp.slot === slotType && playerShip.components[slotType] !== compId) { 
                     componentMsg += `${componentIndex}. ${comp.name} (${comp.cost}c) - ${comp.description}\n`;
                     componentMsg += `   Stats: `;
                     let statsStr = [];
@@ -1652,9 +1702,9 @@
                 return;
             }
 
-            const oldComponent = COMPONENTS_DATABASE[playerShip[component.slot]];
+            const oldComponent = COMPONENTS_DATABASE[playerShip.components[component.slot]];
             playerCredits -= component.cost;
-            playerShip[component.slot] = selectedComponentId; // Use the ID
+            playerShip.components[component.slot] = selectedComponentId; // Use the ID
             applyPlayerShipStats(); 
             unlockLoreEntry(component.loreKey);
 
