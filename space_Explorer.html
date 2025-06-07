@@ -261,7 +261,7 @@
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
         <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.16</div>
-    </div>
+    </script>
 
     <script>
         // --- Game Configuration ---
@@ -510,7 +510,8 @@
             COMMODITY_KTHARR_ANCESTRAL_BLADE: { title: "K'tharr Ancestral Blade", category: "Commodities", text: COMMODITIES.KTHARR_ANCESTRAL_BLADE.description, unlocked: false },
             COMMODITY_PRECURSOR_STAR_MAP_FRAGMENT: { title: "Precursor Star Map Fragment", category: "Commodities", text: COMMODITIES.PRECURSOR_STAR_MAP_FRAGMENT.description, unlocked: false },
             MYSTERY_WAYFINDER_QUEST: { title: "The Precursor Wayfinder", category: "Mysteries", text: "Ancient legends speak of Precursor 'Wayfinders', devices capable of charting paths through the deepest voids and perhaps even between galaxies. The Galactic Concord has long sought these mythical artifacts. Rumors suggest a signal from one was recently detected...", unlocked: false },
-            MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false }
+            MYSTERY_WAYFINDER_QUEST_COMPLETED: { title: "Wayfinder Activated", category: "Mysteries", text: "You successfully located and activated a Precursor Wayfinder. Its core contains fragmented charts hinting at paths into the Silentium Expanse and a location known as the 'First Nexus'. This discovery could change the course of galactic exploration, but also attract unwanted attention. The journey has just begun.", unlocked: false },
+            MYSTERY_FIRST_NEXUS: { title: "The First Nexus", category: "Mysteries", text: "The location revealed by the Wayfinder Core. A place of immense Precursor power and significance. Its purpose is unknown, but it radiates an energy unlike anything known to modern science. It is likely to be of extreme interest to all major factions.", unlocked: false }
         };
 
         
@@ -574,7 +575,7 @@
 
         var currentSectorName = "Sol Sector"; 
 
-        var discoveredLoreEntries = new Set();
+        var discoveredLoreEntries;
         var currentEncounterContext = null;
 
 
@@ -2927,8 +2928,11 @@
             if (currentOutfitContext) { 
 
                 if (currentOutfitContext.step === 'selectSlot') {
+                    if (key === 'y') {
+                        displayShipyard(); actionTaken = true;
+                    }
 
-                    if (key === '1') displayComponentsForSlot('weapon');
+                    else if (key === '1') displayComponentsForSlot('weapon');
 
                     else if (key === '2') displayComponentsForSlot('shield');
 
