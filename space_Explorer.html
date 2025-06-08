@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.18 (The First Nexus)</title>
+    <title>Wayfinder: Echoes of the Void - v0.8.22 (Post-Nexus World)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -260,12 +260,12 @@
             Docked Mission Actions - C: Complete Delivery | G: Claim Reward / Turn-in <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.18</div>
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.20</div>
     </script>
 
     <script>
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.18"; 
+        const GAME_VERSION = "v0.8.20"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -386,7 +386,7 @@
             WEAPON_ION_CANNON_MK1: { name: "Ion Cannon Mk1", type: "weapon", slot: "weapon", description: "Disrupts shields effectively, less hull damage.", cost: 2200, stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 10 }, loreKey: "LORE_COMP_ION_WEAPON" }, 
             WEAPON_BEAM_LASER_MK1: { name: "Beam Laser Mk1", type: "weapon", slot: "weapon", description: "Sustained energy beam. High accuracy, consistent damage over time.", cost: 2800, stats: { damage: 10, hitChance: 0.85 }, loreKey: "LORE_COMP_BEAM_LASER" },
             WEAPON_MASS_DRIVER_MK1: { name: "Mass Driver Mk1", type: "weapon", slot: "weapon", description: "Accelerates a dense projectile to devastating speeds. High hull damage, slow fire rate.", cost: 3800, stats: { damage: 25, hitChance: 0.60 }, loreKey: "LORE_COMP_MASS_DRIVER" },
-            WEAPON_MISSILE_LAUNCHER_MK1: { name: "Missile Launcher Mk1", type: "weapon", slot: "weapon", description: "Fires self-propelled explosive ordnance. High damage, limited ammo (flavor).", cost: 4500, stats: { damage: 30, hitChance: 0.60 }, loreKey: "LORE_COMP_MISSILE_LAUNCHER" },
+            WEAPON_MISSILE_LAUNCHER_MK1: { name: "Missile Launcher Mk1", type: "weapon", slot: "weapon", description: "Fires self-propelled explosive ordnance. High damage, limited ammo.", cost: 4500, stats: { damage: 30, hitChance: 0.60, maxAmmo: 5 }, loreKey: "LORE_COMP_MISSILE_LAUNCHER" },
             SHIELD_BASIC_ARRAY_A: { name: "Basic Deflector Array A", type: "shield", slot: "shield", description: "Entry-level shield generator. Offers minimal protection.", cost: 0, stats: { maxShields: 50, rechargeRate: 1 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
             SHIELD_GUARDIAN_B: { name: "Guardian Shield Emitter B", type: "shield", slot: "shield", description: "Military surplus shield, offering better resilience and faster recharge.", cost: 2500, stats: { maxShields: 80, rechargeRate: 2 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" }, 
             SHIELD_AEGIS_C: { name: "Aegis Shield Projector C", type: "shield", slot: "shield", description: "Top-tier Concord shield tech. Excellent protection and robust recharge.", cost: 5000, stats: { maxShields: 120, rechargeRate: 3 }, loreKey: "LORE_COMP_SHIELD_GENERATOR" },
@@ -429,6 +429,7 @@
             "Starbase Alpha": { 
                 coords: { y: MAP_HEIGHT - 5, x: MAP_WIDTH - 7 }, type: STARBASE_CHAR_VAL, 
                 isMajorHub: true, 
+                faction: "CONCORD",
                 sells: [ { id: "FUEL_CELLS", priceMod: 0.9, stock: 100 }, { id: "TECH_PARTS", priceMod: 1.1, stock: 30 }, { id: "MEDICAL_SUPPLIES", priceMod: 1.0, stock: 25 }, { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: 50 } ],
                 buys: [ 
                     { id: "MINERALS", priceMod: 1.2, stock: 50 }, { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 50 }, 
@@ -442,8 +443,8 @@
                 ],
                 scanFlavor: "Starbase Alpha: Major Concord trade hub and administrative center for Sol Sector. Its Xeno-Archaeology department in the 'Scholar's Spire' pays top credit for Precursor Algorithm Keys. The Obsidian Directorate is always interested in... unique acquisitions, operating from the heavily shielded 'Black Site Annex'. The Oracle of Cygnus in the Mystic Quarter sometimes trades prophecies for rare xeno-artifacts, if you can find her hidden sanctum."
             },
-            "Planet Omega": { coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL, sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ], buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ], scanFlavor: "Planet Omega: Rich Dilithium deposits. Significant Precursor ruins dot the landscape, some appearing as immense, silent geometric structures half-buried in the crimson sands; some whisper of a dormant 'World Engine' beneath the surface. Concord research outposts monitor unusual energy fluctuations, wary of what they call 'Silencer Echoes' – faint, high-frequency transmissions that seem to emanate from the deepest ruins." },
-            "Planet Xerxes": {  coords: { y: 3, x: MAP_WIDTH - 5 }, type: PLANET_CHAR_VAL, sells: [], buys: [], scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere, and crushing gravity. High Xenon Gas and heavy metal concentrations make it valuable, but deadly. Rumored pirate haven and site of ancient K'tharr battles; some say the 'bad spirits' here are echoes of failed K'tharr rituals or a malfunctioning Precursor 'guardian' system that affects psionic minds, causing vivid hallucinations of metallic spiders." }
+            "Planet Omega": { coords: { y: 7, x: 7 }, type: PLANET_CHAR_VAL, faction: "CONCORD", sells: [ { id: "MINERALS", priceMod: 0.8, stock: 200 }, { id: "FOOD_SUPPLIES", priceMod: 0.9, stock: 100 } ], buys: [ { id: "TECH_PARTS", priceMod: 1.3, stock: 10 }, { id: "RARE_METALS", priceMod: 1.1, stock: 20 } ], scanFlavor: "Planet Omega: Rich Dilithium deposits. Significant Precursor ruins dot the landscape, some appearing as immense, silent geometric structures half-buried in the crimson sands; some whisper of a dormant 'World Engine' beneath the surface. Concord research outposts monitor unusual energy fluctuations, wary of what they call 'Silencer Echoes' – faint, high-frequency transmissions that seem to emanate from the deepest ruins." },
+            "Planet Xerxes": {  coords: { y: 3, x: MAP_WIDTH - 5 }, type: PLANET_CHAR_VAL, faction: "INDEPENDENT", sells: [], buys: [], scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere, and crushing gravity. High Xenon Gas and heavy metal concentrations make it valuable, but deadly. Rumored pirate haven and site of ancient K'tharr battles; some say the 'bad spirits' here are echoes of failed K'tharr rituals or a malfunctioning Precursor 'guardian' system that affects psionic minds, causing vivid hallucinations of metallic spiders." }
         };
         var currentSectorOutpostData = null; 
         const RUMORS = [ 
@@ -857,8 +858,15 @@
                     shield: "SHIELD_BASIC_ARRAY_A", 
                     engine: "ENGINE_STD_DRIVE_MK1",
                     scanner: "SCANNER_BASIC_SUITE" 
-                }
+                },
+                ammo: {}
             };
+            
+            const startingWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+            if (startingWeapon.stats.maxAmmo) {
+                playerShip.ammo[playerShip.components.weapon] = startingWeapon.stats.maxAmmo;
+            }
+
 
             applyPlayerShipStats(); 
             
@@ -3170,4 +3178,4 @@
 
 </body>
 
-</ht
+</html>
