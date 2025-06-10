@@ -18,10 +18,18 @@
             /* Styling for the project links */
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .project-link:hover {
-            /* Hover effect for project links */
+        /* Color-specific hover effects */
+        .project-link.bg-indigo-600:hover {
             transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.2), 0 6px 6px rgba(0, 255, 255, 0.15);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2);
+        }
+        .project-link.bg-rose-600:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2);
+        }
+        .project-link.bg-green-600:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2);
         }
         .gradient-text {
             /* Animated gradient text for the main title */
@@ -31,7 +39,7 @@
             -webkit-text-fill-color: transparent;
             animation: gradientAnimation 10s ease infinite;
             /* Added padding to prevent clipping of descenders like 'g' */
-            padding-bottom: 0.1em; /* Adjust as needed */
+            padding-bottom: 0.1em;
             display: inline-block; /* Ensures padding is applied correctly with background-clip */
         }
         @keyframes gradientAnimation {
@@ -49,7 +57,7 @@
         <!-- Header Title -->
         <header class="mb-10">
             <h1 class="text-4xl sm:text-5xl font-bold">
-                <span class="gradient-text">My Coding Adventures</span>
+                <span class="gradient-text">My Attempts at Vibe Cobing</span>
             </h1>
             <p class="text-gray-400 mt-3 text-lg">Explore my latest projects!</p>
         </header>
@@ -69,11 +77,18 @@
                 Realms of Rust and Ruin
                 <span class="block text-sm text-rose-200 mt-1">Survive in a post-apocalyptic world.</span>
             </a>
+
+            <!-- Project 3: Echoes of the Fall -->
+            <a href="echoes_of_the_fall.html"
+               class="project-link block bg-green-600 hover:bg-green-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
+                Echoes of the Fall
+                <span class="block text-sm text-green-200 mt-1">Explore a world reclaimed by nature.</span>
+            </a>
         </section>
 
         <!-- Footer -->
         <footer class="mt-12 text-gray-500 text-sm">
-            <p>&copy; <span id="currentYear"></span> Joseph Donakowski. All rights reserved.</p>
+            <p>&copy; <span id="currentYear"></span> Jough Donakowski. All rights reserved.</p>
             <p>Powered by imagination and code.</p>
         </footer>
     </div>
