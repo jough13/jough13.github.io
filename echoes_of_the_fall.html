@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoes of the Fall</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a; /* Dark gray background */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Press Start 2P', cursive; /* 8-bit style font */
+            color: #ffffff;
+        }
+        h1 {
+            color: #00ff00; /* Green, Fallout-style text */
+            text-shadow: 2px 2px #000000;
+        }
+        canvas {
+            border: 4px solid #4a4a4a; /* Darker border */
+            border-radius: 8px; /* Slightly rounded corners */
+            background-color: #2c2c2c; /* A slightly lighter background to ensure contrast */
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); /* Green glow effect */
+            image-rendering: pixelated;
+        }
+        p {
+            margin-top: 20px;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Echoes of the Fall</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <p>Use Arrow Keys or WASD to move. Press [E] to interact. Press [I] for Inventory.</p>
+
+    <script>
+        // --- 1. SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- 2. GAME CONSTANTS & STATE ---
+        const TILE_SIZE = 32;
+        const walkableTiles = [0, 1];
+
+        const camera = { x: 0, y: 0, width: canvas.width, height: canvas.height };
+        const player = {
+            x: 18 * TILE_SIZE, y: 10 * TILE_SIZE,
+            width: TILE_SIZE, height: TILE_SIZE,
+            speed: 4, type: 'player',
+            inventory: []
+        };
+        const keys = {};
+
+        // Game State Management
+        let dialogueActive = false;
+        let activeNPC = null;
+        let dialogueIndex = 0;
+        let isTransitioning = false;
+        let fadeAlpha = 0;
+        let inventoryOpen = false;
+        let notification = { text: '', timer: 0 };
+
+        // NEW: Quest System
+        const quests = {
+            'main_quest_1': {
+                id: 'main_quest_1',
+                title: 'Echoes of the Fall',
+                status: 'inactive', // inactive, active, completed
+                objectiveIndex: 0,
+                objectives: [
+                    { text: 'Talk to Jax.', isComplete: false },
+                    { text: 'Find the Scrapyard.', isComplete: false },
+                    { text: 'Search for the Artifact.', isComplete: false },
+                    { text: 'Return to Jax.', isComplete: false }
+                ]
+            }
+        };
+
+        let currentZoneId = 'haven';
+        const zones = {
+            haven: {
+                map: [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+                ],
+                objects: [
+                    { x: 3 * TILE_SIZE, y: 2 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: 'tree'},
+                    { x: 8 * TILE_SIZE, y: 4 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: 'tree'}, 
+                    { x: 22 * TILE_SIZE, y: 10 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: 'tree'},
+                    { x: 6 * TILE_SIZE, y: 8 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: 'rock'},
+                    { x: 4 * TILE_SIZE, y: 16 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: 'rock'}, 
+                    { x: 18 * TILE_SIZE, y: 8 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: 'npc', name: 'Jax', dialogue: ["Be careful in that scrapyard. It's not stable."], dialogueAfterQuest: ["You found it! We need to figure out what it does."]},
+                    { x: 20 * TILE_SIZE, y: 4 * TILE_SIZE, width: TILE_SIZE * 3, height: TILE_SIZE * 3, type: 'house'},
+                    { x: 28 * TILE_SIZE, y: 13 * TILE_SIZE, width: TILE_SIZE * 3, height: TILE_SIZE * 3, type: 'house'},
+                    { x: 39 * TILE_SIZE, y: 10 * TILE_SIZE, width: TILE_SIZE, height: 6 * TILE_SIZE, type: 'transition', targetZone: 'scrapyard', targetX: 1 * TILE_SIZE, targetY: 10 * TILE_SIZE }
+                ]
+            },
+            scrapyard: {
+                map: [
+                    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+                    [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                ],
+                objects: [
+                    { x: 0, y: 0, width: TILE_SIZE, height: 15*TILE_SIZE, type: 'transition', targetZone: 'haven', targetX: 38 * TILE_SIZE, targetY: 15 * TILE_SIZE },
+                    { x: 5 * TILE_SIZE, y: 3 * TILE_SIZE, width: TILE_SIZE * 2, height: TILE_SIZE * 2, type: 'junk'},
+                    { x: 12 * TILE_SIZE, y: 8 * TILE_SIZE, width: TILE_SIZE * 3, height: TILE_SIZE, type: 'junk'},
+                    { x: 15 * TILE_SIZE, y: 2 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 3, type: 'junk'},
+                    { x: 8 * TILE_SIZE, y: 10 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, type: 'item', name: 'Flux Engine Core', id: 'flux_core' }
+                ]
+            }
+        };
+
+        const tileColors = {
+            0: { base: '#34a853', shadow: '#2c8a44', highlight: '#58c775', border: '#1E6A34' },
+            1: { base: '#967259', shadow: '#6a4f3a', highlight: '#c8a991', pebble: '#5a6268', border: '#5A3F2A' },
+            2: { base: '#495057', shadow: '#343a40', highlight: '#6c757d', border: '#212529' },
+        };
+
+        const mapDetails = {};
+
+        // --- 3. EVENT LISTENERS for INPUT ---
+        document.addEventListener('keydown', (event) => {
+            keys[event.code] = true;
+            if (event.code === 'KeyI' && !dialogueActive && !isTransitioning) {
+                inventoryOpen = !inventoryOpen;
+            }
+            if (event.code === 'Escape' && inventoryOpen) {
+                inventoryOpen = false;
+            }
+        });
+        document.addEventListener('keyup', (event) => delete keys[event.code]);
+
+        // --- 4. CORE GAME LOGIC ---
+        
+        function initializeMapDetails() {
+            for (const zoneId in zones) {
+                const zone = zones[zoneId];
+                mapDetails[zoneId] = [];
+                for (let y = 0; y < zone.map.length; y++) {
+                    mapDetails[zoneId][y] = [];
+                    for (let x = 0; x < zone.map[y].length; x++) {
+                        const tileType = zone.map[y][x];
+                        const details = [];
+                        for (let i = 0; i < 2; i++) {
+                            details.push({ x: Math.random() * (TILE_SIZE - 4), y: Math.random() * (TILE_SIZE - 4), type: 'texture' });
+                        }
+                        if (tileType === 1 && Math.random() < 0.25) {
+                            details.push({ x: Math.random() * (TILE_SIZE - 6), y: Math.random() * (TILE_SIZE - 6), type: 'pebble' });
+                        }
+                         if (tileType === 2 && Math.random() < 0.4) {
+                            details.push({ x: Math.random() * (TILE_SIZE - 4), y: Math.random() * (TILE_SIZE - 4), type: 'rust', color: '#7f4f24' });
+                        }
+                        mapDetails[zoneId][y][x] = details;
+                    }
+                }
+            }
+        }
+        
+        function isColliding(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
+        }
+
+        function isWalkable(x, y, width, height) {
+            const currentMap = zones[currentZoneId].map;
+            const currentObjects = zones[currentZoneId].objects;
+            const playerRect = {x, y, width, height};
+            if (x < 0 || y < 0 || x + width > currentMap[0].length * TILE_SIZE || y + height > currentMap.length * TILE_SIZE) {
+                return false;
+            }
+            const mapLeft = Math.floor(x / TILE_SIZE); const mapRight = Math.floor((x + width - 1) / TILE_SIZE);
+            const mapTop = Math.floor(y / TILE_SIZE); const mapBottom = Math.floor((y + height - 1) / TILE_SIZE);
+
+            for (let i = mapLeft; i <= mapRight; i++) {
+                for (let j = mapTop; j <= mapBottom; j++) {
+                     if (!walkableTiles.includes(currentMap[j][i])) {
+                        return false;
+                    }
+                }
+            }
+            for (const obj of currentObjects) { 
+                if (obj.type !== 'transition' && isColliding(playerRect, obj)) return false; 
+            }
+            return true;
+        }
+
+        function handlePlayerMovement() {
+            let nextX = player.x; let nextY = player.y;
+            if (keys['ArrowUp'] || keys['KeyW']) nextY -= player.speed;
+            if (keys['ArrowDown'] || keys['KeyS']) nextY += player.speed;
+            if (keys['ArrowLeft'] || keys['KeyA']) nextX -= player.speed;
+            if (keys['ArrowRight'] || keys['KeyD']) nextX += player.speed;
+            
+            if (isWalkable(nextX, nextY, player.width, player.height)) { player.x = nextX; player.y = nextY; }
+        }
+
+        function handleInteraction() {
+            if (keys['KeyE']) {
+                if (dialogueActive) {
+                    dialogueIndex++;
+                    const currentDialogue = (quests.main_quest_1.status === 'completed' && activeNPC.dialogueAfterQuest) ? activeNPC.dialogueAfterQuest : activeNPC.dialogue;
+
+                    if (dialogueIndex >= currentDialogue.length) {
+                        dialogueActive = false; activeNPC = null; dialogueIndex = 0;
+                        if (quests.main_quest_1.status === 'inactive') {
+                            quests.main_quest_1.status = 'active';
+                            quests.main_quest_1.objectiveIndex = 1;
+                        } else if (quests.main_quest_1.status === 'completed' && quests.main_quest_1.objectiveIndex === 3) {
+                             showNotification("Quest Complete: Echoes of the Fall");
+                        }
+                    }
+                } else {
+                    const currentObjects = zones[currentZoneId].objects;
+                    for (let i = currentObjects.length - 1; i >= 0; i--) {
+                        const obj = currentObjects[i];
+                        const distance = Math.hypot(player.x - obj.x, player.y - obj.y);
+                        if (distance < TILE_SIZE * 1.5) {
+                            if (obj.type === 'npc') {
+                                dialogueActive = true; activeNPC = obj; dialogueIndex = 0; break;
+                            } else if (obj.type === 'item') {
+                                player.inventory.push(obj);
+                                showNotification(`Found: ${obj.name}`);
+                                if(obj.id === 'flux_core' && quests.main_quest_1.status === 'active') {
+                                    quests.main_quest_1.objectiveIndex = 3; // Advance to "Return to Jax"
+                                    quests.main_quest_1.status = 'completed'; // For dialogue check
+                                }
+                                currentObjects.splice(i, 1);
+                                break;
+                            }
+                        }
+                    }
+                }
+                keys['KeyE'] = false;
+            }
+        }
+        
+        function handleTransitions() {
+            for(const trigger of zones[currentZoneId].objects.filter(o => o.type === 'transition')) {
+                if (isColliding(player, trigger)) {
+                    isTransitioning = true;
+                    let fadeOut = setInterval(() => {
+                        fadeAlpha += 0.05;
+                        if (fadeAlpha >= 1) {
+                            clearInterval(fadeOut);
+                            currentZoneId = trigger.targetZone;
+                            player.x = trigger.targetX;
+                            player.y = trigger.targetY;
+                            updateCamera();
+                             if (currentZoneId === 'scrapyard' && quests.main_quest_1.status === 'active' && quests.main_quest_1.objectiveIndex === 1) {
+                                quests.main_quest_1.objectiveIndex = 2; // Arrived at scrapyard
+                            }
+                             let fadeIn = setInterval(() => {
+                                fadeAlpha -= 0.05;
+                                if (fadeAlpha <= 0) {
+                                    clearInterval(fadeIn);
+                                    isTransitioning = false;
+                                }
+                            }, 20);
+                        }
+                    }, 20);
+                }
+            }
+        }
+        
+        function updateNotification() {
+            if (notification.timer > 0) {
+                notification.timer--;
+            }
+        }
+
+        function updateCamera() {
+            camera.x = player.x - camera.width / 2 + player.width / 2;
+            camera.y = player.y - camera.height / 2 + player.height / 2;
+            const currentMap = zones[currentZoneId].map;
+            camera.x = Math.max(0, Math.min(camera.x, currentMap[0].length * TILE_SIZE - camera.width));
+            camera.y = Math.max(0, Math.min(camera.y, currentMap.length * TILE_SIZE - camera.height));
+        }
+
+        function update() { 
+            if (isTransitioning || inventoryOpen) return;
+            handleInteraction();
+            if (!dialogueActive) {
+                handlePlayerMovement(); 
+                handleTransitions();
+            }
+            updateCamera();
+            updateNotification();
+        }
+        
+        function drawObject(obj) {
+            const screenX = obj.x - camera.x;
+            const screenY = obj.y - camera.y;
+
+             if (obj.type === 'player') {
+                const size = TILE_SIZE / 8;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath(); ctx.ellipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - size, TILE_SIZE * 0.4, TILE_SIZE * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#4a2a0a'; ctx.fillRect(screenX + size * 2, screenY + size * 7, size * 2, size); ctx.fillRect(screenX + size * 4, screenY + size * 7, size * 2, size);
+                ctx.fillStyle = '#495057'; ctx.fillRect(screenX + size * 2, screenY + size * 5, size * 4, size * 2);
+                ctx.fillStyle = '#343a40'; ctx.fillRect(screenX + size * 3.8, screenY + size * 5, size * 0.4, size * 2);
+                ctx.fillStyle = '#1e90ff'; ctx.fillRect(screenX + size, screenY + size * 3, size * 6, size * 2);
+                ctx.fillStyle = '#ffc8a8'; ctx.fillRect(screenX, screenY + size * 4, size, size); ctx.fillRect(screenX + size * 7, screenY + size * 4, size, size);
+                ctx.fillStyle = '#ffc8a8'; ctx.fillRect(screenX + size * 2, screenY + size * 1, size * 4, size * 3);
+                ctx.fillStyle = '#4a2a0a'; ctx.fillRect(screenX + size, screenY, size * 6, size * 2); ctx.fillRect(screenX + size * 2, screenY + size * 2, size, size); ctx.fillRect(screenX + size * 5, screenY + size * 2, size, size);
+                ctx.fillStyle = 'white'; ctx.fillRect(screenX + size * 3, screenY + size * 2, size, size); ctx.fillRect(screenX + size * 5, screenY + size * 2, size, size);
+                ctx.fillStyle = 'black'; ctx.fillRect(screenX + size * 3.25, screenY + size * 2.25, size * 0.5, size * 0.5); ctx.fillRect(screenX + size * 5.25, screenY + size * 2.25, size * 0.5, size * 0.5);
+            } else if (obj.type === 'npc') {
+                const size = TILE_SIZE / 8;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath(); ctx.ellipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - size, TILE_SIZE * 0.4, TILE_SIZE * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#5C4033'; ctx.fillRect(screenX + size * 1.5, screenY + size * 7, size * 2, size); ctx.fillRect(screenX + size * 4.5, screenY + size * 7, size * 2, size);
+                ctx.fillStyle = '#006400'; ctx.fillRect(screenX + size * 1.5, screenY + size * 3, size * 5, size * 4);
+                ctx.fillRect(screenX + size * 2.5, screenY + size * 2, size, size * 2); ctx.fillRect(screenX + size * 4.5, screenY + size * 2, size, size * 2);
+                ctx.fillStyle = '#ffc8a8'; ctx.fillRect(screenX + size * 2.5, screenY + size * 2, size * 3, size * 2); ctx.fillRect(screenX, screenY + size * 4, size * 1.5, size * 2); ctx.fillRect(screenX + size * 6.5, screenY + size * 4, size * 1.5, size * 2);
+                ctx.fillStyle = '#ffc8a8'; ctx.fillRect(screenX + size * 2.5, screenY + size, size * 3, size);
+                ctx.fillStyle = 'black'; ctx.fillRect(screenX + size * 3, screenY + size * 2, size * 0.5, size * 0.5); ctx.fillRect(screenX + size * 4.5, screenY + size * 2, size * 0.5, size * 0.5);
+            } else if (obj.type === 'tree') {
+                ctx.fillStyle = '#6a4f3a'; ctx.fillRect(screenX + TILE_SIZE * 0.4, screenY + obj.height - TILE_SIZE, TILE_SIZE * 0.2, TILE_SIZE);
+                ctx.fillStyle = '#967259'; ctx.fillRect(screenX + TILE_SIZE * 0.4, screenY + obj.height - TILE_SIZE, TILE_SIZE * 0.1, TILE_SIZE);
+                ctx.fillStyle = '#228B22'; ctx.beginPath(); ctx.arc(screenX + TILE_SIZE / 2, screenY + TILE_SIZE * 0.4, TILE_SIZE * 0.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#3CB371'; ctx.beginPath(); ctx.arc(screenX + TILE_SIZE / 2 + 5, screenY + TILE_SIZE * 0.4 - 5, TILE_SIZE * 0.35, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#90EE90'; ctx.beginPath(); ctx.arc(screenX + TILE_SIZE / 2 - 5, screenY + TILE_SIZE * 0.4 + 5, TILE_SIZE * 0.3, 0, Math.PI * 2); ctx.fill();
+            } else if (obj.type === 'rock') {
+                 ctx.fillStyle = '#6c757d'; ctx.beginPath();
+                 ctx.moveTo(screenX + TILE_SIZE * 0.2, screenY + TILE_SIZE * 0.9); ctx.lineTo(screenX + TILE_SIZE * 0.1, screenY + TILE_SIZE * 0.4);
+                 ctx.lineTo(screenX + TILE_SIZE * 0.4, screenY + TILE_SIZE * 0.1); ctx.lineTo(screenX + TILE_SIZE * 0.9, screenY + TILE_SIZE * 0.3);
+                 ctx.lineTo(screenX + TILE_SIZE * 0.8, screenY + TILE_SIZE * 0.8); ctx.closePath(); ctx.fill();
+                 ctx.fillStyle = '#adb5bd'; ctx.beginPath();
+                 ctx.moveTo(screenX + TILE_SIZE * 0.15, screenY + TILE_SIZE * 0.4); ctx.lineTo(screenX + TILE_SIZE * 0.4, screenY + TILE_SIZE * 0.15);
+                 ctx.lineTo(screenX + TILE_SIZE * 0.6, screenY + TILE_SIZE * 0.2); ctx.lineTo(screenX + TILE_SIZE * 0.4, screenY + TILE_SIZE * 0.5);
+                 ctx.closePath(); ctx.fill();
+            } else if (obj.type === 'house') {
+                const wallColor = '#a1662f'; const wallShadow = '#8a5629';
+                const roofColor = '#7b2e00'; const roofHighlight = '#a04800'; const roofOutline = '#4a1a00';
+                const doorColor = '#4a2a0a'; const doorFrameColor = '#3b2208';
+                const windowColor = '#ffff00'; const windowFrameColor = '#3b2208';
+                ctx.fillStyle = '#4a4a4a'; ctx.fillRect(screenX, screenY + obj.height - 8, obj.width, 8);
+                ctx.fillStyle = wallColor; ctx.fillRect(screenX, screenY + obj.height * 0.3, obj.width, obj.height * 0.7 - 8);
+                ctx.fillStyle = wallShadow;
+                for (let i = 0; i < obj.width; i += TILE_SIZE / 2) {
+                    ctx.fillRect(screenX + i, screenY + obj.height * 0.3, 2, obj.height * 0.7 - 8);
+                }
+                const roofPeakY = screenY; const roofBaseY = screenY + obj.height * 0.4;
+                const roofPath = new Path2D();
+                roofPath.moveTo(screenX - 10, roofBaseY); roofPath.lineTo(screenX + obj.width / 2, roofPeakY);
+                roofPath.lineTo(screenX + obj.width + 10, roofBaseY); roofPath.closePath();
+                ctx.fillStyle = roofColor; ctx.fill(roofPath);
+                ctx.strokeStyle = roofOutline; ctx.lineWidth = 4; ctx.stroke(roofPath);
+                ctx.fillStyle = doorFrameColor;
+                ctx.fillRect(screenX + obj.width * 0.4 - 4, screenY + obj.height * 0.55 - 4, TILE_SIZE + 8, TILE_SIZE * 1.1 + 8);
+                ctx.fillStyle = doorColor;
+                ctx.fillRect(screenX + obj.width * 0.4, screenY + obj.height * 0.55, TILE_SIZE, TILE_SIZE * 1.1);
+                ctx.fillStyle = windowColor;
+                ctx.fillRect(screenX + obj.width * 0.4 + TILE_SIZE - 8, screenY + obj.height * 0.75, 4, 4);
+                ctx.fillStyle = windowFrameColor;
+                ctx.fillRect(screenX + obj.width * 0.1 - 4, screenY + obj.height * 0.5 - 4, TILE_SIZE * 0.7 + 8, TILE_SIZE * 0.6 + 8);
+                ctx.fillStyle = windowColor;
+                ctx.fillRect(screenX + obj.width * 0.1, screenY + obj.height * 0.5, TILE_SIZE * 0.7, TILE_SIZE * 0.6);
+                ctx.fillStyle = windowFrameColor;
+                ctx.fillRect(screenX + obj.width * 0.1, screenY + obj.height * 0.5 + TILE_SIZE * 0.3 - 1, TILE_SIZE * 0.7, 2);
+                ctx.fillRect(screenX + obj.width * 0.1 + TILE_SIZE * 0.35 - 1, screenY + obj.height * 0.5, 2, TILE_SIZE * 0.6);
+                ctx.fillStyle = '#6c757d';
+                ctx.fillRect(screenX + obj.width * 0.7, screenY - 10, TILE_SIZE * 0.5, TILE_SIZE);
+                ctx.fillStyle = '#4a4a4a';
+                ctx.fillRect(screenX + obj.width * 0.7 - 2, screenY - 14, TILE_SIZE * 0.5 + 4, 4);
+            } else if (obj.type === 'junk') {
+                ctx.fillStyle = '#5a6268';
+                ctx.fillRect(screenX, screenY, obj.width, obj.height);
+                ctx.fillStyle = '#343a40';
+                ctx.fillRect(screenX+4, screenY+4, obj.width-8, obj.height-8);
+            } else if (obj.type === 'item') {
+                ctx.fillStyle = '#4361ee';
+                ctx.beginPath();
+                ctx.arc(screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2, TILE_SIZE * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#72efdd';
+                ctx.beginPath();
+                ctx.arc(screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2, TILE_SIZE * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function isPath(x, y) {
+            const currentMap = zones[currentZoneId].map;
+            if (x < 0 || x >= currentMap[0].length || y < 0 || y >= currentMap.length) return false;
+            return currentMap[y][x] === 1;
+        }
+
+        function drawMap() {
+            const currentMap = zones[currentZoneId].map;
+            const currentDetails = mapDetails[currentZoneId];
+            const startCol = Math.floor(camera.x / TILE_SIZE);
+            const endCol = Math.min(startCol + Math.ceil(camera.width / TILE_SIZE) + 1, currentMap[0].length);
+            const startRow = Math.floor(camera.y / TILE_SIZE);
+            const endRow = Math.min(startRow + Math.ceil(camera.height / TILE_SIZE) + 1, currentMap.length);
+
+            for (let y = startRow; y < endRow; y++) {
+                for (let x = startCol; x < endCol; x++) {
+                    const tileX = x * TILE_SIZE; const tileY = y * TILE_SIZE;
+                    const screenX = tileX - camera.x; const screenY = tileY - camera.y;
+                    const tileType = currentMap[y][x];
+                    const colors = tileColors[tileType];
+                    ctx.fillStyle = colors.base; ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                    const details = currentDetails[y][x];
+                     details.forEach(detail => {
+                         if (detail.type === 'texture') {
+                             ctx.fillStyle = colors.shadow; ctx.fillRect(screenX + detail.x, screenY + detail.y, 3, 3);
+                             ctx.fillStyle = colors.highlight; ctx.fillRect(screenX + detail.x, screenY + detail.y, 1.5, 1.5);
+                         } else if (detail.type === 'pebble') {
+                             ctx.fillStyle = colors.pebble; ctx.fillRect(screenX + detail.x, screenY + detail.y, 5, 5);
+                         } else if (detail.type === 'rust') {
+                             ctx.fillStyle = detail.color; ctx.fillRect(screenX + detail.x, screenY + detail.y, 6, 6);
+                         }
+                     });
+                     ctx.strokeStyle = colors.border; ctx.lineWidth = 1;
+                     ctx.strokeRect(screenX + 0.5, screenY + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+
+                    if (tileType === 1) { // Only do path rounding for tile type 1
+                        ctx.fillStyle = colors.base;
+                        const up = isPath(x, y - 1); const down = isPath(x, y + 1);
+                        const left = isPath(x - 1, y); const right = isPath(x + 1, y);
+                        const upLeft = isPath(x - 1, y - 1); const upRight = isPath(x + 1, y - 1);
+                        const downLeft = isPath(x - 1, y + 1); const downRight = isPath(x + 1, y + 1);
+                        const TILE_HALF = TILE_SIZE / 2;
+                        ctx.fillRect(screenX + TILE_HALF / 2, screenY + TILE_HALF / 2, TILE_SIZE - TILE_HALF, TILE_SIZE - TILE_HALF);
+                        if (up) { ctx.fillRect(screenX + TILE_HALF / 2, screenY, TILE_SIZE - TILE_HALF, TILE_HALF / 2); }
+                        if (down) { ctx.fillRect(screenX + TILE_HALF / 2, screenY + TILE_SIZE - TILE_HALF / 2, TILE_SIZE - TILE_HALF, TILE_HALF / 2); }
+                        if (left) { ctx.fillRect(screenX, screenY + TILE_HALF / 2, TILE_HALF/2, TILE_SIZE - TILE_HALF); }
+                        if (right) { ctx.fillRect(screenX + TILE_SIZE - TILE_HALF/2, screenY + TILE_HALF / 2, TILE_HALF/2, TILE_SIZE - TILE_HALF); }
+                        if (up && left) { ctx.fillRect(screenX, screenY, TILE_HALF/2, TILE_HALF/2); }
+                        if (up && right) { ctx.fillRect(screenX + TILE_SIZE-TILE_HALF/2, screenY, TILE_HALF/2, TILE_HALF/2); }
+                        if (down && left) { ctx.fillRect(screenX, screenY+TILE_SIZE-TILE_HALF/2, TILE_HALF/2, TILE_HALF/2); }
+                        if (down && right) { ctx.fillRect(screenX + TILE_SIZE - TILE_HALF/2, screenY + TILE_SIZE-TILE_HALF/2, TILE_HALF/2, TILE_HALF/2); }
+                        if (up && left && !upLeft) { ctx.beginPath(); ctx.arc(screenX, screenY, TILE_HALF/2, 0, Math.PI * 0.5); ctx.fill(); }
+                        if (up && right && !upRight) { ctx.beginPath(); ctx.arc(screenX + TILE_SIZE, screenY, TILE_HALF/2, Math.PI * 0.5, Math.PI); ctx.fill(); }
+                        if (down && left && !downLeft) { ctx.beginPath(); ctx.arc(screenX, screenY + TILE_SIZE, TILE_HALF/2, Math.PI * 1.5, Math.PI * 2); ctx.fill(); }
+                        if (down && right && !downRight) { ctx.beginPath(); ctx.arc(screenX+TILE_SIZE, screenY + TILE_SIZE, TILE_HALF/2, Math.PI, Math.PI * 1.5); ctx.fill(); }
+                        
+                        const pathDetails = details;
+                        pathDetails.forEach(detail => {
+                            if (detail.type === 'pebble') {
+                                 ctx.fillStyle = colors.pebble; ctx.fillRect(screenX + detail.x, screenY + detail.y, 5, 5);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            let words = text.split(' '); let line = '';
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' '; let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, y); line = words[n] + ' '; y += lineHeight;
+                } else { line = testLine; }
+            }
+            context.fillText(line, x, y);
+        }
+
+        function drawDialogueBox() {
+            if (!dialogueActive || !activeNPC) return;
+            const boxHeight = 150; const boxY = canvas.height - boxHeight - 10;
+            const boxX = 10; const boxWidth = canvas.width - 20;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 3; ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.fillStyle = '#00ff00'; ctx.font = "20px 'Press Start 2P'";
+            
+            const currentDialogue = (quests.main_quest_1.status === 'completed' && activeNPC.dialogueAfterQuest) ? activeNPC.dialogueAfterQuest : activeNPC.dialogue;
+            
+            ctx.fillText(activeNPC.name + ":", boxX + 20, boxY + 40);
+            ctx.fillStyle = 'white'; ctx.font = "16px 'Press Start 2P'";
+            const dialogueText = currentDialogue[dialogueIndex];
+            const lineHeight = 24;
+            wrapText(ctx, dialogueText, boxX + 20, boxY + 70, boxWidth - 40, lineHeight);
+            ctx.font = "12px 'Press Start 2P'";
+            ctx.fillText("Press [E] to continue...", boxX + boxWidth - 250, boxY + boxHeight - 20);
+        }
+        
+        function drawInteractionPrompt() {
+            if (dialogueActive || inventoryOpen) return;
+            const allInteractables = zones[currentZoneId].objects.filter(o => o.type === 'npc' || o.type === 'item');
+            for (const obj of allInteractables) {
+                const distance = Math.hypot(player.x - obj.x, player.y - obj.y);
+                if (distance < TILE_SIZE * 1.5) {
+                    const screenX = obj.x - camera.x;
+                    const screenY = obj.y - camera.y;
+                    ctx.fillStyle = 'white'; ctx.font = "14px 'Press Start 2P'";
+                    ctx.textAlign = 'center'; ctx.fillText("[E]", screenX + TILE_SIZE / 2, screenY - 10);
+                    ctx.textAlign = 'left'; 
+                    break;
+                }
+            }
+        }
+        
+        function drawInventory() {
+            if (!inventoryOpen) return;
+            const boxWidth = 500; const boxHeight = 400;
+            const boxX = (canvas.width - boxWidth) / 2; const boxY = (canvas.height - boxHeight) / 2;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)'; ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 3; ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.fillStyle = 'white'; ctx.font = "24px 'Press Start 2P'";
+            ctx.textAlign = 'center'; ctx.fillText("INVENTORY", canvas.width / 2, boxY + 40);
+            ctx.textAlign = 'left';
+            if (player.inventory.length === 0) {
+                ctx.fillStyle = '#888'; ctx.font = "16px 'Press Start 2P'";
+                ctx.textAlign = 'center'; ctx.fillText("- Empty -", canvas.width / 2, boxY + 100);
+                ctx.textAlign = 'left';
+            } else {
+                ctx.fillStyle = 'white'; ctx.font = "16px 'Press Start 2P'";
+                player.inventory.forEach((item, index) => {
+                    ctx.fillText(`- ${item.name}`, boxX + 30, boxY + 90 + (index * 30));
+                });
+            }
+        }
+        
+        function showNotification(text) {
+            notification.text = text;
+            notification.timer = 180;
+        }
+
+        function drawNotification() {
+            if (notification.timer > 0) {
+                const boxWidth = ctx.measureText(notification.text).width + 40;
+                const boxX = (canvas.width - boxWidth) / 2;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(boxX, 20, boxWidth, 50);
+                ctx.fillStyle = 'white'; ctx.font = "16px 'Press Start 2P'";
+                ctx.textAlign = 'center'; ctx.fillText(notification.text, canvas.width / 2, 55);
+                ctx.textAlign = 'left';
+            }
+        }
+        
+        // NEW: Renders the quest log UI
+        function drawQuestLog() {
+            const activeQuest = Object.values(quests).find(q => q.status === 'active' || (q.status === 'completed' && q.objectiveIndex < q.objectives.length));
+            if (!activeQuest || inventoryOpen || dialogueActive) return;
+
+            const boxWidth = 350;
+            const boxX = canvas.width - boxWidth - 10;
+            const boxY = 10;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(boxX, boxY, boxWidth, 80);
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.font = "16px 'Press Start 2P'";
+            ctx.fillText(activeQuest.title, boxX + 15, boxY + 30);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = "12px 'Press Start 2P'";
+            const objective = activeQuest.objectives[activeQuest.objectiveIndex];
+            ctx.fillText(objective.text, boxX + 15, boxY + 60);
+        }
+
+        function drawFade() {
+            if (fadeAlpha > 0) {
+                ctx.fillStyle = `rgba(0, 0, 0, ${fadeAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            const allDrawableObjects = [player, ...zones[currentZoneId].objects];
+            const visibleObjects = allDrawableObjects.filter(obj => 
+                obj.x + obj.width > camera.x &&
+                obj.x < camera.x + camera.width &&
+                obj.y + obj.height > camera.y &&
+                obj.y < camera.y + camera.height
+            );
+            visibleObjects.sort((a, b) => (a.y + a.height) - (b.y + b.height));
+            visibleObjects.forEach(obj => { drawObject(obj); });
+            drawInteractionPrompt();
+            drawQuestLog();
+            drawDialogueBox();
+            drawInventory();
+            drawNotification();
+            drawFade();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 5. START THE GAME ---
+        initializeMapDetails();
+        console.log("Starting game with Quest System...");
+        gameLoop();
+
+    </script>
+</body>
+</html>
