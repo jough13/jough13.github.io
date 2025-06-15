@@ -41,73 +41,92 @@
         
         <header class="mb-6 text-center">
             <h1 class="text-4xl md:text-5xl font-bold title-font">Digital Cartographer's Desk</h1>
-            <p class="text-lg mt-2">Explore worlds, and chronicle your discoveries in the field notes.</p>
+            <p class="text-lg mt-2">Explore worlds, and chronicle your discoveries in the field notes below.</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
-            <!-- Left Column: Map and Controls -->
-            <div class="lg:col-span-2">
-                <!-- Canvas for our map -->
-                <div class="bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-[#d4c8b0]">
-                    <canvas id="mapCanvas"></canvas>
+        <!-- Main Content Area -->
+        <div>
+            <!-- Map Container -->
+            <div class="bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-[#d4c8b0] relative">
+                <canvas id="mapCanvas"></canvas>
+            </div>
+
+            <!-- Controls -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div class="control-group flex flex-col items-center justify-center h-full gap-3">
+                    <button id="generateButton" class="bg-[#6b5b4b] text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-[#5a4d3f] transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#a89984]">
+                        Conjure New World
+                    </button>
+                    <button id="resetViewButton" class="bg-gray-200 text-[#6b5b4b] font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-300 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#a89984]">
+                        Reset View
+                    </button>
+                </div>
+                
+                <div class="control-group flex flex-col gap-3">
+                     <div class="flex items-center justify-between gap-2">
+                        <label for="themeSelector" class="font-semibold text-sm">Theme:</label>
+                        <select id="themeSelector" class="bg-white border border-[#a89984] rounded-md py-1 px-2 accent-[#6b5b4b] text-sm">
+                            <option value="earth">Earth-like</option>
+                            <option value="parchment">Parchment Map</option>
+                            <option value="verdant">Verdant World</option>
+                            <option value="volcanic">Volcanic Hellscape</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label for="resolutionSelector" class="font-semibold text-sm">Resolution:</label>
+                        <select id="resolutionSelector" class="bg-white border border-[#a89984] rounded-md py-1 px-2 accent-[#6b5b4b] text-sm">
+                            <option value="8">Fast</option>
+                            <option value="4" selected>Balanced</option>
+                            <option value="2">Detailed</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-start gap-2 pt-1">
+                        <input type="checkbox" id="wrappingCheckbox" class="h-4 w-4 accent-[#6b5b4b]">
+                        <label for="wrappingCheckbox" class="font-semibold text-sm">Wrapping World</label>
+                    </div>
+                     <div class="flex items-center justify-start gap-2 pt-1">
+                        <input type="checkbox" id="gridCheckbox" class="h-4 w-4 accent-[#6b5b4b]">
+                        <label for="gridCheckbox" class="font-semibold text-sm">Show Grid</label>
+                    </div>
+                    <div class="flex items-center justify-start gap-2 pt-1">
+                        <input type="checkbox" id="riversCheckbox" class="h-4 w-4 accent-[#6b5b4b]" checked>
+                        <label for="riversCheckbox" class="font-semibold text-sm">Show Rivers</label>
+                    </div>
                 </div>
 
-                <!-- Controls -->
-                <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-                    <div class="control-group flex flex-col items-center justify-center h-full gap-3">
-                        <button id="generateButton" class="bg-[#6b5b4b] text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-[#5a4d3f] transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#a89984]">
-                            Conjure New World
-                        </button>
-                        <button id="resetViewButton" class="bg-gray-200 text-[#6b5b4b] font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-300 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#a89984]">
-                            Reset View
-                        </button>
+                 <div class="control-group flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <label for="octavesSlider" class="font-semibold text-sm">Base Detail:</label>
+                        <input type="range" id="octavesSlider" min="1" max="8" value="4" class="w-full accent-[#6b5b4b]">
                     </div>
-                    
-                    <div class="control-group flex flex-col gap-3">
-                         <div class="flex items-center justify-between gap-2">
-                            <label for="themeSelector" class="font-semibold text-sm">Theme:</label>
-                            <select id="themeSelector" class="bg-white border border-[#a89984] rounded-md py-1 px-2 accent-[#6b5b4b] text-sm">
-                                <option value="earth">Earth-like</option>
-                                <option value="parchment">Parchment Map</option>
-                                <option value="verdant">Verdant World</option>
-                                <option value="volcanic">Volcanic Hellscape</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center justify-between gap-2">
-                            <span class="font-semibold text-sm">Zoom Level:</span>
-                            <span id="zoomLevelDisplay" class="font-mono text-sm bg-white px-2 py-1 rounded">1.00x</span>
-                        </div>
-                         <!-- NEW: Wrapping World Checkbox -->
-                        <div class="flex items-center justify-start gap-2 pt-1">
-                            <input type="checkbox" id="wrappingCheckbox" class="h-4 w-4 accent-[#6b5b4b]">
-                            <label for="wrappingCheckbox" class="font-semibold text-sm">Wrapping World</label>
-                        </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label for="shapingSlider" class="font-semibold text-sm whitespace-nowrap mr-2">Landmass Shaping:</label>
+                        <input type="range" id="shapingSlider" min="1.0" max="3.0" value="1.5" step="0.1" class="w-full accent-[#6b5b4b]">
                     </div>
-
-                     <div class="control-group flex flex-col gap-3">
-                        <div class="flex items-center justify-between gap-2">
-                            <label for="octavesSlider" class="font-semibold text-sm">Detail (Octaves):</label>
-                            <input type="range" id="octavesSlider" min="1" max="8" value="5" class="w-48 accent-[#6b5b4b]">
-                        </div>
-                        <div class="flex items-center justify-between gap-2">
-                            <label for="shapingSlider" class="font-semibold text-sm">Landmass Shaping:</label>
-                            <input type="range" id="shapingSlider" min="1.0" max="3.0" value="1.5" step="0.1" class="w-48 accent-[#6b5b4b]">
-                        </div>
+                     <div class="flex items-center justify-between gap-2">
+                        <span class="font-semibold text-sm">Zoom Level:</span>
+                        <span id="zoomLevelDisplay" class="font-mono text-sm bg-white px-2 py-1 rounded">1.00x</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Right Column: Notes -->
-            <div class="lg:col-span-1 mt-8 lg:mt-0">
+            <!-- Notes Section -->
+            <div class="mt-8">
                 <div class="control-group p-4 h-full">
-                    <h2 class="text-2xl title-font border-b-2 border-[#d4c8b0] pb-2 mb-4">Field Notes</h2>
-                    <textarea id="notesArea" class="w-full h-96 lg:h-[calc(100%-40px)] p-3 text-lg rounded-md focus:outline-none focus:ring-2 focus:ring-[#a89984] resize-none" placeholder="Discovered a large continent in the west, marked by twin mountain ranges..."></textarea>
+                    <div class="flex items-center justify-between border-b-2 border-[#d4c8b0] pb-2 mb-4">
+                        <h2 class="text-2xl title-font">Field Notes</h2>
+                        <div class="text-sm">
+                            <span class="font-semibold">Coordinates:</span>
+                            <span id="coordsDisplay" class="font-mono ml-2">-</span>
+                        </div>
+                    </div>
+                    <textarea id="notesArea" class="w-full h-48 p-3 text-lg rounded-md focus:outline-none focus:ring-2 focus:ring-[#a89984] resize-y" placeholder="Discovered a large continent in the west, marked by twin mountain ranges..."></textarea>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- EMBEDDED LIBRARY -->
+    <!-- EMBEDDED LIBRARY: SimplexNoise -->
     <script>
     (function (global, factory) {
         typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -119,6 +138,7 @@
     <!-- Main application script -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
             const canvas = document.getElementById('mapCanvas');
             if (!canvas) { return; }
             const ctx = canvas.getContext('2d');
@@ -130,37 +150,123 @@
             const zoomLevelDisplay = document.getElementById('zoomLevelDisplay');
             const notesArea = document.getElementById('notesArea');
             const wrappingCheckbox = document.getElementById('wrappingCheckbox');
+            const coordsDisplay = document.getElementById('coordsDisplay');
+            const resolutionSelector = document.getElementById('resolutionSelector');
+            const gridCheckbox = document.getElementById('gridCheckbox');
+            const riversCheckbox = document.getElementById('riversCheckbox');
 
-            const TILE_SIZE = 2;
+            // --- Generation & View Parameters ---
+            let tileSize = 4;
             const INITIAL_NOISE_SCALE = 80; 
+            const WRAP_PERIOD = 20; 
             let noiseScale = INITIAL_NOISE_SCALE;
-            let octaves = 5;
             let landShapingPower = 1.5;
             let offsetX = 0, offsetY = 0;
             let simplex;
+            let elevationData = []; 
 
+            // --- Color Palettes & Biome Definitions ---
             const PALETTES = {
-                 earth: { DEEP_WATER: '#003366', WATER: '#006994', SAND: '#c2b280', LAND: '#228b22', FOREST: '#556b2f', ROCK: '#8b4513', PEAK: '#d2b48c' },
-                parchment: { DEEP_WATER: '#5c6e8f', WATER: '#8fa4c2', SAND: '#e6d5b8', LAND: '#c4a788', FOREST: '#845422', ROCK: '#6b5b4b', PEAK: '#4a3f35' },
-                verdant: { DEEP_WATER: '#1e3a8a', WATER: '#3b82f6', SAND: '#fde68a', LAND: '#22c55e', FOREST: '#15803d', ROCK: '#a8a29e', PEAK: '#f8fafc' },
-                volcanic: { DEEP_WATER: '#881337', WATER: '#e11d48', SAND: '#450a0a', LAND: '#171717', FOREST: '#262626', ROCK: '#57534e', PEAK: '#e5e5e5' }
+                 earth: [
+                    { level: -0.4,  color: '#003366' }, { level: -0.2,  color: '#004c8a' },
+                    { level: -0.1,  color: '#006994' }, { level: -0.05, color: '#c2b280' },
+                    { level: 0.0,   color: '#6e7f2d' }, // Marshland color
+                    { level: 0.3,   color: '#3a9d23' }, { level: 0.5,   color: '#556b2f' },
+                    { level: 0.7,   color: '#8b4513' }, { level: 1.0,   color: '#d2b48c' }
+                 ],
+                parchment: [
+                    { level: -0.35, color: '#5c6e8f' }, { level: -0.1, color: '#8fa4c2' },
+                    { level: -0.05, color: '#e6d5b8' }, { level: 0.3, color: '#c4a788' },
+                    { level: 0.5, color: '#845422' }, { level: 0.7, color: '#6b5b4b' },
+                    { level: 1.0, color: '#4a3f35' }
+                ],
+                verdant: [
+                    { level: -0.35, color: '#1e3a8a' }, { level: -0.1, color: '#3b82f6' },
+                    { level: -0.05, color: '#fde68a' }, { level: 0.3, color: '#22c55e' },
+                    { level: 0.5, color: '#15803d' }, { level: 0.7, color: '#a8a29e' },
+                    { level: 1.0, color: '#f8fafc' }
+                ],
+                volcanic: [
+                    { level: -0.35, color: '#881337' }, { level: -0.1, color: '#e11d48' },
+                    { level: -0.05, color: '#450a0a' }, { level: 0.3, color: '#171717' },
+                    { level: 0.5, color: '#262626' }, { level: 0.7, color: '#57534e' },
+                    { level: 1.0, color: '#e5e5e5' }
+                ]
             };
-            let currentPalette = PALETTES.earth;
+            let currentBiome = PALETTES.earth;
 
-            function getFractalNoise(x, y, z) {
+            // --- Generation ---
+            function getRawNoiseValue(x, y, octaves) {
+                if (!simplex) return 0;
+                 if (wrappingCheckbox.checked) {
+                    const u = x / WRAP_PERIOD;
+                    const angle = u * 2 * Math.PI;
+                    const radius = 1; 
+                    const sampleX = Math.cos(angle) * radius;
+                    const sampleZ = Math.sin(angle) * radius;
+                    return getFractalNoise(simplex, sampleX, y, sampleZ, octaves);
+                } else {
+                    return getFractalNoise(simplex, x, y, undefined, octaves);
+                }
+            }
+
+            function getFractalNoise(simplexInstance, x, y, z, octaves) {
                 let total = 0, frequency = 1, amplitude = 1, maxValue = 0;
                 let use3D = z !== undefined;
                 for (let i = 0; i < octaves; i++) {
                     if (use3D) {
-                        total += simplex.noise3D(x * frequency, y * frequency, z * frequency) * amplitude;
+                        total += simplexInstance.noise3D(x * frequency, y * frequency, z * frequency) * amplitude;
                     } else {
-                        total += simplex.noise2D(x * frequency, y * frequency) * amplitude;
+                        total += simplexInstance.noise2D(x * frequency, y * frequency) * amplitude;
                     }
                     maxValue += amplitude;
                     amplitude *= 0.5;
                     frequency *= 2;
                 }
                 return total / maxValue;
+            }
+            
+            function getColor(value, biome) {
+                for (let i = 0; i < biome.length; i++) {
+                    if (value < biome[i].level) {
+                        const lower = biome[i - 1] || biome[i];
+                        const upper = biome[i];
+                        const range = upper.level - lower.level;
+                        const progress = range === 0 ? 0 : (value - lower.level) / range;
+                        return lerpColor(lower.color, upper.color, progress);
+                    }
+                }
+                return biome[biome.length - 1].color;
+            }
+
+            function lerpColor(a, b, amount) {
+                const ar = parseInt(a.substring(1, 3), 16), ag = parseInt(a.substring(3, 5), 16), ab = parseInt(a.substring(5, 7), 16),
+                      br = parseInt(b.substring(1, 3), 16), bg = parseInt(b.substring(3, 5), 16), bb = parseInt(b.substring(5, 7), 16),
+                      rr = Math.round(ar + amount * (br - ar)), rg = Math.round(ag + amount * (bg - ag)), rb = Math.round(ab + amount * (bb - ab));
+                return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb).toString(16).slice(1);
+            }
+            
+            // --- Rendering ---
+            function precalculateElevationAndRenderBase(width, height) {
+                elevationData = [];
+                const baseOctaves = parseInt(octavesSlider.value, 10);
+                const landShaping = parseFloat(shapingSlider.value);
+                
+                for (let y = 0; y < height; y += tileSize) {
+                    let row = [];
+                    for (let x = 0; x < width; x += tileSize) {
+                        const worldX = offsetX + (x / noiseScale);
+                        const worldY = offsetY + (y / noiseScale);
+                        
+                        const rawNoise = getRawNoiseValue(worldX, worldY, baseOctaves + 2); 
+                        const shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
+                        row.push(shapedNoise);
+                        
+                        ctx.fillStyle = getColor(shapedNoise, currentBiome);
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                    }
+                    elevationData.push(row);
+                }
             }
 
             function renderMap() {
@@ -169,55 +275,133 @@
                 const height = Math.floor(width * (9 / 16));
                 canvas.width = width;
                 canvas.height = height;
-
-                const isWrapping = wrappingCheckbox.checked;
-
-                for (let x = 0; x < width; x += TILE_SIZE) {
-                    for (let y = 0; y < height; y += TILE_SIZE) {
-                        const worldX = offsetX + (x / noiseScale);
-                        const worldY = offsetY + (y / noiseScale);
-                        
-                        let rawNoise;
-                        if (isWrapping) {
-                            const circumference = (width / noiseScale) * (INITIAL_NOISE_SCALE / 40);
-                            const angle = (worldX / circumference) * 2 * Math.PI;
-                            const radius = 1; // Radius of our conceptual cylinder
-                            const sampleX = Math.cos(angle) * radius;
-                            const sampleY = Math.sin(angle) * radius;
-                            rawNoise = getFractalNoise(sampleX, sampleY, worldY);
-                        } else {
-                            rawNoise = getFractalNoise(worldX, worldY);
-                        }
-                        
-                        let normalizedNoise = (rawNoise + 1) / 2;
-                        normalizedNoise = Math.pow(normalizedNoise, landShapingPower);
-                        const shapedNoise = normalizedNoise * 2 - 1;
-
-                        let color;
-                        if (shapedNoise < -0.35) color = currentPalette.DEEP_WATER;
-                        else if (shapedNoise < -0.1) color = currentPalette.WATER;
-                        else if (shapedNoise < -0.05) color = currentPalette.SAND;
-                        else if (shapedNoise < 0.3) color = currentPalette.LAND;
-                        else if (shapedNoise < 0.5) color = currentPalette.FOREST;
-                        else if (shapedNoise < 0.7) color = currentPalette.ROCK;
-                        else color = currentPalette.PEAK;
-
-                        ctx.fillStyle = color;
-                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                    }
+                
+                precalculateElevationAndRenderBase(width, height);
+                
+                if (riversCheckbox.checked) {
+                    generateAndDrawRivers(width, height);
                 }
+                if (gridCheckbox.checked) {
+                    drawGrid(width, height);
+                }
+                drawVignette(width, height);
                 updateZoomDisplay();
             }
             
+            function drawVignette(width, height) {
+                const gradient = ctx.createRadialGradient(width / 2, height / 2, width * 0.4, width / 2, height / 2, width * 0.7);
+                gradient.addColorStop(0, 'rgba(0,0,0,0)');
+                gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            function drawGrid(width, height) {
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                const gridSpacing = 60;
+                for (let x = gridSpacing; x < width; x += gridSpacing) {
+                    ctx.moveTo(x, 0); ctx.lineTo(x, height);
+                }
+                for (let y = gridSpacing; y < height; y += gridSpacing) {
+                    ctx.moveTo(0, y); ctx.lineTo(width, y);
+                }
+                ctx.stroke();
+            }
+
+            function generateAndDrawRivers(width, height) {
+                const gridWidth = Math.floor(width / tileSize);
+                const gridHeight = Math.floor(height / tileSize);
+                const seaLevel = -0.1;
+                const flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
+                const landPoints = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        if (elevationData[y][x] > seaLevel) {
+                            landPoints.push({x, y, elev: elevationData[y][x]});
+                        }
+                    }
+                }
+
+                landPoints.sort((a, b) => b.elev - a.elev);
+                
+                for (const p of landPoints) {
+                    let lowestElev = p.elev;
+                    let nextX = p.x, nextY = p.y;
+                    
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = p.x + dx; const ny = p.y + dy;
+                            if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
+                                lowestElev = elevationData[ny][nx];
+                                nextX = nx; nextY = ny;
+                            }
+                        }
+                    }
+
+                    if (nextX !== p.x || nextY !== p.y) {
+                        flowMap[nextY][nextX] += flowMap[p.y][p.x];
+                    }
+                }
+
+                const riverOutlineColor = currentBiome[0].color;
+                const riverFillColor = currentBiome[2].color;
+                const marshColor = currentBiome[4].color;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        if(elevationData[y][x] > seaLevel && elevationData[y][x] < -0.02 && flowMap[y][x] > 5) { // Increased marsh flow threshold
+                             ctx.fillStyle = marshColor;
+                             ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                        }
+                        
+                        // Increased threshold from 8 to 20 to make rivers much rarer.
+                        if (flowMap[y][x] > 20) { 
+                            let lowestElev = elevationData[y][x];
+                            let nextX = x, nextY = y;
+                             for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    if (dx === 0 && dy === 0) continue;
+                                    const nx = x + dx; const ny = y + dy;
+                                    if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
+                                        lowestElev = elevationData[ny][nx];
+                                        nextX = nx; nextY = ny;
+                                    }
+                                }
+                            }
+                            
+                            if (nextX !== x || nextY !== y) {
+                                const thickness = Math.sqrt(flowMap[y][x]) * 0.08; // Reduced thickness slightly
+                                ctx.beginPath();
+                                ctx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
+                                ctx.lineTo(nextX * tileSize + tileSize / 2, nextY * tileSize + tileSize / 2);
+                                
+                                ctx.strokeStyle = riverOutlineColor;
+                                ctx.lineWidth = thickness * 1.8;
+                                ctx.stroke();
+                                
+                                ctx.strokeStyle = riverFillColor;
+                                ctx.lineWidth = thickness;
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // --- View Controls & Initialization ---
             function updateZoomDisplay() {
                 const zoomFactor = noiseScale / INITIAL_NOISE_SCALE;
                 zoomLevelDisplay.textContent = `${zoomFactor.toFixed(2)}x`;
             }
 
             function resetView() {
-                offsetX = 0;
-                offsetY = 0;
-                noiseScale = INITIAL_NOISE_SCALE;
+                offsetX = 0; offsetY = 0; noiseScale = INITIAL_NOISE_SCALE;
                 renderMap();
             }
 
@@ -232,56 +416,50 @@
                 const proposedNoiseScale = noiseScale * zoomFactor;
 
                 if (zoomFactor < 1 && proposedNoiseScale < minNoiseScale) {
-                    noiseScale = Math.max(noiseScale, minNoiseScale);
-                    return;
+                    if (noiseScale === minNoiseScale) return;
+                    noiseScale = minNoiseScale;
+                } else {
+                    noiseScale = proposedNoiseScale;
                 }
                 
-                const worldMouseX = offsetX + (mouseX / noiseScale);
-                const worldMouseY = offsetY + (mouseY / noiseScale);
-                
-                noiseScale = proposedNoiseScale;
-
+                const worldMouseX = offsetX + (mouseX / (noiseScale / zoomFactor));
+                const worldMouseY = offsetY + (mouseY / (noiseScale / zoomFactor));
                 offsetX = worldMouseX - (mouseX / noiseScale);
                 offsetY = worldMouseY - (mouseY / noiseScale);
-                
                 renderMap();
             }
             
             function initialize() {
-                octaves = parseInt(octavesSlider.value);
-                landShapingPower = parseFloat(shapingSlider.value);
-                currentPalette = PALETTES[themeSelector.value];
                 
                 generateButton.addEventListener('click', generateAndRender);
                 resetViewButton.addEventListener('click', resetView);
-                wrappingCheckbox.addEventListener('change', renderMap);
                 
-                canvas.addEventListener('click', (e) => {
+                [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, resolutionSelector, riversCheckbox].forEach(el => {
+                    el.addEventListener('change', renderMap);
+                });
+                
+                canvas.addEventListener('click', e => {
                     const rect = canvas.getBoundingClientRect();
                     handleZoom(e.clientX - rect.left, e.clientY - rect.top, 2);
                 });
                 
-                canvas.addEventListener('wheel', (e) => {
+                canvas.addEventListener('wheel', e => {
                     e.preventDefault();
                     const rect = canvas.getBoundingClientRect();
                     const zoomFactor = e.deltaY < 0 ? 1.5 : 1 / 1.5;
                     handleZoom(e.clientX - rect.left, e.clientY - rect.top, zoomFactor);
                 }, { passive: false });
 
-                octavesSlider.addEventListener('input', (e) => {
-                    octaves = parseInt(e.target.value, 10);
-                    renderMap();
-                });
-                
-                shapingSlider.addEventListener('input', (e) => {
-                    landShapingPower = parseFloat(e.target.value);
-                    renderMap();
+                canvas.addEventListener('mousemove', e => {
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+                    const worldX = offsetX + (mouseX / noiseScale);
+                    const worldY = offsetY + (mouseY / noiseScale);
+                    coordsDisplay.textContent = `X: ${worldX.toFixed(2)}, Y: ${worldY.toFixed(2)}`;
                 });
 
-                themeSelector.addEventListener('change', (e) => {
-                    currentPalette = PALETTES[e.target.value];
-                    renderMap();
-                });
+                canvas.addEventListener('mouseleave', () => { coordsDisplay.textContent = '-'; });
             
                 window.addEventListener('resize', () => {
                     clearTimeout(window.resizeTimeout);
