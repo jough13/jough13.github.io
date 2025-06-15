@@ -120,7 +120,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-4 right-4 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v1.1.0
+        v1.2.1
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -158,7 +158,7 @@
             let landShapingPower = 1.5;
             let offsetX = 0, offsetY = 0;
             let simplex;
-            let elevationData = []; 
+            let elevationData = [], flowMap = [];
 
             // --- Color Palettes & Biome Definitions ---
             const PALETTES = {
@@ -250,27 +250,52 @@
             }
             
             // --- Rendering ---
-            function precalculateElevationGrid(width, height) {
-                elevationData = [];
+            function precalculateData(width, height) {
+                const gridWidth = Math.ceil(width / 2);
+                const gridHeight = Math.ceil(height / 2);
+                elevationData = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(0));
+                flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
+                const landPoints = [];
+
                 const baseOctaves = parseInt(octavesSlider.value, 10);
                 const landShaping = parseFloat(shapingSlider.value);
-                const dataGridWidth = Math.ceil(width / 2);
-                const dataGridHeight = Math.ceil(height / 2);
-
-                for (let y = 0; y < dataGridHeight; y++) {
-                    let row = [];
-                    for (let x = 0; x < dataGridWidth; x++) {
-                        const worldX = offsetX + (x * 2 / noiseScale);
-                        const worldY = offsetY + (y * 2 / noiseScale);
+                
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const worldX = (x * 2 / INITIAL_NOISE_SCALE); // Use initial scale for consistent river data
+                        const worldY = (y * 2 / INITIAL_NOISE_SCALE);
                         const rawNoise = getRawNoiseValue(worldX, worldY, baseOctaves + 2); 
                         const shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
-                        row.push(shapedNoise);
+                        elevationData[y][x] = shapedNoise;
+                        if (shapedNoise > -0.1) {
+                            landPoints.push({x, y, elev: shapedNoise});
+                        }
                     }
-                    elevationData.push(row);
+                }
+
+                landPoints.sort((a, b) => b.elev - a.elev);
+                
+                for (const p of landPoints) {
+                    let lowestElev = p.elev;
+                    let nextX = p.x, nextY = p.y;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = p.x + dx; const ny = p.y + dy;
+                            if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
+                                lowestElev = elevationData[ny][nx];
+                                nextX = nx; nextY = ny;
+                            }
+                        }
+                    }
+                    if (nextX !== p.x || nextY !== p.y) {
+                        flowMap[p.y][p.x] += flowMap[nextY][nextX];
+                        flowMap[nextY][nextX] = flowMap[p.y][p.x];
+                    }
                 }
             }
             
-            function getInterpolatedElevation(x, y) {
+            function getInterpolatedValue(grid, x, y) {
                  const x_grid = x / 2;
                  const y_grid = y / 2;
                  const x1 = Math.floor(x_grid);
@@ -278,13 +303,13 @@
                  const x2 = x1 + 1;
                  const y2 = y1 + 1;
 
-                 if (x1 < 0 || y1 < 0 || !elevationData[y1] || !elevationData[y2] || x2 >= elevationData[0].length ) {
+                 if (x1 < 0 || y1 < 0 || !grid[y1] || !grid[y2] || x2 >= grid[0].length ) {
                      return 0;
                  }
 
-                 const q11 = elevationData[y1][x1];
-                 const q12 = elevationData[y2][x1];
-                 const q21 = elevationData[y1][x2];
+                 const q11 = grid[y1][x1];
+                 const q12 = grid[y2][x1];
+                 const q21 = grid[y1][x2];
                  const q22 = elevationData[y2][x2];
 
                  const x_frac = x_grid - x1;
@@ -300,8 +325,17 @@
                 if (!simplex) return;
                 const width = canvas.clientWidth;
                 const height = Math.floor(width * (9 / 16));
+                
+                if (width <= 0 || height <= 0) {
+                    return;
+                }
+
                 canvas.width = width;
                 canvas.height = height;
+
+                if (isNewWorld) {
+                    precalculateData(width, height);
+                }
                 
                 const imageData = ctx.createImageData(width, height);
                 const data = imageData.data;
@@ -317,9 +351,22 @@
                         const worldX = offsetX + (x / noiseScale);
                         const worldY = offsetY + (y / noiseScale);
                         const rawNoise = getRawNoiseValue(worldX, worldY, currentOctaves);
-                        const shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
-                        const color = hexToRgb(getColor(shapedNoise, currentBiome));
+                        let shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
                         
+                        let finalColorStr = getColor(shapedNoise, currentBiome);
+
+                        if (riversCheckbox.checked && shapedNoise > -0.1) {
+                             const flow = getInterpolatedValue(flowMap, x, y);
+                             if (flow > 90) { 
+                                const riverAmount = Math.min(1, (flow - 90) / 400);
+                                finalColorStr = lerpColor(finalColorStr, currentBiome[2].color, riverAmount);
+                            } else if (shapedNoise < 0.0 && flow > 20) {
+                                const marshAmount = Math.min(1, (flow - 20) / 50);
+                                finalColorStr = lerpColor(finalColorStr, currentBiome[4].color, marshAmount);
+                            }
+                        }
+
+                        const color = hexToRgb(finalColorStr);
                         data[index] = color.r;
                         data[index + 1] = color.g;
                         data[index + 2] = color.b;
@@ -328,17 +375,12 @@
                 }
                 ctx.putImageData(imageData, 0, 0);
 
-                if (riversCheckbox.checked) {
-                    generateAndDrawRivers(width, height);
-                }
-                if (gridCheckbox.checked) {
-                    drawGrid(width, height);
-                }
+                if (gridCheckbox.checked) drawGrid(width, height);
                 drawVignette(width, height);
                 updateZoomDisplay();
 
                 if (isNewWorld) {
-                    setTimeout(nameContinents, 50);
+                    nameContinents(width, height);
                 }
             }
             
@@ -364,93 +406,7 @@
                 ctx.stroke();
             }
 
-            function generateAndDrawRivers(width, height) {
-                precalculateElevationGrid(width, height);
-                const gridWidth = elevationData[0].length;
-                const gridHeight = elevationData.length;
-                const seaLevel = -0.1;
-                const flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
-                const landPoints = [];
-
-                for (let y = 0; y < gridHeight; y++) {
-                    for (let x = 0; x < gridWidth; x++) {
-                        if (elevationData[y][x] > seaLevel) {
-                            landPoints.push({x, y, elev: elevationData[y][x]});
-                        }
-                    }
-                }
-
-                landPoints.sort((a, b) => b.elev - a.elev);
-                
-                for (const p of landPoints) {
-                    let lowestElev = p.elev;
-                    let nextX = p.x, nextY = p.y;
-                    
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dx = -1; dx <= 1; dx++) {
-                            if (dx === 0 && dy === 0) continue;
-                            const nx = p.x + dx; const ny = p.y + dy;
-                            if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
-                                lowestElev = elevationData[ny][nx];
-                                nextX = nx; nextY = ny;
-                            }
-                        }
-                    }
-
-                    if (nextX !== p.x || nextY !== p.y) {
-                        flowMap[nextY][nextX] += flowMap[p.y][p.x];
-                    }
-                }
-                
-                const riverOutlineColor = currentBiome[0].color;
-                const riverFillColor = currentBiome[2].color;
-                const marshColor = currentBiome[4].color;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                
-                for (let y = 0; y < gridHeight; y++) {
-                    for (let x = 0; x < gridWidth; x++) {
-                        if (elevationData[y][x] > seaLevel && elevationData[y][x] < 0.0 && flowMap[y][x] > 20) {
-                             ctx.fillStyle = lerpColor(getColor(elevationData[y][x], currentBiome), marshColor, 0.5);
-                             ctx.fillRect(x * 2, y * 2, 2, 2);
-                        }
-
-                        if (flowMap[y][x] > 90) { 
-                            let lowestElev = elevationData[y][x];
-                            let nextX = x, nextY = y;
-                             for (let dy = -1; dy <= 1; dy++) {
-                                for (let dx = -1; dx <= 1; dx++) {
-                                    if (dx === 0 && dy === 0) continue;
-                                    const nx = x + dx; const ny = y + dy;
-                                    if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
-                                        lowestElev = elevationData[ny][nx];
-                                        nextX = nx; nextY = ny;
-                                    }
-                                }
-                            }
-                            
-                            if (nextX !== x || nextY !== y) {
-                                const thickness = Math.sqrt(flowMap[y][x]) * 0.15;
-                                ctx.beginPath();
-                                ctx.moveTo(x * 2 + 1, y * 2 + 1);
-                                ctx.lineTo(nextX * 2 + 1, nextY * 2 + 1);
-                                
-                                ctx.strokeStyle = riverOutlineColor;
-                                ctx.lineWidth = thickness * 1.8;
-                                ctx.stroke();
-                                
-                                ctx.strokeStyle = riverFillColor;
-                                ctx.lineWidth = thickness;
-                                ctx.stroke();
-                            }
-                        }
-                    }
-                }
-            }
-
-            // --- NEW: Continent Naming Logic ---
-            function nameContinents() {
-                precalculateElevationGrid(canvas.clientWidth, canvas.clientHeight);
+            function nameContinents(width, height) {
                 const gridWidth = elevationData[0].length;
                 const gridHeight = elevationData.length;
                 const landThreshold = -0.1;
@@ -465,7 +421,7 @@
                         
                         if (elevationData[y][x] >= landThreshold) {
                             const continent = floodFill(x, y, gridWidth, gridHeight, visited, landThreshold);
-                            if (continent.length > 50) { // Only count significant landmasses
+                            if (continent.length > 50) {
                                 continents.push(continent);
                             }
                         }
@@ -514,7 +470,6 @@
                 const s = suffixes[Math.floor(Math.random() * suffixes.length)];
                 return Math.random() > 0.4 ? p + m + s : p + s;
             }
-
             
             // --- View Controls & Initialization ---
             function updateZoomDisplay() {
@@ -530,7 +485,7 @@
             function generateAndRender() {
                 simplex = new SimplexNoise(Math.random());
                 notesArea.value = '';
-                resetView(true); // Pass true to indicate a new world is being generated
+                resetView(true);
             }
 
             function handleZoom(mouseX, mouseY, zoomFactor) {
