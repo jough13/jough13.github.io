@@ -118,9 +118,9 @@
         </div>
     </div>
     
-    <!-- NEW: Version Tag -->
+    <!-- Version Tag -->
     <div class="fixed bottom-4 right-4 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v1.0.0
+        v1.1.0
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -296,7 +296,7 @@
                  return r1 * (1 - y_frac) + r2 * y_frac;
             }
 
-            function renderMap() {
+            function renderMap(isNewWorld = false) {
                 if (!simplex) return;
                 const width = canvas.clientWidth;
                 const height = Math.floor(width * (9 / 16));
@@ -336,6 +336,10 @@
                 }
                 drawVignette(width, height);
                 updateZoomDisplay();
+
+                if (isNewWorld) {
+                    setTimeout(nameContinents, 50);
+                }
             }
             
             function drawVignette(width, height) {
@@ -443,6 +447,74 @@
                     }
                 }
             }
+
+            // --- NEW: Continent Naming Logic ---
+            function nameContinents() {
+                precalculateElevationGrid(canvas.clientWidth, canvas.clientHeight);
+                const gridWidth = elevationData[0].length;
+                const gridHeight = elevationData.length;
+                const landThreshold = -0.1;
+                const visited = new Array(gridWidth * gridHeight).fill(false);
+                const continents = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const index = y * gridWidth + x;
+                        if (visited[index]) continue;
+                        visited[index] = true;
+                        
+                        if (elevationData[y][x] >= landThreshold) {
+                            const continent = floodFill(x, y, gridWidth, gridHeight, visited, landThreshold);
+                            if (continent.length > 50) { // Only count significant landmasses
+                                continents.push(continent);
+                            }
+                        }
+                    }
+                }
+                
+                continents.sort((a, b) => b.length - a.length);
+                const continentNames = continents.slice(0, 4).map(() => generateName());
+                
+                if(continentNames.length > 0) {
+                    notesArea.value = `Discovered the continents of ${continentNames.join(', ')}.\n\n`;
+                } else {
+                    notesArea.value = `This world appears to be a vast ocean...\n\n`;
+                }
+            }
+
+            function floodFill(startX, startY, width, height, visited, threshold) {
+                const queue = [[startX, startY]];
+                const continent = [];
+                visited[startY * width + startX] = true;
+
+                while(queue.length > 0) {
+                    const [x, y] = queue.shift();
+                    continent.push([x,y]);
+
+                    const neighbors = [[x+1, y], [x-1, y], [x, y+1], [x, y-1]];
+                    for(const [nx, ny] of neighbors) {
+                        const nIndex = ny * width + nx;
+                        if(nx >= 0 && nx < width && ny >= 0 && ny < height && !visited[nIndex]) {
+                            visited[nIndex] = true;
+                            if(elevationData[ny][nx] >= threshold) {
+                                queue.push([nx, ny]);
+                            }
+                        }
+                    }
+                }
+                return continent;
+            }
+
+            function generateName() {
+                const prefixes = ['Aer', 'Gal', 'Nor', 'Sil', 'Val', 'El', 'Myr', 'Zan', 'Kor', 'Ist', 'Fen'];
+                const middles = ['tho', 'en', 'i', 'a', 'y', 'u', 'or', 'an'];
+                const suffixes = ['dor', 'mar', 'th', 'ia', 'os', 'gar', 'land', 'wyn', 'ria', 'heim'];
+                const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const m = middles[Math.floor(Math.random() * middles.length)];
+                const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+                return Math.random() > 0.4 ? p + m + s : p + s;
+            }
+
             
             // --- View Controls & Initialization ---
             function updateZoomDisplay() {
@@ -450,15 +522,15 @@
                 zoomLevelDisplay.textContent = `${zoomFactor.toFixed(2)}x`;
             }
 
-            function resetView() {
+            function resetView(isNewWorld = false) {
                 offsetX = 0; offsetY = 0; noiseScale = INITIAL_NOISE_SCALE;
-                renderMap();
+                renderMap(isNewWorld);
             }
 
             function generateAndRender() {
                 simplex = new SimplexNoise(Math.random());
                 notesArea.value = '';
-                resetView();
+                resetView(true); // Pass true to indicate a new world is being generated
             }
 
             function handleZoom(mouseX, mouseY, zoomFactor) {
@@ -482,7 +554,7 @@
             function initialize() {
                 
                 generateButton.addEventListener('click', generateAndRender);
-                resetViewButton.addEventListener('click', resetView);
+                resetViewButton.addEventListener('click', () => resetView(false));
                 
                 [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, riversCheckbox].forEach(el => {
                     el.addEventListener('change', renderMap);
