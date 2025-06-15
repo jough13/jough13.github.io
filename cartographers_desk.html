@@ -120,7 +120,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-4 right-4 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v1.2.1
+        v1.2.5
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -262,7 +262,7 @@
                 
                 for (let y = 0; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
-                        const worldX = (x * 2 / INITIAL_NOISE_SCALE); // Use initial scale for consistent river data
+                        const worldX = (x * 2 / INITIAL_NOISE_SCALE);
                         const worldY = (y * 2 / INITIAL_NOISE_SCALE);
                         const rawNoise = getRawNoiseValue(worldX, worldY, baseOctaves + 2); 
                         const shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
@@ -289,8 +289,7 @@
                         }
                     }
                     if (nextX !== p.x || nextY !== p.y) {
-                        flowMap[p.y][p.x] += flowMap[nextY][nextX];
-                        flowMap[nextY][nextX] = flowMap[p.y][p.x];
+                        flowMap[nextY][nextX] += flowMap[p.y][p.x];
                     }
                 }
             }
@@ -310,7 +309,7 @@
                  const q11 = grid[y1][x1];
                  const q12 = grid[y2][x1];
                  const q21 = grid[y1][x2];
-                 const q22 = elevationData[y2][x2];
+                 const q22 = grid[y2][x2];
 
                  const x_frac = x_grid - x1;
                  const y_frac = y_grid - y1;
@@ -326,9 +325,7 @@
                 const width = canvas.clientWidth;
                 const height = Math.floor(width * (9 / 16));
                 
-                if (width <= 0 || height <= 0) {
-                    return;
-                }
+                if (width <= 0 || height <= 0) return;
 
                 canvas.width = width;
                 canvas.height = height;
@@ -356,9 +353,12 @@
                         let finalColorStr = getColor(shapedNoise, currentBiome);
 
                         if (riversCheckbox.checked && shapedNoise > -0.1) {
-                             const flow = getInterpolatedValue(flowMap, x, y);
+                             const flowX = (offsetX * noiseScale / INITIAL_NOISE_SCALE) + (x * (noiseScale/INITIAL_NOISE_SCALE)) / (INITIAL_NOISE_SCALE / noiseScale);
+                             const flowY = (offsetY* noiseScale / INITIAL_NOISE_SCALE) + (y* (noiseScale/INITIAL_NOISE_SCALE)) / (INITIAL_NOISE_SCALE / noiseScale);
+                             const flow = getInterpolatedValue(flowMap, flowX, flowY);
+
                              if (flow > 90) { 
-                                const riverAmount = Math.min(1, (flow - 90) / 400);
+                                const riverAmount = Math.min(1.0, (flow - 90) / 400);
                                 finalColorStr = lerpColor(finalColorStr, currentBiome[2].color, riverAmount);
                             } else if (shapedNoise < 0.0 && flow > 20) {
                                 const marshAmount = Math.min(1, (flow - 20) / 50);
