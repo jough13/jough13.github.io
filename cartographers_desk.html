@@ -118,6 +118,11 @@
         </div>
     </div>
     
+    <!-- NEW: Version Tag -->
+    <div class="fixed bottom-4 right-4 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
+        v1.0.0
+    </div>
+
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
     <script>
     (function (global, factory) {
@@ -158,9 +163,9 @@
             // --- Color Palettes & Biome Definitions ---
             const PALETTES = {
                  earth: [
-                    { level: -0.4,  color: '#003366' }, { level: -0.2,  color: '#004c8a' },
-                    { level: -0.1,  color: '#006994' }, { level: -0.05, color: '#c2b280' },
-                    { level: 0.0,   color: '#6e7f2d' }, // Marshland color
+                    { level: -0.6,  color: '#00234d' }, { level: -0.4,  color: '#003366' },
+                    { level: -0.2,  color: '#004c8a' }, { level: -0.1,  color: '#006994' },
+                    { level: -0.05, color: '#c2b280' }, { level: 0.0,   color: '#6e7f2d' },
                     { level: 0.3,   color: '#3a9d23' }, { level: 0.5,   color: '#556b2f' },
                     { level: 0.7,   color: '#8b4513' }, { level: 1.0,   color: '#d2b48c' }
                  ],
@@ -231,25 +236,21 @@
 
             function hexToRgb(hex) {
                 const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
+                return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
             }
 
-            function lerpColor(a, b_hex, amount) { // Renamed 'b' parameter
+            function lerpColor(a, b_hex, amount) { 
                 const c1 = hexToRgb(a);
                 const c2 = hexToRgb(b_hex);
                 if(!c1 || !c2) return '#000000';
                 const r = Math.round(c1.r + amount * (c2.r - c1.r));
                 const g = Math.round(c1.g + amount * (c2.g - c1.g));
-                const b_val = Math.round(c1.b + amount * (c2.b - c1.b)); // Renamed internal 'b' constant
+                const b_val = Math.round(c1.b + amount * (c2.b - c1.b)); 
                 return '#' + ((1 << 24) + (r << 16) + (g << 8) + b_val).toString(16).slice(1);
             }
             
             // --- Rendering ---
-            function precalculateElevationData(width, height) {
+            function precalculateElevationGrid(width, height) {
                 elevationData = [];
                 const baseOctaves = parseInt(octavesSlider.value, 10);
                 const landShaping = parseFloat(shapingSlider.value);
@@ -277,7 +278,7 @@
                  const x2 = x1 + 1;
                  const y2 = y1 + 1;
 
-                 if (x1 < 0 || y1 < 0 || x2 >= elevationData[0].length || y2 >= elevationData.length) {
+                 if (x1 < 0 || y1 < 0 || !elevationData[y1] || !elevationData[y2] || x2 >= elevationData[0].length ) {
                      return 0;
                  }
 
@@ -302,15 +303,21 @@
                 canvas.width = width;
                 canvas.height = height;
                 
-                precalculateElevationData(width, height);
-                
                 const imageData = ctx.createImageData(width, height);
                 const data = imageData.data;
+                const landShaping = parseFloat(shapingSlider.value);
+                const baseOctaves = parseInt(octavesSlider.value, 10);
+                const zoomFactor = noiseScale / INITIAL_NOISE_SCALE;
+                const zoomBonus = zoomFactor > 1 ? Math.floor(Math.log2(zoomFactor)) : 0;
+                const currentOctaves = Math.max(1, Math.min(9, baseOctaves + zoomBonus));
                 
                 for (let y = 0; y < height; y++) {
                     for (let x = 0; x < width; x++) {
                         const index = (y * width + x) * 4;
-                        const shapedNoise = getInterpolatedElevation(x, y);
+                        const worldX = offsetX + (x / noiseScale);
+                        const worldY = offsetY + (y / noiseScale);
+                        const rawNoise = getRawNoiseValue(worldX, worldY, currentOctaves);
+                        const shapedNoise = Math.pow((rawNoise + 1) / 2, landShaping) * 2 - 1;
                         const color = hexToRgb(getColor(shapedNoise, currentBiome));
                         
                         data[index] = color.r;
@@ -354,6 +361,7 @@
             }
 
             function generateAndDrawRivers(width, height) {
+                precalculateElevationGrid(width, height);
                 const gridWidth = elevationData[0].length;
                 const gridHeight = elevationData.length;
                 const seaLevel = -0.1;
@@ -395,32 +403,15 @@
                 const marshColor = currentBiome[4].color;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-
-                const imageData = ctx.getImageData(0, 0, width, height);
-
+                
                 for (let y = 0; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
-                        if(elevationData[y][x] > seaLevel && elevationData[y][x] < 0.0 && flowMap[y][x] > 10) {
-                             const baseColor = getColor(elevationData[y][x], currentBiome);
-                             const finalColor = hexToRgb(lerpColor(baseColor, marshColor, 0.5));
-                             const px = x * 2;
-                             const py = y * 2;
-                             for(let i=0; i<2; i++) {
-                                 for (let j=0; j<2; j++) {
-                                    const index = ((py + j) * width + (px + i)) * 4;
-                                    imageData.data[index] = finalColor.r;
-                                    imageData.data[index+1] = finalColor.g;
-                                    imageData.data[index+2] = finalColor.b;
-                                 }
-                             }
+                        if (elevationData[y][x] > seaLevel && elevationData[y][x] < 0.0 && flowMap[y][x] > 20) {
+                             ctx.fillStyle = lerpColor(getColor(elevationData[y][x], currentBiome), marshColor, 0.5);
+                             ctx.fillRect(x * 2, y * 2, 2, 2);
                         }
-                    }
-                }
-                ctx.putImageData(imageData, 0, 0);
 
-                for (let y = 0; y < gridHeight; y++) {
-                    for (let x = 0; x < gridWidth; x++) {
-                        if (flowMap[y][x] > 40) { 
+                        if (flowMap[y][x] > 90) { 
                             let lowestElev = elevationData[y][x];
                             let nextX = x, nextY = y;
                              for (let dy = -1; dy <= 1; dy++) {
@@ -435,7 +426,7 @@
                             }
                             
                             if (nextX !== x || nextY !== y) {
-                                const thickness = Math.sqrt(flowMap[y][x]) * 0.1;
+                                const thickness = Math.sqrt(flowMap[y][x]) * 0.15;
                                 ctx.beginPath();
                                 ctx.moveTo(x * 2 + 1, y * 2 + 1);
                                 ctx.lineTo(nextX * 2 + 1, nextY * 2 + 1);
