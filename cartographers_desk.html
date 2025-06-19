@@ -67,6 +67,9 @@
                         <button id="resetViewButton" class="bg-gray-200 text-[#6b5b4b] font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-300 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-[#a89984]">
                             Reset View
                         </button>
+                        <button id="exportButton" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-700 transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                            Export Map
+                        </button>
                     </div>
                     
                     <div class="control-group flex flex-col gap-3">
@@ -136,7 +139,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v2.1.1
+        v2.2.0
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -157,6 +160,7 @@
             const ctx = canvas.getContext('2d');
             const generateButton = document.getElementById('generateButton');
             const resetViewButton = document.getElementById('resetViewButton');
+            const exportButton = document.getElementById('exportButton');
             const themeSelector = document.getElementById('themeSelector');
             const octavesSlider = document.getElementById('octavesSlider');
             const shapingSlider = document.getElementById('shapingSlider');
@@ -178,7 +182,6 @@
             let offsetX = 0, offsetY = 0;
             let simplex;
             let elevationData = []; 
-            let flowMap = [];
             let continentMap = [];
             const COORDINATE_MULTIPLIER = 100;
 
@@ -273,25 +276,23 @@
             }
             
             // --- Rendering ---
-            function precalculateDataAndRenderBase(width, height) {
+            function precalculateDataAndRenderBase(targetCtx, width, height, currentSettings) {
+                const { octaves, landShapingPower, offsetX, offsetY, noiseScale, currentBiome, tileSize } = currentSettings;
                 const gridWidth = Math.ceil(width / tileSize);
                 const gridHeight = Math.ceil(height / tileSize);
                 elevationData = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(0));
-                
-                const baseOctaves = parseInt(octavesSlider.value, 10);
-                const landShapingPower = 1.1 - parseFloat(shapingSlider.value);
-                
+
                 for (let y = 0; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         const worldX = offsetX + (x * tileSize / noiseScale);
                         const worldY = offsetY + (y * tileSize / noiseScale);
                         
-                        const rawNoise = getRawNoiseValue(worldX, worldY, baseOctaves + 2); 
+                        const rawNoise = getRawNoiseValue(worldX, worldY, octaves + 2); 
                         const shapedNoise = Math.pow((rawNoise + 1) / 2, landShapingPower) * 2 - 1;
                         elevationData[y][x] = shapedNoise;
                         
-                        ctx.fillStyle = getColor(shapedNoise, currentBiome);
-                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                        targetCtx.fillStyle = getColor(shapedNoise, currentBiome);
+                        targetCtx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                     }
                 }
             }
@@ -307,45 +308,51 @@
                 canvas.width = width;
                 canvas.height = height;
                 
-                precalculateDataAndRenderBase(width, height);
+                const settings = {
+                    octaves: parseInt(octavesSlider.value, 10),
+                    landShapingPower: 1.1 - parseFloat(shapingSlider.value),
+                    offsetX, offsetY, noiseScale, currentBiome, tileSize
+                };
+
+                precalculateDataAndRenderBase(ctx, width, height, settings);
                 
                 if (isNewWorld) {
                     nameContinents(width, height);
                 }
 
                 if (riversCheckbox.checked) {
-                    generateAndDrawRivers(width, height);
+                    generateAndDrawRivers(ctx, width, height);
                 }
                 if (gridCheckbox.checked) {
-                    drawGrid(width, height);
+                    drawGrid(ctx, width, height);
                 }
-                drawVignette(width, height);
+                drawVignette(ctx, width, height);
                 updateZoomDisplay();
             }
             
-            function drawVignette(width, height) {
-                const gradient = ctx.createRadialGradient(width / 2, height / 2, width * 0.4, width / 2, height / 2, width * 0.7);
+            function drawVignette(targetCtx, width, height) {
+                const gradient = targetCtx.createRadialGradient(width / 2, height / 2, width * 0.4, width / 2, height / 2, width * 0.7);
                 gradient.addColorStop(0, 'rgba(0,0,0,0)');
                 gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, width, height);
+                targetCtx.fillStyle = gradient;
+                targetCtx.fillRect(0, 0, width, height);
             }
 
-            function drawGrid(width, height) {
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
+            function drawGrid(targetCtx, width, height) {
+                targetCtx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                targetCtx.lineWidth = 1;
+                targetCtx.beginPath();
                 const gridSpacing = 60;
-                for (let x = gridSpacing; x < width; x += gridSpacing) {
-                    ctx.moveTo(x, 0); ctx.lineTo(x, height);
+                for (let x = gridSpacing - (offsetX*noiseScale % gridSpacing); x < width; x += gridSpacing) {
+                    targetCtx.moveTo(x, 0); targetCtx.lineTo(x, height);
                 }
-                for (let y = gridSpacing; y < height; y += gridSpacing) {
-                    ctx.moveTo(0, y); ctx.lineTo(width, y);
+                for (let y = gridSpacing - (offsetY*noiseScale % gridSpacing); y < height; y += gridSpacing) {
+                    targetCtx.moveTo(0, y); targetCtx.lineTo(width, y);
                 }
-                ctx.stroke();
+                targetCtx.stroke();
             }
 
-            function generateAndDrawRivers(width, height) {
+            function generateAndDrawRivers(targetCtx, width, height) {
                 if(!elevationData || !elevationData[0]) return;
                 const gridWidth = elevationData[0].length;
                 const gridHeight = elevationData.length;
@@ -386,14 +393,14 @@
                 const riverOutlineColor = currentBiome[0].color;
                 const riverFillColor = currentBiome[2].color;
                 const marshColor = currentBiome[5].color;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
+                targetCtx.lineCap = 'round';
+                targetCtx.lineJoin = 'round';
                 
                 for (let y = 0; y < gridHeight; y++) {
                     for (let x = 0; x < gridWidth; x++) {
                         if (elevationData[y][x] > seaLevel && elevationData[y][x] < 0.15 && flowMap[y][x] > 20) {
-                             ctx.fillStyle = lerpColor(getColor(elevationData[y][x], currentBiome), marshColor, 0.5);
-                             ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                             targetCtx.fillStyle = lerpColor(getColor(elevationData[y][x], currentBiome), marshColor, 0.5);
+                             targetCtx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                         }
 
                         if (flowMap[y][x] > 60) { 
@@ -412,17 +419,17 @@
                             
                             if ((nextX !== x || nextY !== y) && elevationData[nextY][nextX] > seaLevel) {
                                 const thickness = Math.sqrt(flowMap[y][x]) * 0.08;
-                                ctx.beginPath();
-                                ctx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
-                                ctx.lineTo(nextX * tileSize + tileSize / 2, nextY * tileSize + tileSize / 2);
+                                targetCtx.beginPath();
+                                targetCtx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
+                                targetCtx.lineTo(nextX * tileSize + tileSize / 2, nextY * tileSize + tileSize / 2);
                                 
-                                ctx.strokeStyle = riverOutlineColor;
-                                ctx.lineWidth = thickness * 1.8;
-                                ctx.stroke();
+                                targetCtx.strokeStyle = riverOutlineColor;
+                                targetCtx.lineWidth = thickness * 1.8;
+                                targetCtx.stroke();
                                 
-                                ctx.strokeStyle = riverFillColor;
-                                ctx.lineWidth = thickness;
-                                ctx.stroke();
+                                targetCtx.strokeStyle = riverFillColor;
+                                targetCtx.lineWidth = thickness;
+                                targetCtx.stroke();
                             }
                         }
                     }
@@ -510,6 +517,36 @@
                 renderMap(true);
             }
 
+            function exportMap() {
+                const exportCanvas = document.createElement('canvas');
+                const exportCtx = exportCanvas.getContext('2d');
+                const exportWidth = 3840;
+                const exportHeight = 2160;
+                exportCanvas.width = exportWidth;
+                exportCanvas.height = exportHeight;
+                
+                const settings = {
+                    octaves: parseInt(octavesSlider.value, 10),
+                    landShapingPower: 1.1 - parseFloat(shapingSlider.value),
+                    offsetX, offsetY, noiseScale, currentBiome, tileSize: 1
+                };
+
+                precalculateDataAndRenderBase(exportCtx, exportWidth, exportHeight, settings);
+                if (riversCheckbox.checked) {
+                    generateAndDrawRivers(exportCtx, exportWidth, exportHeight);
+                }
+                if (gridCheckbox.checked) {
+                    drawGrid(exportCtx, exportWidth, exportHeight);
+                }
+                drawVignette(exportCtx, exportWidth, exportHeight);
+                
+                const link = document.createElement('a');
+                link.download = 'fantasy-map.png';
+                link.href = exportCanvas.toDataURL();
+                link.click();
+            }
+
+
             function handleZoom(mouseX, mouseY, zoomFactor) {
                 const minNoiseScale = INITIAL_NOISE_SCALE / 1.6;
                 const proposedNoiseScale = noiseScale * zoomFactor;
@@ -532,15 +569,13 @@
                 
                 generateButton.addEventListener('click', generateAndRender);
                 resetViewButton.addEventListener('click', resetView);
+                exportButton.addEventListener('click', exportMap);
                 
                 [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, riversCheckbox, resolutionSelector].forEach(el => {
                     el.addEventListener('change', () => {
-                        const resSelector = document.getElementById('resolutionSelector');
-                        if (resSelector) {
-                            tileSize = parseInt(resSelector.value, 10);
-                        }
+                        tileSize = parseInt(resolutionSelector.value, 10);
                         currentBiome = PALETTES[themeSelector.value];
-                        renderMap()
+                        renderMap();
                     });
                 });
                 
