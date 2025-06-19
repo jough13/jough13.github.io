@@ -27,12 +27,16 @@
             cursor: zoom-in;
             display: block; /* Prevents extra space below the canvas */
         }
-        /* Style for the notes area */
-        #notesArea {
-            background-color: #fdfaf2;
-            border: 1px solid #d4c8b0;
-            line-height: 1.8;
+        #tooltip {
+            position: absolute;
+            display: none;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
             font-family: 'IM Fell English', serif;
+            pointer-events: none;
+            z-index: 100;
         }
     </style>
 </head>
@@ -49,8 +53,9 @@
             <!-- Left Column: Map and Controls -->
             <div class="lg:col-span-2">
                 <!-- Map Container -->
-                <div class="bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-[#d4c8b0] relative">
+                <div id="mapContainer" class="bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-[#d4c8b0] relative">
                     <canvas id="mapCanvas"></canvas>
+                    <div id="tooltip"></div>
                 </div>
 
                 <!-- Controls -->
@@ -131,7 +136,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v1.3.2
+        v2.1.1
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -162,6 +167,8 @@
             const gridCheckbox = document.getElementById('gridCheckbox');
             const riversCheckbox = document.getElementById('riversCheckbox');
             const resolutionSelector = document.getElementById('resolutionSelector');
+            const tooltip = document.getElementById('tooltip');
+            const mapContainer = document.getElementById('mapContainer');
 
             // --- Generation & View Parameters ---
             let tileSize = 4;
@@ -172,6 +179,7 @@
             let simplex;
             let elevationData = []; 
             let flowMap = [];
+            let continentMap = [];
             const COORDINATE_MULTIPLIER = 100;
 
             // --- Color Palettes & Biome Definitions ---
@@ -301,6 +309,10 @@
                 
                 precalculateDataAndRenderBase(width, height);
                 
+                if (isNewWorld) {
+                    nameContinents(width, height);
+                }
+
                 if (riversCheckbox.checked) {
                     generateAndDrawRivers(width, height);
                 }
@@ -398,7 +410,7 @@
                                 }
                             }
                             
-                            if (nextX !== x || nextY !== y) {
+                            if ((nextX !== x || nextY !== y) && elevationData[nextY][nextX] > seaLevel) {
                                 const thickness = Math.sqrt(flowMap[y][x]) * 0.08;
                                 ctx.beginPath();
                                 ctx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
@@ -415,6 +427,70 @@
                         }
                     }
                 }
+            }
+
+             // --- Continent Naming Logic ---
+            function nameContinents(width, height) {
+                const gridWidth = elevationData[0].length;
+                const gridHeight = elevationData.length;
+                const seaLevel = 0.1;
+                const visited = new Array(gridWidth * gridHeight).fill(false);
+                continentMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(null));
+                const continents = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const index = y * gridWidth + x;
+                        if (visited[index] || elevationData[y][x] < seaLevel) continue;
+                        
+                        const continent = [];
+                        const queue = [[x, y]];
+                        visited[index] = true;
+
+                        while(queue.length > 0) {
+                            const [curX, curY] = queue.shift();
+                            continent.push({x: curX, y: curY});
+
+                            const neighbors = [[curX+1, curY], [curX-1, curY], [curX, curY+1], [curX, curY-1]];
+                            for(const [nx, ny] of neighbors) {
+                                const nIndex = ny * gridWidth + nx;
+                                if(nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && !visited[nIndex] && elevationData[ny][nx] >= seaLevel) {
+                                    visited[nIndex] = true;
+                                    queue.push([nx, ny]);
+                                }
+                            }
+                        }
+
+                        if (continent.length > 50) { // Only count significant landmasses
+                            continents.push({ tiles: continent, name: generateName() });
+                        }
+                    }
+                }
+                
+                continents.sort((a, b) => b.tiles.length - a.tiles.length);
+                const continentNames = [];
+                continents.slice(0, 4).forEach((c, i) => {
+                    continentNames.push(c.name);
+                    c.tiles.forEach(tile => {
+                        continentMap[tile.y][tile.x] = c.name;
+                    });
+                });
+                
+                if(continentNames.length > 0) {
+                    notesArea.value = `Discovered the continents of ${continentNames.join(', ')}.\n\n`;
+                } else {
+                    notesArea.value = `This world appears to be a vast ocean...\n\n`;
+                }
+            }
+
+            function generateName() {
+                const prefixes = ['Aer', 'Gal', 'Nor', 'Sil', 'Val', 'El', 'Myr', 'Zan', 'Kor', 'Ist', 'Fen'];
+                const middles = ['tho', 'en', 'i', 'a', 'y', 'u', 'or', 'an'];
+                const suffixes = ['dor', 'mar', 'th', 'ia', 'os', 'gar', 'land', 'wyn', 'ria', 'heim'];
+                const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const m = middles[Math.floor(Math.random() * middles.length)];
+                const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+                return Math.random() > 0.4 ? p + m + s : p + s;
             }
             
             // --- View Controls & Initialization ---
@@ -487,9 +563,24 @@
                     const worldX = (offsetX + (mouseX / noiseScale)) * COORDINATE_MULTIPLIER;
                     const worldY = (offsetY + (mouseY / noiseScale)) * COORDINATE_MULTIPLIER;
                     coordsDisplay.textContent = `X: ${worldX.toFixed(2)}, Y: ${worldY.toFixed(2)}`;
+
+                    const gridX = Math.floor((offsetX + mouseX / noiseScale) * (canvas.width/tileSize/WRAP_PERIOD*0.5));
+                    const gridY = Math.floor((offsetY + mouseY / noiseScale) * (canvas.height/tileSize/WRAP_PERIOD*0.25));
+
+                    if(continentMap[gridY] && continentMap[gridY][gridX]) {
+                        tooltip.style.display = 'block';
+                        tooltip.textContent = continentMap[gridY][gridX];
+                        tooltip.style.left = `${e.clientX - canvas.getBoundingClientRect().left + 15}px`;
+                        tooltip.style.top = `${e.clientY - canvas.getBoundingClientRect().top + 15}px`;
+                    } else {
+                        tooltip.style.display = 'none';
+                    }
                 });
 
-                canvas.addEventListener('mouseleave', () => { coordsDisplay.textContent = '-'; });
+                canvas.addEventListener('mouseleave', () => { 
+                    tooltip.style.display = 'none';
+                    coordsDisplay.textContent = '-'; 
+                });
             
                 window.addEventListener('resize', () => {
                     clearTimeout(window.resizeTimeout);
