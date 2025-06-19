@@ -139,7 +139,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v2.2.0
+        v2.2.1
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -357,7 +357,7 @@
                 const gridWidth = elevationData[0].length;
                 const gridHeight = elevationData.length;
                 const seaLevel = 0.1;
-                flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
+                const flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
                 const landPoints = [];
 
                 for (let y = 0; y < gridHeight; y++) {
@@ -403,13 +403,13 @@
                              targetCtx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                         }
 
-                        if (flowMap[y][x] > 60) { 
+                        if (flowMap[y][x] > 75) { 
                             let lowestElev = elevationData[y][x];
                             let nextX = x, nextY = y;
                              for (let dy = -1; dy <= 1; dy++) {
                                 for (let dx = -1; dx <= 1; dx++) {
                                     if (dx === 0 && dy === 0) continue;
-                                    const nx = x + dx; const ny = y + dy; 
+                                    const nx = x + dx; const ny = y + dy;
                                     if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
                                         lowestElev = elevationData[ny][nx];
                                         nextX = nx; nextY = ny;
@@ -418,7 +418,7 @@
                             }
                             
                             if ((nextX !== x || nextY !== y) && elevationData[nextY][nextX] > seaLevel) {
-                                const thickness = Math.sqrt(flowMap[y][x]) * 0.08;
+                                const thickness = Math.sqrt(flowMap[y][x]) * 0.1;
                                 targetCtx.beginPath();
                                 targetCtx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
                                 targetCtx.lineTo(nextX * tileSize + tileSize / 2, nextY * tileSize + tileSize / 2);
@@ -572,11 +572,16 @@
                 exportButton.addEventListener('click', exportMap);
                 
                 [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, riversCheckbox, resolutionSelector].forEach(el => {
-                    el.addEventListener('change', () => {
-                        tileSize = parseInt(resolutionSelector.value, 10);
-                        currentBiome = PALETTES[themeSelector.value];
-                        renderMap();
-                    });
+                    if (el) { // defensive check
+                         el.addEventListener('change', () => {
+                            const resSelector = document.getElementById('resolutionSelector');
+                            if (resSelector) {
+                                tileSize = parseInt(resSelector.value, 10);
+                            }
+                            currentBiome = PALETTES[themeSelector.value];
+                            renderMap()
+                        });
+                    }
                 });
                 
                 canvas.addEventListener('click', e => {
