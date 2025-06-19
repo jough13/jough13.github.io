@@ -139,7 +139,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v2.2.1
+        v2.2.2
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -403,13 +403,13 @@
                              targetCtx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                         }
 
-                        if (flowMap[y][x] > 75) { 
+                        if (flowMap[y][x] > 60) { 
                             let lowestElev = elevationData[y][x];
                             let nextX = x, nextY = y;
                              for (let dy = -1; dy <= 1; dy++) {
                                 for (let dx = -1; dx <= 1; dx++) {
                                     if (dx === 0 && dy === 0) continue;
-                                    const nx = x + dx; const ny = y + dy;
+                                    const nx = x + dx; const ny = y + dy; 
                                     if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationData[ny][nx] < lowestElev) {
                                         lowestElev = elevationData[ny][nx];
                                         nextX = nx; nextY = ny;
@@ -418,7 +418,7 @@
                             }
                             
                             if ((nextX !== x || nextY !== y) && elevationData[nextY][nextX] > seaLevel) {
-                                const thickness = Math.sqrt(flowMap[y][x]) * 0.1;
+                                const thickness = Math.sqrt(flowMap[y][x]) * 0.08;
                                 targetCtx.beginPath();
                                 targetCtx.moveTo(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2);
                                 targetCtx.lineTo(nextX * tileSize + tileSize / 2, nextY * tileSize + tileSize / 2);
