@@ -317,11 +317,11 @@
                 precalculateDataAndRenderBase(ctx, width, height, settings);
                 
                 if (isNewWorld) {
-                    generateFlowMap();
+                    generateFlowMap(); 
                     nameContinents(width, height);
                     findSettlementLocations();
                 }
-
+                
                 if (riversCheckbox.checked) {
                     generateAndDrawRivers(ctx, width, height);
                 }
@@ -497,21 +497,21 @@
                         else if (flow > 100) type = 'town';
                         
                         settlementLocations.push({
-                            x: candidate.x,
-                            y: candidate.y,
+                            x: offsetX + (candidate.x * tileSize) / noiseScale,
+                            y: offsetY + (candidate.y * tileSize) / noiseScale,
                             type: type
                         });
                      }
                 }
             }
 
-            function drawSettlements(targetCtx, width, height){
+            function drawSettlements(targetCtx){
                 if(!settlementLocations) return;
                 const settlementColor = '#000000';
                 
                 for(const loc of settlementLocations){
-                     const screenX = (loc.x * tileSize + tileSize/2) - (offsetX * noiseScale);
-                     const screenY = (loc.y * tileSize + tileSize/2) - (offsetY * noiseScale);
+                     const screenX = (loc.x - offsetX) * noiseScale;
+                     const screenY = (loc.y - offsetY) * noiseScale;
                      let size = 0;
                      
                      switch(loc.type) {
@@ -608,6 +608,7 @@
 
             function generateAndRender() {
                 simplex = new SimplexNoise(Math.random());
+                settlementSimplex = new SimplexNoise(Math.random());
                 notesArea.value = '';
                 renderMap(true);
             }
