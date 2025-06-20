@@ -31,6 +31,17 @@
         #mapCanvas:active {
             cursor: grabbing;
         }
+        #tooltip {
+            position: absolute;
+            display: none;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: 'IM Fell English', serif;
+            pointer-events: none;
+            z-index: 100;
+        }
     </style>
 </head>
 <body class="bg-[#f5f1e8] text-[#4a3f35] antialiased">
@@ -47,6 +58,7 @@
             <div class="lg:w-2/3">
                 <div id="mapContainer" class="bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-[#d4c8b0] relative">
                     <canvas id="mapCanvas"></canvas>
+                    <div id="tooltip"></div>
                 </div>
 
                 <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
@@ -111,6 +123,10 @@
                 <div class="control-group p-4 h-full">
                     <div class="flex items-center justify-between border-b-2 border-[#d4c8b0] pb-2 mb-4">
                         <h2 class="text-2xl title-font">Field Notes</h2>
+                        <div class="text-sm">
+                            <span class="font-semibold">Coordinates:</span>
+                            <span id="coordsDisplay" class="font-mono ml-2">-</span>
+                        </div>
                     </div>
                     <textarea id="notesArea" class="w-full h-96 lg:h-[calc(100%-50px)] p-3 text-lg rounded-md focus:outline-none focus:ring-2 focus:ring-[#a89984] resize-none" placeholder="Discovered a large continent in the west, marked by twin mountain ranges..."></textarea>
                 </div>
@@ -119,9 +135,10 @@
     </div>
     
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v2.3.0
+        v2.3.2
     </div>
 
+    <!-- EMBEDDED LIBRARY: SimplexNoise -->
     <script>
     (function (global, factory) {
         typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
@@ -149,7 +166,9 @@
             const gridCheckbox = document.getElementById('gridCheckbox');
             const riversCheckbox = document.getElementById('riversCheckbox');
             const settlementsCheckbox = document.getElementById('settlementsCheckbox');
-            
+            const tooltip = document.getElementById('tooltip');
+            const coordsDisplay = document.getElementById('coordsDisplay');
+
             // --- Generation & View Parameters ---
             const INITIAL_NOISE_SCALE = 80; 
             const WRAP_PERIOD = 20; 
@@ -162,6 +181,9 @@
             const offscreenCanvas = document.createElement('canvas');
             const offscreenCtx = offscreenCanvas.getContext('2d');
             let settlementLocations = [];
+            let continentMap = [];
+            const COORDINATE_MULTIPLIER = 100;
+            let elevationData = []; 
 
             // --- Color Palettes & Biome Definitions ---
             const PALETTES = {
@@ -262,8 +284,9 @@
 
                 const landShapingPower = 1.1 - parseFloat(shapingSlider.value);
                 const baseOctaves = parseInt(octavesSlider.value, 10);
+                currentBiome = PALETTES[themeSelector.value];
                 
-                const elevationData = Array(bufferHeight).fill(0).map(() => Array(bufferWidth).fill(0));
+                elevationData = Array(bufferHeight).fill(0).map(() => Array(bufferWidth).fill(0));
                 
                 for (let y = 0; y < bufferHeight; y++) {
                     for (let x = 0; x < bufferWidth; x++) {
@@ -281,10 +304,11 @@
                     }
                 }
                 
-                const flowMap = generateFlowMap(elevationData);
+                flowMap = generateFlowMap(elevationData);
                 findSettlementLocations(elevationData, flowMap);
+                nameContinents(elevationData);
                 
-                generateAndDrawRivers(offscreenCtx, elevationData, flowMap, true);
+                generateAndDrawRivers(offscreenCtx, elevationData, flowMap);
                 
                 drawView();
             }
@@ -303,7 +327,7 @@
                 const sourceHeight = (height / noiseScale) * (offscreenCanvas.height / (WRAP_PERIOD/2));
 
                 ctx.drawImage(offscreenCanvas, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
-
+                
                 if (settlementsCheckbox.checked) drawSettlements(ctx);
                 if (gridCheckbox.checked) drawGrid(ctx, width, height);
                 drawVignette(ctx, width, height);
@@ -423,7 +447,7 @@
 
             // --- Settlement Placement Logic ---
             function findSettlementLocations(elevationGrid, flowGrid) {
-                if(!elevationGrid || !elevationGrid[0] || !flowGrid || !flowGrid[0]) return;
+                if(!elevationGrid || !flowGrid || !flowGrid[0]) return;
                 settlementLocations = [];
                 const gridWidth = elevationGrid[0].length;
                 const gridHeight = elevationGrid.length;
@@ -441,7 +465,7 @@
                             if (suitability > 0) {
                                  const settlementNoise = getRawNoiseValue(settlementSimplex, x/15, y/15, 4);
                                  if(settlementNoise > 0.5) {
-                                     candidates.push({ x, y, suitability: suitability + settlementNoise, flow });
+                                     candidates.push({ x, y, suitability: suitability + settlementNoise });
                                  }
                             }
                         }
@@ -501,6 +525,71 @@
                      targetCtx.stroke();
                 }
             }
+
+
+             // --- Continent Naming Logic ---
+            function nameContinents(elevationGrid) {
+                const gridWidth = elevationGrid[0].length;
+                const gridHeight = elevationGrid.length;
+                const seaLevel = 0.1;
+                const visited = new Array(gridWidth * gridHeight).fill(false);
+                continentMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(null));
+                const continents = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const index = y * gridWidth + x;
+                        if (visited[index] || elevationGrid[y][x] < seaLevel) continue;
+                        
+                        const continent = [];
+                        const queue = [[x, y]];
+                        visited[index] = true;
+
+                        while(queue.length > 0) {
+                            const [curX, curY] = queue.shift();
+                            continent.push({x: curX, y: curY});
+
+                            const neighbors = [[curX+1, curY], [curX-1, curY], [curX, curY+1], [curX, curY-1]];
+                            for(const [nx, ny] of neighbors) {
+                                const nIndex = ny * gridWidth + nx;
+                                if(nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && !visited[nIndex] && elevationGrid[ny][nx] >= seaLevel) {
+                                    visited[nIndex] = true;
+                                    queue.push([nx, ny]);
+                                }
+                            }
+                        }
+
+                        if (continent.length > 50) { // Only count significant landmasses
+                            continents.push({ tiles: continent, name: generateName() });
+                        }
+                    }
+                }
+                
+                continents.sort((a, b) => b.tiles.length - a.tiles.length);
+                const continentNames = [];
+                continents.slice(0, 4).forEach((c, i) => {
+                    continentNames.push(c.name);
+                    c.tiles.forEach(tile => {
+                        continentMap[tile.y][tile.x] = c.name;
+                    });
+                });
+                
+                if(continentNames.length > 0) {
+                    notesArea.value = `Discovered the continents of ${continentNames.join(', ')}.\n\n`;
+                } else {
+                    notesArea.value = `This world appears to be a vast ocean...\n\n`;
+                }
+            }
+
+            function generateName() {
+                const prefixes = ['Aer', 'Gal', 'Nor', 'Sil', 'Val', 'El', 'Myr', 'Zan', 'Kor', 'Ist', 'Fen'];
+                const middles = ['tho', 'en', 'i', 'a', 'y', 'u', 'or', 'an'];
+                const suffixes = ['dor', 'mar', 'th', 'ia', 'os', 'gar', 'land', 'wyn', 'ria', 'heim'];
+                const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const m = middles[Math.floor(Math.random() * middles.length)];
+                const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+                return Math.random() > 0.4 ? p + m + s : p + s;
+            }
             
             // --- View Controls & Initialization ---
             function updateZoomDisplay() {
@@ -515,7 +604,6 @@
 
             function generateAndRender() {
                 simplex = new SimplexNoise(Math.random());
-                riverSimplex = new SimplexNoise(Math.random());
                 settlementSimplex = new SimplexNoise(Math.random());
                 notesArea.value = '';
                 renderMapToBuffer();
@@ -576,6 +664,8 @@
                     lastY = e.clientY;
                 });
                  canvas.addEventListener('mousemove', e => {
+                    const rect = canvas.getBoundingClientRect();
+                    
                     if (isDragging) {
                         const dx = e.clientX - lastX;
                         const dy = e.clientY - lastY;
@@ -595,9 +685,32 @@
                         lastY = e.clientY;
                         requestAnimationFrame(drawView);
                     }
+                    
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    const worldX = offsetX + (mouseX / noiseScale);
+                    const worldY = offsetY + (mouseY / noiseScale);
+
+                    coordsDisplay.textContent = `X: ${worldX.toFixed(2)}, Y: ${worldY.toFixed(2)}`;
+
+                    const gridX = Math.floor((worldX / WRAP_PERIOD) * offscreenCanvas.width);
+                    const gridY = Math.floor((worldY / (WRAP_PERIOD / 2)) * offscreenCanvas.height);
+                    
+                    if(continentMap[gridY] && continentMap[gridY][gridX]) {
+                        tooltip.style.display = 'block';
+                        tooltip.textContent = continentMap[gridY][gridX];
+                        tooltip.style.left = `${e.clientX - canvas.getBoundingClientRect().left + 15}px`;
+                        tooltip.style.top = `${e.clientY - canvas.getBoundingClientRect().top + 15}px`;
+                    } else {
+                        tooltip.style.display = 'none';
+                    }
                 });
                 canvas.addEventListener('mouseup', () => { isDragging = false; });
-                canvas.addEventListener('mouseleave', () => { isDragging = false; });
+                canvas.addEventListener('mouseleave', () => { 
+                    isDragging = false;
+                    tooltip.style.display = 'none';
+                });
                 
                 canvas.addEventListener('wheel', e => {
                     e.preventDefault();
