@@ -26,6 +26,7 @@
         #mapCanvas {
             cursor: zoom-in;
             display: block; /* Prevents extra space below the canvas */
+            width: 100%; /* Ensures canvas fills its container */
         }
         #tooltip {
             position: absolute;
@@ -82,14 +83,6 @@
                                 <option value="volcanic">Volcanic Hellscape</option>
                             </select>
                         </div>
-                        <div class="flex items-center justify-between gap-2">
-                            <label for="resolutionSelector" class="font-semibold text-sm">Resolution:</label>
-                            <select id="resolutionSelector" class="bg-white border border-[#a89984] rounded-md py-1 px-2 accent-[#6b5b4b] text-sm">
-                                <option value="8">Fast</option>
-                                <option value="4" selected>Balanced</option>
-                                <option value="2">Detailed</option>
-                            </select>
-                        </div>
                         <div class="flex items-center justify-start gap-2 pt-1">
                             <input type="checkbox" id="wrappingCheckbox" class="h-4 w-4 accent-[#6b5b4b]" checked>
                             <label for="wrappingCheckbox" class="font-semibold text-sm">Wrapping World</label>
@@ -101,6 +94,10 @@
                         <div class="flex items-center justify-start gap-2 pt-1">
                             <input type="checkbox" id="riversCheckbox" class="h-4 w-4 accent-[#6b5b4b]" checked>
                             <label for="riversCheckbox" class="font-semibold text-sm">Show Rivers</label>
+                        </div>
+                        <div class="flex items-center justify-start gap-2 pt-1">
+                            <input type="checkbox" id="settlementsCheckbox" class="h-4 w-4 accent-[#6b5b4b]" checked>
+                            <label for="settlementsCheckbox" class="font-semibold text-sm">Show Settlements</label>
                         </div>
                     </div>
 
@@ -139,7 +136,7 @@
     
     <!-- Version Tag -->
     <div class="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs font-sans text-gray-500 bg-white/70 backdrop-blur-sm px-2 py-1 rounded-full shadow">
-        v2.1.2
+        v2.2.7
     </div>
 
     <!-- EMBEDDED LIBRARY: SimplexNoise -->
@@ -170,6 +167,7 @@
             const coordsDisplay = document.getElementById('coordsDisplay');
             const gridCheckbox = document.getElementById('gridCheckbox');
             const riversCheckbox = document.getElementById('riversCheckbox');
+            const settlementsCheckbox = document.getElementById('settlementsCheckbox');
             const resolutionSelector = document.getElementById('resolutionSelector');
             const tooltip = document.getElementById('tooltip');
             const mapContainer = document.getElementById('mapContainer');
@@ -180,9 +178,11 @@
             const WRAP_PERIOD = 20; 
             let noiseScale = INITIAL_NOISE_SCALE;
             let offsetX = 0, offsetY = 0;
-            let simplex;
+            let simplex, settlementSimplex;
             let elevationData = []; 
+            let flowMap = [];
             let continentMap = [];
+            let settlementLocations = [];
             const COORDINATE_MULTIPLIER = 100;
 
             // --- Color Palettes & Biome Definitions ---
@@ -317,12 +317,19 @@
                 precalculateDataAndRenderBase(ctx, width, height, settings);
                 
                 if (isNewWorld) {
+                    generateFlowMap();
                     nameContinents(width, height);
+                    findSettlementLocations();
                 }
 
                 if (riversCheckbox.checked) {
                     generateAndDrawRivers(ctx, width, height);
                 }
+                
+                if (settlementsCheckbox.checked) {
+                    drawSettlements(ctx, width, height);
+                }
+
                 if (gridCheckbox.checked) {
                     drawGrid(ctx, width, height);
                 }
@@ -352,12 +359,12 @@
                 targetCtx.stroke();
             }
 
-            function generateAndDrawRivers(targetCtx, width, height) {
-                if(!elevationData || !elevationData[0]) return;
+            function generateFlowMap() {
+                 if(!elevationData || !elevationData[0]) return;
                 const gridWidth = elevationData[0].length;
                 const gridHeight = elevationData.length;
                 const seaLevel = 0.1;
-                const flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
+                flowMap = Array(gridHeight).fill(0).map(() => Array(gridWidth).fill(1));
                 const landPoints = [];
 
                 for (let y = 0; y < gridHeight; y++) {
@@ -389,7 +396,13 @@
                         flowMap[nextY][nextX] += flowMap[p.y][p.x];
                     }
                 }
-                
+            }
+
+            function generateAndDrawRivers(targetCtx, width, height) {
+                if(!flowMap || !flowMap[0]) return;
+                const gridWidth = elevationData[0].length;
+                const gridHeight = elevationData.length;
+                const seaLevel = 0.1;
                 const riverOutlineColor = currentBiome[0].color;
                 const riverFillColor = currentBiome[2].color;
                 const marshColor = currentBiome[5].color;
@@ -403,7 +416,7 @@
                              targetCtx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                         }
 
-                        if (flowMap[y][x] > 60) { 
+                        if (flowMap[y][x] > 75) { 
                             let lowestElev = elevationData[y][x];
                             let nextX = x, nextY = y;
                              for (let dy = -1; dy <= 1; dy++) {
@@ -435,6 +448,88 @@
                     }
                 }
             }
+
+            // --- Settlement Placement Logic ---
+            function findSettlementLocations() {
+                if(!elevationData || !elevationData[0] || !flowMap || !flowMap[0]) return;
+                settlementLocations = [];
+                const gridWidth = elevationData[0].length;
+                const gridHeight = elevationData.length;
+                const seaLevel = 0.1;
+                const candidates = [];
+
+                for (let y = 0; y < gridHeight; y++) {
+                    for (let x = 0; x < gridWidth; x++) {
+                        const elev = elevationData[y][x];
+                        if (elev > seaLevel) {
+                            const flow = flowMap[y][x];
+                            let suitability = 0;
+                            if (elev > seaLevel && elev < 0.2) suitability += 1; // Coastal
+                            if (flow > 80) suitability += (flow / 50); // River
+                            if (suitability > 0) {
+                                const settlementNoise = getRawNoiseValue(x/5, y/5, 4);
+                                if(settlementNoise > 0.5) {
+                                     candidates.push({ x, y, suitability: suitability + settlementNoise });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                candidates.sort((a,b) => b.suitability - a.suitability);
+
+                const numSettlements = Math.floor(Math.sqrt(gridWidth*gridHeight)/4);
+                for(let i=0; i<Math.min(numSettlements, candidates.length); i++) {
+                     const candidate = candidates[i];
+                     let tooClose = false;
+                     for(const loc of settlementLocations) {
+                         const dist = Math.hypot(loc.x - candidate.x, loc.y - candidate.y);
+                         if (dist < 20) {
+                             tooClose = true;
+                             break;
+                         }
+                     }
+
+                     if(!tooClose) {
+                        const flow = flowMap[candidate.y][candidate.x];
+                        let type = 'village';
+                        if(flow > 150) type = 'city';
+                        else if (flow > 100) type = 'town';
+                        
+                        settlementLocations.push({
+                            x: candidate.x,
+                            y: candidate.y,
+                            type: type
+                        });
+                     }
+                }
+            }
+
+            function drawSettlements(targetCtx, width, height){
+                if(!settlementLocations) return;
+                const settlementColor = '#000000';
+                
+                for(const loc of settlementLocations){
+                     const screenX = (loc.x * tileSize + tileSize/2) - (offsetX * noiseScale);
+                     const screenY = (loc.y * tileSize + tileSize/2) - (offsetY * noiseScale);
+                     let size = 0;
+                     
+                     switch(loc.type) {
+                         case 'city': size = 12; break;
+                         case 'town': size = 8; break;
+                         case 'village': size = 5; break;
+                     }
+
+                     targetCtx.fillStyle = settlementColor;
+                     targetCtx.strokeStyle = '#FFFFFF';
+                     targetCtx.lineWidth = 2;
+                     targetCtx.beginPath();
+                     targetCtx.rect(screenX - size/2, screenY - size/2, size, size);
+                     targetCtx.fill();
+                     targetCtx.stroke();
+                }
+            }
+
 
              // --- Continent Naming Logic ---
             function nameContinents(width, height) {
@@ -532,8 +627,12 @@
                 };
 
                 precalculateDataAndRenderBase(exportCtx, exportWidth, exportHeight, settings);
+                generateFlowMap();
                 if (riversCheckbox.checked) {
                     generateAndDrawRivers(exportCtx, exportWidth, exportHeight);
+                }
+                if (settlementsCheckbox.checked) {
+                    placeSettlements(exportCtx, exportWidth, exportHeight);
                 }
                 if (gridCheckbox.checked) {
                     drawGrid(exportCtx, exportWidth, exportHeight);
@@ -571,8 +670,8 @@
                 resetViewButton.addEventListener('click', resetView);
                 exportButton.addEventListener('click', exportMap);
                 
-                [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, riversCheckbox, resolutionSelector].forEach(el => {
-                    if (el) { // defensive check
+                [wrappingCheckbox, gridCheckbox, octavesSlider, shapingSlider, themeSelector, riversCheckbox, settlementsCheckbox].forEach(el => {
+                    if (el) { 
                          el.addEventListener('change', () => {
                             const resSelector = document.getElementById('resolutionSelector');
                             if (resSelector) {
@@ -604,8 +703,8 @@
                     const worldY = (offsetY + (mouseY / noiseScale)) * COORDINATE_MULTIPLIER;
                     coordsDisplay.textContent = `X: ${worldX.toFixed(2)}, Y: ${worldY.toFixed(2)}`;
 
-                    const gridX = Math.floor((mouseX) / tileSize);
-                    const gridY = Math.floor((mouseY) / tileSize);
+                    const gridX = Math.floor((mouseX + offsetX * noiseScale) / tileSize);
+                    const gridY = Math.floor((mouseY + offsetY * noiseScale) / tileSize);
 
                     if(continentMap[gridY] && continentMap[gridY][gridX]) {
                         tooltip.style.display = 'block';
