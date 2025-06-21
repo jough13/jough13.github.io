@@ -309,7 +309,7 @@
                 'shield_wall': {
                     movementModifier: 0.7,
                     attackModifier: 0.9,
-                    defenseModifier: 1.5,
+                    defenseBonus: 1.5, // Fixed typo: was defenseModifier
                     moraleModifier: 1.2,
                     fatigueModifier: 1.3,
                 }
@@ -865,22 +865,6 @@
                                 ctx.lineTo(drawX + offset, drawY + offset + unitDrawSize / 2);
                                 ctx.closePath();
                                 break;
-                            case 'commander':
-                                const starSize = unitDrawSize / 2;
-                                const centerX = drawX + offset + unitDrawSize / 2;
-                                const centerY = drawY + offset + unitDrawSize / 2;
-                                const outerRadius = starSize;
-                                const innerRadius = starSize / 2.5;
-
-                                ctx.moveTo(centerX, centerY - outerRadius);
-                                for (let i = 0; i < 5; i++) {
-                                    ctx.lineTo(centerX + innerRadius * Math.sin(i * Math.PI * 2 / 5 * 2 + Math.PI / 10),
-                                               centerY + innerRadius * Math.cos(i * Math.PI * 2 / 5 * 2 + Math.PI / 10));
-                                    ctx.lineTo(centerX + outerRadius * Math.sin(i * Math.PI * 2 / 5 * 2 - Math.PI / 10),
-                                               centerY + outerRadius * Math.cos(i * Math.PI * 2 / 5 * 2 - Math.PI / 10));
-                                }
-                                ctx.closePath();
-                                break;
                             default:
                                 ctx.roundRect(drawX + offset, drawY + offset, unitDrawSize, unitDrawSize, 5);
                         }
@@ -1016,8 +1000,8 @@
                 let actualDamageToDefender = (rawDamageToDefender / 100) * attacker.strength * 0.8;
                 let actualDamageToAttacker = (rawDamageToAttacker / 100) * defender.strength * 0.8;
 
-                actualDamageToDefender *= 4; // Damage multiplier
-                actualDamageToAttacker *= 4; // Damage multiplier
+                actualDamageToDefender *= 8; // Damage multiplier - Increased to 8
+                actualDamageToAttacker *= 8; // Damage multiplier - Increased to 8
 
                 if (rawDamageToDefender > 0 && actualDamageToDefender < 1) {
                     actualDamageToDefender = 1;
@@ -1068,7 +1052,7 @@
 
                         let actualRangedDamage = (rawRangedDamage / 100) * archerUnit.strength * 0.4;
 
-                        actualRangedDamage *= 4; // Damage multiplier
+                        actualRangedDamage *= 8; // Damage multiplier - Increased to 8
 
                         if (rawRangedDamage > 0 && actualRangedDamage < 1) {
                             actualRangedDamage = 1;
@@ -1150,7 +1134,6 @@
                     currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
                     currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
 
-                    // Corrected the conditional logic for penalizing idling units
                     if (!isCurrentlyAdjacentToEnemy && !((unit.type === 'archer' || unit.type === 'skirmisher') && currentDistanceToTarget <= ARCHER_RANGE)) {
                         currentScoreForStay -= 200; // Strong penalty for idling
                     }
