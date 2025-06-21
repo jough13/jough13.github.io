@@ -216,8 +216,8 @@
             let projectiles = [];
 
             let currentHoveredUnit = null; // Global within IIFE for mouse interaction
-            let lastMouseX = 0; // To store last mouse X for drawGame, initialized in initGame
-            let lastMouseY = 0; // To store last mouse Y for drawGame, initialized in initGame
+            let lastMouseX; // To store last mouse X for drawGame, initialized in DOMContentLoaded
+            let lastMouseY; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
 
             // Offscreen canvas for terrain textures - created once
             const terrainTextureCanvas = document.createElement('canvas');
