@@ -215,8 +215,8 @@
             let projectiles = [];
 
             let currentHoveredUnit = null; // Global within IIFE for mouse interaction
-            let lastMouseX = 0; // To store last mouse X for drawGame, initialized in DOMContentLoaded
-            let lastMouseY = 0; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
+            let lastMouseX; // To store last mouse X for drawGame, initialized in DOMContentLoaded
+            let lastMouseY; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
 
             // Offscreen canvas for terrain textures - created once
             const terrainTextureCanvas = document.createElement('canvas');
@@ -577,10 +577,11 @@
                     if (this.broken) return;
 
                     const strengthLossPercentage = damageAmount / this.maxStrength;
-                    let moraleLoss = strengthLossPercentage * this.initialMorale * 0.7;
+                    // Reduced multiplier to make morale more resilient against high damage
+                    let moraleLoss = strengthLossPercentage * this.initialMorale * 0.15; // Adjusted from 0.7 to 0.15
 
                     if (strengthLossPercentage > 0.2) {
-                        moraleLoss += this.initialMorale * 0.1;
+                        moraleLoss += this.initialMorale * 0.05; // Smaller additional penalty for high single hit
                     }
 
                     this.morale -= moraleLoss;
@@ -904,14 +905,14 @@
                         for (let i = 0; i < unitDef.count; i++) {
                             // Basic spreading logic for predefined units
                             const x = unitDef.startX + (i % (unitDef.spreadX + 1));
-                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadX + 1));
+                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1)); // Corrected: use spreadY
                             units.push(new Unit(`R${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Roman', x, y, unitDef.color));
                         }
                     });
                     currentScenario.gaulUnits.forEach(unitDef => {
                         for (let i = 0; i < unitDef.count; i++) {
                             const x = unitDef.startX - (i % (unitDef.spreadX + 1));
-                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadX + 1));
+                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1)); // Corrected: use spreadY
                             units.push(new Unit(`B${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Gaul', x, y, unitDef.color));
                         }
                     });
@@ -1397,7 +1398,7 @@
                 // Define potential target squares for pathfinding based on unit type and target preference
                 let pathTargets = [];
                 if (unit.type === 'archer' || unit.type === 'skirmisher') {
-                    // Ranged units want to be within ARCHER_RANGE
+                    // Ranged units want to be within ARCHER_RANGE, and preferably on hills
                     for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
                         for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
                             const distToEnemy = Math.sqrt(Math.pow(x - targetEnemy.x, 2) + Math.pow(y - targetEnemy.y, 2));
@@ -1405,10 +1406,19 @@
                             // Valid firing position: within range, not too close (to avoid melee), not occupied, not water/impassable
                             if (distToEnemy <= ARCHER_RANGE && distToEnemy > 1 && TERRAIN_DATA[terrainType].movementCost !== Infinity &&
                                 !allUnits.some(u => u.x === x && u.y === y && u.id !== unit.id)) {
-                                pathTargets.push({x, y});
+                                
+                                let score = 0;
+                                score -= distToEnemy; // Prefer closer targets within range
+                                if (terrainType === 'hill') {
+                                    score += 50; // SIGNIFICANT BONUS FOR HILLS FOR ARCHERS
+                                }
+                                pathTargets.push({x, y, score});
                             }
                         }
                     }
+                    // Sort path targets by score to prioritize better positions for BFS
+                    pathTargets.sort((a,b) => b.score - a.score);
+
                 } else {
                     // Melee units want to be adjacent to target enemy
                     const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
@@ -1439,8 +1449,7 @@
                     finalTargetY = shortestPath[0].y;
                 } else {
                     // If BFS found no path to any preferred target (e.g., target is unreachable or all path points are blocked)
-                    // Unit still tries to move to its original target's direction, or a forced move will handle it.
-                    // This fallback ensures some movement attempt even if path is complex.
+                    // Unit still tries to move towards target or a simple adjacent space.
                     const dx = targetEnemy.x - unit.x;
                     const dy = targetEnemy.y - unit.y;
 
@@ -1464,9 +1473,22 @@
                         finalTargetX = tempNextX;
                         finalTargetY = tempNextY;
                     } else {
-                        // If even direct step is invalid, unit just tries to stay put, and the failsafe will act.
-                        finalTargetX = unit.x;
-                        finalTargetY = unit.y;
+                        // As a last resort, if even the direct step isn't valid, try any immediately adjacent clear tile
+                        const adjacentTiles = [
+                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                        ];
+                        for (const move of adjacentTiles) {
+                            const testX = unit.x + move.dx;
+                            const testY = unit.y + move.dy;
+                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
+                                getTerrainAt(testX, testY) !== 'water' &&
+                                !allUnits.some(u => u.x === testX && u.y === testY && u.id !== unit.id)) {
+                                finalTargetX = testX;
+                                finalTargetY = testY;
+                                break; // Found a spot, take it.
+                            }
+                        }
                     }
                 }
 
@@ -1551,14 +1573,48 @@
 
                     let moved = unit.moveTo(optimalMove.x, optimalMove.y);
 
-                    // If unit didn't move by optimal path (e.g., path was blocked last second), it's considered stuck.
-                    // Removed the old "forced move" logic here, as BFS should handle pathfinding.
-                    // The unit will either move or remain in its spot if no path is found or it's blocked.
-                    // This relies on improved BFS to find *any* path.
+                    // If unit still hasn't moved (despite pathfinding) OR it's idle/blocked, try a forced simple move.
+                    // This is the failsafe for very complex blocking situations or when BFS couldn't find a path within range.
+                    const isCurrentlyAdjacentToEnemy = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
+                        (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
 
-                    if (moved || (unit.x !== originalX || unit.y !== originalY)) { // Check if unit actually changed position
+                    if (!moved && unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE && !isCurrentlyAdjacentToEnemy && !unit.isFlashing) {
+                         logBattleMessage(`${unit.name} (${unit.faction}) was idle or blocked; attempting forced move.`);
+                        
+                        const adjacentTiles = [
+                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                        ];
+                        adjacentTiles.sort(() => Math.random() - 0.5); // Randomize to try different directions
+
+                        for (const move of adjacentTiles) {
+                            const testX = originalX + move.dx; 
+                            const testY = originalY + move.dy;
+
+                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
+                                const terrainType = getTerrainAt(testX, testY);
+                                if (!FORMATION_DATA[unit.currentFormation]) {
+                                    console.error(`Formation data missing for: ${unit.currentFormation}`);
+                                    continue;
+                                }
+                                const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
+                                const occupied = units.some(otherUnit =>
+                                    otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken
+                                );
+
+                                if (moveCost !== Infinity && unit.movementPoints >= moveCost && !occupied) {
+                                    moved = unit.moveTo(testX, testY);
+                                    if (moved) {
+                                        logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
+                                        break; 
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (moved || (unit.x !== originalX || unit.y !== originalY)) {
                         unit._wasActiveThisTurn = true;
-                        // Recalculate adjacency *after* potential move for charge bonus
                         const isAdjacentAfterMove = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
                             (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
                         if (isAdjacentAfterMove) {
