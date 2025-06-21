@@ -139,7 +139,6 @@
                 <p id="roman-units-display" class="text-lg font-semibold">Units: 0</p>
             </div>
             <div class="text-center">
-                <p class="faction-title faction-gaul">Barbarian Horde</p>
                 <p id="gaul-units-display" class="text-lg font-semibold">Units: 0</p>
             </div>
         </div>
@@ -216,8 +215,8 @@
             let projectiles = [];
 
             let currentHoveredUnit = null; // Global within IIFE for mouse interaction
-            let lastMouseX; // To store last mouse X for drawGame, initialized in DOMContentLoaded
-            let lastMouseY; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
+            let lastMouseX = 0; // To store last mouse X for drawGame, initialized in DOMContentLoaded
+            let lastMouseY = 0; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
 
             // Offscreen canvas for terrain textures - created once
             const terrainTextureCanvas = document.createElement('canvas');
@@ -283,6 +282,38 @@
                 }
             };
 
+            // NEW: AI Behavior Data
+            const AI_BEHAVIOR_DATA = {
+                'aggressive': { // Prioritizes advancing and attacking
+                    movementModifier: 1.1, // Moves slightly faster
+                    attackModifier: 1.1,   // Attacks harder
+                    defenseModifier: 0.9,  // More vulnerable
+                    moraleModifier: 1,
+                    fatigueModifier: 1.1,  // Tires a bit faster
+                },
+                'defensive': { // Prioritizes holding ground and defense
+                    movementModifier: 0.9, // Moves slower
+                    attackModifier: 0.9,   // Attacks weaker
+                    defenseModifier: 1.2,  // Defends better
+                    moraleModifier: 1.1,   // Better morale retention
+                    fatigueModifier: 0.9,  // Less fatiguing
+                },
+                'skirmishing': { // Prioritizes mobility and ranged attacks
+                    movementModifier: 1.2, // Moves much faster
+                    attackModifier: 1,
+                    defenseModifier: 0.8,  // Worse defense
+                    moraleModifier: 1,
+                    fatigueModifier: 0.8,  // Less fatiguing
+                },
+                'routing': { // Unit is broken and fleeing
+                    movementModifier: 1.5, // Runs very fast
+                    attackModifier: 0.1,   // Barely fights
+                    defenseModifier: 0.1,  // No defense
+                    moraleModifier: 0.1,   // Very low morale
+                    fatigueModifier: 0.5,  // Less fatiguing (as they're not fighting)
+                }
+            };
+
             const FORMATION_DATA = {
                 'default': {
                     movementModifier: 1,
@@ -325,36 +356,42 @@
                 'infantry': {
                     baseStrength: 100, baseMorale: 80, baseAttack: 10, baseDefense: 8, baseMovement: 2, identifier: 'I',
                     defaultFormation: 'tight_formation',
-                    targetPreference: 'closest' // Default for infantry
+                    targetPreference: 'closest', // Default for infantry
+                    defaultBehavior: 'aggressive' // New: Default behavior
                 },
                 'cavalry': {
                     baseStrength: 60, baseMorale: 90, baseAttack: 12, baseDefense: 6, baseMovement: 3, identifier: 'C',
                     defaultFormation: 'charge_formation',
-                    targetPreference: 'ranged_units' // Cavalry targets archers first
+                    targetPreference: 'ranged_units', // Cavalry targets archers first
+                    defaultBehavior: 'aggressive' // New: Default behavior
                 },
                 'chariot': {
                     baseStrength: 70, baseMorale: 95, baseAttack: 15, baseDefense: 5, baseMovement: 4, identifier: 'T',
                     defaultFormation: 'charge_formation',
-                    targetPreference: 'ranged_units' // Chariots target archers first
+                    targetPreference: 'ranged_units', // Chariots target archers first
+                    defaultBehavior: 'aggressive' // New: Default behavior
                 },
                 'archer': {
                     baseStrength: 50, baseMorale: 70, baseAttack: 7, baseDefense: 5, baseMovement: 2, identifier: 'A',
                     defaultFormation: 'loose_formation',
-                    targetPreference: 'closest' // Archers target closest by default, or can be 'infantry' or 'weakest'
+                    targetPreference: 'closest', // Archers target closest by default, or can be 'infantry' or 'weakest'
+                    defaultBehavior: 'skirmishing' // New: Default behavior
                 },
                 'skirmisher': {
                     baseStrength: 45, baseMorale: 80, baseAttack: 6, baseDefense: 4, baseMovement: 3, identifier: 'S',
                     defaultFormation: 'loose_formation',
-                    targetPreference: 'weakest' // Skirmishers pick off weakest foes
+                    targetPreference: 'weakest', // Skirmishers pick off weakest foes
+                    defaultBehavior: 'skirmishing' // New: Default behavior
                 },
                 'commander': {
                     baseStrength: 70, baseMorale: 100, baseAttack: 5, baseDefense: 10, baseMovement: 2, identifier: '★',
                     defaultFormation: 'default',
-                    targetPreference: 'closest' // Commanders don't target aggressively
+                    targetPreference: 'closest', // Commanders don't target aggressively
+                    defaultBehavior: 'defensive' // New: Default behavior
                 }
             };
 
-            // NEW: Scenario Data encapsulated in a function
+            // NEW: Scenario Data encapsulated in a function to ensure it's always available
             function getScenarioData() {
                 return {
                     "Random Battle": {
@@ -470,6 +507,7 @@
 
                     this.currentFormation = this.defaultFormation;
                     this.targetPreference = typeData.targetPreference; // Assign target preference
+                    this.currentBehavior = typeData.defaultBehavior; // New: Assign default behavior
                 }
 
                 getMoraleState() {
@@ -496,8 +534,10 @@
 
                     const formationAttackModifier = FORMATION_DATA[this.currentFormation].attackModifier;
                     const moraleStatePenalty = this.getMoraleState().attackPenalty;
+                    // NEW: Apply behavior attack modifier
+                    const behaviorAttackModifier = AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
 
-                    return this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty);
+                    return this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
                 }
 
                 getEffectiveDefense() {
@@ -512,8 +552,10 @@
 
                     const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
                     const moraleStatePenalty = this.getMoraleState().defensePenalty;
+                    // NEW: Apply behavior defense modifier
+                    const behaviorDefenseModifier = AI_BEHAVIOR_DATA[this.currentBehavior].defenseModifier;
 
-                    return this.defense * moraleModifier * (1 + terrainDefenseBonus) * formationDefenseModifier * (1 - moraleStatePenalty);
+                    return this.defense * moraleModifier * (1 + terrainDefenseBonus) * formationDefenseModifier * (1 - moraleStatePenalty) * behaviorDefenseModifier;
                 }
 
                 takeDamage(damageAmount) {
@@ -588,6 +630,9 @@
 
                     moveCost *= FORMATION_DATA[this.currentFormation].movementModifier;
                     moveCost *= (1 + this.getMoraleState().movementPenalty);
+                    // NEW: Apply behavior movement modifier
+                    moveCost *= AI_BEHAVIOR_DATA[this.currentBehavior].movementModifier;
+
 
                     if (moveCost === Infinity || this.remainingMovement < moveCost) {
                         return false;
@@ -602,7 +647,7 @@
                     this.x = nextGridX;
                     this.y = nextGridY;
                     this.remainingMovement -= moveCost;
-                    this.fatigue += TERRAIN_DATA[terrainType].fatigueCost * FORMATION_DATA[this.currentFormation].fatigueModifier;
+                    this.fatigue += TERRAIN_DATA[terrainType].fatigueCost * FORMATION_DATA[this.currentFormation].fatigueModifier * AI_BEHAVIOR_DATA[this.currentBehavior].fatigueModifier; // NEW: Apply behavior fatigue modifier
 
                     return true;
                 }
@@ -1253,165 +1298,179 @@
                 return target;
             }
 
-            function findOptimalMoveForUnit(unit, targetEnemy, allUnits, map) {
-                let bestX = unit.x;
-                let bestY = unit.y;
-                let bestScore = -Infinity;
+            /**
+             * Implements Breadth-First Search (BFS) to find the shortest path from a start
+             * position to any valid target, considering movement costs and occupied cells.
+             * @param {{x: number, y: number}} startPos - The starting grid position.
+             * @param {Unit} unit - The unit attempting to move (for movement points, formation, morale).
+             * @param {Array<Unit>} allUnits - All units on the map to check for occupied cells.
+             * @param {Array<Array<string>>} map - The terrain map.
+             * @param {Array<{x: number, y: number}>} targetPositions - An array of potential target grid positions.
+             * @returns {Array<{x: number, y: number}>|null} The path as an array of coordinates, or null if no path found.
+             */
+            function findPathBFS(startPos, unit, allUnits, map, targetPositions) {
+                const queue = [{x: startPos.x, y: startPos.y, path: [], cost: 0}];
+                const visited = new Set(); // Stores "x,y" strings to avoid revisiting
+                visited.add(`${startPos.x},${startPos.y}`);
 
-                const possibleMoves = [
-                    { dx: 0, dy: 0 }, // Stay put
-                    { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, // Horizontal
-                    { dx: 0, dy: -1 }, { dx: 0, dy: 1 }, // Vertical
-                    { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 } // Diagonals
-                ];
+                const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
+                const dy = [0, 0, -1, 1, -1, 1, -1, 1];
 
-                const maxMapDistance = Math.sqrt(MAP_WIDTH_CELLS * MAP_WIDTH_CELLS + MAP_HEIGHT_CELLS * MAP_HEIGHT_CELLS);
+                let closestPath = null;
+                let minDistanceToTarget = Infinity; // Actual Euclidean distance, not path cost
 
-                // Calculate unit's current state relative to targetEnemy once at the beginning
-                const currentDistanceToTarget = Math.sqrt(Math.pow(unit.x - targetEnemy.x, 2) + Math.pow(unit.y - targetEnemy.y, 2));
-                const isCurrentlyAdjacentToEnemy = currentDistanceToTarget <= 1.5; // Threshold for "adjacent"
+                while (queue.length > 0) {
+                    const {x, y, path, cost} = queue.shift();
 
-                const validTraversableMoves = possibleMoves.filter(move => {
-                    const nextX = unit.x + move.dx;
-                    const nextY = unit.y + move.dy;
-
-                    if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) {
-                        return false;
-                    }
-
-                    const terrainType = getTerrainAt(nextX, nextY);
-                    let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                    
-                    if (!FORMATION_DATA[unit.currentFormation]) {
-                        console.error(`Formation data missing for: ${unit.currentFormation}`);
-                        return false;
-                    }
-                    moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
-                    moveCost *= (1 + unit.getMoraleState().movementPenalty);
-
-                    if (moveCost === Infinity || unit.remainingMovement < moveCost) {
-                        return false;
-                    }
-
-                    const isMoving = (move.dx !== 0 || move.dy !== 0);
-                    const isOccupied = allUnits.some(otherUnit =>
-                        otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken
-                    );
-                    if (isOccupied && isMoving) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                if (validTraversableMoves.length === 0) {
-                     return { x: unit.x, y: unit.y };
-                }
-
-                bestScore = -Infinity;
-                bestX = unit.x;
-                bestY = unit.y;
-
-                const stayPutMove = possibleMoves.find(m => m.dx === 0 && m.dy === 0);
-                const isStayPutMoveValid = validTraversableMoves.includes(stayPutMove);
-
-                if (isStayPutMoveValid) {
-                    let currentScoreForStay = 0;
-                    const terrainTypeForStay = getTerrainAt(unit.x, unit.y);
-                    currentScoreForStay += (1 - (currentDistanceToTarget / maxMapDistance)) * 100;
-                    currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
-                    currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
-
-                    if (!isCurrentlyAdjacentToEnemy && !((unit.type === 'archer' || unit.type === 'skirmisher') && currentDistanceToTarget <= ARCHER_RANGE)) {
-                        currentScoreForStay -= 200; // Strong penalty for idling
-                    }
-
-                    if (currentScoreForStay > bestScore) {
-                        bestScore = currentScoreForStay;
-                        bestX = unit.x;
-                        bestY = unit.y;
-                    }
-                }
-
-
-                validTraversableMoves.forEach(move => {
-                    const nextX = unit.x + move.dx;
-                    const nextY = unit.y + move.dy;
-
-                    let currentScore = 0;
-
-                    const distToEnemyFromNext = Math.sqrt(Math.pow(nextX - targetEnemy.x, 2) + Math.pow(nextY - targetEnemy.y, 2));
-                    currentScore += (1 - (distToEnemyFromNext / maxMapDistance)) * 100;
-
-                    const terrainType = getTerrainAt(nextX, nextY);
-                    const terrainDefenseBonus = TERRAIN_DATA[terrainType].defenseBonus;
-                    const terrainFatigueCost = TERRAIN_DATA[terrainType].fatigueCost;
-                    const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
-
-
-                    if (unit.type !== 'archer' && unit.type !== 'skirmisher') {
-                        currentScore += terrainDefenseBonus * 10;
-                        currentScore -= terrainFatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
-                        
-                        if (isCurrentlyAdjacentToEnemy && (move.dx !== 0 || move.dy !== 0)) {
-                            let potentialNewFlankingScore = 0;
-                            const adjacentToNextEnemies = allUnits.filter(enemy => 
-                                enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
-                                (Math.abs(nextX - enemy.x) + Math.abs(nextY - enemy.y) === 1)
-                            );
-                            
-                            for (const adjEnemy of adjacentToNextEnemies) {
-                                const currentFriendsAdjacentToAdjEnemy = allUnits.filter(otherUnit =>
-                                    otherUnit.id !== unit.id && otherUnit.id !== adjEnemy.id && otherUnit.faction === unit.faction && otherUnit.strength > 0 && !otherUnit.broken &&
-                                    (Math.abs(adjEnemy.x - otherUnit.x) + Math.abs(adjEnemy.y - otherUnit.y) === 1)
-                                );
-                                if (currentFriendsAdjacentToAdjEnemy.length >= 1) {
-                                    potentialNewFlankingScore += 25;
-                                }
+                    // Check if this node is one of the target positions
+                    // Prioritize targets that are closer in Euclidean distance among valid paths
+                    for (const targetP of targetPositions) {
+                        if (x === targetP.x && y === targetP.y) {
+                            const euclideanDistance = Math.sqrt(Math.pow(startPos.x - x, 2) + Math.pow(startPos.y - y, 2));
+                            if (euclideanDistance < minDistanceToTarget) {
+                                minDistanceToTarget = euclideanDistance;
+                                closestPath = path;
                             }
-                            currentScore += potentialNewFlankingScore;
+                        }
+                    }
 
-                            currentScore -= 10;
+                    // Continue BFS, even after finding a target, to potentially find a shorter *Euclidean* path
+                    // (BFS guarantees shortest path by cost, but not necessarily Euclidean shortest)
+                    // If we need the shortest path *by steps*, we can return immediately here.
+                    // For now, let's prioritize pathfinding to *any* target before optimizing the path itself.
+
+                    for (let i = 0; i < dx.length; i++) {
+                        const nextX = x + dx[i];
+                        const nextY = y + dy[i];
+                        const nextCoord = `${nextX},${nextY}`;
+
+                        if (visited.has(nextCoord)) continue;
+
+                        if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) {
+                            continue;
                         }
 
+                        const terrainType = getTerrainAt(nextX, nextY);
+                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
+                        
+                        if (!FORMATION_DATA[unit.currentFormation]) {
+                            continue; // Skip if formation data is invalid
+                        }
+                        moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                        moveCost *= (1 + unit.getMoraleState().movementPenalty);
+                        moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier; // Apply behavior movement modifier
+
+
+                        if (moveCost === Infinity || cost + moveCost > unit.movementPoints) {
+                            continue;
+                        }
+
+                        const isOccupied = allUnits.some(otherUnit =>
+                            otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken
+                        );
+                        if (isOccupied) {
+                            continue;
+                        }
+
+                        visited.add(nextCoord);
+                        queue.push({x: nextX, y: nextY, path: [...path, {x: nextX, y: nextY}], cost: cost + moveCost});
+                    }
+                }
+                return closestPath;
+            }
+
+
+            /**
+             * Determines the optimal next move for a unit, considering targets, terrain, and behavior.
+             * Now uses BFS for proper pathfinding.
+             * @param {Unit} unit - The unit to calculate the move for.
+             * @param {Unit} targetEnemy - The preferred target enemy unit.
+             * @param {Array<Unit>} allUnits - All units on the map to check for occupation.
+             * @param {Array<Array<string>>} map - The terrain map.
+             * @returns {{x: number, y: number}} The optimal next grid coordinates.
+             */
+            function findOptimalMoveForUnit(unit, targetEnemy, allUnits, map) {
+                const startPos = {x: unit.x, y: unit.y};
+                let finalTargetX = unit.x;
+                let finalTargetY = unit.y;
+
+                // Define potential target squares for pathfinding based on unit type and target preference
+                let pathTargets = [];
+                if (unit.type === 'archer' || unit.type === 'skirmisher') {
+                    // Ranged units want to be within ARCHER_RANGE
+                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                            const distToEnemy = Math.sqrt(Math.pow(x - targetEnemy.x, 2) + Math.pow(y - targetEnemy.y, 2));
+                            const terrainType = getTerrainAt(x, y);
+                            // Valid firing position: within range, not too close (to avoid melee), not occupied, not water/impassable
+                            if (distToEnemy <= ARCHER_RANGE && distToEnemy > 1 && TERRAIN_DATA[terrainType].movementCost !== Infinity &&
+                                !allUnits.some(u => u.x === x && u.y === y && u.id !== unit.id)) {
+                                pathTargets.push({x, y});
+                            }
+                        }
+                    }
+                } else {
+                    // Melee units want to be adjacent to target enemy
+                    const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
+                    const dy = [0, 0, -1, 1, -1, 1, -1, 1];
+                    for (let i = 0; i < dx.length; i++) {
+                        const adjX = targetEnemy.x + dx[i];
+                        const adjY = targetEnemy.y + dy[i];
+                        const terrainType = getTerrainAt(adjX, adjY);
+                        // Valid attack position: adjacent to enemy, not occupied by friendly, not water/impassable
+                        if (adjX >= 0 && adjX < MAP_WIDTH_CELLS && adjY >= 0 && adjY < MAP_HEIGHT_CELLS &&
+                            TERRAIN_DATA[terrainType].movementCost !== Infinity &&
+                            !allUnits.some(u => u.x === adjX && u.y === adjY && u.id !== unit.id)) {
+                            pathTargets.push({x: adjX, y: adjY});
+                        }
+                    }
+                }
+
+                // If no valid path targets, unit stays put
+                if (pathTargets.length === 0) {
+                    return { x: unit.x, y: unit.y };
+                }
+
+                // Use BFS to find the best first step towards a valid target
+                let shortestPath = findPathBFS(startPos, unit, allUnits, map, pathTargets);
+
+                if (shortestPath && shortestPath.length > 0) {
+                    finalTargetX = shortestPath[0].x; // Take the first step on the path
+                    finalTargetY = shortestPath[0].y;
+                } else {
+                    // If BFS found no path to any preferred target (e.g., target is unreachable or all path points are blocked)
+                    // Unit still tries to move to its original target's direction, or a forced move will handle it.
+                    // This fallback ensures some movement attempt even if path is complex.
+                    const dx = targetEnemy.x - unit.x;
+                    const dy = targetEnemy.y - unit.y;
+
+                    let tempNextX = unit.x;
+                    let tempNextY = unit.y;
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        tempNextX += Math.sign(dx);
+                    } else if (Math.abs(dy) > Math.abs(dx)) {
+                        tempNextY += Math.sign(dy);
+                    } else if (dx !== 0) {
+                        tempNextX += Math.sign(dx);
+                    } else if (dy !== 0) {
+                        tempNextY += Math.sign(dy);
+                    }
+                    
+                    // Validate this direct step (it might still be blocked, which processNextTurn's failsafe will catch)
+                    if (tempNextX >= 0 && tempNextX < MAP_WIDTH_CELLS && tempNextY >= 0 && tempNextY < MAP_HEIGHT_CELLS &&
+                        getTerrainAt(tempNextX, tempNextY) !== 'water' &&
+                        !allUnits.some(u => u.x === tempNextX && u.y === tempNextY && u.id !== unit.id)) {
+                        finalTargetX = tempNextX;
+                        finalTargetY = tempNextY;
                     } else {
-                        if (terrainType === 'plain') {
-                            currentScore += 5;
-                        } else if (terrainType === 'hill') {
-                            currentScore += 8;
-                        } else if (terrainType === 'forest') {
-                            currentScore -= 10;
-                        }
-                        currentScore -= terrainFatigueCost * 1 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
-
-                        if (distToEnemyFromNext > ARCHER_RANGE) {
-                            currentScore += 10;
-                        } else if (distToEnemyFromNext <= 1) {
-                            currentScore -= 500;
-                        } else if (distToEnemyFromNext <= ARCHER_RANGE && (move.dx !== 0 || move.dy !== 0)) {
-                            currentScore -= 5;
-                        } else if (move.dx === 0 && move.dy === 0 && distToEnemyFromNext <= ARCHER_RANGE) {
-                            currentScore += 10;
-                        }
+                        // If even direct step is invalid, unit just tries to stay put, and the failsafe will act.
+                        finalTargetX = unit.x;
+                        finalTargetY = unit.y;
                     }
+                }
 
-                    currentScore -= moveCost * 1;
-
-                    if (move.dx !== 0 || move.dy !== 0) {
-                        if (!isCurrentlyAdjacentToEnemy) {
-                            currentScore += 1;
-                        } else {
-                            currentScore -= 5;
-                        }
-                    }
-
-                    if (currentScore > bestScore) {
-                        bestScore = currentScore;
-                        bestX = nextX;
-                        bestY = nextY;
-                    }
-                });
-                return { x: bestX, y: bestY };
+                return { x: finalTargetX, y: finalTargetY };
             }
 
 
@@ -1484,53 +1543,22 @@
                     const targetEnemy = getPreferredTarget(unit, enemies);
                     if (!targetEnemy) return; // No valid target found based on preference
 
-                    let optimalMove = findOptimalMoveForUnit(unit, targetEnemy, units, map); // Pass targetEnemy for scoring
-
-                    const isCurrentlyAdjacentToEnemy = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
-                        (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
+                    // Determine optimal move using BFS
+                    let optimalMove = findOptimalMoveForUnit(unit, targetEnemy, units, map);
 
                     const originalX = unit.x;
                     const originalY = unit.y;
 
                     let moved = unit.moveTo(optimalMove.x, optimalMove.y);
 
-                    if (!moved && unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE && !isCurrentlyAdjacentToEnemy && !unit.isFlashing) {
-                        logBattleMessage(`${unit.name} (${unit.faction}) was idle or blocked; attempting forced move.`);
-                        
-                        const adjacentTiles = [
-                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
-                        ];
-                        adjacentTiles.sort(() => Math.random() - 0.5); 
+                    // If unit didn't move by optimal path (e.g., path was blocked last second), it's considered stuck.
+                    // Removed the old "forced move" logic here, as BFS should handle pathfinding.
+                    // The unit will either move or remain in its spot if no path is found or it's blocked.
+                    // This relies on improved BFS to find *any* path.
 
-                        for (const move of adjacentTiles) {
-                            const testX = originalX + move.dx; 
-                            const testY = originalY + move.dy;
-
-                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
-                                const terrainType = getTerrainAt(testX, testY);
-                                if (!FORMATION_DATA[unit.currentFormation]) {
-                                    console.error(`Formation data missing for: ${unit.currentFormation}`);
-                                    continue;
-                                }
-                                const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
-                                const occupied = units.some(otherUnit =>
-                                    otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken
-                                );
-
-                                if (moveCost !== Infinity && unit.movementPoints >= moveCost && !occupied) {
-                                    moved = unit.moveTo(testX, testY);
-                                    if (moved) {
-                                        logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
-                                        break; 
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (moved || (unit.x !== originalX || unit.y !== originalY)) {
+                    if (moved || (unit.x !== originalX || unit.y !== originalY)) { // Check if unit actually changed position
                         unit._wasActiveThisTurn = true;
+                        // Recalculate adjacency *after* potential move for charge bonus
                         const isAdjacentAfterMove = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
                             (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
                         if (isAdjacentAfterMove) {
