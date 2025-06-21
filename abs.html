@@ -165,18 +165,18 @@
 
     <script>
         (function() { // Start of IIFE
-            // Canvas and context
-            let canvas = document.getElementById('battleCanvas');
-            let ctx = canvas.getContext('2d');
+            // Canvas and context - declared with let as they will be assigned DOM elements
+            let canvas;
+            let ctx;
 
-            // UI elements
-            const nextTurnButton = document.getElementById('nextTurnButton');
-            const autoBattleButton = document.getElementById('autoBattleButton');
-            const restartButton = document.getElementById('restartButton');
-            const logArea = document.getElementById('logArea');
-            const romanUnitsDisplay = document.getElementById('roman-units-display');
-            const gaulUnitsDisplay = document.getElementById('gaul-units-display');
-            const unitTooltip = document.getElementById('unitTooltip');
+            // UI elements - declared with let as they will be assigned DOM elements
+            let nextTurnButton;
+            let autoBattleButton;
+            let restartButton;
+            let logArea;
+            let romanUnitsDisplay;
+            let gaulUnitsDisplay;
+            let unitTooltip;
 
             // Game parameters
             const GRID_SIZE = 20;
@@ -185,6 +185,7 @@
             const MORALE_BREAK_THRESHOLD = 20;
             const ANIMATION_DURATION = 300;
             const AUTO_BATTLE_TURN_DELAY = 800;
+            const VERSION_NUMBER = "v1.0"; // New: Version number constant
 
             let animationStartTime = 0;
             let isAnimating = false;
@@ -202,23 +203,21 @@
             const COMMANDER_LOSS_MORALE_SHOCK = 20;
             const MORALE_GAIN_ON_ENEMY_BREAK = 5;
 
-            // Set canvas dimensions based on grid size
-            // These lines should be *after* canvas is defined, but before initGame is called,
-            // so they are placed correctly here within the IIFE.
-            canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-            canvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
-
+            // Game state variables - these will be reset by initGame()
             let turn = 0;
             let units = [];
             let map = [];
             let projectiles = [];
 
-            let currentHoveredUnit = null;
+            let currentHoveredUnit = null; // Global within IIFE for mouse interaction
+            let lastMouseX = 0; // To store last mouse X for drawGame, initialized in initGame
+            let lastMouseY = 0; // To store last mouse Y for drawGame, initialized in initGame
 
+            // Offscreen canvas for terrain textures - created once
             const terrainTextureCanvas = document.createElement('canvas');
             const terrainTextureCtx = terrainTextureCanvas.getContext('2d');
-            terrainTextureCanvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-            terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
+            // Dimensions set in initGame after map size is finalized
+            
 
             const TERRAIN_DATA = {
                 'plain': {
@@ -674,6 +673,7 @@
 
                 stopAutoBattle();
 
+                // Reset button states and visibility
                 nextTurnButton.textContent = 'Begin!';
                 nextTurnButton.disabled = false;
                 nextTurnButton.style.display = 'block';
@@ -967,6 +967,13 @@
                     ctx.fillStyle = p.color;
                     ctx.fill();
                 });
+
+                // Display Version Number
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.font = 'bold 10px Inter';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText(VERSION_NUMBER, canvas.width - 5, 5);
             }
 
             function resolveMeleeCombat(attacker, defender) {
@@ -1088,8 +1095,9 @@
 
                 const maxMapDistance = Math.sqrt(MAP_WIDTH_CELLS * MAP_WIDTH_CELLS + MAP_HEIGHT_CELLS * MAP_HEIGHT_CELLS);
 
+                // Calculate unit's current state relative to targetEnemy once at the beginning
                 const currentDistanceToTarget = Math.sqrt(Math.pow(unit.x - targetEnemy.x, 2) + Math.pow(unit.y - targetEnemy.y, 2));
-                const isCurrentlyAdjacentToEnemy = currentDistanceToTarget <= 1.5;
+                const isCurrentlyAdjacentToEnemy = currentDistanceToTarget <= 1.5; // Threshold for "adjacent"
 
                 const validTraversableMoves = possibleMoves.filter(move => {
                     const nextX = unit.x + move.dx;
@@ -1142,8 +1150,9 @@
                     currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
                     currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
 
+                    // Corrected the conditional logic for penalizing idling units
                     if (!isCurrentlyAdjacentToEnemy && !((unit.type === 'archer' || unit.type === 'skirmisher') && currentDistanceToTarget <= ARCHER_RANGE)) {
-                        currentScoreForStay -= 200;
+                        currentScoreForStay -= 200; // Strong penalty for idling
                     }
 
                     if (currentScoreForStay > bestScore) {
@@ -1556,67 +1565,90 @@
             }
 
             // --- Mouse Interaction for Tooltip ---
-            canvas.addEventListener('mousemove', (event) => {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
+            // Event listener setup is moved into DOMContentLoaded
+            // lastMouseX and lastMouseY are declared at the top of IIFE
 
-                const mouseX = (event.clientX - rect.left) * scaleX;
-                const mouseY = (event.clientY - rect.top) * scaleY;
+            document.addEventListener('DOMContentLoaded', function() {
+                // Assign DOM elements to variables *after* the DOM is loaded
+                canvas = document.getElementById('battleCanvas');
+                ctx = canvas.getContext('2d');
+                nextTurnButton = document.getElementById('nextTurnButton');
+                autoBattleButton = document.getElementById('autoBattleButton');
+                restartButton = document.getElementById('restartButton');
+                logArea = document.getElementById('logArea');
+                romanUnitsDisplay = document.getElementById('roman-units-display');
+                gaulUnitsDisplay = document.getElementById('gaul-units-display');
+                unitTooltip = document.getElementById('unitTooltip');
 
-                let foundUnit = null;
-                for (const unit of units) {
-                    const unitPixelX = unit.displayX * GRID_SIZE;
-                    const unitPixelY = unit.displayY * GRID_SIZE;
+                // Set initial canvas dimensions
+                canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
+                canvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
+                terrainTextureCanvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
+                terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
 
-                    if (mouseX >= unitPixelX && mouseX < unitPixelX + GRID_SIZE &&
-                        mouseY >= unitPixelY && mouseY < unitPixelY + GRID_SIZE &&
-                        unit.strength > 0 && !unit.broken) {
-                        foundUnit = unit;
-                        break;
+                // Attach event listeners
+                canvas.addEventListener('mousemove', (event) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+
+                    lastMouseX = (event.clientX - rect.left) * scaleX;
+                    lastMouseY = (event.clientY - rect.top) * scaleY;
+
+                    let foundUnit = null;
+                    for (const unit of units) {
+                        const unitPixelX = unit.displayX * GRID_SIZE;
+                        const unitPixelY = unit.displayY * GRID_SIZE;
+
+                        if (lastMouseX >= unitPixelX && lastMouseX < unitPixelX + GRID_SIZE &&
+                            lastMouseY >= unitPixelY && lastMouseY < unitPixelY + GRID_SIZE &&
+                            unit.strength > 0 && !unit.broken) {
+                            foundUnit = unit;
+                            break;
+                        }
                     }
-                }
 
-                if (foundUnit !== currentHoveredUnit) {
-                    currentHoveredUnit = foundUnit;
-                    drawGame();
-                }
-                
-                if (currentHoveredUnit) {
-                    unitTooltip.style.display = 'block';
-                    const tooltipOffsetX = 10;
-                    const tooltipOffsetY = -20;
+                    if (foundUnit !== currentHoveredUnit) {
+                        currentHoveredUnit = foundUnit;
+                        drawGame(); // Redraw immediately to show/hide highlight
+                    }
+                    
+                    if (currentHoveredUnit) {
+                        unitTooltip.style.display = 'block';
+                        const tooltipOffsetX = 10;
+                        const tooltipOffsetY = -20;
 
-                    unitTooltip.style.left = `${event.clientX + tooltipOffsetX}px`;
-                    unitTooltip.style.top = `${event.clientY + tooltipOffsetY}px`;
-                    unitTooltip.innerHTML = `
-                        <strong>${currentHoveredUnit.name}</strong><br>
-                        Faction: ${currentHoveredUnit.faction}<br>
-                        Type: ${currentHoveredUnit.type}<br>
-                        Strength: ${currentHoveredUnit.strength.toFixed(0)}<br>
-                        Morale: ${currentHoveredUnit.morale.toFixed(0)} (${currentHoveredUnit.getMoraleState().name})<br>
-                        Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
-                        Idle Turns: ${currentHoveredUnit.idleTurns}<br>
-                        Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}
-                    `;
-                } else {
+                        unitTooltip.style.left = `${event.clientX + tooltipOffsetX}px`;
+                        unitTooltip.style.top = `${event.clientY + tooltipOffsetY}px`;
+                        unitTooltip.innerHTML = `
+                            <strong>${currentHoveredUnit.name}</strong><br>
+                            Faction: ${currentHoveredUnit.faction}<br>
+                            Type: ${currentHoveredUnit.type}<br>
+                            Strength: ${currentHoveredUnit.strength.toFixed(0)}<br>
+                            Morale: ${currentHoveredUnit.morale.toFixed(0)} (${currentHoveredUnit.getMoraleState().name})<br>
+                            Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
+                            Idle Turns: ${currentHoveredUnit.idleTurns}<br>
+                            Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}
+                        `;
+                    } else {
+                        unitTooltip.style.display = 'none';
+                    }
+                });
+
+                canvas.addEventListener('mouseout', () => {
                     unitTooltip.style.display = 'none';
-                }
-            });
+                    currentHoveredUnit = null;
+                    drawGame(); // Redraw to remove highlight if any
+                });
 
-            canvas.addEventListener('mouseout', () => {
-                unitTooltip.style.display = 'none';
-                currentHoveredUnit = null;
-                drawGame();
-            });
+                nextTurnButton.addEventListener('click', startNextTurnSequence);
+                autoBattleButton.addEventListener('click', toggleAutoBattle);
+                restartButton.addEventListener('click', initGame);
 
-            nextTurnButton.addEventListener('click', startNextTurnSequence);
-            autoBattleButton.addEventListener('click', toggleAutoBattle);
-            restartButton.addEventListener('click', initGame);
-
-            window.onload = function() {
+                // Initialize the game state *after* DOM elements are ready and listeners are attached
                 initGame();
-            };
+            }); // End of DOMContentLoaded listener
+
         })(); // End of IIFE
     </script>
 </body>
