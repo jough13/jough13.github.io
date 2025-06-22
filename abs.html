@@ -261,7 +261,7 @@
                 window.battleSim.GAUL_RETREAT_X = 0;
 
                 // NEW: Initial aggression phase duration
-                window.battleSim.INITIAL_AGGRESSION_TURNS = 10;
+                window.battleSim.INITIAL_AGGRESSION_TURNS = 15; // Increased from 10 to 15 turns
 
                 // Animation and game state flags
                 let animationStartTime;
@@ -1282,10 +1282,10 @@
                             }
                             // NEW: Aggressive units (including Generals in early turns) get bonus for forward movement
                             if (unit.currentBehavior === 'aggressive' && unit.faction === 'Roman' && (move.dx > 0)) { // Assuming Roman advances right
-                                currentScore += 150; 
+                                currentScore += 200; // Increased from 150
                             }
                             if (unit.currentBehavior === 'aggressive' && unit.faction === 'Gaul' && (move.dx < 0)) { // Assuming Gaul advances left
-                                currentScore += 150;
+                                currentScore += 200; // Increased from 150
                             }
 
                         } else { // Ranged units
@@ -1331,10 +1331,10 @@
                             }
                             // NEW: Aggressive (early game Roman) ranged units get bonus for forward movement
                             if (unit.currentBehavior === 'aggressive' && unit.faction === 'Roman' && (move.dx > 0)) { // Assuming Roman advances right
-                                currentScore += 80;
+                                currentScore += 120; // Increased from 80
                             }
                             if (unit.currentBehavior === 'aggressive' && unit.faction === 'Gaul' && (move.dx < 0)) { // Assuming Gaul advances left
-                                currentScore += 80;
+                                currentScore += 120; // Increased from 80
                             }
                         }
 
