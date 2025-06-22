@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-M-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ancient Battle Simulation</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -128,6 +128,60 @@
             background-size: 0.65em auto, 100%;
             padding-right: 2.5em; /* Make space for the arrow */
         }
+
+        /* Tooltip styles */
+        #unitTooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            pointer-events: none; /* Allows mouse events to pass through to canvas */
+            white-space: nowrap;
+            display: none; /* Hidden by default */
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Popup menu styles */
+        #unitPopupMenu {
+            position: absolute;
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            z-index: 2000;
+            display: none; /* Hidden by default */
+            min-width: 200px;
+            max-width: 300px;
+            font-size: 0.95rem;
+            color: #333;
+        }
+        #unitPopupMenu h3 {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #4f46e5;
+        }
+        #unitPopupMenu p {
+            margin-bottom: 0.25rem;
+        }
+        #unitPopupMenu button {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            width: 100%;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        #unitPopupMenu button:hover {
+            background-color: #4338ca;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -144,6 +198,7 @@
         </div>
         <canvas id="battleCanvas"></canvas>
         <div id="unitTooltip"></div> <!-- Tooltip element -->
+        <div id="unitPopupMenu"></div> <!-- New: Popup menu element -->
         <div class="legend">
             <div class="legend-item"><div class="legend-color-box" style="background-color: #8BC34A;"></div>Plain</div>
             <div class="legend-item"><div class="legend-color-box" style="background-color: #4CAF50;"></div>Forest</div>
@@ -188,6 +243,7 @@
                 let romanUnitsDisplay;
                 let gaulUnitsDisplay;
                 let unitTooltip;
+                let unitPopupMenu; // New: Reference to the popup menu
                 let scenarioSelect;
 
                 // Game parameters (constants)
@@ -227,6 +283,7 @@
                 let map = [];
                 let projectiles = [];
                 let currentHoveredUnit = null;
+                let currentClickedUnit = null; // New: Track currently clicked unit for popup
 
                 // Mouse position variables - managed by DOMContentLoaded listener
                 // Declared as window properties to avoid redeclaration issues in environments
@@ -504,10 +561,21 @@
                         this.prevY = this.y;
                         this.pathHistory = [];
                         // Reset ambush state if unit moves or attacks
-                        if (this.isAmbushReady || this.ambushRestTurns > 0) {
+                        // Only reset ambush ready if unit was ready and moved/attacked
+                        if (this.isAmbushReady && (this.x !== this.prevX || this.y !== this.prevY || this._attackedThisTurn)) {
+                            this.isAmbushReady = false;
+                            this.ambushRestTurns = 0;
+                        } else if (!this.isAmbushReady && window.battleSim.getTerrainAt(this.x, this.y) === 'forest' && !(this.x !== this.prevX || this.y !== this.prevY || this._attackedThisTurn)) {
+                            // If in forest, didn't move/attack, and not yet ready, increment rest turns
+                             this.ambushRestTurns++;
+                             if (this.ambushRestTurns >= 1) { // 1 turn of resting to be ready
+                                 this.isAmbushReady = true;
+                             }
+                        } else { // Not in forest, or moved/attacked outside forest, reset both
                             this.isAmbushReady = false;
                             this.ambushRestTurns = 0;
                         }
+                        this._attackedThisTurn = false; // Reset attack flag
                         this.appliedCommanderBuff = false;
                     }
 
@@ -1251,7 +1319,6 @@
                         }
                     });
 
-                    // If no optimal move improves the situation, or if all moves are bad, fall back to staying put if valid.
                     if (bestScore === -Infinity && validTraversableMoves.length > 0 && isStayPutMoveValid) {
                         return { x: unit.x, y: unit.y };
                     }
@@ -1297,7 +1364,7 @@
 
                     units.forEach(unit => {
                         unit.updateUnitBehavior(); // Call the new behavior update
-                        unit.resetTurnStatus();
+                        unit.resetTurnStatus(); // This will handle ambush setup incrementing if conditions are met
                     });
 
                     const activeCommanders = units.filter(unit => unit.type === 'commander' && unit.strength > 0 && !unit.broken);
@@ -1358,24 +1425,6 @@
                         const originalY = unit.y;
 
                         let moved = unit.moveTo(optimalMove.x, optimalMove.y);
-
-                        // NEW: Ambush setup logic (after unit attempts to move)
-                        if ( (unit.type === 'archer' || unit.type === 'skirmisher') && window.battleSim.getTerrainAt(unit.x, unit.y) === 'forest') {
-                            if (!moved && !unit.hasCharged) { // Unit remained in forest and didn't move/charge
-                                unit.ambushRestTurns++;
-                                if (unit.ambushRestTurns >= 1) { // 1 turn of resting
-                                    unit.isAmbushReady = true;
-                                    window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) is ready for an ambush in the forest!`);
-                                }
-                            } else { // Unit moved or charged, so reset ambush setup
-                                unit.isAmbushReady = false;
-                                unit.ambushRestTurns = 0;
-                            }
-                        } else { // Not in forest or not an archer/skirmisher, reset ambush state
-                            unit.isAmbushReady = false;
-                            unit.ambushRestTurns = 0;
-                        }
-
 
                         // If unit did not move this turn (i.e. stuck or chose to stay put)
                         if (!moved) {
@@ -1629,6 +1678,7 @@
                     romanUnitsDisplay = document.getElementById('roman-units-display');
                     gaulUnitsDisplay = document.getElementById('gaul-units-display');
                     unitTooltip = document.getElementById('unitTooltip');
+                    unitPopupMenu = document.getElementById('unitPopupMenu'); // Initialize popup menu element
                     scenarioSelect = document.getElementById('scenarioSelect');
 
                     canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
@@ -1637,6 +1687,7 @@
                     terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
                     terrainTextureCtx = terrainTextureCanvas.getContext('2d'); // Correct initialization
 
+                    // Mousemove for tooltip
                     canvas.addEventListener('mousemove', (event) => {
                         const rect = canvas.getBoundingClientRect();
                         const scaleX = canvas.width / rect.width;
@@ -1657,20 +1708,32 @@
                         }
                         if (foundUnit !== currentHoveredUnit) {
                             currentHoveredUnit = foundUnit;
-                            window.battleSim.drawGame();
+                            window.battleSim.drawGame(); // Redraw to update highlight
                         }
                         if (currentHoveredUnit) {
                             unitTooltip.style.display = 'block';
-                            const tooltipOffsetX = 10;
-                            const tooltipOffsetY = -20;
-                            unitTooltip.style.left = `${event.clientX + tooltipOffsetX}px`;
-                            unitTooltip.style.top = `${event.clientY + tooltipOffsetY}px`;
+                            // Position tooltip relative to mouse, with offset
+                            const tooltipOffsetX = 15;
+                            const tooltipOffsetY = 15;
+                            let tooltipX = event.clientX + tooltipOffsetX;
+                            let tooltipY = event.clientY + tooltipOffsetY;
+
+                            // Keep tooltip within viewport
+                            if (tooltipX + unitTooltip.offsetWidth > window.innerWidth) {
+                                tooltipX = window.innerWidth - unitTooltip.offsetWidth - 5;
+                            }
+                            if (tooltipY + unitTooltip.offsetHeight > window.innerHeight) {
+                                tooltipY = window.innerHeight - unitTooltip.offsetHeight - 5;
+                            }
+
+                            unitTooltip.style.left = `${tooltipX}px`;
+                            unitTooltip.style.top = `${tooltipY}px`;
                             unitTooltip.innerHTML = `
                                 <strong>${currentHoveredUnit.name}</strong><br>
                                 Faction: ${currentHoveredUnit.faction}<br>
                                 Type: ${currentHoveredUnit.type}<br>
-                                Strength: ${currentHoveredUnit.strength.toFixed(0)}<br>
-                                Morale: ${currentHoveredUnit.morale.toFixed(0)} (${currentHoveredUnit.getMoraleState().name})<br>
+                                Strength: ${currentHoveredUnit.strength.toFixed(0)}/${currentHoveredUnit.maxStrength}<br>
+                                Morale: ${currentHoveredUnit.morale.toFixed(0)}% (${currentHoveredUnit.getMoraleState().name})<br>
                                 Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
                                 Idle Turns: ${currentHoveredUnit.idleTurns}<br>
                                 Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}<br>
@@ -1683,11 +1746,83 @@
                         }
                     });
 
+                    // Mouseout to hide tooltip
                     canvas.addEventListener('mouseout', () => {
                         unitTooltip.style.display = 'none';
                         currentHoveredUnit = null;
-                        window.battleSim.drawGame();
+                        window.battleSim.drawGame(); // Redraw to remove highlight
                     });
+
+                    // Click for popup menu
+                    canvas.addEventListener('click', (event) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        const clickX = (event.clientX - rect.left) * scaleX;
+                        const clickY = (event.clientY - rect.top) * scaleY;
+
+                        let clickedUnit = null;
+                        for (const unit of units) {
+                            const unitPixelX = unit.x * GRID_SIZE; // Use actual unit position for click
+                            const unitPixelY = unit.y * GRID_SIZE; // Use actual unit position for click
+                            if (clickX >= unitPixelX && clickX < unitPixelX + GRID_SIZE &&
+                                clickY >= unitPixelY && clickY < unitPixelY + GRID_SIZE &&
+                                unit.strength > 0 && !unit.broken) {
+                                clickedUnit = unit;
+                                break;
+                            }
+                        }
+
+                        if (clickedUnit) {
+                            currentClickedUnit = clickedUnit; // Set clicked unit for popup management
+                            unitPopupMenu.style.display = 'block';
+
+                            // Position popup menu
+                            let popupX = event.clientX + 10;
+                            let popupY = event.clientY + 10;
+
+                            // Adjust position to keep within viewport
+                            if (popupX + unitPopupMenu.offsetWidth > window.innerWidth) {
+                                popupX = window.innerWidth - unitPopupMenu.offsetWidth - 5;
+                            }
+                            if (popupY + unitPopupMenu.offsetHeight > window.innerHeight) {
+                                popupY = window.innerHeight - unitPopupMenu.offsetHeight - 5;
+                            }
+
+                            unitPopupMenu.style.left = `${popupX}px`;
+                            unitPopupMenu.style.top = `${popupY}px`;
+                            unitPopupMenu.innerHTML = `
+                                <h3>${currentClickedUnit.name} (${currentClickedUnit.faction})</h3>
+                                <p>Type: ${currentClickedUnit.type}</p>
+                                <p>Strength: ${currentClickedUnit.strength.toFixed(0)}/${currentClickedUnit.maxStrength}</p>
+                                <p>Morale: ${currentClickedUnit.morale.toFixed(0)}% (${currentClickedUnit.getMoraleState().name})</p>
+                                <p>Fatigue: ${currentClickedUnit.fatigue.toFixed(0)}</p>
+                                <p>Idle Turns: ${currentClickedUnit.idleTurns}</p>
+                                <p>Formation: ${currentClickedUnit.currentFormation.replace(/_/g, ' ')}</p>
+                                <p>Behavior: ${currentClickedUnit.currentBehavior}</p>
+                                <p>Ambush Ready: ${currentClickedUnit.isAmbushReady ? 'Yes' : 'No'}</p>
+                                <p>Rest Turns for Ambush: ${currentClickedUnit.ambushRestTurns}</p>
+                                <button id="closePopupMenu">Close</button>
+                            `;
+                            document.getElementById('closePopupMenu').addEventListener('click', () => {
+                                unitPopupMenu.style.display = 'none';
+                                currentClickedUnit = null;
+                            });
+                        } else {
+                            // If click is not on a unit, hide popup
+                            unitPopupMenu.style.display = 'none';
+                            currentClickedUnit = null;
+                        }
+                    });
+
+                    // Click anywhere on document to close popup if open and not clicking the popup itself
+                    document.body.addEventListener('click', (event) => {
+                        if (unitPopupMenu.style.display === 'block' && !unitPopupMenu.contains(event.target) && event.target !== canvas) {
+                            unitPopupMenu.style.display = 'none';
+                            currentClickedUnit = null;
+                        }
+                    });
+
 
                     nextTurnButton.addEventListener('click', window.battleSim.startNextTurnSequence);
                     autoBattleButton.addEventListener('click', window.battleSim.toggleAutoBattle);
