@@ -409,7 +409,7 @@
                         if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
                         currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
                         const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
-                        const terrain = window.battleSim.getTerrainAt(this.x, this.y); // Use window.battleSim.getTerrainAt
+                        const terrain = window.battleSim.getTerrainAt(this.x, this.y);
                         const terrainDefenseBonus = TERRAIN_DATA[terrain].defenseBonus;
                         const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
                         const moraleStatePenalty = this.getMoraleState().defensePenalty;
@@ -998,7 +998,7 @@
 
                         let isOccupiedByOtherUnit = false;
                         for (const otherUnit of allUnits) {
-                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherY === nextY && otherUnit.strength > 0 && !otherUnit.broken) { // Removed typo here (otherY to otherUnit.y)
+                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) { // Corrected: otherUnit.y
                                 isOccupiedByOtherUnit = true;
                                 break;
                             }
