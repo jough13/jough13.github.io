@@ -376,6 +376,8 @@
 
                         this.fatigue = 0;
                         this.idleTurns = 0;
+                        this.isAmbushReady = false; // New: Ambush state
+                        this.ambushRestTurns = 0; // New: Tracks turns spent resting for ambush
 
                         this.hasCommanderAura = false;
                         this.appliedCommanderBuff = false;
@@ -401,7 +403,15 @@
                         const formationAttackModifier = FORMATION_DATA[this.currentFormation].attackModifier;
                         const moraleStatePenalty = this.getMoraleState().attackPenalty;
                         const behaviorAttackModifier = AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
-                        return this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
+                        
+                        let totalAttack = this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
+                        
+                        if (this.isAmbushReady) { // Apply ambush damage bonus
+                            totalAttack *= 2;
+                            // console.log(`${this.name} performing ambush! Double damage!`); // Debug
+                        }
+
+                        return totalAttack;
                     }
 
                     getEffectiveDefense() {
@@ -409,7 +419,7 @@
                         if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
                         currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
                         const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
-                        const terrain = window.battleSim.getTerrainAt(this.x, this.y);
+                        const terrain = window.battleSim.getTerrainAt(this.x, this.y); // Use window.battleSim.getTerrainAt
                         const terrainDefenseBonus = TERRAIN_DATA[terrain].defenseBonus;
                         const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
                         const moraleStatePenalty = this.getMoraleState().defensePenalty;
@@ -493,10 +503,49 @@
                         this.prevX = this.x;
                         this.prevY = this.y;
                         this.pathHistory = [];
+                        // Reset ambush state if unit moves or attacks
+                        if (this.isAmbushReady || this.ambushRestTurns > 0) {
+                            this.isAmbushReady = false;
+                            this.ambushRestTurns = 0;
+                        }
                         this.appliedCommanderBuff = false;
                     }
 
                     getTypeIdentifier() { return UNIT_TYPE_DATA[this.type].identifier; }
+
+                    // NEW: updateUnitBehavior method
+                    updateUnitBehavior() {
+                        if (this.broken) {
+                            this.currentBehavior = 'routing';
+                            return;
+                        }
+
+                        const currentMorale = Math.max(0, this.morale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const currentStrengthPercent = (this.strength / this.maxStrength) * 100;
+
+                        if (currentMorale <= MORALE_BREAK_THRESHOLD + 10 || currentStrengthPercent <= 20) { // If close to breaking or low strength
+                            this.currentBehavior = 'routing'; // Force routing if very bad situation
+                            return;
+                        }
+
+                        if (currentMorale <= 40 || currentStrengthPercent <= 40) { // Shaken morale or moderate strength loss
+                            if (this.type === 'archer' || this.type === 'skirmisher') {
+                                this.currentBehavior = 'skirmishing'; // Stick to skirmishing or become more evasive
+                            } else {
+                                this.currentBehavior = 'defensive'; // Melee units become defensive
+                            }
+                            return;
+                        }
+
+                        // Default behaviors
+                        if (this.type === 'commander') {
+                            this.currentBehavior = 'defensive'; // Commanders primarily defensive
+                        } else if (this.type === 'archer' || this.type === 'skirmisher') {
+                            this.currentBehavior = 'skirmishing'; // Ranged units default to skirmishing
+                        } else {
+                            this.currentBehavior = 'aggressive'; // Other healthy units are aggressive
+                        }
+                    }
                 }
 
                 class Projectile {
@@ -895,6 +944,18 @@
                 window.battleSim.getPreferredTarget = function(unit, enemies) {
                     let target = null;
                     let bestScore = -Infinity;
+                    
+                    // NEW: If unit is routing, target its retreat zone
+                    if (unit.currentBehavior === 'routing') {
+                        const retreatX = unit.faction === 'Roman' ? GAUL_RETREAT_X : ROMAN_RETREAT_X; // Retreat to opposite side
+                        // Select the y-coordinate that is closest to its current y for the retreat target
+                        let closestRetreatY = unit.y;
+                        if (unit.y < 0) closestRetreatY = 0;
+                        if (unit.y >= MAP_HEIGHT_CELLS) closestRetreatY = MAP_HEIGHT_CELLS -1;
+
+                        return { x: retreatX, y: closestRetreatY, isRetreatTarget: true };
+                    }
+
                     const activeEnemies = enemies.filter(enemy => enemy.strength > 0 && !enemy.broken);
                     if (activeEnemies.length === 0) return null;
                     const getDistance = (u1, u2) => Math.sqrt(Math.pow(u1.x - u2.x, 2) + Math.pow(u1.y - u2.y, 2));
@@ -998,7 +1059,7 @@
 
                         let isOccupiedByOtherUnit = false;
                         for (const otherUnit of allUnits) {
-                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) { // Corrected: otherUnit.y
+                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) {
                                 isOccupiedByOtherUnit = true;
                                 break;
                             }
@@ -1017,6 +1078,52 @@
                     const stayPutMove = possibleMoves.find(m => m.dx === 0 && m.dy === 0);
                     const isStayPutMoveValid = validTraversableMoves.includes(stayPutMove);
 
+                    // NEW: Routing behavior takes precedence for move decisions
+                    if (targetEnemy.isRetreatTarget) {
+                        let bestFleeScore = -Infinity;
+                        let bestFleeMove = { x: unit.x, y: unit.y };
+
+                        validTraversableMoves.forEach(move => {
+                            const nextX = unit.x + move.dx;
+                            const nextY = unit.y + move.dy;
+
+                            let score = 0;
+                            // Prioritize moving away from closest enemy
+                            const enemyProximityPenalty = units.filter(e => e.faction !== unit.faction && e.strength > 0 && !e.broken)
+                                                            .reduce((minDist, e) => Math.min(minDist, Math.sqrt(Math.pow(nextX - e.x, 2) + Math.pow(nextY - e.y, 2))), Infinity);
+                            
+                            score += enemyProximityPenalty * 100; // Very strong incentive to increase distance from enemies
+
+                            // Strong bonus for moving towards their retreat zone (opposite side of map)
+                            if (unit.faction === 'Roman') {
+                                score += (nextX - unit.x) * 200; // Positive for moving right
+                            } else {
+                                score -= (nextX - unit.x) * 200; // Positive for moving left
+                            }
+
+                            const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
+                            let moveCost = TERRAIN_DATA[terrainType].movementCost;
+                            moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                            moveCost *= (1 + unit.getMoraleState().movementPenalty);
+                            moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                            score -= moveCost * 50; // Heavily penalize costly moves when fleeing
+
+                            // Also penalize moving closer to the center of the map
+                            const mapCenterX = MAP_WIDTH_CELLS / 2;
+                            const distToCenter = Math.abs(nextX - mapCenterX);
+                            score -= distToCenter * 5;
+
+
+                            if (score > bestFleeScore) {
+                                bestFleeScore = score;
+                                bestFleeMove = { x: nextX, y: nextY };
+                            }
+                        });
+                        return bestFleeMove;
+                    }
+
+
+                    // If not routing, then proceed with combat/positioning logic
                     if (isStayPutMoveValid) {
                         let currentScoreForStay = 0;
                         const terrainTypeForStay = window.battleSim.getTerrainAt(unit.x, unit.y);
@@ -1026,6 +1133,14 @@
 
                         const isRangedUnit = (unit.type === 'archer' || unit.type === 'skirmisher');
                         const isRangedUnitInFiringRange = isRangedUnit && currentDistanceToTarget <= ARCHER_RANGE;
+                        const isUnitInForest = window.battleSim.getTerrainAt(unit.x, unit.y) === 'forest'; // NEW: Check if unit is currently in forest
+
+                        // Archer ambush setup logic
+                        if (isRangedUnit && !unit.isAmbushReady && isUnitInForest) {
+                            // High incentive to stay in forest if setting up ambush
+                            currentScoreForStay += 200; // Strong bonus for staying to rest
+                        }
+
 
                         if (isRangedUnit) {
                             if (isCurrentlyAdjacentToEnemy) {
@@ -1064,7 +1179,7 @@
                         const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty) * AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
 
 
-                        if (unit.type !== 'archer' && unit.type !== 'skirmisher') {
+                        if (unit.type !== 'archer' && unit.type !== 'skirmisher') { // Melee units
                             currentScore += terrainDefenseBonus * 10;
                             currentScore -= terrainFatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
                             
@@ -1080,23 +1195,50 @@
                                 currentScore += 50;
                             }
 
+                            if (unit.currentBehavior === 'aggressive' && targetEnemy.currentBehavior === 'routing') {
+                                currentScore += 200; // Strong bonus to chase routing enemies
+                            }
+
                         } else { // Ranged units
                             if (terrainType === 'plain') {
                                 currentScore += 5;
                             } else if (terrainType === 'hill') {
                                 currentScore += 8;
-                                currentScore += 40;
+                                currentScore += 60; // Increased bonus for archers on hills
                             } else if (terrainType === 'forest') {
-                                currentScore -= 10;
+                                currentScore += 50; // Increased positive incentive for ranged in forest (concealment/ambush)
                             }
                             currentScore -= terrainFatigueCost * 1 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
 
                             if (distToEnemyFromNext <= ARCHER_RANGE && distToEnemyFromNext > 1.5) {
                                 currentScore += 100;
                             } else if (distToEnemyFromNext <= 1.5) {
-                                currentScore -= 1000;
+                                currentScore -= 1500; // Increased HUGE PENALTY for melee engagement for ranged
                             } else if (distToEnemyFromNext > ARCHER_RANGE) {
-                                currentScore -= 20;
+                                currentScore -= 50; // Increased penalty for being out of range
+                            }
+
+                            const adjacentToWater = [
+                                {dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}
+                            ];
+                            let isAdjacentToWater = false;
+                            for (const adj of adjacentToWater) {
+                                const checkX = nextX + adj.dx;
+                                const checkY = nextY + adj.dy;
+                                if (checkX >= 0 && checkX < MAP_WIDTH_CELLS && checkY >= 0 && checkY < MAP_HEIGHT_CELLS &&
+                                    window.battleSim.getTerrainAt(checkX, checkY) === 'water') {
+                                    isAdjacentToWater = true;
+                                    break;
+                                }
+                            }
+                            if (isAdjacentToWater) {
+                                currentScore -= 100; // Increased penalty for being adjacent to water
+                            }
+
+                            if (unit.currentBehavior === 'skirmishing' && (move.dx !== 0 || move.dy !== 0)) {
+                                if (!(distToEnemyFromNext <= ARCHER_RANGE && distToEnemyFromNext > 1.5)) {
+                                     currentScore += 15; // Increased slight bonus to move if not optimally positioned
+                                }
                             }
                         }
 
@@ -1109,6 +1251,7 @@
                         }
                     });
 
+                    // If no optimal move improves the situation, or if all moves are bad, fall back to staying put if valid.
                     if (bestScore === -Infinity && validTraversableMoves.length > 0 && isStayPutMoveValid) {
                         return { x: unit.x, y: unit.y };
                     }
@@ -1121,7 +1264,7 @@
                     } else {
                         // Fallback: If BFS found no path to the best candidate, try any valid adjacent tile
                         const adjacentTiles = [
-                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                            { dx: 0, dy: 0 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
                             { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
                         ];
                         adjacentTiles.sort(() => Math.random() - 0.5); // Randomize attempts
@@ -1153,6 +1296,7 @@
                     window.battleSim.logBattleMessage(`--- Turn ${turn} ---`);
 
                     units.forEach(unit => {
+                        unit.updateUnitBehavior(); // Call the new behavior update
                         unit.resetTurnStatus();
                     });
 
@@ -1215,9 +1359,27 @@
 
                         let moved = unit.moveTo(optimalMove.x, optimalMove.y);
 
+                        // NEW: Ambush setup logic (after unit attempts to move)
+                        if ( (unit.type === 'archer' || unit.type === 'skirmisher') && window.battleSim.getTerrainAt(unit.x, unit.y) === 'forest') {
+                            if (!moved && !unit.hasCharged) { // Unit remained in forest and didn't move/charge
+                                unit.ambushRestTurns++;
+                                if (unit.ambushRestTurns >= 1) { // 1 turn of resting
+                                    unit.isAmbushReady = true;
+                                    window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) is ready for an ambush in the forest!`);
+                                }
+                            } else { // Unit moved or charged, so reset ambush setup
+                                unit.isAmbushReady = false;
+                                unit.ambushRestTurns = 0;
+                            }
+                        } else { // Not in forest or not an archer/skirmisher, reset ambush state
+                            unit.isAmbushReady = false;
+                            unit.ambushRestTurns = 0;
+                        }
+
+
                         // If unit did not move this turn (i.e. stuck or chose to stay put)
                         if (!moved) {
-                            unit.idleTurns++; // Increment idle turns regardless of forced move attempt
+                            unit.idleTurns++; // Increment idle turns
                             if (unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE) {
                                 window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has been idle/stuck; forcing a move attempt.`);
                                 
@@ -1225,8 +1387,7 @@
                                     { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
                                     { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
                                 ];
-                                // Shuffle to make forced moves less predictable
-                                adjacentTiles.sort(() => Math.random() - 0.5); 
+                                adjacentTiles.sort(() => Math.random() - 0.5); // Randomize to try different directions
 
                                 let forcedMoveSuccessful = false;
                                 for (const move of adjacentTiles) {
@@ -1513,7 +1674,9 @@
                                 Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
                                 Idle Turns: ${currentHoveredUnit.idleTurns}<br>
                                 Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}<br>
-                                Behavior: ${currentHoveredUnit.currentBehavior}
+                                Behavior: ${currentHoveredUnit.currentBehavior}<br>
+                                Ambush Ready: ${currentHoveredUnit.isAmbushReady ? 'Yes' : 'No'}<br>
+                                Rest Turns: ${currentHoveredUnit.ambushRestTurns}
                             `;
                         } else {
                             unitTooltip.style.display = 'none';
