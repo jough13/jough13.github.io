@@ -229,11 +229,11 @@
                 let currentHoveredUnit = null;
 
                 // Mouse position variables - managed by DOMContentLoaded listener
-                // Declared without 'let' or 'const' so they become global window properties
-                // and avoid redeclaration errors upon script re-execution by the environment.
+                // Declared as window properties to avoid redeclaration issues in environments
+                // that re-execute script blocks.
                 window.lastMouseX = 0;
                 window.lastMouseY = 0;
-                window.lastTime = 0; // Initialized here, not re-declared.
+                window.lastTime = 0; 
 
 
                 // Offscreen canvas for terrain textures
@@ -295,7 +295,7 @@
                             mapSettings: { numForestClumps: 0, numHillClumps: 0, numWaterClumps: 0 },
                             romanUnits: [
                                 { type: 'infantry', count: 6, color: '#dc2626', spreadX: 0, spreadY: 2, startX: 5, startY: 10 },
-                                { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 3, startX: 14 }, // Removed incorrect 'startX' duplicate
+                                { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 3, startY: 14 },
                                 { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 5, startY: 15 },
                             ],
                             gaulUnits: [
@@ -945,7 +945,7 @@
                             if (visited.has(nextCoord)) continue;
                             if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) continue;
 
-                            const terrainType = getTerrainAt(nextX, nextY);
+                            const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
                             let moveCost = TERRAIN_DATA[terrainType].movementCost;
                             if (!FORMATION_DATA[unit.currentFormation]) continue;
                             moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
@@ -988,7 +988,7 @@
                         const nextX = unit.x + move.dx;
                         const nextY = unit.y + move.dy;
                         if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) return false;
-                        const terrainType = getTerrainAt(nextX, nextY);
+                        const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
                         let moveCost = TERRAIN_DATA[terrainType].movementCost;
                         if (!FORMATION_DATA[unit.currentFormation]) { console.error(`Formation data missing for: ${unit.currentFormation}`); return false; }
                         moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
@@ -998,7 +998,7 @@
 
                         let isOccupiedByOtherUnit = false;
                         for (const otherUnit of allUnits) {
-                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) {
+                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherY === nextY && otherUnit.strength > 0 && !otherUnit.broken) { // Removed typo here (otherY to otherUnit.y)
                                 isOccupiedByOtherUnit = true;
                                 break;
                             }
@@ -1019,7 +1019,7 @@
 
                     if (isStayPutMoveValid) {
                         let currentScoreForStay = 0;
-                        const terrainTypeForStay = getTerrainAt(unit.x, unit.y);
+                        const terrainTypeForStay = window.battleSim.getTerrainAt(unit.x, unit.y);
                         currentScoreForStay += (1 - (currentDistanceToTarget / maxMapDistance)) * 100;
                         currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
                         currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
@@ -1027,9 +1027,20 @@
                         const isRangedUnit = (unit.type === 'archer' || unit.type === 'skirmisher');
                         const isRangedUnitInFiringRange = isRangedUnit && currentDistanceToTarget <= ARCHER_RANGE;
 
-                        if (!isCurrentlyAdjacentToEnemy && !isRangedUnitInFiringRange) {
-                            currentScoreForStay -= 200;
+                        if (isRangedUnit) {
+                            if (isCurrentlyAdjacentToEnemy) {
+                                currentScoreForStay -= 1000;
+                            } else if (!isRangedUnitInFiringRange) {
+                                currentScoreForStay -= 200;
+                            } else {
+                                currentScoreForStay += 10;
+                            }
+                        } else {
+                            if (!isCurrentlyAdjacentToEnemy) {
+                                currentScoreForStay -= 50;
+                            }
                         }
+
                         if (currentScoreForStay > bestScore) {
                             bestScore = currentScoreForStay;
                             bestCandidateX = unit.x;
@@ -1037,100 +1048,103 @@
                         }
                     }
 
-                    let pathTargets = [];
-                    if (unit.type === 'archer' || unit.type === 'skirmisher') {
-                        for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                            for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
-                                const distToEnemy = Math.sqrt(Math.pow(x - targetEnemy.x, 2) + Math.pow(y - targetEnemy.y, 2));
-                                const terrainType = getTerrainAt(x, y);
-                                if (distToEnemy <= ARCHER_RANGE && distToEnemy > 1 && TERRAIN_DATA[terrainType].movementCost !== Infinity &&
-                                    !allUnits.some(u => u.x === x && u.y === y && u.id !== unit.id)) {
-                                    let score = 0;
-                                    score -= distToEnemy;
-                                    if (terrainType === 'hill') score += 50;
-                                    pathTargets.push({x, y, score});
-                                }
+
+                    validTraversableMoves.forEach(move => {
+                        const nextX = unit.x + move.dx;
+                        const nextY = unit.y + move.dy;
+
+                        let currentScore = 0;
+
+                        const distToEnemyFromNext = Math.sqrt(Math.pow(nextX - targetEnemy.x, 2) + Math.pow(nextY - targetEnemy.y, 2));
+                        currentScore += (1 - (distToEnemyFromNext / maxMapDistance)) * 100;
+
+                        const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
+                        const terrainDefenseBonus = TERRAIN_DATA[terrainType].defenseBonus;
+                        const terrainFatigueCost = TERRAIN_DATA[terrainType].fatigueCost;
+                        const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty) * AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+
+
+                        if (unit.type !== 'archer' && unit.type !== 'skirmisher') {
+                            currentScore += terrainDefenseBonus * 10;
+                            currentScore -= terrainFatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+                            
+                            if (distToEnemyFromNext <= 1.5) {
+                                currentScore += 100;
+                            }
+
+                            const potentialAdjacentEnemies = allUnits.filter(enemy => 
+                                enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
+                                (Math.abs(nextX - enemy.x) + Math.abs(nextY - enemy.y) === 1)
+                            );
+                            if (potentialAdjacentEnemies.length >= 2) {
+                                currentScore += 50;
+                            }
+
+                        } else { // Ranged units
+                            if (terrainType === 'plain') {
+                                currentScore += 5;
+                            } else if (terrainType === 'hill') {
+                                currentScore += 8;
+                                currentScore += 40;
+                            } else if (terrainType === 'forest') {
+                                currentScore -= 10;
+                            }
+                            currentScore -= terrainFatigueCost * 1 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+
+                            if (distToEnemyFromNext <= ARCHER_RANGE && distToEnemyFromNext > 1.5) {
+                                currentScore += 100;
+                            } else if (distToEnemyFromNext <= 1.5) {
+                                currentScore -= 1000;
+                            } else if (distToEnemyFromNext > ARCHER_RANGE) {
+                                currentScore -= 20;
                             }
                         }
-                        pathTargets.sort((a,b) => b.score - a.score);
-                    } else {
-                        const dx_adj = [-1, 1, 0, 0, -1, -1, 1, 1];
-                        const dy_adj = [0, 0, -1, 1, -1, 1, -1, 1];
-                        for (let i = 0; i < dx_adj.length; i++) {
-                            const adjX = targetEnemy.x + dx_adj[i];
-                            const adjY = targetEnemy.y + dy_adj[i];
-                            const terrainType = getTerrainAt(adjX, adjY);
-                            if (adjX >= 0 && adjX < MAP_WIDTH_CELLS && adjY >= 0 && adjY < MAP_HEIGHT_CELLS &&
-                                TERRAIN_DATA[terrainType].movementCost !== Infinity &&
-                                !allUnits.some(u => u.x === adjX && u.y === adjY && u.id !== unit.id)) {
-                                pathTargets.push({x: adjX, y: adjY});
-                            }
+
+                        currentScore -= moveCost * 1;
+
+                        if (currentScore > bestScore) {
+                            bestScore = currentScore;
+                            bestCandidateX = nextX;
+                            bestCandidateY = nextY;
                         }
+                    });
+
+                    if (bestScore === -Infinity && validTraversableMoves.length > 0 && isStayPutMoveValid) {
+                        return { x: unit.x, y: unit.y };
                     }
 
-                    let shortestPath = window.battleSim.findPathBFS(startPos, unit, allUnits, map, pathTargets);
+
+                    let shortestPath = window.battleSim.findPathBFS(startPos, unit, allUnits, map, [{x: bestCandidateX, y: bestCandidateY}]);
 
                     if (shortestPath && shortestPath.length > 0) {
-                        finalTargetX = shortestPath[0].x;
-                        finalTargetY = shortestPath[0].y;
+                        return shortestPath[0];
                     } else {
-                        const dx_target = targetEnemy.x - unit.x;
-                        const dy_target = targetEnemy.y - unit.y;
-                        let tempNextX = unit.x;
-                        let tempNextY = unit.y;
+                        // Fallback: If BFS found no path to the best candidate, try any valid adjacent tile
+                        const adjacentTiles = [
+                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                        ];
+                        adjacentTiles.sort(() => Math.random() - 0.5); // Randomize attempts
 
-                        if (Math.abs(dx_target) > Math.abs(dy_target)) {
-                            tempNextX += Math.sign(dx_target);
-                        } else if (Math.abs(dy_target) > Math.abs(dx_target)) {
-                            tempNextY += Math.sign(dy_target);
-                        } else if (dx_target !== 0) {
-                            tempNextX += Math.sign(dx_target);
-                        } else if (dy_target !== 0) {
-                            tempNextY += Math.sign(dy_target);
-                        }
-                        
-                        if (tempNextX >= 0 && tempNextX < MAP_WIDTH_CELLS && tempNextY >= 0 && tempNextY < MAP_HEIGHT_CELLS &&
-                            getTerrainAt(tempNextX, tempNextY) !== 'water') {
-                            let isOccupiedTest = false;
-                            for (const otherUnit of allUnits) {
-                                if (otherUnit.id !== unit.id && otherUnit.x === tempNextX && otherUnit.y === tempNextY && otherUnit.strength > 0 && !otherUnit.broken) {
-                                    isOccupiedTest = true;
-                                    break;
-                                }
-                            }
-                            if (!isOccupiedTest) {
-                                finalTargetX = tempNextX;
-                                finalTargetY = tempNextY;
-                            } else {
-                                const adjacentTiles = [
-                                    { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-                                    { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
-                                ];
-                                adjacentTiles.sort(() => Math.random() - 0.5);
-                                for (const move of adjacentTiles) {
-                                    const testX = unit.x + move.dx;
-                                    const testY = unit.y + move.dy;
-                                    if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
-                                        getTerrainAt(testX, testY) !== 'water') {
-                                        let isOccupiedTestAgain = false;
-                                        for (const otherUnit of allUnits) {
-                                            if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
-                                                isOccupiedTestAgain = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!isOccupiedTestAgain) {
-                                            finalTargetX = testX;
-                                            finalTargetY = testY;
-                                            break;
-                                        }
+                        for (const move of adjacentTiles) {
+                            const testX = unit.x + move.dx;
+                            const testY = unit.y + move.dy;
+                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
+                                window.battleSim.getTerrainAt(testX, testY) !== 'water') {
+                                let isOccupiedTest = false;
+                                for (const otherUnit of allUnits) {
+                                    if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                        isOccupiedTest = true;
+                                        break;
                                     }
                                 }
+                                if (!isOccupiedTest) {
+                                    return { x: testX, y: testY }; // Return the first valid adjacent move found
+                                }
                             }
                         }
+                        return { x: unit.x, y: unit.y }; // If all else fails, stay put
                     }
-
-                    return { x: finalTargetX, y: finalTargetY };
                 };
 
 
@@ -1201,49 +1215,50 @@
 
                         let moved = unit.moveTo(optimalMove.x, optimalMove.y);
 
-                        const isCurrentlyAdjacentToEnemy = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
-                            (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
+                        // If unit did not move this turn (i.e. stuck or chose to stay put)
+                        if (!moved) {
+                            unit.idleTurns++; // Increment idle turns regardless of forced move attempt
+                            if (unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE) {
+                                window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has been idle/stuck; forcing a move attempt.`);
+                                
+                                const adjacentTiles = [
+                                    { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                                    { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                                ];
+                                // Shuffle to make forced moves less predictable
+                                adjacentTiles.sort(() => Math.random() - 0.5); 
 
-                        // If unit did not move this turn (i.e. stuck or chose to stay put) and is idle
-                        if (!moved && unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE) {
-                             window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) was idle or blocked; attempting forced move.`);
-                            
-                            const adjacentTiles = [
-                                { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-                                { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
-                            ];
-                            adjacentTiles.sort(() => Math.random() - 0.5); 
+                                let forcedMoveSuccessful = false;
+                                for (const move of adjacentTiles) {
+                                    const testX = originalX + move.dx; 
+                                    const testY = originalY + move.dy;
 
-                            let forcedMoveAttempted = false;
-                            for (const move of adjacentTiles) {
-                                const testX = originalX + move.dx; 
-                                const testY = originalY + move.dy;
+                                    if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
+                                        const terrainType = window.battleSim.getTerrainAt(testX, testY);
+                                        // Ensure forced move doesn't try to move into water or occupied space
+                                        let isOccupiedByOtherUnit = false; 
+                                        for (const otherUnit of units) {
+                                            if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                                isOccupiedByOtherUnit = true;
+                                                break;
+                                            }
+                                        }
 
-                                if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
-                                    const terrainType = getTerrainAt(testX, testY);
-                                    if (!FORMATION_DATA[unit.currentFormation]) {
-                                        console.error(`Formation data missing for: ${unit.currentFormation}`);
-                                        continue;
-                                    }
-                                    const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
-                                    let isOccupiedByOtherUnit = false; 
-                                    for (const otherUnit of units) {
-                                        if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
-                                            isOccupiedByOtherUnit = true;
-                                            break;
+                                        if (TERRAIN_DATA[terrainType].movementCost !== Infinity && !isOccupiedByOtherUnit) {
+                                            // Attempt the forced move
+                                            if (unit.moveTo(testX, testY)) { // moveTo returns true if successful
+                                                window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
+                                                forcedMoveSuccessful = true;
+                                                break; // Exit loop after successful forced move
+                                            }
                                         }
                                     }
-
-                                    if (moveCost !== Infinity && unit.movementPoints >= moveCost && !isOccupiedByOtherUnit) {
-                                        moved = unit.moveTo(testX, testY);
-                                        if (moved) {
-                                            window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
-                                            forcedMoveAttempted = true; // Set flag
-                                            break; 
-                                        }
-                                    }
+                                } 
+                                if (forcedMoveSuccessful) {
+                                    unit._wasActiveThisTurn = true; // Mark as active if forced move succeeds
+                                    unit.idleTurns = 0; // Reset idle turns after forced move
                                 }
-                            } 
+                            }
                         }
 
                         if (moved || (unit.x !== originalX || unit.y !== originalY)) {
@@ -1292,7 +1307,7 @@
                             if (unit._wasActiveThisTurn || unit.isFlashing) {
                                 unit.idleTurns = 0;
                                 let fatigueGain = 1;
-                                const currentTerrain = getTerrainAt(unit.x, unit.y);
+                                const currentTerrain = window.battleSim.getTerrainAt(unit.x, unit.y);
                                 fatigueGain += TERRAIN_DATA[currentTerrain].fatigueCost * 0.5;
                                 if (unit.appliedCommanderBuff) fatigueGain *= LEADERSHIP_FATIGUE_REDUCTION;
                                 unit.fatigue += fatigueGain;
