@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-M-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ancient Battle Simulation</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -193,6 +193,7 @@
                 <p id="roman-units-display" class="text-lg font-semibold">Units: 0</p>
             </div>
             <div class="text-center">
+                <p class="faction-title faction-gaul">Barbarian Horde</p> <!-- Added this line -->
                 <p id="gaul-units-display" class="text-lg font-semibold">Units: 0</p>
             </div>
         </div>
@@ -247,17 +248,20 @@
                 let scenarioSelect;
 
                 // Game parameters (constants)
-                const GRID_SIZE = 20;
-                const MAP_WIDTH_CELLS = 40;
-                const MAP_HEIGHT_CELLS = 30;
-                const MORALE_BREAK_THRESHOLD = 20;
-                const ANIMATION_DURATION = 300;
-                const AUTO_BATTLE_TURN_DELAY = 800;
-                const VERSION_NUMBER = "v1.1";
+                window.battleSim.GRID_SIZE = 20;
+                window.battleSim.MAP_WIDTH_CELLS = 40;
+                window.battleSim.MAP_HEIGHT_CELLS = 30;
+                window.battleSim.MORALE_BREAK_THRESHOLD = 20;
+                window.battleSim.ANIMATION_DURATION = 300;
+                window.battleSim.AUTO_BATTLE_TURN_DELAY = 800;
+                window.battleSim.VERSION_NUMBER = "v1.1";
 
                 // Retreat Zone definitions
-                const ROMAN_RETREAT_X = MAP_WIDTH_CELLS - 1;
-                const GAUL_RETREAT_X = 0;
+                window.battleSim.ROMAN_RETREAT_X = window.battleSim.MAP_WIDTH_CELLS - 1;
+                window.battleSim.GAUL_RETREAT_X = 0;
+
+                // NEW: Initial aggression phase duration
+                window.battleSim.INITIAL_AGGRESSION_TURNS = 10;
 
                 // Animation and game state flags
                 let animationStartTime;
@@ -266,16 +270,17 @@
                 let autoBattleIntervalId = null;
 
                 // Game balance constants
-                const FATIGUE_MORALE_PENALTY_PER_POINT = 0.5;
-                const MORALE_MODIFIER_MIN = 0.4;
-                const ARCHER_RANGE = 7;
-                const FLANKED_FLASH_INTERVAL = 150;
-                const IDLE_TURNS_FOR_FORCED_MOVE = 4;
-                const LEADERSHIP_RADIUS = 6;
-                const LEADERSHIP_MORALE_BOOST = 10;
-                const LEADERSHIP_FATIGUE_REDUCTION = 0.5;
-                const COMMANDER_LOSS_MORALE_SHOCK = 20;
-                const MORALE_GAIN_ON_ENEMY_BREAK = 5;
+                window.battleSim.FATIGUE_MORALE_PENALTY_PER_POINT = 0.5;
+                // Morale Modifier Min: Even at 0 morale, units retain this % of base stats
+                window.battleSim.MORALE_MODIFIER_MIN = 0.7; // Changed from 0.4 to 0.7 for less overall morale influence
+                window.battleSim.ARCHER_RANGE = 7;
+                window.battleSim.FLANKED_FLASH_INTERVAL = 150;
+                window.battleSim.IDLE_TURNS_FOR_FORCED_MOVE = 4;
+                window.battleSim.LEADERSHIP_RADIUS = 6;
+                window.battleSim.LEADERSHIP_MORALE_BOOST = 10;
+                window.battleSim.LEADERSHIP_FATIGUE_REDUCTION = 0.5;
+                window.battleSim.COMMANDER_LOSS_MORALE_SHOCK = 20;
+                window.battleSim.MORALE_GAIN_ON_ENEMY_BREAK = 5;
 
                 // Game state variables - these will be reset by initGame()
                 let turn = 0;
@@ -300,28 +305,28 @@
                 // Dimensions set in initGame after map size is finalized
                 
 
-                const TERRAIN_DATA = {
+                window.battleSim.TERRAIN_DATA = {
                     'plain': { color: '#8BC34A', movementCost: 1, defenseBonus: 0, fatigueCost: 0 },
                     'forest': { color: '#4CAF50', movementCost: 2, defenseBonus: 0.15, fatigueCost: 0.5 },
                     'hill': { color: '#A1887F', movementCost: 1.5, defenseBonus: 0.25, fatigueCost: 0.2 },
                     'water': { color: '#4169E1', movementCost: Infinity, defenseBonus: 0, fatigueCost: 0 }
                 };
 
-                const MORALE_TIERS_DATA = {
-                    'Steady': { minMorale: 70, color: '#28A745', attackPenalty: 0, defensePenalty: 0, movementPenalty: 0 },
-                    'Shaken': { minMorale: 40, color: '#FFC107', attackPenalty: 0.1, defensePenalty: 0.1, movementPenalty: 0 },
-                    'Wavering': { minMorale: 10, color: '#FD7E14', attackPenalty: 0.25, defensePenalty: 0.25, movementPenalty: 0.1 },
-                    'Routing': { minMorale: -Infinity, color: '#DC3545', attackPenalty: 0.5, defensePenalty: 0.5, movementPenalty: 0.5 }
+                window.battleSim.MORALE_TIERS_DATA = {
+                    'Steady': { minMorale: 70, color: '#28A745', attackPenalty: 0, defensePenalty: 0, movementPenalty: 0, name: 'Steady' },
+                    'Shaken': { minMorale: 40, color: '#FFC107', attackPenalty: 0.05, defensePenalty: 0.05, movementPenalty: 0, name: 'Shaken' }, // Penalties reduced
+                    'Wavering': { minMorale: 10, color: '#FD7E14', attackPenalty: 0.15, defensePenalty: 0.15, movementPenalty: 0.1, name: 'Wavering' }, // Penalties reduced
+                    'Routing': { minMorale: -Infinity, color: '#DC3545', attackPenalty: 0.3, defensePenalty: 0.3, movementPenalty: 0.5, name: 'Routing' } // Penalties reduced
                 };
 
-                const AI_BEHAVIOR_DATA = {
+                window.battleSim.AI_BEHAVIOR_DATA = {
                     'aggressive': { movementModifier: 1.1, attackModifier: 1.1, defenseModifier: 0.9, moraleModifier: 1, fatigueModifier: 1.1 },
                     'defensive': { movementModifier: 0.9, attackModifier: 0.9, defenseModifier: 1.2, moraleModifier: 1.1, fatigueModifier: 0.9 },
                     'skirmishing': { movementModifier: 1.2, attackModifier: 1, defenseModifier: 0.8, moraleModifier: 1, fatigueModifier: 0.8 },
                     'routing': { movementModifier: 1.5, attackModifier: 0.1, defenseModifier: 0.1, moraleModifier: 0.1, fatigueModifier: 0.5 }
                 };
 
-                const FORMATION_DATA = {
+                window.battleSim.FORMATION_DATA = {
                     'default': { movementModifier: 1, attackModifier: 1, defenseModifier: 1, moraleModifier: 1, fatigueModifier: 1 },
                     'tight_formation': { movementModifier: 0.8, attackModifier: 1.1, defenseModifier: 1.2, moraleModifier: 1.1, fatigueModifier: 1.2 },
                     'loose_formation': { movementModifier: 1.2, attackModifier: 1, defenseModifier: 0.8, moraleModifier: 0.9, fatigueModifier: 0.9 },
@@ -329,7 +334,7 @@
                     'shield_wall': { movementModifier: 0.7, attackModifier: 0.9, defenseBonus: 1.5, moraleModifier: 1.2, fatigueModifier: 1.3 }
                 };
 
-                const UNIT_TYPE_DATA = {
+                window.battleSim.UNIT_TYPE_DATA = {
                     'infantry': { baseStrength: 100, baseMorale: 80, baseAttack: 10, baseDefense: 8, baseMovement: 2, identifier: 'I', defaultFormation: 'tight_formation', targetPreference: 'closest', defaultBehavior: 'aggressive' },
                     'cavalry': { baseStrength: 60, baseMorale: 90, baseAttack: 12, baseDefense: 6, baseMovement: 3, identifier: 'C', defaultFormation: 'charge_formation', targetPreference: 'ranged_units', defaultBehavior: 'aggressive' },
                     'chariot': { baseStrength: 70, baseMorale: 95, baseAttack: 15, baseDefense: 5, baseMovement: 4, identifier: 'T', defaultFormation: 'charge_formation', targetPreference: 'ranged_units', defaultBehavior: 'aggressive' },
@@ -356,9 +361,9 @@
                                 { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 5, startY: 15 },
                             ],
                             gaulUnits: [
-                                { type: 'infantry', count: 6, color: '#16a34a', spreadX: 0, spreadY: 2, startX: MAP_WIDTH_CELLS - 6, startY: 10 },
-                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 14 },
-                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 6, startY: 15 },
+                                { type: 'infantry', count: 6, color: '#16a34a', spreadX: 0, spreadY: 2, startX: window.battleSim.MAP_WIDTH_CELLS - 6, startY: 10 },
+                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 4, startY: 14 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 6, startY: 15 },
                             ]
                         },
                         "Barbarian Ambush": {
@@ -370,9 +375,9 @@
                                 { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 4, startY: 15 },
                             ],
                             gaulUnits: [
-                                { type: 'infantry', count: 5, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 8, startY: 8 },
-                                { type: 'skirmisher', count: 3, color: '#FFD700', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 5, startY: 12 },
-                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 15 },
+                                { type: 'infantry', count: 5, color: '#16a34a', spreadX: 1, spreadY: 1, startX: window.battleSim.MAP_WIDTH_CELLS - 8, startY: 8 },
+                                { type: 'skirmisher', count: 3, color: '#FFD700', spreadX: 1, spreadY: 1, startX: window.battleSim.MAP_WIDTH_CELLS - 5, startY: 12 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 4, startY: 15 },
                             ]
                         },
                         "River Crossing": {
@@ -385,10 +390,10 @@
                                 { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 6, startY: 6 },
                             ],
                             gaulUnits: [
-                                { type: 'infantry', count: 4, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 6, startY: MAP_HEIGHT_CELLS - 5 },
-                                { type: 'skirmisher', count: 2, color: '#FFD700', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 8, startY: MAP_HEIGHT_CELLS - 3 },
-                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 5, startY: MAP_HEIGHT_CELLS - 8 },
-                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 7, startY: MAP_HEIGHT_CELLS - 6 },
+                                { type: 'infantry', count: 4, color: '#16a34a', spreadX: 1, spreadY: 1, startX: window.battleSim.MAP_WIDTH_CELLS - 6, startY: window.battleSim.MAP_HEIGHT_CELLS - 5 },
+                                { type: 'skirmisher', count: 2, color: '#FFD700', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 8, startY: window.battleSim.MAP_HEIGHT_CELLS - 3 },
+                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 5, startY: window.battleSim.MAP_HEIGHT_CELLS - 8 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: window.battleSim.MAP_WIDTH_CELLS - 7, startY: window.battleSim.MAP_HEIGHT_CELLS - 6 },
                             ]
                         }
                     };
@@ -397,10 +402,10 @@
 
                 class Unit {
                     constructor(id, name, type, faction, x, y, color) {
-                        const typeData = UNIT_TYPE_DATA[type];
+                        const typeData = window.battleSim.UNIT_TYPE_DATA[type];
                         if (!typeData) {
                             console.error(`Unknown unit type: ${type}`);
-                            Object.assign(this, UNIT_TYPE_DATA['infantry']);
+                            Object.assign(this, window.battleSim.UNIT_TYPE_DATA['infantry']);
                         } else {
                             Object.assign(this, typeData);
                         }
@@ -445,21 +450,21 @@
                     }
 
                     getMoraleState() {
-                        const currentMorale = Math.max(0, this.morale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
-                        if (currentMorale >= MORALE_TIERS_DATA.Steady.minMorale) return MORALE_TIERS_DATA.Steady;
-                        if (currentMorale >= MORALE_TIERS_DATA.Shaken.minMorale) return MORALE_TIERS_DATA.Shaken;
-                        if (currentMorale >= MORALE_TIERS_DATA.Wavering.minMorale) return MORALE_TIERS_DATA.Wavering;
-                        return MORALE_TIERS_DATA.Routing;
+                        const currentMorale = Math.max(0, this.morale - (this.fatigue * window.battleSim.FATIGUE_MORALE_PENALTY_PER_POINT));
+                        if (currentMorale >= window.battleSim.MORALE_TIERS_DATA.Steady.minMorale) return window.battleSim.MORALE_TIERS_DATA.Steady;
+                        if (currentMorale >= window.battleSim.MORALE_TIERS_DATA.Shaken.minMorale) return window.battleSim.MORALE_TIERS_DATA.Shaken;
+                        if (currentMorale >= window.battleSim.MORALE_TIERS_DATA.Wavering.minMorale) return window.battleSim.MORALE_TIERS_DATA.Wavering;
+                        return window.battleSim.MORALE_TIERS_DATA.Routing;
                     }
 
                     getEffectiveAttack() {
                         let currentMorale = this.morale;
-                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
-                        currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
-                        const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
-                        const formationAttackModifier = FORMATION_DATA[this.currentFormation].attackModifier;
+                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += window.battleSim.LEADERSHIP_MORALE_BOOST;
+                        currentMorale = Math.max(0, currentMorale - (this.fatigue * window.battleSim.FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const moraleModifier = (currentMorale / 100) * (1 - window.battleSim.MORALE_MODIFIER_MIN) + window.battleSim.MORALE_MODIFIER_MIN;
+                        const formationAttackModifier = window.battleSim.FORMATION_DATA[this.currentFormation].attackModifier;
                         const moraleStatePenalty = this.getMoraleState().attackPenalty;
-                        const behaviorAttackModifier = AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
+                        const behaviorAttackModifier = window.battleSim.AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
                         
                         let totalAttack = this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
                         
@@ -473,14 +478,14 @@
 
                     getEffectiveDefense() {
                         let currentMorale = this.morale;
-                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
-                        currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
-                        const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
+                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += window.battleSim.LEADERSHIP_MORALE_BOOST;
+                        currentMorale = Math.max(0, currentMorale - (this.fatigue * window.battleSim.FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const moraleModifier = (currentMorale / 100) * (1 - window.battleSim.MORALE_MODIFIER_MIN) + window.battleSim.MORALE_MODIFIER_MIN;
                         const terrain = window.battleSim.getTerrainAt(this.x, this.y); // Use window.battleSim.getTerrainAt
-                        const terrainDefenseBonus = TERRAIN_DATA[terrain].defenseBonus;
-                        const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
+                        const terrainDefenseBonus = window.battleSim.TERRAIN_DATA[terrain].defenseBonus;
+                        const formationDefenseModifier = window.battleSim.FORMATION_DATA[this.currentFormation].defenseModifier;
                         const moraleStatePenalty = this.getMoraleState().defensePenalty;
-                        const behaviorDefenseModifier = AI_BEHAVIOR_DATA[this.currentBehavior].defenseModifier;
+                        const behaviorDefenseModifier = window.battleSim.AI_BEHAVIOR_DATA[this.currentBehavior].defenseModifier;
                         return this.defense * moraleModifier * (1 + terrainDefenseBonus) * formationDefenseModifier * (1 - moraleStatePenalty) * behaviorDefenseModifier;
                     }
 
@@ -496,10 +501,11 @@
                     checkMorale(damageAmount) {
                         if (this.broken) return;
                         const strengthLossPercentage = damageAmount / this.maxStrength;
-                        let moraleLoss = strengthLossPercentage * this.initialMorale * 0.15;
+                        // Reduce base morale loss from damage for less overall morale influence
+                        let moraleLoss = strengthLossPercentage * this.initialMorale * 0.08; // Changed from 0.15 to 0.08
                         if (strengthLossPercentage > 0.2) moraleLoss += this.initialMorale * 0.05;
                         this.morale -= moraleLoss;
-                        if (this.morale <= MORALE_BREAK_THRESHOLD) {
+                        if (this.morale <= window.battleSim.MORALE_BREAK_THRESHOLD) {
                             this.broken = true;
                             this.morale = 0;
                             window.battleSim.logBattleMessage(`${this.name} (${this.faction}) has broken and is routing!`);
@@ -528,17 +534,17 @@
                             return false;
                         }
 
-                        if (nextGridX < 0 || nextGridX >= MAP_WIDTH_CELLS || nextGridY < 0 || nextGridY >= MAP_HEIGHT_CELLS) return false;
+                        if (nextGridX < 0 || nextGridX >= window.battleSim.MAP_WIDTH_CELLS || nextGridY < 0 || nextGridY >= window.battleSim.MAP_HEIGHT_CELLS) return false;
 
                         const terrainType = window.battleSim.getTerrainAt(nextGridX, nextGridY); // Use window.battleSim.getTerrainAt
-                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                        if (!FORMATION_DATA[this.currentFormation]) {
+                        let moveCost = window.battleSim.TERRAIN_DATA[terrainType].movementCost;
+                        if (!window.battleSim.FORMATION_DATA[this.currentFormation]) {
                             console.error(`Formation data missing for: ${this.currentFormation}`);
                             return false;
                         }
-                        moveCost *= FORMATION_DATA[this.currentFormation].movementModifier;
+                        moveCost *= window.battleSim.FORMATION_DATA[this.currentFormation].movementModifier;
                         moveCost *= (1 + this.getMoraleState().movementPenalty);
-                        moveCost *= AI_BEHAVIOR_DATA[this.currentBehavior].movementModifier;
+                        moveCost *= window.battleSim.AI_BEHAVIOR_DATA[this.currentBehavior].movementModifier;
 
                         if (moveCost === Infinity || this.remainingMovement < moveCost) return false;
 
@@ -549,7 +555,7 @@
                         this.x = nextGridX;
                         this.y = nextGridY;
                         this.remainingMovement -= moveCost;
-                        this.fatigue += TERRAIN_DATA[terrainType].fatigueCost * FORMATION_DATA[this.currentFormation].fatigueModifier * AI_BEHAVIOR_DATA[this.currentBehavior].fatigueModifier;
+                        this.fatigue += window.battleSim.TERRAIN_DATA[terrainType].fatigueCost * window.battleSim.FORMATION_DATA[this.currentFormation].fatigueModifier * window.battleSim.AI_BEHAVIOR_DATA[this.currentBehavior].fatigueModifier;
                         return true;
                     }
 
@@ -579,7 +585,7 @@
                         this.appliedCommanderBuff = false;
                     }
 
-                    getTypeIdentifier() { return UNIT_TYPE_DATA[this.type].identifier; }
+                    getTypeIdentifier() { return window.battleSim.UNIT_TYPE_DATA[this.type].identifier; }
 
                     // NEW: updateUnitBehavior method
                     updateUnitBehavior() {
@@ -588,30 +594,37 @@
                             return;
                         }
 
-                        const currentMorale = Math.max(0, this.morale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const currentMorale = Math.max(0, this.morale - (this.fatigue * window.battleSim.FATIGUE_MORALE_PENALTY_PER_POINT));
                         const currentStrengthPercent = (this.strength / this.maxStrength) * 100;
 
-                        if (currentMorale <= MORALE_BREAK_THRESHOLD + 10 || currentStrengthPercent <= 20) { // If close to breaking or low strength
-                            this.currentBehavior = 'routing'; // Force routing if very bad situation
+                        // NEW: Initial aggression phase for Roman units and Generals
+                        if (turn <= window.battleSim.INITIAL_AGGRESSION_TURNS && this.faction === 'Roman' && this.currentBehavior !== 'routing') {
+                             this.currentBehavior = 'aggressive';
+                             return;
+                        }
+                        
+                        // If not in initial aggression phase, apply normal behavior rules
+                        if (currentMorale <= window.battleSim.MORALE_BREAK_THRESHOLD + 10 || currentStrengthPercent <= 20) {
+                            this.currentBehavior = 'routing';
                             return;
                         }
 
-                        if (currentMorale <= 40 || currentStrengthPercent <= 40) { // Shaken morale or moderate strength loss
+                        if (currentMorale <= 40 || currentStrengthPercent <= 40) {
                             if (this.type === 'archer' || this.type === 'skirmisher') {
-                                this.currentBehavior = 'skirmishing'; // Stick to skirmishing or become more evasive
+                                this.currentBehavior = 'skirmishing';
                             } else {
-                                this.currentBehavior = 'defensive'; // Melee units become defensive
+                                this.currentBehavior = 'defensive';
                             }
                             return;
                         }
 
-                        // Default behaviors
+                        // Default behaviors if not specifically triggered
                         if (this.type === 'commander') {
-                            this.currentBehavior = 'defensive'; // Commanders primarily defensive
+                            this.currentBehavior = 'defensive';
                         } else if (this.type === 'archer' || this.type === 'skirmisher') {
-                            this.currentBehavior = 'skirmishing'; // Ranged units default to skirmishing
+                            this.currentBehavior = 'skirmishing';
                         } else {
-                            this.currentBehavior = 'aggressive'; // Other healthy units are aggressive
+                            this.currentBehavior = 'aggressive';
                         }
                     }
                 }
@@ -638,7 +651,7 @@
                 };
 
                 window.battleSim.getTerrainAt = function(x, y) {
-                    if (x < 0 || x >= MAP_WIDTH_CELLS || y < 0 || y >= MAP_HEIGHT_CELLS) return 'plain';
+                    if (x < 0 || x >= window.battleSim.MAP_WIDTH_CELLS || y < 0 || y >= window.battleSim.MAP_HEIGHT_CELLS) return 'plain';
                     return map[y][x];
                 };
 
@@ -656,11 +669,11 @@
                 };
 
                 window.battleSim.drawTerrainTexture = function(ctx, terrainType, x, y) {
-                    const pixelX = x * GRID_SIZE;
-                    const pixelY = y * GRID_SIZE;
-                    const tileColor = TERRAIN_DATA[terrainType].color;
+                    const pixelX = x * window.battleSim.GRID_SIZE;
+                    const pixelY = y * window.battleSim.GRID_SIZE;
+                    const tileColor = window.battleSim.TERRAIN_DATA[terrainType].color;
                     ctx.fillStyle = tileColor;
-                    ctx.fillRect(pixelX, pixelY, GRID_SIZE, GRID_SIZE);
+                    ctx.fillRect(pixelX, pixelY, window.battleSim.GRID_SIZE, window.battleSim.GRID_SIZE);
 
                     const hexToRgbA = (hex, alpha) => {
                         const r = parseInt(hex.slice(1, 3), 16);
@@ -672,8 +685,8 @@
                     if (terrainType === 'forest') {
                         const forestColor = 'rgba(0, 50, 0, 0.4)';
                         for (let i = 0; i < 3; i++) {
-                            const rx = pixelX + Math.random() * GRID_SIZE;
-                            const ry = pixelY + Math.random() * GRID_SIZE;
+                            const rx = pixelX + Math.random() * window.battleSim.GRID_SIZE;
+                            const ry = pixelY + Math.random() * window.battleSim.GRID_SIZE;
                             const rSize = 1 + Math.random() * 2;
                             ctx.fillStyle = forestColor;
                             ctx.beginPath();
@@ -681,21 +694,21 @@
                             ctx.fill();
                         }
                     } else if (terrainType === 'hill') {
-                        const hillBaseColor = TERRAIN_DATA[terrainType].color;
+                        const hillBaseColor = window.battleSim.TERRAIN_DATA[terrainType].color;
                         const hillDarkerColor = hexToRgbA(hillBaseColor, 0.6);
                         const hillLightestColor = hexToRgbA(hillBaseColor, 0.3);
-                        const centerX = pixelX + GRID_SIZE / 2;
-                        const centerY = pixelY + GRID_SIZE / 2;
-                        const radius = GRID_SIZE * 0.9;
+                        const centerX = pixelX + window.battleSim.GRID_SIZE / 2;
+                        const centerY = pixelY + window.battleSim.GRID_SIZE / 2;
+                        const radius = window.battleSim.GRID_SIZE * 0.9;
                         const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.1, centerX, centerY, radius);
                         gradient.addColorStop(0, hillLightestColor);
                         gradient.addColorStop(1, hillDarkerColor);
                         ctx.fillStyle = gradient;
-                        ctx.fillRect(pixelX, pixelY, GRID_SIZE, GRID_SIZE);
+                        ctx.fillRect(pixelX, pixelY, window.battleSim.GRID_SIZE, window.battleSim.GRID_SIZE);
                         ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
                         for (let i = 0; i < 1; i++) {
-                            const rx = pixelX + Math.random() * GRID_SIZE;
-                            const ry = pixelY + Math.random() * GRID_SIZE;
+                            const rx = pixelX + Math.random() * window.battleSim.GRID_SIZE;
+                            const ry = pixelY + Math.random() * window.battleSim.GRID_SIZE;
                             const rSize = 0.5 + Math.random() * 0.5;
                             ctx.beginPath();
                             ctx.arc(rx, ry, rSize, 0, Math.PI * 2);
@@ -706,12 +719,12 @@
                         ctx.lineWidth = 0.5;
                         for (let i = 0; i < 3; i++) {
                             ctx.beginPath();
-                            const startY = pixelY + (i + 1) * (GRID_SIZE / 4);
+                            const startY = pixelY + (i + 1) * (window.battleSim.GRID_SIZE / 4);
                             ctx.moveTo(pixelX, startY);
                             ctx.bezierCurveTo(
-                                pixelX + GRID_SIZE / 3, startY + (i % 2 === 0 ? 3 : -3),
-                                pixelX + GRID_SIZE * 2 / 3, startY + (i % 2 === 0 ? -3 : 3),
-                                pixelX + GRID_SIZE, startY
+                                pixelX + window.battleSim.GRID_SIZE / 3, startY + (i % 2 === 0 ? 3 : -3),
+                                pixelX + window.battleSim.GRID_SIZE * 2 / 3, startY + (i % 2 === 0 ? -3 : 3),
+                                pixelX + window.battleSim.GRID_SIZE, startY
                             );
                             ctx.stroke();
                         }
@@ -744,9 +757,9 @@
                     }
 
                     // Map Generation
-                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                    for (let y = 0; y < window.battleSim.MAP_HEIGHT_CELLS; y++) {
                         map[y] = [];
-                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                        for (let x = 0; x < window.battleSim.MAP_WIDTH_CELLS; x++) {
                             map[y][x] = 'plain';
                         }
                     }
@@ -758,22 +771,22 @@
 
                     const SPREAD_PROBABILITY_DECAY = 0.2;
                     const isInDeploymentZone = (x, y) => {
-                        const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
-                        return x < deploymentWidth || x >= MAP_WIDTH_CELLS - deploymentWidth;
+                        const deploymentWidth = Math.floor(window.battleSim.MAP_WIDTH_CELLS / 4);
+                        return x < deploymentWidth || x >= window.battleSim.MAP_WIDTH_CELLS - deploymentWidth;
                     };
                     const spreadTerrain = (terrainType, numClumps, maxRadius) => {
                         for (let i = 0; i < numClumps; i++) {
                             let startX, startY;
                             do {
-                                startX = Math.floor(Math.random() * MAP_WIDTH_CELLS);
-                                startY = Math.floor(Math.random() * MAP_HEIGHT_CELLS);
+                                startX = Math.floor(Math.random() * window.battleSim.MAP_WIDTH_CELLS);
+                                startY = Math.floor(Math.random() * window.battleSim.MAP_HEIGHT_CELLS);
                             } while (isInDeploymentZone(startX, startY));
 
                             for (let dy = -maxRadius; dy <= maxRadius; dy++) {
                                 for (let dx = -maxRadius; dx <= maxRadius; dx++) {
                                     const currentX = startX + dx;
                                     const currentY = startY + dy;
-                                    if (currentX >= 0 && currentX < MAP_WIDTH_CELLS && currentY >= 0 && currentY < MAP_HEIGHT_CELLS && !isInDeploymentZone(currentX, currentY)) {
+                                    if (currentX >= 0 && currentX < window.battleSim.MAP_WIDTH_CELLS && currentY >= 0 && currentY < window.battleSim.MAP_HEIGHT_CELLS && !isInDeploymentZone(currentX, currentY)) {
                                         const distance = Math.sqrt(dx * dx + dy * dy);
                                         if (distance <= maxRadius) {
                                             const probability = 1 - (distance / maxRadius) * SPREAD_PROBABILITY_DECAY;
@@ -789,14 +802,14 @@
                     spreadTerrain('hill', mapSettings.numHillClumps, mapSettings.spreadRadiusMax);
                     spreadTerrain('water', mapSettings.numWaterClumps, mapSettings.waterSpreadRadiusMax);
 
-                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                        const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
+                    for (let y = 0; y < window.battleSim.MAP_HEIGHT_CELLS; y++) {
+                        const deploymentWidth = Math.floor(window.battleSim.MAP_WIDTH_CELLS / 4);
                         for (let x = 0; x < deploymentWidth; x++) map[y][x] = 'plain';
-                        for (let x = MAP_WIDTH_CELLS - deploymentWidth; x < MAP_WIDTH_CELLS; x++) map[y][x] = 'plain';
+                        for (let x = window.battleSim.MAP_WIDTH_CELLS - deploymentWidth; x < window.battleSim.MAP_WIDTH_CELLS; x++) map[y][x] = 'plain';
                     }
 
-                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                    for (let y = 0; y < window.battleSim.MAP_HEIGHT_CELLS; y++) {
+                        for (let x = 0; x < window.battleSim.MAP_WIDTH_CELLS; x++) {
                             window.battleSim.drawTerrainTexture(terrainTextureCtx, map[y][x], x, y);
                         }
                     }
@@ -818,8 +831,8 @@
                             }
                         });
                     } else {
-                        const romanStartX = Math.floor(MAP_WIDTH_CELLS / 8);
-                        const romanStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
+                        const romanStartX = Math.floor(window.battleSim.MAP_WIDTH_CELLS / 8);
+                        const romanStartYOffset = Math.floor(window.battleSim.MAP_HEIGHT_CELLS / 4);
                         units.push(new Unit('R1', 'Legion I', 'infantry', 'Roman', romanStartX, romanStartYOffset, '#dc2626'));
                         units.push(new Unit('R2', 'Legion II', 'infantry', 'Roman', romanStartX, romanStartYOffset + 2, '#dc2626'));
                         units.push(new Unit('R3', 'Legion III', 'infantry', 'Roman', romanStartX + 1, romanStartYOffset - 1, '#dc2626'));
@@ -830,8 +843,8 @@
                         units.push(new Unit('R8', 'Roman Archers 2', 'archer', 'Roman', romanStartX, romanStartYOffset + 5, '#00BFFF'));
                         units.push(new Unit('R9', 'Roman General', 'commander', 'Roman', romanStartX -2, romanStartYOffset + 4, '#800080'));
 
-                        const barbarianStartX = MAP_WIDTH_CELLS - Math.floor(MAP_WIDTH_CELLS / 8) - 1;
-                        const barbarianStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
+                        const barbarianStartX = window.battleSim.MAP_WIDTH_CELLS - Math.floor(window.battleSim.MAP_WIDTH_CELLS / 8) - 1;
+                        const barbarianStartYOffset = Math.floor(window.battleSim.MAP_HEIGHT_CELLS / 4);
                         units.push(new Unit('B1', 'Warband A', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset, '#16a34a'));
                         units.push(new Unit('B2', 'Warband B', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset + 2, '#16a34a'));
                         units.push(new Unit('B3', 'Warband C', 'infantry', 'Gaul', barbarianStartX - 1, barbarianStartYOffset - 1, '#16a34a'));
@@ -853,13 +866,13 @@
                     ctx.drawImage(terrainTextureCanvas, 0, 0);
 
                     ctx.strokeStyle = 'rgba(150, 150, 150, 0.2)';
-                    for (let i = 0; i <= MAP_WIDTH_CELLS; i++) { ctx.beginPath(); ctx.moveTo(i * GRID_SIZE, 0); ctx.lineTo(i * GRID_SIZE, canvas.height); ctx.stroke(); }
-                    for (let i = 0; i <= MAP_HEIGHT_CELLS; i++) { ctx.beginPath(); ctx.moveTo(0, i * GRID_SIZE); ctx.lineTo(canvas.width, i * GRID_SIZE); ctx.stroke(); }
+                    for (let i = 0; i <= window.battleSim.MAP_WIDTH_CELLS; i++) { ctx.beginPath(); ctx.moveTo(i * window.battleSim.GRID_SIZE, 0); ctx.lineTo(i * window.battleSim.GRID_SIZE, canvas.height); ctx.stroke(); }
+                    for (let i = 0; i <= window.battleSim.MAP_HEIGHT_CELLS; i++) { ctx.beginPath(); ctx.moveTo(0, i * window.battleSim.GRID_SIZE); ctx.lineTo(canvas.width, i * window.battleSim.GRID_SIZE); ctx.stroke(); }
 
                     units.forEach(unit => {
                         if (unit.type === 'commander' && unit.strength > 0 && !unit.broken) {
                             ctx.beginPath();
-                            ctx.arc(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2, LEADERSHIP_RADIUS * GRID_SIZE, 0, Math.PI * 2);
+                            ctx.arc(unit.displayX * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, unit.displayY * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, window.battleSim.LEADERSHIP_RADIUS * window.battleSim.GRID_SIZE, 0, Math.PI * 2);
                             ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
                             ctx.lineWidth = 2;
                             ctx.stroke();
@@ -869,16 +882,16 @@
                                 ctx.beginPath();
                                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
                                 ctx.lineWidth = 1;
-                                ctx.moveTo(unit.pathHistory[0].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[0].y * GRID_SIZE + GRID_SIZE / 2);
-                                for (let i = 1; i < unit.pathHistory.length; i++) { ctx.lineTo(unit.pathHistory[i].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[i].y * GRID_SIZE + GRID_SIZE / 2); }
-                                ctx.lineTo(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2);
+                                ctx.moveTo(unit.pathHistory[0].x * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, unit.pathHistory[0].y * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2);
+                                for (let i = 1; i < unit.pathHistory.length; i++) { ctx.lineTo(unit.pathHistory[i].x * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, unit.pathHistory[i].y * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2); }
+                                ctx.lineTo(unit.displayX * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, unit.displayY * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2);
                                 ctx.stroke();
                             }
                             const currentSizeRatio = unit.strength / unit.maxStrength;
-                            const unitDrawSize = GRID_SIZE * currentSizeRatio;
-                            const offset = (GRID_SIZE - unitDrawSize) / 2;
-                            const drawX = unit.displayX * GRID_SIZE;
-                            const drawY = unit.displayY * GRID_SIZE;
+                            const unitDrawSize = window.battleSim.GRID_SIZE * currentSizeRatio;
+                            const offset = (window.battleSim.GRID_SIZE - unitDrawSize) / 2;
+                            const drawX = unit.displayX * window.battleSim.GRID_SIZE;
+                            const drawY = unit.displayY * window.battleSim.GRID_SIZE;
 
                             ctx.fillStyle = unit.isFlashing ? 'white' : unit.color;
                             ctx.beginPath();
@@ -925,15 +938,15 @@
                             ctx.fillStyle = moraleState.color; ctx.beginPath(); ctx.arc(drawX + offset + unitDrawSize - 3, drawY + offset + 3, 3, 0, Math.PI * 2); ctx.fill();
 
                             if (unit.isFlankedStatus && unit.isFlashing) {
-                                if (Math.floor(performance.now() / FLANKED_FLASH_INTERVAL) % 2 === 0) {
+                                if (Math.floor(performance.now() / window.battleSim.FLANKED_FLASH_INTERVAL) % 2 === 0) {
                                     ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center';
-                                    ctx.fillText('FLANKED!', drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2 - (unitDrawSize / 2) - 15);
+                                    ctx.fillText('FLANKED!', drawX + window.battleSim.GRID_SIZE / 2, drawY + window.battleSim.GRID_SIZE / 2 - (unitDrawSize / 2) - 15);
                                 }
                             }
                         } else if (unit.broken) {
-                            ctx.fillStyle = 'rgba(107, 114, 128, 0.5)'; ctx.beginPath(); ctx.roundRect(unit.x * GRID_SIZE + 2, unit.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4, 5); ctx.fill();
+                            ctx.fillStyle = 'rgba(107, 114, 128, 0.5)'; ctx.beginPath(); ctx.roundRect(unit.x * window.battleSim.GRID_SIZE + 2, unit.y * window.battleSim.GRID_SIZE + 2, window.battleSim.GRID_SIZE - 4, window.battleSim.GRID_SIZE - 4, 5); ctx.fill();
                             ctx.fillStyle = 'white'; ctx.font = '12px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                            ctx.fillText('X', unit.x * GRID_SIZE + GRID_SIZE / 2, unit.y * GRID_SIZE + GRID_SIZE / 2);
+                            ctx.fillText('X', unit.x * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2, unit.y * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2);
                         }
                     });
 
@@ -941,13 +954,13 @@
                     projectiles = projectiles.filter(p => p.isAlive(currentTime));
                     projectiles.forEach(p => {
                         const progress = (currentTime - p.birthTime) / p.lifeTime;
-                        const currentX = p.startX * GRID_SIZE + GRID_SIZE / 2 + (p.targetX * GRID_SIZE + GRID_SIZE / 2 - (p.startX * GRID_SIZE + GRID_SIZE / 2)) * progress;
-                        const currentY = p.startY * GRID_SIZE + GRID_SIZE / 2 + (p.targetY * GRID_SIZE + GRID_SIZE / 2 - (p.startY * GRID_SIZE + GRID_SIZE / 2)) * progress;
+                        const currentX = p.startX * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2 + (p.targetX * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2 - (p.startX * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2)) * progress;
+                        const currentY = p.startY * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2 + (p.targetY * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2 - (p.startY * window.battleSim.GRID_SIZE + window.battleSim.GRID_SIZE / 2)) * progress;
                         ctx.beginPath(); ctx.arc(currentX, currentY, 2, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
                     });
 
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-                    ctx.fillText(VERSION_NUMBER, canvas.width - 5, 5);
+                    ctx.fillText(window.battleSim.VERSION_NUMBER, canvas.width - 5, 5);
                 };
 
                 window.battleSim.resolveMeleeCombat = function(attacker, defender) {
@@ -989,7 +1002,7 @@
                             const isEnemyEngagedWithFriendly = units.some(friendly => friendly.faction === archerUnit.faction && friendly.strength > 0 && !friendly.broken && Math.abs(friendly.x - enemy.x) + Math.abs(friendly.y - enemy.y) === 1);
                             if (!isEnemyEngagedWithFriendly) {
                                 const dist = Math.sqrt(Math.pow(archerUnit.x - enemy.x, 2) + Math.pow(archerUnit.y - enemy.y, 2));
-                                if (dist <= ARCHER_RANGE && dist < minDist) { minDist = dist; target = enemy; }
+                                if (dist <= window.battleSim.ARCHER_RANGE && dist < minDist) { minDist = dist; target = enemy; }
                             }
                         });
 
@@ -1005,6 +1018,7 @@
                             target.takeDamage(actualRangedDamage);
                             window.battleSim.logBattleMessage(`${archerUnit.name} (${archerUnit.faction}) shot at ${target.name} (${target.faction}), dealing ${actualRangedDamage.toFixed(1)} ranged damage.`);
                             projectiles.push(new Projectile(archerUnit.x, archerUnit.y, target.x, target.y, archerUnit.color));
+                            archerUnit._attackedThisTurn = true; // NEW: Set attacked flag for ambush reset
                         }
                     });
                 };
@@ -1015,11 +1029,11 @@
                     
                     // NEW: If unit is routing, target its retreat zone
                     if (unit.currentBehavior === 'routing') {
-                        const retreatX = unit.faction === 'Roman' ? GAUL_RETREAT_X : ROMAN_RETREAT_X; // Retreat to opposite side
+                        const retreatX = unit.faction === 'Roman' ? window.battleSim.GAUL_RETREAT_X : window.battleSim.ROMAN_RETREAT_X; // Retreat to opposite side
                         // Select the y-coordinate that is closest to its current y for the retreat target
                         let closestRetreatY = unit.y;
                         if (unit.y < 0) closestRetreatY = 0;
-                        if (unit.y >= MAP_HEIGHT_CELLS) closestRetreatY = MAP_HEIGHT_CELLS -1;
+                        if (unit.y >= window.battleSim.MAP_HEIGHT_CELLS) closestRetreatY = window.battleSim.MAP_HEIGHT_CELLS -1;
 
                         return { x: retreatX, y: closestRetreatY, isRetreatTarget: true };
                     }
@@ -1040,7 +1054,7 @@
                             case 'infantry': if (enemy.type === 'infantry') score += 20; break;
                             default: break;
                         }
-                        if ((unit.type === 'archer' || unit.type === 'skirmisher') && distance <= ARCHER_RANGE) score += 10;
+                        if ((unit.type === 'archer' || unit.type === 'skirmisher') && distance <= window.battleSim.ARCHER_RANGE) score += 10;
                         if (score > bestScore) { bestScore = score; target = enemy; }
                     });
                     return target;
@@ -1072,14 +1086,14 @@
                             const nextY = y + dy[i];
                             const nextCoord = `${nextX},${nextY}`;
                             if (visited.has(nextCoord)) continue;
-                            if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) continue;
+                            if (nextX < 0 || nextX >= window.battleSim.MAP_WIDTH_CELLS || nextY < 0 || nextY >= window.battleSim.MAP_HEIGHT_CELLS) continue;
 
                             const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
-                            let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                            if (!FORMATION_DATA[unit.currentFormation]) continue;
-                            moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                            let moveCost = window.battleSim.TERRAIN_DATA[terrainType].movementCost;
+                            if (!window.battleSim.FORMATION_DATA[unit.currentFormation]) continue;
+                            moveCost *= window.battleSim.FORMATION_DATA[unit.currentFormation].movementModifier;
                             moveCost *= (1 + unit.getMoraleState().movementPenalty);
-                            moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                            moveCost *= window.battleSim.AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
 
                             if (moveCost === Infinity || cost + moveCost > unit.movementPoints) continue;
 
@@ -1109,20 +1123,20 @@
                         { dx: 0, dy: 1 }, { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
                     ];
 
-                    const maxMapDistance = Math.sqrt(MAP_WIDTH_CELLS * MAP_WIDTH_CELLS + MAP_HEIGHT_CELLS * MAP_HEIGHT_CELLS);
+                    const maxMapDistance = Math.sqrt(window.battleSim.MAP_WIDTH_CELLS * window.battleSim.MAP_WIDTH_CELLS + window.battleSim.MAP_HEIGHT_CELLS * window.battleSim.MAP_HEIGHT_CELLS);
                     const currentDistanceToTarget = Math.sqrt(Math.pow(unit.x - targetEnemy.x, 2) + Math.pow(unit.y - targetEnemy.y, 2));
                     const isCurrentlyAdjacentToEnemy = currentDistanceToTarget <= 1.5;
 
                     const validTraversableMoves = possibleMoves.filter(move => {
                         const nextX = unit.x + move.dx;
                         const nextY = unit.y + move.dy;
-                        if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) return false;
+                        if (nextX < 0 || nextX >= window.battleSim.MAP_WIDTH_CELLS || nextY < 0 || nextY >= window.battleSim.MAP_HEIGHT_CELLS) return false;
                         const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
-                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                        if (!FORMATION_DATA[unit.currentFormation]) { console.error(`Formation data missing for: ${unit.currentFormation}`); return false; }
-                        moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                        let moveCost = window.battleSim.TERRAIN_DATA[terrainType].movementCost;
+                        if (!window.battleSim.FORMATION_DATA[unit.currentFormation]) { console.error(`Formation data missing for: ${unit.currentFormation}`); return false; }
+                        moveCost *= window.battleSim.FORMATION_DATA[unit.currentFormation].movementModifier;
                         moveCost *= (1 + unit.getMoraleState().movementPenalty);
-                        moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                        moveCost *= window.battleSim.AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
                         if (moveCost === Infinity || unit.remainingMovement < moveCost) return false;
 
                         let isOccupiedByOtherUnit = false;
@@ -1170,14 +1184,14 @@
                             }
 
                             const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
-                            let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                            moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                            let moveCost = window.battleSim.TERRAIN_DATA[terrainType].movementCost;
+                            moveCost *= window.battleSim.FORMATION_DATA[unit.currentFormation].movementModifier;
                             moveCost *= (1 + unit.getMoraleState().movementPenalty);
-                            moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                            moveCost *= window.battleSim.AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
                             score -= moveCost * 50; // Heavily penalize costly moves when fleeing
 
                             // Also penalize moving closer to the center of the map
-                            const mapCenterX = MAP_WIDTH_CELLS / 2;
+                            const mapCenterX = window.battleSim.MAP_WIDTH_CELLS / 2;
                             const distToCenter = Math.abs(nextX - mapCenterX);
                             score -= distToCenter * 5;
 
@@ -1196,11 +1210,11 @@
                         let currentScoreForStay = 0;
                         const terrainTypeForStay = window.battleSim.getTerrainAt(unit.x, unit.y);
                         currentScoreForStay += (1 - (currentDistanceToTarget / maxMapDistance)) * 100;
-                        currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
-                        currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+                        currentScoreForStay += window.battleSim.TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
+                        currentScoreForStay -= window.battleSim.TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * window.battleSim.FORMATION_DATA[unit.currentFormation].fatigueModifier;
 
                         const isRangedUnit = (unit.type === 'archer' || unit.type === 'skirmisher');
-                        const isRangedUnitInFiringRange = isRangedUnit && currentDistanceToTarget <= ARCHER_RANGE;
+                        const isRangedUnitInFiringRange = isRangedUnit && currentDistanceToTarget <= window.battleSim.ARCHER_RANGE;
                         const isUnitInForest = window.battleSim.getTerrainAt(unit.x, unit.y) === 'forest'; // NEW: Check if unit is currently in forest
 
                         // Archer ambush setup logic
@@ -1242,14 +1256,14 @@
                         currentScore += (1 - (distToEnemyFromNext / maxMapDistance)) * 100;
 
                         const terrainType = window.battleSim.getTerrainAt(nextX, nextY);
-                        const terrainDefenseBonus = TERRAIN_DATA[terrainType].defenseBonus;
-                        const terrainFatigueCost = TERRAIN_DATA[terrainType].fatigueCost;
-                        const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty) * AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                        const terrainDefenseBonus = window.battleSim.TERRAIN_DATA[terrainType].defenseBonus;
+                        const terrainFatigueCost = window.battleSim.TERRAIN_DATA[terrainType].fatigueCost;
+                        const moveCost = window.battleSim.TERRAIN_DATA[terrainType].movementCost * window.battleSim.FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty) * window.battleSim.AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
 
 
                         if (unit.type !== 'archer' && unit.type !== 'skirmisher') { // Melee units
                             currentScore += terrainDefenseBonus * 10;
-                            currentScore -= terrainFatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+                            currentScore -= terrainFatigueCost * 2 * window.battleSim.FORMATION_DATA[unit.currentFormation].fatigueModifier;
                             
                             if (distToEnemyFromNext <= 1.5) {
                                 currentScore += 100;
@@ -1266,6 +1280,13 @@
                             if (unit.currentBehavior === 'aggressive' && targetEnemy.currentBehavior === 'routing') {
                                 currentScore += 200; // Strong bonus to chase routing enemies
                             }
+                            // NEW: Aggressive units (including Generals in early turns) get bonus for forward movement
+                            if (unit.currentBehavior === 'aggressive' && unit.faction === 'Roman' && (move.dx > 0)) { // Assuming Roman advances right
+                                currentScore += 150; 
+                            }
+                            if (unit.currentBehavior === 'aggressive' && unit.faction === 'Gaul' && (move.dx < 0)) { // Assuming Gaul advances left
+                                currentScore += 150;
+                            }
 
                         } else { // Ranged units
                             if (terrainType === 'plain') {
@@ -1276,13 +1297,13 @@
                             } else if (terrainType === 'forest') {
                                 currentScore += 50; // Increased positive incentive for ranged in forest (concealment/ambush)
                             }
-                            currentScore -= terrainFatigueCost * 1 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+                            currentScore -= terrainFatigueCost * 1 * window.battleSim.FORMATION_DATA[unit.currentFormation].fatigueModifier;
 
-                            if (distToEnemyFromNext <= ARCHER_RANGE && distToEnemyFromNext > 1.5) {
+                            if (distToEnemyFromNext <= window.battleSim.ARCHER_RANGE && distToEnemyFromNext > 1.5) {
                                 currentScore += 100;
                             } else if (distToEnemyFromNext <= 1.5) {
                                 currentScore -= 1500; // Increased HUGE PENALTY for melee engagement for ranged
-                            } else if (distToEnemyFromNext > ARCHER_RANGE) {
+                            } else if (distToEnemyFromNext > window.battleSim.ARCHER_RANGE) {
                                 currentScore -= 50; // Increased penalty for being out of range
                             }
 
@@ -1293,7 +1314,7 @@
                             for (const adj of adjacentToWater) {
                                 const checkX = nextX + adj.dx;
                                 const checkY = nextY + adj.dy;
-                                if (checkX >= 0 && checkX < MAP_WIDTH_CELLS && checkY >= 0 && checkY < MAP_HEIGHT_CELLS &&
+                                if (checkX >= 0 && checkX < window.battleSim.MAP_WIDTH_CELLS && checkY >= 0 && checkY < window.battleSim.MAP_HEIGHT_CELLS &&
                                     window.battleSim.getTerrainAt(checkX, checkY) === 'water') {
                                     isAdjacentToWater = true;
                                     break;
@@ -1304,9 +1325,16 @@
                             }
 
                             if (unit.currentBehavior === 'skirmishing' && (move.dx !== 0 || move.dy !== 0)) {
-                                if (!(distToEnemyFromNext <= ARCHER_RANGE && distToEnemyFromNext > 1.5)) {
+                                if (!(distToEnemyFromNext <= window.battleSim.ARCHER_RANGE && distToEnemyFromNext > 1.5)) {
                                      currentScore += 15; // Increased slight bonus to move if not optimally positioned
                                 }
+                            }
+                            // NEW: Aggressive (early game Roman) ranged units get bonus for forward movement
+                            if (unit.currentBehavior === 'aggressive' && unit.faction === 'Roman' && (move.dx > 0)) { // Assuming Roman advances right
+                                currentScore += 80;
+                            }
+                            if (unit.currentBehavior === 'aggressive' && unit.faction === 'Gaul' && (move.dx < 0)) { // Assuming Gaul advances left
+                                currentScore += 80;
                             }
                         }
 
@@ -1339,7 +1367,7 @@
                         for (const move of adjacentTiles) {
                             const testX = unit.x + move.dx;
                             const testY = unit.y + move.dy;
-                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
+                            if (testX >= 0 && testX < window.battleSim.MAP_WIDTH_CELLS && testY >= 0 && testY < window.battleSim.MAP_HEIGHT_CELLS &&
                                 window.battleSim.getTerrainAt(testX, testY) !== 'water') {
                                 let isOccupiedTest = false;
                                 for (const otherUnit of allUnits) {
@@ -1376,10 +1404,10 @@
                         let inAura = false;
                         for (const commander of activeCommanders) {
                             const dist = Math.sqrt(Math.pow(unit.x - commander.x, 2) + Math.pow(unit.y - commander.y, 2));
-                            if (dist <= LEADERSHIP_RADIUS) {
+                            if (dist <= window.battleSim.LEADERSHIP_RADIUS) {
                                 unit.appliedCommanderBuff = true;
-                                unit.morale = Math.min(unit.initialMorale, unit.morale + LEADERSHIP_MORALE_BOOST);
-                                unit.fatigue = Math.max(0, unit.fatigue - LEADERSHIP_FATIGUE_REDUCTION);
+                                unit.morale = Math.min(unit.initialMorale, unit.morale + window.battleSim.LEADERSHIP_MORALE_BOOST);
+                                unit.fatigue = Math.max(0, unit.fatigue - window.battleSim.LEADERSHIP_FATIGUE_REDUCTION);
                                 inAura = true;
                                 break;
                             }
@@ -1393,10 +1421,10 @@
                             units.forEach(unit => {
                                 if (unit.faction === lostCommander.faction && unit.id !== lostCommander.id && unit.strength > 0 && !unit.broken) {
                                     const dist = Math.sqrt(Math.pow(unit.x - lostCommander.x, 2) + Math.pow(unit.y - lostCommander.y, 2));
-                                    if (dist <= LEADERSHIP_RADIUS * 2) {
-                                        unit.morale = Math.max(MORALE_BREAK_THRESHOLD, unit.morale - COMMANDER_LOSS_MORALE_SHOCK);
+                                    if (dist <= window.battleSim.LEADERSHIP_RADIUS * 2) {
+                                        unit.morale = Math.max(window.battleSim.MORALE_BREAK_THRESHOLD, unit.morale - window.battleSim.COMMANDER_LOSS_MORALE_SHOCK);
                                         window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) suffers morale shock from leader loss! Morale: ${unit.morale.toFixed(0)}`);
-                                        if (unit.morale <= MORALE_BREAK_THRESHOLD) {
+                                        if (unit.morale <= window.battleSim.MORALE_BREAK_THRESHOLD) {
                                             unit.broken = true;
                                             unit.morale = 0;
                                             window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has broken due to leader loss!`);
@@ -1413,7 +1441,7 @@
                     units.forEach(unit => {
                         if (unit.strength <= 0 || unit.broken) return;
 
-                        const enemies = units.filter(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken);
+                        const enemies = units.filter(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !unit.broken);
                         if (enemies.length === 0) return;
 
                         const targetEnemy = window.battleSim.getPreferredTarget(unit, enemies);
@@ -1429,7 +1457,7 @@
                         // If unit did not move this turn (i.e. stuck or chose to stay put)
                         if (!moved) {
                             unit.idleTurns++; // Increment idle turns
-                            if (unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE) {
+                            if (unit.idleTurns >= window.battleSim.IDLE_TURNS_FOR_FORCED_MOVE) {
                                 window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has been idle/stuck; forcing a move attempt.`);
                                 
                                 const adjacentTiles = [
@@ -1443,7 +1471,7 @@
                                     const testX = originalX + move.dx; 
                                     const testY = originalY + move.dy;
 
-                                    if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
+                                    if (testX >= 0 && testX < window.battleSim.MAP_WIDTH_CELLS && testY >= 0 && testY < window.battleSim.MAP_HEIGHT_CELLS) {
                                         const terrainType = window.battleSim.getTerrainAt(testX, testY);
                                         // Ensure forced move doesn't try to move into water or occupied space
                                         let isOccupiedByOtherUnit = false; 
@@ -1454,7 +1482,7 @@
                                             }
                                         }
 
-                                        if (TERRAIN_DATA[terrainType].movementCost !== Infinity && !isOccupiedByOtherUnit) {
+                                        if (window.battleSim.TERRAIN_DATA[terrainType].movementCost !== Infinity && !isOccupiedByOtherUnit) {
                                             // Attempt the forced move
                                             if (unit.moveTo(testX, testY)) { // moveTo returns true if successful
                                                 window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
@@ -1507,7 +1535,7 @@
                                 if (friendlyUnit.faction === unit.faction && friendlyUnit.id !== unit.id && friendlyUnit.strength > 0 && !friendlyUnit.broken) {
                                     const dist = Math.sqrt(Math.pow(friendlyUnit.x - unit.x, 2) + Math.pow(friendlyUnit.y - unit.y, 2));
                                     if (dist <= 2) {
-                                        friendlyUnit.morale = Math.min(friendlyUnit.initialMorale, friendlyUnit.morale + MORALE_GAIN_ON_ENEMY_BREAK);
+                                        friendlyUnit.morale = Math.min(friendlyUnit.initialMorale, friendlyUnit.morale + window.battleSim.MORALE_GAIN_ON_ENEMY_BREAK);
                                         window.battleSim.logBattleMessage(`${friendlyUnit.name} (${friendlyUnit.faction}) gains morale from ${unit.name} breaking!`);
                                     }
                                 }
@@ -1518,8 +1546,8 @@
                                 unit.idleTurns = 0;
                                 let fatigueGain = 1;
                                 const currentTerrain = window.battleSim.getTerrainAt(unit.x, unit.y);
-                                fatigueGain += TERRAIN_DATA[currentTerrain].fatigueCost * 0.5;
-                                if (unit.appliedCommanderBuff) fatigueGain *= LEADERSHIP_FATIGUE_REDUCTION;
+                                fatigueGain += window.battleSim.TERRAIN_DATA[currentTerrain].fatigueCost * 0.5;
+                                if (unit.appliedCommanderBuff) fatigueGain *= window.battleSim.LEADERSHIP_FATIGUE_REDUCTION;
                                 unit.fatigue += fatigueGain;
                             } else {
                                 unit.idleTurns++;
@@ -1539,7 +1567,7 @@
 
                     if (isAutoBattleActive) {
                         if (!window.battleSim.isBattleOver()) {
-                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
+                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, window.battleSim.AUTO_BATTLE_TURN_DELAY);
                         } else {
                             window.battleSim.stopAutoBattle();
                         }
@@ -1564,7 +1592,7 @@
                     }
 
                     const elapsedTime = currentTime - window.lastTime;
-                    const progress = Math.min(1, elapsedTime / ANIMATION_DURATION);
+                    const progress = Math.min(1, elapsedTime / window.battleSim.ANIMATION_DURATION);
 
                     let animationComplete = true;
                     units.forEach(unit => {
@@ -1577,7 +1605,7 @@
                     
                     window.battleSim.drawGame();
 
-                    if (animationComplete && elapsedTime >= ANIMATION_DURATION) {
+                    if (animationComplete && elapsedTime >= window.battleSim.ANIMATION_DURATION) {
                         window.lastTime = 0; // Reset for next animation cycle
                         animationStartTime = 0;
                         units.forEach(unit => {
@@ -1608,7 +1636,7 @@
                         autoBattleButton.textContent = 'Stop Auto Battle';
                         nextTurnButton.disabled = true;
                         if (!isAnimating && !window.battleSim.isBattleOver()) {
-                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
+                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, window.battleSim.AUTO_BATTLE_TURN_DELAY);
                         }
                     } else {
                         window.battleSim.stopAutoBattle();
@@ -1651,8 +1679,8 @@
                         return;
                     }
 
-                    const allRomansRetreated = romanActiveUnits.every(unit => unit.x >= ROMAN_RETREAT_X);
-                    const allGaulsRetreated = gaulActiveUnits.every(unit => unit.x <= GAUL_RETREAT_X);
+                    const allRomansRetreated = romanActiveUnits.every(unit => unit.x >= window.battleSim.ROMAN_RETREAT_X);
+                    const allGaulsRetreated = gaulActiveUnits.every(unit => unit.x <= window.battleSim.GAUL_RETREAT_X);
 
                     if (allRomansRetreated && romanActiveUnits.length > 0) {
                         window.battleSim.logBattleMessage("Barbarian Horde wins by forcing Roman retreat!");
@@ -1681,10 +1709,10 @@
                     unitPopupMenu = document.getElementById('unitPopupMenu'); // Initialize popup menu element
                     scenarioSelect = document.getElementById('scenarioSelect');
 
-                    canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-                    canvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
-                    terrainTextureCanvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-                    terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
+                    canvas.width = window.battleSim.MAP_WIDTH_CELLS * window.battleSim.GRID_SIZE;
+                    canvas.height = window.battleSim.MAP_HEIGHT_CELLS * window.battleSim.GRID_SIZE;
+                    terrainTextureCanvas.width = window.battleSim.MAP_WIDTH_CELLS * window.battleSim.GRID_SIZE;
+                    terrainTextureCanvas.height = window.battleSim.MAP_HEIGHT_CELLS * window.battleSim.GRID_SIZE;
                     terrainTextureCtx = terrainTextureCanvas.getContext('2d'); // Correct initialization
 
                     // Mousemove for tooltip
@@ -1697,10 +1725,10 @@
 
                         let foundUnit = null;
                         for (const unit of units) {
-                            const unitPixelX = unit.displayX * GRID_SIZE;
-                            const unitPixelY = unit.displayY * GRID_SIZE;
-                            if (window.lastMouseX >= unitPixelX && window.lastMouseX < unitPixelX + GRID_SIZE &&
-                                window.lastMouseY >= unitPixelY && window.lastMouseY < unitPixelY + GRID_SIZE &&
+                            const unitPixelX = unit.displayX * window.battleSim.GRID_SIZE;
+                            const unitPixelY = unit.displayY * window.battleSim.GRID_SIZE;
+                            if (window.lastMouseX >= unitPixelX && window.lastMouseX < unitPixelX + window.battleSim.GRID_SIZE &&
+                                window.lastMouseY >= unitPixelY && window.lastMouseY < unitPixelY + window.battleSim.GRID_SIZE &&
                                 unit.strength > 0 && !unit.broken) {
                                 foundUnit = unit;
                                 break;
@@ -1763,10 +1791,10 @@
 
                         let clickedUnit = null;
                         for (const unit of units) {
-                            const unitPixelX = unit.x * GRID_SIZE; // Use actual unit position for click
-                            const unitPixelY = unit.y * GRID_SIZE; // Use actual unit position for click
-                            if (clickX >= unitPixelX && clickX < unitPixelX + GRID_SIZE &&
-                                clickY >= unitPixelY && clickY < unitPixelY + GRID_SIZE &&
+                            const unitPixelX = unit.x * window.battleSim.GRID_SIZE; // Use actual unit position for click
+                            const unitPixelY = unit.y * window.battleSim.GRID_SIZE; // Use actual unit position for click
+                            if (clickX >= unitPixelX && clickX < unitPixelX + window.battleSim.GRID_SIZE &&
+                                clickY >= unitPixelY && clickY < unitPixelY + window.battleSim.GRID_SIZE &&
                                 unit.strength > 0 && !unit.broken) {
                                 clickedUnit = unit;
                                 break;
@@ -1801,7 +1829,7 @@
                                 <p>Formation: ${currentClickedUnit.currentFormation.replace(/_/g, ' ')}</p>
                                 <p>Behavior: ${currentClickedUnit.currentBehavior}</p>
                                 <p>Ambush Ready: ${currentClickedUnit.isAmbushReady ? 'Yes' : 'No'}</p>
-                                <p>Rest Turns for Ambush: ${currentClickedUnit.ambushRestTurns}</p>
+                                <p>Rest Turns: ${currentClickedUnit.ambushRestTurns}</p>
                                 <button id="closePopupMenu">Close</button>
                             `;
                             document.getElementById('closePopupMenu').addEventListener('click', () => {
