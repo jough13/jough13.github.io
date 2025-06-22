@@ -168,1740 +168,1359 @@
     </div>
 
     <script>
-        (function() { // Start of IIFE
-            // Canvas and context - declared with let as they will be assigned DOM elements
-            let canvas;
-            let ctx;
+        // Check if the simulation has already been initialized globally
+        if (!window.ancientBattleSimInitialized) {
+            window.ancientBattleSimInitialized = true; // Set flag to true immediately
 
-            // UI elements - declared with let as they will be assigned DOM elements
-            let nextTurnButton;
-            let autoBattleButton;
-            let restartButton;
-            let logArea;
-            let romanUnitsDisplay;
-            let gaulUnitsDisplay;
-            let unitTooltip;
-            let scenarioSelect; // New: Scenario dropdown
+            // Define the global battleSim object
+            window.battleSim = window.battleSim || {};
 
-            // Game parameters
-            const GRID_SIZE = 20;
-            const MAP_WIDTH_CELLS = 40; // Increased map width
-            const MAP_HEIGHT_CELLS = 30; // Increased map height
-            const MORALE_BREAK_THRESHOLD = 20;
-            const ANIMATION_DURATION = 300;
-            const AUTO_BATTLE_TURN_DELAY = 800;
-            const VERSION_NUMBER = "v1.0"; // New: Version number constant
+            (function() { // Start of IIFE encapsulating private variables and helper functions
+                // Canvas and context - declared here, assigned in DOMContentLoaded
+                let canvas;
+                let ctx;
 
-            let animationStartTime = 0;
-            let isAnimating = false;
-            let isAutoBattleActive = false;
-            let autoBattleIntervalId = null;
+                // UI elements - declared here, assigned in DOMContentLoaded
+                let nextTurnButton;
+                let autoBattleButton;
+                let restartButton;
+                let logArea;
+                let romanUnitsDisplay;
+                let gaulUnitsDisplay;
+                let unitTooltip;
+                let scenarioSelect;
 
-            const FATIGUE_MORALE_PENALTY_PER_POINT = 0.5;
-            const MORALE_MODIFIER_MIN = 0.4;
-            const ARCHER_RANGE = 7; // Increased archer range for larger maps
-            const FLANKED_FLASH_INTERVAL = 150;
-            const IDLE_TURNS_FOR_FORCED_MOVE = 4;
-            const LEADERSHIP_RADIUS = 6; // Increased leadership radius for larger maps
-            const LEADERSHIP_MORALE_BOOST = 10;
-            const LEADERSHIP_FATIGUE_REDUCTION = 0.5;
-            const COMMANDER_LOSS_MORALE_SHOCK = 20;
-            const MORALE_GAIN_ON_ENEMY_BREAK = 5;
+                // Game parameters (constants)
+                const GRID_SIZE = 20;
+                const MAP_WIDTH_CELLS = 40;
+                const MAP_HEIGHT_CELLS = 30;
+                const MORALE_BREAK_THRESHOLD = 20;
+                const ANIMATION_DURATION = 300;
+                const AUTO_BATTLE_TURN_DELAY = 800;
+                const VERSION_NUMBER = "v1.1";
 
-            // Game state variables - these will be reset by initGame()
-            let turn = 0;
-            let units = [];
-            let map = [];
-            let projectiles = [];
+                // Retreat Zone definitions
+                const ROMAN_RETREAT_X = MAP_WIDTH_CELLS - 1;
+                const GAUL_RETREAT_X = 0;
 
-            let currentHoveredUnit = null; // Global within IIFE for mouse interaction
-            let lastMouseX; // To store last mouse X for drawGame, initialized in DOMContentLoaded
-            let lastMouseY; // To store last mouse Y for drawGame, initialized in DOMContentLoaded
+                // Animation and game state flags
+                let animationStartTime;
+                let isAnimating = false;
+                let isAutoBattleActive = false;
+                let autoBattleIntervalId = null;
 
-            // Offscreen canvas for terrain textures - created once
-            const terrainTextureCanvas = document.createElement('canvas');
-            const terrainTextureCtx = terrainTextureCanvas.getContext('2d');
-            // Dimensions set in initGame after map size is finalized
-            
+                // Game balance constants
+                const FATIGUE_MORALE_PENALTY_PER_POINT = 0.5;
+                const MORALE_MODIFIER_MIN = 0.4;
+                const ARCHER_RANGE = 7;
+                const FLANKED_FLASH_INTERVAL = 150;
+                const IDLE_TURNS_FOR_FORCED_MOVE = 4;
+                const LEADERSHIP_RADIUS = 6;
+                const LEADERSHIP_MORALE_BOOST = 10;
+                const LEADERSHIP_FATIGUE_REDUCTION = 0.5;
+                const COMMANDER_LOSS_MORALE_SHOCK = 20;
+                const MORALE_GAIN_ON_ENEMY_BREAK = 5;
 
-            const TERRAIN_DATA = {
-                'plain': {
-                    color: '#8BC34A',
-                    movementCost: 1,
-                    defenseBonus: 0,
-                    fatigueCost: 0
-                },
-                'forest': {
-                    color: '#4CAF50',
-                    movementCost: 2,
-                    defenseBonus: 0.15,
-                    fatigueCost: 0.5
-                },
-                'hill': {
-                    color: '#A1887F',
-                    movementCost: 1.5,
-                    defenseBonus: 0.25,
-                    fatigueCost: 0.2
-                },
-                'water': {
-                    color: '#4169E1',
-                    movementCost: Infinity,
-                    defenseBonus: 0,
-                    fatigueCost: 0
-                }
-            };
+                // Game state variables - these will be reset by initGame()
+                let turn = 0;
+                let units = [];
+                let map = [];
+                let projectiles = [];
+                let currentHoveredUnit = null;
 
-            const MORALE_TIERS_DATA = {
-                'Steady': {
-                    minMorale: 70,
-                    color: '#28A745',
-                    attackPenalty: 0,
-                    defensePenalty: 0,
-                    movementPenalty: 0,
-                },
-                'Shaken': {
-                    minMorale: 40,
-                    color: '#FFC107',
-                    attackPenalty: 0.1,
-                    defensePenalty: 0.1,
-                    movementPenalty: 0,
-                },
-                'Wavering': {
-                    minMorale: 10,
-                    color: '#FD7E14',
-                    attackPenalty: 0.25,
-                    defensePenalty: 0.25,
-                    movementPenalty: 0.1,
-                },
-                'Routing': {
-                    minMorale: -Infinity,
-                    color: '#DC3545',
-                    attackPenalty: 0.5,
-                    defensePenalty: 0.5,
-                    movementPenalty: 0.5,
-                }
-            };
+                // Mouse position variables - managed by DOMContentLoaded listener
+                // Declared without 'let' or 'const' so they become global window properties
+                // and avoid redeclaration errors upon script re-execution by the environment.
+                window.lastMouseX = 0;
+                window.lastMouseY = 0;
+                window.lastTime = 0; // Initialized here, not re-declared.
 
-            // NEW: AI Behavior Data
-            const AI_BEHAVIOR_DATA = {
-                'aggressive': { // Prioritizes advancing and attacking
-                    movementModifier: 1.1, // Moves slightly faster
-                    attackModifier: 1.1,   // Attacks harder
-                    defenseModifier: 0.9,  // More vulnerable
-                    moraleModifier: 1,
-                    fatigueModifier: 1.1,  // Tires a bit faster
-                },
-                'defensive': { // Prioritizes holding ground and defense
-                    movementModifier: 0.9, // Moves slower
-                    attackModifier: 0.9,   // Attacks weaker
-                    defenseModifier: 1.2,  // Defends better
-                    moraleModifier: 1.1,   // Better morale retention
-                    fatigueModifier: 0.9,  // Less fatiguing
-                },
-                'skirmishing': { // Prioritizes mobility and ranged attacks
-                    movementModifier: 1.2, // Moves much faster
-                    attackModifier: 1,
-                    defenseModifier: 0.8,  // Worse defense
-                    moraleModifier: 1,
-                    fatigueModifier: 0.8,  // Less fatiguing
-                },
-                'routing': { // Unit is broken and fleeing
-                    movementModifier: 1.5, // Runs very fast
-                    attackModifier: 0.1,   // Barely fights
-                    defenseModifier: 0.1,  // No defense
-                    moraleModifier: 0.1,   // Very low morale
-                    fatigueModifier: 0.5,  // Less fatiguing (as they're not fighting)
-                }
-            };
 
-            const FORMATION_DATA = {
-                'default': {
-                    movementModifier: 1,
-                    attackModifier: 1,
-                    defenseModifier: 1,
-                    moraleModifier: 1,
-                    fatigueModifier: 1,
-                },
-                'tight_formation': {
-                    movementModifier: 0.8,
-                    attackModifier: 1.1,
-                    defenseModifier: 1.2,
-                    moraleModifier: 1.1,
-                    fatigueModifier: 1.2,
-                },
-                'loose_formation': {
-                    movementModifier: 1.2,
-                    attackModifier: 1,
-                    defenseModifier: 0.8,
-                    moraleModifier: 0.9,
-                    fatigueModifier: 0.9,
-                },
-                'charge_formation': {
-                    movementModifier: 1.1,
-                    attackModifier: 1.3,
-                    defenseModifier: 0.9,
-                    moraleModifier: 1.1,
-                    fatigueModifier: 1.5,
-                },
-                'shield_wall': {
-                    movementModifier: 0.7,
-                    attackModifier: 0.9,
-                    defenseBonus: 1.5, // Fixed typo: was defenseModifier
-                    moraleModifier: 1.2,
-                    fatigueModifier: 1.3,
-                }
-            };
+                // Offscreen canvas for terrain textures
+                const terrainTextureCanvas = document.createElement('canvas');
+                let terrainTextureCtx; // Declared with let, assigned in DOMContentLoaded
+                
+                // Dimensions set in initGame after map size is finalized
+                
 
-            const UNIT_TYPE_DATA = {
-                'infantry': {
-                    baseStrength: 100, baseMorale: 80, baseAttack: 10, baseDefense: 8, baseMovement: 2, identifier: 'I',
-                    defaultFormation: 'tight_formation',
-                    targetPreference: 'closest', // Default for infantry
-                    defaultBehavior: 'aggressive' // New: Default behavior
-                },
-                'cavalry': {
-                    baseStrength: 60, baseMorale: 90, baseAttack: 12, baseDefense: 6, baseMovement: 3, identifier: 'C',
-                    defaultFormation: 'charge_formation',
-                    targetPreference: 'ranged_units', // Cavalry targets archers first
-                    defaultBehavior: 'aggressive' // New: Default behavior
-                },
-                'chariot': {
-                    baseStrength: 70, baseMorale: 95, baseAttack: 15, baseDefense: 5, baseMovement: 4, identifier: 'T',
-                    defaultFormation: 'charge_formation',
-                    targetPreference: 'ranged_units', // Chariots target archers first
-                    defaultBehavior: 'aggressive' // New: Default behavior
-                },
-                'archer': {
-                    baseStrength: 50, baseMorale: 70, baseAttack: 7, baseDefense: 5, baseMovement: 2, identifier: 'A',
-                    defaultFormation: 'loose_formation',
-                    targetPreference: 'closest', // Archers target closest by default, or can be 'infantry' or 'weakest'
-                    defaultBehavior: 'skirmishing' // New: Default behavior
-                },
-                'skirmisher': {
-                    baseStrength: 45, baseMorale: 80, baseAttack: 6, baseDefense: 4, baseMovement: 3, identifier: 'S',
-                    defaultFormation: 'loose_formation',
-                    targetPreference: 'weakest', // Skirmishers pick off weakest foes
-                    defaultBehavior: 'skirmishing' // New: Default behavior
-                },
-                'commander': {
-                    baseStrength: 70, baseMorale: 100, baseAttack: 5, baseDefense: 10, baseMovement: 2, identifier: '★',
-                    defaultFormation: 'default',
-                    targetPreference: 'closest', // Commanders don't target aggressively
-                    defaultBehavior: 'defensive' // New: Default behavior
-                }
-            };
-
-            // NEW: Scenario Data encapsulated in a function to ensure it's always available
-            function getScenarioData() {
-                return {
-                    "Random Battle": {
-                        description: "Generates a random map with a balanced set of units.",
-                        mapSettings: null, // Indicates random generation
-                        romanUnits: null,   // Indicates default unit placement
-                        gaulUnits: null,    // Indicates default unit placement
-                    },
-                    "Clash of Legions": {
-                        description: "Two large infantry forces meet head-on in an open field.",
-                        mapSettings: {
-                            numForestClumps: 0,
-                            numHillClumps: 0,
-                            numWaterClumps: 0,
-                        },
-                        romanUnits: [
-                            { type: 'infantry', count: 6, color: '#dc2626', spreadX: 0, spreadY: 2, startX: 5, startY: 10 },
-                            { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 3, startY: 14 },
-                            { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 5, startY: 15 },
-                        ],
-                        gaulUnits: [
-                            { type: 'infantry', count: 6, color: '#16a34a', spreadX: 0, spreadY: 2, startX: MAP_WIDTH_CELLS - 6, startY: 10 },
-                            { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 14 },
-                            { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 6, startY: 15 },
-                        ]
-                    },
-                    "Barbarian Ambush": {
-                        description: "Romans advance through a forest, ambushed by hidden Gauls.",
-                        mapSettings: {
-                            numForestClumps: 8, // More forest
-                            numHillClumps: 2,
-                            numWaterClumps: 0,
-                            spreadRadiusMax: 8, // Larger forest patches
-                            waterSpreadRadiusMax: 0,
-                        },
-                        romanUnits: [
-                            { type: 'infantry', count: 4, color: '#dc2626', spreadX: 0, spreadY: 1, startX: 5, startY: 10 },
-                            { type: 'archer', count: 2, color: '#00BFFF', spreadX: 0, spreadY: 0, startX: 3, startY: 12 },
-                            { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 4, startY: 15 },
-                        ],
-                        gaulUnits: [
-                            { type: 'infantry', count: 5, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 8, startY: 8 },
-                            { type: 'skirmisher', count: 3, color: '#FFD700', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 5, startY: 12 },
-                            { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 15 },
-                        ]
-                    },
-                    "River Crossing": {
-                        description: "Forces clash over a central river.",
-                        mapSettings: {
-                            numForestClumps: 0,
-                            numHillClumps: 0,
-                            numWaterClumps: 1, // Single large water body
-                            waterSpreadRadiusMax: 7,
-                        },
-                        romanUnits: [
-                            { type: 'infantry', count: 4, color: '#dc2626', spreadX: 1, spreadY: 1, startX: 5, startY: 5 },
-                            { type: 'archer', count: 2, color: '#00BFFF', spreadX: 0, spreadY: 0, startX: 7, startY: 3 },
-                            { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 4, startY: 8 },
-                            { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 6, startY: 6 },
-                        ],
-                        gaulUnits: [
-                            { type: 'infantry', count: 4, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 6, startY: MAP_HEIGHT_CELLS - 5 },
-                            { type: 'skirmisher', count: 2, color: '#FFD700', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 8, startY: MAP_HEIGHT_CELLS - 3 },
-                            { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 5, startY: MAP_HEIGHT_CELLS - 8 },
-                            { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 7, startY: MAP_HEIGHT_CELLS - 6 },
-                        ]
-                    }
+                const TERRAIN_DATA = {
+                    'plain': { color: '#8BC34A', movementCost: 1, defenseBonus: 0, fatigueCost: 0 },
+                    'forest': { color: '#4CAF50', movementCost: 2, defenseBonus: 0.15, fatigueCost: 0.5 },
+                    'hill': { color: '#A1887F', movementCost: 1.5, defenseBonus: 0.25, fatigueCost: 0.2 },
+                    'water': { color: '#4169E1', movementCost: Infinity, defenseBonus: 0, fatigueCost: 0 }
                 };
-            }
 
+                const MORALE_TIERS_DATA = {
+                    'Steady': { minMorale: 70, color: '#28A745', attackPenalty: 0, defensePenalty: 0, movementPenalty: 0 },
+                    'Shaken': { minMorale: 40, color: '#FFC107', attackPenalty: 0.1, defensePenalty: 0.1, movementPenalty: 0 },
+                    'Wavering': { minMorale: 10, color: '#FD7E14', attackPenalty: 0.25, defensePenalty: 0.25, movementPenalty: 0.1 },
+                    'Routing': { minMorale: -Infinity, color: '#DC3545', attackPenalty: 0.5, defensePenalty: 0.5, movementPenalty: 0.5 }
+                };
 
-            class Unit {
-                constructor(id, name, type, faction, x, y, color) {
-                    const typeData = UNIT_TYPE_DATA[type];
-                    if (!typeData) {
-                        console.error(`Unknown unit type: ${type}`);
-                        Object.assign(this, UNIT_TYPE_DATA['infantry']);
-                    } else {
-                        Object.assign(this, typeData);
-                    }
+                const AI_BEHAVIOR_DATA = {
+                    'aggressive': { movementModifier: 1.1, attackModifier: 1.1, defenseModifier: 0.9, moraleModifier: 1, fatigueModifier: 1.1 },
+                    'defensive': { movementModifier: 0.9, attackModifier: 0.9, defenseModifier: 1.2, moraleModifier: 1.1, fatigueModifier: 0.9 },
+                    'skirmishing': { movementModifier: 1.2, attackModifier: 1, defenseModifier: 0.8, moraleModifier: 1, fatigueModifier: 0.8 },
+                    'routing': { movementModifier: 1.5, attackModifier: 0.1, defenseModifier: 0.1, moraleModifier: 0.1, fatigueModifier: 0.5 }
+                };
 
-                    this.id = id;
-                    this.name = name;
-                    this.type = type;
-                    this.faction = faction;
-                    this.x = x;
-                    this.y = y;
-                    this.strength = this.baseStrength;
-                    this.maxStrength = this.baseStrength;
-                    this.morale = this.baseMorale;
-                    this.initialMorale = this.baseMorale;
-                    this.attack = this.baseAttack;
-                    this.defense = this.baseDefense;
-                    this.movementPoints = this.baseMovement;
-                    this.remainingMovement = this.baseMovement;
-                    this.color = color;
-                    this.broken = false;
-                    this.hasCharged = false;
-                    this.isFlashing = false;
-                    this.isFlankedStatus = false;
+                const FORMATION_DATA = {
+                    'default': { movementModifier: 1, attackModifier: 1, defenseModifier: 1, moraleModifier: 1, fatigueModifier: 1 },
+                    'tight_formation': { movementModifier: 0.8, attackModifier: 1.1, defenseModifier: 1.2, moraleModifier: 1.1, fatigueModifier: 1.2 },
+                    'loose_formation': { movementModifier: 1.2, attackModifier: 1, defenseModifier: 0.8, moraleModifier: 0.9, fatigueModifier: 0.9 },
+                    'charge_formation': { movementModifier: 1.1, attackModifier: 1.3, defenseModifier: 0.9, moraleModifier: 1.1, fatigueModifier: 1.5 },
+                    'shield_wall': { movementModifier: 0.7, attackModifier: 0.9, defenseBonus: 1.5, moraleModifier: 1.2, fatigueModifier: 1.3 }
+                };
 
-                    this.displayX = x;
-                    this.displayY = y;
-                    this.prevX = x;
-                    this.prevY = y;
-                    this.pathHistory = [];
+                const UNIT_TYPE_DATA = {
+                    'infantry': { baseStrength: 100, baseMorale: 80, baseAttack: 10, baseDefense: 8, baseMovement: 2, identifier: 'I', defaultFormation: 'tight_formation', targetPreference: 'closest', defaultBehavior: 'aggressive' },
+                    'cavalry': { baseStrength: 60, baseMorale: 90, baseAttack: 12, baseDefense: 6, baseMovement: 3, identifier: 'C', defaultFormation: 'charge_formation', targetPreference: 'ranged_units', defaultBehavior: 'aggressive' },
+                    'chariot': { baseStrength: 70, baseMorale: 95, baseAttack: 15, baseDefense: 5, baseMovement: 4, identifier: 'T', defaultFormation: 'charge_formation', targetPreference: 'ranged_units', defaultBehavior: 'aggressive' },
+                    'archer': { baseStrength: 50, baseMorale: 70, baseAttack: 7, baseDefense: 5, baseMovement: 2, identifier: 'A', defaultFormation: 'loose_formation', targetPreference: 'closest', defaultBehavior: 'skirmishing' },
+                    'skirmisher': { baseStrength: 45, baseMorale: 80, baseAttack: 6, baseDefense: 4, baseMovement: 3, identifier: 'S', defaultFormation: 'loose_formation', targetPreference: 'weakest', defaultBehavior: 'skirmishing' },
+                    'commander': { baseStrength: 70, baseMorale: 100, baseAttack: 5, baseDefense: 10, baseMovement: 2, identifier: '★', defaultFormation: 'default', targetPreference: 'closest', defaultBehavior: 'defensive' }
+                };
 
-                    this.fatigue = 0;
-                    this.idleTurns = 0;
-
-                    this.hasCommanderAura = false;
-                    this.appliedCommanderBuff = false;
-
-                    this.currentFormation = this.defaultFormation;
-                    this.targetPreference = typeData.targetPreference; // Assign target preference
-                    this.currentBehavior = typeData.defaultBehavior; // New: Assign default behavior
+                // NEW: Scenario Data encapsulated in a function to ensure it's always available
+                function getScenarioData() {
+                    return {
+                        "Random Battle": {
+                            description: "Generates a random map with a balanced set of units.",
+                            mapSettings: null,
+                            romanUnits: null,
+                            gaulUnits: null,
+                        },
+                        "Clash of Legions": {
+                            description: "Two large infantry forces meet head-on in an open field.",
+                            mapSettings: { numForestClumps: 0, numHillClumps: 0, numWaterClumps: 0 },
+                            romanUnits: [
+                                { type: 'infantry', count: 6, color: '#dc2626', spreadX: 0, spreadY: 2, startX: 5, startY: 10 },
+                                { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 3, startX: 14 }, // Removed incorrect 'startX' duplicate
+                                { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 5, startY: 15 },
+                            ],
+                            gaulUnits: [
+                                { type: 'infantry', count: 6, color: '#16a34a', spreadX: 0, spreadY: 2, startX: MAP_WIDTH_CELLS - 6, startY: 10 },
+                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 14 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 6, startY: 15 },
+                            ]
+                        },
+                        "Barbarian Ambush": {
+                            description: "Romans advance through a forest, ambushed by hidden Gauls.",
+                            mapSettings: { numForestClumps: 8, numHillClumps: 2, numWaterClumps: 0, spreadRadiusMax: 8, waterSpreadRadiusMax: 0 },
+                            romanUnits: [
+                                { type: 'infantry', count: 4, color: '#dc2626', spreadX: 0, spreadY: 1, startX: 5, startY: 10 },
+                                { type: 'archer', count: 2, color: '#00BFFF', spreadX: 0, spreadY: 0, startX: 3, startY: 12 },
+                                { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 4, startY: 15 },
+                            ],
+                            gaulUnits: [
+                                { type: 'infantry', count: 5, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 8, startY: 8 },
+                                { type: 'skirmisher', count: 3, color: '#FFD700', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 5, startY: 12 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 4, startY: 15 },
+                            ]
+                        },
+                        "River Crossing": {
+                            description: "Forces clash over a central river.",
+                            mapSettings: { numForestClumps: 0, numHillClumps: 0, numWaterClumps: 1, waterSpreadRadiusMax: 7 },
+                            romanUnits: [
+                                { type: 'infantry', count: 4, color: '#dc2626', spreadX: 1, spreadY: 1, startX: 5, startY: 5 },
+                                { type: 'archer', count: 2, color: '#00BFFF', spreadX: 0, spreadY: 0, startX: 7, startY: 3 },
+                                { type: 'cavalry', count: 1, color: '#b91c1c', spreadX: 0, spreadY: 0, startX: 4, startY: 8 },
+                                { type: 'commander', count: 1, color: '#800080', spreadX: 0, spreadY: 0, startX: 6, startY: 6 },
+                            ],
+                            gaulUnits: [
+                                { type: 'infantry', count: 4, color: '#16a34a', spreadX: 1, spreadY: 1, startX: MAP_WIDTH_CELLS - 6, startY: MAP_HEIGHT_CELLS - 5 },
+                                { type: 'skirmisher', count: 2, color: '#FFD700', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 8, startY: MAP_HEIGHT_CELLS - 3 },
+                                { type: 'chariot', count: 1, color: '#047857', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 5, startY: MAP_HEIGHT_CELLS - 8 },
+                                { type: 'commander', count: 1, color: '#B22222', spreadX: 0, spreadY: 0, startX: MAP_WIDTH_CELLS - 7, startY: MAP_HEIGHT_CELLS - 6 },
+                            ]
+                        }
+                    };
                 }
 
-                getMoraleState() {
-                    const currentMorale = Math.max(0, this.morale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
 
-                    if (currentMorale >= MORALE_TIERS_DATA.Steady.minMorale) {
-                        return MORALE_TIERS_DATA.Steady;
-                    } else if (currentMorale >= MORALE_TIERS_DATA.Shaken.minMorale) {
-                        return MORALE_TIERS_DATA.Shaken;
-                    } else if (currentMorale >= MORALE_TIERS_DATA.Wavering.minMorale) {
-                        return MORALE_TIERS_DATA.Wavering;
-                    } else {
+                class Unit {
+                    constructor(id, name, type, faction, x, y, color) {
+                        const typeData = UNIT_TYPE_DATA[type];
+                        if (!typeData) {
+                            console.error(`Unknown unit type: ${type}`);
+                            Object.assign(this, UNIT_TYPE_DATA['infantry']);
+                        } else {
+                            Object.assign(this, typeData);
+                        }
+
+                        this.id = id;
+                        this.name = name;
+                        this.type = type;
+                        this.faction = faction;
+                        this.x = x;
+                        this.y = y;
+                        this.strength = this.baseStrength;
+                        this.maxStrength = this.baseStrength;
+                        this.morale = this.baseMorale;
+                        this.initialMorale = this.baseMorale;
+                        this.attack = this.baseAttack;
+                        this.defense = this.baseDefense;
+                        this.movementPoints = this.baseMovement;
+                        this.remainingMovement = this.baseMovement;
+                        this.color = color;
+                        this.broken = false;
+                        this.hasCharged = false;
+                        this.isFlashing = false;
+                        this.isFlankedStatus = false;
+
+                        this.displayX = x;
+                        this.displayY = y;
+                        this.prevX = x;
+                        this.prevY = y;
+                        this.pathHistory = [];
+
+                        this.fatigue = 0;
+                        this.idleTurns = 0;
+
+                        this.hasCommanderAura = false;
+                        this.appliedCommanderBuff = false;
+
+                        this.currentFormation = this.defaultFormation;
+                        this.targetPreference = typeData.targetPreference;
+                        this.currentBehavior = typeData.type === 'commander' ? 'defensive' : (typeData.defaultBehavior || 'aggressive');
+                    }
+
+                    getMoraleState() {
+                        const currentMorale = Math.max(0, this.morale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
+                        if (currentMorale >= MORALE_TIERS_DATA.Steady.minMorale) return MORALE_TIERS_DATA.Steady;
+                        if (currentMorale >= MORALE_TIERS_DATA.Shaken.minMorale) return MORALE_TIERS_DATA.Shaken;
+                        if (currentMorale >= MORALE_TIERS_DATA.Wavering.minMorale) return MORALE_TIERS_DATA.Wavering;
                         return MORALE_TIERS_DATA.Routing;
                     }
-                }
 
-                getEffectiveAttack() {
-                    let currentMorale = this.morale;
-                    if (this.type !== 'commander' && this.appliedCommanderBuff) {
-                        currentMorale += LEADERSHIP_MORALE_BOOST;
-                    }
-                    currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
-                    const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
-
-                    const formationAttackModifier = FORMATION_DATA[this.currentFormation].attackModifier;
-                    const moraleStatePenalty = this.getMoraleState().attackPenalty;
-                    // NEW: Apply behavior attack modifier
-                    const behaviorAttackModifier = AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
-
-                    return this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
-                }
-
-                getEffectiveDefense() {
-                    let currentMorale = this.morale;
-                    if (this.type !== 'commander' && this.appliedCommanderBuff) {
-                        currentMorale += LEADERSHIP_MORALE_BOOST;
-                    }
-                    currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
-                    const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
-                    const terrain = getTerrainAt(this.x, this.y);
-                    const terrainDefenseBonus = TERRAIN_DATA[terrain].defenseBonus;
-
-                    const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
-                    const moraleStatePenalty = this.getMoraleState().defensePenalty;
-                    // NEW: Apply behavior defense modifier
-                    const behaviorDefenseModifier = AI_BEHAVIOR_DATA[this.currentBehavior].defenseModifier;
-
-                    return this.defense * moraleModifier * (1 + terrainDefenseBonus) * formationDefenseModifier * (1 - moraleStatePenalty) * behaviorDefenseModifier;
-                }
-
-                takeDamage(damageAmount) {
-                    if (this.broken) return;
-
-                    this.strength -= damageAmount;
-                    if (this.strength < 0) {
-                        this.strength = 0;
-                    }
-                    this.checkMorale(damageAmount);
-
-                    this.isFlashing = true;
-                    setTimeout(() => {
-                        this.isFlashing = false;
-                    }, 100);
-                }
-
-                checkMorale(damageAmount) {
-                    if (this.broken) return;
-
-                    const strengthLossPercentage = damageAmount / this.maxStrength;
-                    // Reduced multiplier to make morale more resilient against high damage
-                    let moraleLoss = strengthLossPercentage * this.initialMorale * 0.15; // Adjusted from 0.7 to 0.15
-
-                    if (strengthLossPercentage > 0.2) {
-                        moraleLoss += this.initialMorale * 0.05; // Smaller additional penalty for high single hit
+                    getEffectiveAttack() {
+                        let currentMorale = this.morale;
+                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
+                        currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
+                        const formationAttackModifier = FORMATION_DATA[this.currentFormation].attackModifier;
+                        const moraleStatePenalty = this.getMoraleState().attackPenalty;
+                        const behaviorAttackModifier = AI_BEHAVIOR_DATA[this.currentBehavior].attackModifier;
+                        return this.attack * moraleModifier * formationAttackModifier * (1 - moraleStatePenalty) * behaviorAttackModifier;
                     }
 
-                    this.morale -= moraleLoss;
-
-                    if (this.morale <= MORALE_BREAK_THRESHOLD) {
-                        this.broken = true;
-                        this.morale = 0;
-                        logBattleMessage(`${this.name} (${this.faction}) has broken and is routing!`);
-                    }
-                }
-
-                moveTo(targetX, targetY) {
-                    if (this.broken || this.remainingMovement <= 0) return false;
-
-                    const currentGridX = this.x;
-                    const currentGridY = this.y;
-
-                    let nextGridX = currentGridX;
-                    let nextGridY = currentGridY;
-
-                    const dx = targetX - currentGridX;
-                    const dy = targetY - currentGridY;
-
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        nextGridX += Math.sign(dx);
-                    } else if (Math.abs(dy) > Math.abs(dx)) {
-                        nextGridY += Math.sign(dy);
-                    } else if (dx !== 0) {
-                        nextGridX += Math.sign(dx);
-                    } else if (dy !== 0) {
-                        nextGridY += Math.sign(dy);
-                    } else {
-                        return false;
+                    getEffectiveDefense() {
+                        let currentMorale = this.morale;
+                        if (this.type !== 'commander' && this.appliedCommanderBuff) currentMorale += LEADERSHIP_MORALE_BOOST;
+                        currentMorale = Math.max(0, currentMorale - (this.fatigue * FATIGUE_MORALE_PENALTY_PER_POINT));
+                        const moraleModifier = (currentMorale / 100) * (1 - MORALE_MODIFIER_MIN) + MORALE_MODIFIER_MIN;
+                        const terrain = window.battleSim.getTerrainAt(this.x, this.y); // Use window.battleSim.getTerrainAt
+                        const terrainDefenseBonus = TERRAIN_DATA[terrain].defenseBonus;
+                        const formationDefenseModifier = FORMATION_DATA[this.currentFormation].defenseModifier;
+                        const moraleStatePenalty = this.getMoraleState().defensePenalty;
+                        const behaviorDefenseModifier = AI_BEHAVIOR_DATA[this.currentBehavior].defenseModifier;
+                        return this.defense * moraleModifier * (1 + terrainDefenseBonus) * formationDefenseModifier * (1 - moraleStatePenalty) * behaviorDefenseModifier;
                     }
 
-                    if (nextGridX < 0 || nextGridX >= MAP_WIDTH_CELLS || nextGridY < 0 || nextGridY >= MAP_HEIGHT_CELLS) {
-                        return false;
+                    takeDamage(damageAmount) {
+                        if (this.broken) return;
+                        this.strength -= damageAmount;
+                        if (this.strength < 0) this.strength = 0;
+                        this.checkMorale(damageAmount);
+                        this.isFlashing = true;
+                        setTimeout(() => { this.isFlashing = false; }, 100);
                     }
 
-                    const terrainType = getTerrainAt(nextGridX, nextGridY);
-                    let moveCost = TERRAIN_DATA[terrainType].movementCost;
-
-                    if (!FORMATION_DATA[this.currentFormation]) {
-                        console.error(`Formation data missing for: ${this.currentFormation}`);
-                        return false;
+                    checkMorale(damageAmount) {
+                        if (this.broken) return;
+                        const strengthLossPercentage = damageAmount / this.maxStrength;
+                        let moraleLoss = strengthLossPercentage * this.initialMorale * 0.15;
+                        if (strengthLossPercentage > 0.2) moraleLoss += this.initialMorale * 0.05;
+                        this.morale -= moraleLoss;
+                        if (this.morale <= MORALE_BREAK_THRESHOLD) {
+                            this.broken = true;
+                            this.morale = 0;
+                            window.battleSim.logBattleMessage(`${this.name} (${this.faction}) has broken and is routing!`);
+                        }
                     }
 
-                    moveCost *= FORMATION_DATA[this.currentFormation].movementModifier;
-                    moveCost *= (1 + this.getMoraleState().movementPenalty);
-                    // NEW: Apply behavior movement modifier
-                    moveCost *= AI_BEHAVIOR_DATA[this.currentBehavior].movementModifier;
+                    moveTo(targetX, targetY) {
+                        if (this.broken || this.remainingMovement <= 0) return false;
+                        const currentGridX = this.x;
+                        const currentGridY = this.y;
+                        let nextGridX = currentGridX;
+                        let nextGridY = currentGridY;
 
+                        const dx = targetX - currentGridX;
+                        const dy = targetY - currentGridY;
 
-                    if (moveCost === Infinity || this.remainingMovement < moveCost) {
-                        return false;
+                        if (Math.abs(dx) > Math.abs(dy)) {
+                            nextGridX += Math.sign(dx);
+                        } else if (Math.abs(dy) > Math.abs(dx)) {
+                            nextGridY += Math.sign(dy);
+                        } else if (dx !== 0) {
+                            nextGridX += Math.sign(dx);
+                        } else if (dy !== 0) {
+                            nextGridY += Math.sign(dy);
+                        } else {
+                            return false;
+                        }
+
+                        if (nextGridX < 0 || nextGridX >= MAP_WIDTH_CELLS || nextGridY < 0 || nextGridY >= MAP_HEIGHT_CELLS) return false;
+
+                        const terrainType = window.battleSim.getTerrainAt(nextGridX, nextGridY); // Use window.battleSim.getTerrainAt
+                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
+                        if (!FORMATION_DATA[this.currentFormation]) {
+                            console.error(`Formation data missing for: ${this.currentFormation}`);
+                            return false;
+                        }
+                        moveCost *= FORMATION_DATA[this.currentFormation].movementModifier;
+                        moveCost *= (1 + this.getMoraleState().movementPenalty);
+                        moveCost *= AI_BEHAVIOR_DATA[this.currentBehavior].movementModifier;
+
+                        if (moveCost === Infinity || this.remainingMovement < moveCost) return false;
+
+                        const isOccupied = units.some(unit => unit.x === nextGridX && unit.y === nextGridY && unit.strength > 0 && unit.id !== this.id);
+                        if (isOccupied) return false;
+
+                        this.pathHistory.push({ x: this.x, y: this.y });
+                        this.x = nextGridX;
+                        this.y = nextGridY;
+                        this.remainingMovement -= moveCost;
+                        this.fatigue += TERRAIN_DATA[terrainType].fatigueCost * FORMATION_DATA[this.currentFormation].fatigueModifier * AI_BEHAVIOR_DATA[this.currentBehavior].fatigueModifier;
+                        return true;
                     }
 
-                    const occupied = units.some(unit => unit.x === nextGridX && unit.y === nextGridY && unit.strength > 0 && unit.id !== this.id);
-                    if (occupied) {
-                        return false;
+                    resetTurnStatus() {
+                        this.remainingMovement = this.movementPoints;
+                        this.hasCharged = false;
+                        this.isFlankedStatus = false;
+                        this.prevX = this.x;
+                        this.prevY = this.y;
+                        this.pathHistory = [];
+                        this.appliedCommanderBuff = false;
                     }
 
-                    this.pathHistory.push({ x: this.x, y: this.y });
-                    this.x = nextGridX;
-                    this.y = nextGridY;
-                    this.remainingMovement -= moveCost;
-                    this.fatigue += TERRAIN_DATA[terrainType].fatigueCost * FORMATION_DATA[this.currentFormation].fatigueModifier * AI_BEHAVIOR_DATA[this.currentBehavior].fatigueModifier; // NEW: Apply behavior fatigue modifier
-
-                    return true;
+                    getTypeIdentifier() { return UNIT_TYPE_DATA[this.type].identifier; }
                 }
 
-                resetTurnStatus() {
-                    this.remainingMovement = this.movementPoints;
-                    this.hasCharged = false;
-                    this.isFlankedStatus = false;
-                    this.prevX = this.x;
-                    this.prevY = this.y;
-                    this.pathHistory = [];
-                    this.appliedCommanderBuff = false;
-                }
-
-                getTypeIdentifier() {
-                    return UNIT_TYPE_DATA[this.type].identifier;
-                }
-            }
-
-            class Projectile {
-                constructor(startX, startY, targetX, targetY, color) {
-                    this.startX = startX;
-                    this.startY = startY;
-                    this.targetX = targetX;
-                    this.targetY = targetY;
-                    this.color = color;
-                    this.birthTime = performance.now();
-                    this.lifeTime = 200;
-                }
-
-                isAlive(currentTime) {
-                    return (currentTime - this.birthTime) < this.lifeTime;
-                }
-            }
-
-            function logBattleMessage(message) {
-                const p = document.createElement('p');
-                p.textContent = `Turn ${turn}: ${message}`;
-                logArea.appendChild(p);
-                logArea.scrollTop = logArea.scrollHeight;
-            }
-
-            function getTerrainAt(x, y) {
-                if (x < 0 || x >= MAP_WIDTH_CELLS || y < 0 || y >= MAP_HEIGHT_CELLS) {
-                    return 'plain';
-                }
-                return map[y][x];
-            }
-
-            function isFlanked(unit) {
-                let adjacentEnemies = 0;
-                const dx = [-1, 0, 1, -1, 1, -1, 0, 1];
-                const dy = [-1, -1, -1, 0, 0, 1, 1, 1];
-
-                for (let i = 0; i < dx.length; i++) {
-                    const checkX = unit.x + dx[i];
-                    const checkY = unit.y + dy[i];
-
-                    const enemyAtPos = units.find(
-                        enemy => enemy.x === checkX && enemy.y === checkY &&
-                                 enemy.faction !== unit.faction && enemy.strength > 0 && !unit.broken
-                    );
-                    if (enemyAtPos) {
-                        adjacentEnemies++;
+                class Projectile {
+                    constructor(startX, startY, targetX, targetY, color) {
+                        this.startX = startX;
+                        this.startY = startY;
+                        this.targetX = targetX;
+                        this.targetY = targetY;
+                        this.color = color;
+                        this.birthTime = performance.now();
+                        this.lifeTime = 200;
                     }
+                    isAlive(currentTime) { return (currentTime - this.birthTime) < this.lifeTime; }
                 }
-                return adjacentEnemies >= 2;
-            }
 
-            /**
-             * Draws the static texture for a single terrain tile onto an offscreen context.
-             * @param {CanvasRenderingContext2D} ctx - The offscreen canvas context.
-             * @param {string} terrainType - The type of terrain.
-             * @param {number} x - Grid X coordinate of the tile.
-             * @param {number} y - Grid Y coordinate of the tile.
-             */
-            function drawTerrainTexture(ctx, terrainType, x, y) {
-                const pixelX = x * GRID_SIZE;
-                const pixelY = y * GRID_SIZE;
-                const tileColor = TERRAIN_DATA[terrainType].color;
-
-                ctx.fillStyle = tileColor;
-                ctx.fillRect(pixelX, pixelY, GRID_SIZE, GRID_SIZE);
-
-                const hexToRgbA = (hex, alpha) => {
-                    const r = parseInt(hex.slice(1, 3), 16);
-                    const g = parseInt(hex.slice(3, 5), 16);
-                    const b = parseInt(hex.slice(5, 7), 16);
-                    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                // Attach core game functions to window.battleSim
+                window.battleSim.logBattleMessage = function(message) {
+                    const p = document.createElement('p');
+                    p.textContent = `Turn ${turn}: ${message}`;
+                    logArea.appendChild(p);
+                    logArea.scrollTop = logArea.scrollHeight;
                 };
 
-                if (terrainType === 'forest') {
-                    const forestColor = 'rgba(0, 50, 0, 0.4)';
-                    for (let i = 0; i < 3; i++) {
-                        const rx = pixelX + Math.random() * GRID_SIZE;
-                        const ry = pixelY + Math.random() * GRID_SIZE;
-                        const rSize = 1 + Math.random() * 2;
-                        ctx.fillStyle = forestColor;
-                        ctx.beginPath();
-                        ctx.arc(rx, ry, rSize, 0, Math.PI * 2);
-                        ctx.fill();
+                window.battleSim.getTerrainAt = function(x, y) {
+                    if (x < 0 || x >= MAP_WIDTH_CELLS || y < 0 || y >= MAP_HEIGHT_CELLS) return 'plain';
+                    return map[y][x];
+                };
+
+                window.battleSim.isFlanked = function(unit) {
+                    let adjacentEnemies = 0;
+                    const dx = [-1, 0, 1, -1, 1, -1, 0, 1];
+                    const dy = [0, 0, -1, 1, -1, 1, -1, 1];
+                    for (let i = 0; i < dx.length; i++) {
+                        const checkX = unit.x + dx[i];
+                        const checkY = unit.y + dy[i];
+                        const enemyAtPos = units.find(enemy => enemy.x === checkX && enemy.y === checkY && enemy.faction !== unit.faction && enemy.strength > 0 && !unit.broken);
+                        if (enemyAtPos) adjacentEnemies++;
                     }
-                } else if (terrainType === 'hill') {
-                    const hillBaseColor = TERRAIN_DATA[terrainType].color;
-                    const hillDarkerColor = hexToRgbA(hillBaseColor, 0.6);
-                    const hillLightestColor = hexToRgbA(hillBaseColor, 0.3);
+                    return adjacentEnemies >= 2;
+                };
 
-                    const centerX = pixelX + GRID_SIZE / 2;
-                    const centerY = pixelY + GRID_SIZE / 2;
-                    const radius = GRID_SIZE * 0.9;
-
-                    const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.1, centerX, centerY, radius);
-                    gradient.addColorStop(0, hillLightestColor);
-                    gradient.addColorStop(1, hillDarkerColor);
-                    ctx.fillStyle = gradient;
+                window.battleSim.drawTerrainTexture = function(ctx, terrainType, x, y) {
+                    const pixelX = x * GRID_SIZE;
+                    const pixelY = y * GRID_SIZE;
+                    const tileColor = TERRAIN_DATA[terrainType].color;
+                    ctx.fillStyle = tileColor;
                     ctx.fillRect(pixelX, pixelY, GRID_SIZE, GRID_SIZE);
 
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
-                    for (let i = 0; i < 1; i++) {
-                        const rx = pixelX + Math.random() * GRID_SIZE;
-                        const ry = pixelY + Math.random() * GRID_SIZE;
-                        const rSize = 0.5 + Math.random() * 0.5;
-                        ctx.beginPath();
-                        ctx.arc(rx, ry, rSize, 0, Math.PI * 2);
-                        ctx.fill();
+                    const hexToRgbA = (hex, alpha) => {
+                        const r = parseInt(hex.slice(1, 3), 16);
+                        const g = parseInt(hex.slice(3, 5), 16);
+                        const b = parseInt(hex.slice(5, 7), 16);
+                        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    };
+
+                    if (terrainType === 'forest') {
+                        const forestColor = 'rgba(0, 50, 0, 0.4)';
+                        for (let i = 0; i < 3; i++) {
+                            const rx = pixelX + Math.random() * GRID_SIZE;
+                            const ry = pixelY + Math.random() * GRID_SIZE;
+                            const rSize = 1 + Math.random() * 2;
+                            ctx.fillStyle = forestColor;
+                            ctx.beginPath();
+                            ctx.arc(rx, ry, rSize, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    } else if (terrainType === 'hill') {
+                        const hillBaseColor = TERRAIN_DATA[terrainType].color;
+                        const hillDarkerColor = hexToRgbA(hillBaseColor, 0.6);
+                        const hillLightestColor = hexToRgbA(hillBaseColor, 0.3);
+                        const centerX = pixelX + GRID_SIZE / 2;
+                        const centerY = pixelY + GRID_SIZE / 2;
+                        const radius = GRID_SIZE * 0.9;
+                        const gradient = ctx.createRadialGradient(centerX, centerY, radius * 0.1, centerX, centerY, radius);
+                        gradient.addColorStop(0, hillLightestColor);
+                        gradient.addColorStop(1, hillDarkerColor);
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(pixelX, pixelY, GRID_SIZE, GRID_SIZE);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
+                        for (let i = 0; i < 1; i++) {
+                            const rx = pixelX + Math.random() * GRID_SIZE;
+                            const ry = pixelY + Math.random() * GRID_SIZE;
+                            const rSize = 0.5 + Math.random() * 0.5;
+                            ctx.beginPath();
+                            ctx.arc(rx, ry, rSize, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    } else if (terrainType === 'water') {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.lineWidth = 0.5;
+                        for (let i = 0; i < 3; i++) {
+                            ctx.beginPath();
+                            const startY = pixelY + (i + 1) * (GRID_SIZE / 4);
+                            ctx.moveTo(pixelX, startY);
+                            ctx.bezierCurveTo(
+                                pixelX + GRID_SIZE / 3, startY + (i % 2 === 0 ? 3 : -3),
+                                pixelX + GRID_SIZE * 2 / 3, startY + (i % 2 === 0 ? -3 : 3),
+                                pixelX + GRID_SIZE, startY
+                            );
+                            ctx.stroke();
+                        }
                     }
-                } else if (terrainType === 'water') {
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.lineWidth = 0.5;
-                    for (let i = 0; i < 3; i++) {
-                        ctx.beginPath();
-                        const startY = pixelY + (i + 1) * (GRID_SIZE / 4);
-                        ctx.moveTo(pixelX, startY);
-                        ctx.bezierCurveTo(
-                            pixelX + GRID_SIZE / 3, startY + (i % 2 === 0 ? 3 : -3),
-                            pixelX + GRID_SIZE * 2 / 3, startY + (i % 2 === 0 ? -3 : 3),
-                            pixelX + GRID_SIZE, startY
-                        );
-                        ctx.stroke();
-                    }
-                }
-            }
-
-            /**
-             * Initializes the game state, units, and map based on a selected scenario.
-             * If no scenarioName is provided, it generates a default random battle.
-             * @param {string|null} scenarioName - The name of the scenario to load from SCENARIO_DATA.
-             */
-            function initGame(scenarioName = null) {
-                turn = 0;
-                units = [];
-                map = [];
-                projectiles = [];
-
-                stopAutoBattle(); // Ensure auto-battle is stopped on init/restart
-
-                // Reset button states and visibility
-                nextTurnButton.textContent = 'Begin!';
-                nextTurnButton.disabled = false;
-                nextTurnButton.style.display = 'block';
-                autoBattleButton.textContent = 'Auto Battle';
-                autoBattleButton.disabled = false;
-                autoBattleButton.style.display = 'block';
-                restartButton.style.display = 'none';
-
-                logArea.innerHTML = '<p class="text-gray-700">Battle Log:</p>';
-
-                // Get scenario data. Encapsulated in a function to ensure it's defined when called.
-                const SCENARIO_DATA_LOCAL = getScenarioData(); 
-                let currentScenario = SCENARIO_DATA_LOCAL[scenarioName];
-                if (!currentScenario) {
-                    console.warn(`Scenario "${scenarioName}" not found. Loading Random Battle.`);
-                    currentScenario = SCENARIO_DATA_LOCAL["Random Battle"];
-                }
-
-                // --- Map Generation ---
-                // Always initialize with plain
-                for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                    map[y] = [];
-                    for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
-                        map[y][x] = 'plain';
-                    }
-                }
-
-                // Apply scenario-specific map settings or use defaults
-                const mapSettings = currentScenario.mapSettings || {
-                    numForestClumps: 4,
-                    numHillClumps: 3,
-                    numWaterClumps: 2,
-                    spreadRadiusMax: 6,
-                    waterSpreadRadiusMax: 3,
                 };
 
-                const SPREAD_PROBABILITY_DECAY = 0.2;
+                window.battleSim.initGame = function(scenarioName = null) {
+                    turn = 0;
+                    units = [];
+                    projectiles = [];
+                    map = []; // Ensure map is cleared on init
 
-                function isInDeploymentZone(x, y) {
-                    const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
-                    return x < deploymentWidth || x >= MAP_WIDTH_CELLS - deploymentWidth;
-                }
+                    window.battleSim.stopAutoBattle();
 
-                function spreadTerrain(terrainType, numClumps, maxRadius) {
-                    for (let i = 0; i < numClumps; i++) {
-                        let startX, startY;
-                        do {
-                            startX = Math.floor(Math.random() * MAP_WIDTH_CELLS);
-                            startY = Math.floor(Math.random() * MAP_HEIGHT_CELLS);
-                        } while (isInDeploymentZone(startX, startY));
+                    nextTurnButton.textContent = 'Begin!';
+                    nextTurnButton.disabled = false;
+                    nextTurnButton.style.display = 'block';
+                    autoBattleButton.textContent = 'Auto Battle';
+                    autoBattleButton.disabled = false;
+                    autoBattleButton.style.display = 'block';
+                    restartButton.style.display = 'none';
 
-                        for (let dy = -maxRadius; dy <= maxRadius; dy++) {
-                            for (let dx = -maxRadius; dx <= maxRadius; dx++) {
-                                const currentX = startX + dx;
-                                const currentY = startY + dy;
+                    logArea.innerHTML = '<p class="text-gray-700">Battle Log:</p>';
 
-                                if (currentX >= 0 && currentX < MAP_WIDTH_CELLS &&
-                                    currentY >= 0 && currentY < MAP_HEIGHT_CELLS &&
-                                    !isInDeploymentZone(currentX, currentY)) {
+                    const SCENARIO_DATA_LOCAL = getScenarioData();
+                    let currentScenario = SCENARIO_DATA_LOCAL[scenarioName];
+                    if (!currentScenario) {
+                        console.warn(`Scenario "${scenarioName}" not found. Loading Random Battle.`);
+                        currentScenario = SCENARIO_DATA_LOCAL["Random Battle"];
+                    }
 
-                                    const distance = Math.sqrt(dx * dx + dy * dy);
-                                    if (distance <= maxRadius) {
-                                        const probability = 1 - (distance / maxRadius) * SPREAD_PROBABILITY_DECAY;
-                                        if (Math.random() < probability) {
-                                            map[currentY][currentX] = terrainType;
+                    // Map Generation
+                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                        map[y] = [];
+                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                            map[y][x] = 'plain';
+                        }
+                    }
+
+                    const mapSettings = currentScenario.mapSettings || {
+                        numForestClumps: 4, numHillClumps: 3, numWaterClumps: 2,
+                        spreadRadiusMax: 6, waterSpreadRadiusMax: 3
+                    };
+
+                    const SPREAD_PROBABILITY_DECAY = 0.2;
+                    const isInDeploymentZone = (x, y) => {
+                        const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
+                        return x < deploymentWidth || x >= MAP_WIDTH_CELLS - deploymentWidth;
+                    };
+                    const spreadTerrain = (terrainType, numClumps, maxRadius) => {
+                        for (let i = 0; i < numClumps; i++) {
+                            let startX, startY;
+                            do {
+                                startX = Math.floor(Math.random() * MAP_WIDTH_CELLS);
+                                startY = Math.floor(Math.random() * MAP_HEIGHT_CELLS);
+                            } while (isInDeploymentZone(startX, startY));
+
+                            for (let dy = -maxRadius; dy <= maxRadius; dy++) {
+                                for (let dx = -maxRadius; dx <= maxRadius; dx++) {
+                                    const currentX = startX + dx;
+                                    const currentY = startY + dy;
+                                    if (currentX >= 0 && currentX < MAP_WIDTH_CELLS && currentY >= 0 && currentY < MAP_HEIGHT_CELLS && !isInDeploymentZone(currentX, currentY)) {
+                                        const distance = Math.sqrt(dx * dx + dy * dy);
+                                        if (distance <= maxRadius) {
+                                            const probability = 1 - (distance / maxRadius) * SPREAD_PROBABILITY_DECAY;
+                                            if (Math.random() < probability) map[currentY][currentX] = terrainType;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    spreadTerrain('forest', mapSettings.numForestClumps, mapSettings.spreadRadiusMax);
+                    spreadTerrain('hill', mapSettings.numHillClumps, mapSettings.spreadRadiusMax);
+                    spreadTerrain('water', mapSettings.numWaterClumps, mapSettings.waterSpreadRadiusMax);
+
+                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                        const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
+                        for (let x = 0; x < deploymentWidth; x++) map[y][x] = 'plain';
+                        for (let x = MAP_WIDTH_CELLS - deploymentWidth; x < MAP_WIDTH_CELLS; x++) map[y][x] = 'plain';
+                    }
+
+                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                            window.battleSim.drawTerrainTexture(terrainTextureCtx, map[y][x], x, y);
+                        }
+                    }
+
+                    // Unit Placement
+                    if (currentScenario.romanUnits && currentScenario.gaulUnits) {
+                        currentScenario.romanUnits.forEach(unitDef => {
+                            for (let i = 0; i < unitDef.count; i++) {
+                                const x = unitDef.startX + (i % (unitDef.spreadX + 1));
+                                const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1));
+                                units.push(new Unit(`R${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Roman', x, y, unitDef.color));
+                            }
+                        });
+                        currentScenario.gaulUnits.forEach(unitDef => {
+                            for (let i = 0; i < unitDef.count; i++) {
+                                const x = unitDef.startX - (i % (unitDef.spreadX + 1));
+                                const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1));
+                                units.push(new Unit(`B${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Gaul', x, y, unitDef.color));
+                            }
+                        });
+                    } else {
+                        const romanStartX = Math.floor(MAP_WIDTH_CELLS / 8);
+                        const romanStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
+                        units.push(new Unit('R1', 'Legion I', 'infantry', 'Roman', romanStartX, romanStartYOffset, '#dc2626'));
+                        units.push(new Unit('R2', 'Legion II', 'infantry', 'Roman', romanStartX, romanStartYOffset + 2, '#dc2626'));
+                        units.push(new Unit('R3', 'Legion III', 'infantry', 'Roman', romanStartX + 1, romanStartYOffset - 1, '#dc2626'));
+                        units.push(new Unit('R4', 'Legion IV', 'infantry', 'Roman', romanStartX + 1, romanStartYOffset + 3, '#dc2626'));
+                        units.push(new Unit('R5', 'Auxiliary Cavalry 1', 'cavalry', 'Roman', romanStartX - 2, romanStartYOffset + 1, '#b91c1c'));
+                        units.push(new Unit('R6', 'Auxiliary Cavalry 2', 'cavalry', 'Roman', romanStartX + 3, romanStartYOffset + 1, '#b91c1c'));
+                        units.push(new Unit('R7', 'Roman Archers 1', 'archer', 'Roman', romanStartX -1, romanStartYOffset - 3, '#00BFFF'));
+                        units.push(new Unit('R8', 'Roman Archers 2', 'archer', 'Roman', romanStartX, romanStartYOffset + 5, '#00BFFF'));
+                        units.push(new Unit('R9', 'Roman General', 'commander', 'Roman', romanStartX -2, romanStartYOffset + 4, '#800080'));
+
+                        const barbarianStartX = MAP_WIDTH_CELLS - Math.floor(MAP_WIDTH_CELLS / 8) - 1;
+                        const barbarianStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
+                        units.push(new Unit('B1', 'Warband A', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset, '#16a34a'));
+                        units.push(new Unit('B2', 'Warband B', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset + 2, '#16a34a'));
+                        units.push(new Unit('B3', 'Warband C', 'infantry', 'Gaul', barbarianStartX - 1, barbarianStartYOffset - 1, '#16a34a'));
+                        units.push(new Unit('B4', 'Warband D', 'infantry', 'Gaul', barbarianStartX - 1, barbarianStartYOffset + 3, '#16a34a'));
+                        units.push(new Unit('B5', 'Barbarian Chariots 1', 'chariot', 'Gaul', barbarianStartX + 2, barbarianStartYOffset + 1, '#047857'));
+                        units.push(new Unit('B6', 'Barbarian Chariots 2', 'chariot', 'Gaul', barbarianStartX - 3, barbarianStartYOffset + 1, '#047857'));
+                        units.push(new Unit('B7', 'Barbarian Skirmishers 1', 'skirmisher', 'Gaul', barbarianStartX + 1, barbarianStartYOffset - 3, '#FFD700'));
+                        units.push(new Unit('B8', 'Barbarian Skirmishers 2', 'skirmisher', 'Gaul', barbarianStartX, barbarianStartYOffset + 5, '#FFD700'));
+                        units.push(new Unit('B9', 'Barbarian Chieftain', 'commander', 'Gaul', barbarianStartX + 2, barbarianStartYOffset + 4, '#B22222'));
+                    }
+
+                    window.battleSim.logBattleMessage(`Battle initialized: ${currentScenario.description || 'Random Battle'}`);
+                    window.requestAnimationFrame(window.battleSim.gameLoop);
+                    window.battleSim.updateUnitCounts();
+                };
+
+                window.battleSim.drawGame = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(terrainTextureCanvas, 0, 0);
+
+                    ctx.strokeStyle = 'rgba(150, 150, 150, 0.2)';
+                    for (let i = 0; i <= MAP_WIDTH_CELLS; i++) { ctx.beginPath(); ctx.moveTo(i * GRID_SIZE, 0); ctx.lineTo(i * GRID_SIZE, canvas.height); ctx.stroke(); }
+                    for (let i = 0; i <= MAP_HEIGHT_CELLS; i++) { ctx.beginPath(); ctx.moveTo(0, i * GRID_SIZE); ctx.lineTo(canvas.width, i * GRID_SIZE); ctx.stroke(); }
+
+                    units.forEach(unit => {
+                        if (unit.type === 'commander' && unit.strength > 0 && !unit.broken) {
+                            ctx.beginPath();
+                            ctx.arc(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2, LEADERSHIP_RADIUS * GRID_SIZE, 0, Math.PI * 2);
+                            ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+                        if (unit.strength > 0 && !unit.broken) {
+                            if (unit.pathHistory.length > 0) {
+                                ctx.beginPath();
+                                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                                ctx.lineWidth = 1;
+                                ctx.moveTo(unit.pathHistory[0].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[0].y * GRID_SIZE + GRID_SIZE / 2);
+                                for (let i = 1; i < unit.pathHistory.length; i++) { ctx.lineTo(unit.pathHistory[i].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[i].y * GRID_SIZE + GRID_SIZE / 2); }
+                                ctx.lineTo(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2);
+                                ctx.stroke();
+                            }
+                            const currentSizeRatio = unit.strength / unit.maxStrength;
+                            const unitDrawSize = GRID_SIZE * currentSizeRatio;
+                            const offset = (GRID_SIZE - unitDrawSize) / 2;
+                            const drawX = unit.displayX * GRID_SIZE;
+                            const drawY = unit.displayY * GRID_SIZE;
+
+                            ctx.fillStyle = unit.isFlashing ? 'white' : unit.color;
+                            ctx.beginPath();
+                            switch(unit.type) {
+                                case 'infantry': ctx.roundRect(drawX + offset, drawY + offset, unitDrawSize, unitDrawSize, 5); break;
+                                case 'cavalry': ctx.moveTo(drawX + offset + unitDrawSize / 2, drawY + offset); ctx.lineTo(drawX + offset + unitDrawSize, drawY + offset + unitDrawSize); ctx.lineTo(drawX + offset, drawY + offset + unitDrawSize); ctx.closePath(); break;
+                                case 'archer': ctx.arc(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2, unitDrawSize / 2, 0, Math.PI * 2); break;
+                                case 'skirmisher': ctx.arc(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2, unitDrawSize / 2 * 0.8, 0, Math.PI * 2); break;
+                                case 'chariot': ctx.moveTo(drawX + offset + unitDrawSize / 2, drawY + offset); ctx.lineTo(drawX + offset + unitDrawSize, drawY + offset + unitDrawSize / 2); ctx.lineTo(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize); ctx.lineTo(drawX + offset, drawY + offset + unitDrawSize / 2); ctx.closePath(); break;
+                                default: ctx.roundRect(drawX + offset, drawY + offset, unitDrawSize, unitDrawSize, 5);
+                            }
+                            ctx.fill();
+
+                            if (unit === currentHoveredUnit) { ctx.strokeStyle = '#FFFF00'; ctx.lineWidth = 2; ctx.stroke(); }
+
+                            const healthBarWidth = unitDrawSize * 0.8;
+                            const healthBarHeight = 3;
+                            const healthBarX = drawX + offset + (unitDrawSize - healthBarWidth) / 2;
+                            const healthBarY = drawY + offset - healthBarHeight - 2;
+                            ctx.fillStyle = 'black'; ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
+                            const currentHealthWidth = healthBarWidth * (unit.strength / unit.maxStrength);
+                            ctx.fillStyle = unit.strength > unit.maxStrength * 0.4 ? '#22c55e' : '#ef4444'; ctx.fillRect(healthBarX, healthBarY, currentHealthWidth, healthBarHeight);
+
+                            const fatigueBarWidth = unitDrawSize * 0.8;
+                            const fatigueBarHeight = 2;
+                            const fatigueBarX = drawX + offset + (unitDrawSize - fatigueBarWidth) / 2;
+                            const fatigueBarY = healthBarY - fatigueBarHeight - 2;
+                            ctx.fillStyle = 'black'; ctx.fillRect(fatigueBarX, fatigueBarY, fatigueBarWidth, fatigueBarHeight);
+                            const currentFatigueRatio = unit.fatigue / 10;
+                            const currentFatigueWidth = fatigueBarWidth * Math.min(1, currentFatigueRatio);
+                            ctx.fillStyle = '#A0522D'; ctx.fillRect(fatigueBarX, fatigueBarY, currentFatigueWidth, fatigueBarHeight);
+
+                            ctx.fillStyle = 'white'; ctx.font = '10px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                            ctx.fillText(unit.strength.toFixed(0), drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2 - 5);
+                            ctx.fillText(unit.morale.toFixed(0), drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2 + 5);
+
+                            ctx.fillStyle = 'black'; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+                            ctx.fillText(unit.getTypeIdentifier(), drawX + offset + unitDrawSize - 2, drawY + offset + 2);
+
+                            ctx.fillStyle = '#333'; ctx.font = '8px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                            ctx.fillText(unit.currentBehavior.substring(0,1).toUpperCase(), drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize - 2);
+
+                            const moraleState = unit.getMoraleState();
+                            ctx.fillStyle = moraleState.color; ctx.beginPath(); ctx.arc(drawX + offset + unitDrawSize - 3, drawY + offset + 3, 3, 0, Math.PI * 2); ctx.fill();
+
+                            if (unit.isFlankedStatus && unit.isFlashing) {
+                                if (Math.floor(performance.now() / FLANKED_FLASH_INTERVAL) % 2 === 0) {
+                                    ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center';
+                                    ctx.fillText('FLANKED!', drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2 - (unitDrawSize / 2) - 15);
+                                }
+                            }
+                        } else if (unit.broken) {
+                            ctx.fillStyle = 'rgba(107, 114, 128, 0.5)'; ctx.beginPath(); ctx.roundRect(unit.x * GRID_SIZE + 2, unit.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4, 5); ctx.fill();
+                            ctx.fillStyle = 'white'; ctx.font = '12px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                            ctx.fillText('X', unit.x * GRID_SIZE + GRID_SIZE / 2, unit.y * GRID_SIZE + GRID_SIZE / 2);
+                        }
+                    });
+
+                    const currentTime = performance.now();
+                    projectiles = projectiles.filter(p => p.isAlive(currentTime));
+                    projectiles.forEach(p => {
+                        const progress = (currentTime - p.birthTime) / p.lifeTime;
+                        const currentX = p.startX * GRID_SIZE + GRID_SIZE / 2 + (p.targetX * GRID_SIZE + GRID_SIZE / 2 - (p.startX * GRID_SIZE + GRID_SIZE / 2)) * progress;
+                        const currentY = p.startY * GRID_SIZE + GRID_SIZE / 2 + (p.targetY * GRID_SIZE + GRID_SIZE / 2 - (p.startY * GRID_SIZE + GRID_SIZE / 2)) * progress;
+                        ctx.beginPath(); ctx.arc(currentX, currentY, 2, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
+                    });
+
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+                    ctx.fillText(VERSION_NUMBER, canvas.width - 5, 5);
+                };
+
+                window.battleSim.resolveMeleeCombat = function(attacker, defender) {
+                    if (attacker.strength <= 0 || attacker.broken || defender.strength <= 0 || defender.broken) return;
+                    const effectiveAttackerAttack = attacker.getEffectiveAttack();
+                    const effectiveDefenderDefense = defender.getEffectiveDefense();
+                    const effectiveDefenderAttack = defender.getEffectiveAttack();
+                    const effectiveAttackerDefense = attacker.getEffectiveDefense();
+                    let rawDamageToDefender = (effectiveAttackerAttack * (1 + (Math.random() * 0.4 - 0.2))) - (effectiveDefenderDefense * (1 + (Math.random() * 0.4 - 0.2)));
+                    let rawDamageToAttacker = (effectiveDefenderAttack * (1 + (Math.random() * 0.4 - 0.2))) - (effectiveAttackerDefense * (1 + (Math.random() * 0.4 - 0.2)));
+
+                    if (attacker.type === 'cavalry' && defender.type === 'infantry') rawDamageToDefender *= 1.2;
+                    else if (attacker.type === 'infantry' && defender.type === 'cavalry') rawDamageToAttacker *= 1.1;
+                    if (attacker.type === 'chariot') rawDamageToDefender *= 1.3;
+                    if (attacker.hasCharged) { rawDamageToDefender *= 1.5; window.battleSim.logBattleMessage(`${attacker.name} (${attacker.faction}) charged ${defender.name} (${defender.faction})!`); }
+                    if (window.battleSim.isFlanked(defender)) { rawDamageToDefender *= 1.5; rawDamageToAttacker *= 0.7; defender.isFlankedStatus = true; window.battleSim.logBattleMessage(`${defender.name} (${defender.faction}) is flanked and takes extra damage!`); }
+
+                    rawDamageToDefender = Math.max(0, rawDamageToDefender);
+                    rawDamageToAttacker = Math.max(0, rawDamageToAttacker);
+                    let actualDamageToDefender = (rawDamageToDefender / 100) * attacker.strength * 0.8;
+                    let actualDamageToAttacker = (rawDamageToAttacker / 100) * defender.strength * 0.8;
+                    actualDamageToDefender *= 8; actualDamageToAttacker *= 8;
+                    if (rawDamageToDefender > 0 && actualDamageToDefender < 1) actualDamageToDefender = 1;
+                    if (rawDamageToAttacker > 0 && actualDamageToAttacker < 1) actualDamageToAttacker = 1;
+
+                    defender.takeDamage(actualDamageToDefender);
+                    attacker.takeDamage(actualDamageToAttacker);
+                    window.battleSim.logBattleMessage(`${attacker.name} (${attacker.faction}) dealt ${actualDamageToDefender.toFixed(1)} damage to ${defender.name} (${defender.faction}).`);
+                    window.battleSim.logBattleMessage(`${defender.name} (${defender.faction}) dealt ${actualDamageToAttacker.toFixed(1)} damage to ${attacker.name} (${attacker.faction}).`);
+                };
+
+                window.battleSim.resolveRangedCombat = function() {
+                    units.forEach(archerUnit => {
+                        if (archerUnit.type !== 'archer' && archerUnit.type !== 'skirmisher' || archerUnit.strength <= 0 || archerUnit.broken) return;
+                        let target = null;
+                        let minDist = Infinity;
+                        units.filter(enemy => enemy.faction !== archerUnit.faction && enemy.strength > 0 && !enemy.broken)
+                             .forEach(enemy => {
+                            const isEnemyEngagedWithFriendly = units.some(friendly => friendly.faction === archerUnit.faction && friendly.strength > 0 && !friendly.broken && Math.abs(friendly.x - enemy.x) + Math.abs(friendly.y - enemy.y) === 1);
+                            if (!isEnemyEngagedWithFriendly) {
+                                const dist = Math.sqrt(Math.pow(archerUnit.x - enemy.x, 2) + Math.pow(archerUnit.y - enemy.y, 2));
+                                if (dist <= ARCHER_RANGE && dist < minDist) { minDist = dist; target = enemy; }
+                            }
+                        });
+
+                        if (target) {
+                            const effectiveArcherAttack = archerUnit.getEffectiveAttack();
+                            const effectiveTargetDefense = target.getEffectiveDefense();
+                            let rawRangedDamage = (effectiveArcherAttack * (1 + (Math.random() * 0.2 - 0.1))) - (effectiveTargetDefense * (1 + (Math.random() * 0.2 - 0.1)) * 0.5);
+                            rawRangedDamage = Math.max(0, rawRangedDamage);
+                            let actualRangedDamage = (rawRangedDamage / 100) * archerUnit.strength * 0.4;
+                            actualRangedDamage *= 8;
+                            if (rawRangedDamage > 0 && actualRangedDamage < 1) actualRangedDamage = 1;
+
+                            target.takeDamage(actualRangedDamage);
+                            window.battleSim.logBattleMessage(`${archerUnit.name} (${archerUnit.faction}) shot at ${target.name} (${target.faction}), dealing ${actualRangedDamage.toFixed(1)} ranged damage.`);
+                            projectiles.push(new Projectile(archerUnit.x, archerUnit.y, target.x, target.y, archerUnit.color));
+                        }
+                    });
+                };
+
+                window.battleSim.getPreferredTarget = function(unit, enemies) {
+                    let target = null;
+                    let bestScore = -Infinity;
+                    const activeEnemies = enemies.filter(enemy => enemy.strength > 0 && !enemy.broken);
+                    if (activeEnemies.length === 0) return null;
+                    const getDistance = (u1, u2) => Math.sqrt(Math.pow(u1.x - u2.x, 2) + Math.pow(u1.y - u2.y, 2));
+
+                    activeEnemies.forEach(enemy => {
+                        const distance = getDistance(unit, enemy);
+                        let score = -distance;
+
+                        switch (unit.targetPreference) {
+                            case 'closest': break;
+                            case 'weakest': score += (100 - (enemy.strength / enemy.maxStrength) * 100) * 0.5; break;
+                            case 'commander': if (enemy.type === 'commander') score += 200; break;
+                            case 'ranged_units': if (enemy.type === 'archer' || enemy.type === 'skirmisher') score += 50; break;
+                            case 'infantry': if (enemy.type === 'infantry') score += 20; break;
+                            default: break;
+                        }
+                        if ((unit.type === 'archer' || unit.type === 'skirmisher') && distance <= ARCHER_RANGE) score += 10;
+                        if (score > bestScore) { bestScore = score; target = enemy; }
+                    });
+                    return target;
+                };
+
+                window.battleSim.findPathBFS = function(startPos, unit, allUnits, map, targetPositions) {
+                    const queue = [{x: startPos.x, y: startPos.y, path: [], cost: 0}];
+                    const visited = new Set();
+                    visited.add(`${startPos.x},${startPos.y}`);
+                    const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
+                    const dy = [0, 0, -1, 1, -1, 1, -1, 1];
+                    let closestPath = null;
+                    let minDistanceToTarget = Infinity;
+
+                    while (queue.length > 0) {
+                        const {x, y, path, cost} = queue.shift();
+                        for (const targetP of targetPositions) {
+                            if (x === targetP.x && y === targetP.y) {
+                                const euclideanDistance = Math.sqrt(Math.pow(startPos.x - x, 2) + Math.pow(startPos.y - y, 2));
+                                if (euclideanDistance < minDistanceToTarget) {
+                                    minDistanceToTarget = path.length;
+                                    closestPath = path;
+                                }
+                            }
+                        }
+
+                        for (let i = 0; i < dx.length; i++) {
+                            const nextX = x + dx[i];
+                            const nextY = y + dy[i];
+                            const nextCoord = `${nextX},${nextY}`;
+                            if (visited.has(nextCoord)) continue;
+                            if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) continue;
+
+                            const terrainType = getTerrainAt(nextX, nextY);
+                            let moveCost = TERRAIN_DATA[terrainType].movementCost;
+                            if (!FORMATION_DATA[unit.currentFormation]) continue;
+                            moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                            moveCost *= (1 + unit.getMoraleState().movementPenalty);
+                            moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+
+                            if (moveCost === Infinity || cost + moveCost > unit.movementPoints) continue;
+
+                            let isOccupiedByOtherUnit = false;
+                            for (const otherUnit of units) {
+                                if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                    isOccupiedByOtherUnit = true;
+                                    break;
+                                }
+                            }
+                            if (isOccupiedByOtherUnit) continue;
+
+                            visited.add(nextCoord);
+                            queue.push({x: nextX, y: nextY, path: [...path, {x: nextX, y: nextY}], cost: cost + moveCost});
+                        }
+                    }
+                    return closestPath;
+                };
+
+                window.battleSim.findOptimalMoveForUnit = function(unit, targetEnemy, allUnits, map) {
+                    const startPos = {x: unit.x, y: unit.y};
+                    let finalTargetX = unit.x;
+                    let finalTargetY = unit.y;
+
+                    const possibleMoves = [
+                        { dx: 0, dy: 0 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 },
+                        { dx: 0, dy: 1 }, { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                    ];
+
+                    const maxMapDistance = Math.sqrt(MAP_WIDTH_CELLS * MAP_WIDTH_CELLS + MAP_HEIGHT_CELLS * MAP_HEIGHT_CELLS);
+                    const currentDistanceToTarget = Math.sqrt(Math.pow(unit.x - targetEnemy.x, 2) + Math.pow(unit.y - targetEnemy.y, 2));
+                    const isCurrentlyAdjacentToEnemy = currentDistanceToTarget <= 1.5;
+
+                    const validTraversableMoves = possibleMoves.filter(move => {
+                        const nextX = unit.x + move.dx;
+                        const nextY = unit.y + move.dy;
+                        if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) return false;
+                        const terrainType = getTerrainAt(nextX, nextY);
+                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
+                        if (!FORMATION_DATA[unit.currentFormation]) { console.error(`Formation data missing for: ${unit.currentFormation}`); return false; }
+                        moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
+                        moveCost *= (1 + unit.getMoraleState().movementPenalty);
+                        moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier;
+                        if (moveCost === Infinity || unit.remainingMovement < moveCost) return false;
+
+                        let isOccupiedByOtherUnit = false;
+                        for (const otherUnit of allUnits) {
+                            if (otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                isOccupiedByOtherUnit = true;
+                                break;
+                            }
+                        }
+                        const isMoving = (move.dx !== 0 || move.dy !== 0);
+                        if (isOccupiedByOtherUnit && isMoving) return false;
+                        return true;
+                    });
+
+                    if (validTraversableMoves.length === 0) return { x: unit.x, y: unit.y };
+
+                    let bestScore = -Infinity;
+                    let bestCandidateX = unit.x;
+                    let bestCandidateY = unit.y;
+
+                    const stayPutMove = possibleMoves.find(m => m.dx === 0 && m.dy === 0);
+                    const isStayPutMoveValid = validTraversableMoves.includes(stayPutMove);
+
+                    if (isStayPutMoveValid) {
+                        let currentScoreForStay = 0;
+                        const terrainTypeForStay = getTerrainAt(unit.x, unit.y);
+                        currentScoreForStay += (1 - (currentDistanceToTarget / maxMapDistance)) * 100;
+                        currentScoreForStay += TERRAIN_DATA[terrainTypeForStay].defenseBonus * 10;
+                        currentScoreForStay -= TERRAIN_DATA[terrainTypeForStay].fatigueCost * 2 * FORMATION_DATA[unit.currentFormation].fatigueModifier;
+
+                        const isRangedUnit = (unit.type === 'archer' || unit.type === 'skirmisher');
+                        const isRangedUnitInFiringRange = isRangedUnit && currentDistanceToTarget <= ARCHER_RANGE;
+
+                        if (!isCurrentlyAdjacentToEnemy && !isRangedUnitInFiringRange) {
+                            currentScoreForStay -= 200;
+                        }
+                        if (currentScoreForStay > bestScore) {
+                            bestScore = currentScoreForStay;
+                            bestCandidateX = unit.x;
+                            bestCandidateY = unit.y;
+                        }
+                    }
+
+                    let pathTargets = [];
+                    if (unit.type === 'archer' || unit.type === 'skirmisher') {
+                        for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
+                            for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
+                                const distToEnemy = Math.sqrt(Math.pow(x - targetEnemy.x, 2) + Math.pow(y - targetEnemy.y, 2));
+                                const terrainType = getTerrainAt(x, y);
+                                if (distToEnemy <= ARCHER_RANGE && distToEnemy > 1 && TERRAIN_DATA[terrainType].movementCost !== Infinity &&
+                                    !allUnits.some(u => u.x === x && u.y === y && u.id !== unit.id)) {
+                                    let score = 0;
+                                    score -= distToEnemy;
+                                    if (terrainType === 'hill') score += 50;
+                                    pathTargets.push({x, y, score});
+                                }
+                            }
+                        }
+                        pathTargets.sort((a,b) => b.score - a.score);
+                    } else {
+                        const dx_adj = [-1, 1, 0, 0, -1, -1, 1, 1];
+                        const dy_adj = [0, 0, -1, 1, -1, 1, -1, 1];
+                        for (let i = 0; i < dx_adj.length; i++) {
+                            const adjX = targetEnemy.x + dx_adj[i];
+                            const adjY = targetEnemy.y + dy_adj[i];
+                            const terrainType = getTerrainAt(adjX, adjY);
+                            if (adjX >= 0 && adjX < MAP_WIDTH_CELLS && adjY >= 0 && adjY < MAP_HEIGHT_CELLS &&
+                                TERRAIN_DATA[terrainType].movementCost !== Infinity &&
+                                !allUnits.some(u => u.x === adjX && u.y === adjY && u.id !== unit.id)) {
+                                pathTargets.push({x: adjX, y: adjY});
+                            }
+                        }
+                    }
+
+                    let shortestPath = window.battleSim.findPathBFS(startPos, unit, allUnits, map, pathTargets);
+
+                    if (shortestPath && shortestPath.length > 0) {
+                        finalTargetX = shortestPath[0].x;
+                        finalTargetY = shortestPath[0].y;
+                    } else {
+                        const dx_target = targetEnemy.x - unit.x;
+                        const dy_target = targetEnemy.y - unit.y;
+                        let tempNextX = unit.x;
+                        let tempNextY = unit.y;
+
+                        if (Math.abs(dx_target) > Math.abs(dy_target)) {
+                            tempNextX += Math.sign(dx_target);
+                        } else if (Math.abs(dy_target) > Math.abs(dx_target)) {
+                            tempNextY += Math.sign(dy_target);
+                        } else if (dx_target !== 0) {
+                            tempNextX += Math.sign(dx_target);
+                        } else if (dy_target !== 0) {
+                            tempNextY += Math.sign(dy_target);
+                        }
+                        
+                        if (tempNextX >= 0 && tempNextX < MAP_WIDTH_CELLS && tempNextY >= 0 && tempNextY < MAP_HEIGHT_CELLS &&
+                            getTerrainAt(tempNextX, tempNextY) !== 'water') {
+                            let isOccupiedTest = false;
+                            for (const otherUnit of allUnits) {
+                                if (otherUnit.id !== unit.id && otherUnit.x === tempNextX && otherUnit.y === tempNextY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                    isOccupiedTest = true;
+                                    break;
+                                }
+                            }
+                            if (!isOccupiedTest) {
+                                finalTargetX = tempNextX;
+                                finalTargetY = tempNextY;
+                            } else {
+                                const adjacentTiles = [
+                                    { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                                    { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                                ];
+                                adjacentTiles.sort(() => Math.random() - 0.5);
+                                for (const move of adjacentTiles) {
+                                    const testX = unit.x + move.dx;
+                                    const testY = unit.y + move.dy;
+                                    if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
+                                        getTerrainAt(testX, testY) !== 'water') {
+                                        let isOccupiedTestAgain = false;
+                                        for (const otherUnit of allUnits) {
+                                            if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                                isOccupiedTestAgain = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!isOccupiedTestAgain) {
+                                            finalTargetX = testX;
+                                            finalTargetY = testY;
+                                            break;
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                // Spread terrain based on scenario settings
-                spreadTerrain('forest', mapSettings.numForestClumps, mapSettings.spreadRadiusMax);
-                spreadTerrain('hill', mapSettings.numHillClumps, mapSettings.spreadRadiusMax);
-                spreadTerrain('water', mapSettings.numWaterClumps, mapSettings.waterSpreadRadiusMax);
+                    return { x: finalTargetX, y: finalTargetY };
+                };
 
-                // Ensure deployment zones are always plain
-                for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                    const deploymentWidth = Math.floor(MAP_WIDTH_CELLS / 4);
-                    for (let x = 0; x < deploymentWidth; x++) map[y][x] = 'plain';
-                    for (let x = MAP_WIDTH_CELLS - deploymentWidth; x < MAP_WIDTH_CELLS; x++) map[y][x] = 'plain';
-                }
 
-                // Pre-render terrain textures onto the offscreen canvas
-                for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                    for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
-                        drawTerrainTexture(terrainTextureCtx, map[y][x], x, y);
-                    }
-                }
+                window.battleSim.processNextTurn = function() {
+                    turn++;
+                    window.battleSim.logBattleMessage(`--- Turn ${turn} ---`);
 
-                // --- Unit Placement ---
-                if (currentScenario.romanUnits && currentScenario.gaulUnits) {
-                    // Load units from scenario definition
-                    currentScenario.romanUnits.forEach(unitDef => {
-                        for (let i = 0; i < unitDef.count; i++) {
-                            // Basic spreading logic for predefined units
-                            const x = unitDef.startX + (i % (unitDef.spreadX + 1));
-                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1)); // Corrected: use spreadY
-                            units.push(new Unit(`R${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Roman', x, y, unitDef.color));
-                        }
-                    });
-                    currentScenario.gaulUnits.forEach(unitDef => {
-                        for (let i = 0; i < unitDef.count; i++) {
-                            const x = unitDef.startX - (i % (unitDef.spreadX + 1));
-                            const y = unitDef.startY + Math.floor(i / (unitDef.spreadY + 1)); // Corrected: use spreadY
-                            units.push(new Unit(`B${units.length + 1}`, `${unitDef.type} ${i+1}`, unitDef.type, 'Gaul', x, y, unitDef.color));
-                        }
+                    units.forEach(unit => {
+                        unit.resetTurnStatus();
                     });
 
-                } else {
-                    // Default random unit placement if no scenario units specified
-                    const romanStartX = Math.floor(MAP_WIDTH_CELLS / 8);
-                    const romanStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
-                    units.push(new Unit('R1', 'Legion I', 'infantry', 'Roman', romanStartX, romanStartYOffset, '#dc2626'));
-                    units.push(new Unit('R2', 'Legion II', 'infantry', 'Roman', romanStartX, romanStartYOffset + 2, '#dc2626'));
-                    units.push(new Unit('R3', 'Legion III', 'infantry', 'Roman', romanStartX + 1, romanStartYOffset - 1, '#dc2626'));
-                    units.push(new Unit('R4', 'Legion IV', 'infantry', 'Roman', romanStartX + 1, romanStartYOffset + 3, '#dc2626'));
+                    const activeCommanders = units.filter(unit => unit.type === 'commander' && unit.strength > 0 && !unit.broken);
+                    const lostCommandersThisTurn = units.filter(unit => unit.type === 'commander' && unit.strength <= 0 && !unit.broken);
 
-                    units.push(new Unit('R5', 'Auxiliary Cavalry 1', 'cavalry', 'Roman', romanStartX - 2, romanStartYOffset + 1, '#b91c1c'));
-                    units.push(new Unit('R6', 'Auxiliary Cavalry 2', 'cavalry', 'Roman', romanStartX + 3, romanStartYOffset + 1, '#b91c1c'));
-                    
-                    units.push(new Unit('R7', 'Roman Archers 1', 'archer', 'Roman', romanStartX -1, romanStartYOffset - 3, '#00BFFF'));
-                    units.push(new Unit('R8', 'Roman Archers 2', 'archer', 'Roman', romanStartX, romanStartYOffset + 5, '#00BFFF'));
-                    
-                    units.push(new Unit('R9', 'Roman General', 'commander', 'Roman', romanStartX -2, romanStartYOffset + 4, '#800080'));
+                    units.forEach(unit => {
+                        if (unit.type === 'commander' || unit.broken || unit.strength <= 0) return;
 
-
-                    const barbarianStartX = MAP_WIDTH_CELLS - Math.floor(MAP_WIDTH_CELLS / 8) - 1;
-                    const barbarianStartYOffset = Math.floor(MAP_HEIGHT_CELLS / 4);
-                    units.push(new Unit('B1', 'Warband A', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset, '#16a34a'));
-                    units.push(new Unit('B2', 'Warband B', 'infantry', 'Gaul', barbarianStartX, barbarianStartYOffset + 2, '#16a34a'));
-                    units.push(new Unit('B3', 'Warband C', 'infantry', 'Gaul', barbarianStartX - 1, barbarianStartYOffset - 1, '#16a34a'));
-                    units.push(new Unit('B4', 'Warband D', 'infantry', 'Gaul', barbarianStartX - 1, barbarianStartYOffset + 3, '#16a34a'));
-
-                    units.push(new Unit('B5', 'Barbarian Chariots 1', 'chariot', 'Gaul', barbarianStartX + 2, barbarianStartYOffset + 1, '#047857'));
-                    units.push(new Unit('B6', 'Barbarian Chariots 2', 'chariot', 'Gaul', barbarianStartX - 3, barbarianStartYOffset + 1, '#047857'));
-
-                    units.push(new Unit('B7', 'Barbarian Skirmishers 1', 'skirmisher', 'Gaul', barbarianStartX + 1, barbarianStartYOffset - 3, '#FFD700'));
-                    units.push(new Unit('B8', 'Barbarian Skirmishers 2', 'skirmisher', 'Gaul', barbarianStartX, barbarianStartYOffset + 5, '#FFD700'));
-                    
-                    units.push(new Unit('B9', 'Barbarian Chieftain', 'commander', 'Gaul', barbarianStartX + 2, barbarianStartYOffset + 4, '#B22222'));
-                }
-
-                logBattleMessage(`Battle initialized: ${currentScenario.description || 'Random Battle'}`);
-                requestAnimationFrame(gameLoop);
-                updateUnitCounts();
-            }
-
-            /**
-             * Draws the current game state on the canvas.
-             */
-            function drawGame() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Draw pre-rendered terrain texture
-                ctx.drawImage(terrainTextureCanvas, 0, 0);
-
-                ctx.strokeStyle = 'rgba(150, 150, 150, 0.2)';
-                for (let i = 0; i <= MAP_WIDTH_CELLS; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(i * GRID_SIZE, 0);
-                    ctx.lineTo(i * GRID_SIZE, canvas.height);
-                    ctx.stroke();
-                }
-                for (let i = 0; i <= MAP_HEIGHT_CELLS; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, i * GRID_SIZE);
-                    ctx.lineTo(canvas.width, i * GRID_SIZE);
-                    ctx.stroke();
-                }
-
-                units.forEach(unit => {
-                    // Draw commander aura if applicable
-                    if (unit.type === 'commander' && unit.strength > 0 && !unit.broken) {
-                        ctx.beginPath();
-                        ctx.arc(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2,
-                                LEADERSHIP_RADIUS * GRID_SIZE, 0, Math.PI * 2);
-                        ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                    }
-
-                    if (unit.strength > 0 && !unit.broken) {
-                        if (unit.pathHistory.length > 0) {
-                            ctx.beginPath();
-                            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-                            ctx.lineWidth = 1;
-                            ctx.moveTo(unit.pathHistory[0].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[0].y * GRID_SIZE + GRID_SIZE / 2);
-                            for (let i = 1; i < unit.pathHistory.length; i++) {
-                                ctx.lineTo(unit.pathHistory[i].x * GRID_SIZE + GRID_SIZE / 2, unit.pathHistory[i].y * GRID_SIZE + GRID_SIZE / 2);
-                            }
-                            ctx.lineTo(unit.displayX * GRID_SIZE + GRID_SIZE / 2, unit.displayY * GRID_SIZE + GRID_SIZE / 2);
-                            ctx.stroke();
-                        }
-
-                        const currentSizeRatio = unit.strength / unit.maxStrength;
-                        const unitDrawSize = GRID_SIZE * currentSizeRatio;
-                        const offset = (GRID_SIZE - unitDrawSize) / 2;
-
-                        const drawX = unit.displayX * GRID_SIZE;
-                        const drawY = unit.displayY * GRID_SIZE;
-
-                        ctx.fillStyle = unit.isFlashing ? 'white' : unit.color;
-                        
-                        ctx.beginPath();
-                        switch(unit.type) {
-                            case 'infantry':
-                                ctx.roundRect(drawX + offset, drawY + offset, unitDrawSize, unitDrawSize, 5);
+                        let inAura = false;
+                        for (const commander of activeCommanders) {
+                            const dist = Math.sqrt(Math.pow(unit.x - commander.x, 2) + Math.pow(unit.y - commander.y, 2));
+                            if (dist <= LEADERSHIP_RADIUS) {
+                                unit.appliedCommanderBuff = true;
+                                unit.morale = Math.min(unit.initialMorale, unit.morale + LEADERSHIP_MORALE_BOOST);
+                                unit.fatigue = Math.max(0, unit.fatigue - LEADERSHIP_FATIGUE_REDUCTION);
+                                inAura = true;
                                 break;
-                            case 'cavalry':
-                                ctx.moveTo(drawX + offset + unitDrawSize / 2, drawY + offset);
-                                ctx.lineTo(drawX + offset + unitDrawSize, drawY + offset + unitDrawSize);
-                                ctx.lineTo(drawX + offset, drawY + offset + unitDrawSize);
-                                ctx.closePath();
-                                break;
-                            case 'archer':
-                                ctx.arc(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2, unitDrawSize / 2, 0, Math.PI * 2);
-                                break;
-                            case 'skirmisher':
-                                ctx.arc(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize / 2, unitDrawSize / 2 * 0.8, 0, Math.PI * 2);
-                                break;
-                            case 'chariot':
-                                ctx.moveTo(drawX + offset + unitDrawSize / 2, drawY + offset);
-                                ctx.lineTo(drawX + offset + unitDrawSize, drawY + offset + unitDrawSize / 2);
-                                ctx.lineTo(drawX + offset + unitDrawSize / 2, drawY + offset + unitDrawSize);
-                                ctx.lineTo(drawX + offset, drawY + offset + unitDrawSize / 2);
-                                ctx.closePath();
-                                break;
-                            default:
-                                ctx.roundRect(drawX + offset, drawY + offset, unitDrawSize, unitDrawSize, 5);
-                        }
-                        ctx.fill();
-
-                        // Draw hover highlight
-                        if (unit === currentHoveredUnit) {
-                            ctx.strokeStyle = '#FFFF00';
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-                        }
-
-                        const healthBarWidth = unitDrawSize * 0.8;
-                        const healthBarHeight = 3;
-                        const healthBarX = drawX + offset + (unitDrawSize - healthBarWidth) / 2;
-                        const healthBarY = drawY + offset - healthBarHeight - 2;
-
-                        ctx.fillStyle = 'black';
-                        ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-
-                        const currentHealthWidth = healthBarWidth * (unit.strength / unit.maxStrength);
-                        ctx.fillStyle = unit.strength > unit.maxStrength * 0.4 ? '#22c55e' : '#ef4444';
-                        ctx.fillRect(healthBarX, healthBarY, currentHealthWidth, healthBarHeight);
-
-                        const fatigueBarWidth = unitDrawSize * 0.8;
-                        const fatigueBarHeight = 2;
-                        const fatigueBarX = drawX + offset + (unitDrawSize - fatigueBarWidth) / 2;
-                        const fatigueBarY = healthBarY - fatigueBarHeight - 2;
-
-                        ctx.fillStyle = 'black';
-                        ctx.fillRect(fatigueBarX, fatigueBarY, fatigueBarWidth, fatigueBarHeight);
-
-                        const currentFatigueRatio = unit.fatigue / 10;
-                        const currentFatigueWidth = fatigueBarWidth * Math.min(1, currentFatigueRatio);
-                        ctx.fillStyle = '#A0522D';
-                        ctx.fillRect(fatigueBarX, fatigueBarY, currentFatigueWidth, fatigueBarHeight);
-
-
-                        ctx.fillStyle = 'white';
-                        ctx.font = '10px Inter';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(unit.strength.toFixed(0), drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2 - 5);
-                        ctx.fillText(unit.morale.toFixed(0), drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2 + 5);
-
-                        ctx.fillStyle = 'black';
-                        ctx.font = 'bold 10px Inter';
-                        ctx.fillText(unit.getTypeIdentifier(), drawX + GRID_SIZE - 5, drawY + 8);
-
-                        const moraleState = unit.getMoraleState();
-                        ctx.fillStyle = moraleState.color;
-                        ctx.beginPath();
-                        ctx.arc(drawX + offset + unitDrawSize - 3, drawY + offset + 3, 3, 0, Math.PI * 2);
-                        ctx.fill();
-
-                        if (unit.isFlankedStatus && unit.isFlashing) {
-                            if (Math.floor(performance.now() / FLANKED_FLASH_INTERVAL) % 2 === 0) {
-                                ctx.fillStyle = '#ffcc00';
-                                ctx.font = 'bold 12px Inter';
-                                ctx.fillText('FLANKED!', drawX + GRID_SIZE / 2, drawY + GRID_SIZE / 2 - (unitDrawSize / 2) - 15);
                             }
                         }
+                        unit.hasCommanderAura = inAura;
+                    });
 
-                    } else if (unit.broken) {
-                        ctx.fillStyle = 'rgba(107, 114, 128, 0.5)';
-                        ctx.beginPath();
-                        ctx.roundRect(unit.x * GRID_SIZE + 2, unit.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4, 5);
-                        ctx.fill();
-                        ctx.fillStyle = 'white';
-                        ctx.font = '12px Inter';
-                        ctx.fillText('X', unit.x * GRID_SIZE + GRID_SIZE / 2, unit.y * GRID_SIZE + GRID_SIZE / 2);
+                    if (lostCommandersThisTurn.length > 0) {
+                        lostCommandersThisTurn.forEach(lostCommander => {
+                            window.battleSim.logBattleMessage(`COMMANDER LOST! ${lostCommander.name} (${lostCommander.faction}) has fallen!`);
+                            units.forEach(unit => {
+                                if (unit.faction === lostCommander.faction && unit.id !== lostCommander.id && unit.strength > 0 && !unit.broken) {
+                                    const dist = Math.sqrt(Math.pow(unit.x - lostCommander.x, 2) + Math.pow(unit.y - lostCommander.y, 2));
+                                    if (dist <= LEADERSHIP_RADIUS * 2) {
+                                        unit.morale = Math.max(MORALE_BREAK_THRESHOLD, unit.morale - COMMANDER_LOSS_MORALE_SHOCK);
+                                        window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) suffers morale shock from leader loss! Morale: ${unit.morale.toFixed(0)}`);
+                                        if (unit.morale <= MORALE_BREAK_THRESHOLD) {
+                                            unit.broken = true;
+                                            unit.morale = 0;
+                                            window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has broken due to leader loss!`);
+                                        }
+                                    }
+                                }
+                            });
+                        });
                     }
-                });
 
-                const currentTime = performance.now();
-                projectiles = projectiles.filter(p => p.isAlive(currentTime));
-                projectiles.forEach(p => {
-                    const progress = (currentTime - p.birthTime) / p.lifeTime;
-                    const currentX = p.startX * GRID_SIZE + GRID_SIZE / 2 + (p.targetX * GRID_SIZE + GRID_SIZE / 2 - (p.startX * GRID_SIZE + GRID_SIZE / 2)) * progress;
-                    const currentY = p.startY * GRID_SIZE + GRID_SIZE / 2 + (p.targetY * GRID_SIZE + GRID_SIZE / 2 - (p.startY * GRID_SIZE + GRID_SIZE / 2)) * progress;
 
-                    ctx.beginPath();
-                    ctx.arc(currentX, currentY, 2, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color;
-                    ctx.fill();
-                });
+                    window.battleSim.resolveRangedCombat();
 
-                // Display Version Number
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.font = 'bold 10px Inter';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'top';
-                ctx.fillText(VERSION_NUMBER, canvas.width - 5, 5);
-            }
+                    units.forEach(unit => {
+                        if (unit.strength <= 0 || unit.broken) return;
 
-            function resolveMeleeCombat(attacker, defender) {
-                if (attacker.strength <= 0 || attacker.broken || defender.strength <= 0 || defender.broken) {
-                    return;
-                }
+                        const enemies = units.filter(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken);
+                        if (enemies.length === 0) return;
 
-                const effectiveAttackerAttack = attacker.getEffectiveAttack();
-                const effectiveDefenderDefense = defender.getEffectiveDefense();
-                const effectiveDefenderAttack = defender.getEffectiveAttack();
-                const effectiveAttackerDefense = attacker.getEffectiveDefense();
+                        const targetEnemy = window.battleSim.getPreferredTarget(unit, enemies);
+                        if (!targetEnemy) return;
 
-                let rawDamageToDefender = (effectiveAttackerAttack * (1 + (Math.random() * 0.4 - 0.2))) - (effectiveDefenderDefense * (1 + (Math.random() * 0.4 - 0.2)));
-                let rawDamageToAttacker = (effectiveDefenderAttack * (1 + (Math.random() * 0.4 - 0.2))) - (effectiveAttackerDefense * (1 + (Math.random() * 0.4 - 0.2)));
+                        let optimalMove = window.battleSim.findOptimalMoveForUnit(unit, targetEnemy, units, map);
 
-                if (attacker.type === 'cavalry' && defender.type === 'infantry') {
-                    rawDamageToDefender *= 1.2;
-                } else if (attacker.type === 'infantry' && defender.type === 'cavalry') {
-                    rawDamageToAttacker *= 1.1;
-                }
-                if (attacker.type === 'chariot') {
-                    rawDamageToDefender *= 1.3;
-                }
+                        const originalX = unit.x;
+                        const originalY = unit.y;
 
-                if (attacker.hasCharged) {
-                    rawDamageToDefender *= 1.5;
-                    logBattleMessage(`${attacker.name} (${attacker.faction}) charged ${defender.name} (${defender.faction})!`);
-                }
+                        let moved = unit.moveTo(optimalMove.x, optimalMove.y);
 
-                if (isFlanked(defender)) {
-                    rawDamageToDefender *= 1.5;
-                    rawDamageToAttacker *= 0.7;
-                    defender.isFlankedStatus = true;
-                    logBattleMessage(`${defender.name} (${defender.faction}) is flanked and takes extra damage!`);
-                }
+                        const isCurrentlyAdjacentToEnemy = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
+                            (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
 
-                rawDamageToDefender = Math.max(0, rawDamageToDefender);
-                rawDamageToAttacker = Math.max(0, rawDamageToAttacker);
+                        // If unit did not move this turn (i.e. stuck or chose to stay put) and is idle
+                        if (!moved && unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE) {
+                             window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) was idle or blocked; attempting forced move.`);
+                            
+                            const adjacentTiles = [
+                                { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+                                { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
+                            ];
+                            adjacentTiles.sort(() => Math.random() - 0.5); 
 
-                let actualDamageToDefender = (rawDamageToDefender / 100) * attacker.strength * 0.8;
-                let actualDamageToAttacker = (rawDamageToAttacker / 100) * defender.strength * 0.8;
+                            let forcedMoveAttempted = false;
+                            for (const move of adjacentTiles) {
+                                const testX = originalX + move.dx; 
+                                const testY = originalY + move.dy;
 
-                actualDamageToDefender *= 8; // Damage multiplier - Increased to 8
-                actualDamageToAttacker *= 8; // Damage multiplier - Increased to 8
+                                if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
+                                    const terrainType = getTerrainAt(testX, testY);
+                                    if (!FORMATION_DATA[unit.currentFormation]) {
+                                        console.error(`Formation data missing for: ${unit.currentFormation}`);
+                                        continue;
+                                    }
+                                    const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
+                                    let isOccupiedByOtherUnit = false; 
+                                    for (const otherUnit of units) {
+                                        if (otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken) {
+                                            isOccupiedByOtherUnit = true;
+                                            break;
+                                        }
+                                    }
 
-                if (rawDamageToDefender > 0 && actualDamageToDefender < 1) {
-                    actualDamageToDefender = 1;
-                }
-                if (rawDamageToAttacker > 0 && actualDamageToAttacker < 1) {
-                    actualDamageToAttacker = 1;
-                }
+                                    if (moveCost !== Infinity && unit.movementPoints >= moveCost && !isOccupiedByOtherUnit) {
+                                        moved = unit.moveTo(testX, testY);
+                                        if (moved) {
+                                            window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
+                                            forcedMoveAttempted = true; // Set flag
+                                            break; 
+                                        }
+                                    }
+                                }
+                            } 
+                        }
 
-                defender.takeDamage(actualDamageToDefender);
-                attacker.takeDamage(actualDamageToAttacker);
+                        if (moved || (unit.x !== originalX || unit.y !== originalY)) {
+                            unit._wasActiveThisTurn = true;
+                            const isAdjacentAfterMove = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
+                                (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
+                            if (isAdjacentAfterMove) {
+                                unit.hasCharged = true;
+                            }
+                        }
+                    });
 
-                logBattleMessage(`${attacker.name} (${attacker.faction}) dealt ${actualDamageToDefender.toFixed(1)} damage to ${defender.name} (${defender.faction}).`);
-                logBattleMessage(`${defender.name} (${defender.faction}) dealt ${actualDamageToAttacker.toFixed(1)} damage to ${attacker.name} (${attacker.faction}).`);
-            }
+                    const engagedPairs = new Set();
+                    units.forEach(unitA => {
+                        if (unitA.strength <= 0 || unitA.broken) return;
+                        units.forEach(unitB => {
+                            if (unitA.id === unitB.id || unitA.faction === unitB.faction || unitB.strength <= 0 || unitB.broken) return;
+                            if (Math.abs(unitA.x - unitB.x) + Math.abs(unitA.y - unitB.y) === 1) {
+                                const pairKey1 = `${unitA.id}-${unitB.id}`;
+                                const pairKey2 = `${unitB.id}-${unitA.id}`;
+                                if (!engagedPairs.has(pairKey1) && !engagedPairs.has(pairKey2)) {
+                                    window.battleSim.resolveMeleeCombat(unitA, unitB);
+                                    engagedPairs.add(pairKey1);
+                                    unitA._wasActiveThisTurn = true;
+                                    unitB._wasActiveThisTurn = true;
+                                }
+                            }
+                        });
+                    });
 
-            function resolveRangedCombat() {
-                units.forEach(archerUnit => {
-                    if (archerUnit.type !== 'archer' && archerUnit.type !== 'skirmisher' || archerUnit.strength <= 0 || archerUnit.broken) {
+                    units.forEach(unit => {
+                        if (unit.strength <= 0 && !unit.broken) {
+                            unit.broken = true;
+                            window.battleSim.logBattleMessage(`${unit.name} (${unit.faction}) has been destroyed!`);
+                            units.forEach(friendlyUnit => {
+                                if (friendlyUnit.faction === unit.faction && friendlyUnit.id !== unit.id && friendlyUnit.strength > 0 && !friendlyUnit.broken) {
+                                    const dist = Math.sqrt(Math.pow(friendlyUnit.x - unit.x, 2) + Math.pow(friendlyUnit.y - unit.y, 2));
+                                    if (dist <= 2) {
+                                        friendlyUnit.morale = Math.min(friendlyUnit.initialMorale, friendlyUnit.morale + MORALE_GAIN_ON_ENEMY_BREAK);
+                                        window.battleSim.logBattleMessage(`${friendlyUnit.name} (${friendlyUnit.faction}) gains morale from ${unit.name} breaking!`);
+                                    }
+                                }
+                            });
+                        }
+                        if (unit.strength > 0 && !unit.broken) {
+                            if (unit._wasActiveThisTurn || unit.isFlashing) {
+                                unit.idleTurns = 0;
+                                let fatigueGain = 1;
+                                const currentTerrain = getTerrainAt(unit.x, unit.y);
+                                fatigueGain += TERRAIN_DATA[currentTerrain].fatigueCost * 0.5;
+                                if (unit.appliedCommanderBuff) fatigueGain *= LEADERSHIP_FATIGUE_REDUCTION;
+                                unit.fatigue += fatigueGain;
+                            } else {
+                                unit.idleTurns++;
+                            }
+                        }
+                        if (unit.strength <=0 || unit.broken) unit.idleTurns = 0;
+                    });
+
+                    window.battleSim.updateUnitCounts();
+                    window.battleSim.checkVictoryConditions();
+
+                    isAnimating = false;
+                    nextTurnButton.disabled = false;
+                    if (isAutoBattleActive) {
+                        autoBattleButton.disabled = false;
+                    }
+
+                    if (isAutoBattleActive) {
+                        if (!window.battleSim.isBattleOver()) {
+                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
+                        } else {
+                            window.battleSim.stopAutoBattle();
+                        }
+                    }
+                };
+
+                window.battleSim.isBattleOver = function() {
+                    const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken).length;
+                    const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken).length;
+                    return romanActiveUnits === 0 || gaulActiveUnits === 0;
+                };
+
+                window.battleSim.gameLoop = function(currentTime) {
+                    if (!isAnimating) {
+                        window.battleSim.drawGame();
                         return;
                     }
 
-                    let target = null;
-                    let minDist = Infinity;
-
-                    units.filter(enemy => enemy.faction !== archerUnit.faction && enemy.strength > 0 && !enemy.broken)
-                         .forEach(enemy => {
-                        const isEnemyEngagedWithFriendly = units.some(friendly =>
-                            friendly.faction === archerUnit.faction && friendly.strength > 0 && !friendly.broken &&
-                            Math.abs(friendly.x - enemy.x) + Math.abs(friendly.y - enemy.y) === 1
-                        );
-
-                        if (!isEnemyEngagedWithFriendly) {
-                            const dist = Math.sqrt(Math.pow(archerUnit.x - enemy.x, 2) + Math.pow(archerUnit.y - enemy.y, 2));
-                            if (dist <= ARCHER_RANGE && dist < minDist) {
-                                minDist = dist;
-                                target = enemy;
-                            }
-                        }
-                    });
-
-                    if (target) {
-                        const effectiveArcherAttack = archerUnit.getEffectiveAttack();
-                        const effectiveTargetDefense = target.getEffectiveDefense();
-
-                        let rawRangedDamage = (effectiveArcherAttack * (1 + (Math.random() * 0.2 - 0.1))) - (effectiveTargetDefense * (1 + (Math.random() * 0.2 - 0.1)) * 0.5);
-                        
-                        rawRangedDamage = Math.max(0, rawRangedDamage);
-
-                        let actualRangedDamage = (rawRangedDamage / 100) * archerUnit.strength * 0.4;
-
-                        actualRangedDamage *= 8; // Damage multiplier - Increased to 8
-
-                        if (rawRangedDamage > 0 && actualRangedDamage < 1) {
-                            actualRangedDamage = 1;
-                        }
-
-                        target.takeDamage(actualRangedDamage);
-                        logBattleMessage(`${archerUnit.name} (${archerUnit.faction}) shot at ${target.name} (${target.faction}), dealing ${actualRangedDamage.toFixed(1)} ranged damage.`);
-                        projectiles.push(new Projectile(archerUnit.x, archerUnit.y, target.x, target.y, archerUnit.color));
-                    }
-                });
-            }
-
-            /**
-             * Selects the best target for a unit based on its target preference.
-             * @param {Unit} unit - The unit selecting a target.
-             * @param {Array<Unit>} enemies - All active enemy units.
-             * @returns {Unit|null} The preferred enemy target, or null if none.
-             */
-            function getPreferredTarget(unit, enemies) {
-                let target = null;
-                let bestScore = -Infinity;
-
-                // Filter out broken or dead enemies
-                const activeEnemies = enemies.filter(enemy => enemy.strength > 0 && !enemy.broken);
-                if (activeEnemies.length === 0) return null;
-
-                const getDistance = (u1, u2) => Math.sqrt(Math.pow(u1.x - u2.x, 2) + Math.pow(u1.y - u2.y, 2));
-
-                activeEnemies.forEach(enemy => {
-                    const distance = getDistance(unit, enemy);
-                    let score = 0;
-
-                    // Base score: negative of distance (closer is better)
-                    score -= distance;
-
-                    switch (unit.targetPreference) {
-                        case 'closest':
-                            // Already prioritized by base score
-                            break;
-                        case 'weakest':
-                            score += (100 - (enemy.strength / enemy.maxStrength) * 100) * 0.5; // Bonus for lower health
-                            break;
-                        case 'commander':
-                            if (enemy.type === 'commander') {
-                                score += 200; // High bonus for targeting a commander
-                            }
-                            break;
-                        case 'ranged_units':
-                            if (enemy.type === 'archer' || enemy.type === 'skirmisher') {
-                                score += 50; // Bonus for targeting ranged units
-                            }
-                            break;
-                        case 'infantry':
-                            if (enemy.type === 'infantry') {
-                                score += 20; // Bonus for targeting infantry
-                            }
-                            break;
-                        default:
-                            // No special preference
-                            break;
+                    // Initialize window.lastTime the very first time gameLoop is called
+                    if (window.lastTime === undefined || window.lastTime === 0) { // Check for undefined or initial 0
+                        window.lastTime = currentTime;
                     }
 
-                    // Always prefer targets that are in range for archers/skirmishers
-                    if ((unit.type === 'archer' || unit.type === 'skirmisher') && distance <= ARCHER_RANGE) {
-                        score += 10;
-                    }
+                    const elapsedTime = currentTime - window.lastTime;
+                    const progress = Math.min(1, elapsedTime / ANIMATION_DURATION);
 
-                    if (score > bestScore) {
-                        bestScore = score;
-                        target = enemy;
-                    }
-                });
-                return target;
-            }
-
-            /**
-             * Implements Breadth-First Search (BFS) to find the shortest path from a start
-             * position to any valid target, considering movement costs and occupied cells.
-             * @param {{x: number, y: number}} startPos - The starting grid position.
-             * @param {Unit} unit - The unit attempting to move (for movement points, formation, morale).
-             * @param {Array<Unit>} allUnits - All units on the map to check for occupied cells.
-             * @param {Array<Array<string>>} map - The terrain map.
-             * @param {Array<{x: number, y: number}>} targetPositions - An array of potential target grid positions.
-             * @returns {Array<{x: number, y: number}>|null} The path as an array of coordinates, or null if no path found.
-             */
-            function findPathBFS(startPos, unit, allUnits, map, targetPositions) {
-                const queue = [{x: startPos.x, y: startPos.y, path: [], cost: 0}];
-                const visited = new Set(); // Stores "x,y" strings to avoid revisiting
-                visited.add(`${startPos.x},${startPos.y}`);
-
-                const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
-                const dy = [0, 0, -1, 1, -1, 1, -1, 1];
-
-                let closestPath = null;
-                let minDistanceToTarget = Infinity; // Actual Euclidean distance, not path cost
-
-                while (queue.length > 0) {
-                    const {x, y, path, cost} = queue.shift();
-
-                    // Check if this node is one of the target positions
-                    // Prioritize targets that are closer in Euclidean distance among valid paths
-                    for (const targetP of targetPositions) {
-                        if (x === targetP.x && y === targetP.y) {
-                            const euclideanDistance = Math.sqrt(Math.pow(startPos.x - x, 2) + Math.pow(startPos.y - y, 2));
-                            if (euclideanDistance < minDistanceToTarget) {
-                                minDistanceToTarget = euclideanDistance;
-                                closestPath = path;
-                            }
-                        }
-                    }
-
-                    // Continue BFS, even after finding a target, to potentially find a shorter *Euclidean* path
-                    // (BFS guarantees shortest path by cost, but not necessarily Euclidean shortest)
-                    // If we need the shortest path *by steps*, we can return immediately here.
-                    // For now, let's prioritize pathfinding to *any* target before optimizing the path itself.
-
-                    for (let i = 0; i < dx.length; i++) {
-                        const nextX = x + dx[i];
-                        const nextY = y + dy[i];
-                        const nextCoord = `${nextX},${nextY}`;
-
-                        if (visited.has(nextCoord)) continue;
-
-                        if (nextX < 0 || nextX >= MAP_WIDTH_CELLS || nextY < 0 || nextY >= MAP_HEIGHT_CELLS) {
-                            continue;
-                        }
-
-                        const terrainType = getTerrainAt(nextX, nextY);
-                        let moveCost = TERRAIN_DATA[terrainType].movementCost;
-                        
-                        if (!FORMATION_DATA[unit.currentFormation]) {
-                            continue; // Skip if formation data is invalid
-                        }
-                        moveCost *= FORMATION_DATA[unit.currentFormation].movementModifier;
-                        moveCost *= (1 + unit.getMoraleState().movementPenalty);
-                        moveCost *= AI_BEHAVIOR_DATA[unit.currentBehavior].movementModifier; // Apply behavior movement modifier
-
-
-                        if (moveCost === Infinity || cost + moveCost > unit.movementPoints) {
-                            continue;
-                        }
-
-                        const isOccupied = allUnits.some(otherUnit =>
-                            otherUnit.id !== unit.id && otherUnit.x === nextX && otherUnit.y === nextY && otherUnit.strength > 0 && !otherUnit.broken
-                        );
-                        if (isOccupied) {
-                            continue;
-                        }
-
-                        visited.add(nextCoord);
-                        queue.push({x: nextX, y: nextY, path: [...path, {x: nextX, y: nextY}], cost: cost + moveCost});
-                    }
-                }
-                return closestPath;
-            }
-
-
-            /**
-             * Determines the optimal next move for a unit, considering targets, terrain, and behavior.
-             * Now uses BFS for proper pathfinding.
-             * @param {Unit} unit - The unit to calculate the move for.
-             * @param {Unit} targetEnemy - The preferred target enemy unit.
-             * @param {Array<Unit>} allUnits - All units on the map to check for occupation.
-             * @param {Array<Array<string>>} map - The terrain map.
-             * @returns {{x: number, y: number}} The optimal next grid coordinates.
-             */
-            function findOptimalMoveForUnit(unit, targetEnemy, allUnits, map) {
-                const startPos = {x: unit.x, y: unit.y};
-                let finalTargetX = unit.x;
-                let finalTargetY = unit.y;
-
-                // Define potential target squares for pathfinding based on unit type and target preference
-                let pathTargets = [];
-                if (unit.type === 'archer' || unit.type === 'skirmisher') {
-                    // Ranged units want to be within ARCHER_RANGE, and preferably on hills
-                    for (let y = 0; y < MAP_HEIGHT_CELLS; y++) {
-                        for (let x = 0; x < MAP_WIDTH_CELLS; x++) {
-                            const distToEnemy = Math.sqrt(Math.pow(x - targetEnemy.x, 2) + Math.pow(y - targetEnemy.y, 2));
-                            const terrainType = getTerrainAt(x, y);
-                            // Valid firing position: within range, not too close (to avoid melee), not occupied, not water/impassable
-                            if (distToEnemy <= ARCHER_RANGE && distToEnemy > 1 && TERRAIN_DATA[terrainType].movementCost !== Infinity &&
-                                !allUnits.some(u => u.x === x && u.y === y && u.id !== unit.id)) {
-                                
-                                let score = 0;
-                                score -= distToEnemy; // Prefer closer targets within range
-                                if (terrainType === 'hill') {
-                                    score += 50; // SIGNIFICANT BONUS FOR HILLS FOR ARCHERS
-                                }
-                                pathTargets.push({x, y, score});
-                            }
-                        }
-                    }
-                    // Sort path targets by score to prioritize better positions for BFS
-                    pathTargets.sort((a,b) => b.score - a.score);
-
-                } else {
-                    // Melee units want to be adjacent to target enemy
-                    const dx = [-1, 1, 0, 0, -1, -1, 1, 1];
-                    const dy = [0, 0, -1, 1, -1, 1, -1, 1];
-                    for (let i = 0; i < dx.length; i++) {
-                        const adjX = targetEnemy.x + dx[i];
-                        const adjY = targetEnemy.y + dy[i];
-                        const terrainType = getTerrainAt(adjX, adjY);
-                        // Valid attack position: adjacent to enemy, not occupied by friendly, not water/impassable
-                        if (adjX >= 0 && adjX < MAP_WIDTH_CELLS && adjY >= 0 && adjY < MAP_HEIGHT_CELLS &&
-                            TERRAIN_DATA[terrainType].movementCost !== Infinity &&
-                            !allUnits.some(u => u.x === adjX && u.y === adjY && u.id !== unit.id)) {
-                            pathTargets.push({x: adjX, y: adjY});
-                        }
-                    }
-                }
-
-                // If no valid path targets, unit stays put
-                if (pathTargets.length === 0) {
-                    return { x: unit.x, y: unit.y };
-                }
-
-                // Use BFS to find the best first step towards a valid target
-                let shortestPath = findPathBFS(startPos, unit, allUnits, map, pathTargets);
-
-                if (shortestPath && shortestPath.length > 0) {
-                    finalTargetX = shortestPath[0].x; // Take the first step on the path
-                    finalTargetY = shortestPath[0].y;
-                } else {
-                    // If BFS found no path to any preferred target (e.g., target is unreachable or all path points are blocked)
-                    // Unit still tries to move towards target or a simple adjacent space.
-                    const dx = targetEnemy.x - unit.x;
-                    const dy = targetEnemy.y - unit.y;
-
-                    let tempNextX = unit.x;
-                    let tempNextY = unit.y;
-
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        tempNextX += Math.sign(dx);
-                    } else if (Math.abs(dy) > Math.abs(dx)) {
-                        tempNextY += Math.sign(dy);
-                    } else if (dx !== 0) {
-                        tempNextX += Math.sign(dx);
-                    } else if (dy !== 0) {
-                        tempNextY += Math.sign(dy);
-                    }
-                    
-                    // Validate this direct step (it might still be blocked, which processNextTurn's failsafe will catch)
-                    if (tempNextX >= 0 && tempNextX < MAP_WIDTH_CELLS && tempNextY >= 0 && tempNextY < MAP_HEIGHT_CELLS &&
-                        getTerrainAt(tempNextX, tempNextY) !== 'water' &&
-                        !allUnits.some(u => u.x === tempNextX && u.y === tempNextY && u.id !== unit.id)) {
-                        finalTargetX = tempNextX;
-                        finalTargetY = tempNextY;
-                    } else {
-                        // As a last resort, if even the direct step isn't valid, try any immediately adjacent clear tile
-                        const adjacentTiles = [
-                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
-                        ];
-                        for (const move of adjacentTiles) {
-                            const testX = unit.x + move.dx;
-                            const testY = unit.y + move.dy;
-                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS &&
-                                getTerrainAt(testX, testY) !== 'water' &&
-                                !allUnits.some(u => u.x === testX && u.y === testY && u.id !== unit.id)) {
-                                finalTargetX = testX;
-                                finalTargetY = testY;
-                                break; // Found a spot, take it.
-                            }
-                        }
-                    }
-                }
-
-                return { x: finalTargetX, y: finalTargetY };
-            }
-
-
-            /**
-             * Advances the game to the next turn, organized into phases.
-             * This function will be called *after* animation completes.
-             */
-            function processNextTurn() {
-                turn++;
-                logBattleMessage(`--- Turn ${turn} ---`);
-
-                // Phase 1: Reset Unit Status for drawing/animation for the *next* frame.
-                units.forEach(unit => {
-                    unit.resetTurnStatus();
-                });
-
-                // Phase 2: Commander Aura Application & Loss Check
-                const activeCommanders = units.filter(unit => unit.type === 'commander' && unit.strength > 0 && !unit.broken);
-                const lostCommandersThisTurn = units.filter(unit => unit.type === 'commander' && unit.strength <= 0 && !unit.broken);
-
-                units.forEach(unit => {
-                    if (unit.type === 'commander' || unit.broken || unit.strength <= 0) return;
-
-                    let inAura = false;
-                    for (const commander of activeCommanders) {
-                        const dist = Math.sqrt(Math.pow(unit.x - commander.x, 2) + Math.pow(unit.y - commander.y, 2));
-                        if (dist <= LEADERSHIP_RADIUS) {
-                            unit.appliedCommanderBuff = true;
-                            unit.morale = Math.min(unit.initialMorale, unit.morale + LEADERSHIP_MORALE_BOOST);
-                            unit.fatigue = Math.max(0, unit.fatigue - LEADERSHIP_FATIGUE_REDUCTION);
-                            inAura = true;
-                            break;
-                        }
-                    }
-                    unit.hasCommanderAura = inAura;
-                });
-
-                if (lostCommandersThisTurn.length > 0) {
-                    lostCommandersThisTurn.forEach(lostCommander => {
-                        logBattleMessage(`COMMANDER LOST! ${lostCommander.name} (${lostCommander.faction}) has fallen!`);
-                        units.forEach(unit => {
-                            if (unit.faction === lostCommander.faction && unit.id !== lostCommander.id && unit.strength > 0 && !unit.broken) {
-                                const dist = Math.sqrt(Math.pow(unit.x - lostCommander.x, 2) + Math.pow(unit.y - lostCommander.y, 2));
-                                if (dist <= LEADERSHIP_RADIUS * 2) {
-                                    unit.morale = Math.max(MORALE_BREAK_THRESHOLD, unit.morale - COMMANDER_LOSS_MORALE_SHOCK);
-                                    logBattleMessage(`${unit.name} (${unit.faction}) suffers morale shock from leader loss! Morale: ${unit.morale.toFixed(0)}`);
-                                    if (unit.morale <= MORALE_BREAK_THRESHOLD) {
-                                        unit.broken = true;
-                                        unit.morale = 0;
-                                        logBattleMessage(`${unit.name} (${unit.faction}) has broken due to leader loss!`);
-                                    }
-                                }
-                            }
-                        });
-                    });
-                }
-
-
-                // Phase 3: Ranged Combat Phase
-                resolveRangedCombat();
-
-                // Phase 4: Movement Phase (Smarter AI)
-                units.forEach(unit => {
-                    if (unit.strength <= 0 || unit.broken) return;
-
-                    // Dynamically select target based on unit preference
-                    const enemies = units.filter(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken);
-                    if (enemies.length === 0) return; // No enemies left to target or move towards
-
-                    const targetEnemy = getPreferredTarget(unit, enemies);
-                    if (!targetEnemy) return; // No valid target found based on preference
-
-                    // Determine optimal move using BFS
-                    let optimalMove = findOptimalMoveForUnit(unit, targetEnemy, units, map);
-
-                    const originalX = unit.x;
-                    const originalY = unit.y;
-
-                    let moved = unit.moveTo(optimalMove.x, optimalMove.y);
-
-                    // If unit still hasn't moved (despite pathfinding) OR it's idle/blocked, try a forced simple move.
-                    // This is the failsafe for very complex blocking situations or when BFS couldn't find a path within range.
-                    const isCurrentlyAdjacentToEnemy = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
-                        (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
-
-                    if (!moved && unit.idleTurns >= IDLE_TURNS_FOR_FORCED_MOVE && !isCurrentlyAdjacentToEnemy && !unit.isFlashing) {
-                         logBattleMessage(`${unit.name} (${unit.faction}) was idle or blocked; attempting forced move.`);
-                        
-                        const adjacentTiles = [
-                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-                            { dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }
-                        ];
-                        adjacentTiles.sort(() => Math.random() - 0.5); // Randomize to try different directions
-
-                        for (const move of adjacentTiles) {
-                            const testX = originalX + move.dx; 
-                            const testY = originalY + move.dy;
-
-                            if (testX >= 0 && testX < MAP_WIDTH_CELLS && testY >= 0 && testY < MAP_HEIGHT_CELLS) {
-                                const terrainType = getTerrainAt(testX, testY);
-                                if (!FORMATION_DATA[unit.currentFormation]) {
-                                    console.error(`Formation data missing for: ${unit.currentFormation}`);
-                                    continue;
-                                }
-                                const moveCost = TERRAIN_DATA[terrainType].movementCost * FORMATION_DATA[unit.currentFormation].movementModifier * (1 + unit.getMoraleState().movementPenalty);
-                                const occupied = units.some(otherUnit =>
-                                    otherUnit.id !== unit.id && otherUnit.x === testX && otherUnit.y === testY && otherUnit.strength > 0 && !otherUnit.broken
-                                );
-
-                                if (moveCost !== Infinity && unit.movementPoints >= moveCost && !occupied) {
-                                    moved = unit.moveTo(testX, testY);
-                                    if (moved) {
-                                        logBattleMessage(`${unit.name} (${unit.faction}) successfully made a forced move to (${testX}, ${testY}).`);
-                                        break; 
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (moved || (unit.x !== originalX || unit.y !== originalY)) {
-                        unit._wasActiveThisTurn = true;
-                        const isAdjacentAfterMove = units.some(enemy => enemy.faction !== unit.faction && enemy.strength > 0 && !enemy.broken &&
-                            (Math.abs(unit.x - enemy.x) + Math.abs(unit.y - enemy.y) === 1));
-                        if (isAdjacentAfterMove) {
-                            unit.hasCharged = true;
-                        }
-                    }
-                });
-
-                // Phase 5: Melee Combat Phase
-                const engagedPairs = new Set();
-                units.forEach(unitA => {
-                    if (unitA.strength <= 0 || unitA.broken) return;
-
-                    units.forEach(unitB => {
-                        if (unitA.id === unitB.id || unitA.faction === unitB.faction || unitB.strength <= 0 || unitB.broken) {
-                            return;
-                        }
-
-                        if (Math.abs(unitA.x - unitB.x) + Math.abs(unitA.y - unitB.y) === 1) {
-                            const pairKey1 = `${unitA.id}-${unitB.id}`;
-                            const pairKey2 = `${unitB.id}-${unitA.id}`;
-                            if (!engagedPairs.has(pairKey1) && !engagedPairs.has(pairKey2)) {
-                                resolveMeleeCombat(unitA, unitB);
-                                engagedPairs.add(pairKey1);
-                                unitA._wasActiveThisTurn = true;
-                                unitB._wasActiveThisTurn = true;
-                            }
-                        }
-                    });
-                });
-
-                // Phase 6: Morale Check and Cleanup & Update Idle Turns/Fatigue
-                units.forEach(unit => {
-                    if (unit.strength <= 0 && !unit.broken) {
-                        unit.broken = true;
-                        logBattleMessage(`${unit.name} (${unit.faction}) has been destroyed!`);
-
-                        units.forEach(friendlyUnit => {
-                            if (friendlyUnit.faction === unit.faction && friendlyUnit.id !== unit.id && friendlyUnit.strength > 0 && !friendlyUnit.broken) {
-                                const dist = Math.sqrt(Math.pow(friendlyUnit.x - unit.x, 2) + Math.pow(friendlyUnit.y - unit.y, 2));
-                                if (dist <= 2) {
-                                    friendlyUnit.morale = Math.min(friendlyUnit.initialMorale, friendlyUnit.morale + MORALE_GAIN_ON_ENEMY_BREAK);
-                                    logBattleMessage(`${friendlyUnit.name} (${friendlyUnit.faction}) gains morale from ${unit.name} breaking!`);
-                                }
-                            }
-                        });
-                    }
-
-                    if (unit.strength > 0 && !unit.broken) {
-                        if (unit._wasActiveThisTurn || unit.isFlashing) {
-                            unit.idleTurns = 0;
-                            let fatigueGain = 1;
-                            const currentTerrain = getTerrainAt(unit.x, unit.y);
-                            fatigueGain += TERRAIN_DATA[currentTerrain].fatigueCost * 0.5;
-
-                            if (unit.appliedCommanderBuff) {
-                                fatigueGain *= LEADERSHIP_FATIGUE_REDUCTION;
-                            }
-                            unit.fatigue += fatigueGain;
-
-                        } else {
-                            unit.idleTurns++;
-                        }
-                    }
-                    if (unit.strength <=0 || unit.broken) {
-                        unit.idleTurns = 0;
-                    }
-                });
-
-                updateUnitCounts();
-                checkVictoryConditions();
-
-                isAnimating = false;
-                nextTurnButton.disabled = false;
-                if (isAutoBattleActive) {
-                    autoBattleButton.disabled = false;
-                }
-
-                if (isAutoBattleActive) {
-                    if (!isBattleOver()) {
-                        autoBattleIntervalId = setTimeout(startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
-                    } else {
-                        stopAutoBattle();
-                    }
-                }
-            }
-
-            function isBattleOver() {
-                const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken).length;
-                const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken).length;
-                return romanActiveUnits === 0 || gaulActiveUnits === 0;
-            }
-
-            let lastTime = 0;
-            function gameLoop(currentTime) {
-                if (!isAnimating) {
-                    drawGame();
-                    return;
-                }
-
-                if (animationStartTime === 0) {
-                    animationStartTime = currentTime;
-                }
-
-                const elapsedTime = currentTime - animationStartTime;
-                const progress = Math.min(1, elapsedTime / ANIMATION_DURATION);
-
-                let animationComplete = true;
-                units.forEach(unit => {
-                    unit.displayX = unit.prevX * (1 - progress) + unit.x * progress;
-                    unit.displayY = unit.prevY * (1 - progress) + unit.y * progress;
-
-                    if (Math.abs(unit.displayX - unit.x) > 0.01 || Math.abs(unit.displayY - unit.y) > 0.01) {
-                        animationComplete = false;
-                    }
-                });
-                
-                drawGame();
-
-                if (animationComplete && elapsedTime >= ANIMATION_DURATION) {
-                    animationStartTime = 0;
+                    let animationComplete = true;
                     units.forEach(unit => {
-                        unit.displayX = unit.x;
-                        unit.displayY = unit.y;
-                    });
-                    drawGame();
-                    processNextTurn();
-                } else {
-                    requestAnimationFrame(gameLoop);
-                }
-            }
-
-            function startNextTurnSequence() {
-                if (isAnimating) return;
-
-                nextTurnButton.textContent = 'Next Turn';
-                restartButton.style.display = 'block';
-
-                nextTurnButton.disabled = true;
-                autoBattleButton.disabled = true;
-
-                isAnimating = true;
-                animationStartTime = performance.now();
-                requestAnimationFrame(gameLoop);
-            }
-
-            function toggleAutoBattle() {
-                isAutoBattleActive = !isAutoBattleActive;
-                if (isAutoBattleActive) {
-                    autoBattleButton.textContent = 'Stop Auto Battle';
-                    nextTurnButton.disabled = true;
-                    if (!isAnimating && !isBattleOver()) {
-                        autoBattleIntervalId = setTimeout(startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
-                    }
-                } else {
-                    stopAutoBattle();
-                }
-            }
-
-            function stopAutoBattle() {
-                isAutoBattleActive = false;
-                autoBattleButton.textContent = 'Auto Battle';
-                nextTurnButton.disabled = false;
-                clearTimeout(autoBattleIntervalId);
-                autoBattleIntervalId = null;
-            }
-
-
-            function updateUnitCounts() {
-                const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken).length;
-                const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken).length;
-
-                romanUnitsDisplay.textContent = `Units: ${romanActiveUnits}`;
-                gaulUnitsDisplay.textContent = `Units: ${gaulActiveUnits}`;
-            }
-
-            function checkVictoryConditions() {
-                const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken).length;
-                const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken).length;
-
-                if (romanActiveUnits === 0 && gaulActiveUnits === 0) {
-                    logBattleMessage("All units destroyed or routed! It's a draw!");
-                    nextTurnButton.disabled = true;
-                    stopAutoBattle();
-                } else if (romanActiveUnits === 0) {
-                    logBattleMessage("Barbarian Horde is victorious! The Roman Army has been defeated!");
-                    nextTurnButton.disabled = true;
-                    stopAutoBattle();
-                } else if (gaulActiveUnits === 0) {
-                    logBattleMessage("Roman Army is victorious! The Barbarian Horde has been defeated!");
-                    nextTurnButton.disabled = true;
-                    stopAutoBattle();
-                }
-            }
-
-            // --- Mouse Interaction for Tooltip ---
-            // Event listener setup is moved into DOMContentLoaded
-            // lastMouseX and lastMouseY are declared at the top of IIFE
-
-            document.addEventListener('DOMContentLoaded', function() {
-                // Assign DOM elements to variables *after* the DOM is loaded
-                canvas = document.getElementById('battleCanvas');
-                ctx = canvas.getContext('2d');
-                nextTurnButton = document.getElementById('nextTurnButton');
-                autoBattleButton = document.getElementById('autoBattleButton');
-                restartButton = document.getElementById('restartButton');
-                logArea = document.getElementById('logArea');
-                romanUnitsDisplay = document.getElementById('roman-units-display');
-                gaulUnitsDisplay = document.getElementById('gaul-units-display');
-                unitTooltip = document.getElementById('unitTooltip');
-                scenarioSelect = document.getElementById('scenarioSelect'); // Get scenario select element
-
-                // Set initial canvas dimensions
-                canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-                canvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
-                terrainTextureCanvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
-                terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
-
-                // Attach event listeners
-                canvas.addEventListener('mousemove', (event) => {
-                    const rect = canvas.getBoundingClientRect();
-                    const scaleX = canvas.width / rect.width;
-                    const scaleY = canvas.height / rect.height;
-
-                    lastMouseX = (event.clientX - rect.left) * scaleX;
-                    lastMouseY = (event.clientY - rect.top) * scaleY;
-
-                    let foundUnit = null;
-                    for (const unit of units) {
-                        const unitPixelX = unit.displayX * GRID_SIZE;
-                        const unitPixelY = unit.displayY * GRID_SIZE;
-
-                        if (lastMouseX >= unitPixelX && lastMouseX < unitPixelX + GRID_SIZE &&
-                            lastMouseY >= unitPixelY && lastMouseY < unitPixelY + GRID_SIZE &&
-                            unit.strength > 0 && !unit.broken) {
-                            foundUnit = unit;
-                            break;
+                        unit.displayX = unit.prevX * (1 - progress) + unit.x * progress;
+                        unit.displayY = unit.prevY * (1 - progress) + unit.y * progress;
+                        if (Math.abs(unit.displayX - unit.x) > 0.01 || Math.abs(unit.displayY - unit.y) > 0.01) {
+                            animationComplete = false;
                         }
-                    }
-
-                    if (foundUnit !== currentHoveredUnit) {
-                        currentHoveredUnit = foundUnit;
-                        drawGame(); // Redraw immediately to show/hide highlight
-                    }
+                    });
                     
-                    if (currentHoveredUnit) {
-                        unitTooltip.style.display = 'block';
-                        const tooltipOffsetX = 10;
-                        const tooltipOffsetY = -20;
+                    window.battleSim.drawGame();
 
-                        unitTooltip.style.left = `${event.clientX + tooltipOffsetX}px`;
-                        unitTooltip.style.top = `${event.clientY + tooltipOffsetY}px`;
-                        unitTooltip.innerHTML = `
-                            <strong>${currentHoveredUnit.name}</strong><br>
-                            Faction: ${currentHoveredUnit.faction}<br>
-                            Type: ${currentHoveredUnit.type}<br>
-                            Strength: ${currentHoveredUnit.strength.toFixed(0)}<br>
-                            Morale: ${currentHoveredUnit.morale.toFixed(0)} (${currentHoveredUnit.getMoraleState().name})<br>
-                            Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
-                            Idle Turns: ${currentHoveredUnit.idleTurns}<br>
-                            Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}
-                        `;
+                    if (animationComplete && elapsedTime >= ANIMATION_DURATION) {
+                        window.lastTime = 0; // Reset for next animation cycle
+                        animationStartTime = 0;
+                        units.forEach(unit => {
+                            unit.displayX = unit.x;
+                            unit.displayY = unit.y;
+                        });
+                        window.battleSim.drawGame();
+                        window.battleSim.processNextTurn();
                     } else {
-                        unitTooltip.style.display = 'none';
+                        window.requestAnimationFrame(window.battleSim.gameLoop);
                     }
-                });
+                };
 
-                canvas.addEventListener('mouseout', () => {
-                    unitTooltip.style.display = 'none';
-                    currentHoveredUnit = null;
-                    drawGame(); // Redraw to remove highlight if any
-                });
+                window.battleSim.startNextTurnSequence = function() {
+                    if (isAnimating) return;
+                    nextTurnButton.textContent = 'Next Turn';
+                    restartButton.style.display = 'block';
+                    nextTurnButton.disabled = true;
+                    autoBattleButton.disabled = true;
+                    isAnimating = true;
+                    animationStartTime = performance.now();
+                    window.requestAnimationFrame(window.battleSim.gameLoop);
+                };
 
-                nextTurnButton.addEventListener('click', startNextTurnSequence);
-                autoBattleButton.addEventListener('click', toggleAutoBattle);
-                restartButton.addEventListener('click', () => initGame(scenarioSelect.value)); // Restart with current selection
+                window.battleSim.toggleAutoBattle = function() {
+                    isAutoBattleActive = !isAutoBattleActive;
+                    if (isAutoBattleActive) {
+                        autoBattleButton.textContent = 'Stop Auto Battle';
+                        nextTurnButton.disabled = true;
+                        if (!isAnimating && !window.battleSim.isBattleOver()) {
+                            autoBattleIntervalId = setTimeout(window.battleSim.startNextTurnSequence, AUTO_BATTLE_TURN_DELAY);
+                        }
+                    } else {
+                        window.battleSim.stopAutoBattle();
+                    }
+                };
 
-                // NEW: Scenario selector event listener
-                scenarioSelect.addEventListener('change', (event) => {
-                    initGame(event.target.value); // Re-initialize game with selected scenario
-                });
+                window.battleSim.stopAutoBattle = function() {
+                    isAutoBattleActive = false;
+                    autoBattleButton.textContent = 'Auto Battle';
+                    nextTurnButton.disabled = false;
+                    clearTimeout(autoBattleIntervalId);
+                    autoBattleIntervalId = null;
+                };
 
-                // Initialize the game state *after* DOM elements are ready and listeners are attached
-                initGame(scenarioSelect.value); // Load initial scenario (default will be "Random Battle")
-            }); // End of DOMContentLoaded listener
+                window.battleSim.updateUnitCounts = function() {
+                    const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken).length;
+                    const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken).length;
+                    romanUnitsDisplay.textContent = `Units: ${romanActiveUnits}`;
+                    gaulUnitsDisplay.textContent = `Units: ${gaulActiveUnits}`;
+                };
 
-        })(); // End of IIFE
+                window.battleSim.checkVictoryConditions = function() {
+                    const romanActiveUnits = units.filter(unit => unit.faction === 'Roman' && unit.strength > 0 && !unit.broken);
+                    const gaulActiveUnits = units.filter(unit => unit.faction === 'Gaul' && unit.strength > 0 && !unit.broken);
+
+                    if (romanActiveUnits.length === 0 && gaulActiveUnits.length === 0) {
+                        window.battleSim.logBattleMessage("All units destroyed or routed! It's a draw!");
+                        nextTurnButton.disabled = true;
+                        window.battleSim.stopAutoBattle();
+                        return;
+                    } else if (romanActiveUnits.length === 0) {
+                        window.battleSim.logBattleMessage("Barbarian Horde is victorious! The Roman Army has been defeated!");
+                        nextTurnButton.disabled = true;
+                        window.battleSim.stopAutoBattle();
+                        return;
+                    } else if (gaulActiveUnits.length === 0) {
+                        window.battleSim.logBattleMessage("Roman Army is victorious! The Barbarian Horde has been defeated!");
+                        nextTurnButton.disabled = true;
+                        window.battleSim.stopAutoBattle();
+                        return;
+                    }
+
+                    const allRomansRetreated = romanActiveUnits.every(unit => unit.x >= ROMAN_RETREAT_X);
+                    const allGaulsRetreated = gaulActiveUnits.every(unit => unit.x <= GAUL_RETREAT_X);
+
+                    if (allRomansRetreated && romanActiveUnits.length > 0) {
+                        window.battleSim.logBattleMessage("Barbarian Horde wins by forcing Roman retreat!");
+                        nextTurnButton.disabled = true;
+                        window.battleSim.stopAutoBattle();
+                        return;
+                    } else if (allGaulsRetreated && gaulActiveUnits.length > 0) {
+                        window.battleSim.logBattleMessage("Roman Army wins by forcing Barbarian retreat!");
+                        nextTurnButton.disabled = true;
+                        window.battleSim.stopAutoBattle();
+                        return;
+                    }
+                };
+
+                // Initialize DOM elements and attach events after DOM is loaded
+                document.addEventListener('DOMContentLoaded', function() {
+                    canvas = document.getElementById('battleCanvas');
+                    ctx = canvas.getContext('2d');
+                    nextTurnButton = document.getElementById('nextTurnButton');
+                    autoBattleButton = document.getElementById('autoBattleButton');
+                    restartButton = document.getElementById('restartButton');
+                    logArea = document.getElementById('logArea');
+                    romanUnitsDisplay = document.getElementById('roman-units-display');
+                    gaulUnitsDisplay = document.getElementById('gaul-units-display');
+                    unitTooltip = document.getElementById('unitTooltip');
+                    scenarioSelect = document.getElementById('scenarioSelect');
+
+                    canvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
+                    canvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
+                    terrainTextureCanvas.width = MAP_WIDTH_CELLS * GRID_SIZE;
+                    terrainTextureCanvas.height = MAP_HEIGHT_CELLS * GRID_SIZE;
+                    terrainTextureCtx = terrainTextureCanvas.getContext('2d'); // Correct initialization
+
+                    canvas.addEventListener('mousemove', (event) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        window.lastMouseX = (event.clientX - rect.left) * scaleX;
+                        window.lastMouseY = (event.clientY - rect.top) * scaleY;
+
+                        let foundUnit = null;
+                        for (const unit of units) {
+                            const unitPixelX = unit.displayX * GRID_SIZE;
+                            const unitPixelY = unit.displayY * GRID_SIZE;
+                            if (window.lastMouseX >= unitPixelX && window.lastMouseX < unitPixelX + GRID_SIZE &&
+                                window.lastMouseY >= unitPixelY && window.lastMouseY < unitPixelY + GRID_SIZE &&
+                                unit.strength > 0 && !unit.broken) {
+                                foundUnit = unit;
+                                break;
+                            }
+                        }
+                        if (foundUnit !== currentHoveredUnit) {
+                            currentHoveredUnit = foundUnit;
+                            window.battleSim.drawGame();
+                        }
+                        if (currentHoveredUnit) {
+                            unitTooltip.style.display = 'block';
+                            const tooltipOffsetX = 10;
+                            const tooltipOffsetY = -20;
+                            unitTooltip.style.left = `${event.clientX + tooltipOffsetX}px`;
+                            unitTooltip.style.top = `${event.clientY + tooltipOffsetY}px`;
+                            unitTooltip.innerHTML = `
+                                <strong>${currentHoveredUnit.name}</strong><br>
+                                Faction: ${currentHoveredUnit.faction}<br>
+                                Type: ${currentHoveredUnit.type}<br>
+                                Strength: ${currentHoveredUnit.strength.toFixed(0)}<br>
+                                Morale: ${currentHoveredUnit.morale.toFixed(0)} (${currentHoveredUnit.getMoraleState().name})<br>
+                                Fatigue: ${currentHoveredUnit.fatigue.toFixed(0)}<br>
+                                Idle Turns: ${currentHoveredUnit.idleTurns}<br>
+                                Formation: ${currentHoveredUnit.currentFormation.replace(/_/g, ' ')}<br>
+                                Behavior: ${currentHoveredUnit.currentBehavior}
+                            `;
+                        } else {
+                            unitTooltip.style.display = 'none';
+                        }
+                    });
+
+                    canvas.addEventListener('mouseout', () => {
+                        unitTooltip.style.display = 'none';
+                        currentHoveredUnit = null;
+                        window.battleSim.drawGame();
+                    });
+
+                    nextTurnButton.addEventListener('click', window.battleSim.startNextTurnSequence);
+                    autoBattleButton.addEventListener('click', window.battleSim.toggleAutoBattle);
+                    restartButton.addEventListener('click', () => window.battleSim.initGame(scenarioSelect.value));
+                    scenarioSelect.addEventListener('change', (event) => { window.battleSim.initGame(event.target.value); });
+
+                    window.battleSim.initGame(scenarioSelect.value);
+                }); // End of DOMContentLoaded listener
+
+            })(); // End of IIFE
+        } // End of if (!window.ancientBattleSimInitialized)
     </script>
 </body>
 </html>
