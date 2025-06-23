@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const decaySeriesData = [
     {
         id: 'U-238-series',
-        name: 'Uranium-238 Decay Series (Uranium Series)', // Renamed from Radium Series
+        name: 'Uranium-238 Decay Series (Uranium Series)',
         startNuclide: 'Uranium-238',
         chain: [
             { nuclide: 'Uranium-238', decayType: 'Alpha', halfLife: '4.468 billion years', daughter: 'Thorium-234' },
@@ -14,12 +14,12 @@ const decaySeriesData = [
             { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75380 years', daughter: 'Radium-226' },
             { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' },
             { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' },
-            { nuclide: 'Polonium-218', decayType: 'Alpha (99.98%) / Beta-minus (0.02%)', halfLife: '3.1 minutes', daughter: 'Lead-214 / Astatine-218' }, // Main branch to Lead-214
+            { nuclide: 'Polonium-218', decayType: 'Alpha (99.98%) / Beta-minus (0.02%)', halfLife: '3.1 minutes', daughter: 'Lead-214 / Astatine-218' },
             { nuclide: 'Lead-214', decayType: 'Beta-minus', halfLife: '26.8 minutes', daughter: 'Bismuth-214' },
-            { nuclide: 'Bismuth-214', decayType: 'Beta-minus (99.98%) / Alpha (0.02%)', halfLife: '19.9 minutes', daughter: 'Polonium-214 / Thallium-210' }, // Main branch to Polonium-214
+            { nuclide: 'Bismuth-214', decayType: 'Beta-minus (99.98%) / Alpha (0.02%)', halfLife: '19.9 minutes', daughter: 'Polonium-214 / Thallium-210' },
             { nuclide: 'Polonium-214', decayType: 'Alpha', halfLife: '164.3 microseconds', daughter: 'Lead-210' },
             { nuclide: 'Lead-210', decayType: 'Beta-minus', halfLife: '22.2 years', daughter: 'Bismuth-210' },
-            { nuclide: 'Bismuth-210', decayType: 'Beta-minus (99.9998%) / Alpha (0.0002%)', halfLife: '5.01 days', daughter: 'Polonium-210 / Thallium-206' }, // Main branch to Polonium-210
+            { nuclide: 'Bismuth-210', decayType: 'Beta-minus (99.9998%) / Alpha (0.0002%)', halfLife: '5.01 days', daughter: 'Polonium-210 / Thallium-206' },
             { nuclide: 'Polonium-210', decayType: 'Alpha', halfLife: '138.376 days', daughter: 'Lead-206' },
             { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
         ]
@@ -37,9 +37,9 @@ const decaySeriesData = [
             { nuclide: 'Radon-220', decayType: 'Alpha', halfLife: '55.6 seconds', daughter: 'Polonium-216' },
             { nuclide: 'Polonium-216', decayType: 'Alpha', halfLife: '0.145 seconds', daughter: 'Lead-212' },
             { nuclide: 'Lead-212', decayType: 'Beta-minus', halfLife: '10.64 hours', daughter: 'Bismuth-212' },
-            { nuclide: 'Bismuth-212', decayType: 'Beta-minus (64%) / Alpha (36%)', halfLife: '60.55 minutes', daughter: 'Polonium-212 / Thallium-208' }, // Two main branches
-            { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' }, // From Bi-212 alpha branch
-            { nuclide: 'Thallium-208', decayType: 'Beta-minus', halfLife: '3.053 minutes', daughter: 'Lead-208' }, // From Bi-212 beta branch
+            { nuclide: 'Bismuth-212', decayType: 'Beta-minus (64%) / Alpha (36%)', halfLife: '60.55 minutes', daughter: 'Polonium-212 / Thallium-208' },
+            { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' },
+            { nuclide: 'Thallium-208', decayType: 'Beta-minus', halfLife: '3.053 minutes', daughter: 'Lead-208' },
             { nuclide: 'Lead-208', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
         ]
     },
@@ -51,16 +51,16 @@ const decaySeriesData = [
             { nuclide: 'Uranium-235', decayType: 'Alpha', halfLife: '703.8 million years', daughter: 'Thorium-231' },
             { nuclide: 'Thorium-231', decayType: 'Beta-minus', halfLife: '25.5 hours', daughter: 'Protactinium-231' },
             { nuclide: 'Protactinium-231', decayType: 'Alpha', halfLife: '32760 years', daughter: 'Actinium-227' },
-            { nuclide: 'Actinium-227', decayType: 'Beta-minus (98.6%) / Alpha (1.4%)', halfLife: '21.77 years', daughter: 'Thorium-227 / Francium-223' }, // Two main branches
-            { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' }, // From Ac-227 beta branch
-            { nuclide: 'Francium-223', decayType: 'Beta-minus (99.99%) / Alpha (0.006%)', halfLife: '22.0 minutes', daughter: 'Radium-223 / Astatine-219' }, // From Ac-227 alpha branch, leading to Ra-223
+            { nuclide: 'Actinium-227', decayType: 'Beta-minus (98.6%) / Alpha (1.4%)', halfLife: '21.77 years', daughter: 'Thorium-227 / Francium-223' },
+            { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' },
+            { nuclide: 'Francium-223', decayType: 'Beta-minus (99.99%) / Alpha (0.006%)', halfLife: '22.0 minutes', daughter: 'Radium-223 / Astatine-219' },
             { nuclide: 'Radium-223', decayType: 'Alpha', halfLife: '11.43 days', daughter: 'Radon-219' },
             { nuclide: 'Radon-219', decayType: 'Alpha', halfLife: '3.96 seconds', daughter: 'Polonium-215' },
-            { nuclide: 'Polonium-215', decayType: 'Alpha (99.99%) / Beta-minus (0.0002%)', halfLife: '1.78 milliseconds', daughter: 'Lead-211 / Astatine-215' }, // Main branch to Lead-211
+            { nuclide: 'Polonium-215', decayType: 'Alpha (99.99%) / Beta-minus (0.0002%)', halfLife: '1.78 milliseconds', daughter: 'Lead-211 / Astatine-215' },
             { nuclide: 'Lead-211', decayType: 'Beta-minus', halfLife: '36.1 minutes', daughter: 'Bismuth-211' },
-            { nuclide: 'Bismuth-211', decayType: 'Alpha (99.7%) / Beta-minus (0.3%)', halfLife: '2.14 minutes', daughter: 'Thallium-207 / Polonium-211' }, // Two main branches
-            { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' }, // From Bi-211 alpha branch
-            { nuclide: 'Polonium-211', decayType: 'Alpha', halfLife: '0.516 seconds', daughter: 'Lead-207' }, // From Bi-211 beta branch
+            { nuclide: 'Bismuth-211', decayType: 'Alpha (99.7%) / Beta-minus (0.3%)', halfLife: '2.14 minutes', daughter: 'Thallium-207 / Polonium-211' },
+            { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' },
+            { nuclide: 'Polonium-211', decayType: 'Alpha', halfLife: '0.516 seconds', daughter: 'Lead-207' },
             { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
         ]
     }
@@ -69,40 +69,41 @@ const decaySeriesData = [
 
 // Main App component
 const App = () => {
-    // State to store the user's input for the radionuclide name
     const [nuclideName, setNuclideName] = useState('');
-    // State to store the lookup result for the selected nuclide
     const [result, setResult] = useState(null);
-    // State for managing potential error messages
     const [errorMessage, setErrorMessage] = useState('');
-    // State to control the visibility of the full database display
     const [showFullDatabase, setShowFullDatabase] = useState(false);
-    // State to store autocomplete suggestions
     const [suggestions, setSuggestions] = useState([]);
-    // State to manage the active (highlighted) suggestion for keyboard navigation
     const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-    // Ref for the input element to manage focus
     const inputRef = useRef(null);
-    // Ref for the suggestions container to handle clicks outside
     const suggestionsRef = useRef(null);
-    // State to control the visibility of the decay series viewer
-    const [showDecaySeries, setShowDecaySeries] = useState(null); // Stores the ID of the series to show
+    const [showDecaySeries, setShowDecaySeries] = useState(null);
+    // New state for filters
+    const [selectedEmissionType, setSelectedEmissionType] = useState('All');
+    const [selectedAbundanceCategory, setSelectedAbundanceCategory] = useState('All');
 
-    // Helper function to normalize strings for search (lowercase, remove spaces and hyphens)
     const normalizeString = (str) => {
         return str.toLowerCase().replace(/[\s-]/g, '');
     };
 
-    // Helper to map abundance categories to a sortable number (higher number = more common)
     const abundanceOrder = {
         'Common': 3,
         'Moderate': 2,
         'Rare': 1,
-        'N/A': 0, // For stable isotopes or if category is missing
-        undefined: 0 // Handle cases where abundanceCategory might be undefined
+        'N/A': 0,
+        undefined: 0
     };
 
-    // Hardcoded data for a comprehensive list of common radionuclides, categorized.
+    const allEmissionTypes = [
+        'All', 'Alpha', 'Beta-minus', 'Positron Emission', 'Electron Capture',
+        'Gamma', 'X-ray', 'Isomeric Transition', 'Spontaneous Fission', 'Neutron', 'Stable'
+    ];
+
+    const allAbundanceCategories = [
+        'All', 'Common', 'Moderate', 'Rare', 'N/A'
+    ];
+
+
     const radionuclides = [
         // --- Medical Radionuclides ---
         {
@@ -1771,7 +1772,7 @@ const App = () => {
             decayConstant: '4.33 x 10⁻⁴ year⁻¹',
             parent: 'Uranium-238 decay series (from Thorium-230)',
             daughter: 'Radon-222 (alpha)',
-            commonUses: ['Historical medical brachytherapy, Neutron sources (Ra-Be), Luminescent paint (historical), Calibration sources'], // Added Luminescent paint
+            commonUses: ['Historical medical brachytherapy, Neutron sources (Ra-Be), Luminescent paint (historical), Calibration sources'],
             category: 'Natural',
             decaySeriesId: 'U-238-series', // Link to U-238 series
             abundanceCategory: 'Common'
@@ -2652,9 +2653,25 @@ const App = () => {
         setErrorMessage(''); // Clear any error messages
     };
 
-    // Find the current decay series data if one is being viewed
-    const currentDecaySeries = showDecaySeries ? decaySeriesData.find(series => series.id === showDecaySeries) : null;
+    // Filtered radionuclides based on selected filters
+    const getFilteredRadionuclides = () => {
+        let filtered = radionuclides;
 
+        if (selectedEmissionType !== 'All') {
+            filtered = filtered.filter(nuclide =>
+                nuclide.emissionType && nuclide.emissionType.includes(selectedEmissionType)
+            );
+        }
+
+        if (selectedAbundanceCategory !== 'All') {
+            filtered = filtered.filter(nuclide =>
+                nuclide.abundanceCategory === selectedAbundanceCategory
+            );
+        }
+        return filtered;
+    };
+
+    const filteredRadionuclides = getFilteredRadionuclides();
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center p-4 font-sans antialiased">
@@ -2684,7 +2701,7 @@ const App = () => {
                                     }`}
                                     onClick={() => handleNuclideSelection(suggestion)} // Use handleNuclideSelection here
                                 >
-                                    {suggestion.name} ({suggestion.symbol})
+                                    {suggestion.name} ({suggestion.symbol}) <span className="text-gray-500 text-xs">({suggestion.abundanceCategory})</span>
                                 </li>
                             ))}
                         </ul>
@@ -2833,61 +2850,96 @@ const App = () => {
                         <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
                             Full Radionuclide Database
                         </h2>
-                        {categories.map(category => (
-                            <div key={category} className="mb-8">
-                                <h3 className="text-xl font-bold text-indigo-800 mb-4 bg-indigo-100 p-2 rounded-lg sticky top-0 z-10 shadow-sm">
-                                    {category === 'Natural' ? 'Natural Radionuclides & Decay Series' :
-                                     category === 'Medical' ? 'Medical Radionuclides' :
-                                     category === 'Industrial' ? 'Industrial Radionuclides' :
-                                     'Stable/Reference Isotopes'}
-                                </h3>
-                                {radionuclides
-                                    .filter(nuclide => nuclide.category === category)
-                                    .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically by name
-                                    .map((nuclide) => (
-                                        <div key={nuclide.name} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
-                                            <h4 className="text-lg font-semibold text-gray-700 mb-1">
-                                                {/* Make nuclide name clickable */}
-                                                <span
-                                                    className="cursor-pointer hover:underline"
-                                                    onClick={() => handleNuclideSelection(nuclide)}
-                                                >
-                                                    {nuclide.name} ({nuclide.symbol})
-                                                </span>
-                                            </h4>
-                                            <div className="space-y-0.5 text-sm text-gray-600">
-                                                <p>
-                                                    <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
-                                                    </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p>
-                                                    <strong className="text-indigo-700">Abundance Category:</strong> {nuclide.abundanceCategory || 'N/A'}
-                                                </p>
-                                            </div>
-                                        </div>
+
+                        {/* Filter controls */}
+                        <div className="mb-4 flex flex-wrap gap-4">
+                            <div className="relative">
+                                <label htmlFor="emissionFilter" className="sr-only">Filter by Emission Type</label>
+                                <select
+                                    id="emissionFilter"
+                                    value={selectedEmissionType}
+                                    onChange={(e) => setSelectedEmissionType(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                >
+                                    {allEmissionTypes.map(type => (
+                                        <option key={type} value={type}>{type === 'All' ? 'All Emission Types' : type}</option>
                                     ))}
+                                </select>
                             </div>
-                        ))}
+                            <div className="relative">
+                                <label htmlFor="abundanceFilter" className="sr-only">Filter by Abundance</label>
+                                <select
+                                    id="abundanceFilter"
+                                    value={selectedAbundanceCategory}
+                                    onChange={(e) => setSelectedAbundanceCategory(e.target.value)}
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                >
+                                    {allAbundanceCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat === 'All' ? 'All Abundance Categories' : cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {categories.map(category => {
+                            const nuclidesInCategory = filteredRadionuclides.filter(nuclide => nuclide.category === category);
+                            if (nuclidesInCategory.length === 0) return null; // Don't render empty categories
+
+                            return (
+                                <div key={category} className="mb-8">
+                                    <h3 className="text-xl font-bold text-indigo-800 mb-4 bg-indigo-100 p-2 rounded-lg sticky top-0 z-10 shadow-sm">
+                                        {category === 'Natural' ? 'Natural Radionuclides & Decay Series' :
+                                         category === 'Medical' ? 'Medical Radionuclides' :
+                                         category === 'Industrial' ? 'Industrial Radionuclides' :
+                                         'Stable/Reference Isotopes'}
+                                    </h3>
+                                    {nuclidesInCategory
+                                        .sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically by name within categories
+                                        .map((nuclide) => (
+                                            <div key={nuclide.name} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
+                                                <h4 className="text-lg font-semibold text-gray-700 mb-1">
+                                                    {/* Make nuclide name clickable */}
+                                                    <span
+                                                        className="cursor-pointer hover:underline"
+                                                        onClick={() => handleNuclideSelection(nuclide)}
+                                                    >
+                                                        {nuclide.name} ({nuclide.symbol})
+                                                    </span>
+                                                </h4>
+                                                <div className="space-y-0.5 text-sm text-gray-600">
+                                                    <p>
+                                                        <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
+                                                        </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p>
+                                                        <strong className="text-indigo-700">Abundance Category:</strong> {nuclide.abundanceCategory || 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
