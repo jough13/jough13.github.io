@@ -109,6 +109,8 @@
             const [maxBetaEnergy, setMaxBetaEnergy] = React.useState('');
             const [minGammaEnergy, setMinGammaEnergy] = React.useState('');
             const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
+            const [showEnergySearchPage, setShowEnergySearchPage] = React.useState(false);
+            const [showUnitConverterPage, setShowUnitConverterPage] = React.useState(false);
 
 
             const [searchHistory, setSearchHistory] = React.useState(() => {
@@ -1499,6 +1501,7 @@
                 setErrorMessage('');
                 setShowFullDatabase(false);
                 setShowDecaySeries(null);
+                setShowEnergySearchPage(false);
 
                 if (value.length > 0) {
                     const normalizedValue = normalizeString(value);
@@ -1531,6 +1534,7 @@
                 setErrorMessage('');
                 setShowDecaySeries(null);
                 setShowFullDatabase(false);
+                setShowEnergySearchPage(false);
 
                 setSearchHistory(prevHistory => {
                     const newHistory = [nuclideObject, ...prevHistory.filter(item => item.symbol !== nuclideObject.symbol)];
@@ -1596,6 +1600,7 @@
                 setSuggestions([]);
                 setShowFullDatabase(false);
                 setShowDecaySeries(null);
+                setShowEnergySearchPage(false);
 
                 const normalizedInput = normalizeString(nuclideName);
                 const foundNuclide = radionuclides.find(
@@ -1620,6 +1625,7 @@
                 setShowFullDatabase(false);
                 setResult(null);
                 setErrorMessage('');
+                setShowEnergySearchPage(false);
             };
 
             const currentDecaySeries = decaySeriesData.find(series => series.id === showDecaySeries);
@@ -1683,7 +1689,7 @@
                 if (unit && unit.includes('mev')) return value;
                 if (unit && unit.includes('kev')) return value / 1000;
 
-                return value; // Assume MeV if no unit or unrecognized unit
+                return value;
             };
 
             const formatHalfLife = (halfLifeStr, targetUnit) => {
@@ -1747,7 +1753,6 @@
                     );
                 }
 
-                // New Energy Filters
                 const filterByEnergyRange = (nuclide, energyType, minEnergy, maxEnergy) => {
                     const parsedEnergy = parseEnergyToMeV(nuclide.emissionEnergies?.[energyType]);
                     const hasMin = minEnergy !== '';
@@ -1755,7 +1760,7 @@
                     const minVal = parseFloat(minEnergy);
                     const maxVal = parseFloat(maxEnergy);
 
-                    if (isNaN(parsedEnergy)) return false; // If nuclide doesn't have this energy type
+                    if (isNaN(parsedEnergy)) return false;
 
                     if (hasMin && hasMax) {
                         return parsedEnergy >= minVal && parsedEnergy <= maxVal;
@@ -1764,7 +1769,7 @@
                     } else if (hasMax) {
                         return parsedEnergy <= maxVal;
                     }
-                    return true; // No filter applied if min/max are empty
+                    return true;
                 };
 
                 if (minAlphaEnergy !== '' || maxAlphaEnergy !== '') {
@@ -1828,14 +1833,156 @@
                 setErrorMessage('');
                 setShowFullDatabase(false);
                 setShowDecaySeries(null);
+                setShowEnergySearchPage(false);
+                setShowUnitConverterPage(false); // Hide unit converter
                 setSuggestions([]);
                 const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
                 const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
                 setRandomSuggestions(shuffled.slice(0, 5));
+                setMinAlphaEnergy('');
+                setMaxAlphaEnergy('');
+                setMinBetaEnergy('');
+                setMaxBetaEnergy('');
+                setMinGammaEnergy('');
+                setMaxGammaEnergy('');
             };
 
             const handleClearHistory = () => {
                 setSearchHistory([]);
+            };
+
+            const handleGoToEnergySearch = () => {
+                setNuclideName('');
+                setResult(null);
+                setErrorMessage('');
+                setShowFullDatabase(false);
+                setShowDecaySeries(null);
+                setSuggestions([]);
+                setShowUnitConverterPage(false); // Hide unit converter
+                setShowEnergySearchPage(true);
+            };
+
+            const handleApplyEnergyFilters = () => {
+                setErrorMessage('');
+                setShowEnergySearchPage(false);
+                setShowFullDatabase(true);
+                setResult(null);
+                setSuggestions([]);
+            };
+
+            const handleClearEnergyFilters = () => {
+                setMinAlphaEnergy('');
+                setMaxAlphaEnergy('');
+                setMinBetaEnergy('');
+                setMaxBetaEnergy('');
+                setMinGammaEnergy('');
+                setMaxGammaEnergy('');
+            };
+
+            const [converterValue, setConverterValue] = React.useState('');
+            const [converterInputUnit, setConverterInputUnit] = React.useState('rad');
+            const [converterOutputUnit, setConverterOutputUnit] = React.useState('Gy');
+            const [convertedResult, setConvertedResult] = React.useState('');
+
+            const radiationDoseUnits = ['rad', 'Gy', 'rem', 'Sv'];
+            const activityUnits = ['Ci', 'Bq', 'dpm', 'µCi'];
+            const prefixUnits = ['milli', 'Mega'];
+
+            const handleConvert = () => {
+                const value = parseFloat(converterValue);
+                if (isNaN(value)) {
+                    setConvertedResult("Invalid input");
+                    return;
+                }
+
+                let result = 0;
+                let outputUnit = converterOutputUnit;
+
+                // Rad/Gray
+                if (converterInputUnit === 'rad' && converterOutputUnit === 'Gy') {
+                    result = value * 0.01;
+                } else if (converterInputUnit === 'Gy' && converterOutputUnit === 'rad') {
+                    result = value * 100;
+                }
+                // Rem/Sievert
+                else if (converterInputUnit === 'rem' && converterOutputUnit === 'Sv') {
+                    result = value * 0.01;
+                } else if (converterInputUnit === 'Sv' && converterOutputUnit === 'rem') {
+                    result = value * 100;
+                }
+                // Curie/Becquerel
+                else if (converterInputUnit === 'Ci' && converterOutputUnit === 'Bq') {
+                    result = value * 3.7e10;
+                } else if (converterInputUnit === 'Bq' && converterOutputUnit === 'Ci') {
+                    result = value / 3.7e10;
+                }
+                // DPM/microCurie
+                else if (converterInputUnit === 'dpm' && converterOutputUnit === 'µCi') {
+                    result = value / 2.22e6;
+                } else if (converterInputUnit === 'µCi' && converterOutputUnit === 'dpm') {
+                    result = value * 2.22e6;
+                }
+                // Milli/Mega conversion assumes "milli" means 10^-3 and "Mega" means 10^6, and we're converting between them, not *from* a milli-unit to a Mega-unit of some base quantity.
+                // If value is in 'milli' units and target is 'Mega' units, the conversion is value * 10^-3 / 10^6 = value * 10^-9
+                else if (converterInputUnit === 'milli' && converterOutputUnit === 'Mega') {
+                    result = value / 1e9;
+                }
+                // If value is in 'Mega' units and target is 'milli' units, the conversion is value * 10^6 / 10^-3 = value * 10^9
+                else if (converterInputUnit === 'Mega' && converterOutputUnit === 'milli') {
+                    result = value * 1e9;
+                }
+                 else {
+                    setConvertedResult("Unsupported conversion");
+                    return;
+                }
+
+                if (result >= 1000 || (result > 0 && result < 0.001)) {
+                    setConvertedResult(`${result.toPrecision(3)} ${outputUnit}`);
+                } else {
+                    setConvertedResult(`${parseFloat(result.toFixed(5))} ${outputUnit}`);
+                }
+            };
+
+            const handleUnitConverterInputUnitChange = (e) => {
+                const newUnit = e.target.value;
+                setConverterInputUnit(newUnit);
+                if (newUnit === 'rad') setConverterOutputUnit('Gy');
+                else if (newUnit === 'Gy') setConverterOutputUnit('rad');
+                else if (newUnit === 'rem') setConverterOutputUnit('Sv');
+                else if (newUnit === 'Sv') setConverterOutputUnit('rem');
+                else if (newUnit === 'Ci') setConverterOutputUnit('Bq');
+                else if (newUnit === 'Bq') setConverterOutputUnit('Ci');
+                else if (newUnit === 'dpm') setConverterOutputUnit('µCi');
+                else if (newUnit === 'µCi') setConverterOutputUnit('dpm');
+                else if (newUnit === 'milli') setConverterOutputUnit('Mega');
+                else if (newUnit === 'Mega') setConverterOutputUnit('milli');
+                setConvertedResult('');
+            };
+
+            const handleUnitConverterOutputUnitChange = (e) => {
+                setConverterOutputUnit(e.target.value);
+                setConvertedResult('');
+            };
+
+            const handleGoToUnitConverter = () => {
+                setNuclideName('');
+                setResult(null);
+                setErrorMessage('');
+                setShowFullDatabase(false);
+                setShowDecaySeries(null);
+                setSuggestions([]);
+                setShowEnergySearchPage(false);
+                setShowUnitConverterPage(true);
+                setConvertedResult('');
+                setConverterValue('');
+            };
+
+            const handleBackFromConverter = () => {
+                setShowUnitConverterPage(false);
+                setConvertedResult('');
+                setConverterValue('');
+                setConverterInputUnit('rad');
+                setConverterOutputUnit('Gy');
             };
 
 
@@ -1846,7 +1993,7 @@
                             Radionuclide Lookup Tool
                         </h1>
 
-                        <div className="flex flex-col sm:flex-row gap-4 mb-8 relative">
+                        <div className="mb-4 relative">
                             <input
                                 ref={inputRef}
                                 type="text"
@@ -1854,10 +2001,10 @@
                                 onChange={handleNuclideNameChange}
                                 onKeyDown={handleKeyDown}
                                 placeholder="e.g., Uranium-238 or U-238"
-                                className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition duration-200"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition duration-200"
                             />
                             {suggestions.length > 0 && (
-                                <ul ref={suggestionsRef} className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-14 max-h-60 overflow-y-auto">
+                                <ul ref={suggestionsRef} className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto">
                                     {suggestions.map((suggestion, index) => {
                                         const commonalityText = suggestion.commonality ? `(${suggestion.commonality})` : '';
                                         return (
@@ -1874,6 +2021,9 @@
                                     })}
                                 </ul>
                             )}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-8 justify-center">
                             <button
                                 onClick={handleLookup}
                                 className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
@@ -1887,6 +2037,8 @@
                                     setErrorMessage('');
                                     setSuggestions([]);
                                     setShowDecaySeries(null);
+                                    setShowEnergySearchPage(false);
+                                    setShowUnitConverterPage(false);
                                 }}
                                 className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
                             >
@@ -1898,6 +2050,18 @@
                             >
                                 Home
                             </button>
+                            <button
+                                onClick={handleGoToEnergySearch}
+                                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
+                            >
+                                Energy Search
+                            </button>
+                            <button
+                                onClick={handleGoToUnitConverter}
+                                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
+                            >
+                                Unit Converter
+                            </button>
                         </div>
 
                         {errorMessage && (
@@ -1907,7 +2071,184 @@
                             </div>
                         )}
 
-                        {result && !showFullDatabase && !showDecaySeries && (
+                        {showEnergySearchPage && (
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
+                                    Energy Search (MeV)
+                                </h2>
+                                <div className="space-y-4">
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                        <div className="flex-1">
+                                            <label htmlFor="minAlphaEnergyInput" className="block text-sm font-medium text-gray-700">Alpha Energy Min</label>
+                                            <input
+                                                type="number"
+                                                id="minAlphaEnergyInput"
+                                                value={minAlphaEnergy}
+                                                onChange={(e) => setMinAlphaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxAlphaEnergyInput" className="block text-sm font-medium text-gray-700">Alpha Energy Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxAlphaEnergyInput"
+                                                value={maxAlphaEnergy}
+                                                onChange={(e) => setMaxAlphaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                        <div className="flex-1">
+                                            <label htmlFor="minBetaEnergyInput" className="block text-sm font-medium text-gray-700">Beta Energy Min</label>
+                                            <input
+                                                type="number"
+                                                id="minBetaEnergyInput"
+                                                value={minBetaEnergy}
+                                                onChange={(e) => setMinBetaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxBetaEnergyInput" className="block text-sm font-medium text-gray-700">Beta Energy Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxBetaEnergyInput"
+                                                value={maxBetaEnergy}
+                                                onChange={(e) => setMaxBetaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                        <div className="flex-1">
+                                            <label htmlFor="minGammaEnergyInput" className="block text-sm font-medium text-gray-700">Gamma Energy Min</label>
+                                            <input
+                                                type="number"
+                                                id="minGammaEnergyInput"
+                                                value={minGammaEnergy}
+                                                onChange={(e) => setMinGammaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxGammaEnergyInput" className="block text-sm font-medium text-gray-700">Gamma Energy Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxGammaEnergyInput"
+                                                value={maxGammaEnergy}
+                                                onChange={(e) => setMaxGammaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-3">
+                                    <button
+                                        onClick={handleClearEnergyFilters}
+                                        className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-gray-400 transition duration-200 ease-in-out"
+                                    >
+                                        Clear Filters
+                                    </button>
+                                    <button
+                                        onClick={handleApplyEnergyFilters}
+                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-700 transition duration-200 ease-in-out transform hover:scale-105"
+                                    >
+                                        Apply Filters & View Results
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {showUnitConverterPage && (
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
+                                    Unit Converter
+                                    <button
+                                        onClick={handleBackFromConverter}
+                                        className="ml-4 px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-semibold hover:bg-gray-300 transition duration-150 ease-in-out"
+                                    >
+                                        Back
+                                    </button>
+                                </h2>
+                                <div className="space-y-6">
+                                    {/* Generic Converter */}
+                                    <div>
+                                        <label htmlFor="converterValue" className="block text-sm font-medium text-gray-700">Value</label>
+                                        <input
+                                            type="number"
+                                            id="converterValue"
+                                            value={converterValue}
+                                            onChange={(e) => setConverterValue(e.target.value)}
+                                            placeholder="Enter value"
+                                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <div className="flex-1">
+                                            <label htmlFor="inputUnit" className="block text-sm font-medium text-gray-700">From Unit</label>
+                                            <select
+                                                id="inputUnit"
+                                                value={converterInputUnit}
+                                                onChange={handleUnitConverterInputUnitChange}
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            >
+                                                <optgroup label="Radiation Dose">
+                                                    {[...radiationDoseUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Activity">
+                                                    {[...activityUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Prefixes">
+                                                    {[...prefixUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="outputUnit" className="block text-sm font-medium text-gray-700">To Unit</label>
+                                            <select
+                                                id="outputUnit"
+                                                value={converterOutputUnit}
+                                                onChange={handleUnitConverterOutputUnitChange}
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            >
+                                                <optgroup label="Radiation Dose">
+                                                    {[...radiationDoseUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Activity">
+                                                    {[...activityUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Prefixes">
+                                                    {[...prefixUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={handleConvert}
+                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-700 transition duration-200 ease-in-out transform hover:scale-105"
+                                        >
+                                            Convert
+                                        </button>
+                                    </div>
+                                    {convertedResult && (
+                                        <div className="mt-4 p-3 bg-indigo-50 text-indigo-800 rounded-lg font-semibold">
+                                            Result: {convertedResult}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {result && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
                             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
                                     {result.name} ({result.symbol})
@@ -1955,7 +2296,7 @@
                             </div>
                         )}
 
-                        {showDecaySeries && currentDecaySeries && (
+                        {showDecaySeries && currentDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
                             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
                                     {currentDecaySeries.name}
@@ -2013,7 +2354,7 @@
                             </div>
                         )}
 
-                        {showFullDatabase && (
+                        {showFullDatabase && !showEnergySearchPage && !showUnitConverterPage && (
                             <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
                                     Full Radionuclide Database
@@ -2106,80 +2447,6 @@
                                             ))}
                                         </select>
                                     </div>
-
-                                    {/* Energy Search Inputs */}
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
-                                        <div className="flex-1">
-                                            <label htmlFor="minAlphaEnergy" className="block text-sm font-medium text-gray-700">Alpha Energy (MeV) Min</label>
-                                            <input
-                                                type="number"
-                                                id="minAlphaEnergy"
-                                                value={minAlphaEnergy}
-                                                onChange={(e) => setMinAlphaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxAlphaEnergy" className="block text-sm font-medium text-gray-700">Alpha Energy (MeV) Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxAlphaEnergy"
-                                                value={maxAlphaEnergy}
-                                                onChange={(e) => setMaxAlphaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
-                                        <div className="flex-1">
-                                            <label htmlFor="minBetaEnergy" className="block text-sm font-medium text-gray-700">Beta Energy (MeV) Min</label>
-                                            <input
-                                                type="number"
-                                                id="minBetaEnergy"
-                                                value={minBetaEnergy}
-                                                onChange={(e) => setMinBetaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxBetaEnergy" className="block text-sm font-medium text-gray-700">Beta Energy (MeV) Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxBetaEnergy"
-                                                value={maxBetaEnergy}
-                                                onChange={(e) => setMaxBetaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
-                                        <div className="flex-1">
-                                            <label htmlFor="minGammaEnergy" className="block text-sm font-medium text-gray-700">Gamma Energy (MeV) Min</label>
-                                            <input
-                                                type="number"
-                                                id="minGammaEnergy"
-                                                value={minGammaEnergy}
-                                                onChange={(e) => setMinGammaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxGammaEnergy" className="block text-sm font-medium text-gray-700">Gamma Energy (MeV) Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxGammaEnergy"
-                                                value={maxGammaEnergy}
-                                                onChange={(e) => setMaxGammaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
                                 </div>
 
                                 {sortBy === 'category' ? (
@@ -2231,9 +2498,6 @@
                                                                 <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
                                                             </p>
                                                             <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
-                                                            </p>
-                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
                                                             </p>
                                                         </div>
@@ -2280,9 +2544,6 @@
                                                         <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
                                                     </p>
                                                     <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
-                                                    </p>
-                                                    <p className="text-gray-700">
                                                         <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
                                                     </p>
                                                 </div>
@@ -2293,7 +2554,7 @@
                             </div>
                         )}
 
-                        {searchHistory.length > 0 && !result && !errorMessage && !showFullDatabase && !showDecaySeries && (
+                        {searchHistory.length > 0 && !result && !errorMessage && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
                             <div className="mt-6 bg-gray-50 p-6 rounded-xl border border-gray-200">
                                 <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
                                     Recent Searches
@@ -2318,7 +2579,7 @@
                             </div>
                         )}
 
-                        {!result && !errorMessage && !showFullDatabase && !showDecaySeries && (
+                        {!result && !errorMessage && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
                             <div className="mt-6 text-center text-gray-600">
                                 <p className="mb-2">Try searching for:</p>
                                 <ul className="list-none p-0 flex flex-wrap justify-center gap-2">
