@@ -21,7 +21,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Data for major natural decay series (simplified to primary paths for display)
         const decaySeriesData = [
             {
                 id: 'U-238-series',
@@ -1086,7 +1085,7 @@
                 },
                 {
                     name: 'Radon-220',
-                    symbol: 'Rn-220',
+    symbol: 'Rn-220',
                     emissionType: ['Alpha'],
                     emissionEnergies: { alpha: ['6.288 MeV'], beta: [], gamma: [] },
                     halfLife: '55.6 seconds', decayConstant: '0.0125 s⁻¹', parent: 'Radium-224', daughter: 'Polonium-216 (alpha)',
@@ -1622,25 +1621,21 @@
                 if (!halfLifeStr || halfLifeStr === 'Stable') return Infinity;
 
                 const parts = halfLifeStr.split(' ');
-                if (parts.length < 2) {
-                    const numericalValue = parseFloat(halfLifeStr);
-                    return isNaN(numericalValue) ? 0 : numericalValue;
-                }
-
                 let value = parseFloat(parts[0]);
-                const unit = parts[1].toLowerCase();
+                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
 
-                if (unit.includes('microsecond')) return value * 1e-6;
-                if (unit.includes('millisecond')) return value * 1e-3;
-                if (unit.includes('second') || unit === 's') return value;
-                if (unit.includes('minute')) return value * 60;
-                if (unit.includes('hour')) return value * 3600;
-                if (unit.includes('day')) return value * 3600 * 24;
-                if (unit.includes('year')) return value * 3600 * 24 * 365.25;
-                if (unit.includes('billion')) return value * 3600 * 24 * 365.25 * 1e9;
-                if (unit.includes('million')) return value * 3600 * 24 * 365.25 * 1e6;
+                if (unit && unit.includes('microsecond')) return value * 1e-6;
+                if (unit && unit.includes('millisecond')) return value * 1e-3;
+                if (unit && (unit.includes('second') || unit === 's')) return value;
+                if (unit && unit.includes('minute')) return value * 60;
+                if (unit && unit.includes('hour')) return value * 3600;
+                if (unit && unit.includes('day')) return value * 3600 * 24;
+                if (unit && unit.includes('year')) return value * 3600 * 24 * 365.25;
+                if (unit && unit.includes('billion')) return value * 3600 * 24 * 365.25 * 1e9;
+                if (unit && unit.includes('million')) return value * 3600 * 24 * 365.25 * 1e6;
 
-                return 0;
+                const numericalValue = parseFloat(halfLifeStr);
+                return isNaN(numericalValue) ? 0 : numericalValue;
             };
 
             const parseDecayConstantToNumber = (decayConstantStr) => {
@@ -1654,21 +1649,33 @@
                 }
 
                 const parts = decayConstantStr.split(' ');
-                if (parts.length < 2) {
-                    const numericalValue = parseFloat(decayConstantStr);
-                    return isNaN(numericalValue) ? 0 : numericalValue;
-                }
-                
                 let value = parseFloat(parts[0]);
-                const unit = parts[1].toLowerCase();
+                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
 
-                if (unit.includes('year⁻¹')) return value;
-                if (unit.includes('day⁻¹')) return value / 365.25;
-                if (unit.includes('hour⁻¹')) return value / (365.25 * 24);
-                if (unit.includes('min⁻¹')) return value / (365.25 * 24 * 60);
-                if (unit.includes('s⁻¹')) return value / (365.25 * 24 * 3600);
+                if (unit && unit.includes('year⁻¹')) return value;
+                if (unit && unit.includes('day⁻¹')) return value / 365.25;
+                if (unit && unit.includes('hour⁻¹')) return value / (365.25 * 24);
+                if (unit && unit.includes('min⁻¹')) return value / (365.25 * 24 * 60);
+                if (unit && unit.includes('s⁻¹')) return value / (365.25 * 24 * 3600);
 
-                return 0;
+                const numericalValue = parseFloat(decayConstantStr);
+                return isNaN(numericalValue) ? 0 : numericalValue;
+            };
+
+            const parseEnergyToMeV = (energyArray) => {
+                if (!energyArray || energyArray.length === 0) return 0;
+
+                const energyStr = energyArray[0];
+                const parts = energyStr.split(' ');
+                let value = parseFloat(parts[0]);
+                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
+
+                if (isNaN(value)) return 0;
+
+                if (unit && unit.includes('mev')) return value;
+                if (unit && unit.includes('kev')) return value / 1000;
+
+                return value; // Assume MeV if no unit or unrecognized unit
             };
 
             const formatHalfLife = (halfLifeStr, targetUnit) => {
@@ -1748,6 +1755,18 @@
                         const categoryA = categoryOrder[a.category];
                         const categoryB = categoryOrder[b.category];
                         compareValue = categoryA - categoryB;
+                    } else if (sortBy === 'alphaEnergy') {
+                        const energyA = parseEnergyToMeV(a.emissionEnergies?.alpha);
+                        const energyB = parseEnergyToMeV(b.emissionEnergies?.alpha);
+                        compareValue = energyA - energyB;
+                    } else if (sortBy === 'betaEnergy') {
+                        const energyA = parseEnergyToMeV(a.emissionEnergies?.beta);
+                        const energyB = parseEnergyToMeV(b.emissionEnergies?.beta);
+                        compareValue = energyA - energyB;
+                    } else if (sortBy === 'gammaEnergy') {
+                        const energyA = parseEnergyToMeV(a.emissionEnergies?.gamma);
+                        const energyB = parseEnergyToMeV(b.emissionEnergies?.gamma);
+                        compareValue = energyA - energyB;
                     }
 
                     return sortOrder === 'asc' ? compareValue : -compareValue;
@@ -2004,6 +2023,9 @@
                                             <option value="halfLife">Half-life</option>
                                             <option value="decayConstant">Decay Constant</option>
                                             <option value="category">Category</option>
+                                            <option value="alphaEnergy">Alpha Energy</option>
+                                            <option value="betaEnergy">Beta Energy</option>
+                                            <option value="gammaEnergy">Gamma Energy</option>
                                         </select>
                                     </div>
                                     <div className="relative">
@@ -2048,10 +2070,8 @@
                                     </div>
                                 </div>
 
-                                {/* Conditional rendering based on sortBy category */}
                                 {sortBy === 'category' ? (
                                     categories.map(category => {
-                                        // Filter and sort the complete list, then filter for the current category
                                         const nuclidesInCategory = filteredAndSortedRadionuclides.filter(nuclide => nuclide.category === category);
                                         if (nuclidesInCategory.length === 0) return null;
 
@@ -2111,56 +2131,56 @@
                                         );
                                     })
                                 ) : (
-                                    // If not sorting by category, display as a single flat list
-                                    filteredAndSortedRadionuclides.map((nuclide, index) => (
-                                        <div key={nuclide.symbol + '-' + index} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
-                                            <h4 className="text-lg font-semibold text-gray-700 mb-1">
-                                                <span
-                                                    className="cursor-pointer hover:underline"
-                                                    onClick={() => handleNuclideSelection(nuclide)}
-                                                >
-                                                    {nuclide.name} ({nuclide.symbol})
-                                                </span>
-                                            </h4>
-                                            <div className="space-y-0.5 text-sm text-gray-600">
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
+                                    <div className="space-y-4">
+                                        {filteredAndSortedRadionuclides.map((nuclide, index) => (
+                                            <div key={nuclide.symbol + '-' + index} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
+                                                <h4 className="text-lg font-semibold text-gray-700 mb-1">
+                                                    <span
+                                                        className="cursor-pointer hover:underline"
+                                                        onClick={() => handleNuclideSelection(nuclide)}
+                                                    >
+                                                        {nuclide.name} ({nuclide.symbol})
+                                                    </span>
+                                                </h4>
+                                                <div className="space-y-0.5 text-sm text-gray-600">
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
                                                     </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
-                                                </p>
-                                                <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
-                                                </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
+                                                        </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
+                                                    </p>
+                                                    <p className="text-gray-700">
+                                                        <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Search History Section */}
                         {searchHistory.length > 0 && !result && !errorMessage && !showFullDatabase && !showDecaySeries && (
                             <div className="mt-6 bg-gray-50 p-6 rounded-xl border border-gray-200">
                                 <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
