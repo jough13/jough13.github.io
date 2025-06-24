@@ -102,7 +102,7 @@
                 symbol: 'Tc-99m',
                 emissionType: ['Gamma (Isomeric Transition)'],
                 emissionEnergies: { beta: [], gamma: ['0.140 MeV'], alpha: [] },
-                halfLife: '6.01 hours', decayConstant: '0.115 hour⁻¹', parent: 'Molybdenum-99', daughter: 'Technetium-99 (metastable) -> Ruthenium-99 (stable)',
+                halfLife: '6.01 hours', decayConstant: '0.115 hour⁻¹', parent: 'Molybdenum-99', daughter: 'Technetium-99',
                 commonUses: ['Medical diagnostic imaging (most common medical isotope for various scans: bone, heart, kidney, brain, etc.)'],
                 category: 'Medical', commonality: 'Common'
             },
@@ -114,6 +114,51 @@
                 halfLife: '109.77 minutes', decayConstant: '0.378 min⁻¹', parent: 'Oxygen-18 (via proton bombardment)', daughter: 'Oxygen-18 (stable)',
                 commonUses: ['PET imaging (Positron Emission Tomography)', 'most common PET radioisotope, particularly for FDG (Fluorodeoxyglucose) scans'],
                 category: 'Medical', commonality: 'Common'
+            },
+            {
+                name: 'Molybdenum-99',
+                symbol: 'Mo-99',
+                emissionType: ['Beta-minus', 'Gamma'],
+                emissionEnergies: { beta: ['1.21 MeV (max)'], gamma: ['0.740 MeV', '0.181 MeV'], alpha: [] },
+                halfLife: '65.94 hours', decayConstant: '0.0105 hour⁻¹', parent: 'Uranium Fission Product', daughter: 'Technetium-99m (beta-minus)',
+                commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'],
+                category: 'Medical', commonality: 'Common'
+            },
+             {
+                name: 'Technetium-99',
+                symbol: 'Tc-99',
+                emissionType: ['Beta-minus'],
+                emissionEnergies: { beta: ['0.294 MeV (max)'], gamma: [], alpha: [] },
+                halfLife: '211,100 years', decayConstant: '3.28 x 10⁻⁶ year⁻¹', parent: 'Technetium-99m', daughter: 'Ruthenium-99 (stable)',
+                commonUses: ['Daughter product of Tc-99m', 'environmental tracer', 'long-lived fission product in nuclear waste'],
+                category: 'Industrial', commonality: 'Rare'
+            },
+            {
+                name: 'Iodine-123',
+                symbol: 'I-123',
+                emissionType: ['Electron Capture', 'Gamma'],
+                emissionEnergies: { beta: [], gamma: ['0.159 MeV'], alpha: [] },
+                halfLife: '13.22 hours', decayConstant: '0.0524 hour⁻¹', parent: 'Xenon-123', daughter: 'Tellurium-123 (stable)',
+                commonUses: ['SPECT imaging for thyroid function and tumors', 'cardiac and neurological imaging'],
+                category: 'Medical', commonality: 'Moderate'
+            },
+             {
+                name: 'Zirconium-89',
+                symbol: 'Zr-89',
+                emissionType: ['Positron Emission (Beta-plus)', 'Electron Capture', 'Gamma'],
+                emissionEnergies: { beta: ['0.902 MeV (max)'], gamma: ['0.909 MeV', '0.511 MeV (annihilation)'], alpha: [] },
+                halfLife: '78.41 hours', decayConstant: '0.00884 hour⁻¹', parent: 'Yttrium-89 (via proton bombardment)', daughter: 'Yttrium-89 (stable)',
+                commonUses: ['PET imaging, particularly for antibody-based imaging (immuno-PET) due to its longer half-life.'],
+                category: 'Medical', commonality: 'Rare'
+            },
+             {
+                name: 'Actinium-225',
+                symbol: 'Ac-225',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] },
+                halfLife: '9.92 days', decayConstant: '0.0698 day⁻¹', parent: 'Thorium-229 (alpha decay)', daughter: 'Francium-221 (alpha)',
+                commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'],
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Phosphorus-32',
@@ -593,15 +638,6 @@
                 category: 'Medical', commonality: 'Moderate'
             },
             {
-                name: 'Zinc-65',
-                symbol: 'Zn-65',
-                emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
-                emissionEnergies: { beta: ['0.329 MeV (max)'], gamma: ['1.115 MeV'], alpha: [] },
-                halfLife: '244.26 days', decayConstant: '0.00284 day⁻¹', parent: 'Copper-65', daughter: 'Copper-65 (stable)',
-                commonUses: ['Environmental tracer', 'biological research', 'calibration source'],
-                category: 'Industrial', commonality: 'Moderate'
-            },
-            {
                 name: 'Iron-52',
                 symbol: 'Fe-52',
                 emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
@@ -640,6 +676,24 @@
                 category: 'Industrial', commonality: 'Common'
             },
             {
+                name: 'Strontium-90',
+                symbol: 'Sr-90',
+                emissionType: ['Beta-minus'],
+                emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: [], alpha: [] },
+                halfLife: '28.9 years', decayConstant: '0.024 year⁻¹', parent: 'Uranium Fission Product', daughter: 'Yttrium-90 (beta-minus)',
+                commonUses: ['Radioisotope thermoelectric generators (RTGs)', 'industrial thickness gauges', 'medical radiotherapy for bone tumors'],
+                category: 'Industrial', commonality: 'Moderate'
+            },
+            {
+                name: 'Plutonium-238',
+                symbol: 'Pu-238',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.499 MeV (dominant)'], beta: [], gamma: ['0.043 MeV'] },
+                halfLife: '87.7 years', decayConstant: '0.0079 year⁻¹', parent: 'Neptunium-237 (via neutron capture and beta decay)', daughter: 'Uranium-234 (alpha decay)',
+                commonUses: ['Radioisotope thermoelectric generators (RTGs) for spacecraft (e.g., Voyager, Cassini, New Horizons, Mars rovers)'],
+                category: 'Industrial', commonality: 'Moderate'
+            },
+            {
                 name: 'Carbon-14',
                 symbol: 'C-14',
                 emissionType: ['Beta-minus'],
@@ -663,7 +717,7 @@
                 emissionType: ['Alpha', 'Gamma'],
                 emissionEnergies: { alpha: ['5.157 MeV (dominant)'], beta: [], gamma: ['0.0516 MeV'] },
                 halfLife: '24110 years', decayConstant: '2.87 x 10⁻⁵ year⁻¹', parent: 'Uranium-238 (via neutron capture and beta decays)', daughter: 'Uranium-235 (alpha decay)',
-                commonUses: ['Nuclear weapons', 'Nuclear fuel (MOX fuel)', 'RTGs (for space probes)'],
+                commonUses: ['Nuclear weapons', 'Nuclear fuel (MOX fuel)'],
                 category: 'Industrial', commonality: 'Moderate'
             },
             {
@@ -710,6 +764,15 @@
                 halfLife: '2.645 years', decayConstant: '0.262 year⁻¹', parent: 'Curium-252', daughter: 'Curium-248 (alpha decay), Fission products (spontaneous fission)',
                 commonUses: ['Neutron source (neutron activation analysis)', 'tumor treatment', 'reactor startup', 'well logging'],
                 category: 'Industrial', commonality: 'Moderate'
+            },
+            {
+                name: 'Curium-244',
+                symbol: 'Cm-244',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.805 MeV (dominant)'], beta: [], gamma: ['0.042 MeV'] },
+                halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', parent: 'Americium-243 (neutron capture and beta decay)', daughter: 'Plutonium-240 (alpha decay)',
+                commonUses: ['Thermoelectric generators (RTGs) for space probes and remote power sources', 'alpha particle X-ray spectrometers (APXS) for planetary exploration.'],
+                category: 'Industrial', commonality: 'Rare'
             },
             {
                 name: 'Neptunium-237',
@@ -965,6 +1028,15 @@
                 commonUses: ['Thorium fuel cycle (fissile material)', 'research'],
                 category: 'Natural', commonality: 'Rare'
             },
+             {
+                name: 'Thorium-229',
+                symbol: 'Th-229',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['4.845 MeV'], beta: [], gamma: ['0.029 MeV', '0.194 MeV'] },
+                halfLife: '7,340 years', decayConstant: '9.44 x 10⁻⁵ year⁻¹', parent: 'Uranium-233', daughter: 'Radium-225 (alpha)',
+                commonUses: ['Parent for Actinium-225 generators', 'research in nuclear clocks due to its extremely low-energy isomeric state.'],
+                category: 'Natural', commonality: 'Rare'
+            },
             {
                 name: 'Uranium-232',
                 symbol: 'U-232',
@@ -1141,8 +1213,8 @@
                 symbol: 'Pb-212',
                 emissionType: ['Beta-minus', 'Gamma'],
                 emissionEnergies: { beta: ['0.570 MeV (max)'], gamma: ['0.238 MeV', '0.300 MeV'], alpha: [] },
-                halfLife: '10.64 hours', decayConstant: '0.0651 hour⁻¹', parent: 'Radon-220 decay series (via Polonium-216, Bismuth-212)', daughter: 'Bismuth-212 (beta-minus)',
-                commonUses: ['Intermediate in Thorium-232 decay chain', 'research'],
+                halfLife: '10.64 hours', decayConstant: '0.0651 hour⁻¹', parent: 'Polonium-216', daughter: 'Bismuth-212 (beta-minus)',
+                commonUses: ['Intermediate in Thorium-232 decay chain', 'research in targeted alpha therapy'],
                 category: 'Natural', commonality: 'Moderate'
             },
             {
