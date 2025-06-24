@@ -23,7 +23,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions (Moved outside component) ---
-        const VERSION = '1.1.0';
+        const VERSION = '1.2.0';
         const LAST_UPDATED = 'June 24, 2025';
 
         const decaySeriesData = [
@@ -494,8 +494,8 @@
                 emissionType: ['Beta-minus'],
                 emissionEnergies: { beta: ['0.225 MeV (max)'], gamma: [], alpha: [] },
                 halfLife: '2.623 years', decayConstant: '0.264 year⁻¹', parent: 'Neodymium-147 (beta-minus)', daughter: 'Samarium-147 (alpha decay, very long half-life)',
-                commonUses: ['Atomic batteries (historical)', 'luminous paints (historical)', 'research'],
-                category: 'Medical', commonality: 'Rare'
+                commonUses: ['Atomic batteries (historical)', 'luminous paints', 'thickness gauges'],
+                category: 'Commodities/Consumer', commonality: 'Rare'
             },
             {
                 name: 'Bismuth-207',
@@ -597,15 +597,6 @@
                 category: 'Medical', commonality: 'Moderate'
             },
             {
-                name: 'Zinc-65',
-                symbol: 'Zn-65',
-                emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
-                emissionEnergies: { beta: ['0.329 MeV (max)'], gamma: ['1.115 MeV'], alpha: [] },
-                halfLife: '244.26 days', decayConstant: '0.00284 day⁻¹', parent: 'Copper-65', daughter: 'Copper-65 (stable)',
-                commonUses: ['Environmental tracer', 'biological research', 'calibration source'],
-                category: 'Industrial', commonality: 'Moderate'
-            },
-            {
                 name: 'Iron-52',
                 symbol: 'Fe-52',
                 emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
@@ -613,62 +604,6 @@
                 halfLife: '8.275 hours', decayConstant: '0.0838 hour⁻¹', parent: 'Manganese-52m', daughter: 'Manganese-52 (EC, Beta+)',
                 commonUses: ['PET imaging research (bone marrow imaging, iron metabolism)'],
                 category: 'Medical', commonality: 'Rare'
-            },
-
-            // --- Industrial Radionuclides ---
-            {
-                name: 'Strontium-90',
-                symbol: 'Sr-90',
-                emissionType: ['Beta-minus'],
-                emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: [], alpha: [] },
-                halfLife: '28.9 years', decayConstant: '0.024 year⁻¹', parent: 'Uranium Fission Product', daughter: 'Yttrium-90 (beta-minus)',
-                commonUses: ['Radioisotope thermoelectric generators (RTGs)', 'industrial thickness gauges', 'medical radiotherapy for bone tumors'],
-                category: 'Industrial', commonality: 'Moderate'
-            },
-            {
-                name: 'Plutonium-238',
-                symbol: 'Pu-238',
-                emissionType: ['Alpha', 'Gamma'],
-                emissionEnergies: { alpha: ['5.499 MeV (dominant)'], beta: [], gamma: ['0.043 MeV'] },
-                halfLife: '87.7 years', decayConstant: '0.0079 year⁻¹', parent: 'Neptunium-237 (via neutron capture and beta decay)', daughter: 'Uranium-234 (alpha decay)',
-                commonUses: ['Radioisotope thermoelectric generators (RTGs) for spacecraft (e.g., Voyager, Cassini, New Horizons, Mars rovers)'],
-                category: 'Industrial', commonality: 'Moderate'
-            },
-            {
-                name: 'Plutonium-240',
-                symbol: 'Pu-240',
-                emissionType: ['Alpha', 'Spontaneous Fission'],
-                emissionEnergies: { alpha: ['5.168 MeV'], beta: [], gamma: [] },
-                halfLife: '6561 years', decayConstant: '1.05 x 10⁻⁴ year⁻¹', parent: 'Plutonium-239', daughter: 'Uranium-236',
-                commonUses: ['Isotopic contaminant in Pu-239', 'contributes to neutron background in nuclear weapons', 'nuclear fuel cycle analysis'],
-                category: 'Industrial', commonality: 'Moderate'
-            },
-            {
-                name: 'Americium-243',
-                symbol: 'Am-243',
-                emissionType: ['Alpha', 'Gamma'],
-                emissionEnergies: { alpha: ['5.275 MeV'], beta: [], gamma: ['0.075 MeV'] },
-                halfLife: '7370 years', decayConstant: '9.41 x 10⁻⁵ year⁻¹', parent: 'Plutonium-243', daughter: 'Neptunium-239',
-                commonUses: ['Precursor for producing Curium-244 and other transuranic elements', 'research'],
-                category: 'Industrial', commonality: 'Rare'
-            },
-            {
-                name: 'Curium-242',
-                symbol: 'Cm-242',
-                emissionType: ['Alpha', 'Gamma'],
-                emissionEnergies: { alpha: ['6.113 MeV'], beta: [], gamma: ['0.044 MeV'] },
-                halfLife: '162.8 days', decayConstant: '0.00426 day⁻¹', parent: 'Americium-241', daughter: 'Plutonium-238',
-                commonUses: ['Historical use in RTGs', 'alpha particle sources for APXS instruments on Mars rovers.'],
-                category: 'Industrial', commonality: 'Rare'
-            },
-            {
-                name: 'Curium-244',
-                symbol: 'Cm-244',
-                emissionType: ['Alpha', 'Gamma'],
-                emissionEnergies: { alpha: ['5.805 MeV (dominant)'], beta: [], gamma: ['0.042 MeV'] },
-                halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', parent: 'Americium-243 (neutron capture and beta decay)', daughter: 'Plutonium-240 (alpha decay)',
-                commonUses: ['Thermoelectric generators (RTGs) for space probes and remote power sources', 'alpha particle X-ray spectrometers (APXS) for planetary exploration.'],
-                category: 'Industrial', commonality: 'Rare'
             },
             {
                 name: 'Bismuth-213',
@@ -1120,7 +1055,7 @@
                 symbol: 'Ra-226',
                 emissionType: ['Alpha', 'Gamma'],
                 emissionEnergies: { alpha: ['4.784 MeV'], beta: [], gamma: ['0.186 MeV'] },
-                halfLife: '1602 years', decayConstant: '4.33 x 10⁻⁴ year⁻¹', parent: 'Uranium-238 decay series (from Thorium-230)', daughter: 'Radon-222 (alpha)',
+                halfLife: '1602 years', decayConstant: '4.33 x 10⁻⁴ year⁻¹', gammaConstant: '0.825 R·m²/hr·Ci', parent: 'Uranium-238 decay series (from Thorium-230)', daughter: 'Radon-222 (alpha)',
                 commonUses: ['Historical medical brachytherapy', 'Neutron sources (Ra-Be)', 'Luminescent paint (historical)', 'Calibration sources'],
                 category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common'
             },
@@ -1530,6 +1465,24 @@
                 commonUses: ['Reference for stable selenium', 'not a radionuclide use'],
                 category: 'Stable/Reference', commonality: 'N/A'
             },
+            {
+                name: 'Rhenium-186',
+                symbol: 'Re-186',
+                emissionType: ['Beta-minus', 'Gamma'],
+                emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] },
+                halfLife: '3.72 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (neutron capture)', daughter: 'Osmium-186 (stable)',
+                commonUses: ['Radiotherapy for bone pain palliation'],
+                category: 'Medical', commonality: 'Rare'
+            },
+            {
+                name: 'Scandium-44',
+                symbol: 'Sc-44',
+                emissionType: ['Positron Emission (Beta-plus)', 'Gamma'],
+                emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] },
+                halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)',
+                commonUses: ['PET imaging', 'theranostic pair with Sc-47'],
+                category: 'Medical', commonality: 'Rare'
+            }
         ];
         
         const App = () => {
