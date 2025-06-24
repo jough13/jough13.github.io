@@ -15,7 +15,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-        </style>
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 to-purple-100">
     <div id="root"></div>
@@ -102,6 +103,13 @@
             const [sortOrder, setSortOrder] = React.useState('asc');
             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
             const [displayDecayConstantUnit, setDisplayDecayConstantUnit] = React.useState('year⁻¹');
+            const [minAlphaEnergy, setMinAlphaEnergy] = React.useState('');
+            const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState('');
+            const [minBetaEnergy, setMinBetaEnergy] = React.useState('');
+            const [maxBetaEnergy, setMaxBetaEnergy] = React.useState('');
+            const [minGammaEnergy, setMinGammaEnergy] = React.useState('');
+            const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
+
 
             const [searchHistory, setSearchHistory] = React.useState(() => {
                 try {
@@ -1085,7 +1093,7 @@
                 },
                 {
                     name: 'Radon-220',
-    symbol: 'Rn-220',
+                    symbol: 'Rn-220',
                     emissionType: ['Alpha'],
                     emissionEnergies: { alpha: ['6.288 MeV'], beta: [], gamma: [] },
                     halfLife: '55.6 seconds', decayConstant: '0.0125 s⁻¹', parent: 'Radium-224', daughter: 'Polonium-216 (alpha)',
@@ -1622,7 +1630,7 @@
 
                 const parts = halfLifeStr.split(' ');
                 let value = parseFloat(parts[0]);
-                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
+                const unit = parts[1]?.toLowerCase();
 
                 if (unit && unit.includes('microsecond')) return value * 1e-6;
                 if (unit && unit.includes('millisecond')) return value * 1e-3;
@@ -1650,7 +1658,7 @@
 
                 const parts = decayConstantStr.split(' ');
                 let value = parseFloat(parts[0]);
-                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
+                const unit = parts[1]?.toLowerCase();
 
                 if (unit && unit.includes('year⁻¹')) return value;
                 if (unit && unit.includes('day⁻¹')) return value / 365.25;
@@ -1668,7 +1676,7 @@
                 const energyStr = energyArray[0];
                 const parts = energyStr.split(' ');
                 let value = parseFloat(parts[0]);
-                const unit = parts[1]?.toLowerCase(); // Use optional chaining for safety
+                const unit = parts[1]?.toLowerCase();
 
                 if (isNaN(value)) return 0;
 
@@ -1737,6 +1745,36 @@
                     filtered = filtered.filter(nuclide =>
                         nuclide.commonality === selectedCommonality
                     );
+                }
+
+                // New Energy Filters
+                const filterByEnergyRange = (nuclide, energyType, minEnergy, maxEnergy) => {
+                    const parsedEnergy = parseEnergyToMeV(nuclide.emissionEnergies?.[energyType]);
+                    const hasMin = minEnergy !== '';
+                    const hasMax = maxEnergy !== '';
+                    const minVal = parseFloat(minEnergy);
+                    const maxVal = parseFloat(maxEnergy);
+
+                    if (isNaN(parsedEnergy)) return false; // If nuclide doesn't have this energy type
+
+                    if (hasMin && hasMax) {
+                        return parsedEnergy >= minVal && parsedEnergy <= maxVal;
+                    } else if (hasMin) {
+                        return parsedEnergy >= minVal;
+                    } else if (hasMax) {
+                        return parsedEnergy <= maxVal;
+                    }
+                    return true; // No filter applied if min/max are empty
+                };
+
+                if (minAlphaEnergy !== '' || maxAlphaEnergy !== '') {
+                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'alpha', minAlphaEnergy, maxAlphaEnergy));
+                }
+                if (minBetaEnergy !== '' || maxBetaEnergy !== '') {
+                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'beta', minBetaEnergy, maxBetaEnergy));
+                }
+                if (minGammaEnergy !== '' || maxGammaEnergy !== '') {
+                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'gamma', minGammaEnergy, maxGammaEnergy));
                 }
                 
                 filtered.sort((a, b) => {
@@ -2067,6 +2105,80 @@
                                                 <option key={unit} value={unit}>{unit}</option>
                                             ))}
                                         </select>
+                                    </div>
+
+                                    {/* Energy Search Inputs */}
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
+                                        <div className="flex-1">
+                                            <label htmlFor="minAlphaEnergy" className="block text-sm font-medium text-gray-700">Alpha Energy (MeV) Min</label>
+                                            <input
+                                                type="number"
+                                                id="minAlphaEnergy"
+                                                value={minAlphaEnergy}
+                                                onChange={(e) => setMinAlphaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxAlphaEnergy" className="block text-sm font-medium text-gray-700">Alpha Energy (MeV) Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxAlphaEnergy"
+                                                value={maxAlphaEnergy}
+                                                onChange={(e) => setMaxAlphaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                        <div className="flex-1">
+                                            <label htmlFor="minBetaEnergy" className="block text-sm font-medium text-gray-700">Beta Energy (MeV) Min</label>
+                                            <input
+                                                type="number"
+                                                id="minBetaEnergy"
+                                                value={minBetaEnergy}
+                                                onChange={(e) => setMinBetaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxBetaEnergy" className="block text-sm font-medium text-gray-700">Beta Energy (MeV) Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxBetaEnergy"
+                                                value={maxBetaEnergy}
+                                                onChange={(e) => setMaxBetaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                        <div className="flex-1">
+                                            <label htmlFor="minGammaEnergy" className="block text-sm font-medium text-gray-700">Gamma Energy (MeV) Min</label>
+                                            <input
+                                                type="number"
+                                                id="minGammaEnergy"
+                                                value={minGammaEnergy}
+                                                onChange={(e) => setMinGammaEnergy(e.target.value)}
+                                                placeholder="Min MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="maxGammaEnergy" className="block text-sm font-medium text-gray-700">Gamma Energy (MeV) Max</label>
+                                            <input
+                                                type="number"
+                                                id="maxGammaEnergy"
+                                                value={maxGammaEnergy}
+                                                onChange={(e) => setMaxGammaEnergy(e.target.value)}
+                                                placeholder="Max MeV"
+                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
