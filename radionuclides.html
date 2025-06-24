@@ -102,6 +102,10 @@
             const [selectedCommonality, setSelectedCommonality] = React.useState('All');
             const [sortBy, setSortBy] = React.useState('name');
             const [sortOrder, setSortOrder] = React.useState('asc');
+            // New state for selected units
+            const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
+            const [displayDecayConstantUnit, setDisplayDecayConstantUnit] = React.useState('year⁻¹');
+
             // Initialize searchHistory from localStorage or as an empty array
             const [searchHistory, setSearchHistory] = React.useState(() => {
                 try {
@@ -150,7 +154,7 @@
                     emissionType: ['Beta-minus', 'Gamma'],
                     emissionEnergies: { beta: ['0.606 MeV (max)'], gamma: ['0.364 MeV (dominant)'], alpha: [] },
                     halfLife: '8.02 days', decayConstant: '0.086 day⁻¹', parent: 'Tellurium-131', daughter: 'Xenon-131 (stable)',
-                    commonUses: ['Diagnosis and treatment of thyroid cancer and hyperthyroidism, Medical imaging (diagnostic tracer)'],
+                    commonUses: ['Diagnosis and treatment of thyroid cancer and hyperthyroidism', 'Medical imaging (diagnostic tracer)'],
                     category: 'Medical', commonality: 'Common'
                 },
                 {
@@ -177,7 +181,7 @@
                     emissionType: ['Beta-minus'],
                     emissionEnergies: { beta: ['1.710 MeV (max)'], gamma: [], alpha: [] },
                     halfLife: '14.26 days', decayConstant: '0.0486 day⁻¹', parent: 'Sulfur-32 (via neutron capture)', daughter: 'Sulfur-32 (stable)',
-                    commonUses: ['Molecular biology (DNA/RNA labeling), Radiotherapy (historical for polycythemia vera), Agricultural research'],
+                    commonUses: ['Molecular biology (DNA/RNA labeling)', 'Radiotherapy (historical for polycythemia vera)', 'Agricultural research'],
                     category: 'Medical', commonality: 'Moderate'
                 },
                 {
@@ -186,7 +190,7 @@
                     emissionType: ['Beta-minus', 'Gamma'],
                     emissionEnergies: { beta: ['0.271 MeV (max)', '0.475 MeV (max)'], gamma: ['1.099 MeV', '1.292 MeV'], alpha: [] },
                     halfLife: '44.5 days', decayConstant: '0.0156 day⁻¹', parent: 'Iron-58 (via neutron capture)', daughter: 'Cobalt-59 (stable)',
-                    commonUses: ['Red blood cell studies, Iron metabolism research, Tracers'],
+                    commonUses: ['Red blood cell studies', 'Iron metabolism research', 'Tracers'],
                     category: 'Medical', commonality: 'Moderate'
                 },
                 {
@@ -195,7 +199,7 @@
                     emissionType: ['Beta-minus', 'Gamma'],
                     emissionEnergies: { beta: ['0.346 MeV (max)'], gamma: ['0.081 MeV'], alpha: [] },
                     halfLife: '5.24 days', decayConstant: '0.132 day⁻¹', parent: 'Iodine-133', daughter: 'Cesium-133 (stable)',
-                    commonUses: ['Lung ventilation studies (medical imaging), Blood flow measurements'],
+                    commonUses: ['Lung ventilation studies (medical imaging)', 'Blood flow measurements'],
                     category: 'Medical', commonality: 'Moderate'
                 },
                 {
@@ -1677,8 +1681,58 @@
                 return 0;
             };
 
+            // New helper function to format half-life from seconds to desired unit
+            const formatHalfLife = (halfLifeStr, targetUnit) => {
+                const seconds = parseHalfLifeToSeconds(halfLifeStr);
+                if (seconds === Infinity) return 'Stable';
+                if (seconds === 0) return 'N/A'; // For cases where parsing fails or it's genuinely 0
+
+                let value = seconds;
+                let unit = 'seconds';
+
+                if (targetUnit === 'seconds') { unit = 'seconds'; }
+                else if (targetUnit === 'minutes') { value /= 60; unit = 'minutes'; }
+                else if (targetUnit === 'hours') { value /= 3600; unit = 'hours'; }
+                else if (targetUnit === 'days') { value /= (3600 * 24); unit = 'days'; }
+                else if (targetUnit === 'years') { value /= (3600 * 24 * 365.25); unit = 'years'; }
+                else if (targetUnit === 'kiloyears') { value /= (3600 * 24 * 365.25 * 1e3); unit = 'kiloyears'; }
+                else if (targetUnit === 'megayears') { value /= (3600 * 24 * 365.25 * 1e6); unit = 'megayears'; }
+                else if (targetUnit === 'gigayears') { value /= (3600 * 24 * 365.25 * 1e9); unit = 'gigayears'; }
+                
+                // Use toPrecision for scientific notation or toFixed for regular numbers
+                if (value >= 1000 || (value > 0 && value < 0.01)) {
+                    return value.toPrecision(3) + ' ' + unit;
+                }
+                return parseFloat(value.toFixed(2)) + ' ' + unit;
+            };
+
+            // New helper function to format decay constant from internal value (year⁻¹ equivalent) to desired unit
+            const formatDecayConstant = (decayConstantStr, targetUnit) => {
+                const baseValue = parseDecayConstantToNumber(decayConstantStr);
+                if (baseValue === 0) return '0'; // Stable isotope or zero decay
+
+                let value = baseValue; // Value is already in year^-1 equivalent
+                let unit = 'year⁻¹';
+
+                if (targetUnit === 'year⁻¹') { unit = 'year⁻¹'; }
+                else if (targetUnit === 'day⁻¹') { value *= 365.25; unit = 'day⁻¹'; }
+                else if (targetUnit === 'hour⁻¹') { value *= (365.25 * 24); unit = 'hour⁻¹'; }
+                else if (targetUnit === 'min⁻¹') { value *= (365.25 * 24 * 60); unit = 'min⁻¹'; }
+                else if (targetUnit === 's⁻¹') { value *= (365.25 * 24 * 3600); unit = 's⁻¹'; }
+                
+                // Use toPrecision for scientific notation or toFixed for regular numbers
+                if (value >= 1000 || (value > 0 && value < 0.001)) { // Adjusted threshold for decay constant
+                    return value.toPrecision(3) + ' ' + unit;
+                }
+                return parseFloat(value.toFixed(4)) + ' ' + unit; // More precision for decay constants
+            };
+
+            const halfLifeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+            const decayConstantUnits = ['s⁻¹', 'min⁻¹', 'hour⁻¹', 'day⁻¹', 'year⁻¹'];
+
+
             const getFilteredAndSortedRadionuclides = () => {
-                let filtered = [...radionuclides]; // Create a shallow copy to avoid mutating original data
+                let filtered = [...radionuclides];
 
                 if (selectedEmissionType !== 'All') {
                     filtered = filtered.filter(nuclide =>
@@ -1834,10 +1888,10 @@
                                         <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(result.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
                                     </p>
                                     <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Half-life:</strong> {result.halfLife}
+                                        <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(result.halfLife, displayHalfLifeUnit)}
                                     </p>
                                     <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Decay Constant:</strong> {result.decayConstant}
+                                        <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(result.decayConstant, displayDecayConstantUnit)}
                                     </p>
                                     <p className="text-gray-700">
                                         <strong className="text-indigo-700">Parent Product:</strong> {result.parent}
@@ -1983,6 +2037,34 @@
                                             <option value="desc">Descending</option>
                                         </select>
                                     </div>
+                                    {/* Half-life Unit Selection */}
+                                    <div className="relative">
+                                        <label htmlFor="halfLifeUnit" className="sr-only">Half-life Unit</label>
+                                        <select
+                                            id="halfLifeUnit"
+                                            value={displayHalfLifeUnit}
+                                            onChange={(e) => setDisplayHalfLifeUnit(e.target.value)}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        >
+                                            {halfLifeUnits.map(unit => (
+                                                <option key={unit} value={unit}>{unit}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {/* Decay Constant Unit Selection */}
+                                    <div className="relative">
+                                        <label htmlFor="decayConstantUnit" className="sr-only">Decay Constant Unit</label>
+                                        <select
+                                            id="decayConstantUnit"
+                                            value={displayDecayConstantUnit}
+                                            onChange={(e) => setDisplayDecayConstantUnit(e.target.value)}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        >
+                                            {decayConstantUnits.map(unit => (
+                                                <option key={unit} value={unit}>{unit}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {/* Conditional rendering based on sortBy category */}
@@ -2024,10 +2106,10 @@
                                                                 <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
                                                             </p>
                                                             <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
+                                                                <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
                                                             </p>
                                                             <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
+                                                                <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
                                                             </p>
                                                             <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
@@ -2073,10 +2155,10 @@
                                                     <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
                                                 </p>
                                                 <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
+                                                    <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
                                                 </p>
                                                 <p className="text-gray-700">
-                                                    <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
+                                                    <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
                                                 </p>
                                                 <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
