@@ -1834,7 +1834,7 @@
                 setShowFullDatabase(false);
                 setShowDecaySeries(null);
                 setShowEnergySearchPage(false);
-                setShowUnitConverterPage(false); // Hide unit converter
+                setShowUnitConverterPage(false);
                 setSuggestions([]);
                 const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
                 const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
@@ -1858,7 +1858,7 @@
                 setShowFullDatabase(false);
                 setShowDecaySeries(null);
                 setSuggestions([]);
-                setShowUnitConverterPage(false); // Hide unit converter
+                setShowUnitConverterPage(false);
                 setShowEnergySearchPage(true);
             };
 
@@ -1884,9 +1884,80 @@
             const [converterOutputUnit, setConverterOutputUnit] = React.useState('Gy');
             const [convertedResult, setConvertedResult] = React.useState('');
 
-            const radiationDoseUnits = ['rad', 'Gy', 'rem', 'Sv'];
-            const activityUnits = ['Ci', 'Bq', 'dpm', 'µCi'];
-            const prefixUnits = ['milli', 'Mega'];
+            const radiationDoseUnits = ['rad', 'Gy', 'rem', 'Sv', 'R', 'Kerma']; // Added R, Kerma
+            const activityUnits = ['Ci', 'Bq', 'dps', 'dpm', 'µCi']; // Added dps
+            const prefixUnits = ['kilo', 'milli', 'micro', 'nano', 'pico', 'Mega']; // Added k, µ, n, p
+
+            // Function to convert value to a common base unit (e.g., Gy, Bq, or a normalized prefix value)
+            const convertToBase = (value, unit) => {
+                // Dose conversions to Gy
+                if (unit === 'rad') return value * 0.01;
+                if (unit === 'Gy') return value;
+                if (unit === 'rem') return value * 0.01; // Assuming QF=1 for rem to Sv, then Sv to Gy
+                if (unit === 'Sv') return value;
+                if (unit === 'R') return value * 0.00877; // Roentgen to Gray (in air)
+
+                // Activity conversions to Bq
+                if (unit === 'Ci') return value * 3.7e10;
+                if (unit === 'Bq') return value;
+                if (unit === 'dps') return value; // dps is Bq
+                if (unit === 'dpm') return value / 60;
+                if (unit === 'µCi') return value * 3.7e4;
+
+                // Prefix conversions to base (1 unit)
+                if (unit === 'kilo') return value * 1e3;
+                if (unit === 'milli') return value * 1e-3;
+                if (unit === 'micro') return value * 1e-6;
+                if (unit === 'nano') return value * 1e-9;
+                if (unit === 'pico') return value * 1e-12;
+                if (unit === 'Mega') return value * 1e6;
+
+                // Special units
+                if (unit === 'WL') return value; // WL is a base for WLM conversion
+                if (unit === 'WLM') return value * 170; // 1 WLM = 170 WL-hours; convert WLM to WL-hours
+
+                return value; // Should not happen for valid units
+            };
+
+            // Function to convert from a common base unit to target unit
+            const convertFromBase = (value, targetUnit, baseInputUnitCategory) => {
+                // Dose conversions from Gy
+                if (targetUnit === 'rad' && baseInputUnitCategory === 'dose') return value * 100;
+                if (targetUnit === 'Gy' && baseInputUnitCategory === 'dose') return value;
+                if (targetUnit === 'rem' && baseInputUnitCategory === 'dose') return value * 100; // Assuming QF=1 for Sv to rem
+                if (targetUnit === 'Sv' && baseInputUnitCategory === 'dose') return value;
+                if (targetUnit === 'R' && baseInputUnitCategory === 'dose') return value / 0.00877;
+
+                // Activity conversions from Bq
+                if (targetUnit === 'Ci' && baseInputUnitCategory === 'activity') return value / 3.7e10;
+                if (targetUnit === 'Bq' && baseInputUnitCategory === 'activity') return value;
+                if (targetUnit === 'dps' && baseInputUnitCategory === 'activity') return value;
+                if (targetUnit === 'dpm' && baseInputUnitCategory === 'activity') return value * 60;
+                if (targetUnit === 'µCi' && baseInputUnitCategory === 'activity') return value / 3.7e4;
+
+                // Prefix conversions from base (1 unit)
+                if (targetUnit === 'kilo' && baseInputUnitCategory === 'prefix') return value / 1e3;
+                if (targetUnit === 'milli' && baseInputUnitCategory === 'prefix') return value / 1e-3;
+                if (targetUnit === 'micro' && baseInputUnitCategory === 'prefix') return value / 1e-6;
+                if (targetUnit === 'nano' && baseInputUnitCategory === 'prefix') return value / 1e-9;
+                if (targetUnit === 'pico' && baseInputUnitCategory === 'prefix') return value / 1e-12;
+                if (targetUnit === 'Mega' && baseInputUnitCategory === 'prefix') return value / 1e6;
+
+                // Special units
+                if (targetUnit === 'WL' && baseInputUnitCategory === 'radon') return value;
+                if (targetUnit === 'WLM' && baseInputUnitCategory === 'radon') return value / 170;
+
+                return value;
+            };
+
+            const getUnitCategory = (unit) => {
+                if (['rad', 'Gy', 'rem', 'Sv', 'R', 'Kerma'].includes(unit)) return 'dose';
+                if (['Ci', 'Bq', 'dps', 'dpm', 'µCi'].includes(unit)) return 'activity';
+                if (['kilo', 'milli', 'micro', 'nano', 'pico', 'Mega'].includes(unit)) return 'prefix';
+                if (['WL', 'WLM'].includes(unit)) return 'radon';
+                return 'unknown';
+            };
+
 
             const handleConvert = () => {
                 const value = parseFloat(converterValue);
@@ -1895,67 +1966,41 @@
                     return;
                 }
 
-                let result = 0;
-                let outputUnit = converterOutputUnit;
+                const inputCategory = getUnitCategory(converterInputUnit);
+                const outputCategory = getUnitCategory(converterOutputUnit);
 
-                // Rad/Gray
-                if (converterInputUnit === 'rad' && converterOutputUnit === 'Gy') {
-                    result = value * 0.01;
-                } else if (converterInputUnit === 'Gy' && converterOutputUnit === 'rad') {
-                    result = value * 100;
-                }
-                // Rem/Sievert
-                else if (converterInputUnit === 'rem' && converterOutputUnit === 'Sv') {
-                    result = value * 0.01;
-                } else if (converterInputUnit === 'Sv' && converterOutputUnit === 'rem') {
-                    result = value * 100;
-                }
-                // Curie/Becquerel
-                else if (converterInputUnit === 'Ci' && converterOutputUnit === 'Bq') {
-                    result = value * 3.7e10;
-                } else if (converterInputUnit === 'Bq' && converterOutputUnit === 'Ci') {
-                    result = value / 3.7e10;
-                }
-                // DPM/microCurie
-                else if (converterInputUnit === 'dpm' && converterOutputUnit === 'µCi') {
-                    result = value / 2.22e6;
-                } else if (converterInputUnit === 'µCi' && converterOutputUnit === 'dpm') {
-                    result = value * 2.22e6;
-                }
-                // Milli/Mega conversion assumes "milli" means 10^-3 and "Mega" means 10^6, and we're converting between them, not *from* a milli-unit to a Mega-unit of some base quantity.
-                // If value is in 'milli' units and target is 'Mega' units, the conversion is value * 10^-3 / 10^6 = value * 10^-9
-                else if (converterInputUnit === 'milli' && converterOutputUnit === 'Mega') {
-                    result = value / 1e9;
-                }
-                // If value is in 'Mega' units and target is 'milli' units, the conversion is value * 10^6 / 10^-3 = value * 10^9
-                else if (converterInputUnit === 'Mega' && converterOutputUnit === 'milli') {
-                    result = value * 1e9;
-                }
-                 else {
-                    setConvertedResult("Unsupported conversion");
+                if (inputCategory !== outputCategory) {
+                    setConvertedResult("Cannot convert between different unit categories (e.g., Dose to Activity).");
                     return;
                 }
 
-                if (result >= 1000 || (result > 0 && result < 0.001)) {
-                    setConvertedResult(`${result.toPrecision(3)} ${outputUnit}`);
+                const baseValue = convertToBase(value, converterInputUnit);
+                let result = convertFromBase(baseValue, converterOutputUnit, inputCategory);
+
+                if (result >= 1000 || (result > 0 && result < 0.001 && result !== 0)) { // Added check for result !== 0
+                    setConvertedResult(`${result.toPrecision(3)} ${converterOutputUnit}`);
                 } else {
-                    setConvertedResult(`${parseFloat(result.toFixed(5))} ${outputUnit}`);
+                    setConvertedResult(`${parseFloat(result.toFixed(5))} ${converterOutputUnit}`);
                 }
             };
 
             const handleUnitConverterInputUnitChange = (e) => {
                 const newUnit = e.target.value;
                 setConverterInputUnit(newUnit);
-                if (newUnit === 'rad') setConverterOutputUnit('Gy');
-                else if (newUnit === 'Gy') setConverterOutputUnit('rad');
-                else if (newUnit === 'rem') setConverterOutputUnit('Sv');
-                else if (newUnit === 'Sv') setConverterOutputUnit('rem');
-                else if (newUnit === 'Ci') setConverterOutputUnit('Bq');
-                else if (newUnit === 'Bq') setConverterOutputUnit('Ci');
-                else if (newUnit === 'dpm') setConverterOutputUnit('µCi');
-                else if (newUnit === 'µCi') setConverterOutputUnit('dpm');
-                else if (newUnit === 'milli') setConverterOutputUnit('Mega');
-                else if (newUnit === 'Mega') setConverterOutputUnit('milli');
+                const newCategory = getUnitCategory(newUnit);
+
+                // Try to set a sensible default output unit if it stays within the same category
+                if (newCategory === 'dose') {
+                    setConverterOutputUnit(newUnit === 'Gy' ? 'rad' : 'Gy');
+                } else if (newCategory === 'activity') {
+                    setConverterOutputUnit(newUnit === 'Bq' ? 'Ci' : 'Bq');
+                } else if (newCategory === 'prefix') {
+                    setConverterOutputUnit(newUnit === 'milli' ? 'Mega' : 'milli');
+                } else if (newCategory === 'radon') {
+                    setConverterOutputUnit(newUnit === 'WL' ? 'WLM' : 'WL');
+                } else {
+                    setConverterOutputUnit(newUnit); // Fallback to same unit if category unknown
+                }
                 setConvertedResult('');
             };
 
@@ -1963,6 +2008,8 @@
                 setConverterOutputUnit(e.target.value);
                 setConvertedResult('');
             };
+
+            const allUnits = [...radiationDoseUnits, ...activityUnits, ...prefixUnits, 'WL', 'WLM'];
 
             const handleGoToUnitConverter = () => {
                 setNuclideName('');
@@ -1975,6 +2022,8 @@
                 setShowUnitConverterPage(true);
                 setConvertedResult('');
                 setConverterValue('');
+                setConverterInputUnit('rad'); // Reset to default
+                setConverterOutputUnit('Gy'); // Reset to default
             };
 
             const handleBackFromConverter = () => {
@@ -2201,13 +2250,17 @@
                                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                             >
                                                 <optgroup label="Radiation Dose">
-                                                    {[...radiationDoseUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                    {radiationDoseUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
                                                 </optgroup>
                                                 <optgroup label="Activity">
-                                                    {[...activityUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                    {activityUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
                                                 </optgroup>
                                                 <optgroup label="Prefixes">
-                                                    {[...prefixUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                    {prefixUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Radon Exposure"> {/* New category for WL/WLM */}
+                                                    <option value="WL">Working Level (WL)</option>
+                                                    <option value="WLM">Working Level Month (WLM)</option>
                                                 </optgroup>
                                             </select>
                                         </div>
@@ -2227,6 +2280,10 @@
                                                 </optgroup>
                                                 <optgroup label="Prefixes">
                                                     {[...prefixUnits].map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Radon Exposure"> {/* New category for WL/WLM */}
+                                                    <option value="WL">Working Level (WL)</option>
+                                                    <option value="WLM">Working Level Month (WLM)</option>
                                                 </optgroup>
                                             </select>
                                         </div>
