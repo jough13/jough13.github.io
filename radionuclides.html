@@ -1647,7 +1647,7 @@
             };
 
             const getFilteredAndSortedRadionuclides = () => {
-                let filtered = [...radionuclides]; // Create a shallow copy to avoid mutating original data
+                let filtered = [...radionuclides];
 
                 if (selectedEmissionType !== 'All') {
                     filtered = filtered.filter(nuclide =>
@@ -1686,6 +1686,29 @@
             };
 
             const filteredAndSortedRadionuclides = getFilteredAndSortedRadionuclides();
+
+            // Function to get random common nuclides for "Try searching for"
+            const getRandomCommonNuclides = React.useCallback(() => {
+                const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
+                const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, 5); // Return 5 random common nuclides
+            }, [radionuclides]); // Dependency array: regenerate only if radionuclides array changes
+
+            // Initialize random suggestions ONCE using useState's initializer function
+            const [randomSuggestions, setRandomSuggestions] = React.useState(() => getRandomCommonNuclides());
+
+
+            // Function to handle returning to the home page (initial state)
+            const handleGoHome = () => {
+                setNuclideName('');
+                setResult(null);
+                setErrorMessage('');
+                setShowFullDatabase(false);
+                setShowDecaySeries(null);
+                setSuggestions([]); // Clear any autocomplete suggestions
+                setRandomSuggestions(getRandomCommonNuclides()); // Get new random suggestions for home page
+            };
+
 
             return (
                 <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center p-4 font-sans antialiased">
@@ -1739,6 +1762,12 @@
                                 className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
                             >
                                 {showFullDatabase ? 'Hide Full Database' : 'Show Full Database'}
+                            </button>
+                            <button
+                                onClick={handleGoHome}
+                                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
+                            >
+                                Home
                             </button>
                         </div>
 
@@ -1945,34 +1974,34 @@
                                                             </span>
                                                         </h4>
                                                         <div className="space-y-0.5 text-sm text-gray-600">
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
                                                                 </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
                                                             </p>
-                                                            <p>
+                                                            <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
                                                             </p>
                                                         </div>
@@ -1994,34 +2023,34 @@
                                                 </span>
                                             </h4>
                                             <div className="space-y-0.5 text-sm text-gray-600">
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Half-life:</strong> {nuclide.halfLife}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Decay Constant:</strong> {nuclide.decayConstant}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
                                                     </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Common Uses:</strong> {(nuclide.commonUses || []).join(', ') || 'N/A'}
                                                 </p>
-                                                <p>
+                                                <p className="text-gray-700">
                                                     <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
                                                 </p>
                                             </div>
@@ -2035,8 +2064,12 @@
                             <div className="mt-6 text-center text-gray-600">
                                 <p className="mb-2">Try searching for:</p>
                                 <ul className="list-none p-0 flex flex-wrap justify-center gap-2">
-                                    {radionuclides.slice(radionuclides.length - 8, radionuclides.length).map((nuclide, index) => (
-                                        <li key={index} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                                    {randomSuggestions.map((nuclide, index) => (
+                                        <li
+                                            key={nuclide.symbol + '-random-' + index}
+                                            className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-indigo-100"
+                                            onClick={() => handleNuclideSelection(nuclide)}
+                                        >
                                             {nuclide.name}
                                         </li>
                                     ))}
