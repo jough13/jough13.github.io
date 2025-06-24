@@ -94,7 +94,7 @@
                 symbol: 'I-131',
                 emissionType: ['Beta-minus', 'Gamma'],
                 emissionEnergies: { beta: ['0.606 MeV (max)'], gamma: ['0.364 MeV (dominant)'], alpha: [] },
-                halfLife: '8.06 days', decayConstant: '0.086 day⁻¹', parent: 'Tellurium-131', daughter: 'Xenon-131 (stable)',
+                halfLife: '8.06 days', decayConstant: '0.086 day⁻¹', gammaConstant: '0.22 R·m²/hr·Ci', parent: 'Tellurium-131', daughter: 'Xenon-131 (stable)',
                 commonUses: ['Diagnosis and treatment of thyroid cancer and hyperthyroidism', 'Medical imaging (diagnostic tracer)'],
                 category: 'Medical', commonality: 'Common'
             },
@@ -193,7 +193,7 @@
                 symbol: 'Ir-192',
                 emissionType: ['Beta-minus', 'Electron Capture', 'Gamma'],
                 emissionEnergies: { beta: ['0.671 MeV (max)'], gamma: ['0.317 MeV', '0.468 MeV'], alpha: [] },
-                halfLife: '73.83 days', decayConstant: '0.0093 day⁻¹', parent: 'Iridium-191 (via neutron capture)', daughter: 'Platinum-192 (stable) / Osmium-192 (stable)',
+                halfLife: '73.83 days', decayConstant: '0.0093 day⁻¹', gammaConstant: '0.48 R·m²/hr·Ci', parent: 'Iridium-191 (via neutron capture)', daughter: 'Platinum-192 (stable) / Osmium-192 (stable)',
                 commonUses: ['High-dose-rate (HDR) brachytherapy', 'Industrial gamma radiography'],
                 category: 'Industrial', commonality: 'Moderate'
             },
@@ -211,7 +211,7 @@
                 symbol: 'Na-22',
                 emissionType: ['Positron Emission (Beta-plus)', 'Gamma'],
                 emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: ['0.511 MeV (annihilation)', '1.275 MeV'], alpha: [] },
-                halfLife: '2.602 years', decayConstant: '0.266 year⁻¹', parent: 'Magnesium-22 (via electron capture)', daughter: 'Neon-22 (stable)',
+                halfLife: '2.602 years', decayConstant: '0.266 year⁻¹', gammaConstant: '1.20 R·m²/hr·Ci', parent: 'Magnesium-22 (via electron capture)', daughter: 'Neon-22 (stable)',
                 commonUses: ['Calibration sources for PET scanners', 'Tracers for biological studies'],
                 category: 'Industrial', commonality: 'Moderate'
             },
@@ -519,7 +519,7 @@
                 emissionEnergies: { beta: [], gamma: ['0.835 MeV'], alpha: [] },
                 halfLife: '312.3 days', decayConstant: '0.00222 day⁻¹', parent: 'Iron-54 (via proton bombardment)', daughter: 'Chromium-54 (stable)',
                 commonUses: ['Calibration sources', 'environmental tracer'],
-                category: 'Industrial', commonality: 'Moderate'
+                category: 'Medical', commonality: 'Moderate'
             },
             {
                 name: 'Promethium-147',
@@ -528,7 +528,7 @@
                 emissionEnergies: { beta: ['0.225 MeV (max)'], gamma: [], alpha: [] },
                 halfLife: '2.623 years', decayConstant: '0.264 year⁻¹', parent: 'Neodymium-147 (beta-minus)', daughter: 'Samarium-147 (alpha decay, very long half-life)',
                 commonUses: ['Atomic batteries (historical)', 'luminous paints (historical)', 'research'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Bismuth-207',
@@ -537,7 +537,7 @@
                 emissionEnergies: { beta: ['0.481 MeV (max)'], gamma: ['0.570 MeV', '1.063 MeV'], alpha: [] },
                 halfLife: '31.55 years', decayConstant: '0.0219 year⁻¹', parent: 'Lead-207', daughter: 'Lead-207 (stable)',
                 commonUses: ['Calibration sources', 'environmental tracer'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Polonium-208',
@@ -546,7 +546,7 @@
                 emissionEnergies: { alpha: ['5.115 MeV'], beta: [], gamma: ['0.134 MeV'] },
                 halfLife: '2.898 years', decayConstant: '0.239 year⁻¹', parent: 'Bismuth-209', daughter: 'Lead-204 (stable)',
                 commonUses: ['Alpha calibration', 'research'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Rhodium-105',
@@ -564,7 +564,7 @@
                 emissionEnergies: { beta: [], gamma: ['0.198 MeV', '0.261 MeV', '0.308 MeV'], alpha: [] },
                 halfLife: '32.0 days', decayConstant: '0.0216 day⁻¹', parent: 'Lutetium-169', daughter: 'Thulium-169 (stable)',
                 commonUses: ['Medical imaging (historical', 'brain and CSF studies)', 'industrial radiography'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Gadolinium-159',
@@ -591,7 +591,7 @@
                 emissionEnergies: { beta: [], gamma: ['0.0059 MeV (Mn K-alpha X-ray)'], alpha: [] },
                 halfLife: '2.73 years', decayConstant: '0.254 year⁻¹', parent: 'Cobalt-55', daughter: 'Manganese-55 (stable)',
                 commonUses: ['X-ray fluorescence sources', 'electron capture detectors', 'research'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Nickel-59',
@@ -600,7 +600,7 @@
                 emissionEnergies: { beta: [], gamma: ['0.0069 MeV (Co K-alpha X-ray)'], alpha: [] },
                 halfLife: '76000 years', decayConstant: '9.12 x 10⁻⁶ year⁻¹', parent: 'Copper-59', daughter: 'Cobalt-59 (stable)',
                 commonUses: ['Neutron activation product (long-lived)', 'geological dating (historical)', 'research'],
-                category: 'Industrial', commonality: 'Rare'
+                category: 'Medical', commonality: 'Rare'
             },
             {
                 name: 'Krypton-79',
@@ -639,93 +639,21 @@
                 category: 'Medical', commonality: 'Moderate'
             },
             {
+                name: 'Zinc-65',
+                symbol: 'Zn-65',
+                emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
+                emissionEnergies: { beta: ['0.329 MeV (max)'], gamma: ['1.115 MeV'], alpha: [] },
+                halfLife: '244.26 days', decayConstant: '0.00284 day⁻¹', parent: 'Copper-65', daughter: 'Copper-65 (stable)',
+                commonUses: ['Environmental tracer', 'biological research', 'calibration source'],
+                category: 'Industrial', commonality: 'Moderate'
+            },
+            {
                 name: 'Iron-52',
                 symbol: 'Fe-52',
                 emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
                 emissionEnergies: { beta: ['0.801 MeV (max)'], gamma: ['0.169 MeV'], alpha: [] },
                 halfLife: '8.275 hours', decayConstant: '0.0838 hour⁻¹', parent: 'Manganese-52m', daughter: 'Manganese-52 (EC, Beta+)',
                 commonUses: ['PET imaging research (bone marrow imaging, iron metabolism)'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Bismuth-213',
-                symbol: 'Bi-213',
-                emissionType: ['Beta-minus', 'Alpha', 'Gamma'],
-                emissionEnergies: { beta: ['1.42 MeV (max)'], alpha: ['5.87 MeV'], gamma: ['0.440 MeV'] },
-                halfLife: '45.6 minutes', decayConstant: '0.0152 min⁻¹', parent: 'Actinium-225', daughter: 'Polonium-213 or Thallium-209',
-                commonUses: ['Targeted Alpha Therapy (TAT) for various cancers.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Terbium-161',
-                symbol: 'Tb-161',
-                emissionType: ['Beta-minus', 'Gamma', 'Auger electron'],
-                emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.049 MeV', '0.075 MeV'], alpha: [] },
-                halfLife: '6.89 days', decayConstant: '0.100 day⁻¹', parent: 'Gadolinium-160', daughter: 'Dysprosium-161 (stable)',
-                commonUses: ['Theranostics (combined therapy and diagnostics), particularly for cancer treatment research.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Copper-67',
-                symbol: 'Cu-67',
-                emissionType: ['Beta-minus', 'Gamma'],
-                emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] },
-                halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', parent: 'Zinc-67', daughter: 'Zinc-67 (stable)',
-                commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Scandium-47',
-                symbol: 'Sc-47',
-                emissionType: ['Beta-minus', 'Gamma'],
-                emissionEnergies: { beta: ['0.601 MeV (max)'], gamma: ['0.159 MeV'], alpha: [] },
-                halfLife: '3.35 days', decayConstant: '0.207 day⁻¹', parent: 'Titanium-47', daughter: 'Titanium-47 (stable)',
-                commonUses: ['Theranostics (pairs with Sc-44 for PET), targeted radiotherapy research.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Holmium-166',
-                symbol: 'Ho-166',
-                emissionType: ['Beta-minus', 'Gamma'],
-                emissionEnergies: { beta: ['1.854 MeV (max)'], gamma: ['0.081 MeV'], alpha: [] },
-                halfLife: '26.8 hours', decayConstant: '0.0258 hour⁻¹', parent: 'Holmium-165', daughter: 'Erbium-166 (stable)',
-                commonUses: ['Radiotherapy for liver tumors, bone pain palliation, radiosynovectomy.'],
-                category: 'Medical', commonality: 'Moderate'
-            },
-            {
-                name: 'Erbium-169',
-                symbol: 'Er-169',
-                emissionType: ['Beta-minus'],
-                emissionEnergies: { beta: ['0.341 MeV (max)'], gamma: [], alpha: [] },
-                halfLife: '9.4 days', decayConstant: '0.0737 day⁻¹', parent: 'Erbium-168', daughter: 'Thulium-169 (stable)',
-                commonUses: ['Radiation synovectomy for arthritis treatment.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Tungsten-188',
-                symbol: 'W-188',
-                emissionType: ['Beta-minus', 'Gamma'],
-                emissionEnergies: { beta: ['0.349 MeV (max)'], gamma: ['0.227 MeV'], alpha: [] },
-                halfLife: '69.4 days', decayConstant: '0.00999 day⁻¹', parent: 'Tantalum-186', daughter: 'Rhenium-188',
-                commonUses: ['Generator for Rhenium-188, used in therapeutic applications.'],
-                category: 'Medical', commonality: 'Rare'
-            },
-            {
-                name: 'Strontium-82',
-                symbol: 'Sr-82',
-                emissionType: ['Electron Capture', 'Gamma'],
-                emissionEnergies: { beta: [], gamma: ['0.776 MeV'], alpha: [] },
-                halfLife: '25.36 days', decayConstant: '0.0273 day⁻¹', parent: 'Yttrium-85', daughter: 'Rubidium-82',
-                commonUses: ['Generator for Rubidium-82, used for cardiac PET imaging.'],
-                category: 'Medical', commonality: 'Moderate'
-            },
-            {
-                name: 'Tin-117m',
-                symbol: 'Sn-117m',
-                emissionType: ['Isomeric Transition', 'Gamma'],
-                emissionEnergies: { beta: [], gamma: ['0.159 MeV'], alpha: [] },
-                halfLife: '13.6 days', decayConstant: '0.0510 day⁻¹', parent: 'Tin-116', daughter: 'Tin-117 (stable)',
-                commonUses: ['Bone pain palliation for metastatic cancer.', 'Radiosynovectomy.'],
                 category: 'Medical', commonality: 'Rare'
             },
 
@@ -891,15 +819,6 @@
                 halfLife: '2.14 million years', decayConstant: '3.24 x 10⁻⁷ year⁻¹', parent: 'Americium-241 (alpha decay)', daughter: 'Protactinium-233 (alpha)',
                 commonUses: ['Intermediate in Neptunium series decay', 'nuclear waste studies'],
                 category: 'Industrial', commonality: 'Rare'
-            },
-            {
-                name: 'Zinc-65',
-                symbol: 'Zn-65',
-                emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
-                emissionEnergies: { beta: ['0.329 MeV (max)'], gamma: ['1.115 MeV'], alpha: [] },
-                halfLife: '244.26 days', decayConstant: '0.00284 day⁻¹', parent: 'Copper-65', daughter: 'Copper-65 (stable)',
-                commonUses: ['Environmental tracer', 'biological research', 'calibration source'],
-                category: 'Industrial', commonality: 'Moderate'
             },
             {
                 name: 'Cadmium-109',
@@ -1179,7 +1098,7 @@
                 emissionType: ['Alpha', 'Gamma'],
                 emissionEnergies: { alpha: ['4.012 MeV'], beta: [], gamma: ['0.059 MeV'] },
                 halfLife: '14.05 billion years', decayConstant: '4.93 x 10⁻¹¹ year⁻¹', parent: 'Primordial', daughter: 'Radium-228 (alpha)',
-                commonUses: ['Nuclear fuel cycle (fertile material)', 'Gas mantles (historical)', 'Welding electrodes', 'Thoriated optics', 'Catalysis'],
+                commonUses: ['Nuclear fuel cycle (fertile material)', 'Gas mantles (historical)', 'Welding electrodes', 'Catalysis'],
                 category: 'Natural', decaySeriesId: 'Th-232-series', commonality: 'Common'
             },
             {
@@ -1667,6 +1586,13 @@
                 }
             });
 
+            const [randomSuggestions, setRandomSuggestions] = React.useState(() => {
+                const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
+                const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, 5);
+            });
+
+
             const normalizeString = (str) => {
                 if (typeof str !== 'string') return '';
                 return str.toLowerCase().replace(/[\s-]/g, '');
@@ -1997,13 +1923,6 @@
             };
 
             const filteredAndSortedRadionuclides = getFilteredAndSortedRadionuclides();
-
-            const [randomSuggestions, setRandomSuggestions] = React.useState(() => {
-                const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
-                const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
-                return shuffled.slice(0, 5);
-            });
-
 
             const handleGoHome = () => {
                 setNuclideName('');
@@ -2570,6 +2489,11 @@
                                     <p className="text-gray-700">
                                         <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(result.decayConstant, displayDecayConstantUnit)}
                                     </p>
+                                    {result.gammaConstant && (
+                                        <p className="text-gray-700">
+                                            <strong className="text-indigo-700">Gamma Constant:</strong> {result.gammaConstant}
+                                        </p>
+                                    )}
                                     <p className="text-gray-700">
                                         <strong className="text-indigo-700">Parent Product:</strong> {result.parent}
                                     </p>
@@ -2787,6 +2711,11 @@
                                                             <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
                                                             </p>
+                                                            {nuclide.gammaConstant && (
+                                                                <p className="text-gray-700">
+                                                                    <strong className="text-indigo-700">Gamma Constant:</strong> {nuclide.gammaConstant}
+                                                                </p>
+                                                            )}
                                                             <p className="text-gray-700">
                                                                 <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
                                                                 </p>
@@ -2833,6 +2762,11 @@
                                                     <p className="text-gray-700">
                                                         <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
                                                     </p>
+                                                    {nuclide.gammaConstant && (
+                                                        <p className="text-gray-700">
+                                                            <strong className="text-indigo-700">Gamma Constant:</strong> {nuclide.gammaConstant}
+                                                        </p>
+                                                    )}
                                                     <p className="text-gray-700">
                                                         <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
                                                         </p>
