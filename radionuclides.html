@@ -46,7 +46,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions ---
-        const VERSION = '2.2.0';
+        const VERSION = '2.2.2';
         const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
@@ -1931,7 +1931,7 @@
             radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z",
             help: "M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z",
             clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
-            filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"
+            filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
         };
         
         const Header = ({ onHelpClick }) => (
@@ -2025,17 +2025,14 @@
         const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit }) => {
             const getSourceLink = (sourceKey) => { const source = sources[sourceKey]; return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : ''; };
             
-            const DataPoint = ({ label, value, unit, sourceKey, iconPath }) => {
-                // Determine the final value to display. If the provided value is empty or just whitespace, use 'N/A'.
+            const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                 const displayValue = value && String(value).trim() ? String(value).trim() : 'N/A';
-                
-                // Check if the unit should be appended.
-                // Don't append if the value is 'N/A' or if the value already includes the unit.
                 const shouldAppendUnit = unit && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
 
                 return (
                     <div className="flex items-start">
                          {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
+                         {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
                         <div>
                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
                             <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
@@ -2072,9 +2069,9 @@
                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Emission Energies</h3>
                          <div className="grid md:grid-cols-3 gap-4">
-                            <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV"/>
-                            <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV"/>
-                            <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV"/>
+                            <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV" iconSymbol="α"/>
+                            <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV" iconSymbol="β"/>
+                            <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV" iconSymbol="γ"/>
                          </div>
                     </div>
                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
