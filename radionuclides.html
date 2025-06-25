@@ -9,22 +9,37 @@
     <!-- React and ReactDOM CDNs -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel CDN for JSX transformation in the browser -->
+    <!-- Babel CDN for JSX transformation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* slate-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #64748b; /* slate-500 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; /* slate-600 */
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-50 to-purple-100">
+<body class="bg-slate-100 dark:bg-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- Static Data Definitions (Moved outside component) ---
-        const VERSION = '1.3.0';
-        const LAST_UPDATED = 'June 24, 2025';
+        // --- Static Data Definitions ---
+        const VERSION = '2.0.2';
+        const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
             nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
@@ -98,7 +113,7 @@
         ];
         
         const radionuclides = [
-            {
+             {
                 name: 'Iodine-131',
                 symbol: 'I-131',
                 emissionType: ['Beta-minus', 'Gamma'],
@@ -1632,7 +1647,8 @@
             },
             {
                 name: 'Lead-207',
-                symbol: 'Pb-207',
+                symbol: 'Pb-207', // <-- FIX: Added the missing symbol
+                emissionType: ['Stable'],
                 emissionEnergies: { beta: [], gamma: [], alpha: [] },
                 halfLife: 'Stable', decayConstant: '0', parent: 'Polonium-211', daughter: 'Stable',
                 commonUses: ['Final stable product of U-235 decay series', 'geological dating'],
@@ -1678,18 +1694,50 @@
             }
         ];
         
+        // --- Reusable UI & Logic Components (Virtual) ---
+
+        // A simple icon component to render inline SVGs
+        const Icon = ({ path, className = "w-5 h-5" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+                <path d={path} />
+            </svg>
+        );
+
+        // A collection of SVG paths for icons used in the app
+        const ICONS = {
+            search: "M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A8 8 0 1 0 10 18zm0-14a6 6 0 1 1-6 6 6 6 0 0 1 6-6z",
+            database: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+            converter: "M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z",
+            energy: "M7 21v-2l7-11H9V5l7 11h-5v3H7z",
+            home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z",
+            hourglass: "M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z",
+            radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z",
+            link: "M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z",
+            clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+        };
+
+
         const App = () => {
             const [nuclideName, setNuclideName] = React.useState('');
             const [result, setResult] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
-            const [showFullDatabase, setShowFullDatabase] = React.useState(false);
+            const [activeView, setActiveView] = React.useState('home'); // 'home', 'database', 'converter', 'decaySeries', 'energySearch'
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
-            const [showDecaySeries, setShowDecaySeries] = React.useState(null);
+            const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
+            const [searchHistory, setSearchHistory] = React.useState(() => {
+                try {
+                    return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]');
+                } catch (e) { return []; }
+            });
+            const [randomSuggestions, setRandomSuggestions] = React.useState([]);
+
+             // State for filters
             const [selectedEmissionType, setSelectedEmissionType] = React.useState('All');
             const [selectedCommonality, setSelectedCommonality] = React.useState('All');
+            const [selectedCategory, setSelectedCategory] = React.useState('All');
             const [sortBy, setSortBy] = React.useState('name');
             const [sortOrder, setSortOrder] = React.useState('asc');
             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
@@ -1700,1320 +1748,641 @@
             const [maxBetaEnergy, setMaxBetaEnergy] = React.useState('');
             const [minGammaEnergy, setMinGammaEnergy] = React.useState('');
             const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
-            const [showEnergySearchPage, setShowEnergySearchPage] = React.useState(false);
-            const [showUnitConverterPage, setShowUnitConverterPage] = React.useState(false);
-            
-            const commonalityOrder = {
-                'Common': 3,
-                'Moderate': 2,
-                'Rare': 1,
-                'N/A': 0,
-                undefined: 0
-            };
-            const allEmissionTypes = [
-                'All', 'Alpha', 'Beta-minus', 'Positron Emission', 'Electron Capture',
-                'Gamma', 'X-ray', 'Isomeric Transition', 'Spontaneous Fission', 'Neutron', 'Stable'
-            ];
-            const allCommonalityCategories = [
-                'All', 'Common', 'Moderate', 'Rare', 'N/A'
-            ];
-            const categorySortOrder = {
-                'Medical': 1,
-                'Industrial': 2,
-                'Commodities/Consumer': 3,
-                'Natural': 4,
-                'Stable/Reference': 5,
-            };
-            const categoryOrder = {
-                'Medical': 1,
-                'Industrial': 2,
-                'Commodities/Consumer': 3,
-                'Natural': 4,
-                'Stable/Reference': 5,
-            };
-            const categories = ['Medical', 'Industrial', 'Commodities/Consumer', 'Natural', 'Stable/Reference'].filter(
-                cat => radionuclides.some(n => n.category === cat)
-            );
 
-            const [searchHistory, setSearchHistory] = React.useState(() => {
-                try {
-                    const storedHistory = localStorage.getItem('radionuclideSearchHistory');
-                    return storedHistory ? JSON.parse(storedHistory) : [];
-                } catch (error) {
-                    console.error("Error parsing search history from localStorage", error);
-                    return [];
-                }
-            });
+            // --- Utility and Parsing Functions ---
 
-            const [randomSuggestions, setRandomSuggestions] = React.useState(() => {
-                const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
-                const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
-                return shuffled.slice(0, 5);
-            });
-
-
-            const normalizeString = (str) => {
-                if (typeof str !== 'string') return '';
-                return str.toLowerCase().replace(/[\s-]/g, '');
-            };
-
-            const handleNuclideNameChange = (e) => {
-                const value = e.target.value;
-                setNuclideName(value);
-                setResult(null);
-                setErrorMessage('');
-                setShowFullDatabase(false);
-                setShowDecaySeries(null);
-                setShowEnergySearchPage(false);
-
-                if (value.length > 0) {
-                    const normalizedValue = normalizeString(value);
-                    const filteredSuggestions = radionuclides
-                        .filter(
-                            (nuclide) =>
-                                normalizeString(nuclide.name).includes(normalizedValue) ||
-                                normalizeString(nuclide.symbol).includes(normalizedValue)
-                        )
-                        .sort((a, b) => {
-                            const commonalityA = commonalityOrder[a.commonality];
-                            const commonalityB = commonalityOrder[b.commonality];
-                            if (commonalityA !== commonalityB) {
-                                return commonalityB - commonalityA;
-                            }
-                            return a.name.localeCompare(b.name);
-                        })
-                        .slice(0, 10);
-                    setSuggestions(filteredSuggestions);
-                    setActiveSuggestionIndex(-1);
-                } else {
-                    setSuggestions([]);
-                }
-            };
-
-            const handleNuclideSelection = (nuclideObject) => {
-                setNuclideName(nuclideObject.name);
-                setSuggestions([]);
-                setResult(nuclideObject);
-                setErrorMessage('');
-                setShowDecaySeries(null);
-                setShowFullDatabase(false);
-                setShowEnergySearchPage(false);
-
-                setSearchHistory(prevHistory => {
-                    const newHistory = [nuclideObject, ...prevHistory.filter(item => item.symbol !== nuclideObject.symbol)];
-                    return newHistory.slice(0, 5);
-                });
-            };
-
-            const handleKeyDown = (e) => {
-                if (suggestions.length > 0) {
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        setActiveSuggestionIndex((prevIndex) =>
-                            prevIndex < suggestions.length - 1 ? prevIndex + 1 : 0
-                        );
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        setActiveSuggestionIndex((prevIndex) =>
-                            prevIndex > 0 ? prevIndex - 1 : suggestions.length - 1
-                        );
-                    } else if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (activeSuggestionIndex !== -1) {
-                            handleNuclideSelection(suggestions[activeSuggestionIndex]);
-                        } else {
-                            handleLookup();
-                        }
-                        setSuggestions([]);
-                    } else if (e.key === 'Escape') {
-                        setSuggestions([]);
-                        setActiveSuggestionIndex(-1);
-                    }
-                } else if (e.key === 'Enter') {
-                    handleLookup();
-                }
-            };
-
-            React.useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (suggestionsRef.current && !suggestionsRef.current.contains(event.target) &&
-                        inputRef.current && !inputRef.current.contains(event.target)) {
-                        setSuggestions([]);
-                    }
-                };
-
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => {
-                    document.removeEventListener('mousedown', handleClickOutside);
-                };
-            }, []);
-
-            React.useEffect(() => {
-                try {
-                    localStorage.setItem('radionuclideSearchHistory', JSON.stringify(searchHistory));
-                } catch (error) {
-                    console.error("Error saving search history to localStorage", error);
-                }
-            }, [searchHistory]);
-
-
-            const handleLookup = () => {
-                setErrorMessage('');
-                setResult(null);
-                setSuggestions([]);
-                setShowFullDatabase(false);
-                setShowDecaySeries(null);
-                setShowEnergySearchPage(false);
-
-                const normalizedInput = normalizeString(nuclideName);
-                const foundNuclide = radionuclides.find(
-                    (nuclide) =>
-                        normalizeString(nuclide.name) === normalizedInput ||
-                        normalizeString(nuclide.symbol) === normalizedInput
-                );
-
-                if (foundNuclide) {
-                    setResult(foundNuclide);
-                    setSearchHistory(prevHistory => {
-                        const newHistory = [foundNuclide, ...prevHistory.filter(item => item.symbol !== foundNuclide.symbol)];
-                        return newHistory.slice(0, 5);
-                    });
-                } else {
-                    setErrorMessage(`Radionuclide "${nuclideName}" not found. Please try another.`);
-                }
-            };
-
-            const handleViewDecaySeries = (seriesId) => {
-                setShowDecaySeries(seriesId);
-                setShowFullDatabase(false);
-                setResult(null);
-                setErrorMessage('');
-                setShowEnergySearchPage(false);
-            };
-
-            const currentDecaySeries = decaySeriesData.find(series => series.id === showDecaySeries);
-
+            const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
 
             const parseHalfLifeToSeconds = (halfLifeStr) => {
                 if (!halfLifeStr || halfLifeStr === 'Stable') return Infinity;
-
                 const parts = halfLifeStr.split(' ');
-                let value = parseFloat(parts[0]);
-                const unit = parts[1]?.toLowerCase();
-
-                if (unit && unit.includes('microsecond')) return value * 1e-6;
-                if (unit && unit.includes('millisecond')) return value * 1e-3;
-                if (unit && (unit.includes('second') || unit === 's')) return value;
-                if (unit && unit.includes('minute')) return value * 60;
-                if (unit && unit.includes('hour')) return value * 3600;
-                if (unit && unit.includes('day')) return value * 3600 * 24;
-                if (unit && unit.includes('year')) return value * 3600 * 24 * 365.25;
-                if (unit && unit.includes('billion')) return value * 3600 * 24 * 365.25 * 1e9;
-                if (unit && unit.includes('million')) return value * 3600 * 24 * 365.25 * 1e6;
-
-                const numericalValue = parseFloat(halfLifeStr);
-                return isNaN(numericalValue) ? 0 : numericalValue;
-            };
-
-            const parseDecayConstantToNumber = (decayConstantStr) => {
-                if (!decayConstantStr || decayConstantStr === '0') return 0;
-
-                const scientificMatch = decayConstantStr.match(/(\d+\.?\d*)\s*x\s*10⁻?(\d+)/i);
-                if (scientificMatch) {
-                    const base = parseFloat(scientificMatch[1]);
-                    const exponent = parseInt(scientificMatch[2], 10);
-                    return base * Math.pow(10, -exponent);
-                }
-
-                const parts = decayConstantStr.split(' ');
-                let value = parseFloat(parts[0]);
-                const unit = parts[1]?.toLowerCase();
-
-                if (unit && unit.includes('year⁻¹')) return value;
-                if (unit && unit.includes('day⁻¹')) return value / 365.25;
-                if (unit && unit.includes('hour⁻¹')) return value / (365.25 * 24);
-                if (unit && unit.includes('min⁻¹')) return value / (365.25 * 24 * 60);
-                if (unit && unit.includes('s⁻¹')) return value / (365.25 * 24 * 3600);
-
-                const numericalValue = parseFloat(decayConstantStr);
-                return isNaN(numericalValue) ? 0 : numericalValue;
-            };
-
-            const parseEnergyToMeV = (energyArray) => {
-                if (!energyArray || energyArray.length === 0) return 0;
-
-                const energyStr = energyArray[0];
-                const parts = energyStr.split(' ');
                 let value = parseFloat(parts[0]);
                 const unit = parts[1]?.toLowerCase();
 
                 if (isNaN(value)) return 0;
 
-                if (unit && unit.includes('mev')) return value;
-                if (unit && unit.includes('kev')) return value / 1000;
-
+                const unitMultipliers = {
+                    'microsecond': 1e-6, 'millisecond': 1e-3, 'second': 1, 's': 1,
+                    'minute': 60, 'hour': 3600, 'day': 3600 * 24,
+                    'year': 3600 * 24 * 365.25, 'million': 3600 * 24 * 365.25 * 1e6,
+                    'billion': 3600 * 24 * 365.25 * 1e9,
+                };
+                for (const key in unitMultipliers) {
+                    if (unit?.includes(key)) return value * unitMultipliers[key];
+                }
                 return value;
             };
 
             const formatHalfLife = (halfLifeStr, targetUnit) => {
                 const seconds = parseHalfLifeToSeconds(halfLifeStr);
                 if (seconds === Infinity) return 'Stable';
-                if (seconds === 0) return 'N/A';
-
-                let value = seconds;
-                let unit = '';
-
-                if (targetUnit === 'seconds') { unit = 'seconds'; }
-                else if (targetUnit === 'minutes') { value /= 60; unit = 'minutes'; }
-                else if (targetUnit === 'hours') { value /= 3600; unit = 'hours'; }
-                else if (targetUnit === 'days') { value /= (3600 * 24); unit = 'days'; }
-                else if (targetUnit === 'years') { value /= (3600 * 24 * 365.25); unit = 'years'; }
-                else if (targetUnit === 'kiloyears') { value /= (3600 * 24 * 365.25 * 1e3); unit = 'kiloyears'; }
-                else if (targetUnit === 'megayears') { value /= (3600 * 24 * 365.25 * 1e6); unit = 'megayears'; }
-                else if (targetUnit === 'gigayears') { value /= (3600 * 24 * 365.25 * 1e9); unit = 'gigayears'; }
+                if (seconds === 0 || !halfLifeStr) return 'N/A';
                 
+                const unitConversions = {
+                    'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 3600 * 24,
+                    'years': 3600 * 24 * 365.25, 'kiloyears': 3600 * 24 * 365.25 * 1e3,
+                    'megayears': 3600 * 24 * 365.25 * 1e6, 'gigayears': 3600 * 24 * 365.25 * 1e9,
+                };
+                
+                const value = seconds / unitConversions[targetUnit];
                 if (value >= 1000 || (value > 0 && value < 0.01)) {
-                    return value.toPrecision(3) + ' ' + unit;
+                    return `${value.toPrecision(3)} ${targetUnit}`;
                 }
-                return parseFloat(value.toFixed(2)) + ' ' + unit;
+                return `${parseFloat(value.toFixed(2))} ${targetUnit}`;
+            };
+            
+            const parseEnergyToMeV = (energyArray) => {
+                if (!energyArray || energyArray.length === 0) return 0;
+                const energyStr = energyArray[0];
+                const parts = energyStr.split(' ');
+                let value = parseFloat(parts[0]);
+                if (isNaN(value)) return 0;
+                const unit = parts[1]?.toLowerCase();
+                if (unit && unit.includes('kev')) return value / 1000;
+                return value; // Assume MeV if not specified
             };
 
-            const formatDecayConstant = (decayConstantStr, targetUnit) => {
-                const baseValue = parseDecayConstantToNumber(decayConstantStr);
-                if (baseValue === 0) return '0';
 
-                let value = baseValue;
-                let unit = '';
-
-                if (targetUnit === 'year⁻¹') { unit = 'year⁻¹'; }
-                else if (targetUnit === 'day⁻¹') { value *= 365.25; unit = 'day⁻¹'; }
-                else if (targetUnit === 'hour⁻¹') { value *= (365.25 * 24); unit = 'hour⁻¹'; }
-                else if (targetUnit === 'min⁻¹') { value *= (365.25 * 24 * 60); unit = 'min⁻¹'; }
-                else if (targetUnit === 's⁻¹') { value *= (365.25 * 24 * 3600); unit = 's⁻¹'; }
-                
-                if (value >= 1000 || (value > 0 && value < 0.001)) {
-                    return value.toPrecision(3) + ' ' + unit;
-                }
-                return parseFloat(value.toFixed(4)) + ' ' + unit;
-            };
-
-            const halfLifeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
-            const decayConstantUnits = ['s⁻¹', 'min⁻¹', 'hour⁻¹', 'day⁻¹', 'year⁻¹'];
-
-
-            const getFilteredAndSortedRadionuclides = () => {
+            const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
+            const allEmissionTypes = ['All', 'Alpha', 'Beta-minus', 'Positron Emission (Beta-plus)', 'Electron Capture', 'Gamma', 'X-ray', 'Isomeric Transition', 'Spontaneous Fission', 'Neutron', 'Stable'];
+            const allCommonalityCategories = ['All', 'Common', 'Moderate', 'Rare'];
+            const allCategories = ['All', 'Medical', 'Industrial', 'Commodities/Consumer', 'Natural', 'Stable/Reference'];
+            
+            const getFilteredAndSortedRadionuclides = React.useCallback(() => {
                 let filtered = [...radionuclides];
 
                 if (selectedEmissionType !== 'All') {
-                    filtered = filtered.filter(nuclide =>
-                        nuclide.emissionType && nuclide.emissionType.includes(selectedEmissionType)
-                    );
+                    filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType));
                 }
-
                 if (selectedCommonality !== 'All') {
-                    filtered = filtered.filter(nuclide =>
-                        nuclide.commonality === selectedCommonality
-                    );
+                    filtered = filtered.filter(n => n.commonality === selectedCommonality);
                 }
-
-                const filterByEnergyRange = (nuclide, energyType, minEnergy, maxEnergy) => {
-                    const parsedEnergy = parseEnergyToMeV(nuclide.emissionEnergies?.[energyType]);
-                    const hasMin = minEnergy !== '';
-                    const hasMax = maxEnergy !== '';
-                    const minVal = parseFloat(minEnergy);
-                    const maxVal = parseFloat(maxEnergy);
-
-                    if (isNaN(parsedEnergy)) return false;
-
-                    if (hasMin && hasMax) {
-                        return parsedEnergy >= minVal && parsedEnergy <= maxVal;
-                    } else if (hasMin) {
-                        return parsedEnergy >= minVal;
-                    } else if (hasMax) {
-                        return parsedEnergy <= maxVal;
-                    }
+                 if (selectedCategory !== 'All') {
+                    filtered = filtered.filter(n => n.category === selectedCategory);
+                }
+                const filterByEnergyRange = (nuclide, type, min, max) => {
+                    const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
+                    if (energy === 0 && (min || max)) return false; // Don't match nuclides with no energy of this type if filtering
+                    const minVal = parseFloat(min);
+                    const maxVal = parseFloat(max);
+                    if (min && max) return energy >= minVal && energy <= maxVal;
+                    if (min) return energy >= minVal;
+                    if (max) return energy <= maxVal;
                     return true;
                 };
 
-                if (minAlphaEnergy !== '' || maxAlphaEnergy !== '') {
-                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'alpha', minAlphaEnergy, maxAlphaEnergy));
-                }
-                if (minBetaEnergy !== '' || maxBetaEnergy !== '') {
-                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'beta', minBetaEnergy, maxBetaEnergy));
-                }
-                if (minGammaEnergy !== '' || maxGammaEnergy !== '') {
-                    filtered = filtered.filter(nuclide => filterByEnergyRange(nuclide, 'gamma', minGammaEnergy, maxGammaEnergy));
-                }
-                
+                if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
+                if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
+                if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
+
                 filtered.sort((a, b) => {
-                    let compareValue = 0;
-                    if (sortBy === 'name') {
-                        compareValue = a.name.localeCompare(b.name);
-                    } else if (sortBy === 'halfLife') {
-                        const halfLifeA = parseHalfLifeToSeconds(a.halfLife);
-                        const halfLifeB = parseHalfLifeToSeconds(b.halfLife);
-                        compareValue = halfLifeA - halfLifeB;
-                    } else if (sortBy === 'decayConstant') {
-                        const decayConstantA = parseDecayConstantToNumber(a.decayConstant);
-                        const decayConstantB = parseDecayConstantToNumber(b.decayConstant);
-                        compareValue = decayConstantA - decayConstantB;
-                    } else if (sortBy === 'category') {
-                        const categoryA = categoryOrder[a.category];
-                        const categoryB = categoryOrder[b.category];
-                        compareValue = categoryA - categoryB;
-                    } else if (sortBy === 'alphaEnergy') {
-                        const energyA = parseEnergyToMeV(a.emissionEnergies?.alpha);
-                        const energyB = parseEnergyToMeV(b.emissionEnergies?.alpha);
-                        compareValue = energyA - energyB;
-                    } else if (sortBy === 'betaEnergy') {
-                        const energyA = parseEnergyToMeV(a.emissionEnergies?.beta);
-                        const energyB = parseEnergyToMeV(b.emissionEnergies?.beta);
-                        compareValue = energyA - energyB;
-                    } else if (sortBy === 'gammaEnergy') {
-                        const energyA = parseEnergyToMeV(a.emissionEnergies?.gamma);
-                        const energyB = parseEnergyToMeV(b.emissionEnergies?.gamma);
-                        compareValue = energyA - energyB;
-                    }
-
-                    return sortOrder === 'asc' ? compareValue : -compareValue;
+                    let compare = 0;
+                    if (sortBy === 'name') compare = a.name.localeCompare(b.name);
+                    else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
+                    else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
+                    else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
+                    else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
+                    
+                    return sortOrder === 'asc' ? compare : -compare;
                 });
-
                 return filtered;
-            };
+            }, [selectedEmissionType, selectedCommonality, selectedCategory, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy]);
 
-            const filteredAndSortedRadionuclides = getFilteredAndSortedRadionuclides();
 
-            const handleGoHome = () => {
-                setNuclideName('');
+            // --- Event Handlers ---
+            const handleNuclideNameChange = (e) => {
+                const value = e.target.value;
+                setNuclideName(value);
+                setActiveView('home');
                 setResult(null);
                 setErrorMessage('');
-                setShowFullDatabase(false);
-                setShowDecaySeries(null);
-                setShowEnergySearchPage(false);
-                setShowUnitConverterPage(false);
+
+                if (value.length > 0) {
+                    const normVal = normalizeString(value);
+                    const filtered = radionuclides
+                        .filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
+                        .sort((a, b) => (commonalityOrder[b.commonality] || 0) - (commonalityOrder[a.commonality] || 0) || a.name.localeCompare(b.name))
+                        .slice(0, 10);
+                    setSuggestions(filtered);
+                } else {
+                    setSuggestions([]);
+                }
+            };
+            
+            const updateSearchHistory = (nuclide) => {
+                 setSearchHistory(prev => {
+                    const newHistory = [nuclide, ...prev.filter(item => item.symbol !== nuclide.symbol)];
+                    const limitedHistory = newHistory.slice(0, 5);
+                    localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory));
+                    return limitedHistory;
+                });
+            }
+
+            const handleNuclideSelection = (nuclide) => {
+                setNuclideName(nuclide.name);
+                setResult(nuclide);
                 setSuggestions([]);
-                const commonNuclides = radionuclides.filter(nuclide => nuclide.commonality === 'Common');
-                const shuffled = [...commonNuclides].sort(() => 0.5 - Math.random());
-                setRandomSuggestions(shuffled.slice(0, 5));
-                setMinAlphaEnergy('');
-                setMaxAlphaEnergy('');
-                setMinBetaEnergy('');
-                setMaxBetaEnergy('');
-                setMinGammaEnergy('');
-                setMaxGammaEnergy('');
+                setErrorMessage('');
+                setActiveView('home');
+                updateSearchHistory(nuclide);
+            };
+
+            const handleLookup = () => {
+                setSuggestions([]);
+                const normInput = normalizeString(nuclideName);
+                const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput);
+                if (found) {
+                    handleNuclideSelection(found);
+                } else {
+                    setResult(null);
+                    setErrorMessage(`Nuclide "${nuclideName}" not found.`);
+                }
             };
 
             const handleClearHistory = () => {
                 setSearchHistory([]);
+                localStorage.removeItem('radionuclideSearchHistory');
             };
-
-            const handleGoToEnergySearch = () => {
+            
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    if (activeSuggestionIndex !== -1 && suggestions.length > 0) {
+                        handleNuclideSelection(suggestions[activeSuggestionIndex]);
+                    } else {
+                        handleLookup();
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+                } else if (e.key === 'Escape') {
+                    setSuggestions([]);
+                }
+            };
+            
+            const resetToHome = () => {
+                setActiveView('home');
+                setResult(null);
+                setErrorMessage('');
                 setNuclideName('');
-                setResult(null);
-                setErrorMessage('');
-                setShowFullDatabase(false);
-                setShowDecaySeries(null);
                 setSuggestions([]);
-                setShowUnitConverterPage(false);
-                setShowEnergySearchPage(true);
+                setCurrentDecaySeriesId(null);
             };
 
-            const handleApplyEnergyFilters = () => {
-                setErrorMessage('');
-                setShowEnergySearchPage(false);
-                setShowFullDatabase(true);
-                setResult(null);
-                setSuggestions([]);
+            // Effect for handling clicks outside the suggestions box
+            React.useEffect(() => {
+                const handleClickOutside = (e) => {
+                    if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) &&
+                        inputRef.current && !inputRef.current.contains(e.target)) {
+                        setSuggestions([]);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
+            
+            // Effect for generating random suggestions on initial load
+            React.useEffect(() => {
+                const common = radionuclides.filter(n => n.commonality === 'Common');
+                setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
+            }, []);
+
+            // --- Component Renderers ---
+            
+            const Header = () => (
+                <header className="text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
+                        Radionuclide Lookup Tool
+                    </h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        Version: {VERSION} | Last Updated: {LAST_UPDATED}
+                    </p>
+                </header>
+            );
+
+            const SearchBar = () => (
+                <div className="relative p-4">
+                    <div className="relative">
+                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={nuclideName}
+                            onChange={handleNuclideNameChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Search by name or symbol (e.g., U-238)"
+                            className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+                        />
+                         {nuclideName && (
+                            <button 
+                                onClick={() => { setNuclideName(''); setSuggestions([]); setResult(null); }}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500"
+                            >
+                                <Icon path={ICONS.clear} className="w-5 h-5" />
+                            </button>
+                         )}
+                    </div>
+                    {suggestions.length > 0 && (
+                        <ul ref={suggestionsRef} className="absolute z-20 w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto">
+                            {suggestions.map((s, i) => (
+                                <li
+                                    key={s.symbol}
+                                    className={`p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900' : ''}`}
+                                    onClick={() => handleNuclideSelection(s)}
+                                >
+                                    {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            );
+
+            const MainNav = () => {
+                const navItems = [
+                    { id: 'home', label: 'Home', icon: ICONS.home },
+                    { id: 'database', label: 'Database', icon: ICONS.database },
+                    { id: 'converter', label: 'Converter', icon: ICONS.converter },
+                ];
+                return (
+                    <nav className="flex justify-center items-center p-2 bg-slate-200/80 dark:bg-slate-800/80 rounded-lg gap-2 m-4">
+                        {navItems.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveView(item.id)}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
+                                    activeView === item.id 
+                                    ? 'bg-white dark:bg-slate-900/80 text-sky-600 dark:text-sky-400 shadow' 
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                                }`}
+                            >
+                                <Icon path={item.icon} />
+                                {item.label}
+                            </button>
+                        ))}
+                    </nav>
+                );
             };
+            
+            const HomePage = () => (
+                <div className="p-4">
+                     {errorMessage && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-4" role="alert">
+                            <p className="font-bold">Error</p>
+                            <p>{errorMessage}</p>
+                        </div>
+                    )}
+                    {result ? (
+                        <NuclideCard nuclide={result} />
+                    ) : (
+                        <div className="text-center p-8 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                           <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome to the Radionuclide Database</h3>
+                           <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide above, browse the full database, or use the unit converter.</p>
+                           
+                           <div className="mt-6">
+                               <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
+                               <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                   {randomSuggestions.map(n => (
+                                       <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">
+                                           {n.name}
+                                       </button>
+                                   ))}
+                               </div>
+                           </div>
 
-            const handleClearEnergyFilters = () => {
-                setMinAlphaEnergy('');
-                setMaxAlphaEnergy('');
-                setMinBetaEnergy('');
-                setMaxBetaEnergy('');
-                setMinGammaEnergy('');
-                setMaxGammaEnergy('');
-            };
+                           {searchHistory.length > 0 && (
+                               <div className="mt-6">
+                                   <div className="flex justify-center items-center gap-4 mb-2">
+                                       <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
+                                       <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                                           Clear History
+                                       </button>
+                                   </div>
+                                   <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                       {searchHistory.map(n => (
+                                          <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+                                               {n.name}
+                                           </button>
+                                       ))}
+                                   </div>
+                               </div>
+                           )}
+                        </div>
+                    )}
+                </div>
+            );
 
-            const [converterValue, setConverterValue] = React.useState('');
-            const [converterInputUnit, setConverterInputUnit] = React.useState('Gy');
-            const [converterOutputUnit, setConverterOutputUnit] = React.useState('rad');
-            const [convertedResult, setConvertedResult] = React.useState('');
+            const NuclideCard = ({ nuclide, isCompact = false }) => {
+                const getSourceLink = (sourceKey) => {
+                    const source = sources[sourceKey];
+                    return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
+                };
 
-            const radiationDoseUnits = ['Gy', 'rad', 'Sv', 'rem', 'R', 'Kerma', 'cGy', 'mrem'];
-            const activityUnits = ['Bq', 'Ci', 'dps', 'dpm', 'µCi'];
-            const energyUnits = ['J', 'eV', 'keV', 'MeV'];
-            const lengthUnits = ['m', 'km', 'cm', 'mm', 'µm', 'nm', 'pm', 'fm', 'in', 'ft', 'yd', 'mi'];
-            const volumeUnits = ['m3', 'L', 'cm3', 'ft3', 'yd3', 'gal'];
-            const areaUnits = ['m2', 'cm2', 'barn'];
-            const radonExposureUnits = ['WL', 'WLM'];
-            const prefixUnits = ['kilo', 'Mega', 'milli', 'micro', 'nano', 'pico'];
-
-            const getFactorToBase = (unit) => {
-                switch (unit) {
-                    case 'rad': return 0.01;
-                    case 'Gy': return 1;
-                    case 'rem': return 0.01;
-                    case 'Sv': return 1;
-                    case 'R': return 0.00877;
-                    case 'Kerma': return 1;
-                    case 'cGy': return 0.01;
-                    case 'mrem': return 1e-5;
-
-                    case 'Ci': return 3.7e10;
-                    case 'Bq': return 1;
-                    case 'dps': return 1;
-                    case 'dpm': return 1/60;
-                    case 'µCi': return 3.7e4;
-
-                    case 'J': return 1;
-                    case 'eV': return 1.60218e-19;
-                    case 'keV': return 1.60218e-16;
-                    case 'MeV': return 1.60218e-13;
-
-                    case 'm': return 1;
-                    case 'km': return 1e3;
-                    case 'cm': return 1e-2;
-                    case 'mm': return 1e-3;
-                    case 'µm': return 1e-6;
-                    case 'nm': return 1e-9;
-                    case 'pm': return 1e-12;
-                    case 'fm': return 1e-15;
-                    case 'in': return 0.0254;
-                    case 'ft': return 0.3048;
-                    case 'yd': return 0.9144;
-                    case 'mi': return 1609.34;
-
-                    case 'm3': return 1;
-                    case 'L': return 1e-3;
-                    case 'cm3': return 1e-6;
-                    case 'ft3': return 0.0283168;
-                    case 'yd3': return 0.764555;
-                    case 'gal': return 0.00378541;
-
-                    case 'm2': return 1;
-                    case 'cm2': return 1e-4;
-                    case 'barn': return 1e-28;
-
-                    case 'WL': return 1;
-                    case 'WLM': return 170;
-
-                    case 'kilo': return 1e3;
-                    case 'Mega': return 1e6;
-                    case 'milli': return 1e-3;
-                    case 'micro': return 1e-6;
-                    case 'nano': return 1e-9;
-                    case 'pico': return 1e-12;
-
-                    default:
-                        return NaN;
-                }
-            };
-
-            const getUnitCategory = (unit) => {
-                if (['Gy', 'rad', 'Sv', 'rem', 'R', 'Kerma', 'cGy', 'mrem'].includes(unit)) return 'dose';
-                if (['Bq', 'Ci', 'dps', 'dpm', 'µCi'].includes(unit)) return 'activity';
-                if (['J', 'eV', 'keV', 'MeV'].includes(unit)) return 'energy';
-                if (['m', 'km', 'cm', 'mm', 'µm', 'nm', 'pm', 'fm', 'in', 'ft', 'yd', 'mi'].includes(unit)) return 'length';
-                if (['m3', 'L', 'cm3', 'ft3', 'yd3', 'gal'].includes(unit)) return 'volume';
-                if (['m2', 'cm2', 'barn'].includes(unit)) return 'area';
-                if (['WL', 'WLM'].includes(unit)) return 'radonExposure';
-                if (['kilo', 'Mega', 'milli', 'micro', 'nano', 'pico'].includes(unit)) return 'prefix';
-                return 'unknown';
-            };
-
-
-            const handleConvert = () => {
-                const inputValue = parseFloat(converterValue);
-                if (isNaN(inputValue)) {
-                    setConvertedResult("Invalid input: Please enter a number.");
-                    return;
-                }
-
-                const inputCategory = getUnitCategory(converterInputUnit);
-                const outputCategory = getUnitCategory(converterOutputUnit);
-
-                if (inputCategory === 'unknown' || outputCategory === 'unknown') {
-                    setConvertedResult("Unsupported unit selected.");
-                    return;
-                }
-
-                if (inputCategory !== outputCategory) {
-                    setConvertedResult("Cannot convert between different unit categories.");
-                    return;
-                }
-
-                const inputFactor = getFactorToBase(converterInputUnit);
-                const outputFactor = getFactorToBase(converterOutputUnit);
-
-                if (isNaN(inputFactor) || isNaN(outputFactor)) {
-                    setConvertedResult("Conversion factor missing for one or both units.");
-                    return;
-                }
+                const DataPoint = ({ label, value, unit, sourceKey, iconPath }) => (
+                    <div className="flex items-start">
+                         {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
+                        <div>
+                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+                            <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                                {value || 'N/A'} {unit} {sourceKey && <sup>{getSourceLink(sourceKey)}</sup>}
+                            </p>
+                        </div>
+                    </div>
+                );
                 
-                if (outputFactor === 0) {
-                    setConvertedResult("Cannot convert to this unit (division by zero).");
-                    return;
+                if(isCompact) {
+                    return (
+                        <div onClick={() => handleNuclideSelection(nuclide)} className="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200">
+                            <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                            <div className="flex items-baseline text-sm mt-2">
+                                <Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/>
+                                <span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, 'years')}</span>
+                            </div>
+                             <div className="flex items-baseline text-sm mt-1">
+                                <Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/>
+                                <span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span>
+                            </div>
+                        </div>
+                    );
                 }
 
-                let result;
-                if (inputCategory === 'prefix') {
-                    result = inputValue * inputFactor / outputFactor;
-                } else {
-                    const valueInBaseUnit = inputValue * inputFactor;
-                    result = valueInBaseUnit / outputFactor;
-                }
-
-                if (!isFinite(result)) {
-                    setConvertedResult("Calculation resulted in an invalid number (too large/small or undefined).");
-                    return;
-                }
-
-                if (result >= 1000 || (result > 0 && result < 0.001 && result !== 0)) {
-                    setConvertedResult(`${result.toPrecision(3)} ${converterOutputUnit}`);
-                } else {
-                    setConvertedResult(`${parseFloat(result.toFixed(5))} ${converterOutputUnit}`);
-                }
-            };
-
-            const handleUnitConverterInputUnitChange = (e) => {
-                const newUnit = e.target.value;
-                setConverterInputUnit(newUnit);
-                const newCategory = getUnitCategory(newUnit);
-                
-                if (newCategory === 'dose') {
-                    setConverterOutputUnit(newUnit === 'Gy' ? 'rad' : 'Gy');
-                } else if (newCategory === 'activity') {
-                    setConverterOutputUnit(newUnit === 'Bq' ? 'Ci' : 'Bq');
-                } else if (newCategory === 'energy') {
-                    setConverterOutputUnit(newUnit === 'J' ? 'MeV' : 'J');
-                } else if (newCategory === 'length') {
-                    setConverterOutputUnit(newUnit === 'm' ? 'km' : 'm');
-                } else if (newCategory === 'volume') {
-                    setConverterOutputUnit(newUnit === 'm3' ? 'L' : 'm3');
-                } else if (newCategory === 'area') {
-                    setConverterOutputUnit(newUnit === 'm2' ? 'barn' : 'm2');
-                } else if (newCategory === 'radonExposure') {
-                    setConverterOutputUnit(newUnit === 'WL' ? 'WLM' : 'WL');
-                } else if (newCategory === 'prefix') {
-                    setConverterOutputUnit(newUnit === 'milli' ? 'Mega' : 'milli');
-                } else {
-                    setConverterOutputUnit(newUnit);
-                }
-                setConvertedResult('');
-            };
-
-            const handleUnitConverterOutputUnitChange = (e) => {
-                setConverterOutputUnit(e.target.value);
-                setConvertedResult('');
-            };
-
-            const handleGoToUnitConverter = () => {
-                setNuclideName('');
-                setResult(null);
-                setErrorMessage('');
-                setShowFullDatabase(false);
-                setShowDecaySeries(null);
-                setSuggestions([]);
-                setShowEnergySearchPage(false);
-                setShowUnitConverterPage(true);
-                setConvertedResult('');
-                setConverterValue('');
-                setConverterInputUnit('Gy');
-                setConverterOutputUnit('rad');
-            };
-
-            const handleBackFromConverter = () => {
-                setShowUnitConverterPage(false);
-                setConvertedResult('');
-                setConverterValue('');
-                setConverterInputUnit('Gy');
-                setConverterOutputUnit('rad');
-            };
-
-            const getSourceLink = (sourceKey) => {
-                const source = sources[sourceKey];
-                return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
-            };
-
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center p-4 font-sans antialiased">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-2xl w-full border border-gray-100">
-                        <h1 className="text-3xl font-extrabold text-gray-800 mb-6 text-center">
-                            Radionuclide Lookup Tool
-                        </h1>
-
-                        <div className="mb-4 relative">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={nuclideName}
-                                onChange={handleNuclideNameChange}
-                                onKeyDown={handleKeyDown}
-                                placeholder="e.g., Uranium-238 or U-238"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 transition duration-200"
-                            />
-                            {suggestions.length > 0 && (
-                                <ul ref={suggestionsRef} className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto">
-                                    {suggestions.map((suggestion, index) => {
-                                        const commonalityText = suggestion.commonality ? `(${suggestion.commonality})` : '';
-                                        return (
-                                            <li
-                                                key={suggestion.symbol + '-' + index}
-                                                className={`p-3 cursor-pointer hover:bg-indigo-100 ${
-                                                    index === activeSuggestionIndex ? 'bg-indigo-100' : ''
-                                                }`}
-                                                onClick={() => handleNuclideSelection(suggestion)}
-                                            >
-                                                {suggestion.name} ({suggestion.symbol}) <span className="text-gray-500 text-xs">{commonalityText}</span>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
+                return (
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2>
+                        <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div>
+                        
+                        <div className="grid md:grid-cols-2 gap-6 mt-4">
+                            <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
+                            <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
+                            <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} />
+                            <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} />
+                             {nuclide.gammaConstant && (
+                                <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
                             )}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-8 justify-center">
-                            <button
-                                onClick={handleLookup}
-                                className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                            >
-                                Lookup Nuclide
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowFullDatabase(!showFullDatabase);
-                                    setResult(null);
-                                    setErrorMessage('');
-                                    setSuggestions([]);
-                                    setShowDecaySeries(null);
-                                    setShowEnergySearchPage(false);
-                                    setShowUnitConverterPage(false);
-                                }}
-                                className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                            >
-                                {showFullDatabase ? 'Hide Full Database' : 'Show Full Database'}
-                            </button>
-                            <button
-                                onClick={handleGoHome}
-                                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                            >
-                                Home
-                            </button>
-                            <button
-                                onClick={handleGoToEnergySearch}
-                                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                            >
-                                Energy Search
-                            </button>
-                            <button
-                                onClick={handleGoToUnitConverter}
-                                className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                            >
-                                Unit Converter
-                            </button>
+                        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Emission Energies</h3>
+                             <div className="grid md:grid-cols-3 gap-4">
+                                <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV"/>
+                                <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV"/>
+                                <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV"/>
+                             </div>
                         </div>
 
-                        {errorMessage && (
-                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6">
-                                <strong className="font-bold">Error!</strong>
-                                <span className="block sm:inline ml-2">{errorMessage}</span>
-                            </div>
-                        )}
-
-                        {showEnergySearchPage && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    Energy Search (MeV)
-                                </h2>
-                                <div className="space-y-4">
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
-                                        <div className="flex-1">
-                                            <label htmlFor="minAlphaEnergyInput" className="block text-sm font-medium text-gray-700">Alpha Energy Min</label>
-                                            <input
-                                                type="number"
-                                                id="minAlphaEnergyInput"
-                                                value={minAlphaEnergy}
-                                                onChange={(e) => setMinAlphaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxAlphaEnergyInput" className="block text-sm font-medium text-gray-700">Alpha Energy Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxAlphaEnergyInput"
-                                                value={maxAlphaEnergy}
-                                                onChange={(e) => setMaxAlphaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
-                                        <div className="flex-1">
-                                            <label htmlFor="minBetaEnergyInput" className="block text-sm font-medium text-gray-700">Beta Energy Min</label>
-                                            <input
-                                                type="number"
-                                                id="minBetaEnergyInput"
-                                                value={minBetaEnergy}
-                                                onChange={(e) => setMinBetaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxBetaEnergyInput" className="block text-sm font-medium text-gray-700">Beta Energy Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxBetaEnergyInput"
-                                                value={maxBetaEnergy}
-                                                onChange={(e) => setMaxBetaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
-                                        <div className="flex-1">
-                                            <label htmlFor="minGammaEnergyInput" className="block text-sm font-medium text-gray-700">Gamma Energy Min</label>
-                                            <input
-                                                type="number"
-                                                id="minGammaEnergyInput"
-                                                value={minGammaEnergy}
-                                                onChange={(e) => setMinGammaEnergy(e.target.value)}
-                                                placeholder="Min MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="maxGammaEnergyInput" className="block text-sm font-medium text-gray-700">Gamma Energy Max</label>
-                                            <input
-                                                type="number"
-                                                id="maxGammaEnergyInput"
-                                                value={maxGammaEnergy}
-                                                onChange={(e) => setMaxGammaEnergy(e.target.value)}
-                                                placeholder="Max MeV"
-                                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <button
-                                        onClick={handleClearEnergyFilters}
-                                        className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-gray-400 transition duration-200 ease-in-out"
-                                    >
-                                        Clear Filters
-                                    </button>
-                                    <button
-                                        onClick={handleApplyEnergyFilters}
-                                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-700 transition duration-200 ease-in-out transform hover:scale-105"
-                                    >
-                                        Apply Filters & View Results
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {showUnitConverterPage && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    Unit Converter
-                                    <button
-                                        onClick={handleBackFromConverter}
-                                        className="ml-4 px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm font-semibold hover:bg-gray-300 transition duration-150 ease-in-out"
-                                    >
-                                        Back
-                                    </button>
-                                </h2>
-                                <div className="space-y-6">
-                                    {/* Generic Converter */}
-                                    <div>
-                                        <label htmlFor="converterValue" className="block text-sm font-medium text-gray-700">Value</label>
-                                        <input
-                                            type="number"
-                                            id="converterValue"
-                                            value={converterValue}
-                                            onChange={(e) => setConverterValue(e.target.value)}
-                                            placeholder="Enter value"
-                                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        />
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <div className="flex-1">
-                                            <label htmlFor="inputUnit" className="block text-sm font-medium text-gray-700">From Unit</label>
-                                            <select
-                                                id="inputUnit"
-                                                value={converterInputUnit}
-                                                onChange={handleUnitConverterInputUnitChange}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            >
-                                                <optgroup label="Radiation Dose">
-                                                    {radiationDoseUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Activity">
-                                                    {activityUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Energy">
-                                                    {energyUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Length">
-                                                    {lengthUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Volume">
-                                                    {volumeUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Area">
-                                                    {areaUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Radon Exposure">
-                                                    {radonExposureUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Prefix Multipliers">
-                                                    {prefixUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                            </select>
-                                        </div>
-                                        <div className="flex-1">
-                                            <label htmlFor="outputUnit" className="block text-sm font-medium text-gray-700">To Unit</label>
-                                            <select
-                                                id="outputUnit"
-                                                value={converterOutputUnit}
-                                                onChange={handleUnitConverterOutputUnitChange}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                            >
-                                                <optgroup label="Radiation Dose">
-                                                    {radiationDoseUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Activity">
-                                                    {activityUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Energy">
-                                                    {energyUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Length">
-                                                    {lengthUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Volume">
-                                                    {volumeUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Area">
-                                                    {areaUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Radon Exposure">
-                                                    {radonExposureUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                                <optgroup label="Prefix Multipliers">
-                                                    {prefixUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                                                </optgroup>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end">
-                                        <button
-                                            onClick={handleConvert}
-                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-700 transition duration-200 ease-in-out transform hover:scale-105"
-                                        >
-                                            Convert
-                                        </button>
-                                    </div>
-                                    {convertedResult && (
-                                        <div className="mt-4 p-3 bg-indigo-50 text-indigo-800 rounded-lg font-semibold">
-                                            Result: {convertedResult}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {result && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    {result.name} ({result.symbol})
-                                </h2>
-                                <div className="space-y-3">
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Emission Type:</strong> {(result.emissionType || []).join(', ')}
-                                        {result.sourceRef?.emissionType && <sup>{getSourceLink(result.sourceRef.emissionType)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(result.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
-                                        {result.sourceRef?.emissionEnergies && <sup>{getSourceLink(result.sourceRef.emissionEnergies)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(result.emissionEnergies?.beta || []).join(', ') || 'N/A'}
-                                        {result.sourceRef?.emissionEnergies && <sup>{getSourceLink(result.sourceRef.emissionEnergies)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(result.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
-                                        {result.sourceRef?.emissionEnergies && <sup>{getSourceLink(result.sourceRef.emissionEnergies)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(result.halfLife, displayHalfLifeUnit)}
-                                        {result.sourceRef?.halfLife && <sup>{getSourceLink(result.sourceRef.halfLife)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(result.decayConstant, displayDecayConstantUnit)}
-                                        {result.sourceRef?.decayConstant && <sup>{getSourceLink(result.sourceRef.decayConstant)}</sup>}
-                                    </p>
-                                    {result.gammaConstant && (
-                                        <p className="text-gray-700">
-                                            <strong className="text-indigo-700">Gamma Constant:</strong> {result.gammaConstant}
-                                            {result.sourceRef?.gammaConstant && <sup>{getSourceLink(result.sourceRef.gammaConstant)}</sup>}
-                                        </p>
-                                    )}
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Parent Product:</strong> {result.parent}
-                                        {result.sourceRef?.parent && <sup>{getSourceLink(result.sourceRef.parent)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Daughter Product:</strong> {result.daughter}
-                                        {result.sourceRef?.daughter && <sup>{getSourceLink(result.sourceRef.daughter)}</sup>}
-                                    </p>
-                                    <p className="text-gray-700">
-                                        <strong className="text-indigo-700">Commonality:</strong> {result.commonality || 'N/A'}
-                                    </p>
-                                    {result.decaySeriesId && (
-                                        <button
-                                            onClick={() => handleViewDecaySeries(result.decaySeriesId)}
-                                            className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition duration-200 ease-in-out transform hover:scale-105"
-                                        >
-                                            View Full Decay Series ({decaySeriesData.find(s => s.id === result.decaySeriesId)?.name || ''})
-                                        </button>
-                                    )}
-                                </div>
-                                {result.sourceRef && (
-                                    <div className="mt-4 pt-3 border-t border-gray-200">
-                                        <h3 className="text-lg font-semibold text-gray-800">References</h3>
-                                        <ul className="list-disc list-inside text-sm text-gray-600">
-                                            {Object.values(result.sourceRef).map((refKey, index) => {
-                                                const source = sources[refKey];
-                                                return source ? (
-                                                    <li key={index}>
-                                                        [{index + 1}] <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{source.name}</a>
-                                                    </li>
-                                                ) : null;
-                                            })}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {showDecaySeries && currentDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    {currentDecaySeries.name}
-                                </h2>
-                                <button
-                                    onClick={() => setShowDecaySeries(null)}
-                                    className="mb-4 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-gray-300 transition duration-200"
-                                >
-                                    Back to Lookup
+                        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3>
+                             <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
+                                {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
+                             </ul>
+                        </div>
+                        
+                        {nuclide.decaySeriesId && (
+                            <div className="mt-6 text-center">
+                                <button onClick={() => { setActiveView('decaySeries'); setCurrentDecaySeriesId(nuclide.decaySeriesId); }}
+                                    className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">
+                                    View Full Decay Series
                                 </button>
-                                <div className="space-y-4">
-                                    {currentDecaySeries.chain.map((step, index) => (
-                                        <div key={index} className="flex items-start">
-                                            <div className="flex-shrink-0 text-sm text-gray-600 w-24">
-                                                <span
-                                                    className="font-semibold text-indigo-700 cursor-pointer hover:underline"
-                                                    onClick={() => {
-                                                        const nuclideFound = radionuclides.find(n =>
-                                                            normalizeString(n.name) === normalizeString(step.nuclide) ||
-                                                            normalizeString(n.symbol) === normalizeString(step.nuclide)
-                                                        );
-                                                        if (nuclideFound) {
-                                                            handleNuclideSelection(nuclideFound);
-                                                        } else {
-                                                            setNuclideName(step.nuclide);
-                                                            setResult(null);
-                                                            setErrorMessage(`Details for "${step.nuclide}" not available in main database.`);
-                                                            setShowDecaySeries(null);
-                                                            setShowFullDatabase(false);
-                                                        }
-                                                    }}
-                                                >
-                                                    {step.nuclide}
-                                                </span>
-                                            </div>
-                                            <div className="flex-grow ml-4">
-                                                <div className="text-sm text-gray-600">
-                                                    <strong className="text-purple-700">Decay:</strong> {step.decayType}
-                                                </div>
-                                                <div className="text-sm text-gray-600">
-                                                    <strong className="text-purple-700">Half-life:</strong> {step.halfLife}
-                                                </div>
-                                                <div className="text-sm text-gray-600">
-                                                    <strong className="text-purple-700">Daughter:</strong> {step.daughter}
-                                                </div>
-                                            </div>
-                                            {index < currentDecaySeries.chain.length - 1 && (
-                                                <svg className="w-6 h-6 text-gray-400 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                                                </svg>
-                                            )}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+            
+            const DecaySeriesViewer = () => {
+                const series = decaySeriesData.find(s => s.id === currentDecaySeriesId);
+                if (!series) return <p>Decay series not found.</p>;
+
+                return (
+                     <div className="p-4 animate-fade-in">
+                        <button onClick={() => setActiveView('home')} className="mb-4 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition">
+                            &larr; Back to Result
+                        </button>
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">{series.name}</h2>
+                             <div className="space-y-2">
+                                {series.chain.map((step, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 flex-1">
+                                             <span
+                                                className="font-bold text-sky-600 dark:text-sky-400 cursor-pointer hover:underline"
+                                                onClick={() => {
+                                                    const found = radionuclides.find(n => normalizeString(n.name) === normalizeString(step.nuclide));
+                                                    if (found) handleNuclideSelection(found);
+                                                }}
+                                            >
+                                                {step.nuclide}
+                                            </span>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">{step.halfLife}</div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {showFullDatabase && !showEnergySearchPage && !showUnitConverterPage && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
-                                <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    Full Radionuclide Database
-                                </h2>
-
-                                <div className="mb-4 flex flex-wrap gap-4">
-                                    <div className="relative">
-                                        <label htmlFor="emissionFilter" className="sr-only">Filter by Emission Type</label>
-                                        <select
-                                            id="emissionFilter"
-                                            value={selectedEmissionType}
-                                            onChange={(e) => setSelectedEmissionType(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            {allEmissionTypes.map(type => (
-                                                <option key={type} value={type}>{type === 'All' ? 'All Emission Types' : type}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="relative">
-                                        <label htmlFor="commonalityFilter" className="sr-only">Filter by Commonality</label>
-                                        <select
-                                            id="commonalityFilter"
-                                            value={selectedCommonality}
-                                            onChange={(e) => setSelectedCommonality(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            {allCommonalityCategories.map(cat => {
-                                                const optionText = cat === 'All' ? 'All Commonality Categories' : cat;
-                                                return (
-                                                    <option key={cat} value={cat}>{optionText}</option>
-                                                );
-                                            })}
-                                        </select>
-                                    </div>
-                                    <div className="relative">
-                                        <label htmlFor="sortCriteria" className="sr-only">Sort by</label>
-                                        <select
-                                            id="sortCriteria"
-                                            value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            <option value="name">Name</option>
-                                            <option value="halfLife">Half-life</option>
-                                            <option value="decayConstant">Decay Constant</option>
-                                            <option value="category">Category</option>
-                                            <option value="alphaEnergy">Alpha Energy</option>
-                                            <option value="betaEnergy">Beta Energy</option>
-                                            <option value="gammaEnergy">Gamma Energy</option>
-                                        </select>
-                                    </div>
-                                    <div className="relative">
-                                        <label htmlFor="sortOrder" className="sr-only">Sort order</label>
-                                        <select
-                                            id="sortOrder"
-                                            value={sortOrder}
-                                            onChange={(e) => setSortOrder(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            <option value="asc">Ascending</option>
-                                            <option value="desc">Descending</option>
-                                        </select>
-                                    </div>
-                                    {/* Half-life Unit Selection */}
-                                    <div className="relative">
-                                        <label htmlFor="halfLifeUnit" className="sr-only">Half-life Unit</label>
-                                        <select
-                                            id="halfLifeUnit"
-                                            value={displayHalfLifeUnit}
-                                            onChange={(e) => setDisplayHalfLifeUnit(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            {halfLifeUnits.map(unit => (
-                                                <option key={unit} value={unit}>{unit}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    {/* Decay Constant Unit Selection */}
-                                    <div className="relative">
-                                        <label htmlFor="decayConstantUnit" className="sr-only">Decay Constant Unit</label>
-                                        <select
-                                            id="decayConstantUnit"
-                                            value={displayDecayConstantUnit}
-                                            onChange={(e) => setDisplayDecayConstantUnit(e.target.value)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                        >
-                                            {decayConstantUnits.map(unit => (
-                                                <option key={unit} value={unit}>{unit}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {sortBy === 'category' ? (
-                                    categories.map(category => {
-                                        const nuclidesInCategory = filteredAndSortedRadionuclides.filter(nuclide => nuclide.category === category);
-                                        if (nuclidesInCategory.length === 0) return null;
-
-                                        return (
-                                            <div key={category} className="mb-8">
-                                                <h3 className="text-xl font-bold text-indigo-800 mb-4 bg-indigo-100 p-2 rounded-lg sticky top-0 z-10 shadow-sm">
-                                                    {category === 'Natural' ? 'Natural Radionuclides & Decay Series' :
-                                                     category === 'Medical' ? 'Medical Radionuclides' :
-                                                     category === 'Industrial' ? 'Industrial Radionuclides' :
-                                                     'Stable/Reference Isotopes'}
-                                                </h3>
-                                                {nuclidesInCategory.map((nuclide, index) => (
-                                                    <div key={nuclide.symbol + '-' + index} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
-                                                        <h4 className="text-lg font-semibold text-gray-700 mb-1">
-                                                            <span
-                                                                className="cursor-pointer hover:underline"
-                                                                onClick={() => handleNuclideSelection(nuclide)}
-                                                            >
-                                                                {nuclide.name} ({nuclide.symbol})
-                                                            </span>
-                                                        </h4>
-                                                        <div className="space-y-0.5 text-sm text-gray-600">
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
-                                                            </p>
-                                                            {nuclide.gammaConstant && (
-                                                                <p className="text-gray-700">
-                                                                    <strong className="text-indigo-700">Gamma Constant:</strong> {nuclide.gammaConstant}
-                                                                </p>
-                                                            )}
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
-                                                                </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
-                                                            </p>
-                                                            <p className="text-gray-700">
-                                                                <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                        {index < series.chain.length - 1 && (
+                                            <div className="text-center w-24">
+                                                <div className="text-sm font-semibold text-slate-600 dark:text-slate-300">{step.decayType}</div>
+                                                <div className="text-slate-400">&rarr;</div>
                                             </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="space-y-4">
-                                        {filteredAndSortedRadionuclides.map((nuclide, index) => (
-                                            <div key={nuclide.symbol + '-' + index} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
-                                                <h4 className="text-lg font-semibold text-gray-700 mb-1">
-                                                    <span
-                                                        className="cursor-pointer hover:underline"
-                                                        onClick={() => handleNuclideSelection(nuclide)}
-                                                    >
-                                                        {nuclide.name} ({nuclide.symbol})
-                                                    </span>
-                                                </h4>
-                                                <div className="space-y-0.5 text-sm text-gray-600">
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Emission Type:</strong> {(nuclide.emissionType || []).join(', ') || 'N/A'}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Emission Energies (Alpha):</strong> {(nuclide.emissionEnergies?.alpha || []).join(', ') || 'N/A'}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Emission Energies (Beta):</strong> {(nuclide.emissionEnergies?.beta || []).join(', ') || 'N/A'}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Emission Energies (Gamma):</strong> {(nuclide.emissionEnergies?.gamma || []).join(', ') || 'N/A'}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Half-life:</strong> {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Decay Constant:</strong> {formatDecayConstant(nuclide.decayConstant, displayDecayConstantUnit)}
-                                                    </p>
-                                                    {nuclide.gammaConstant && (
-                                                        <p className="text-gray-700">
-                                                            <strong className="text-indigo-700">Gamma Constant:</strong> {nuclide.gammaConstant}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Parent Product:</strong> {nuclide.parent}
-                                                        </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Daughter Product:</strong> {nuclide.daughter}
-                                                    </p>
-                                                    <p className="text-gray-700">
-                                                        <strong className="text-indigo-700">Commonality:</strong> {nuclide.commonality || 'N/A'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+                                        )}
                                     </div>
-                                )}
+                                ))}
                             </div>
-                        )}
+                        </div>
+                    </div>
+                );
+            };
+            
+            const DatabaseView = () => {
+                 const filteredList = getFilteredAndSortedRadionuclides();
+                
+                 const FilterSidebar = () => (
+                    <div className="p-4 space-y-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg h-full">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white border-b border-slate-300 dark:border-slate-600 pb-2">Filters & Sorting</h3>
+                        
+                        {/* Sorting */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sort by</label>
+                            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                <option value="name">Name</option>
+                                <option value="halfLife">Half-life</option>
+                                <option value="alphaEnergy">Alpha Energy</option>
+                                <option value="betaEnergy">Beta Energy</option>
+                                <option value="gammaEnergy">Gamma Energy</option>
+                            </select>
+                            <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
 
-                        {searchHistory.length > 0 && !result && !errorMessage && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
-                            <div className="mt-6 bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 border-gray-200">
-                                    Recent Searches
-                                    <button
-                                        onClick={handleClearHistory}
-                                        className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded-md text-sm font-semibold hover:bg-red-200 transition duration-150 ease-in-out"
-                                    >
-                                        Clear History
-                                    </button>
-                                </h3>
-                                <ul className="list-none p-0 flex flex-wrap justify-center gap-2">
-                                    {searchHistory.map((nuclide, index) => (
-                                        <li
-                                            key={nuclide.symbol + '-history-' + index}
-                                            className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-indigo-200 transition duration-150 ease-in-out"
-                                            onClick={() => handleNuclideSelection(nuclide)}
-                                        >
-                                            {nuclide.name}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                        {/* Filters */}
+                        <div>
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
+                            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                         <div>
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emission Type</label>
+                            <select value={selectedEmissionType} onChange={e => setSelectedEmissionType(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                {allEmissionTypes.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Commonality</label>
+                            <select value={selectedCommonality} onChange={e => setSelectedCommonality(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                {allCommonalityCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
 
-                        {!result && !errorMessage && !showFullDatabase && !showDecaySeries && !showEnergySearchPage && !showUnitConverterPage && (
-                            <div className="mt-6 text-center text-gray-600">
-                                <p className="mb-2">Try searching for:</p>
-                                <ul className="list-none p-0 flex flex-wrap justify-center gap-2">
-                                    {randomSuggestions.map((nuclide, index) => (
-                                        <li
-                                            key={nuclide.symbol + '-random-' + index}
-                                            className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm cursor-pointer hover:bg-indigo-100"
-                                            onClick={() => handleNuclideSelection(nuclide)}
-                                        >
-                                            {nuclide.name}
-                                        </li>
-                                    ))}
-                                </ul>
+                        {/* Energy Filters */}
+                         <div>
+                             <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
+                             <div className="space-y-2 mt-2">
+                                <label className="text-sm">Alpha</label>
+                                <div className="flex gap-2">
+                                    <input type="number" placeholder="Min" value={minAlphaEnergy} onChange={e => setMinAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                    <input type="number" placeholder="Max" value={maxAlphaEnergy} onChange={e => setMaxAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                </div>
+                                 <label className="text-sm">Beta</label>
+                                <div className="flex gap-2">
+                                    <input type="number" placeholder="Min" value={minBetaEnergy} onChange={e => setMinBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                    <input type="number" placeholder="Max" value={maxBetaEnergy} onChange={e => setMaxBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                </div>
+                                <label className="text-sm">Gamma</label>
+                                <div className="flex gap-2">
+                                    <input type="number" placeholder="Min" value={minGammaEnergy} onChange={e => setMinGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                    <input type="number" placeholder="Max" value={maxGammaEnergy} onChange={e => setMaxGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm" />
+                                </div>
+                             </div>
+                         </div>
+                    </div>
+                 );
+                 
+                return (
+                     <div className="grid lg:grid-cols-4 gap-4 p-4 h-[calc(100vh-200px)]">
+                        <div className="lg:col-span-1">
+                            <FilterSidebar />
+                        </div>
+                        <div className="lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 overflow-y-auto">
+                           <p className="text-sm text-slate-500 mb-4">Showing {filteredList.length} of {radionuclides.length} nuclides.</p>
+                           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {filteredList.map(n => <NuclideCard key={n.symbol} nuclide={n} isCompact={true} />)}
+                           </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const UnitConverter = () => {
+                const [value, setValue] = React.useState('');
+                const [fromUnit, setFromUnit] = React.useState('Gy');
+                const [toUnit, setToUnit] = React.useState('rad');
+                const [result, setResult] = React.useState('');
+                const [error, setError] = React.useState('');
+
+                const units = {
+                    'Radiation Dose': ['Gy', 'rad', 'Sv', 'rem', 'R', 'cGy', 'mrem'],
+                    'Activity': ['Bq', 'Ci', 'dps', 'dpm', 'µCi'],
+                    'Energy': ['J', 'eV', 'keV', 'MeV'],
+                    // Add more categories and units as needed
+                };
+
+                const factors = {
+                    'Gy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 0.01 },
+                    'Sv': { base: 'dose', factor: 1 }, 'rem': { base: 'dose', factor: 0.01 },
+                    'R': { base: 'dose', factor: 0.00877 }, 'cGy': { base: 'dose', factor: 0.01 },
+                    'mrem': { base: 'dose', factor: 1e-5 },
+                    'Bq': { base: 'activity', factor: 1 }, 'Ci': { base: 'activity', factor: 3.7e10 },
+                    'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1/60 },
+                    'µCi': { base: 'activity', factor: 3.7e4 },
+                    'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.60218e-19 },
+                    'keV': { base: 'energy', factor: 1.60218e-16 }, 'MeV': { base: 'energy', factor: 1.60218e-13 },
+                };
+
+                const handleConvert = () => {
+                    const val = parseFloat(value);
+                    if (isNaN(val)) {
+                        setError("Invalid input value.");
+                        setResult('');
+                        return;
+                    }
+
+                    const from = factors[fromUnit];
+                    const to = factors[toUnit];
+                    
+                    if (!from || !to || from.base !== to.base) {
+                        setError("Cannot convert between these units.");
+                        setResult('');
+                        return;
+                    }
+                    
+                    const convertedVal = val * from.factor / to.factor;
+                    setError('');
+                    setResult(convertedVal.toPrecision(4));
+                };
+
+                return (
+                    <div className="p-4 animate-fade-in">
+                        <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-medium">Value</label>
+                                    <input type="number" value={value} onChange={e => setValue(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-sm font-medium">From</label>
+                                        <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                            {Object.entries(units).map(([group, list]) => (
+                                                <optgroup label={group} key={group}>
+                                                    {list.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-sm font-medium">To</label>
+                                        <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                            {Object.entries(units).map(([group, list]) => (
+                                                <optgroup label={group} key={group}>
+                                                    {list.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onClick={handleConvert} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Convert</button>
+                                {error && <p className="text-red-500 text-sm">{error}</p>}
+                                {result && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">{value} {fromUnit} = {result} {toUnit}</p>}
                             </div>
-                        )}
-                        <footer className="text-center text-xs text-gray-400 mt-8">
-                           Version: {VERSION} | Last Updated: {LAST_UPDATED}
-                        </footer>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderActiveView = () => {
+                switch (activeView) {
+                    case 'database': return <DatabaseView />;
+                    case 'converter': return <UnitConverter />;
+                    case 'decaySeries': return <DecaySeriesViewer />;
+                    case 'home':
+                    default:
+                        return <HomePage />;
+                }
+            }
+
+            return (
+                <div className="min-h-screen p-2 md:p-4 text-slate-800 dark:text-slate-200">
+                    <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-2xl shadow-2xl backdrop-blur-lg border border-slate-200 dark:border-slate-800">
+                        <Header />
+                        <SearchBar />
+                        <MainNav />
+                        <main className="min-h-[400px]">
+                            {renderActiveView()}
+                        </main>
                     </div>
                 </div>
             );
