@@ -46,7 +46,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions ---
-        const VERSION = '2.1.9';
+        const VERSION = '2.2.0';
         const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
@@ -1838,7 +1838,7 @@
         const parseHalfLifeToSeconds = (halfLifeStr) => {
             if (!halfLifeStr || halfLifeStr.toLowerCase() === 'stable') return Infinity;
             
-            const parts = halfLifeStr.split(' ');
+            const parts = halfLifeStr.replace(/,/g, '').split(' ');
             let value = parseFloat(parts[0]);
             const unit = parts[1]?.toLowerCase();
             if (isNaN(value)) return 0;
@@ -1863,16 +1863,31 @@
                 'microseconds': 1e-6,
                 'microsecond': 1e-6,
             };
+            
             // Iterate over sorted keys to match longest unit first (e.g. 'years' before 's')
             const sortedKeys = Object.keys(unitMultipliers).sort((a, b) => b.length - a.length);
 
             for (const key of sortedKeys) {
-                if (unit?.endsWith(key)) {
+                if (unit?.startsWith(key)) {
                     return value * unitMultipliers[key];
                 }
             }
 
             return value; 
+        };
+        
+        const getBestHalfLifeUnit = (seconds) => {
+            if (seconds === Infinity) return 'years'; 
+            const secondsInMinute = 60;
+            const secondsInHour = 3600;
+            const secondsInDay = 86400;
+            const secondsInYear = 31557600;
+
+            if (seconds >= secondsInYear) return 'years';
+            if (seconds >= secondsInDay) return 'days';
+            if (seconds >= secondsInHour) return 'hours';
+            if (seconds >= secondsInMinute) return 'minutes';
+            return 'seconds';
         };
 
         const formatHalfLife = (halfLifeStr, targetUnit) => {
@@ -2012,7 +2027,7 @@
             
             const DataPoint = ({ label, value, unit, sourceKey, iconPath }) => {
                 // Determine the final value to display. If the provided value is empty or just whitespace, use 'N/A'.
-                const displayValue = value && value.trim() ? value.trim() : 'N/A';
+                const displayValue = value && String(value).trim() ? String(value).trim() : 'N/A';
                 
                 // Check if the unit should be appended.
                 // Don't append if the value is 'N/A' or if the value already includes the unit.
@@ -2037,7 +2052,7 @@
                 return (
                     <div onClick={() => onNuclideClick(nuclide)} className="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200">
                         <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
-                        <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, 'years')}</span></div>
+                        <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
                          <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
                     </div>
                 );
@@ -2048,7 +2063,7 @@
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2>
                     <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div>
                     <div className="grid md:grid-cols-2 gap-6 mt-4">
-                        <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit || 'years')} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
+                        <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
                         <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
                         <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} />
                         <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} />
@@ -2430,7 +2445,11 @@
                 setSuggestions([]); 
                 setErrorMessage('');
                 setActiveView('home'); 
-                setCurrentDecaySeriesId(null); // Reset decay series view
+                setCurrentDecaySeriesId(null);
+                // Dynamically set the best half-life unit to display
+                const seconds = parseHalfLifeToSeconds(nuclide.halfLife);
+                setDisplayHalfLifeUnit(getBestHalfLifeUnit(seconds));
+
                 updateSearchHistory(nuclide);
             };
             const handleLookup = () => {
