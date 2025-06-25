@@ -55,7 +55,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions ---
-        const VERSION = '2.2.8';
+        const VERSION = '2.2.9';
         const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
@@ -2846,7 +2846,7 @@
                     case 'calculator':
                         return <HalfLifeCalculator radionuclides={radionuclides} />;
                     case 'compare':
-                        return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
+                        return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
                     case 'home': 
@@ -2899,7 +2899,7 @@
             );
         };
 
-        const ComparisonView = ({ radionuclides, onNuclideClick }) => {
+        const ComparisonView = ({ radionuclides, onNuclideClick, onDecaySeriesClick }) => {
             const [searchLeft, setSearchLeft] = React.useState('');
             const [searchRight, setSearchRight] = React.useState('');
             const [suggestionsLeft, setSuggestionsLeft] = React.useState([]);
@@ -2956,7 +2956,7 @@
                             suggestionsRef={suggestionsRefLeft}
                             handleNuclideSelection={(n) => handleSelection(n, 'left')}
                         />
-                        {nuclideLeft ? <NuclideCard nuclide={nuclideLeft} onNuclideClick={onNuclideClick} displayHalfLifeUnit={getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclideLeft.halfLife))} /> : <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">Select a nuclide to compare.</div>}
+                        {nuclideLeft ? <NuclideCard nuclide={nuclideLeft} onNuclideClick={onNuclideClick} onDecaySeriesClick={onDecaySeriesClick} displayHalfLifeUnit={getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclideLeft.halfLife))} /> : <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">Select a nuclide to compare.</div>}
                     </div>
                     {/* Right Column */}
                      <div className="flex flex-col gap-4">
@@ -2971,7 +2971,7 @@
                             suggestionsRef={suggestionsRefRight}
                             handleNuclideSelection={(n) => handleSelection(n, 'right')}
                         />
-                        {nuclideRight ? <NuclideCard nuclide={nuclideRight} onNuclideClick={onNuclideClick} displayHalfLifeUnit={getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclideRight.halfLife))} /> : <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">Select a nuclide to compare.</div>}
+                        {nuclideRight ? <NuclideCard nuclide={nuclideRight} onNuclideClick={onNuclideClick} onDecaySeriesClick={onDecaySeriesClick} displayHalfLifeUnit={getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclideRight.halfLife))} /> : <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">Select a nuclide to compare.</div>}
                     </div>
                 </div>
             );
