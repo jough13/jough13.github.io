@@ -46,7 +46,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions ---
-        const VERSION = '2.1.6';
+        const VERSION = '2.1.7';
         const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
@@ -814,6 +814,62 @@
 
             // --- Industrial Radionuclides ---
             {
+                name: 'Americium-241',
+                symbol: 'Am-241',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] },
+                halfLife: '432.2 years',
+                decayConstant: '0.0016 year⁻¹',
+                parent: 'Plutonium-241 (beta-minus)',
+                daughter: 'Neptunium-237',
+                commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'],
+                category: 'Industrial',
+                commonality: 'Common',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
+                name: 'Strontium-90',
+                symbol: 'Sr-90',
+                emissionType: ['Beta-minus'],
+                emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: [], alpha: [] },
+                halfLife: '28.8 years',
+                decayConstant: '0.024 year⁻¹',
+                parent: 'Uranium fission product',
+                daughter: 'Yttrium-90',
+                commonUses: ['Radioisotope thermoelectric generators (RTGs)', 'Industrial gauges', 'Medical radiation therapy for bone cancer'],
+                category: 'Industrial',
+                commonality: 'Common',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
+                name: 'Plutonium-238',
+                symbol: 'Pu-238',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.499 MeV'], gamma: ['0.043 MeV'], beta: [] },
+                halfLife: '87.7 years',
+                decayConstant: '0.0079 year⁻¹',
+                parent: 'Neptunium-238 (beta-minus)',
+                daughter: 'Uranium-234',
+                commonUses: ['Radioisotope thermoelectric generators (RTGs) for spacecraft and pacemakers'],
+                category: 'Industrial',
+                commonality: 'Moderate',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
+                name: 'Curium-244',
+                symbol: 'Cm-244',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['5.805 MeV'], gamma: ['0.043 MeV'], beta: [] },
+                halfLife: '18.1 years',
+                decayConstant: '0.0383 year⁻¹',
+                parent: 'Americium-244 (beta-minus)',
+                daughter: 'Plutonium-240',
+                commonUses: ['Alpha particle X-ray spectrometers (APXS) for space exploration', 'Neutron sources'],
+                category: 'Industrial',
+                commonality: 'Rare',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
                 name: 'Cobalt-60',
                 symbol: 'Co-60',
                 emissionType: ['Beta-minus', 'Gamma'],
@@ -841,6 +897,20 @@
                 halfLife: '5730 years', decayConstant: '1.21 x 10⁻⁴ year⁻¹', parent: 'Nitrogen-14 (via neutron capture)', daughter: 'Nitrogen-14 (stable)',
                 commonUses: ['Radiometric dating (archeology, geology)', 'Tracers in biological and chemical research', 'Labeled compounds'],
                 category: 'Industrial', commonality: 'Common',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
+                name: 'Tritium',
+                symbol: 'H-3',
+                emissionType: ['Beta-minus'],
+                emissionEnergies: { beta: ['0.0186 MeV (max)'], gamma: [], alpha: [] },
+                halfLife: '12.3 years',
+                decayConstant: '0.056 year⁻¹',
+                parent: 'Lithium-6 (neutron activation)',
+                daughter: 'Helium-3 (stable)',
+                commonUses: ['Self-powered lighting (e.g., exit signs, watches)', 'Medical and biological tracer', 'Nuclear weapons component'],
+                category: 'Industrial',
+                commonality: 'Common',
                 sourceRef: { halfLife: 'nndc' }
             },
             {
@@ -1166,6 +1236,21 @@
                 sourceRef: { halfLife: 'nndc' }
             },
             {
+                name: 'Uranium-234',
+                symbol: 'U-234',
+                emissionType: ['Alpha', 'Gamma'],
+                emissionEnergies: { alpha: ['4.776 MeV'], beta: [], gamma: ['0.053 MeV'] },
+                halfLife: '245,500 years',
+                decayConstant: '2.82 x 10⁻⁶ year⁻¹',
+                parent: 'Protactinium-234m (beta-minus)',
+                daughter: 'Thorium-230',
+                commonUses: ['Component of natural uranium', 'Geological dating (uranium-thorium dating)'],
+                category: 'Natural',
+                decaySeriesId: 'U-238-series',
+                commonality: 'Moderate',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
                 name: 'Uranium-233',
                 symbol: 'U-233',
                 emissionType: ['Alpha', 'Gamma'],
@@ -1226,6 +1311,21 @@
                 sourceRef: { halfLife: 'nndc' }
             },
             {
+                name: 'Thorium-231',
+                symbol: 'Th-231',
+                emissionType: ['Beta-minus', 'Gamma'],
+                emissionEnergies: { beta: ['0.39 MeV (max)'], gamma: ['0.084 MeV'], alpha: [] },
+                halfLife: '25.5 hours',
+                decayConstant: '0.027 hour⁻¹',
+                parent: 'Uranium-235',
+                daughter: 'Protactinium-231',
+                commonUses: ['Intermediate in U-235 decay chain'],
+                category: 'Natural',
+                decaySeriesId: 'U-235-series',
+                commonality: 'Rare',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
                 name: 'Radium-226',
                 symbol: 'Ra-226',
                 emissionType: ['Alpha', 'Gamma'],
@@ -1276,6 +1376,21 @@
                 sourceRef: { halfLife: 'nndc' }
             },
             {
+                name: 'Polonium-215',
+                symbol: 'Po-215',
+                emissionType: ['Alpha', 'Beta-minus'],
+                emissionEnergies: { alpha: ['7.386 MeV'], beta: ['0.71 MeV (max)'], gamma: [] },
+                halfLife: '1.78 milliseconds',
+                decayConstant: '389 s⁻¹',
+                parent: 'Radon-219',
+                daughter: 'Lead-211 (alpha) or Astatine-215 (beta-minus)',
+                commonUses: ['Very short-lived intermediate in U-235 decay chain'],
+                category: 'Natural',
+                decaySeriesId: 'U-235-series',
+                commonality: 'Rare',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
                 name: 'Polonium-210',
                 symbol: 'Po-210',
                 emissionType: ['Alpha'],
@@ -1293,6 +1408,21 @@
                 halfLife: '22.2 years', decayConstant: '0.0312 year⁻¹', parent: 'Radon-222 decay series (via Lead-214, Bismuth-214, Polonium-214)', daughter: 'Bismuth-210 (beta-minus)',
                 commonUses: ['Environmental tracers', 'Dating sediments and ice cores', 'Bone dosimetry'],
                 category: 'Natural', commonality: 'Common',
+                sourceRef: { halfLife: 'nndc' }
+            },
+            {
+                name: 'Bismuth-210',
+                symbol: 'Bi-210',
+                emissionType: ['Beta-minus', 'Alpha'],
+                emissionEnergies: { beta: ['1.16 MeV (max)'], alpha: ['5.03 MeV'], gamma: [] },
+                halfLife: '5.01 days',
+                decayConstant: '0.138 day⁻¹',
+                parent: 'Lead-210',
+                daughter: 'Polonium-210 (beta-minus) or Thallium-206 (alpha)',
+                commonUses: ['Intermediate in U-238 decay chain', 'used in disequilibrium studies with Pb-210'],
+                category: 'Natural',
+                decaySeriesId: 'U-238-series',
+                commonality: 'Moderate',
                 sourceRef: { halfLife: 'nndc' }
             },
             {
