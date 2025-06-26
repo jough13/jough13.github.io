@@ -37,6 +37,79 @@
         const { useState, useEffect, useMemo, useRef } = React;
         
         // --- Child Components ---
+
+        // User Guide Modal Component
+        const UserGuideModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">User Guide</h2>
+                            <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white text-2xl">&times;</button>
+                        </div>
+                        <div className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                            <h3 className="text-xl font-semibold">1. Getting Started: How Your Data is Saved</h3>
+                            <p>This application is completely private. All the data you enter is stored directly in your web browser's `localStorage`.</p>
+                            <ul>
+                                <li><strong>Automatic Saving:</strong> You don't need to press a "Save" button. Every change you make is saved instantly.</li>
+                                <li><strong>Persistence:</strong> As long as you use the same web browser on the same computer, your data will be there the next time you open the file.</li>
+                                <li><strong>Privacy:</strong> Your financial data never leaves your computer.</li>
+                            </ul>
+
+                            <h3 className="text-xl font-semibold mt-6">2. The Main Dashboard</h3>
+                            <h4>Account Balances</h4>
+                            <p>This is where you set the current balances of your main accounts. To edit, simply click on the balance for either "Checking" or "Savings". An input box will appear. Type the new balance and press `Enter` or click away to save.</p>
+                            <h4>Financial Summary Cards</h4>
+                            <p>These three cards give you a quick overview of your financial health:</p>
+                            <ul>
+                                <li><strong>Total Assets:</strong> The combined total of your Checking and Savings account balances.</li>
+                                <li><strong>Total Debts:</strong> The total amount you still owe across all the debts you've entered.</li>
+                                <li><strong>Net Worth:</strong> The difference between your assets and debts (`Assets - Debts`). This is the single most important number for tracking your overall financial progress.</li>
+                            </ul>
+
+                            <h3 className="text-xl font-semibold mt-6">3. Adding and Managing Transactions</h3>
+                            <p>This is the core of your day-to-day budgeting. Use the form under "Add Completed Transaction".</p>
+                            <ul>
+                                <li><strong>Type:</strong> Specify if the transaction is **Income** or an **Expense**.</li>
+                                <li><strong>Account:</strong> Choose whether the money came from your **Checking** or **Savings** account. The balance of this account will be automatically adjusted.</li>
+                                <li><strong>Debt Payment?:</strong> If the expense is a payment towards a debt, select it from this dropdown to automatically update your progress.</li>
+                                <li><strong>Delete a Transaction:</strong> Click the trash can icon on any row in the "Transaction History" to remove it. This will also reverse the change to your account balance and any debt payment progress.</li>
+                            </ul>
+
+                            <h3 className="text-xl font-semibold mt-6">4. Advanced Features</h3>
+                            <h4>Monthly Financial Report</h4>
+                            <p>This section allows you to look back at your performance for any given month. Use the "Select Month" input to choose a year and month.</p>
+                            <h4>Recurring Transactions</h4>
+                            <p>For bills and income that happen regularly. These transactions will automatically appear in the "Future Cash Flow Projection" calendar.</p>
+                            <h4>Future Cash Flow Projection</h4>
+                            <p>This calendar helps you see the future! It starts with your current total asset balance and projects it forward, including both one-time future transactions and all your recurring transactions.</p>
+                            <h4>Savings Goals</h4>
+                            <p>Track your progress towards your financial goals. The progress bar is automatically calculated based on your **Savings** account balance.</p>
+                            <h4>Debt Paydown Tracker & Calculator</h4>
+                            <p>Manage and strategize your debt payments. Enter an **Extra Monthly Payment** and click **"Calculate Scenarios"** to see a comparison of the **Avalanche** (highest interest first) and **Snowball** (lowest balance first) methods.</p>
+
+                            <h3 className="text-xl font-semibold mt-6">5. Importing & Exporting Your Data (Backup & Restore)</h3>
+                            <p>Because your data is stored in your browser, it could be lost if you clear your browser data or switch computers. Use this feature to create backups.</p>
+                            <h4>How to Export (Create a Backup)</h4>
+                            <ol>
+                                <li>Click the **"Export Data"** button in the top-right corner.</li>
+                                <li>A file named `budget-backup-YYYY-MM-DD.json` will be saved to your computer's "Downloads" folder.</li>
+                                <li><strong>Save this file in a safe place!</strong> This is your backup.</li>
+                            </ol>
+                            <h4>How to Import (Restore from a Backup)</h4>
+                            <ol>
+                                <li>Click the **"Import Data"** button.</li>
+                                <li>Choose the `.json` backup file you previously exported.</li>
+                                <li>A confirmation window will appear. **This is very important**, as importing will overwrite any data currently in the application.</li>
+                                <li>Click **"Yes, Overwrite Data"** to proceed. All your data from the file will be loaded.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
         
         // Monthly Report Component
         const MonthlyReport = ({ rows }) => {
@@ -627,6 +700,7 @@
             const [modalTransaction, setModalTransaction] = useState(null);
             const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
             const [dataToImport, setDataToImport] = useState(null);
+            const [isGuideOpen, setIsGuideOpen] = useState(false);
 
             // Load initial data from localStorage
             useEffect(() => {
@@ -811,6 +885,9 @@
                             <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Your complete financial overview. All data is saved in your browser.</p>
                         </div>
                         <div className="flex space-x-2 mt-4 sm:mt-0">
+                            <button onClick={() => setIsGuideOpen(true)} className="bg-gray-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors">
+                                User Guide
+                            </button>
                             <button onClick={handleExport} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
                                 Export Data
                             </button>
@@ -885,6 +962,7 @@
                     <AnalyticsDashboard rows={rows} />
                     <FutureTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} transaction={modalTransaction} onSave={handleSaveFuture} onDelete={handleDeleteFuture} />
                     <ImportConfirmModal isOpen={isImportConfirmOpen} onConfirm={confirmImport} onCancel={cancelImport} />
+                    <UserGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
                 </div>
             );
         }
