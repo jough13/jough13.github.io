@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Budget Tracker</title>
+    <title>Self-Contained Budget Tracker</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,44 +28,11 @@
 
     <!-- The root element where the React app will be mounted -->
     <div id="root"></div>
-
-    <!-- Firebase SDKs (using type="module" for imports) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        
-        // Make Firebase functions globally available for the Babel script
-        window.Firebase = {
-            initializeApp,
-            getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc,
-            getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken
-        };
-    </script>
     
     <!-- React Application Code (transpiled by Babel) -->
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         
-        // --- Helper Functions & Initial Config ---
-        const getAppId = () => {
-            try {
-                return typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            } catch (e) {
-                return 'default-app-id';
-            }
-        };
-
-        const getFirebaseConfig = () => {
-            try {
-                const configJson = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-                return JSON.parse(configJson);
-            } catch (e) {
-                console.error("Firebase config not found or invalid. Using fallback.");
-                return { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
-            }
-        };
-
         // --- Child Components ---
 
         // Savings Goals Component
@@ -254,72 +221,33 @@
             const [savingsGoals, setSavingsGoals] = useState([]);
             const [accounts, setAccounts] = useState({ checking: 0, savings: 0 });
             const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '' });
-            const [db, setDb] = useState(null);
-            const [userId, setUserId] = useState(null);
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const [error, setError] = useState('');
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalTransaction, setModalTransaction] = useState(null);
 
-            const appId = getAppId();
-
+            // Load initial data from localStorage
             useEffect(() => {
-                const { initializeApp, getAuth, getFirestore, onAuthStateChanged, signInAnonymously, signInWithCustomToken } = window.Firebase;
-                const firebaseConfig = getFirebaseConfig();
-                if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY") {
-                    setError("Application is not configured correctly.");
-                    setIsAuthReady(true);
-                    return;
+                try {
+                    const savedAccounts = JSON.parse(localStorage.getItem('budgetAccounts_v1'));
+                    if (savedAccounts) setAccounts(savedAccounts);
+
+                    const savedRows = JSON.parse(localStorage.getItem('budgetRows_v1'));
+                    if (savedRows) setRows(savedRows);
+
+                    const savedFuture = JSON.parse(localStorage.getItem('budgetFutureTransactions_v1'));
+                    if (savedFuture) setFutureTransactions(savedFuture);
+
+                    const savedGoals = JSON.parse(localStorage.getItem('budgetSavingsGoals_v1'));
+                    if (savedGoals) setSavingsGoals(savedGoals);
+                } catch (error) {
+                    console.error("Could not load data from localStorage", error);
                 }
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                setDb(getFirestore(app));
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) setUserId(user.uid);
-                    else {
-                        try {
-                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                            if (token) await signInWithCustomToken(auth, token);
-                            else await signInAnonymously(auth);
-                        } catch (e) { console.error(e); setError("Auth failed"); }
-                    }
-                    setIsAuthReady(true);
-                });
             }, []);
 
-            const useCollection = (collectionName, sortField = 'date') => {
-                const { collection, onSnapshot } = window.Firebase;
-                const [data, setData] = useState([]);
-                useEffect(() => {
-                    if (!isAuthReady || !db || !userId) return;
-                    const collectionPath = `artifacts/${appId}/users/${userId}/${collectionName}`;
-                    const unsubscribe = onSnapshot(collection(db, collectionPath), (snapshot) => {
-                        const fetchedData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        fetchedData.sort((a, b) => new Date(a[sortField]) - new Date(b[sortField]));
-                        setData(fetchedData);
-                    }, (err) => console.error(`Error fetching ${collectionName}:`, err));
-                    return () => unsubscribe();
-                }, [isAuthReady, db, userId]);
-                return data;
-            };
-            
-            useEffect(() => {
-                if (!isAuthReady || !db || !userId) return;
-                const { doc, onSnapshot, setDoc } = window.Firebase;
-                const docRef = doc(db, `artifacts/${appId}/users/${userId}/accounts`, 'main');
-                const unsubscribe = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) setAccounts(docSnap.data());
-                    else setDoc(docRef, { checking: 0, savings: 0 });
-                });
-                return () => unsubscribe();
-            }, [isAuthReady, db, userId]);
-
-            const pastTransactionsData = useCollection('budget_entries', 'date');
-            const futureTransactionData = useCollection('future_entries', 'date');
-            const savingsGoalsData = useCollection('savings_goals', 'targetDate');
-            useEffect(() => setRows(pastTransactionsData.sort((a, b) => new Date(b.date) - new Date(a.date))), [pastTransactionsData]);
-            useEffect(() => setFutureTransactions(futureTransactionData), [futureTransactionData]);
-            useEffect(() => setSavingsGoals(savingsGoalsData), [savingsGoalsData]);
+            // Save data to localStorage whenever it changes
+            useEffect(() => { localStorage.setItem('budgetAccounts_v1', JSON.stringify(accounts)); }, [accounts]);
+            useEffect(() => { localStorage.setItem('budgetRows_v1', JSON.stringify(rows)); }, [rows]);
+            useEffect(() => { localStorage.setItem('budgetFutureTransactions_v1', JSON.stringify(futureTransactions)); }, [futureTransactions]);
+            useEffect(() => { localStorage.setItem('budgetSavingsGoals_v1', JSON.stringify(savingsGoals)); }, [savingsGoals]);
             
             const transactionTotals = useMemo(() => rows.reduce((acc, row) => {
                 const amount = parseFloat(row.amount) || 0;
@@ -328,39 +256,36 @@
             }, { income: 0, expense: 0 }), [rows]);
             
             const totalBalance = useMemo(() => (accounts.checking || 0) + (accounts.savings || 0), [accounts]);
-            const { updateDoc, doc } = window.Firebase;
-            const handleUpdateAccount = async (type, value) => { if (db && userId) await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/accounts`, 'main'), { [type]: value }); };
-            const { addDoc, collection, deleteDoc } = window.Firebase;
-            const handleAddGoal = async (data) => { if (db && userId) await addDoc(collection(db, `artifacts/${appId}/users/${userId}/savings_goals`), data); };
-            const handleDeleteGoal = async (id) => { if (db && userId) await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/savings_goals`, id)); };
-            const handleAddRow = async (e) => {
+            
+            // --- Data Handlers ---
+            const handleUpdateAccount = (type, value) => { setAccounts(prev => ({...prev, [type]: value})); };
+            const handleAddGoal = (data) => { setSavingsGoals(prev => [...prev, { ...data, id: Date.now() }]); };
+            const handleDeleteGoal = (id) => { setSavingsGoals(prev => prev.filter(goal => goal.id !== id)); };
+            const handleAddRow = (e) => {
                 e.preventDefault();
-                if (db && userId && newRow.description && newRow.amount) {
-                    await addDoc(collection(db, `artifacts/${appId}/users/${userId}/budget_entries`), { ...newRow, amount: parseFloat(newRow.amount) });
+                if (newRow.description && newRow.amount) {
+                    setRows(prev => [{ ...newRow, id: Date.now(), amount: parseFloat(newRow.amount) }, ...prev].sort((a,b) => new Date(b.date) - new Date(a.date)));
                     setNewRow({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '' });
                 }
             };
-            const handleDeleteRow = async (id) => { if (db && userId) await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/budget_entries`, id)); };
+            const handleDeleteRow = (id) => { setRows(prev => prev.filter(row => row.id !== id)); };
             const handleOpenModal = (data) => { setModalTransaction(data); setIsModalOpen(true); };
             const handleAddFuture = (date) => handleOpenModal({ date, description: '', type: 'expense', amount: '' });
             const handleEditFuture = (t) => handleOpenModal(t);
-            const handleSaveFuture = async (data) => {
-                if (!db || !userId) return;
-                const { id, ...saveData } = data;
-                const path = `artifacts/${appId}/users/${userId}/future_entries`;
-                if (id) await updateDoc(doc(db, path, id), saveData);
-                else await addDoc(collection(db, path), saveData);
+            const handleSaveFuture = (data) => {
+                if (data.id) { // Editing existing
+                    setFutureTransactions(prev => prev.map(t => t.id === data.id ? data : t));
+                } else { // Adding new
+                    setFutureTransactions(prev => [...prev, { ...data, id: Date.now() }]);
+                }
             };
-            const handleDeleteFuture = async (id) => { if (db && userId) await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/future_entries`, id)); };
-
-            if (!isAuthReady) return <div className="flex items-center justify-center h-screen"><div className="text-xl font-semibold">Loading...</div></div>;
-            if (error) return <div className="flex items-center justify-center h-screen bg-red-100"><div className="text-xl p-4 rounded-md bg-red-200">{error}</div></div>;
+            const handleDeleteFuture = (id) => { setFutureTransactions(prev => prev.filter(t => t.id !== id)); };
 
             return (
                 <div className="max-w-7xl mx-auto text-gray-800 dark:text-gray-200 p-4 sm:p-6 lg:p-8">
                     <header className="mb-8">
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Budget Tracker</h1>
-                        <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Your complete financial overview.</p>
+                        <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Your complete financial overview. All data is saved in your browser.</p>
                     </header>
                     <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Account Balances</h2>
                     <AccountManager accounts={accounts} onUpdate={handleUpdateAccount} />
