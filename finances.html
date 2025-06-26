@@ -13,6 +13,9 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Google Fonts for typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,13 +34,99 @@
     
     <!-- React Application Code (transpiled by Babel) -->
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
         
         // --- Child Components ---
+        
+        // Monthly Report Component
+        const MonthlyReport = ({ rows }) => {
+            const [selectedDate, setSelectedDate] = useState(new Date());
 
-        // Debt Tracker Component
-        const DebtTracker = ({ debts, onAdd, onDelete, onMakePayment }) => {
+            const handleDateChange = (e) => {
+                const [year, month] = e.target.value.split('-');
+                setSelectedDate(new Date(year, month - 1, 1));
+            };
+
+            const reportData = useMemo(() => {
+                const year = selectedDate.getFullYear();
+                const month = selectedDate.getMonth();
+
+                const monthlyTransactions = rows.filter(row => {
+                    const rowDate = new Date(row.date + 'T00:00:00');
+                    return rowDate.getFullYear() === year && rowDate.getMonth() === month;
+                });
+
+                const income = monthlyTransactions
+                    .filter(r => r.type === 'income')
+                    .reduce((sum, r) => sum + r.amount, 0);
+                
+                const expenses = monthlyTransactions
+                    .filter(r => r.type === 'expense')
+                    .reduce((sum, r) => sum + r.amount, 0);
+
+                const categorySpending = monthlyTransactions
+                    .filter(r => r.type === 'expense')
+                    .reduce((acc, r) => {
+                        const category = r.category || 'Uncategorized';
+                        acc[category] = (acc[category] || 0) + r.amount;
+                        return acc;
+                    }, {});
+
+                return {
+                    income,
+                    expenses,
+                    net: income - expenses,
+                    categorySpending: Object.entries(categorySpending).sort(([,a], [,b]) => b - a)
+                };
+            }, [rows, selectedDate]);
+
+            return (
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Monthly Financial Report</h2>
+                    <div className="mb-4">
+                        <label className="text-sm font-medium mb-1 block">Select Month:</label>
+                        <input 
+                            type="month" 
+                            value={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`}
+                            onChange={handleDateChange}
+                            className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="bg-green-100 dark:bg-green-900/50 p-4 rounded-lg">
+                            <h4 className="font-semibold text-green-800 dark:text-green-300">Total Income</h4>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">${reportData.income.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">
+                            <h4 className="font-semibold text-red-800 dark:text-red-300">Total Expenses</h4>
+                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">${reportData.expenses.toFixed(2)}</p>
+                        </div>
+                        <div className={`p-4 rounded-lg ${reportData.net >= 0 ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-orange-100 dark:bg-orange-900/50'}`}>
+                            <h4 className={`font-semibold ${reportData.net >= 0 ? 'text-blue-800 dark:text-blue-300' : 'text-orange-800 dark:text-orange-300'}`}>Net Savings/Loss</h4>
+                            <p className={`text-2xl font-bold ${reportData.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>${reportData.net.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold mt-4 mb-2 text-gray-900 dark:text-white">Spending by Category</h3>
+                        <ul className="space-y-2">
+                            {reportData.categorySpending.map(([category, amount]) => (
+                                <li key={category} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                                    <span className="font-medium text-gray-800 dark:text-gray-200">{category}</span>
+                                    <span className="font-bold text-red-500">${amount.toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        {reportData.categorySpending.length === 0 && <p className="text-center text-gray-500 dark:text-gray-400 p-4">No expenses for this month.</p>}
+                    </div>
+                </div>
+            );
+        };
+
+        // Debt Tracker Component with Payoff Calculator
+        const DebtTracker = ({ debts, onAdd, onDelete }) => {
             const [newDebt, setNewDebt] = useState({ description: '', totalAmount: '', apr: '', minPayment: '' });
+            const [extraPayment, setExtraPayment] = useState('');
+            const [payoffScenarios, setPayoffScenarios] = useState(null);
 
             const handleInputChange = (e) => {
                 const { name, value } = e.target;
@@ -56,6 +145,59 @@
                 });
                 setNewDebt({ description: '', totalAmount: '', apr: '', minPayment: '' });
             };
+
+            const calculatePayoff = (strategy) => {
+                let tempDebts = JSON.parse(JSON.stringify(debts.map(d => ({...d, balance: d.totalAmount - (d.amountPaid || 0)}))));
+                let totalInterestPaid = 0;
+                let months = 0;
+                const monthlyExtra = parseFloat(extraPayment) || 0;
+                
+                const totalMonthlyCashForDebt = debts.reduce((sum, d) => sum + (d.minPayment || 0), 0) + monthlyExtra;
+
+                while (tempDebts.some(d => d.balance > 0)) {
+                    months++;
+                    if (months > 1200) break; // Safety break after 100 years
+
+                    let paymentPool = totalMonthlyCashForDebt;
+
+                    tempDebts.forEach(debt => {
+                        if (debt.balance > 0) {
+                            const monthlyInterest = (debt.balance * (debt.apr / 100)) / 12;
+                            totalInterestPaid += monthlyInterest;
+                            debt.balance += monthlyInterest;
+                        }
+                    });
+
+                    tempDebts.forEach(debt => {
+                        if (debt.balance > 0) {
+                            const payment = Math.min(debt.balance, debt.minPayment || 0);
+                            debt.balance -= payment;
+                            paymentPool -= payment;
+                        }
+                    });
+
+                    if (strategy === 'avalanche') {
+                        tempDebts.sort((a, b) => b.apr - a.apr);
+                    } else { // snowball
+                        tempDebts.sort((a, b) => a.balance - b.balance);
+                    }
+
+                    for (const debt of tempDebts) {
+                        if (debt.balance > 0 && paymentPool > 0) {
+                            const payment = Math.min(debt.balance, paymentPool);
+                            debt.balance -= payment;
+                            paymentPool -= payment;
+                        }
+                    }
+                }
+                return { months, totalInterestPaid };
+            };
+
+            const handleCalculateScenarios = () => {
+                const avalanche = calculatePayoff('avalanche');
+                const snowball = calculatePayoff('snowball');
+                setPayoffScenarios({ avalanche, snowball });
+            };
             
             return (
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
@@ -64,6 +206,7 @@
                         <div className="flex flex-col md:col-span-2"><label className="text-sm font-medium mb-1">Debt Description</label><input type="text" name="description" value={newDebt.description} onChange={handleInputChange} placeholder="e.g., Credit Card" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
                         <div className="flex flex-col"><label className="text-sm font-medium mb-1">Total Owed</label><input type="number" name="totalAmount" value={newDebt.totalAmount} onChange={handleInputChange} placeholder="5000" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
                         <div className="flex flex-col"><label className="text-sm font-medium mb-1">APR (%)</label><input type="number" name="apr" value={newDebt.apr} onChange={handleInputChange} placeholder="19.9" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">Min. Payment</label><input type="number" name="minPayment" value={newDebt.minPayment} onChange={handleInputChange} placeholder="100" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
                         <button type="submit" className="bg-red-600 text-white font-semibold p-2 rounded-md hover:bg-red-700 h-10">Add Debt</button>
                     </form>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -89,6 +232,154 @@
                         })}
                     </div>
                     {debts.length === 0 && <div className="text-center p-8 text-gray-500 dark:text-gray-400">No debts tracked. Add one to get started!</div>}
+
+                    {/* Payoff Calculator */}
+                    {debts.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Debt Payoff Calculator</h3>
+                            <div className="flex items-end space-x-4 mb-4">
+                                <div className="flex-grow">
+                                    <label className="text-sm font-medium mb-1 block">Extra Monthly Payment</label>
+                                    <input type="number" value={extraPayment} onChange={(e) => setExtraPayment(e.target.value)} placeholder="e.g., 200" className="p-2 w-full rounded-md bg-gray-100 dark:bg-gray-700"/>
+                                </div>
+                                <button onClick={handleCalculateScenarios} className="bg-green-600 text-white font-semibold p-2 rounded-md hover:bg-green-700 h-10">Calculate Scenarios</button>
+                            </div>
+                            {payoffScenarios && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                        <h4 className="font-bold text-lg text-center">Avalanche (Lowest Interest)</h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400">Pay highest APR first</p>
+                                        <p className="mt-2">Debt-Free In: <span className="font-bold">{payoffScenarios.avalanche.months} months</span></p>
+                                        <p>Total Interest Paid: <span className="font-bold">${payoffScenarios.avalanche.totalInterestPaid.toFixed(2)}</span></p>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                                        <h4 className="font-bold text-lg text-center">Snowball (Lowest Balance)</h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400">Pay smallest balance first</p>
+                                        <p className="mt-2">Debt-Free In: <span className="font-bold">{payoffScenarios.snowball.months} months</span></p>
+                                        <p>Total Interest Paid: <span className="font-bold">${payoffScenarios.snowball.totalInterestPaid.toFixed(2)}</span></p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Recurring Transactions Component
+        const RecurringTransactions = ({ recurring, onAdd, onDelete }) => {
+            const [newRecurring, setNewRecurring] = useState({
+                description: '',
+                amount: '',
+                type: 'expense',
+                account: 'checking',
+                frequency: 'monthly',
+                startDate: new Date().toISOString().slice(0, 10)
+            });
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setNewRecurring(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleAdd = (e) => {
+                e.preventDefault();
+                if (!newRecurring.description || !newRecurring.amount) return;
+                onAdd({ ...newRecurring, amount: parseFloat(newRecurring.amount) });
+                setNewRecurring({
+                    description: '', amount: '', type: 'expense', account: 'checking',
+                    frequency: 'monthly', startDate: new Date().toISOString().slice(0, 10)
+                });
+            };
+
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Recurring Transactions</h2>
+                    <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6">
+                        <div className="flex flex-col md:col-span-2"><label className="text-sm font-medium mb-1">Description</label><input type="text" name="description" value={newRecurring.description} onChange={handleInputChange} placeholder="e.g., Rent, Paycheck" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">Amount</label><input type="number" name="amount" value={newRecurring.amount} onChange={handleInputChange} placeholder="1500" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">Type</label><select name="type" value={newRecurring.type} onChange={handleInputChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 h-[42px]"><option value="expense">Expense</option><option value="income">Income</option></select></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">Frequency</label><select name="frequency" value={newRecurring.frequency} onChange={handleInputChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 h-[42px]"><option value="monthly">Monthly</option><option value="weekly">Weekly</option></select></div>
+                        <button type="submit" className="bg-purple-600 text-white font-semibold p-2 rounded-md hover:bg-purple-700 h-10">Add Recurring</button>
+                    </form>
+                    <div className="space-y-2">
+                        {recurring.map(item => (
+                            <div key={item.id} className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-white">{item.description}</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        ${item.amount.toFixed(2)} - {item.type} - every {item.frequency.replace('ly', '')}
+                                    </p>
+                                </div>
+                                <button onClick={() => onDelete(item.id)} className="text-gray-400 hover:text-red-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // Chart Wrapper Component
+        const ChartComponent = ({ type, data, options }) => {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+
+            useEffect(() => {
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+                const ctx = canvasRef.current.getContext('2d');
+                chartRef.current = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: options,
+                });
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [type, data, options]);
+
+            return <canvas ref={canvasRef}></canvas>;
+        };
+        
+        // Analytics Dashboard Component
+        const AnalyticsDashboard = ({ rows }) => {
+            const categoryData = useMemo(() => {
+                const spending = rows
+                    .filter(row => row.type === 'expense')
+                    .reduce((acc, row) => {
+                        const category = row.category || 'Uncategorized';
+                        acc[category] = (acc[category] || 0) + parseFloat(row.amount);
+                        return acc;
+                    }, {});
+                
+                const labels = Object.keys(spending);
+                const data = Object.values(spending);
+                
+                return {
+                    labels,
+                    datasets: [{
+                        data,
+                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
+                        hoverOffset: 4
+                    }]
+                };
+            }, [rows]);
+
+            return (
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Analytics Dashboard</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 lg:col-span-1 lg:col-start-2 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                            <h3 className="font-semibold text-center text-gray-900 dark:text-white">Spending by Category</h3>
+                            <ChartComponent type="doughnut" data={categoryData} />
+                        </div>
+                    </div>
                 </div>
             );
         };
@@ -186,17 +477,45 @@
         };
 
         // Calendar Component
-        const CashFlowCalendar = ({ currentBalance, futureTransactions, onAdd, onEdit }) => {
+        const CashFlowCalendar = ({ currentBalance, futureTransactions, recurringTransactions, onAdd, onEdit }) => {
             const [currentDate, setCurrentDate] = useState(new Date());
+            
+            const allFutureEvents = useMemo(() => {
+                const events = [...futureTransactions];
+                const projectionEndDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0); // Project 2 months ahead
+
+                recurringTransactions.forEach(item => {
+                    let nextDate = new Date(item.startDate + 'T00:00:00'); // Avoid timezone issues
+                    
+                    while (nextDate <= projectionEndDate) {
+                        if (nextDate >= new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)) {
+                             events.push({
+                                ...item,
+                                date: nextDate.toISOString().slice(0, 10),
+                                isRecurring: true,
+                            });
+                        }
+
+                        if (item.frequency === 'monthly') {
+                            nextDate.setMonth(nextDate.getMonth() + 1);
+                        } else if (item.frequency === 'weekly') {
+                            nextDate.setDate(nextDate.getDate() + 7);
+                        }
+                    }
+                });
+                return events;
+            }, [futureTransactions, recurringTransactions, currentDate]);
+
             const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const daysInMonth = monthEnd.getDate();
             const startDay = monthStart.getDay();
+
             const projectedBalances = useMemo(() => {
                 let runningBalance = currentBalance;
                 const balances = {};
                 const dailyTransactionsMap = {};
-                futureTransactions.forEach(t => {
+                allFutureEvents.forEach(t => {
                     if (!dailyTransactionsMap[t.date]) dailyTransactionsMap[t.date] = [];
                     dailyTransactionsMap[t.date].push(t);
                 });
@@ -210,18 +529,18 @@
                     balances[day] = runningBalance;
                 }
                 return balances;
-            }, [currentBalance, futureTransactions, currentDate, daysInMonth]);
+            }, [currentBalance, allFutureEvents, currentDate, daysInMonth]);
             const changeMonth = (offset) => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
             const calendarDays = Array(startDay).fill(null).map((_, i) => <div key={`empty-${i}`} className="border-r border-b border-gray-200 dark:border-gray-700"></div>);
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dailyTransactions = futureTransactions.filter(t => t.date === dateStr);
+                const dailyTransactions = allFutureEvents.filter(t => t.date === dateStr);
                 calendarDays.push(
                     <div key={day} className="border-r border-b border-gray-200 dark:border-gray-700 p-2 min-h-[120px] flex flex-col hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => onAdd(dateStr)}>
                         <div className="font-bold text-gray-800 dark:text-gray-200">{day}</div>
                         <div className="flex-grow overflow-y-auto text-xs space-y-1 mt-1">
-                            {dailyTransactions.map(t => (
-                                <div key={t.id} className={`p-1 rounded-md cursor-pointer ${t.type === 'income' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`} onClick={(e) => { e.stopPropagation(); onEdit(t); }}>
+                            {dailyTransactions.map((t, i) => (
+                                <div key={t.id + '-' + i} className={`p-1 rounded-md ${t.isRecurring ? 'opacity-70' : ''} ${t.type === 'income' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`} onClick={(e) => { if(!t.isRecurring) { e.stopPropagation(); onEdit(t); } }}>
                                     <p className="font-semibold truncate">{t.description}</p>
                                     <p className={`${t.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>${parseFloat(t.amount).toFixed(2)}</p>
                                 </div>
@@ -301,6 +620,7 @@
             const [futureTransactions, setFutureTransactions] = useState([]);
             const [savingsGoals, setSavingsGoals] = useState([]);
             const [debts, setDebts] = useState([]);
+            const [recurringTransactions, setRecurringTransactions] = useState([]);
             const [accounts, setAccounts] = useState({ checking: 0, savings: 0 });
             const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking', debtId: 'none' });
             const [isModalOpen, setIsModalOpen] = useState(false);
@@ -311,31 +631,35 @@
             // Load initial data from localStorage
             useEffect(() => {
                 try {
-                    const savedAccounts = JSON.parse(localStorage.getItem('budgetAccounts_v2'));
+                    const savedAccounts = JSON.parse(localStorage.getItem('budgetAccounts_v5'));
                     if (savedAccounts) setAccounts(savedAccounts);
 
-                    const savedRows = JSON.parse(localStorage.getItem('budgetRows_v2'));
+                    const savedRows = JSON.parse(localStorage.getItem('budgetRows_v5'));
                     if (savedRows) setRows(savedRows);
 
-                    const savedFuture = JSON.parse(localStorage.getItem('budgetFutureTransactions_v2'));
+                    const savedFuture = JSON.parse(localStorage.getItem('budgetFutureTransactions_v5'));
                     if (savedFuture) setFutureTransactions(savedFuture);
 
-                    const savedGoals = JSON.parse(localStorage.getItem('budgetSavingsGoals_v2'));
+                    const savedGoals = JSON.parse(localStorage.getItem('budgetSavingsGoals_v5'));
                     if (savedGoals) setSavingsGoals(savedGoals);
 
-                    const savedDebts = JSON.parse(localStorage.getItem('budgetDebts_v2'));
+                    const savedDebts = JSON.parse(localStorage.getItem('budgetDebts_v5'));
                     if (savedDebts) setDebts(savedDebts);
+
+                    const savedRecurring = JSON.parse(localStorage.getItem('budgetRecurring_v5'));
+                    if (savedRecurring) setRecurringTransactions(savedRecurring);
                 } catch (error) {
                     console.error("Could not load data from localStorage", error);
                 }
             }, []);
 
             // Save data to localStorage whenever it changes
-            useEffect(() => { localStorage.setItem('budgetAccounts_v2', JSON.stringify(accounts)); }, [accounts]);
-            useEffect(() => { localStorage.setItem('budgetRows_v2', JSON.stringify(rows)); }, [rows]);
-            useEffect(() => { localStorage.setItem('budgetFutureTransactions_v2', JSON.stringify(futureTransactions)); }, [futureTransactions]);
-            useEffect(() => { localStorage.setItem('budgetSavingsGoals_v2', JSON.stringify(savingsGoals)); }, [savingsGoals]);
-            useEffect(() => { localStorage.setItem('budgetDebts_v2', JSON.stringify(debts)); }, [debts]);
+            useEffect(() => { localStorage.setItem('budgetAccounts_v5', JSON.stringify(accounts)); }, [accounts]);
+            useEffect(() => { localStorage.setItem('budgetRows_v5', JSON.stringify(rows)); }, [rows]);
+            useEffect(() => { localStorage.setItem('budgetFutureTransactions_v5', JSON.stringify(futureTransactions)); }, [futureTransactions]);
+            useEffect(() => { localStorage.setItem('budgetSavingsGoals_v5', JSON.stringify(savingsGoals)); }, [savingsGoals]);
+            useEffect(() => { localStorage.setItem('budgetDebts_v5', JSON.stringify(debts)); }, [debts]);
+            useEffect(() => { localStorage.setItem('budgetRecurring_v5', JSON.stringify(recurringTransactions)); }, [recurringTransactions]);
             
             const transactionTotals = useMemo(() => rows.reduce((acc, row) => {
                 const amount = parseFloat(row.amount) || 0;
@@ -343,7 +667,9 @@
                 return acc;
             }, { income: 0, expense: 0 }), [rows]);
             
-            const totalBalance = useMemo(() => (accounts.checking || 0) + (accounts.savings || 0), [accounts]);
+            const totalAssets = useMemo(() => (accounts.checking || 0) + (accounts.savings || 0), [accounts]);
+            const totalLiabilities = useMemo(() => debts.reduce((acc, debt) => acc + (debt.totalAmount - (debt.amountPaid || 0)), 0), [debts]);
+            const netWorth = useMemo(() => totalAssets - totalLiabilities, [totalAssets, totalLiabilities]);
             
             // --- Data Handlers ---
             const handleUpdateAccount = (type, value) => { setAccounts(prev => ({...prev, [type]: value})); };
@@ -351,6 +677,8 @@
             const handleDeleteGoal = (id) => { setSavingsGoals(prev => prev.filter(goal => goal.id !== id)); };
             const handleAddDebt = (data) => { setDebts(prev => [...prev, { ...data, id: Date.now() }]); };
             const handleDeleteDebt = (id) => { setDebts(prev => prev.filter(debt => debt.id !== id)); };
+            const handleAddRecurring = (data) => { setRecurringTransactions(prev => [...prev, { ...data, id: Date.now() }]); };
+            const handleDeleteRecurring = (id) => { setRecurringTransactions(prev => prev.filter(item => item.id !== id)); };
             
             const handleAddRow = (e) => {
                 e.preventDefault();
@@ -416,7 +744,7 @@
             const handleDeleteFuture = (id) => { setFutureTransactions(prev => prev.filter(t => t.id !== id)); };
 
             const handleExport = () => {
-                const allData = { accounts, rows, futureTransactions, savingsGoals, debts };
+                const allData = { accounts, rows, futureTransactions, savingsGoals, debts, recurringTransactions };
                 const dataStr = JSON.stringify(allData, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -458,6 +786,7 @@
                     setFutureTransactions(dataToImport.futureTransactions);
                     setSavingsGoals(dataToImport.savingsGoals);
                     setDebts(dataToImport.debts);
+                    setRecurringTransactions(dataToImport.recurringTransactions || []);
                 }
                 setIsImportConfirmOpen(false);
                 setDataToImport(null);
@@ -491,12 +820,13 @@
                             <input id="import-file" type="file" className="hidden" onChange={handleImport} accept=".json"/>
                         </div>
                     </header>
-                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Account Balances</h2>
+                    
+                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white mt-8">Account Balances</h2>
                     <AccountManager accounts={accounts} onUpdate={handleUpdateAccount} />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"><h3 className="text-lg font-semibold text-green-500">Logged Income</h3><p className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">${transactionTotals.income.toFixed(2)}</p></div>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"><h3 className="text-lg font-semibold text-red-500">Logged Expenses</h3><p className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">${transactionTotals.expense.toFixed(2)}</p></div>
-                        <div className={`p-6 rounded-xl shadow-md ${totalBalance >= 0 ? 'bg-blue-500' : 'bg-orange-500'}`}><h3 className="text-lg font-semibold text-white">Total Current Balance</h3><p className="text-3xl font-bold mt-2 text-white">${totalBalance.toFixed(2)}</p></div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"><h3 className="text-lg font-semibold text-green-500">Total Assets</h3><p className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">${totalAssets.toFixed(2)}</p></div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md"><h3 className="text-lg font-semibold text-red-500">Total Debts</h3><p className="text-3xl font-bold mt-2 text-gray-900 dark:text-white">${totalLiabilities.toFixed(2)}</p></div>
+                        <div className={`p-6 rounded-xl shadow-md ${netWorth >= 0 ? 'bg-blue-500' : 'bg-orange-500'}`}><h3 className="text-lg font-semibold text-white">Net Worth</h3><p className="text-3xl font-bold mt-2 text-white">${netWorth.toFixed(2)}</p></div>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
                         <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Add Completed Transaction</h2>
@@ -547,9 +877,12 @@
                         </table>
                         {rows.length === 0 && <div className="text-center p-8 text-gray-500 dark:text-gray-400">No transaction history.</div>}
                     </div>
-                    <CashFlowCalendar currentBalance={totalBalance} futureTransactions={futureTransactions} onAdd={handleAddFuture} onEdit={handleEditFuture} />
+                    <MonthlyReport rows={rows} />
+                    <RecurringTransactions recurring={recurringTransactions} onAdd={handleAddRecurring} onDelete={handleDeleteRecurring} />
+                    <CashFlowCalendar currentBalance={totalAssets} futureTransactions={futureTransactions} recurringTransactions={recurringTransactions} onAdd={handleAddFuture} onEdit={handleEditFuture} />
                     <SavingsGoals goals={savingsGoals} onAdd={handleAddGoal} onDelete={handleDeleteGoal} savingsBalance={accounts.savings || 0} />
                     <DebtTracker debts={debts} onAdd={handleAddDebt} onDelete={handleDeleteDebt} />
+                    <AnalyticsDashboard rows={rows} />
                     <FutureTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} transaction={modalTransaction} onSave={handleSaveFuture} onDelete={handleDeleteFuture} />
                     <ImportConfirmModal isOpen={isImportConfirmOpen} onConfirm={confirmImport} onCancel={cancelImport} />
                 </div>
