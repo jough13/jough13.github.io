@@ -243,7 +243,7 @@
             const [futureTransactions, setFutureTransactions] = useState([]);
             const [savingsGoals, setSavingsGoals] = useState([]);
             const [accounts, setAccounts] = useState({ checking: 0, savings: 0 });
-            const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '' });
+            const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking' });
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalTransaction, setModalTransaction] = useState(null);
             const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
@@ -286,14 +286,52 @@
             const handleUpdateAccount = (type, value) => { setAccounts(prev => ({...prev, [type]: value})); };
             const handleAddGoal = (data) => { setSavingsGoals(prev => [...prev, { ...data, id: Date.now() }]); };
             const handleDeleteGoal = (id) => { setSavingsGoals(prev => prev.filter(goal => goal.id !== id)); };
+            
             const handleAddRow = (e) => {
                 e.preventDefault();
                 if (newRow.description && newRow.amount) {
-                    setRows(prev => [{ ...newRow, id: Date.now(), amount: parseFloat(newRow.amount) }, ...prev].sort((a,b) => new Date(b.date) - new Date(a.date)));
-                    setNewRow({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '' });
+                    const amount = parseFloat(newRow.amount);
+                    const accountToUpdate = newRow.account;
+                    const transactionType = newRow.type;
+
+                    // Update the corresponding account balance
+                    setAccounts(prevAccounts => {
+                        const currentBalance = prevAccounts[accountToUpdate] || 0;
+                        const newBalance = transactionType === 'expense'
+                            ? currentBalance - amount
+                            : currentBalance + amount;
+                        return { ...prevAccounts, [accountToUpdate]: newBalance };
+                    });
+
+                    // Add to transaction history
+                    setRows(prev => [{ ...newRow, id: Date.now(), amount: amount }, ...prev].sort((a,b) => new Date(b.date) - new Date(a.date)));
+                    
+                    // Reset form
+                    setNewRow({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking' });
                 }
             };
-            const handleDeleteRow = (id) => { setRows(prev => prev.filter(row => row.id !== id)); };
+
+            const handleDeleteRow = (id) => {
+                const rowToDelete = rows.find(row => row.id === id);
+                if (!rowToDelete) return;
+
+                const amount = parseFloat(rowToDelete.amount);
+                const accountToUpdate = rowToDelete.account || 'checking';
+                const transactionType = rowToDelete.type;
+
+                // Reverse the transaction on the account balance
+                setAccounts(prevAccounts => {
+                    const currentBalance = prevAccounts[accountToUpdate] || 0;
+                    const newBalance = transactionType === 'expense'
+                        ? currentBalance + amount
+                        : currentBalance - amount;
+                    return { ...prevAccounts, [accountToUpdate]: newBalance };
+                });
+                
+                // Remove the row from the transaction history
+                setRows(prev => prev.filter(row => row.id !== id));
+            };
+
             const handleOpenModal = (data) => { setModalTransaction(data); setIsModalOpen(true); };
             const handleAddFuture = (date) => handleOpenModal({ date, description: '', type: 'expense', amount: '' });
             const handleEditFuture = (t) => handleOpenModal(t);
@@ -359,6 +397,11 @@
                 setDataToImport(null);
             };
 
+            const handleNewRowChange = (e) => {
+                const { name, value } = e.target;
+                setNewRow(prev => ({...prev, [name]: value}));
+            };
+
 
             return (
                 <div className="max-w-7xl mx-auto text-gray-800 dark:text-gray-200 p-4 sm:p-6 lg:p-8">
@@ -386,24 +429,38 @@
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mb-8">
                         <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Add Completed Transaction</h2>
-                         <form onSubmit={handleAddRow} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-                            <div className="flex flex-col"><label className="text-sm">Date</label><input type="date" name="date" value={newRow.date} onChange={(e) => setNewRow({...newRow, date: e.target.value})} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
-                            <div className="flex flex-col md:col-span-2"><label className="text-sm">Description</label><input type="text" name="description" value={newRow.description} onChange={(e) => setNewRow({...newRow, description: e.target.value})} placeholder="e.g., Groceries" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
-                            <div className="flex flex-col"><label className="text-sm">Category</label><input type="text" name="category" value={newRow.category} onChange={(e) => setNewRow({...newRow, category: e.target.value})} placeholder="e.g., Food" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
-                            <div className="flex flex-col"><label className="text-sm">Amount</label><input type="number" name="amount" value={newRow.amount} onChange={(e) => setNewRow({...newRow, amount: e.target.value})} placeholder="0.00" step="0.01" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                         <form onSubmit={handleAddRow} className="grid grid-cols-1 md:grid-cols-8 gap-4 items-end">
+                            <div className="flex flex-col"><label className="text-sm">Date</label><input type="date" name="date" value={newRow.date} onChange={handleNewRowChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                            <div className="flex flex-col md:col-span-2"><label className="text-sm">Description</label><input type="text" name="description" value={newRow.description} onChange={handleNewRowChange} placeholder="e.g., Groceries" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                            <div className="flex flex-col"><label className="text-sm">Category</label><input type="text" name="category" value={newRow.category} onChange={handleNewRowChange} placeholder="e.g., Food" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                            <div className="flex flex-col"><label className="text-sm">Type</label>
+                                <select name="type" value={newRow.type} onChange={handleNewRowChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 h-[42px]">
+                                    <option value="expense">Expense</option>
+                                    <option value="income">Income</option>
+                                </select>
+                            </div>
+                            <div className="flex flex-col"><label className="text-sm">Account</label>
+                                <select name="account" value={newRow.account} onChange={handleNewRowChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 h-[42px]">
+                                    <option value="checking">Checking</option>
+                                    <option value="savings">Savings</option>
+                                </select>
+                            </div>
+                            <div className="flex flex-col"><label className="text-sm">Amount</label><input type="number" name="amount" value={newRow.amount} onChange={handleNewRowChange} placeholder="0.00" step="0.01" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
                             <button type="submit" className="bg-blue-600 text-white font-semibold p-2 rounded-md hover:bg-blue-700 h-10">Add</button>
                         </form>
                     </div>
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-x-auto">
                          <h2 className="text-2xl font-bold p-6 text-gray-900 dark:text-white">Transaction History</h2>
                         <table className="w-full text-left">
-                            <thead className="border-b border-gray-200 dark:border-gray-700"><tr><th className="p-4 text-sm font-semibold">Date</th><th className="p-4 text-sm font-semibold">Description</th><th className="p-4 text-sm font-semibold">Category</th><th className="p-4 text-sm font-semibold">Amount</th><th className="p-4 text-sm font-semibold">Actions</th></tr></thead>
+                            <thead className="border-b border-gray-200 dark:border-gray-700"><tr><th className="p-4 text-sm font-semibold">Date</th><th className="p-4 text-sm font-semibold">Description</th><th className="p-4 text-sm font-semibold">Category</th><th className="p-4 text-sm font-semibold">Type</th><th className="p-4 text-sm font-semibold">Account</th><th className="p-4 text-sm font-semibold">Amount</th><th className="p-4 text-sm font-semibold">Actions</th></tr></thead>
                             <tbody>
                                 {rows.map(row => (
                                     <tr key={row.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         <td className="p-4">{row.date}</td>
                                         <td className="p-4">{row.description}</td>
                                         <td className="p-4">{row.category}</td>
+                                        <td className="p-4 capitalize">{row.type}</td>
+                                        <td className="p-4 capitalize">{row.account}</td>
                                         <td className={`p-4 font-medium ${row.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>${parseFloat(row.amount || 0).toFixed(2)}</td>
                                         <td className="p-4"><button onClick={() => handleDeleteRow(row.id)} className="text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button></td>
                                     </tr>
