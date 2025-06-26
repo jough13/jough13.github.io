@@ -68,7 +68,7 @@
 <body class="min-h-screen flex flex-col items-center justify-center p-6 text-white">
 
     <!-- Main Container -->
-    <div class="bg-gray-800 p-8 sm:p-12 rounded-xl shadow-2xl w-full max-w-2xl text-center">
+    <div class="bg-gray-800 p-8 sm:p-12 rounded-xl shadow-2xl w-full max-w-4xl text-center">
 
         <!-- Header Title -->
         <header class="mb-10">
@@ -78,55 +78,62 @@
             <p class="text-gray-400 mt-3 text-lg">Explore my latest projects!</p>
         </header>
 
-        <!-- Project Links Section -->
-        <section class="space-y-6">
+        <!-- Project Links Section - Now a responsive grid -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Project 1: Wayfinder: Echoes of the Void -->
             <a href="space_Explorer.html"
-               class="project-link block bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Wayfinder: Echoes of the Void
-                <span class="block text-sm text-indigo-200 mt-1">Embark on an interstellar journey.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
+                <h3 class="font-semibold text-lg">Wayfinder: Echoes of the Void</h3>
+                <span class="block text-sm text-indigo-200 mt-1 font-normal">Embark on an interstellar journey.</span>
             </a>
 
             <!-- Project 2: Realms of Rust and Ruin -->
             <a href="realms.html"
-               class="project-link block bg-rose-600 hover:bg-rose-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Realms of Rust and Ruin
-                <span class="block text-sm text-rose-200 mt-1">Survive in a post-apocalyptic world.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <h3 class="font-semibold text-lg">Realms of Rust and Ruin</h3>
+                <span class="block text-sm text-rose-200 mt-1 font-normal">Survive in a post-apocalyptic world.</span>
             </a>
 
             <!-- Project 3: Echoes of the Fall -->
             <a href="echoes_of_the_fall.html"
-               class="project-link block bg-green-600 hover:bg-green-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Echoes of the Fall
-                <span class="block text-sm text-green-200 mt-1">Explore a world reclaimed by nature.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-14l-3 3m5 5l3 3m-5-14l3 3M6 21l3-3m5 5l3-3m-8-5l3 3-3 3" /></svg>
+                <h3 class="font-semibold text-lg">Echoes of the Fall</h3>
+                <span class="block text-sm text-green-200 mt-1 font-normal">Explore a world reclaimed by nature.</span>
             </a>
 
             <!-- Project 4: Digital Cartographer's Desk -->
             <a href="cartographers_desk.html"
-               class="project-link block bg-amber-600 hover:bg-amber-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Digital Cartographer's Desk
-                <span class="block text-sm text-amber-200 mt-1">Crafting maps for forgotten worlds.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-amber-600 hover:bg-amber-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg>
+                <h3 class="font-semibold text-lg">Digital Cartographer's Desk</h3>
+                <span class="block text-sm text-amber-200 mt-1 font-normal">Crafting maps for forgotten worlds.</span>
             </a>
 
             <!-- Project 5: Ancient Battle Simulator -->
             <a href="abs.html"
-               class="project-link block bg-slate-600 hover:bg-slate-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Ancient Battle Simulator
-                <span class="block text-sm text-slate-200 mt-1">Command legions in historic warfare.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-slate-600 hover:bg-slate-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                <h3 class="font-semibold text-lg">Ancient Battle Simulator</h3>
+                <span class="block text-sm text-slate-200 mt-1 font-normal">Command legions in historic warfare.</span>
             </a>
 
             <!-- Project 6: Radionuclides Identification Tool -->
             <a href="radionuclides.html"
-               class="project-link block bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Radionuclides Identification Tool
-                <span class="block text-sm text-cyan-200 mt-1">Analyzing isotopes with precision.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <h3 class="font-semibold text-lg">Radionuclides Identification Tool</h3>
+                <span class="block text-sm text-cyan-200 mt-1 font-normal">Analyzing isotopes with precision.</span>
             </a>
 
             <!-- Project 7: Budget Tracker -->
             <a href="finances.html"
-               class="project-link block bg-purple-600 hover:bg-purple-500 text-white font-semibold py-4 px-6 rounded-lg text-xl shadow-lg">
-                Budget Tracker
-                <span class="block text-sm text-purple-200 mt-1">Manage your finances with ease.</span>
+               class="project-link flex flex-col items-center justify-center text-center p-6 bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+                <h3 class="font-semibold text-lg">Budget Tracker</h3>
+                <span class="block text-sm text-purple-200 mt-1 font-normal">Manage your finances with ease.</span>
             </a>
         </section>
 
