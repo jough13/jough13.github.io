@@ -35,6 +35,64 @@
         
         // --- Child Components ---
 
+        // Debt Tracker Component
+        const DebtTracker = ({ debts, onAdd, onDelete, onMakePayment }) => {
+            const [newDebt, setNewDebt] = useState({ description: '', totalAmount: '', apr: '', minPayment: '' });
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setNewDebt(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleAddDebt = (e) => {
+                e.preventDefault();
+                if (!newDebt.description || !newDebt.totalAmount) return;
+                onAdd({
+                    ...newDebt,
+                    totalAmount: parseFloat(newDebt.totalAmount),
+                    apr: parseFloat(newDebt.apr || 0),
+                    minPayment: parseFloat(newDebt.minPayment || 0),
+                    amountPaid: 0
+                });
+                setNewDebt({ description: '', totalAmount: '', apr: '', minPayment: '' });
+            };
+            
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md mt-8">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Debt Paydown Tracker</h2>
+                    <form onSubmit={handleAddDebt} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-6">
+                        <div className="flex flex-col md:col-span-2"><label className="text-sm font-medium mb-1">Debt Description</label><input type="text" name="description" value={newDebt.description} onChange={handleInputChange} placeholder="e.g., Credit Card" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">Total Owed</label><input type="number" name="totalAmount" value={newDebt.totalAmount} onChange={handleInputChange} placeholder="5000" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <div className="flex flex-col"><label className="text-sm font-medium mb-1">APR (%)</label><input type="number" name="apr" value={newDebt.apr} onChange={handleInputChange} placeholder="19.9" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                        <button type="submit" className="bg-red-600 text-white font-semibold p-2 rounded-md hover:bg-red-700 h-10">Add Debt</button>
+                    </form>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {debts.map(debt => {
+                            const amountRemaining = debt.totalAmount - (debt.amountPaid || 0);
+                            const progress = debt.totalAmount > 0 ? ((debt.amountPaid || 0) / debt.totalAmount) * 100 : 0;
+                            return (
+                                <div key={debt.id} className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg shadow">
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{debt.description}</h3>
+                                        <button onClick={() => onDelete(debt.id)} className="text-gray-400 hover:text-red-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
+                                        </button>
+                                    </div>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Amount Owed: <span className="font-semibold">${amountRemaining.toFixed(2)}</span></p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">APR: {debt.apr}%</p>
+                                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5 mt-2">
+                                        <div className="bg-red-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                                    </div>
+                                    <p className="text-right text-sm font-semibold mt-1 text-red-600 dark:text-red-400">{progress.toFixed(0)}% Paid Off</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {debts.length === 0 && <div className="text-center p-8 text-gray-500 dark:text-gray-400">No debts tracked. Add one to get started!</div>}
+                </div>
+            );
+        };
+
         // Savings Goals Component
         const SavingsGoals = ({ goals, onAdd, onDelete, savingsBalance }) => {
             const [newGoal, setNewGoal] = useState({ description: '', targetAmount: '', targetDate: '' });
@@ -242,8 +300,9 @@
             const [rows, setRows] = useState([]);
             const [futureTransactions, setFutureTransactions] = useState([]);
             const [savingsGoals, setSavingsGoals] = useState([]);
+            const [debts, setDebts] = useState([]);
             const [accounts, setAccounts] = useState({ checking: 0, savings: 0 });
-            const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking' });
+            const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking', debtId: 'none' });
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalTransaction, setModalTransaction] = useState(null);
             const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
@@ -252,27 +311,31 @@
             // Load initial data from localStorage
             useEffect(() => {
                 try {
-                    const savedAccounts = JSON.parse(localStorage.getItem('budgetAccounts_v1'));
+                    const savedAccounts = JSON.parse(localStorage.getItem('budgetAccounts_v2'));
                     if (savedAccounts) setAccounts(savedAccounts);
 
-                    const savedRows = JSON.parse(localStorage.getItem('budgetRows_v1'));
+                    const savedRows = JSON.parse(localStorage.getItem('budgetRows_v2'));
                     if (savedRows) setRows(savedRows);
 
-                    const savedFuture = JSON.parse(localStorage.getItem('budgetFutureTransactions_v1'));
+                    const savedFuture = JSON.parse(localStorage.getItem('budgetFutureTransactions_v2'));
                     if (savedFuture) setFutureTransactions(savedFuture);
 
-                    const savedGoals = JSON.parse(localStorage.getItem('budgetSavingsGoals_v1'));
+                    const savedGoals = JSON.parse(localStorage.getItem('budgetSavingsGoals_v2'));
                     if (savedGoals) setSavingsGoals(savedGoals);
+
+                    const savedDebts = JSON.parse(localStorage.getItem('budgetDebts_v2'));
+                    if (savedDebts) setDebts(savedDebts);
                 } catch (error) {
                     console.error("Could not load data from localStorage", error);
                 }
             }, []);
 
             // Save data to localStorage whenever it changes
-            useEffect(() => { localStorage.setItem('budgetAccounts_v1', JSON.stringify(accounts)); }, [accounts]);
-            useEffect(() => { localStorage.setItem('budgetRows_v1', JSON.stringify(rows)); }, [rows]);
-            useEffect(() => { localStorage.setItem('budgetFutureTransactions_v1', JSON.stringify(futureTransactions)); }, [futureTransactions]);
-            useEffect(() => { localStorage.setItem('budgetSavingsGoals_v1', JSON.stringify(savingsGoals)); }, [savingsGoals]);
+            useEffect(() => { localStorage.setItem('budgetAccounts_v2', JSON.stringify(accounts)); }, [accounts]);
+            useEffect(() => { localStorage.setItem('budgetRows_v2', JSON.stringify(rows)); }, [rows]);
+            useEffect(() => { localStorage.setItem('budgetFutureTransactions_v2', JSON.stringify(futureTransactions)); }, [futureTransactions]);
+            useEffect(() => { localStorage.setItem('budgetSavingsGoals_v2', JSON.stringify(savingsGoals)); }, [savingsGoals]);
+            useEffect(() => { localStorage.setItem('budgetDebts_v2', JSON.stringify(debts)); }, [debts]);
             
             const transactionTotals = useMemo(() => rows.reduce((acc, row) => {
                 const amount = parseFloat(row.amount) || 0;
@@ -286,6 +349,8 @@
             const handleUpdateAccount = (type, value) => { setAccounts(prev => ({...prev, [type]: value})); };
             const handleAddGoal = (data) => { setSavingsGoals(prev => [...prev, { ...data, id: Date.now() }]); };
             const handleDeleteGoal = (id) => { setSavingsGoals(prev => prev.filter(goal => goal.id !== id)); };
+            const handleAddDebt = (data) => { setDebts(prev => [...prev, { ...data, id: Date.now() }]); };
+            const handleDeleteDebt = (id) => { setDebts(prev => prev.filter(debt => debt.id !== id)); };
             
             const handleAddRow = (e) => {
                 e.preventDefault();
@@ -294,20 +359,22 @@
                     const accountToUpdate = newRow.account;
                     const transactionType = newRow.type;
 
-                    // Update the corresponding account balance
                     setAccounts(prevAccounts => {
                         const currentBalance = prevAccounts[accountToUpdate] || 0;
-                        const newBalance = transactionType === 'expense'
-                            ? currentBalance - amount
-                            : currentBalance + amount;
+                        const newBalance = transactionType === 'expense' ? currentBalance - amount : currentBalance + amount;
                         return { ...prevAccounts, [accountToUpdate]: newBalance };
                     });
 
-                    // Add to transaction history
+                    if (transactionType === 'expense' && newRow.debtId !== 'none') {
+                        setDebts(prevDebts => prevDebts.map(debt => 
+                            debt.id === parseInt(newRow.debtId)
+                                ? { ...debt, amountPaid: (debt.amountPaid || 0) + amount }
+                                : debt
+                        ));
+                    }
+
                     setRows(prev => [{ ...newRow, id: Date.now(), amount: amount }, ...prev].sort((a,b) => new Date(b.date) - new Date(a.date)));
-                    
-                    // Reset form
-                    setNewRow({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking' });
+                    setNewRow({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '', account: 'checking', debtId: 'none' });
                 }
             };
 
@@ -319,16 +386,20 @@
                 const accountToUpdate = rowToDelete.account || 'checking';
                 const transactionType = rowToDelete.type;
 
-                // Reverse the transaction on the account balance
                 setAccounts(prevAccounts => {
                     const currentBalance = prevAccounts[accountToUpdate] || 0;
-                    const newBalance = transactionType === 'expense'
-                        ? currentBalance + amount
-                        : currentBalance - amount;
+                    const newBalance = transactionType === 'expense' ? currentBalance + amount : currentBalance - amount;
                     return { ...prevAccounts, [accountToUpdate]: newBalance };
                 });
                 
-                // Remove the row from the transaction history
+                if (transactionType === 'expense' && rowToDelete.debtId && rowToDelete.debtId !== 'none') {
+                    setDebts(prevDebts => prevDebts.map(debt => 
+                        debt.id === parseInt(rowToDelete.debtId)
+                            ? { ...debt, amountPaid: (debt.amountPaid || 0) - amount }
+                            : debt
+                    ));
+                }
+                
                 setRows(prev => prev.filter(row => row.id !== id));
             };
 
@@ -336,16 +407,16 @@
             const handleAddFuture = (date) => handleOpenModal({ date, description: '', type: 'expense', amount: '' });
             const handleEditFuture = (t) => handleOpenModal(t);
             const handleSaveFuture = (data) => {
-                if (data.id) { // Editing existing
+                if (data.id) {
                     setFutureTransactions(prev => prev.map(t => t.id === data.id ? data : t));
-                } else { // Adding new
+                } else {
                     setFutureTransactions(prev => [...prev, { ...data, id: Date.now() }]);
                 }
             };
             const handleDeleteFuture = (id) => { setFutureTransactions(prev => prev.filter(t => t.id !== id)); };
 
             const handleExport = () => {
-                const allData = { accounts, rows, futureTransactions, savingsGoals };
+                const allData = { accounts, rows, futureTransactions, savingsGoals, debts };
                 const dataStr = JSON.stringify(allData, null, 2);
                 const blob = new Blob([dataStr], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
@@ -362,12 +433,11 @@
             const handleImport = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
                         const importedData = JSON.parse(event.target.result);
-                        if (importedData.accounts && importedData.rows && importedData.futureTransactions && importedData.savingsGoals) {
+                        if (importedData.accounts && importedData.rows && importedData.futureTransactions && importedData.savingsGoals && importedData.debts) {
                             setDataToImport(importedData);
                             setIsImportConfirmOpen(true);
                         } else {
@@ -376,7 +446,7 @@
                     } catch (error) {
                         alert("Failed to read file. It may be corrupted.");
                     }
-                    e.target.value = null; // Reset file input
+                    e.target.value = null;
                 };
                 reader.readAsText(file);
             };
@@ -387,6 +457,7 @@
                     setRows(dataToImport.rows);
                     setFutureTransactions(dataToImport.futureTransactions);
                     setSavingsGoals(dataToImport.savingsGoals);
+                    setDebts(dataToImport.debts);
                 }
                 setIsImportConfirmOpen(false);
                 setDataToImport(null);
@@ -446,6 +517,13 @@
                                 </select>
                             </div>
                             <div className="flex flex-col"><label className="text-sm">Amount</label><input type="number" name="amount" value={newRow.amount} onChange={handleNewRowChange} placeholder="0.00" step="0.01" className="p-2 rounded-md bg-gray-100 dark:bg-gray-700"/></div>
+                            <div className="flex flex-col">
+                                <label className="text-sm">Debt Payment?</label>
+                                <select name="debtId" value={newRow.debtId} onChange={handleNewRowChange} className="p-2 rounded-md bg-gray-100 dark:bg-gray-700 h-[42px]" disabled={newRow.type === 'income'}>
+                                    <option value="none">N/A</option>
+                                    {debts.map(d => <option key={d.id} value={d.id}>{d.description}</option>)}
+                                </select>
+                            </div>
                             <button type="submit" className="bg-blue-600 text-white font-semibold p-2 rounded-md hover:bg-blue-700 h-10">Add</button>
                         </form>
                     </div>
@@ -471,6 +549,7 @@
                     </div>
                     <CashFlowCalendar currentBalance={totalBalance} futureTransactions={futureTransactions} onAdd={handleAddFuture} onEdit={handleEditFuture} />
                     <SavingsGoals goals={savingsGoals} onAdd={handleAddGoal} onDelete={handleDeleteGoal} savingsBalance={accounts.savings || 0} />
+                    <DebtTracker debts={debts} onAdd={handleAddDebt} onDelete={handleDeleteDebt} />
                     <FutureTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} transaction={modalTransaction} onSave={handleSaveFuture} onDelete={handleDeleteFuture} />
                     <ImportConfirmModal isOpen={isImportConfirmOpen} onConfirm={confirmImport} onCancel={cancelImport} />
                 </div>
