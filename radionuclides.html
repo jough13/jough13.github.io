@@ -9,7 +9,7 @@
     <!-- Tailwind CSS Dark Mode Configuration -->
     <script>
         tailwind.config = {
-          darkMode: 'class',
+            darkMode: 'class',
         }
     </script>
     <!-- React and ReactDOM CDNs -->
@@ -26,6 +26,7 @@
         /* Custom scrollbar for a cleaner look */
         ::-webkit-scrollbar {
             width: 8px;
+            height: 8px;
         }
         ::-webkit-scrollbar-track {
             background: #f1f5f9; /* slate-100 */
@@ -55,7 +56,7 @@
 
     <script type="text/babel">
         // --- Static Data Definitions ---
-        const VERSION = '2.2.9';
+        const VERSION = '2.3.0'; // Updated version
         const LAST_UPDATED = 'June 25, 2024';
         
         const sources = {
@@ -2080,8 +2081,20 @@
             return value;
         };
 
+        const parseSpecificActivity = (saStr) => {
+            if (!saStr) return 0;
+            const parts = saStr.toLowerCase().split(' ');
+            if (parts.length < 3 || parts[1] !== 'x' || !parts[2].includes('10^')) {
+                return parseFloat(saStr.replace(/,/g, ''));
+            }
+            const value = parseFloat(parts[0]);
+            const exponent = parseInt(parts[2].split('^')[1]);
+            if (isNaN(value) || isNaN(exponent)) return 0;
+            return value * Math.pow(10, exponent);
+        };
 
-        // --- Reusable UI & Logic Components (Extracted for performance) ---
+
+        // --- Reusable UI & Logic Components ---
 
         const Icon = ({ path, className = "w-5 h-5" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -2104,7 +2117,8 @@
             moon: "M10 2c-1.1 0-2.11.24-3.05.67A7.99 7.99 0 0010 20c4.41 0 8-3.59 8-8 0-4.04-2.98-7.39-6.95-7.95A7.98 7.98 0 0010 2z",
             compare: "M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-12H22v2h-7.01v3L11 3l3.99 4V4z",
             activity: "M12 6.5c2.49 0 4.5 2.01 4.5 4.5s-2.01 4.5-4.5 4.5S7.5 13.49 7.5 11 9.51 6.5 12 6.5M12 5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0-2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8z",
-            doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+            doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z",
+            mass: "M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z"
         };
         
         const Header = ({ onHelpClick, theme, toggleTheme }) => (
@@ -2159,18 +2173,45 @@
                 { id: 'home', label: 'Home', icon: ICONS.home },
                 { id: 'database', label: 'Database', icon: ICONS.database },
                 { id: 'compare', label: 'Compare', icon: ICONS.compare },
-                { id: 'calculator', label: 'Calculator', icon: ICONS.calculator },
+                { id: 'calculator', label: 'Decay', icon: ICONS.calculator },
+                { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass },
                 { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate },
                 { id: 'converter', label: 'Converter', icon: ICONS.converter }
             ];
+
+            const NavButton = ({ item }) => (
+                <button
+                    onClick={() => onNavClick(item.id)}
+                    className={`flex-shrink-0 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
+                        activeView === item.id 
+                        ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow' 
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                >
+                    <Icon path={item.icon} className="w-4 h-4" />
+                    <span className="truncate">{item.label}</span>
+                </button>
+            );
+
             return (
-                <nav className="flex justify-center items-center p-2 bg-slate-200/80 dark:bg-slate-800/80 rounded-lg gap-2 m-4">
-                    {navItems.map(item => (
-                        <button key={item.id} onClick={() => onNavClick(item.id)} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${ activeView === item.id ? 'bg-white dark:bg-slate-900/80 text-sky-600 dark:text-sky-400 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50' }`}>
-                            <Icon path={item.icon} />{item.label}
-                        </button>
-                    ))}
-                </nav>
+                <div className="px-4 pb-2">
+                    {/* Mobile: Horizontally Scrolling Row */}
+                    <div className="md:hidden">
+                        <div className="flex overflow-x-auto pb-2 -mx-4 px-4 gap-2">
+                            {navItems.map(item => <NavButton key={item.id} item={item} />)}
+                        </div>
+                    </div>
+
+                    {/* Desktop: Two-Row Grid */}
+                    <div className="hidden md:flex flex-col items-center gap-2">
+                        <div className="grid grid-cols-4 gap-2 w-full">
+                            {navItems.slice(0, 4).map(item => <NavButton key={item.id} item={item} />)}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 w-3/4">
+                             {navItems.slice(4).map(item => <NavButton key={item.id} item={item} />)}
+                        </div>
+                    </div>
+                </div>
             );
         };
         
@@ -2180,28 +2221,28 @@
                 {result ? ( <NuclideCard nuclide={result} /> ) : (
                     <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
                        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome to the Radionuclide Database</h3>
-                       <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide, browse the database, or use the calculators.</p>
-                       <div className="mt-6">
-                           <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
-                           <div className="flex flex-wrap justify-center gap-2 mt-2">
-                               {randomSuggestions.map(n => (
-                                   <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">{n.name}</button>
-                               ))}
-                           </div>
-                       </div>
-                       {searchHistory.length > 0 && (
-                           <div className="mt-6">
-                               <div className="flex justify-center items-center gap-4 mb-2">
-                                   <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
-                                   <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">Clear History</button>
-                               </div>
-                               <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                   {searchHistory.map(n => (
-                                       <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">{n.name}</button>
-                                   ))}
-                               </div>
-                           </div>
-                       )}
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide, browse the database, or use the calculators.</p>
+                        <div className="mt-6">
+                            <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
+                            <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                {randomSuggestions.map(n => (
+                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">{n.name}</button>
+                                ))}
+                            </div>
+                        </div>
+                        {searchHistory.length > 0 && (
+                            <div className="mt-6">
+                                <div className="flex justify-center items-center gap-4 mb-2">
+                                    <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
+                                    <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">Clear History</button>
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                    {searchHistory.map(n => (
+                                        <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">{n.name}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -2255,15 +2296,15 @@
                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Emission Energies</h3>
                          <div className="grid md:grid-cols-3 gap-4">
-                            <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV" iconSymbol="α"/>
-                            <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV" iconSymbol="β"/>
-                            <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV" iconSymbol="γ"/>
+                             <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV" iconSymbol="α"/>
+                             <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV" iconSymbol="β"/>
+                             <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV" iconSymbol="γ"/>
                          </div>
                     </div>
                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3>
                          <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
-                            {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
+                             {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
                          </ul>
                     </div>
                     {nuclide.decaySeriesId && (
@@ -2323,13 +2364,13 @@
                                                 <div className="flex flex-col items-center w-1/2">
                                                     <DecayArrow decayType={decayTypes[0]}/>
                                                     <div className="mt-2">
-                                                       <NuclideNode step={{ nuclide: daughters[0].trim(), halfLife: '...' }} />
+                                                        <NuclideNode step={{ nuclide: daughters[0].trim(), halfLife: '...' }} />
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col items-center w-1/2">
                                                    <DecayArrow decayType={decayTypes[1]}/>
                                                     <div className="mt-2">
-                                                       <NuclideNode step={{ nuclide: daughters[1].trim(), halfLife: '...' }} />
+                                                        <NuclideNode step={{ nuclide: daughters[1].trim(), halfLife: '...' }} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -2384,12 +2425,12 @@
                             <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emission Type</label><select value={selectedEmissionType} onChange={e => setSelectedEmissionType(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allEmissionTypes.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Commonality</label><select value={selectedCommonality} onChange={e => setSelectedCommonality(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCommonalityCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                               <div>
-                                  <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
-                                  <div className="space-y-2 mt-2">
-                                      <label className="text-sm">Alpha</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minAlphaEnergy} onChange={e => setMinAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxAlphaEnergy} onChange={e => setMaxAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                      <label className="text-sm">Beta</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minBetaEnergy} onChange={e => setMinBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxBetaEnergy} onChange={e => setMaxBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                      <label className="text-sm">Gamma</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minGammaEnergy} onChange={e => setMinGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxGammaEnergy} onChange={e => setMaxGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                  </div>
+                                   <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
+                                   <div className="space-y-2 mt-2">
+                                       <label className="text-sm">Alpha</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minAlphaEnergy} onChange={e => setMinAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxAlphaEnergy} onChange={e => setMaxAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                                       <label className="text-sm">Beta</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minBetaEnergy} onChange={e => setMinBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxBetaEnergy} onChange={e => setMaxBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                                       <label className="text-sm">Gamma</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minGammaEnergy} onChange={e => setMinGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxGammaEnergy} onChange={e => setMaxGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                                   </div>
                               </div>
                         </div>
                     </aside>
@@ -2543,6 +2584,99 @@
                             <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                             {remainingAmount !== null && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">Remaining Amount: {remainingAmount}</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const MassActivityCalculator = ({ radionuclides }) => {
+            const [selectedNuclide, setSelectedNuclide] = React.useState(null);
+            const [mass, setMass] = React.useState('');
+            const [massUnit, setMassUnit] = React.useState('g');
+            const [activity, setActivity] = React.useState('');
+            const [activityUnit, setActivityUnit] = React.useState('Ci');
+            const [result, setResult] = React.useState(null);
+            const [error, setError] = React.useState('');
+
+            const massUnits = { 'g': 1, 'mg': 1e-3, 'µg': 1e-6 };
+            const activityUnits = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
+            
+            const nuclidesWithSA = React.useMemo(() => 
+                radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable')
+                    .sort((a,b) => a.name.localeCompare(b.name)),
+            [radionuclides]);
+            
+            const handleCalculation = (direction) => {
+                if (!selectedNuclide) {
+                    setError('Please select a radionuclide.');
+                    setResult(null); return;
+                }
+                const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
+                if (saBqPerG === 0) {
+                     setError('Specific activity data is missing or invalid for this nuclide.');
+                    setResult(null); return;
+                }
+
+                if (direction === 'toActivity') {
+                    const massValue = parseFloat(mass);
+                    if(isNaN(massValue) || massValue < 0) { setError('Invalid mass value.'); setResult(null); return; }
+                    const massInG = massValue * massUnits[massUnit];
+                    const activityInBq = massInG * saBqPerG;
+                    const finalActivity = activityInBq / activityUnits[activityUnit];
+                    setActivity(finalActivity.toPrecision(4));
+                } else { // toMass
+                    const activityValue = parseFloat(activity);
+                    if(isNaN(activityValue) || activityValue < 0) { setError('Invalid activity value.'); setResult(null); return; }
+                    const activityInBq = activityValue * activityUnits[activityUnit];
+                    const massInG = activityInBq / saBqPerG;
+                    const finalMass = massInG / massUnits[massUnit];
+                    setMass(finalMass.toPrecision(4));
+                }
+                setError('');
+            };
+
+            return (
+                 <div className="p-4 animate-fade-in">
+                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Mass ↔ Activity Calculator</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                                <select onChange={(e) => setSelectedNuclide(nuclidesWithSA.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                    <option>Select a nuclide...</option>
+                                    {nuclidesWithSA.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)}
+                                </select>
+                            </div>
+                            
+                            {/* Mass Section */}
+                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                <label className="text-md font-semibold">Mass</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                    <input type="number" placeholder="Enter Mass" value={mass} onChange={e => setMass(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                                    <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                        {Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                                <div className="text-center mt-4">
+                                    <button onClick={() => handleCalculation('toActivity')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↓ Calculate Activity ↓</button>
+                                </div>
+                            </div>
+                            
+                            {/* Activity Section */}
+                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                <label className="text-md font-semibold">Activity</label>
+                                <div className="text-center mt-4">
+                                     <button onClick={() => handleCalculation('toMass')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↑ Calculate Mass ↑</button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                    <input type="number" placeholder="Enter Activity" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                                    <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                        {Object.keys(activityUnits).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                             {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
                         </div>
                     </div>
                 </div>
@@ -2844,13 +2978,15 @@
                                      filterProps={filterProps}
                                      isFiltersVisible={isFiltersVisible}
                                      setIsFiltersVisible={setIsFiltersVisible}
-                                 />;
+                                />;
                     case 'calculator':
                         return <HalfLifeCalculator radionuclides={radionuclides} />;
                     case 'compare':
                         return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;
                     case 'doseRate':
                         return <DoseRateCalculator radionuclides={radionuclides} />;
+                    case 'massActivity':
+                        return <MassActivityCalculator radionuclides={radionuclides} />;
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
                     case 'home': 
@@ -2864,13 +3000,13 @@
                             /></div>
                         }
                         return <HomePage 
-                                     errorMessage={errorMessage}
-                                     result={result}
-                                     randomSuggestions={randomSuggestions}
-                                     searchHistory={searchHistory}
-                                     handleNuclideSelection={handleNuclideSelection}
-                                     handleClearHistory={handleClearHistory}
-                                 />;
+                                 errorMessage={errorMessage}
+                                 result={result}
+                                 randomSuggestions={randomSuggestions}
+                                 searchHistory={searchHistory}
+                                 handleNuclideSelection={handleNuclideSelection}
+                                 handleClearHistory={handleClearHistory}
+                               />;
                 }
             }
 
@@ -3053,7 +3189,7 @@
                                <div><label className="text-sm font-medium">Distance</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                                <div><label className="text-sm font-medium">Unit</label><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="meters">Meters</option><option value="feet">Feet</option></select></div>
                             </div>
-                           
+                            
                             <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                             {doseRate !== null && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">Dose Rate: {doseRate} R/hr</p>}
