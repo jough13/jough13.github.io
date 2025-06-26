@@ -214,6 +214,29 @@
             );
         };
 
+        // Import Confirmation Modal
+        const ImportConfirmModal = ({ isOpen, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Confirm Import</h2>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            Importing a new file will overwrite all of your current data. This action cannot be undone. Are you sure you want to continue?
+                        </p>
+                        <div className="flex justify-end space-x-4">
+                            <button onClick={onCancel} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 font-semibold rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">
+                                Cancel
+                            </button>
+                            <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700">
+                                Yes, Overwrite Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // Main App Component
         function App() {
             const [rows, setRows] = useState([]);
@@ -223,6 +246,8 @@
             const [newRow, setNewRow] = useState({ date: new Date().toISOString().slice(0, 10), description: '', category: '', type: 'expense', amount: '' });
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [modalTransaction, setModalTransaction] = useState(null);
+            const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+            const [dataToImport, setDataToImport] = useState(null);
 
             // Load initial data from localStorage
             useEffect(() => {
@@ -281,11 +306,76 @@
             };
             const handleDeleteFuture = (id) => { setFutureTransactions(prev => prev.filter(t => t.id !== id)); };
 
+            const handleExport = () => {
+                const allData = { accounts, rows, futureTransactions, savingsGoals };
+                const dataStr = JSON.stringify(allData, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const date = new Date().toISOString().slice(0, 10);
+                link.download = `budget-backup-${date}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        if (importedData.accounts && importedData.rows && importedData.futureTransactions && importedData.savingsGoals) {
+                            setDataToImport(importedData);
+                            setIsImportConfirmOpen(true);
+                        } else {
+                            alert("Invalid data file format.");
+                        }
+                    } catch (error) {
+                        alert("Failed to read file. It may be corrupted.");
+                    }
+                    e.target.value = null; // Reset file input
+                };
+                reader.readAsText(file);
+            };
+
+            const confirmImport = () => {
+                if (dataToImport) {
+                    setAccounts(dataToImport.accounts);
+                    setRows(dataToImport.rows);
+                    setFutureTransactions(dataToImport.futureTransactions);
+                    setSavingsGoals(dataToImport.savingsGoals);
+                }
+                setIsImportConfirmOpen(false);
+                setDataToImport(null);
+            };
+
+            const cancelImport = () => {
+                setIsImportConfirmOpen(false);
+                setDataToImport(null);
+            };
+
+
             return (
                 <div className="max-w-7xl mx-auto text-gray-800 dark:text-gray-200 p-4 sm:p-6 lg:p-8">
-                    <header className="mb-8">
-                        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Budget Tracker</h1>
-                        <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Your complete financial overview. All data is saved in your browser.</p>
+                    <header className="mb-8 flex flex-col sm:flex-row justify-between sm:items-center">
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Budget Tracker</h1>
+                            <p className="text-lg text-gray-600 dark:text-gray-400 mt-1">Your complete financial overview. All data is saved in your browser.</p>
+                        </div>
+                        <div className="flex space-x-2 mt-4 sm:mt-0">
+                            <button onClick={handleExport} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">
+                                Export Data
+                            </button>
+                            <label htmlFor="import-file" className="cursor-pointer bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700 transition-colors">
+                                Import Data
+                            </label>
+                            <input id="import-file" type="file" className="hidden" onChange={handleImport} accept=".json"/>
+                        </div>
                     </header>
                     <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Account Balances</h2>
                     <AccountManager accounts={accounts} onUpdate={handleUpdateAccount} />
@@ -325,6 +415,7 @@
                     <CashFlowCalendar currentBalance={totalBalance} futureTransactions={futureTransactions} onAdd={handleAddFuture} onEdit={handleEditFuture} />
                     <SavingsGoals goals={savingsGoals} onAdd={handleAddGoal} onDelete={handleDeleteGoal} savingsBalance={accounts.savings || 0} />
                     <FutureTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} transaction={modalTransaction} onSave={handleSaveFuture} onDelete={handleDeleteFuture} />
+                    <ImportConfirmModal isOpen={isImportConfirmOpen} onConfirm={confirmImport} onCancel={cancelImport} />
                 </div>
             );
         }
