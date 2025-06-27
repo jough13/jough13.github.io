@@ -6,7 +6,7 @@
     <title>Echoes of Eldoria</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=MedievalSharp&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -61,6 +61,11 @@
             --pattern-container: url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'); /* Subtle paper/stone */
             --pattern-panel: url('https://www.transparenttextures.com/patterns/dark-denim.png'); /* Subtle fabric */
             --pattern-area: url('https://www.transparenttextures.com/patterns/diagmonds.png'); /* Very subtle geometric */
+
+            /* Card Textures */
+            --card-texture-base: url('https://www.transparenttextures.com/patterns/dust-3d.png'); /* Fine dust texture */
+            --card-texture-spell: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Subtle magical cubes */
+            --card-texture-location: url('https://www.transparenttextures.com/patterns/rough-paper.png'); /* Rough paper texture */
         }
 
         /* Light Mode Overrides */
@@ -115,6 +120,11 @@
             --pattern-container: url('https://www.transparenttextures.com/patterns/light-honeycomb.png'); /* Lighter subtle pattern */
             --pattern-panel: url('https://www.transparenttextures.com/patterns/gray-jean.png'); /* Lighter subtle fabric */
             --pattern-area: url('https://www.transparenttextures.com/patterns/white-diamond.png'); /* Lighter geometric */
+
+            /* Card Textures for Light Mode */
+            --card-texture-base: url('https://www.transparenttextures.com/patterns/paper-fibers.png'); /* Lighter paper fibers */
+            --card-texture-spell: url('https://www.transparenttextures.com/patterns/lined-paper.png'); /* Lighter lined paper */
+            --card-texture-location: url('https://www.transparenttextures.com/patterns/white-brick-wall.png'); /* White brick */
         }
 
 
@@ -245,6 +255,8 @@
             height: 180px;
             background: linear-gradient(to bottom, var(--bg-location-card-gradient-start), var(--bg-location-card-gradient-end));
             border-color: var(--border-location-card);
+            background-image: var(--card-texture-location), linear-gradient(to bottom, var(--bg-location-card-gradient-start), var(--bg-location-card-gradient-end));
+            background-repeat: repeat;
             box-shadow: 0 5px 12px rgba(0, 0, 0, 0.7);
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
         }
@@ -269,6 +281,8 @@
         /* Card Base Styles */
         .card {
             background: linear-gradient(to bottom right, var(--bg-card-gradient-start), var(--bg-card-gradient-end));
+            background-image: var(--card-texture-base), linear-gradient(to bottom right, var(--bg-card-gradient-start), var(--bg-card-gradient-end)); /* Apply texture */
+            background-repeat: repeat;
             border: 4px solid var(--border-card);
             border-radius: 1.25rem;
             width: 140px;
@@ -311,7 +325,7 @@
         }
 
         .card-name {
-            font-family: 'MedievalSharp', cursive;
+            font-family: 'Cinzel', serif; /* More elegant fantasy font */
             font-size: 1.2rem;
             text-align: center;
             margin-top: 2.2rem;
@@ -368,6 +382,8 @@
         /* Specific styles for Spell Cards */
         .card.spell-card {
             background: linear-gradient(to bottom right, var(--bg-spell-card-gradient-start), var(--bg-spell-card-gradient-end));
+            background-image: var(--card-texture-spell), linear-gradient(to bottom right, var(--bg-spell-card-gradient-start), var(--bg-spell-card-gradient-end)); /* Apply texture */
+            background-repeat: repeat;
             border-color: var(--border-spell-card);
         }
         .card.spell-card .card-name {
@@ -518,6 +534,196 @@
         /* Card Tooltip Styles */
         #card-tooltip {
             position: fixed;
+            top: 0; /* Ensure initial position is not off-screen */
+            left: 0; /* Ensure initial position is not off-screen */
+            background-color: var(--bg-tooltip);
+            border: 2px solid var(--border-tooltip);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            max-width: 200px;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            color: var(--color-tooltip-text);
+            z-index: 7000;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: auto;
+        }
+
+        #card-tooltip h3 {
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.2rem;
+            color: var(--color-tooltip-name);
+            margin-bottom: 0.5rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        #card-tooltip p {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Mulligan Specific Styles */
+        .mulligan-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.98);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 6000;
+        }
+
+        .mulligan-content {
+            background-color: var(--bg-stats);
+            border: 6px solid var(--color-header-footer);
+            border-radius: 1.75rem;
+            padding: 3rem;
+            text-align: center;
+            font-family: 'MedievalSharp', cursive;
+            color: var(--color-stats);
+            box-shadow: 0 0 50px rgba(212, 175, 55, 1);
+            max-width: 95%;
+            max-height: 95%;
+            overflow-y: auto;
+            display: flex; /* Ensure flex for centering content */
+            flex-direction: column; /* Stack content vertically */
+            justify-content: center; /* Center content vertically */
+            align-items: center; /* Center content horizontally */
+        }
+
+        .mulligan-content h2 {
+            font-size: 3.2rem;
+            color: var(--color-header-footer);
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9);
+        }
+
+        .mulligan-content p {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            color: var(--color-stats);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .mulligan-hand-display {
+            display: flex !important; /* Force flex display */
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center; /* Center items vertically within the row */
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+            min-height: 220px;
+        }
+
+        .mulligan-hand-display .card {
+            width: 120px;
+            height: 180px;
+            cursor: default;
+            transform: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
+            border: 3px solid var(--border-main);
+        }
+        .mulligan-hand-display .card:hover {
+            transform: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
+        }
+
+
+        .mulligan-buttons {
+            display: flex; /* Ensure buttons are in a row */
+            justify-content: center; /* Center buttons horizontally */
+            gap: 2.5rem;
+        }
+
+        .mulligan-buttons button {
+            padding: 1.2rem 2.5rem;
+            background-color: var(--border-main);
+            color: var(--color-stats);
+            border: 4px solid var(--border-stats);
+            border-radius: 1rem;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+        }
+
+        .mulligan-buttons button#keep-hand-button {
+            background-color: var(--color-header-footer);
+            color: var(--color-cost-circle);
+            border-color: var(--border-cost-circle);
+        }
+
+        .mulligan-buttons button#keep-hand-button:hover {
+            background-color: var(--bg-cost-circle-start);
+        }
+
+
+        .game-button {
+            padding: 1rem 2rem;
+            background-color: var(--border-main);
+            color: var(--color-stats);
+            border: 4px solid var(--border-stats);
+            border-radius: 1rem;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-button:hover {
+            background-color: var(--border-stats);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .game-button:disabled {
+            background-color: var(--border-stats);
+            color: var(--color-text-placeholder);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Active card in hand for playing */
+        .card.playable {
+            border-color: var(--color-playable-border);
+            box-shadow: 0 8px 16px rgba(212, 175, 55, 0.7), inset 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .card.playable:hover {
+            transform: translateY(-15px) scale(1.08);
+            box-shadow: 0 20px 40px rgba(212, 175, 55, 1), inset 0 0 15px rgba(212, 175, 55, 0.6);
+        }
+
+        /* Active card on board for attacking */
+        .card.attackable {
+            border-color: var(--color-attackable-border);
+            box-shadow: 0 8px 16px rgba(255, 69, 0, 0.7), inset 0 0 10px rgba(255, 69, 0, 0.5);
+        }
+
+        .card.attackable:hover {
+            transform: scale(1.08);
+            box-shadow: 0 20px 40px rgba(255, 69, 0, 0.9), inset 0 0 15px rgba(255, 69, 0, 0.6);
+        }
+
+        .targetable {
+            box-shadow: 0 0 25px 10px var(--color-targetable-shadow);
+            cursor: pointer;
+        }
+
+        /* Card Tooltip Styles */
+        #card-tooltip {
+            position: fixed;
+            top: 0; /* Ensure initial position is not off-screen */
+            left: 0; /* Ensure initial position is not off-screen */
             background-color: var(--bg-tooltip);
             border: 2px solid var(--border-tooltip);
             border-radius: 0.75rem;
@@ -745,8 +951,8 @@
                     </div>
                 <p>Would you like to redraw your hand? (Once per game)</p>
                 <div class="mulligan-buttons">
-                    <button id="keep-hand-button">Keep Hand</button>
-                    <button id="mulligan-button">Mulligan</button>
+                    <button id="keep-hand-button" class="game-button">Keep Hand</button>
+                    <button id="mulligan-button" class="game-button">Mulligan</button>
                 </div>
             </div>
         </div>
@@ -836,7 +1042,7 @@
         // Card Data (Example Cards)
         const allCards = [
             { id: 'knight', name: 'Gallant Knight', cost: 2, attack: 2, defense: 2, image: '🛡️', type: 'creature', faction: 'Order of the Sun' },
-            { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '🏹', type: 'creature', faction: 'Wildwood Kin' },
+            { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '�', type: 'creature', faction: 'Wildwood Kin' },
             { id: 'wizard', name: 'Mystic Wizard', cost: 3, attack: 3, defense: 2, image: '🧙', type: 'creature', faction: 'Arcane Conclave' },
             { id: 'goblin', name: 'Sneaky Goblin', cost: 1, attack: 2, defense: 1, image: '👹', type: 'creature', faction: 'Shadow Pact' },
             { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature', faction: 'Shadow Pact' },
@@ -886,9 +1092,18 @@
             { id: 'apprentice_mage', name: 'Apprentice Mage', cost: 2, attack: 1, defense: 1, image: ' apprentice', type: 'creature', faction: 'Arcane Conclave', faction_bonus: { type: 'spell_damage_boost_global', value: 1, condition: 'control_other_faction_creature', faction: 'Arcane Conclave', text: '(Your spells deal +1 DMG if another Arcane creature is present)' } },
             // --- KEYWORD CREATURES ---
             { id: 'paladin_of_light', name: 'Paladin of Light', cost: 3, attack: 2, defense: 3, image: '✨', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding (Takes 1 less damage from all sources)' },
-            { id: 'dark_rider', name: 'Dark Rider', cost: 3, attack: 3, defense: 2, image: '�', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike (Deals combat damage first)' },
+            { id: 'dark_rider', name: 'Dark Rider', cost: 3, attack: 3, defense: 2, image: '🐎', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike (Deals combat damage first)' },
             { id: 'forest_spirit', name: 'Forest Spirit', cost: 2, attack: 1, defense: 1, image: '🍃', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth (+1⚔️/+1❤️ at start of your turn)' },
             { id: 'arcane_familiar', name: 'Arcane Familiar', cost: 1, attack: 0, defense: 2, image: '🦉', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave (Draw a card when you cast a spell)' },
+            // --- NEW CARDS FOR EXPANSION ---
+            { id: 'celestial_defender', name: 'Celestial Defender', cost: 4, attack: 3, defense: 5, image: '😇', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding' },
+            { id: 'shadow_stalker', name: 'Shadow Stalker', cost: 2, attack: 3, defense: 1, image: '🥷', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike' },
+            { id: 'ancient_protector', name: 'Ancient Protector', cost: 5, attack: 3, defense: 7, image: '🗿', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth' },
+            { id: 'spell_slinger', name: 'Spell Slinger', cost: 3, attack: 2, defense: 2, image: '🪄', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave' },
+            { id: 'holy_light', name: 'Holy Light', cost: 3, type: 'spell', effect: { type: 'heal', value: 6, text: 'Heal 6 health' }, image: '✨', faction: 'Order of the Sun' },
+            { id: 'dark_ritual', name: 'Dark Ritual', cost: 0, type: 'spell', effect: { type: 'mana_gain', value: 2, text: 'Gain 2 temporary mana' }, image: '🩸', faction: 'Shadow Pact' },
+            { id: 'natures_bounty', name: 'Nature\'s Bounty', cost: 2, type: 'spell', effect: { type: 'draw_card', value: 2, text: 'Draw 2 cards' }, image: '🍎', faction: 'Wildwood Kin' },
+            { id: 'chain_lightning', name: 'Chain Lightning', cost: 4, type: 'spell', effect: { type: 'aoe_damage_enemy_creatures', value: 2, text: 'Deal 2 damage to all enemy creatures' }, image: '⚡', faction: 'Arcane Conclave' },
         ];
 
         // --- Utility Functions ---
@@ -1131,6 +1346,7 @@
         function hideCardTooltip() {
             if (tooltipHideTimer) {
                 clearTimeout(tooltipHideTimer);
+                tooltipHideTimer = null;
             }
             tooltipHideTimer = setTimeout(() => {
                 cardTooltip.style.opacity = '0';
@@ -1250,20 +1466,34 @@
 
         // Prompts the player to mulligan
         function promptPlayerMulligan() {
+            console.log("Prompting player for mulligan..."); // Debugging log
             mulliganOverlay.style.display = 'flex';
             mulliganHandDisplay.innerHTML = '';
             playerHand.forEach(cardData => {
                 const cardEl = createCardElement(cardData, true, true);
                 mulliganHandDisplay.appendChild(cardEl);
             });
+            // Debugging: Log computed style of mulligan-hand-display
+            const computedStyle = window.getComputedStyle(mulliganHandDisplay);
+            console.log("Mulligan hand display computed style:", {
+                display: computedStyle.display,
+                flexDirection: computedStyle.flexDirection,
+                flexWrap: computedStyle.flexWrap,
+                justifyContent: computedStyle.justifyContent,
+                alignItems: computedStyle.alignItems,
+                gap: computedStyle.gap
+            });
+            console.log("Number of cards in mulligan display:", mulliganHandDisplay.children.length);
+
 
             keepHandButton.onclick = () => {
+                console.log("Keep Hand button clicked during mulligan."); // Debugging log
                 mulliganOverlay.style.display = 'none';
                 startPlayerTurn();
             };
             mulliganButton.onclick = () => {
+                console.log("Mulligan button clicked during mulligan."); // Debugging log
                 if (!playerHasMulliganed) {
-                    console.log("Player choosing to mulligan.");
                     playerHasMulliganed = true;
                     playerDeck = shuffle([...playerDeck, ...playerHand]);
                     playerHand = [];
@@ -1723,12 +1953,12 @@
 
                 if (targetCreatures.length > 0) {
                     const randomIndex = Math.floor(Math.random() * targetCreatures.length);
-                    const targetCreature = targetCreatures[randomIndex];
+                    const targetCreature = eligibleTargets[randomIndex];
                     targetCreature.currentAttack = parseInt(targetCreature.currentAttack) + buffValue;
                     message = `${cardData.name} buffs ${targetCreature.name} for +${buffValue} Attack!`;
                     renderCardsInArea(targetCreatures, targetAreaEl, caster === 'player');
                 } else {
-                    message = `${cardData.name} had no creatures to buff!`;
+                    message = `No other friendly creatures to buff from ${effect.text}!`;
                 }
             } else if (cardData.effect.type === 'grant_divine_shield') {
                 let targetCreatures = (caster === 'player' ? playerPlayArea : opponentPlayArea);
@@ -1863,7 +2093,7 @@
         }
 
         // Handles attacking the opponent directly
-        function attackOpponent() {
+        async function attackOpponent() { // Marked as async
             if (selectedAttacker) {
                 const attackerCardData = playerPlayArea.find(c => c.id === selectedAttacker.dataset.cardId &&
                                                                 c.currentAttack == selectedAttacker.dataset.currentAttack &&
@@ -1888,7 +2118,7 @@
         }
 
         // Handles attacking an opponent's creature
-        function attackCreature(attackerCardEl, targetCardEl) {
+        async function attackCreature(attackerCardEl, targetCardEl) { // Marked as async
             // Find the actual card data objects from the game state arrays
             const attackerCardData = playerPlayArea.find(c => c.id === attackerCardEl.dataset.cardId);
             const targetCardData = opponentPlayArea.find(c => c.id === targetCardEl.dataset.cardId);
@@ -1930,22 +2160,22 @@
 
                 if (attackerDealsDamageFirst) {
                     // Attacker deals damage first
-                    if (targetCreature.has_divine_shield) {
-                        targetCreature.has_divine_shield = false;
-                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                    if (targetCardData.has_divine_shield) {
+                        targetCardData.has_divine_shield = false;
+                        showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                     } else {
-                        if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
-                            targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
-                            showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                            targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                            showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
                         } else {
-                            targetCreature.currentDefense -= attackerAttack;
+                            targetCardData.currentDefense -= attackerAttack;
                         }
                     }
                     // Check if target is defeated before it can retaliate
-                    if (targetCreature.currentDefense > 0) {
+                    if (targetCardData.currentDefense > 0) {
                         // Target retaliates
-                        if (attackingCreature.has_divine_shield) {
-                            attackingCreature.has_divine_shield = false;
+                        if (attackerCardData.has_divine_shield) {
+                            attackerCardData.has_divine_shield = false;
                             showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
                         } else {
                             if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
@@ -1972,29 +2202,29 @@
                     // Check if attacker is defeated before it can retaliate
                     if (attackingCreature.currentDefense > 0) {
                         // Attacker retaliates
-                        if (targetCreature.has_divine_shield) {
-                            targetCreature.has_divine_shield = false;
-                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        if (targetCardData.has_divine_shield) {
+                            targetCardData.has_divine_shield = false;
+                            showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                         } else {
-                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
-                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
-                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                                targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
                             } else {
-                                targetCreature.currentDefense -= attackerAttack;
+                                targetCardData.currentDefense -= attackerAttack;
                             }
                         }
                     }
                 } else {
                     // Simultaneous combat (neither has Swiftstrike, or both do)
-                    if (targetCreature.has_divine_shield) {
-                        targetCreature.has_divine_shield = false;
-                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                    if (targetCardData.has_divine_shield) {
+                        targetCardData.has_divine_shield = false;
+                        showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                     } else {
-                        if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
-                            targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
-                            showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                            targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                            showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
                         } else {
-                            targetCreature.currentDefense -= attackerAttack;
+                            targetCardData.currentDefense -= attackerAttack;
                         }
                     }
 
@@ -2041,7 +2271,15 @@
                 renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
                 renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
                 updateUI();
-                clearAttackerSelection();
+                await new Promise(resolve => setTimeout(resolve, 700));
+            }
+
+
+            if (playerHealth <= 0) {
+                endGame('opponent');
+            } else {
+                console.log("Opponent turn complete. Transitioning to Player Turn.");
+                setTimeout(startPlayerTurn, 1000);
             }
         }
 
@@ -2575,7 +2813,7 @@
         restartButton.addEventListener('click', initializeGame);
 
         // Event listener for attacking opponent's creatures or opponent directly
-        document.addEventListener('click', (event) => {
+        document.addEventListener('click', async (event) => { // Marked as async
             if (turn === 0 || selectedAttacker === null) {
                 return;
             }
@@ -2583,14 +2821,14 @@
             const clickedCardEl = event.target.closest('#opponent-play-area .card');
             if (clickedCardEl) {
                 console.log(`Player's ${selectedAttacker.dataset.cardId} attacking opponent's ${clickedCardEl.dataset.cardId}`);
-                attackCreature(selectedAttacker, clickedCardEl);
+                await attackCreature(selectedAttacker, clickedCardEl); // Await the async call
                 return;
             }
 
             const clickedOpponentStats = event.target.closest('#opponent-stats');
             if (clickedOpponentStats) {
                 console.log(`Player's ${selectedAttacker.dataset.cardId} attacking opponent directly.`);
-                attackOpponent();
+                await attackOpponent(); // Await the async call
                 return;
             }
         });
@@ -2633,6 +2871,10 @@
                 if (!foundCardData) {
                     foundCardData = opponentPlayArea.find(c => c.id === cardId && c.currentAttack == cardEl.dataset.currentAttack && c.currentDefense == cardEl.dataset.currentDefense); // Match by current stats for played creatures
                     if (foundCardData) { foundIn = 'opponentPlayArea'; }
+                    // Also check for the original faction_bonus property on the card data
+                    if (foundCardData && cardEl.dataset.factionBonus) {
+                        foundCardData.faction_bonus = JSON.parse(cardEl.dataset.factionBonus);
+                    }
                 }
 
                 // If not found, check opponent's location
