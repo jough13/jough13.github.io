@@ -54,83 +54,14 @@
 <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
     <div id="root"></div>
 
-    <script type="text/babel">
-        // --- Static Data Definitions ---
-        const VERSION = '2.3.0'; // Updated version
-        const LAST_UPDATED = 'June 25, 2024';
-        
-        const sources = {
-            nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
-            wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
-            hps: { name: 'Health Physics Society', url: 'https://hps.org/' },
-        };
-
-        const decaySeriesData = [
-            {
-                id: 'U-238-series',
-                name: 'Uranium-238 Decay Series (Uranium Series)',
-                startNuclide: 'Uranium-238',
-                chain: [
-                    { nuclide: 'Uranium-238', decayType: 'Alpha', halfLife: '4.468 billion years', daughter: 'Thorium-234' },
-                    { nuclide: 'Thorium-234', decayType: 'Beta-minus', halfLife: '24.10 days', daughter: 'Protactinium-234m' },
-                    { nuclide: 'Protactinium-234m', decayType: 'Beta-minus', halfLife: '1.17 minutes', daughter: 'Uranium-234' },
-                    { nuclide: 'Uranium-234', decayType: 'Alpha', halfLife: '245,500 years', daughter: 'Thorium-230' },
-                    { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75,380 years', daughter: 'Radium-226' },
-                    { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' },
-                    { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' },
-                    { nuclide: 'Polonium-218', decayType: 'Alpha (99.98%) / Beta-minus (0.02%)', halfLife: '3.1 minutes', daughter: 'Lead-214 / Astatine-218' },
-                    { nuclide: 'Lead-214', decayType: 'Beta-minus', halfLife: '26.8 minutes', daughter: 'Bismuth-214' },
-                    { nuclide: 'Bismuth-214', decayType: 'Beta-minus (99.98%) / Alpha (0.02%)', halfLife: '19.9 minutes', daughter: 'Polonium-214 / Thallium-210' },
-                    { nuclide: 'Polonium-214', decayType: 'Alpha', halfLife: '164.3 microseconds', daughter: 'Lead-210' },
-                    { nuclide: 'Lead-210', decayType: 'Beta-minus', halfLife: '22.2 years', daughter: 'Bismuth-210' },
-                    { nuclide: 'Bismuth-210', decayType: 'Beta-minus (99.9998%) / Alpha (0.0002%)', halfLife: '5.012 days', daughter: 'Polonium-210 / Thallium-206' },
-                    { nuclide: 'Polonium-210', decayType: 'Alpha', halfLife: '138.376 days', daughter: 'Lead-206' },
-                    { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
-                ]
-            },
-            {
-                id: 'Th-232-series',
-                name: 'Thorium-232 Decay Series (Thorium Series)',
-                startNuclide: 'Thorium-232',
-                chain: [
-                    { nuclide: 'Thorium-232', decayType: 'Alpha', halfLife: '14.05 billion years', daughter: 'Radium-228' },
-                    { nuclide: 'Radium-228', decayType: 'Beta-minus', halfLife: '5.75 years', daughter: 'Actinium-228' },
-                    { nuclide: 'Actinium-228', decayType: 'Beta-minus', halfLife: '6.15 hours', daughter: 'Thorium-228' },
-                    { nuclide: 'Thorium-228', decayType: 'Alpha', halfLife: '1.913 years', daughter: 'Radium-224' },
-                    { nuclide: 'Radium-224', decayType: 'Alpha', halfLife: '3.63 days', daughter: 'Radon-220' },
-                    { nuclide: 'Radon-220', decayType: 'Alpha', halfLife: '55.6 seconds', daughter: 'Polonium-216' },
-                    { nuclide: 'Polonium-216', decayType: 'Alpha', halfLife: '0.145 seconds', daughter: 'Lead-212' },
-                    { nuclide: 'Lead-212', decayType: 'Beta-minus', halfLife: '10.64 hours', daughter: 'Bismuth-212' },
-                    { nuclide: 'Bismuth-212', decayType: 'Beta-minus (64%) / Alpha (36%)', halfLife: '60.55 minutes', daughter: 'Polonium-212 / Thallium-208' },
-                    { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' },
-                    { nuclide: 'Thallium-208', decayType: 'Beta-minus', halfLife: '3.053 minutes', daughter: 'Lead-208' },
-                    { nuclide: 'Lead-208', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
-                ]
-            },
-            {
-                id: 'U-235-series',
-                name: 'Uranium-235 Decay Series (Actinium Series)',
-                startNuclide: 'Uranium-235',
-                chain: [
-                    { nuclide: 'Uranium-235', decayType: 'Alpha', halfLife: '703.8 million years', daughter: 'Thorium-231' },
-                    { nuclide: 'Thorium-231', decayType: 'Beta-minus', halfLife: '25.5 hours', daughter: 'Protactinium-231' },
-                    { nuclide: 'Protactinium-231', decayType: 'Alpha', halfLife: '32,760 years', daughter: 'Actinium-227' },
-                    { nuclide: 'Actinium-227', decayType: 'Beta-minus (98.6%) / Alpha (1.4%)', halfLife: '21.77 years', daughter: 'Thorium-227 / Francium-223' },
-                    { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' },
-                    { nuclide: 'Francium-223', decayType: 'Beta-minus (99.99%) / Alpha (0.006%)', halfLife: '22.0 minutes', daughter: 'Radium-223 / Astatine-219' },
-                    { nuclide: 'Radium-223', decayType: 'Alpha', halfLife: '11.43 days', daughter: 'Radon-219' },
-                    { nuclide: 'Radon-219', decayType: 'Alpha', halfLife: '3.96 seconds', daughter: 'Polonium-215' },
-                    { nuclide: 'Polonium-215', decayType: 'Alpha (99.99%) / Beta-minus (0.0002%)', halfLife: '1.78 milliseconds', daughter: 'Lead-211 / Astatine-215' },
-                    { nuclide: 'Lead-211', decayType: 'Beta-minus', halfLife: '36.1 minutes', daughter: 'Bismuth-211' },
-                    { nuclide: 'Bismuth-211', decayType: 'Alpha (99.7%) / Beta-minus (0.3%)', halfLife: '2.14 minutes', daughter: 'Thallium-207 / Polonium-211' },
-                    { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' },
-                    { nuclide: 'Polonium-211', decayType: 'Alpha', halfLife: '0.516 seconds', daughter: 'Lead-207' },
-                    { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
-                ]
-            }
-        ];
-        
-        const radionuclides = [
+    <!-- 
+      Radionuclide data is separated into its own script tag.
+      This makes the main application logic cleaner and easier to manage,
+      while still allowing the preview to function correctly since all data
+      is in a single file.
+    -->
+    <script>
+        const RADIONUCLIDE_DATA = [
              {
                 name: 'Iodine-131',
                 symbol: 'I-131',
@@ -1999,7 +1930,87 @@
                 sourceRef: { halfLife: 'nndc' }
             }
         ];
+    </script>
+
+    <script type="text/babel">
+        // --- Static Data Definitions ---
+        const VERSION = '2.3.0'; // Updated version
+        const LAST_UPDATED = 'June 25, 2024';
         
+        const sources = {
+            nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
+            wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
+            hps: { name: 'Health Physics Society', url: 'https://hps.org/' },
+        };
+
+        const decaySeriesData = [
+            {
+                id: 'U-238-series',
+                name: 'Uranium-238 Decay Series (Uranium Series)',
+                startNuclide: 'Uranium-238',
+                chain: [
+                    { nuclide: 'Uranium-238', decayType: 'Alpha', halfLife: '4.468 billion years', daughter: 'Thorium-234' },
+                    { nuclide: 'Thorium-234', decayType: 'Beta-minus', halfLife: '24.10 days', daughter: 'Protactinium-234m' },
+                    { nuclide: 'Protactinium-234m', decayType: 'Beta-minus', halfLife: '1.17 minutes', daughter: 'Uranium-234' },
+                    { nuclide: 'Uranium-234', decayType: 'Alpha', halfLife: '245,500 years', daughter: 'Thorium-230' },
+                    { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75,380 years', daughter: 'Radium-226' },
+                    { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' },
+                    { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' },
+                    { nuclide: 'Polonium-218', decayType: 'Alpha (99.98%) / Beta-minus (0.02%)', halfLife: '3.1 minutes', daughter: 'Lead-214 / Astatine-218' },
+                    { nuclide: 'Lead-214', decayType: 'Beta-minus', halfLife: '26.8 minutes', daughter: 'Bismuth-214' },
+                    { nuclide: 'Bismuth-214', decayType: 'Beta-minus (99.98%) / Alpha (0.02%)', halfLife: '19.9 minutes', daughter: 'Polonium-214 / Thallium-210' },
+                    { nuclide: 'Polonium-214', decayType: 'Alpha', halfLife: '164.3 microseconds', daughter: 'Lead-210' },
+                    { nuclide: 'Lead-210', decayType: 'Beta-minus', halfLife: '22.2 years', daughter: 'Bismuth-210' },
+                    { nuclide: 'Bismuth-210', decayType: 'Beta-minus (99.9998%) / Alpha (0.0002%)', halfLife: '5.012 days', daughter: 'Polonium-210 / Thallium-206' },
+                    { nuclide: 'Polonium-210', decayType: 'Alpha', halfLife: '138.376 days', daughter: 'Lead-206' },
+                    { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
+                ]
+            },
+            {
+                id: 'Th-232-series',
+                name: 'Thorium-232 Decay Series (Thorium Series)',
+                startNuclide: 'Thorium-232',
+                chain: [
+                    { nuclide: 'Thorium-232', decayType: 'Alpha', halfLife: '14.05 billion years', daughter: 'Radium-228' },
+                    { nuclide: 'Radium-228', decayType: 'Beta-minus', halfLife: '5.75 years', daughter: 'Actinium-228' },
+                    { nuclide: 'Actinium-228', decayType: 'Beta-minus', halfLife: '6.15 hours', daughter: 'Thorium-228' },
+                    { nuclide: 'Thorium-228', decayType: 'Alpha', halfLife: '1.913 years', daughter: 'Radium-224' },
+                    { nuclide: 'Radium-224', decayType: 'Alpha', halfLife: '3.63 days', daughter: 'Radon-220' },
+                    { nuclide: 'Radon-220', decayType: 'Alpha', halfLife: '55.6 seconds', daughter: 'Polonium-216' },
+                    { nuclide: 'Polonium-216', decayType: 'Alpha', halfLife: '0.145 seconds', daughter: 'Lead-212' },
+                    { nuclide: 'Lead-212', decayType: 'Beta-minus', halfLife: '10.64 hours', daughter: 'Bismuth-212' },
+                    { nuclide: 'Bismuth-212', decayType: 'Beta-minus (64%) / Alpha (36%)', halfLife: '60.55 minutes', daughter: 'Polonium-212 / Thallium-208' },
+                    { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' },
+                    { nuclide: 'Thallium-208', decayType: 'Beta-minus', halfLife: '3.053 minutes', daughter: 'Lead-208' },
+                    { nuclide: 'Lead-208', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
+                ]
+            },
+            {
+                id: 'U-235-series',
+                name: 'Uranium-235 Decay Series (Actinium Series)',
+                startNuclide: 'Uranium-235',
+                chain: [
+                    { nuclide: 'Uranium-235', decayType: 'Alpha', halfLife: '703.8 million years', daughter: 'Thorium-231' },
+                    { nuclide: 'Thorium-231', decayType: 'Beta-minus', halfLife: '25.5 hours', daughter: 'Protactinium-231' },
+                    { nuclide: 'Protactinium-231', decayType: 'Alpha', halfLife: '32,760 years', daughter: 'Actinium-227' },
+                    { nuclide: 'Actinium-227', decayType: 'Beta-minus (98.6%) / Alpha (1.4%)', halfLife: '21.77 years', daughter: 'Thorium-227 / Francium-223' },
+                    { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' },
+                    { nuclide: 'Francium-223', decayType: 'Beta-minus (99.99%) / Alpha (0.006%)', halfLife: '22.0 minutes', daughter: 'Radium-223 / Astatine-219' },
+                    { nuclide: 'Radium-223', decayType: 'Alpha', halfLife: '11.43 days', daughter: 'Radon-219' },
+                    { nuclide: 'Radon-219', decayType: 'Alpha', halfLife: '3.96 seconds', daughter: 'Polonium-215' },
+                    { nuclide: 'Polonium-215', decayType: 'Alpha (99.99%) / Beta-minus (0.0002%)', halfLife: '1.78 milliseconds', daughter: 'Lead-211 / Astatine-215' },
+                    { nuclide: 'Lead-211', decayType: 'Beta-minus', halfLife: '36.1 minutes', daughter: 'Bismuth-211' },
+                    { nuclide: 'Bismuth-211', decayType: 'Alpha (99.7%) / Beta-minus (0.3%)', halfLife: '2.14 minutes', daughter: 'Thallium-207 / Polonium-211' },
+                    { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' },
+                    { nuclide: 'Polonium-211', decayType: 'Alpha', halfLife: '0.516 seconds', daughter: 'Lead-207' },
+                    { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' },
+                ]
+            }
+        ];
+        
+        // The main radionuclide data is now loaded from the global constant.
+        const radionuclides = RADIONUCLIDE_DATA;
+
         // --- Utility Functions ---
         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
 
