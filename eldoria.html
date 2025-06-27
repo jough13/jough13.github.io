@@ -1384,7 +1384,7 @@
             const factionIcons = {
                 'Order of the Sun': '☀️',
                 'Shadow Pact': '🌑',
-                'Wildwood Kin': '�',
+                'Wildwood Kin': '🌳',
                 'Arcane Conclave': '🔮'
             };
             if (cardData.faction && factionIcons[cardData.faction]) {
@@ -2305,7 +2305,7 @@
                     message += ` Opponent heals for ${healValue} health!`;
                 }
             } else if (cardData.effect.type === 'draw_card') {
-                const drawValue = cardData.effect.value;
+                const drawValue = effect.value;
                 if (caster === 'player') {
                     for (let i = 0; i < drawValue; i++) {
                         drawCard(playerDeck, playerHand, playerHandEl, true);
@@ -2590,47 +2590,47 @@
 
                 if (attackerDealsDamageFirst) {
                     // Attacker deals damage first
-                    if (targetCreature.has_divine_shield) {
-                        targetCreature.has_divine_shield = false;
-                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                    if (targetCardData.has_divine_shield) {
+                        targetCardData.has_divine_shield = false;
+                        showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                     } else {
-                        if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
-                            targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
-                            showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                            targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                            showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
                         } else {
-                            targetCreature.currentDefense -= attackerAttack;
+                            targetCardData.currentDefense -= attackerAttack;
                         }
                     }
                     // Check if target is defeated before it can retaliate
-                    if (targetCreature.currentDefense > 0) {
+                    if (targetCardData.currentDefense > 0) {
                         // Target retaliates
-                        if (attackingCreature.has_divine_shield) {
-                            attackingCreature.has_divine_shield = false;
-                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        if (attackerCardData.has_divine_shield) {
+                            attackerCardData.has_divine_shield = false;
+                            showGameMessage(`${attackerCardData.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
                         } else {
-                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
-                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
-                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            if (attackerCardData.keywords && attackerCardData.keywords.includes('Unyielding')) {
+                                attackerCardData.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackerCardData.name} is Unyielding, taking reduced damage!`, false, true);
                             } else {
-                                attackingCreature.currentDefense -= targetAttack;
+                                attackerCardData.currentDefense -= targetAttack;
                             }
                         }
                     }
                 } else if (targetDealsDamageFirst) {
                     // Target deals damage first
-                    if (attackingCreature.has_divine_shield) {
-                        attackingCreature.has_divine_shield = false;
-                        showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                    if (attackerCardData.has_divine_shield) {
+                        attackerCardData.has_divine_shield = false;
+                        showGameMessage(`${attackerCardData.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
                     } else {
-                        if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
-                            attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
-                            showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        if (attackerCardData.keywords && attackerCardData.keywords.includes('Unyielding')) {
+                            attackerCardData.currentDefense -= Math.max(0, targetAttack - 1);
+                            showGameMessage(`${attackerCardData.name} is Unyielding, taking reduced damage!`, false, true);
                         } else {
-                            attackingCreature.currentDefense -= targetAttack;
+                            attackerCardData.currentDefense -= targetAttack;
                         }
                     }
                     // Check if attacker is defeated before it can retaliate
-                    if (attackingCreature.currentDefense > 0) {
+                    if (attackerCardData.currentDefense > 0) {
                         // Attacker retaliates
                         if (targetCardData.has_divine_shield) {
                             targetCardData.has_divine_shield = false;
@@ -2672,21 +2672,21 @@
                 }
 
                 // Handle on_attacked_effect for target (retaliation) - this applies after all damage
-                if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
-                    const retaliateDamage = targetCreature.on_attacked_effect.value;
+                if (targetCardData.on_attacked_effect && targetCardData.on_attacked_effect.type === 'damage_attacker') {
+                    const retaliateDamage = targetCardData.on_attacked_effect.value;
                     attackingCreature.currentDefense -= retaliateDamage;
-                    showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
+                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
                 }
 
 
-                showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
+                showGameMessage(`${attackingCreature.name} attacks ${targetCardData.name}!`, false, true);
 
-                if (targetCreature.currentDefense <= 0) {
-                    const index = opponentPlayArea.indexOf(targetCreature);
+                if (targetCardData.currentDefense <= 0) {
+                    const index = opponentPlayArea.indexOf(targetCardData);
                     if (index > -1) {
                         opponentPlayArea.splice(index, 1);
-                        showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
-                        applyDeathEffect(targetCreature, 'opponent');
+                        showGameMessage(`Your ${targetCardData.name} was defeated!`, false, true);
+                        applyDeathEffect(targetCardData, 'opponent');
                     }
                 }
                 if (attackingCreature.currentDefense <= 0) {
@@ -2908,7 +2908,7 @@
 
                 const manaLocations = opponentHand.filter(card => card.type === 'location' && (card.passive_effect.type === 'mana_per_turn' || card.passive_effect.type === 'mana_per_turn_delayed') && card.cost <= opponentMana);
                 if (manaLocations.length > 0 && (turn < 5 || (opponentLocation && opponentLocation.passive_effect.type !== 'mana_per_turn' && opponentLocation.passive_effect.type !== 'mana_per_turn_delayed'))) {
-                    manaLocations.sort((a, b) => a.cost - b.cost);
+                    manaLocations.sort((a, b) => b.passive_effect.value - a.passive_effect.value); // Prefer more mana
                     const locationToPlay = manaLocations[0];
                     opponentMana -= locationToPlay.cost;
                     opponentLocation = locationToPlay;
@@ -3143,29 +3143,29 @@
                         // Check if attacker is defeated before it can retaliate
                         if (attackingCreature.currentDefense > 0) {
                             // Attacker retaliates
-                            if (targetCardData.has_divine_shield) {
-                                targetCardData.has_divine_shield = false;
-                                showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                            if (targetCreature.has_divine_shield) {
+                                targetCreature.has_divine_shield = false;
+                                showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                             } else {
-                                if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
-                                    targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
-                                    showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
+                                if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                    targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                    showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
                                 } else {
-                                    targetCardData.currentDefense -= attackerAttack;
+                                    targetCreature.currentDefense -= attackerAttack;
                                 }
                             }
                         }
                     } else {
                         // Simultaneous combat (neither has Swiftstrike, or both do)
-                        if (targetCardData.has_divine_shield) {
-                            targetCardData.has_divine_shield = false;
-                            showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        if (targetCreature.has_divine_shield) {
+                            targetCreature.has_divine_shield = false;
+                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                         } else {
-                            if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
-                                targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
-                                showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
+                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
                             } else {
-                                targetCardData.currentDefense -= attackerAttack;
+                                targetCreature.currentDefense -= attackerAttack;
                             }
                         }
 
@@ -3193,19 +3193,19 @@
                     showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
 
                     if (targetCreature.currentDefense <= 0) {
-                        const index = opponentPlayArea.indexOf(targetCreature);
+                        const index = playerPlayArea.indexOf(targetCreature);
                         if (index > -1) {
-                            opponentPlayArea.splice(index, 1);
+                            playerPlayArea.splice(index, 1);
                             showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
-                            applyDeathEffect(targetCreature, 'opponent');
+                            applyDeathEffect(targetCreature, 'player');
                         }
                     }
                     if (attackingCreature.currentDefense <= 0) {
-                        const index = playerPlayArea.indexOf(attackingCreature);
+                        const index = opponentPlayArea.indexOf(attackingCreature);
                         if (index > -1) {
-                            playerPlayArea.splice(index, 1);
+                            opponentPlayArea.splice(index, 1);
                             showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
-                            applyDeathEffect(attackingCreature, 'player');
+                            applyDeathEffect(attackingCreature, 'opponent');
                         }
                     }
                 } else {
@@ -3243,11 +3243,11 @@
 
         // --- Event Listeners ---
 
-        endTurnButton.addEventListener('click', () => {
+        endTurnButton.addEventListener('click', async () => { // Made async
             console.log("End Turn button clicked!");
             if (turn % 2 !== 0) { // Only allow ending turn if it's player's turn (odd turn number)
                 clearAttackerSelection();
-                startOpponentTurn();
+                await startOpponentTurn(); // Await the async call
             } else {
                 console.log("It's not your turn, or still in mulligan phase, cannot end turn.");
             }
@@ -3386,4 +3386,3 @@
     </script>
 </body>
 </html>
-�
