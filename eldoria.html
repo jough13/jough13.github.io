@@ -1293,7 +1293,7 @@
             { id: 'scribe_apprentice', name: 'Scribe Apprentice', cost: 1, attack: 1, defense: 1, image: '🧑‍🏫', type: 'creature', on_play_effect: { type: 'draw_card', value: 1, text: 'Draw 1 card on play' }, faction: 'Wildwood Kin' },
             // --- NEW FACTION SYNERGY CREATURES ---
             { id: 'sun_cleric', name: 'Sun Cleric', cost: 2, attack: 1, defense: 2, image: '☀️', type: 'creature', faction: 'Order of the Sun', faction_bonus: { type: 'defense_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Order of the Sun', text: '(+1❤️ if another Order creature is present)' } },
-            { id: 'shadow_assassin', name: 'Shadow Assassin', cost: 2, attack: 2, defense: 1, image: '�', type: 'creature', faction: 'Shadow Pact', faction_bonus: { type: 'attack_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Shadow Pact', text: '(+1⚔️ if another Shadow creature is present)' } },
+            { id: 'shadow_assassin', name: 'Shadow Assassin', cost: 2, attack: 2, defense: 1, image: '🔪', type: 'creature', faction: 'Shadow Pact', faction_bonus: { type: 'attack_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Shadow Pact', text: '(+1⚔️ if another Shadow creature is present)' } },
             { id: 'grove_warden', name: 'Grove Warden', cost: 3, attack: 1, defense: 3, image: '🌳', type: 'creature', mana_per_turn: 1, faction: 'Wildwood Kin', faction_bonus: { type: 'mana_per_turn_self', value: 1, condition: 'control_other_faction_creature', faction: 'Wildwood Kin', text: '(+1✨ if another Wildwood creature is present)' } },
             { id: 'apprentice_mage', name: 'Apprentice Mage', cost: 2, attack: 1, defense: 1, image: ' apprentice', type: 'creature', faction: 'Arcane Conclave', faction_bonus: { type: 'spell_damage_boost_global', value: 1, condition: 'control_other_faction_creature', faction: 'Arcane Conclave', text: '(Your spells deal +1 DMG if another Arcane creature is present)' } },
             // --- KEYWORD CREATURES ---
@@ -1301,19 +1301,19 @@
             { id: 'dark_rider', name: 'Dark Rider', cost: 3, attack: 3, defense: 2, image: '🐎', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike (Deals combat damage first)' },
             { id: 'forest_spirit', name: 'Forest Spirit', cost: 2, attack: 1, defense: 1, image: '🍃', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth (+1⚔️/+1❤️ at start of your turn)' },
             { id: 'arcane_familiar', name: 'Arcane Familiar', cost: 1, attack: 0, defense: 2, image: '🦉', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave (Draw a card when you cast a spell)' },
-            // --- NEW CARDS FOR EXPANSION ---
-            { id: 'celestial_defender', name: 'Celestial Defender', cost: 4, attack: 3, defense: 5, image: '😇', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding' },
-            { id: 'shadow_stalker', name: 'Shadow Stalker', cost: 2, attack: 3, defense: 1, image: '🥷', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike' },
-            { id: 'ancient_protector', name: 'Ancient Protector', cost: 5, attack: 3, defense: 7, image: '🗿', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth' },
-            { id: 'spell_slinger', name: 'Spell Slinger', cost: 3, attack: 2, defense: 2, image: '🪄', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave' },
-            { id: 'holy_light', name: 'Holy Light', cost: 3, type: 'spell', effect: { type: 'heal', value: 6, text: 'Heal 6 health' }, image: '✨', faction: 'Order of the Sun' },
-            { id: 'dark_ritual', name: 'Dark Ritual', cost: 0, type: 'spell', effect: { type: 'mana_gain', value: 2, text: 'Gain 2 temporary mana' }, image: '🩸', faction: 'Shadow Pact' },
-            { id: 'natures_bounty', name: 'Nature\'s Bounty', cost: 2, type: 'spell', effect: { type: 'draw_card', value: 2, text: 'Draw 2 cards' }, image: '🍎', faction: 'Wildwood Kin' },
-            { id: 'chain_lightning', name: 'Chain Lightning', cost: 4, type: 'spell', effect: { type: 'aoe_damage_enemy_creatures', value: 2, text: 'Deal 2 damage to all enemy creatures' }, image: '⚡', faction: 'Arcane Conclave' },
             // --- NEW COMPLEX MECHANIC CARDS ---
             { id: 'sunlit_champion', name: 'Sunlit Champion', cost: 3, attack: 2, defense: 3, image: '🌟', type: 'creature', faction: 'Order of the Sun', keywords: ['Inspire'], keyword_text: 'Inspire (+1⚔️/+1❤️ when another Order creature is played)' },
             { id: 'nightblade', name: 'Nightblade', cost: 3, attack: 3, defense: 2, image: '🌙', type: 'creature', faction: 'Shadow Pact', keywords: ['Ambush'], keyword_text: 'Ambush (Deal 2 damage to an enemy creature when played)' },
             { id: 'echoing_blast', name: 'Echoing Blast', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '🌀', faction: 'Arcane Conclave', keywords: ['Echo'], keyword_text: 'Echo (Pay cost to cast again)' },
+            // --- EVEN MORE NEW CARDS ---
+            { id: 'divine_protector', name: 'Divine Protector', cost: 4, attack: 2, defense: 6, image: '🛡️', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding (Takes 1 less damage from all sources)' },
+            { id: 'blessed_bolt', name: 'Blessed Bolt', cost: 2, type: 'spell', effect: { type: 'damage_and_heal', damage: 2, heal: 3, text: 'Deal 2 damage to target, Heal 3 to your hero' }, image: '⚡', faction: 'Order of the Sun' },
+            { id: 'vile_trickster', name: 'Vile Trickster', cost: 2, attack: 2, defense: 1, image: '🃏', type: 'creature', faction: 'Shadow Pact', keywords: ['Ambush'], on_play_effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, keyword_text: 'Ambush, On Play: Discard' },
+            { id: 'poison_cloud', name: 'Poison Cloud', cost: 3, type: 'spell', effect: { type: 'aoe_damage_enemy_creatures_and_debuff', damage: 1, debuff_attack: 1, text: 'Deal 1 damage to all enemy creatures, reduce their attack by 1' }, image: '☠️', faction: 'Shadow Pact' },
+            { id: 'spirit_of_the_wilds', name: 'Spirit of the Wilds', cost: 3, attack: 1, defense: 1, image: '🌿', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], on_grow_effect: { type: 'draw_card', value: 1, text: 'Draw a card when this grows' }, keyword_text: 'Growth, On Grow: Draw 1' },
+            { id: 'overgrowth', name: 'Overgrowth', cost: 4, type: 'spell', effect: { type: 'buff_all_friendly_creatures', attack: 1, defense: 1, text: 'Give all your creatures +1⚔️/+1❤️' }, image: '🌱', faction: 'Wildwood Kin' },
+            { id: 'mana_weaver', name: 'Mana Weaver', cost: 2, attack: 1, defense: 3, image: '🧵', type: 'creature', faction: 'Arcane Conclave', mana_per_turn: 1, keywords: ['Spellweave'], keyword_text: 'Spellweave, Mana +1/turn' },
+            { id: 'temporal_shift', name: 'Temporal Shift', cost: 3, type: 'spell', effect: { type: 'draw_and_recur', draw: 2, recur_type: 'spell', text: 'Draw 2 cards, return a spell from discard to hand' }, image: '⏳', faction: 'Arcane Conclave' },
         ];
 
         // --- Utility Functions ---
@@ -1384,7 +1384,7 @@
             const factionIcons = {
                 'Order of the Sun': '☀️',
                 'Shadow Pact': '🌑',
-                'Wildwood Kin': '🌳',
+                'Wildwood Kin': '�',
                 'Arcane Conclave': '🔮'
             };
             if (cardData.faction && factionIcons[cardData.faction]) {
@@ -2109,6 +2109,16 @@
                     opponentMana += manaValue;
                     message = `${effect.text.replace('Gain', 'Opponent gains')} ${manaValue} temporary mana from ${effect.text}!`;
                 }
+            } else if (effect.type === 'buff_all_friendly_creatures') { // For Overgrowth
+                const attackBuff = effect.attack;
+                const defenseBuff = effect.defense;
+                let targetCreatures = (owner === 'player' ? playerPlayArea : opponentPlayArea);
+                targetCreatures.forEach(creature => {
+                    creature.currentAttack = parseInt(creature.currentAttack) + attackBuff;
+                    creature.currentDefense = parseInt(creature.currentDefense) + defenseBuff;
+                });
+                message = `${effect.text}!`;
+                renderCardsInArea(targetCreatures, (owner === 'player' ? playerPlayAreaEl : opponentPlayAreaEl), owner === 'player');
             }
             showGameMessage(message, false, true);
             updateUI();
@@ -2212,6 +2222,30 @@
                 });
                 renderCardsInArea(targets, (caster === 'player' ? opponentPlayAreaEl : playerPlayAreaEl), ownerOfTargets === 'player');
                 message = `${cardData.name} deals ${damageValue} damage to all ${ownerOfTargets}'s creatures!`;
+            } else if (cardData.effect.type === 'aoe_damage_enemy_creatures_and_debuff') { // For Poison Cloud
+                const damageValue = cardData.effect.damage + spellDamageModifier;
+                const debuffValue = cardData.effect.debuff_attack;
+                let targets = (caster === 'player' ? opponentPlayArea : playerPlayArea);
+                let ownerOfTargets = (caster === 'player' ? 'opponent' : 'player');
+                let creaturesDefeated = [];
+
+                targets.forEach(creature => {
+                    creature.currentDefense -= damageValue;
+                    creature.currentAttack = Math.max(0, parseInt(creature.currentAttack) - debuffValue); // Debuff attack
+                    if (creature.currentDefense <= 0) {
+                        creaturesDefeated.push(creature);
+                    }
+                });
+
+                creaturesDefeated.forEach(defeatedCreature => {
+                    const index = targets.indexOf(defeatedCreature);
+                    if (index > -1) {
+                        targets.splice(index, 1);
+                        applyDeathEffect(defeatedCreature, ownerOfTargets);
+                    }
+                });
+                renderCardsInArea(targets, (caster === 'player' ? opponentPlayAreaEl : playerPlayAreaEl), ownerOfTargets === 'player');
+                message = `${cardData.name} deals ${damageValue} damage and reduces attack by ${debuffValue} to all ${ownerOfTargets}'s creatures!`;
             }
             else if (cardData.effect.type === 'heal') {
                 const healValue = cardData.effect.value;
@@ -2221,6 +2255,54 @@
                 } else {
                     opponentHealth = Math.min(20, opponentHealth + healValue);
                     message = `Opponent's ${cardData.name} heals them for ${healValue} health!`;
+                }
+            } else if (cardData.effect.type === 'damage_and_heal') { // For Blessed Bolt
+                const damageValue = cardData.effect.damage + spellDamageModifier;
+                const healValue = cardData.effect.heal;
+                if (caster === 'player') {
+                    if (opponentPlayArea.length > 0) {
+                        let targetCreature = opponentPlayArea.reduce((min, current) =>
+                            (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), opponentPlayArea[0]);
+                        targetCreature.currentDefense -= damageValue;
+                        message = `Your ${cardData.name} deals ${damageValue} damage to opponent's ${targetCreature.name}!`;
+                        if (targetCreature.currentDefense <= 0) {
+                            const index = opponentPlayArea.indexOf(targetCreature);
+                            if (index > -1) {
+                                opponentPlayArea.splice(index, 1);
+                                message += ` ${targetCreature.name} was defeated!`;
+                                applyDeathEffect(targetCreature, 'opponent');
+                            }
+                        }
+                        renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                    } else {
+                        opponentHealth -= damageValue;
+                        message = `Your ${cardData.name} deals ${damageValue} damage to the opponent!`;
+                        if (opponentHealth <= 0) endGame('player');
+                    }
+                    playerHealth = Math.min(20, playerHealth + healValue);
+                    message += ` You heal for ${healValue} health!`;
+                } else { /* opponent casting */
+                    if (playerPlayArea.length > 0) {
+                        let targetCreature = playerPlayArea.reduce((min, current) =>
+                            (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), playerPlayArea[0]);
+                        targetCreature.currentDefense -= damageValue;
+                        message = `Opponent's ${cardData.name} deals ${damageValue} damage to your ${targetCreature.name}!`;
+                        if (targetCreature.currentDefense <= 0) {
+                            const index = playerPlayArea.indexOf(targetCreature);
+                            if (index > -1) {
+                                playerPlayArea.splice(index, 1);
+                                message += ` ${targetCreature.name} was defeated!`;
+                                applyDeathEffect(targetCreature, 'player');
+                            }
+                        }
+                        renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+                    } else {
+                        playerHealth -= damageValue;
+                        message = `Opponent's ${cardData.name} deals ${damageValue} damage to you!`;
+                        if (playerHealth <= 0) endGame('opponent');
+                    }
+                    opponentHealth = Math.min(20, opponentHealth + healValue);
+                    message += ` Opponent heals for ${healValue} health!`;
                 }
             } else if (cardData.effect.type === 'draw_card') {
                 const drawValue = cardData.effect.value;
@@ -2288,7 +2370,7 @@
                 } else {
                     message = `${caster === 'player' ? 'Opponent' : 'You'} had no cards to discard!`;
                 }
-            } else if (cardData.effect.type === 'mana_gain') { // New: Dark Ritual effect
+            } else if (cardData.effect.type === 'mana_gain') { // For Dark Ritual
                 const manaValue = cardData.effect.value;
                 if (caster === 'player') {
                     playerMana += manaValue;
@@ -2297,6 +2379,16 @@
                     opponentMana += manaValue;
                     showGameMessage(`Opponent gains ${manaValue} temporary mana from ${cardData.name}!`, false, true);
                 }
+            } else if (cardData.effect.type === 'buff_all_friendly_creatures') { // For Overgrowth
+                const attackBuff = cardData.effect.attack;
+                const defenseBuff = cardData.effect.defense;
+                let targetCreatures = (owner === 'player' ? playerPlayArea : opponentPlayArea);
+                targetCreatures.forEach(creature => {
+                    creature.currentAttack = parseInt(creature.currentAttack) + attackBuff;
+                    creature.currentDefense = parseInt(creature.currentDefense) + defenseBuff;
+                });
+                message = `${effect.text}!`;
+                renderCardsInArea(targetCreatures, (owner === 'player' ? playerPlayAreaEl : opponentPlayAreaEl), owner === 'player');
             } else if (cardData.effect.type === 'scry') {
                 const scryValue = cardData.effect.value;
                 let deckToScry = (caster === 'player' ? playerDeck : opponentDeck);
@@ -2334,7 +2426,26 @@
                     showGameMessage(message, false, true);
                     updateUI();
                 }
+            } else if (cardData.effect.type === 'draw_and_recur') { // For Temporal Shift
+                const drawValue = cardData.effect.draw;
+                const recurType = cardData.effect.recur_type;
+                let discardPile = []; // Placeholder for discard pile (not implemented yet)
+                if (caster === 'player') {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    message = `You draw ${drawValue} cards from ${cardData.name}!`;
+                    // Logic to return a spell from discard pile (requires discard pile implementation)
+                    message += ` (Discard pile not yet implemented for recursion)`;
+                } else {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    message = `Opponent draws ${drawValue} cards from ${cardData.name}!`;
+                    message += ` (Discard pile not yet implemented for recursion)`;
+                }
             }
+
 
             // Handle Echo keyword for spells
             if (cardData.keywords && cardData.keywords.includes('Echo')) {
@@ -2571,22 +2682,536 @@
                 showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
 
                 if (targetCreature.currentDefense <= 0) {
-                    const index = playerPlayArea.indexOf(targetCreature);
+                    const index = opponentPlayArea.indexOf(targetCreature);
                     if (index > -1) {
-                        playerPlayArea.splice(index, 1);
+                        opponentPlayArea.splice(index, 1);
                         showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
-                        applyDeathEffect(targetCreature, 'player');
+                        applyDeathEffect(targetCreature, 'opponent');
                     }
                 }
                 if (attackingCreature.currentDefense <= 0) {
-                    const index = opponentPlayArea.indexOf(attackingCreature);
+                    const index = playerPlayArea.indexOf(attackingCreature);
                     if (index > -1) {
-                        opponentPlayArea.splice(index, 1);
+                        playerPlayArea.splice(index, 1);
                         showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
-                        applyDeathEffect(attackingCreature, 'opponent');
+                        applyDeathEffect(attackingCreature, 'player');
                     }
                 }
 
+                renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+                renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                updateUI();
+                await new Promise(resolve => setTimeout(resolve, 700));
+            }
+
+
+            if (playerHealth <= 0) {
+                endGame('opponent');
+            } else {
+                console.log("Opponent turn complete. Transitioning to Player Turn.");
+                setTimeout(startPlayerTurn, 1000);
+            }
+        }
+
+        // --- Opponent (AI) Turn Logic ---
+
+        async function startOpponentTurn() {
+            console.log("--- Starting Opponent Turn ---");
+            turn++;
+            gameStatusEl.textContent = 'Opponent\'s Turn';
+            endTurnButton.disabled = true;
+            clearAttackerSelection();
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            opponentMaxMana = Math.min(10, opponentMaxMana + 1);
+
+            currentSpellDamageBoostOpponent = 0;
+            currentCreatureAttackBoostOpponent = 0;
+            currentCreatureDefenseBoostOpponent = 0;
+
+            // Apply Growth keyword for opponent's creatures
+            opponentPlayArea.forEach(creature => {
+                if (creature.keywords && creature.keywords.includes('Growth')) {
+                    creature.currentAttack = parseInt(creature.currentAttack) + 1;
+                    creature.currentDefense = parseInt(creature.currentDefense) + 1;
+                    showGameMessage(`${creature.name} grows! (+1⚔️/+1❤️)`, false, true);
+                }
+            });
+
+
+            let opponentCreatureMana = 0;
+            opponentPlayArea.forEach(creature => {
+                if (creature.mana_per_turn) {
+                    if (creature.mana_condition) {
+                        if (creature.mana_condition.type === 'control_other_creature') {
+                            if (opponentPlayArea.length > 1) {
+                                opponentCreatureMana += creature.mana_per_turn;
+                            }
+                        } else if (creature.mana_condition.type === 'control_location') {
+                            if (opponentLocation) {
+                                opponentCreatureMana += creature.mana_per_turn;
+                            }
+                        }
+                    } else {
+                        opponentCreatureMana += creature.mana_per_turn;
+                    }
+                }
+            });
+            if (opponentLocation) {
+                if (opponentLocation.passive_effect.type === 'mana_per_turn') {
+                    opponentCreatureMana += opponentLocation.passive_effect.value;
+                } else if (opponentLocation.passive_effect.type === 'mana_per_turn_delayed' && turn >= opponentLocation.passive_effect.start_turn) {
+                    opponentCreatureMana += opponentLocation.passive_effect.value;
+                } else if (opponentLocation.passive_effect.type === 'spell_damage_boost') {
+                    currentSpellDamageBoostOpponent = opponentLocation.passive_effect.value;
+                    console.log(`Opponent's spell damage boosted by ${currentSpellDamageBoostOpponent} from ${opponentLocation.name}.`);
+                } else if (opponentLocation.passive_effect.type === 'creature_stat_boost_all') {
+                    currentCreatureAttackBoostOpponent += opponentLocation.passive_effect.attack_value;
+                    currentCreatureDefenseBoostOpponent += opponentLocation.passive_effect.defense_value;
+                    console.log(`Opponent's creatures boosted by +${currentCreatureAttackBoostOpponent}⚔️/+${currentCreatureDefenseBoostOpponent}❤️ from ${opponentLocation.name}.`);
+                } else if (opponentLocation.passive_effect.type === 'draw_card_per_turn') {
+                    for (let i = 0; i < opponentLocation.passive_effect.value; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    showGameMessage(`Opponent's ${opponentLocation.name} grants them ${opponentLocation.passive_effect.value} extra card draw!`, false, true);
+                }
+            }
+            opponentMana = opponentMaxMana + opponentCreatureMana;
+            console.log(`Opponent's base max mana: ${opponentMaxMana}, creature/location mana: ${opponentCreatureMana}. Total mana: ${opponentMana}`);
+
+            if (opponentLocation && opponentLocation.passive_effect.type === 'health_regen') {
+                const healValue = opponentLocation.passive_effect.value;
+                opponentHealth = Math.min(20, opponentHealth + healValue);
+                showGameMessage(`Opponent's ${opponentLocation.name} heals them for ${healValue} health!`, false, true);
+            }
+
+            drawCard(opponentDeck, opponentHand, null, false);
+            console.log(`Opponent Mana: ${opponentMana}/${opponentMaxMana}`);
+
+            let playedCardThisTurn = true;
+            while (playedCardThisTurn) {
+                playedCardThisTurn = false;
+
+                const healingSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'heal' && card.cost <= opponentMana);
+                if (healingSpells.length > 0 && opponentHealth <= 15) {
+                    healingSpells.sort((a, b) => b.effect.value - a.effect.value);
+                    const spellToCast = healingSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const damageSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'damage' && card.cost <= opponentMana);
+                if (damageSpells.length > 0) {
+                    damageSpells.sort((a, b) => b.effect.value - a.effect.value);
+                    const spellToCast = damageSpells[0];
+                    if (playerPlayArea.length > 0 || playerHealth <= 10) {
+                        await new Promise(resolve => setTimeout(resolve, 700));
+                        castSpell(spellToCast, 'opponent');
+                        const index = opponentHand.indexOf(spellToCast);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const aoeDamageSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'aoe_damage_enemy_creatures' && card.cost <= opponentMana);
+                if (aoeDamageSpells.length > 0 && playerPlayArea.length >= 2) {
+                    const spellToCast = aoeDamageSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const drawSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'draw_card' && card.cost <= opponentMana);
+                if (drawSpells.length > 0) {
+                    const spellToCast = drawSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const buffSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'buff_random_creature_attack' && card.cost <= opponentMana);
+                if (buffSpells.length > 0 && opponentPlayArea.length > 0) {
+                    const spellToCast = buffSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const divineShieldSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'grant_divine_shield' && card.cost <= opponentMana);
+                if (divineShieldSpells.length > 0 && opponentPlayArea.length > 0 && playerPlayArea.length > 0) {
+                    const creatureToProtect = opponentPlayArea.reduce((max, current) =>
+                        (parseInt(current.currentDefense) > parseInt(max.currentDefense) ? current : max), opponentPlayArea[0]);
+                    if (creatureToProtect && !creatureToProtect.has_divine_shield) {
+                        const spellToCast = divineShieldSpells[0];
+                        await new Promise(resolve => setTimeout(resolve, 700));
+                        castSpell(spellToCast, 'opponent');
+                        const index = opponentHand.indexOf(spellToCast);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const discardSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'discard_random_card' && card.cost <= opponentMana);
+                if (discardSpells.length > 0 && playerHand.length > 2) {
+                    const spellToCast = discardSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const scrySpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'scry' && card.cost <= opponentMana);
+                if (scrySpells.length > 0 && (opponentHand.length < 3 || !opponentHand.some(c => c.type === 'creature' || c.mana_per_turn))) {
+                    const spellToCast = scrySpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+
+                const manaLocations = opponentHand.filter(card => card.type === 'location' && (card.passive_effect.type === 'mana_per_turn' || card.passive_effect.type === 'mana_per_turn_delayed') && card.cost <= opponentMana);
+                if (manaLocations.length > 0 && (turn < 5 || (opponentLocation && opponentLocation.passive_effect.type !== 'mana_per_turn' && opponentLocation.passive_effect.type !== 'mana_per_turn_delayed'))) {
+                    manaLocations.sort((a, b) => a.cost - b.cost);
+                    const locationToPlay = manaLocations[0];
+                    opponentMana -= locationToPlay.cost;
+                    opponentLocation = locationToPlay;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${locationToPlay.name}!`, false, true);
+                    const index = opponentHand.indexOf(locationToPlay);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const spellDamageLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'spell_damage_boost' && card.cost <= opponentMana);
+                if (spellDamageLocation && (damageSpells.length > 0 || aoeDamageSpells.length > 0)) {
+                    opponentMana -= spellDamageLocation.cost;
+                    opponentLocation = spellDamageLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${spellDamageLocation.name}!`, false, true);
+                    const index = opponentHand.indexOf(spellDamageLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const creatureStatBoostLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'creature_stat_boost_all' && card.cost <= opponentMana);
+                if (creatureStatBoostLocation && opponentPlayArea.length > 0) {
+                    opponentMana -= creatureStatBoostLocation.cost;
+                    opponentLocation = creatureStatBoostLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${creatureStatBoostLocation.name}!`, false, true);
+                    const index = opponentHand.indexOf(creatureStatBoostLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const drawLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'draw_card_per_turn' && card.cost <= opponentMana);
+                if (drawLocation) {
+                    opponentMana -= drawLocation.cost;
+                    opponentLocation = drawLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${drawLocation.name}!`, false, true);
+                    const index = opponentHand.indexOf(drawLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+
+                const otherLocations = opponentHand.filter(card => card.type === 'location' && card.cost <= opponentMana && card.passive_effect.type !== 'mana_per_turn' && card.passive_effect.type !== 'mana_per_turn_delayed' && card.passive_effect.type !== 'spell_damage_boost' && card.passive_effect.type !== 'creature_stat_boost_all' && card.passive_effect.type !== 'draw_card_per_turn');
+                if (otherLocations.length > 0) {
+                    let bestLocation = null;
+                    if (opponentHealth <= 10) {
+                        bestLocation = otherLocations.find(loc => loc.passive_effect.type === 'health_regen');
+                    }
+                    if (!bestLocation && otherLocations.length > 0) {
+                        bestLocation = otherLocations[0];
+                    }
+
+                    if (bestLocation) {
+                        opponentMana -= bestLocation.cost;
+                        opponentLocation = bestLocation;
+                        renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                        showGameMessage(`Opponent plays ${bestLocation.name}!`, false, true);
+                        if (bestLocation.passive_effect.type === 'damage_to_opponent_on_play') {
+                            const damageValue = bestLocation.passive_effect.value;
+                            playerHealth -= damageValue;
+                            showGameMessage(`Opponent's ${bestLocation.name} erupts, dealing ${damageValue} damage to you!`, false, true);
+                            if (playerHealth <= 0) endGame('opponent');
+                        }
+                        const index = opponentHand.indexOf(bestLocation);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const playableCreatures = opponentHand.filter(card => card.type === 'creature' && card.cost <= opponentMana);
+                if (playableCreatures.length > 0) {
+                    playableCreatures.sort((a, b) => {
+                        const aGainsManaByCreature = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
+                        const bGainsManaByCreature = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
+                        const aGainsManaByLocation = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_location' && opponentLocation;
+                        const bGainsManaByLocation = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_location' && opponentLocation;
+
+                        const aHasOnPlayBuff = a.on_play_effect && a.on_play_effect.type === 'buff_random_friendly_creature_attack' && opponentPlayArea.length > 0;
+                        const bHasOnPlayBuff = b.on_play_effect && b.on_play_effect.type === 'buff_random_friendly_creature_attack' && opponentPlayArea.length > 0;
+
+                        const aHasOnPlayDraw = a.on_play_effect && a.on_play_effect.type === 'draw_card';
+                        const bHasOnPlayDraw = b.on_play_effect && b.on_play_effect.type === 'draw_card';
+
+
+                        if ((aGainsManaByCreature || aGainsManaByLocation) && !(bGainsManaByCreature || bGainsManaByLocation)) return -1;
+                        if (!(aGainsManaByCreature || aGainsManaByLocation) && (bGainsManaByCreature || bGainsManaByLocation)) return 1;
+
+                        if (aHasOnPlayDraw && !bHasOnPlayDraw) return -1;
+                        if (!aHasOnPlayDraw && bHasOnPlayDraw) return 1;
+
+                        if (aHasOnPlayBuff && !bHasOnPlayBuff) return -1;
+                        if (!aHasOnPlayBuff && bHasOnPlayBuff) return 1;
+
+                        return b.cost - a.cost;
+                    });
+
+                    const cardToPlay = playableCreatures[0];
+
+                    opponentMana -= cardToPlay.cost;
+                    const index = opponentHand.indexOf(cardToPlay);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardToPlay.defense };
+                    newCardInstance.currentAttack += currentCreatureAttackBoostOpponent;
+                    newCardInstance.currentDefense += currentCreatureDefenseBoostOpponent;
+
+                    opponentPlayArea.push(newCardInstance);
+                    renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                    showGameMessage(`Opponent plays ${cardToPlay.name}!`, false, true);
+                    updateUI();
+
+                    if (cardToPlay.on_play_effect) {
+                        applyOnPlayEffect(cardToPlay.on_play_effect, 'opponent');
+                    }
+                    // Trigger Ambush effect if present
+                    if (newCardInstance.keywords && newCardInstance.keywords.includes('Ambush')) {
+                        applyAmbushEffect(newCardInstance, 'opponent');
+                    }
+                     // Trigger Inspire effect for other friendly creatures
+                    opponentPlayArea.forEach(creature => {
+                        if (creature.keywords && creature.keywords.includes('Inspire') && creature !== newCardInstance && creature.faction === newCardInstance.faction) {
+                            creature.currentAttack = parseInt(creature.currentAttack) + 1;
+                            creature.currentDefense = parseInt(creature.currentDefense) + 1;
+                            showGameMessage(`${creature.name} is inspired by ${newCardInstance.name}! (+1⚔️/+1❤️)`, false, true);
+                        }
+                    });
+
+
+                    playedCardThisTurn = true;
+                }
+            }
+            console.log("Opponent finished playing cards.");
+
+            await new Promise(resolve => setTimeout(resolve, 700));
+            console.log("Opponent starting attack phase.");
+            const attackingCreatures = [...opponentPlayArea];
+            for (const attackingCreature of attackingCreatures) {
+                if (!opponentPlayArea.includes(attackingCreature)) {
+                    console.log(`Attacking creature ${attackingCreature.name} no longer on board, skipping attack.`);
+                    continue;
+                }
+
+                let attackerAttack = parseInt(attackingCreature.currentAttack);
+                if (opponentLocation && opponentLocation.passive_effect.type === 'creature_attack_boost') {
+                    attackerAttack += opponentLocation.passive_effect.value;
+                }
+                attackerAttack += currentCreatureAttackBoostOpponent;
+
+
+                if (playerPlayArea.length > 0) {
+                    let targetCreature = playerPlayArea.reduce((min, current) =>
+                        (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), playerPlayArea[0]);
+
+                    const targetAttack = parseInt(targetCreature.currentAttack);
+                    let targetDefenseModified = parseInt(targetCreature.currentDefense) + currentCreatureDefenseBoostPlayer;
+
+
+                    console.log(`${attackingCreature.name} (A:${attackerAttack}, D:${attackingCreature.currentDefense}) attacks ${targetCreature.name} (A:${targetAttack}, D:${targetDefenseModified})`);
+
+                    // Determine combat order based on Swiftstrike
+                    let attackerDealsDamageFirst = false;
+                    let targetDealsDamageFirst = false;
+
+                    const attackerHasSwiftstrike = attackingCreature.keywords && attackingCreature.keywords.includes('Swiftstrike');
+                    const targetHasSwiftstrike = targetCreature.keywords && targetCreature.keywords.includes('Swiftstrike');
+
+                    if (attackerHasSwiftstrike && !targetHasSwiftstrike) {
+                        attackerDealsDamageFirst = true;
+                    } else if (!attackerHasSwiftstrike && targetHasSwiftstrike) {
+                        targetDealsDamageFirst = true;
+                    }
+
+                    if (attackerDealsDamageFirst) {
+                        // Attacker deals damage first
+                        if (targetCreature.has_divine_shield) {
+                            targetCreature.has_divine_shield = false;
+                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        } else {
+                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                targetCreature.currentDefense -= attackerAttack;
+                            }
+                        }
+                        // Check if target is defeated before it can retaliate
+                        if (targetCreature.currentDefense > 0) {
+                            // Target retaliates
+                            if (attackingCreature.has_divine_shield) {
+                                attackingCreature.has_divine_shield = false;
+                                showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                            } else {
+                                if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                    attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                    showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                                } else {
+                                    attackingCreature.currentDefense -= targetAttack;
+                                }
+                            }
+                        }
+                    } else if (targetDealsDamageFirst) {
+                        // Target deals damage first
+                        if (attackingCreature.has_divine_shield) {
+                            attackingCreature.has_divine_shield = false;
+                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        } else {
+                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                attackingCreature.currentDefense -= targetAttack;
+                            }
+                        }
+                        // Check if attacker is defeated before it can retaliate
+                        if (attackingCreature.currentDefense > 0) {
+                            // Attacker retaliates
+                            if (targetCardData.has_divine_shield) {
+                                targetCardData.has_divine_shield = false;
+                                showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                            } else {
+                                if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                                    targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                                    showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
+                                } else {
+                                    targetCardData.currentDefense -= attackerAttack;
+                                }
+                            }
+                        }
+                    } else {
+                        // Simultaneous combat (neither has Swiftstrike, or both do)
+                        if (targetCardData.has_divine_shield) {
+                            targetCardData.has_divine_shield = false;
+                            showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        } else {
+                            if (targetCardData.keywords && targetCardData.keywords.includes('Unyielding')) {
+                                targetCardData.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCardData.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                targetCardData.currentDefense -= attackerAttack;
+                            }
+                        }
+
+                        if (attackingCreature.has_divine_shield) {
+                            attackingCreature.has_divine_shield = false;
+                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        } else {
+                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                attackingCreature.currentDefense -= targetAttack;
+                            }
+                        }
+                    }
+
+                    // Handle on_attacked_effect for target (retaliation) - this applies after all damage
+                    if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
+                        const retaliateDamage = targetCreature.on_attacked_effect.value;
+                        attackingCreature.currentDefense -= retaliateDamage;
+                        showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
+                    }
+
+
+                    showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
+
+                    if (targetCreature.currentDefense <= 0) {
+                        const index = opponentPlayArea.indexOf(targetCreature);
+                        if (index > -1) {
+                            opponentPlayArea.splice(index, 1);
+                            showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
+                            applyDeathEffect(targetCreature, 'opponent');
+                        }
+                    }
+                    if (attackingCreature.currentDefense <= 0) {
+                        const index = playerPlayArea.indexOf(attackingCreature);
+                        if (index > -1) {
+                            playerPlayArea.splice(index, 1);
+                            showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
+                            applyDeathEffect(attackingCreature, 'player');
+                        }
+                    }
+                } else {
+                    playerHealth -= attackerAttack;
+                    showGameMessage(`Opponent's ${attackingCreature.name} attacks you for ${attackerAttack} damage!`, false, true);
+                }
                 renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
                 renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
                 updateUI();
@@ -2693,6 +3318,12 @@
                     if (foundCardData && cardEl.dataset.factionBonus) {
                         foundCardData.faction_bonus = JSON.parse(cardEl.dataset.factionBonus);
                     }
+                }
+
+                // If not found, check opponent's location
+                if (!foundCardData && opponentLocation && opponentLocation.id === cardId && opponentLocation.type === cardType) {
+                    foundCardData = opponentLocation;
+                    if (foundCardData) { foundIn = 'opponentLocation'; }
                 }
 
                 // If not found, check foresight cards (during foresight phase)
