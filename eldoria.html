@@ -835,7 +835,7 @@
             { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature' },
             { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature' },
             { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature' },
-            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '�', type: 'creature' },
+            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature' },
             { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature' },
             { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature' },
             { id: 'rogue', name: 'Shadow Rogue', cost: 1, attack: 2, defense: 1, image: '🗡️', type: 'creature' },
@@ -1395,7 +1395,7 @@
                     for (let i = 0; i < playerLocation.passive_effect.value; i++) {
                         drawCard(playerDeck, playerHand, playerHandEl, true);
                     }
-                    showGameMessage(`Your ${playerLocation.name} grants you ${playerLocation.passive_effect.value} extra card draw!`, false, true); // Temporary message
+                    showGameMessage(`Your ${playerLocation.name} grants you ${playerLocation.passive_effect.value} extra card draw!`, false, true);
                 }
             }
             playerMana = playerMaxMana + currentManaGain;
@@ -1404,7 +1404,7 @@
             if (playerLocation && playerLocation.passive_effect.type === 'health_regen') {
                 const healValue = playerLocation.passive_effect.value;
                 playerHealth = Math.min(20, playerHealth + healValue);
-                showGameMessage(`Your ${playerLocation.name} heals you for ${healValue} health!`, false, true); // Temporary message
+                showGameMessage(`Your ${playerLocation.name} heals you for ${healValue} health!`, false, true);
             }
 
             drawCard(playerDeck, playerHand, playerHandEl, true);
@@ -1551,7 +1551,7 @@
             if (cardData.passive_effect.type === 'damage_to_opponent_on_play') {
                 const damageValue = cardData.passive_effect.value;
                 opponentHealth -= damageValue;
-                showGameMessage(`Your ${cardData.name} erupts, dealing ${damageValue} damage to the opponent!`, false, true); // Temporary message
+                showGameMessage(`Your ${cardData.name} erupts, dealing ${damageValue} damage to the opponent!`, false, true);
                 if (opponentHealth <= 0) endGame('player');
             }
 
@@ -1648,7 +1648,7 @@
                     message = `Opponent's ${cardData.name} heals them for ${healValue} health!`;
                 }
             } else if (cardData.effect.type === 'draw_card') {
-                const drawValue = cardData.effect.value; // Corrected from effect.value to cardData.effect.value
+                const drawValue = cardData.effect.value;
                 if (caster === 'player') {
                     for (let i = 0; i < drawValue; i++) {
                         drawCard(playerDeck, playerHand, playerHandEl, true);
@@ -1719,7 +1719,7 @@
 
                 if (deckToScry.length === 0) {
                     message = `No cards left in deck to scry!`;
-                    showGameMessage(message, false, true); // Temporary message
+                    showGameMessage(message, false, true);
                     updateUI();
                     return;
                 }
@@ -1746,10 +1746,11 @@
                     deckToScry.push(...foresightCards);
                     shuffle(deckToScry);
                     message = `Opponent uses Foresight!`;
-                    showGameMessage(message, false, true); // Temporary message
+                    showGameMessage(message, false, true);
                     updateUI();
                 }
             }
+            // For spells that don't open an overlay (like scry for AI), update UI immediately
             if (cardData.effect.type !== 'scry' || caster === 'opponent') {
                 showGameMessage(message, false, true);
                 updateUI();
@@ -1769,7 +1770,7 @@
 
             foresightCards = [];
             foresightOverlay.style.display = 'none';
-            showGameMessage(`You chose ${chosenCardData.name} from Foresight!`, false, true); // Temporary message
+            showGameMessage(`You chose ${chosenCardData.name} from Foresight!`, false, true);
             updateUI();
         }
 
@@ -1819,7 +1820,7 @@
                     attackValue += currentCreatureAttackBoostPlayer;
 
                     opponentHealth -= attackValue;
-                    showGameMessage(`Your ${attackerCardData.name} attacks the opponent for ${attackValue} damage!`, false, true); // Temporary message
+                    showGameMessage(`Your ${attackerCardData.name} attacks the opponent for ${attackValue} damage!`, false, true);
                     updateUI();
                     clearAttackerSelection();
                     if (opponentHealth <= 0) {
@@ -1859,7 +1860,7 @@
 
                 if (targetCardData.has_divine_shield) {
                     targetCardData.has_divine_shield = false;
-                    showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true); // Temporary message
+                    showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                     attackingCreature.currentDefense -= targetAttack;
                 } else {
                     targetCardData.currentDefense -= attackerAttack;
@@ -1869,16 +1870,16 @@
                 if (targetCardData.on_attacked_effect && targetCardData.on_attacked_effect.type === 'damage_attacker') {
                     const retaliateDamage = targetCardData.on_attacked_effect.value;
                     attackingCreature.currentDefense -= retaliateDamage;
-                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true); // Temporary message
+                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
                 }
 
-                showGameMessage(`${attackerCardData.name} attacks ${targetCardData.name}!`, false, true); // Temporary message
+                showGameMessage(`${attackerCardData.name} attacks ${targetCardData.name}!`, false, true);
 
                 if (targetCardData.currentDefense <= 0) {
                     const index = opponentPlayArea.indexOf(targetCardData);
                     if (index > -1) {
                         opponentPlayArea.splice(index, 1);
-                        showGameMessage(`Your ${targetCardData.name} was defeated!`, false, true); // Temporary message
+                        showGameMessage(`Your ${targetCardData.name} was defeated!`, false, true);
                         applyDeathEffect(targetCardData, 'opponent');
                     }
                 }
@@ -1886,7 +1887,7 @@
                     const index = playerPlayArea.indexOf(attackerCardData);
                     if (index > -1) {
                         playerPlayArea.splice(index, 1);
-                        showGameMessage(`${attackerCardData.name} was defeated!`, false, true); // Temporary message
+                        showGameMessage(`${attackerCardData.name} was defeated!`, false, true);
                         applyDeathEffect(attackerCardData, 'player');
                     }
                 }
@@ -1949,7 +1950,7 @@
                     for (let i = 0; i < opponentLocation.passive_effect.value; i++) {
                         drawCard(opponentDeck, opponentHand, null, false);
                     }
-                    showGameMessage(`Opponent's ${opponentLocation.name} grants them ${opponentLocation.passive_effect.value} extra card draw!`, false, true); // Temporary message
+                    showGameMessage(`Opponent's ${opponentLocation.name} grants them ${opponentLocation.passive_effect.value} extra card draw!`, false, true);
                 }
             }
             opponentMana = opponentMaxMana + opponentCreatureMana;
@@ -1958,7 +1959,7 @@
             if (opponentLocation && opponentLocation.passive_effect.type === 'health_regen') {
                 const healValue = opponentLocation.passive_effect.value;
                 opponentHealth = Math.min(20, opponentHealth + healValue);
-                showGameMessage(`Opponent's ${opponentLocation.name} heals them for ${healValue} health!`, false, true); // Temporary message
+                showGameMessage(`Opponent's ${opponentLocation.name} heals them for ${healValue} health!`, false, true);
             }
 
             drawCard(opponentDeck, opponentHand, null, false);
@@ -2088,7 +2089,7 @@
                     opponentMana -= locationToPlay.cost;
                     opponentLocation = locationToPlay;
                     renderLocation(opponentLocation, opponentLocationAreaEl, false);
-                    showGameMessage(`Opponent plays ${locationToPlay.name}!`, false, true); // Temporary message
+                    showGameMessage(`Opponent plays ${locationToPlay.name}!`, false, true);
                     const index = opponentHand.indexOf(locationToPlay);
                     if (index > -1) {
                         opponentHand.splice(index, 1);
@@ -2102,7 +2103,7 @@
                     opponentMana -= spellDamageLocation.cost;
                     opponentLocation = spellDamageLocation;
                     renderLocation(opponentLocation, opponentLocationAreaEl, false);
-                    showGameMessage(`Opponent plays ${spellDamageLocation.name}!`, false, true); // Temporary message
+                    showGameMessage(`Opponent plays ${spellDamageLocation.name}!`, false, true);
                     const index = opponentHand.indexOf(spellDamageLocation);
                     if (index > -1) {
                         opponentHand.splice(index, 1);
@@ -2116,7 +2117,7 @@
                     opponentMana -= creatureStatBoostLocation.cost;
                     opponentLocation = creatureStatBoostLocation;
                     renderLocation(opponentLocation, opponentLocationAreaEl, false);
-                    showGameMessage(`Opponent plays ${creatureStatBoostLocation.name}!`, false, true); // Temporary message
+                    showGameMessage(`Opponent plays ${creatureStatBoostLocation.name}!`, false, true);
                     const index = opponentHand.indexOf(creatureStatBoostLocation);
                     if (index > -1) {
                         opponentHand.splice(index, 1);
@@ -2130,7 +2131,7 @@
                     opponentMana -= drawLocation.cost;
                     opponentLocation = drawLocation;
                     renderLocation(opponentLocation, opponentLocationAreaEl, false);
-                    showGameMessage(`Opponent plays ${drawLocation.name}!`, false, true); // Temporary message
+                    showGameMessage(`Opponent plays ${drawLocation.name}!`, false, true);
                     const index = opponentHand.indexOf(drawLocation);
                     if (index > -1) {
                         opponentHand.splice(index, 1);
@@ -2154,11 +2155,11 @@
                         opponentMana -= bestLocation.cost;
                         opponentLocation = bestLocation;
                         renderLocation(opponentLocation, opponentLocationAreaEl, false);
-                        showGameMessage(`Opponent plays ${bestLocation.name}!`, false, true); // Temporary message
+                        showGameMessage(`Opponent plays ${bestLocation.name}!`, false, true);
                         if (bestLocation.passive_effect.type === 'damage_to_opponent_on_play') {
                             const damageValue = bestLocation.passive_effect.value;
                             playerHealth -= damageValue;
-                            showGameMessage(`Opponent's ${bestLocation.name} erupts, dealing ${damageValue} damage to you!`, false, true); // Temporary message
+                            showGameMessage(`Opponent's ${bestLocation.name} erupts, dealing ${damageValue} damage to you!`, false, true);
                             if (playerHealth <= 0) endGame('opponent');
                         }
                         const index = opponentHand.indexOf(bestLocation);
@@ -2204,13 +2205,13 @@
                     if (index > -1) {
                         opponentHand.splice(index, 1);
                     }
-                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardToPlay.defense }; // Fixed: use cardData.defense here
+                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardToPlay.defense };
                     newCardInstance.currentAttack += currentCreatureAttackBoostOpponent;
                     newCardInstance.currentDefense += currentCreatureDefenseBoostOpponent;
 
                     opponentPlayArea.push(newCardInstance);
                     renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
-                    showGameMessage(`Opponent plays ${cardToPlay.name}!`, false, true); // Temporary message
+                    showGameMessage(`Opponent plays ${cardToPlay.name}!`, false, true);
                     updateUI();
 
                     if (cardToPlay.on_play_effect) {
@@ -2250,7 +2251,7 @@
 
                     if (targetCreature.has_divine_shield) {
                         targetCreature.has_divine_shield = false;
-                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true); // Temporary message
+                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
                         attackingCreature.currentDefense -= targetAttack;
                     } else {
                         targetCreature.currentDefense -= attackerAttack;
@@ -2260,17 +2261,17 @@
                     if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
                         const retaliateDamage = targetCreature.on_attacked_effect.value;
                         attackingCreature.currentDefense -= retaliateDamage;
-                        showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true); // Temporary message
+                        showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
                     }
 
 
-                    showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true); // Temporary message
+                    showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
 
                     if (targetCreature.currentDefense <= 0) {
                         const index = playerPlayArea.indexOf(targetCreature);
                         if (index > -1) {
                             playerPlayArea.splice(index, 1);
-                            showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true); // Temporary message
+                            showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
                             applyDeathEffect(targetCreature, 'player');
                         }
                     }
@@ -2278,13 +2279,13 @@
                         const index = opponentPlayArea.indexOf(attackingCreature);
                         if (index > -1) {
                             opponentPlayArea.splice(index, 1);
-                            showGameMessage(`${attackingCreature.name} was defeated!`, false, true); // Temporary message
+                            showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
                             applyDeathEffect(attackingCreature, 'opponent');
                         }
                     }
                 } else {
                     playerHealth -= attackerAttack;
-                    showGameMessage(`Opponent's ${attackingCreature.name} attacks you for ${attackerAttack} damage!`, false, true); // Temporary message
+                    showGameMessage(`Opponent's ${attackingCreature.name} attacks you for ${attackerAttack} damage!`, false, true);
                 }
                 renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
                 renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
@@ -2388,4 +2389,3 @@
     </script>
 </body>
 </html>
-�
