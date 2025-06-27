@@ -1,0 +1,2390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoes of Eldoria</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://placehold.co/1920x1080/4A3A2A/E0D0C0?text=Medieval+Background'); /* Placeholder for a medieval background */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; /* Keep background fixed when scrolling */
+            color: #e0d0c0; /* Light parchment color */
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-y: auto;
+            padding: 20px; /* Add some padding around the whole game */
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+
+        /* Game Container */
+        .game-container {
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.75)); /* Deeper, more opaque gradient */
+            border: 6px solid #6b4e2e; /* Thicker, wood-like border */
+            border-image: url('https://placehold.co/30x30/6b4e2e/6b4e2e?text=border') 10 / 10px round; /* Placeholder for a repeating border image */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(255, 255, 255, 0.15); /* Deeper shadow and inner glow */
+            width: 98%; /* Slightly wider */
+            max-width: 1300px; /* Increased max-width */
+            padding: 2.5rem; /* More internal padding */
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem; /* Increased gap between sections */
+            position: relative;
+            margin: 0 auto; /* Center horizontally */
+        }
+
+        /* Header and Footer Panels */
+        .header-panel, .footer-panel {
+            background: linear-gradient(to bottom, #3a2e22, #2a221a); /* Subtle gradient */
+            border: 3px solid #6b4e2e; /* Thicker border */
+            border-radius: 1.25rem; /* More rounded */
+            padding: 1.25rem; /* Increased padding */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.45rem; /* Slightly larger font */
+            color: #d4af37; /* Gold-like color */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Text shadow for readability */
+            box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), 0 5px 15px rgba(0, 0, 0, 0.4); /* Deeper inner and outer shadow */
+        }
+
+        .player-info, .opponent-info {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem; /* Increased gap */
+        }
+
+        .player-stats, .opponent-stats {
+            background-color: #1a1612; /* Even darker background */
+            border: 2px solid #4a3a2a; /* Thicker border */
+            border-radius: 1rem; /* More rounded */
+            padding: 0.85rem 1.4rem; /* More padding */
+            display: flex;
+            gap: 1.4rem; /* Increased gap */
+            font-size: 1.2rem; /* Slightly larger font */
+            color: #e0d0c0;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6); /* Deeper inner shadow */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            transition: all 0.2s ease-in-out; /* Smooth transition for targeting */
+        }
+
+        .player-stats:hover, .opponent-stats:hover {
+            transform: translateY(-2px);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6), 0 5px 10px rgba(0, 0, 0, 0.3);
+        }
+
+
+        /* Game Board Areas */
+        .game-board {
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+            flex-grow: 1;
+        }
+
+        .opponent-area, .player-area {
+            background-color: #1a1612; /* Darker background for play areas */
+            border: 4px dashed #4a3a2a; /* Thicker dashed border */
+            border-radius: 1.25rem;
+            padding: 1.5rem; /* More padding */
+            min-height: 200px; /* Increased min-height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.25rem; /* Increased gap */
+            flex-wrap: wrap;
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8); /* Deeper inner shadow */
+            transition: all 0.2s ease-in-out; /* Smooth transition for targeting */
+        }
+
+        /* Location Area Styles */
+        .location-area {
+            background-color: #1a1612;
+            border: 3px solid #8B4513; /* Thicker SaddleBrown for earth/land */
+            border-radius: 1rem;
+            padding: 0.85rem; /* Increased padding */
+            min-height: 100px; /* Slightly larger */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.85rem;
+            margin-top: 0.85rem;
+            margin-bottom: 0.85rem;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+        }
+
+        .location-area .card {
+            width: 120px; /* Slightly larger location card */
+            height: 180px;
+            background: linear-gradient(to bottom, #8B4513, #6B4513); /* Gradient for location card */
+            border-color: #A0522D;
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.7); /* Deeper shadow */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .location-area .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.8);
+        }
+        .location-area .card .card-name {
+            color: #F4A460;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+        .location-area .card .card-image {
+            background-color: #6B4513;
+        }
+        .location-area .card .card-effect-text {
+            font-size: 0.8rem; /* Slightly larger effect text */
+            color: #e0d0c0;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
+        }
+
+
+        /* Card Base Styles */
+        .card {
+            background: linear-gradient(to bottom right, #4a3a2a, #3a2e22); /* Gradient for depth */
+            border: 4px solid #6b4e2e; /* Thicker, more pronounced border */
+            border-radius: 1.25rem; /* More rounded */
+            width: 140px; /* Larger cards */
+            height: 210px; /* Proportionally larger */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.85rem; /* More padding */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.18); /* Deeper shadow and inner glow */
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            cursor: grab;
+            position: relative;
+            font-family: 'Inter', sans-serif;
+            color: #e0d0c0;
+            user-select: none;
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.05); /* More pronounced lift */
+            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.25); /* Stronger shadow */
+        }
+
+        .card-cost {
+            position: absolute;
+            top: 10px; /* Adjusted position */
+            left: 10px; /* Adjusted position */
+            background: radial-gradient(circle at top left, #ffd700, #b8860b); /* Gold radial gradient */
+            color: #2a221a;
+            border: 3px solid #8B7300; /* Darker gold border */
+            border-radius: 50%;
+            width: 35px; /* Larger cost circle */
+            height: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.1rem; /* Larger font */
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3); /* Shadow for pop-out effect */
+        }
+
+        .card-name {
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.2rem; /* Larger name */
+            text-align: center;
+            margin-top: 2.2rem; /* More space from cost */
+            color: #d4af37;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8); /* Stronger text shadow */
+        }
+
+        .card-image {
+            width: 100px; /* Larger image area */
+            height: 100px;
+            background-color: #6b4e2e;
+            border-radius: 0.85rem; /* More rounded */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.8rem; /* Larger emoji */
+            color: #e0d0c0;
+            overflow: hidden;
+            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6); /* Inner shadow */
+        }
+
+        .card-stats {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            font-size: 1.1rem; /* Larger stats */
+            font-weight: bold;
+            color: #e0d0c0;
+            margin-top: 0.6rem; /* Space below image */
+        }
+
+        .card-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px; /* More space between icon and number */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .card-effect-text {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            text-align: center;
+            color: #e0d0c0;
+            margin-top: 0.4rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            line-height: 1.2;
+        }
+        .card-effect-text.text-red-300 { color: #fca5a5; } /* Lighter red for death effects */
+        .card-effect-text.text-green-300 { color: #86efac; } /* Lighter green for on-play effects */
+        .card-effect-text.text-orange-300 { color: #fdba74; } /* Lighter orange for on-attacked effects */
+
+
+        /* Specific styles for Spell Cards */
+        .card.spell-card {
+            background: linear-gradient(to bottom right, #5d4037, #4e342e); /* Darker brown/magic theme */
+            border-color: #8d6e63; /* Lighter brown/magic border */
+        }
+        .card.spell-card .card-name {
+            color: #a7d9ff; /* Blueish glow for spells */
+            text-shadow: 0 0 8px rgba(167, 217, 255, 0.8); /* Stronger glow effect */
+        }
+        .card.spell-card .card-image {
+            background-color: #424242;
+            font-size: 3.2rem; /* Even larger icon for spells */
+        }
+
+        /* Specific styles for Mana Creatures */
+        .card.mana-creature {
+            border-color: #00bfff; /* Sky blue border for mana creatures */
+            box-shadow: 0 8px 16px rgba(0, 191, 255, 0.6), inset 0 0 10px rgba(0, 191, 255, 0.4); /* Stronger blue glow */
+        }
+        .card.mana-creature .card-name {
+            color: #00bfff;
+            text-shadow: 0 0 8px rgba(0, 191, 255, 0.8);
+        }
+        .card.mana-creature .mana-icon {
+            font-size: 1.4rem; /* Larger mana icon */
+            color: #00bfff;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        /* Divine Shield Visual */
+        .card[data-has-divine-shield="true"] {
+            box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7), inset 0 0 10px 3px rgba(255, 255, 0, 0.5); /* Yellow glow for divine shield */
+            border-color: #ffd700; /* Gold border */
+        }
+        .card[data-has-divine-shield="true"]::after {
+            content: "🛡️"; /* Shield icon */
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 1.5rem;
+            color: yellow;
+            text-shadow: 0 0 5px black;
+        }
+
+
+        /* Player Hand Area */
+        .player-hand {
+            background-color: #3a2e22;
+            border: 3px solid #6b4e2e;
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            min-height: 240px; /* Increased min-height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Game Message Overlay */
+        .game-message {
+            position: absolute; /* Changed from fixed to absolute */
+            top: 20px; /* Position at the top */
+            left: 50%;
+            transform: translateX(-50%); /* Center horizontally */
+            width: auto; /* Width based on content */
+            max-width: 400px; /* Limit max width */
+            background-color: rgba(0, 0, 0, 0.95);
+            border: 3px solid #d4af37;
+            border-radius: 1rem;
+            padding: 1.5rem 2rem; /* Reduced padding */
+            text-align: center;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.8rem; /* Reduced font size for notification */
+            color: #d4af37;
+            z-index: 3000;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+            display: none; /* Hidden by default */
+            transition: opacity 0.5s ease-out; /* Smooth fade out */
+        }
+
+        .game-message p {
+            margin-bottom: 0.5rem; /* Reduced margin */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .game-message button {
+            /* This button is now only for game over, so its styling is fine for that */
+            margin-top: 1rem; /* Adjusted margin for restart button */
+            padding: 0.8rem 1.6rem;
+            background-color: #d4af37;
+            color: #2a221a;
+            border: 2px solid #8B7300;
+            border-radius: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-message button:hover {
+            background-color: #e0c050;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Mulligan Overlay */
+        .mulligan-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.98); /* Even more opaque */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 6000; /* Highest z-index */
+        }
+
+        .mulligan-content {
+            background-color: #2a221a;
+            border: 6px solid #d4af37;
+            border-radius: 1.75rem;
+            padding: 3rem;
+            text-align: center;
+            font-family: 'MedievalSharp', cursive;
+            color: #e0d0c0;
+            box-shadow: 0 0 50px rgba(212, 175, 55, 1);
+            max-width: 95%;
+            max-height: 95%;
+            overflow-y: auto;
+        }
+
+        .mulligan-content h2 {
+            font-size: 3.2rem;
+            color: #d4af37;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9);
+        }
+
+        .mulligan-content p {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        .mulligan-hand-display {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+            min-height: 220px;
+        }
+
+        .mulligan-hand-display .card {
+            width: 120px; /* Slightly larger cards in mulligan display */
+            height: 180px;
+            cursor: default;
+            transform: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
+            border: 3px solid #6b4e2e;
+        }
+        .mulligan-hand-display .card:hover {
+            transform: none;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
+        }
+
+
+        .mulligan-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+        }
+
+        .mulligan-buttons button {
+            padding: 1.2rem 2.5rem;
+            background-color: #6b4e2e;
+            color: #e0d0c0;
+            border: 4px solid #4a3a2a;
+            border-radius: 1rem;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+        }
+
+        .mulligan-buttons button:hover {
+            background-color: #8a6e4e;
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .mulligan-buttons button#keep-hand-button {
+            background-color: #d4af37;
+            color: #2a221a;
+            border-color: #8B7300;
+        }
+
+        .mulligan-buttons button#keep-hand-button:hover {
+            background-color: #e0c050;
+        }
+
+
+        .game-button {
+            padding: 1rem 2rem;
+            background-color: #6b4e2e;
+            color: #e0d0c0;
+            border: 4px solid #4a3a2a;
+            border-radius: 1rem;
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-button:hover {
+            background-color: #8a6e4e;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .game-button:disabled {
+            background-color: #4a3a2a;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Active card in hand for playing */
+        .card.playable {
+            border-color: #d4af37; /* Gold border */
+            box-shadow: 0 8px 16px rgba(212, 175, 55, 0.7), inset 0 0 10px rgba(212, 175, 55, 0.5); /* Stronger gold glow */
+        }
+
+        .card.playable:hover {
+            transform: translateY(-15px) scale(1.08); /* More prominent lift */
+            box-shadow: 0 20px 40px rgba(212, 175, 55, 1), inset 0 0 15px rgba(212, 175, 55, 0.6);
+        }
+
+        /* Active card on board for attacking */
+        .card.attackable {
+            border-color: #ff4500; /* Orange-red border */
+            box-shadow: 0 8px 16px rgba(255, 69, 0, 0.7), inset 0 0 10px rgba(255, 69, 0, 0.5); /* Stronger red glow */
+        }
+
+        .card.attackable:hover {
+            transform: scale(1.08);
+            box-shadow: 0 20px 40px rgba(255, 69, 0, 0.9), inset 0 0 15px rgba(255, 69, 0, 0.6);
+        }
+
+        .targetable {
+            box-shadow: 0 0 25px 10px rgba(255, 0, 0, 0.9); /* More intense red glow for target */
+            cursor: pointer;
+        }
+
+        /* Card Tooltip Styles */
+        #card-tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 2px solid #d4af37;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            max-width: 200px; /* Limit tooltip width */
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            color: #e0d0c0;
+            z-index: 7000; /* Ensure it's on top */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
+            opacity: 0; /* Hidden by default */
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: auto; /* IMPORTANT: Allow mouse events on tooltip itself */
+        }
+
+        #card-tooltip h3 {
+            font-family: 'MedievalSharp', cursive;
+            font-size: 1.2rem;
+            color: #d4af37;
+            margin-bottom: 0.5rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        #card-tooltip p {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            .game-container {
+                padding: 0.75rem;
+                width: 100%;
+                margin: 5px auto;
+                gap: 0.75rem;
+                border-width: 3px;
+            }
+            .header-panel, .footer-panel {
+                flex-direction: column;
+                gap: 0.4rem;
+                font-size: 1rem;
+                padding: 0.6rem;
+                border-width: 1px;
+            }
+            .player-stats, .opponent-stats {
+                flex-direction: column;
+                gap: 0.4rem;
+                padding: 0.4rem;
+                font-size: 0.8rem;
+                border-width: 1px;
+            }
+            .opponent-area, .player-area {
+                padding: 0.6rem;
+                min-height: 100px;
+                gap: 0.6rem;
+                border-width: 2px;
+            }
+            .location-area {
+                padding: 0.4rem;
+                min-height: 60px;
+                margin: 0.4rem auto;
+                border-width: 1px;
+            }
+            .location-area .card {
+                width: 80px;
+                height: 120px;
+            }
+            .card {
+                width: 90px;
+                height: 135px;
+                padding: 0.4rem;
+                border-width: 2px;
+                border-radius: 0.75rem;
+            }
+            .card:hover {
+                transform: translateY(-4px) scale(1.01);
+            }
+            .card-cost {
+                width: 22px;
+                height: 22px;
+                font-size: 0.8rem;
+                top: 4px;
+                left: 4px;
+                border-width: 1px;
+            }
+            .card-name {
+                font-size: 0.8rem;
+                margin-top: 1rem;
+            }
+            .card-image {
+                width: 50px;
+                height: 50px;
+                font-size: 1.8rem;
+            }
+            .card-stats {
+                font-size: 0.7rem;
+            }
+            .card-stat {
+                gap: 3px;
+            }
+            .card-effect-text {
+                font-size: 0.65rem;
+            }
+            .card.spell-card .card-image {
+                font-size: 2rem;
+            }
+            .card.mana-creature .mana-icon {
+                font-size: 0.9rem;
+            }
+            .player-hand {
+                padding: 0.6rem;
+                min-height: 160px;
+                gap: 0.6rem;
+                border-width: 1px;
+            }
+            .game-message {
+                font-size: 1.2rem; /* Even smaller for mobile */
+                padding: 0.8rem 1.2rem;
+                border-width: 2px;
+            }
+            .game-message button {
+                font-size: 0.9rem;
+                padding: 0.6rem 1.2rem;
+                border-width: 1px;
+            }
+            .mulligan-content {
+                font-size: 0.9rem;
+                padding: 1rem;
+                border-width: 2px;
+            }
+            .mulligan-content h2 {
+                font-size: 1.5rem;
+            }
+            .mulligan-content p {
+                font-size: 0.8rem;
+            }
+            .mulligan-hand-display {
+                gap: 0.5rem;
+                margin-bottom: 0.8rem;
+                min-height: 120px;
+            }
+            .mulligan-hand-display .card {
+                width: 50px;
+                height: 75px;
+                border-width: 1px;
+            }
+            .mulligan-buttons button {
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+                border-width: 1px;
+            }
+            .game-button {
+                font-size: 0.8rem;
+                padding: 0.5rem 1rem;
+                border-width: 1px;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter">
+    <div class="game-container">
+        <!-- Header Panel: Opponent Info and Game Status -->
+        <div class="header-panel">
+            <div class="opponent-info">
+                <span class="text-xl">Opponent</span>
+                <div id="opponent-stats" class="opponent-stats">
+                    <span>❤️ <span id="opponent-health">20</span></span>
+                </div>
+            </div>
+            <div id="game-status" class="text-center">Your Turn</div>
+            <div class="flex items-center gap-2">
+                <button id="end-turn-button" class="game-button">End Turn</button>
+            </div>
+        </div>
+
+        <!-- Game Board: Opponent's and Player's Play Areas -->
+        <div class="game-board">
+            <!-- Opponent's Location Area -->
+            <div id="opponent-location-area" class="location-area">
+                <p class="text-gray-500">Opponent's location.</p>
+            </div>
+            <div id="opponent-play-area" class="opponent-area">
+                <p class="text-gray-500">Opponent's creatures will appear here.</p>
+            </div>
+            <div id="player-play-area" class="player-area">
+                <p class="text-gray-500">Your creatures will appear here.</p>
+            </div>
+            <!-- Player's Location Area -->
+            <div id="player-location-area" class="location-area">
+                <p class="text-gray-500">Your active location.</p>
+            </div>
+        </div>
+
+        <!-- Footer Panel: Player Info and Hand -->
+        <div class="footer-panel">
+            <div class="player-info">
+                <span class="text-xl">You</span>
+                <div id="player-stats" class="player-stats">
+                    <span>❤️ <span id="player-health">20</span></span>
+                    <span>✨ <span id="player-mana">0</span>/<span id="player-max-mana">0</span></span>
+                </div>
+            </div>
+            <div id="player-hand" class="player-hand">
+                <p class="text-gray-500">Your hand is empty. Draw a card!</p>
+            </div>
+        </div>
+
+        <!-- Game Message Overlay -->
+        <div id="game-message" class="game-message">
+            <p id="message-text"></p>
+            <button id="restart-button">Play Again</button>
+        </div>
+
+        <!-- Mulligan Overlay -->
+        <div id="mulligan-overlay" class="mulligan-overlay">
+            <div class="mulligan-content">
+                <h2>Mulligan Phase</h2>
+                <p>Your Starting Hand:</p>
+                <div id="mulligan-hand-display" class="mulligan-hand-display">
+                    <!-- Cards will be rendered here -->
+                </div>
+                <p>Would you like to redraw your hand? (Once per game)</p>
+                <div class="mulligan-buttons">
+                    <button id="keep-hand-button">Keep Hand</button>
+                    <button id="mulligan-button">Mulligan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Foresight Overlay -->
+        <div id="foresight-overlay" class="mulligan-overlay" style="display: none;">
+            <div class="mulligan-content">
+                <h2>Foresight</h2>
+                <p>Choose one card to put into your hand. The rest go to the bottom of your deck.</p>
+                <div id="foresight-cards-display" class="mulligan-hand-display">
+                    <!-- Cards will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Tooltip -->
+        <div id="card-tooltip" style="display: none;">
+            <h3 id="tooltip-card-name"></h3>
+            <p id="tooltip-card-cost"></p>
+            <p id="tooltip-card-type"></p>
+            <p id="tooltip-card-stats"></p>
+            <p id="tooltip-card-effect"></p>
+        </div>
+    </div>
+
+    <script>
+        // Game State Variables
+        let playerHealth = 20;
+        let playerMana = 0;
+        let playerMaxMana = 0;
+        let opponentHealth = 20;
+        let opponentMana = 0;
+        let opponentMaxMana = 0;
+        let turn = 0; // Tracks actual turn number, starts at 0 before first player turn
+        let playerDeck = [];
+        let playerHand = [];
+        let playerPlayArea = [];
+        let playerLocation = null; // Stores the active player location card object
+        let opponentDeck = [];
+        let opponentHand = [];
+        let opponentPlayArea = [];
+        let opponentLocation = null; // Stores the active opponent location card object
+        let selectedAttacker = null; // Stores the HTML element of the card selected to attack
+        let playerHasMulliganed = false; // Track if player has used mulligan
+        let opponentHasMulliganed = false; // Track if opponent has used mulligan
+        let currentSpellDamageBoostPlayer = 0; // New: Tracks player's spell damage boost from locations
+        let currentSpellDamageBoostOpponent = 0; // New: Tracks opponent's spell damage boost from locations
+        let currentCreatureAttackBoostPlayer = 0; // New: Tracks player's creature attack boost from locations
+        let currentCreatureDefenseBoostPlayer = 0; // New: Tracks player's creature defense boost from locations
+        let currentCreatureAttackBoostOpponent = 0; // New: Tracks opponent's creature attack boost from locations
+        let currentCreatureDefenseBoostOpponent = 0; // New: Tracks opponent's creature defense boost from locations
+        let foresightCards = []; // Stores cards revealed by Foresight spell
+        let messageTimeoutId = null; // To manage the auto-hide of temporary messages
+        let tooltipHideTimer = null; // To manage tooltip visibility on mouseout
+
+
+        // DOM Elements
+        const playerHealthEl = document.getElementById('player-health');
+        const playerManaEl = document.getElementById('player-mana');
+        const playerMaxManaEl = document.getElementById('player-max-mana');
+        const opponentHealthEl = document.getElementById('opponent-health');
+        const gameStatusEl = document.getElementById('game-status');
+        const playerHandEl = document.getElementById('player-hand');
+        const playerPlayAreaEl = document.getElementById('player-play-area');
+        const playerLocationAreaEl = document.getElementById('player-location-area'); // New
+        const opponentPlayAreaEl = document.getElementById('opponent-play-area');
+        const opponentLocationAreaEl = document.getElementById('opponent-location-area'); // New
+        const endTurnButton = document.getElementById('end-turn-button');
+        const gameMessageEl = document.getElementById('game-message');
+        const messageTextEl = document.getElementById('message-text');
+        const restartButton = document.getElementById('restart-button');
+        const mulliganOverlay = document.getElementById('mulligan-overlay');
+        const mulliganHandDisplay = document.getElementById('mulligan-hand-display'); // New
+        const keepHandButton = document.getElementById('keep-hand-button');
+        const mulliganButton = document.getElementById('mulligan-button');
+        const foresightOverlay = document.getElementById('foresight-overlay'); // New
+        const foresightCardsDisplay = document.getElementById('foresight-cards-display'); // New
+        const cardTooltip = document.getElementById('card-tooltip'); // New
+        const tooltipCardName = document.getElementById('tooltip-card-name'); // New
+        const tooltipCardCost = document.getElementById('tooltip-card-cost'); // New
+        const tooltipCardType = document.getElementById('tooltip-card-type'); // New
+        const tooltipCardStats = document.getElementById('tooltip-card-stats'); // New
+        const tooltipCardEffect = document.getElementById('tooltip-card-effect'); // New
+        const gameContainer = document.querySelector('.game-container'); // Get the game container for event delegation
+
+
+        // Card Data (Example Cards)
+        const allCards = [
+            { id: 'knight', name: 'Gallant Knight', cost: 2, attack: 2, defense: 2, image: '🛡️', type: 'creature' },
+            { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '🏹', type: 'creature' },
+            { id: 'wizard', name: 'Mystic Wizard', cost: 3, attack: 3, defense: 2, image: '🧙', type: 'creature' },
+            { id: 'goblin', name: 'Sneaky Goblin', cost: 1, attack: 2, defense: 1, image: '👹', type: 'creature' },
+            { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature' },
+            { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature' },
+            { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature' },
+            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature' },
+            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature' },
+            { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature' },
+            { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature' },
+            { id: 'rogue', name: 'Shadow Rogue', cost: 1, attack: 2, defense: 1, image: '🗡️', type: 'creature' },
+            { id: 'griffin', name: 'Sky Griffin', cost: 4, attack: 3, defense: 3, image: '🦅', type: 'creature' },
+            { id: 'treant', name: 'Ancient Treant', cost: 4, attack: 2, defense: 6, image: '🌳', type: 'creature' },
+            { id: 'sorceress', name: 'Dark Sorceress', cost: 3, attack: 2, defense: 3, image: '🔮', type: 'creature' },
+            { id: 'direwolf', name: 'Dire Wolf', cost: 2, attack: 2, defense: 2, image: '🐺', type: 'creature' },
+            // --- SPELL CARDS ---
+            { id: 'fireball', name: 'Fireball', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '☄️' },
+            { id: 'healing_potion', name: 'Healing Potion', cost: 1, type: 'spell', effect: { type: 'heal', value: 4, text: 'Heal 4 health' }, image: '🧪' },
+            { id: 'lightning_bolt', name: 'Lightning Bolt', cost: 3, type: 'spell', effect: { type: 'damage', value: 4, text: 'Deal 4 damage to target' }, image: '⚡' },
+            { id: 'minor_heal', name: 'Minor Heal', cost: 1, type: 'spell', effect: { type: 'heal', value: 2, text: 'Heal 2 health' }, image: '✨' },
+            { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜' },
+            // --- RESOURCE CREATURES (Mana Generators) ---
+            { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null },
+            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null },
+            { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null },
+            { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' } },
+            // --- LOCATION CARDS ---
+            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '🌿' },
+            { id: 'healing_spring', name: 'Healing Spring', cost: 2, type: 'location', passive_effect: { type: 'health_regen', value: 2, text: 'Heal 2 HP/turn' }, image: '💧' },
+            { id: 'training_grounds', name: 'Training Grounds', cost: 2, type: 'location', passive_effect: { type: 'creature_attack_boost', value: 1, text: 'Your creatures get +1⚔️' }, image: '⚔️' },
+            { id: 'volcano_peak', name: 'Volcano Peak', cost: 3, type: 'location', passive_effect: { type: 'damage_to_opponent_on_play', value: 1, text: 'Deal 1 DMG to Opponent on Play' }, image: '🌋' },
+            { id: 'mystic_portal', name: 'Mystic Portal', cost: 2, type: 'location', passive_effect: { type: 'mana_per_turn_delayed', value: 2, start_turn: 3, text: 'Mana +2/turn (Turn 3+)' }, image: '🌌' },
+            { id: 'arcane_tower', name: 'Arcane Tower', cost: 2, type: 'location', passive_effect: { type: 'spell_damage_boost', value: 1, text: 'Your spells deal +1 DMG' }, image: '🗼' },
+            // --- NEW EXPANSION CARDS ---
+            { id: 'guardian_of_peaks', name: 'Guardian of the Peaks', cost: 4, attack: 2, defense: 5, image: '🏔️', type: 'creature', on_attacked_effect: { type: 'damage_attacker', value: 2, text: 'Deals 2 DMG to attacker' } },
+            { id: 'feral_tracker', name: 'Feral Tracker', cost: 2, attack: 2, defense: 2, image: '🐾', type: 'creature', on_play_effect: { type: 'buff_random_friendly_creature_attack', value: 1, text: 'Give a random friendly creature +1⚔️' } },
+            { id: 'divine_shield', name: 'Divine Shield', cost: 2, type: 'spell', effect: { type: 'grant_divine_shield', text: 'Grant Divine Shield to a friendly creature' }, image: '✨' },
+            { id: 'mind_drain', name: 'Mind Drain', cost: 1, type: 'spell', effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, image: '🧠' },
+            { id: 'ancient_library', name: 'Ancient Library', cost: 2, type: 'location', passive_effect: { type: 'draw_card_per_turn', value: 1, text: 'Draw +1 card/turn' }, image: '📚' },
+            { id: 'warriors_guild', name: 'Warrior\'s Guild', cost: 3, type: 'location', passive_effect: { type: 'creature_stat_boost_all', attack_value: 1, defense_value: 1, text: 'Your creatures get +1⚔️/+1❤️' }, image: '🛡️' },
+            // --- NEW OPENING PHASE CARDS ---
+            { id: 'foresight', name: 'Foresight', cost: 1, type: 'spell', effect: { type: 'scry', value: 3, text: 'Look at top 3 cards, draw 1' }, image: '👁️' },
+            { id: 'scribe_apprentice', name: 'Scribe Apprentice', cost: 1, attack: 1, defense: 1, image: '🧑‍🏫', type: 'creature', on_play_effect: { type: 'draw_card', value: 1, text: 'Draw 1 card on play' } },
+            // --- END NEW OPENING PHASE CARDS ---
+        ];
+
+        // --- Utility Functions ---
+
+        // Shuffles an array (Fisher-Yates algorithm)
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Applies a death effect
+        function applyDeathEffect(cardData, owner = 'player') {
+            if (!cardData.death_effect) return;
+            const effect = cardData.death_effect;
+            let message = '';
+
+            if (effect.type === 'draw_card') {
+                const drawValue = effect.value;
+                if (owner === 'player') {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    message = `${cardData.name} died, and you draw ${drawValue} card${drawValue > 1 ? 's' : ''}!`;
+                } else { // owner === 'opponent'
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    message = `${cardData.name} died, and opponent draws ${drawValue} card${drawValue > 1 ? 's' : ''}!`;
+                }
+            } else if (effect.type === 'damage_opponent') {
+                const damageValue = effect.value;
+                if (owner === 'player') {
+                    opponentHealth -= damageValue;
+                    message = `${cardData.name} died, dealing ${damageValue} damage to opponent!`;
+                    if (opponentHealth <= 0) endGame('player');
+                } else { // owner === 'opponent'
+                    playerHealth -= damageValue;
+                    message = `${cardData.name} died, dealing ${damageValue} damage to you!`;
+                    if (playerHealth <= 0) endGame('opponent');
+                }
+            }
+            showGameMessage(message, false, true); // Temporary message for death effects
+            updateUI();
+        }
+
+        // Creates a visual card element
+        function createCardElement(cardData, isPlayerCard = true, isMulliganDisplay = false, isForesightDisplay = false) {
+            const cardEl = document.createElement('div');
+            cardEl.classList.add('card', 'rounded-xl', 'shadow-lg', 'flex', 'flex-col', 'items-center', 'justify-between', 'p-2', 'relative');
+            cardEl.dataset.cardId = cardData.id;
+            cardEl.dataset.cost = cardData.cost;
+            cardEl.dataset.type = cardData.type; // Add card type to dataset
+
+            let cardStatsHtml = '';
+            let manaIconHtml = '';
+            let effectTextHtml = '';
+            let deathEffectHtml = '';
+            let onPlayEffectHtml = '';
+            let onAttackedEffectHtml = '';
+
+            if (cardData.type === 'creature') {
+                cardEl.dataset.attack = cardData.attack;
+                cardEl.dataset.defense = cardData.defense;
+                cardEl.dataset.currentAttack = cardData.attack;
+                cardEl.dataset.currentDefense = cardData.defense;
+                if (cardData.mana_per_turn) {
+                    cardEl.dataset.manaPerTurn = cardData.mana_per_turn;
+                    cardEl.classList.add('mana-creature');
+                    let manaText = `+${cardData.mana_per_turn}`;
+                    if (cardData.mana_condition && cardData.mana_condition.type === 'control_other_creature') {
+                        manaText += ` ${cardData.mana_condition.text}`;
+                    } else if (cardData.mana_condition && cardData.mana_condition.type === 'control_location') {
+                        manaText += ` ${cardData.mana_condition.text}`;
+                    }
+                    manaIconHtml = `<span class="mana-icon">✨${manaText}</span>`;
+                }
+                cardStatsHtml = `
+                    <div class="card-stats">
+                        <span class="card-stat">⚔️ ${cardData.attack}</span>
+                        <span class="card-stat">❤️ ${cardData.defense}</span>
+                    </div>
+                `;
+                if (cardData.death_effect) {
+                    cardEl.dataset.deathEffectType = cardData.death_effect.type;
+                    if (cardData.death_effect.value) cardEl.dataset.deathEffectValue = cardData.death_effect.value;
+                    deathEffectHtml = `<div class="card-effect-text text-red-300">💀 ${cardData.death_effect.text}</div>`;
+                }
+                if (cardData.on_play_effect) {
+                    cardEl.dataset.onPlayEffectType = cardData.on_play_effect.type;
+                    if (cardData.on_play_effect.value) cardEl.dataset.onPlayEffectValue = cardData.on_play_effect.value;
+                    onPlayEffectHtml = `<div class="card-effect-text text-green-300">▶️ ${cardData.on_play_effect.text}</div>`;
+                }
+                if (cardData.on_attacked_effect) {
+                    cardEl.dataset.onAttackedEffectType = cardData.on_attacked_effect.type;
+                    if (cardData.on_attacked_effect.value) cardEl.dataset.onAttackedEffectValue = cardData.on_attacked_effect.value;
+                    onAttackedEffectHtml = `<div class="card-effect-text text-orange-300">💥 ${cardData.on_attacked_effect.text}</div>`;
+                }
+            } else if (cardData.type === 'spell') {
+                cardEl.classList.add('spell-card');
+                cardEl.dataset.effectType = cardData.effect.type;
+                if (cardData.effect.value) cardEl.dataset.effectValue = cardData.effect.value;
+                if (cardData.effect.text) {
+                    effectTextHtml = `<div class="card-effect-text">${cardData.effect.text}</div>`;
+                }
+            } else if (cardData.type === 'location') {
+                cardEl.classList.add('location-card');
+                cardEl.dataset.effectType = cardData.passive_effect.type;
+                if (cardData.passive_effect.value) cardEl.dataset.effectValue = cardData.passive_effect.value;
+                if (cardData.passive_effect.start_turn) cardEl.dataset.startTurn = cardData.passive_effect.start_turn;
+                if (cardData.passive_effect.attack_value) cardEl.dataset.attackValue = cardData.passive_effect.attack_value;
+                if (cardData.passive_effect.defense_value) cardEl.dataset.defenseValue = cardData.passive_effect.defense_value;
+
+                if (cardData.passive_effect.text) {
+                    effectTextHtml = `<div class="card-effect-text">${cardData.passive_effect.text}</div>`;
+                }
+            }
+
+            cardEl.innerHTML = `
+                <div class="card-cost">${cardData.cost}</div>
+                <div class="card-name">${cardData.name}</div>
+                <div class="card-image">${cardData.image}</div>
+                ${cardStatsHtml}
+                ${manaIconHtml}
+                ${onPlayEffectHtml}
+                ${onAttackedEffectHtml}
+                ${deathEffectHtml}
+                ${effectTextHtml}
+            `;
+
+            // Only add click listener if it's a player card and NOT for display purposes
+            if (isPlayerCard && !isMulliganDisplay && !isForesightDisplay) {
+                cardEl.classList.add('cursor-pointer');
+                cardEl.addEventListener('click', () => handleCardClick(cardEl, cardData));
+            } else if (isMulliganDisplay || isForesightDisplay) {
+                cardEl.classList.remove('cursor-pointer');
+            }
+
+            // Mouseover/mouseout listeners are now handled by event delegation on gameContainer
+            return cardEl;
+        }
+
+        // --- Tooltip Functions ---
+        function showCardTooltip(event, cardData) {
+            // Clear any pending hide timer
+            if (tooltipHideTimer) {
+                clearTimeout(tooltipHideTimer);
+                tooltipHideTimer = null;
+            }
+
+            // Populate tooltip content
+            tooltipCardName.textContent = cardData.name;
+            tooltipCardCost.textContent = `Cost: ${cardData.cost}`;
+            tooltipCardType.textContent = `Type: ${cardData.type.charAt(0).toUpperCase() + cardData.type.slice(1)}`;
+
+            let statsText = '';
+            let effectDesc = '';
+
+            if (cardData.type === 'creature') {
+                statsText = `Attack: ${cardData.attack} | Defense: ${cardData.defense}`;
+                if (cardData.mana_per_turn) {
+                    effectDesc += `Mana: +${cardData.mana_per_turn} per turn`;
+                    if (cardData.mana_condition) effectDesc += ` ${cardData.mana_condition.text}`;
+                }
+                if (cardData.on_play_effect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Play: ${cardData.on_play_effect.text}`;
+                }
+                if (cardData.on_attacked_effect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Attacked: ${cardData.on_attacked_effect.text}`;
+                }
+                if (cardData.death_effect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Death: ${cardData.death_effect.text}`;
+                }
+            } else if (cardData.type === 'spell') {
+                effectDesc = cardData.effect.text;
+            } else if (cardData.type === 'location') {
+                effectDesc = cardData.passive_effect.text;
+            }
+
+            tooltipCardStats.textContent = statsText;
+            tooltipCardEffect.textContent = effectDesc;
+
+            // Position tooltip
+            const cardRect = event.currentTarget.getBoundingClientRect();
+            // Get tooltip dimensions after content is set
+            cardTooltip.style.display = 'block'; // Temporarily show to get dimensions
+            cardTooltip.style.opacity = '0'; // Keep it invisible for now
+            const tooltipRect = cardTooltip.getBoundingClientRect();
+
+            let leftPos = cardRect.right + 10;
+            let topPos = cardRect.top;
+
+            // Adjust if it goes off screen to the right
+            if (leftPos + tooltipRect.width > window.innerWidth - 20) {
+                leftPos = cardRect.left - tooltipRect.width - 10;
+                if (leftPos < 20) {
+                    leftPos = 20;
+                }
+            }
+
+            // Adjust if it goes off screen vertically
+            if (topPos + tooltipRect.height > window.innerHeight - 20) {
+                topPos = window.innerHeight - tooltipRect.height - 20;
+                if (topPos < 20) {
+                    topPos = 20;
+                }
+            }
+
+
+            cardTooltip.style.left = `${leftPos}px`;
+            cardTooltip.style.top = `${topPos}px`;
+            cardTooltip.style.opacity = '1'; // Fade in
+        }
+
+        function hideCardTooltip() {
+            // Start a timer to hide the tooltip. This allows moving the mouse from the card to the tooltip.
+            if (tooltipHideTimer) {
+                clearTimeout(tooltipHideTimer);
+            }
+            tooltipHideTimer = setTimeout(() => {
+                cardTooltip.style.opacity = '0';
+                setTimeout(() => {
+                    cardTooltip.style.display = 'none';
+                }, 200); // Match CSS transition duration
+            }, 100); // Small delay before hiding
+        }
+
+
+        // Updates the display of a card's stats (only for creatures)
+        function updateCardStatsDisplay(cardEl) {
+            if (cardEl.dataset.type === 'creature') {
+                const attackSpan = cardEl.querySelector('.card-stats span:first-child');
+                const defenseSpan = cardEl.querySelector('.card-stats span:last-child');
+                if (attackSpan && defenseSpan) { // Ensure elements exist before updating
+                    attackSpan.innerHTML = `⚔️ ${cardEl.dataset.currentAttack}`;
+                    defenseSpan.innerHTML = `❤️ ${cardEl.dataset.currentDefense}`;
+                }
+            }
+        }
+
+        // Displays a game message
+        function showGameMessage(message, showRestartButton = false, isTemporary = false) {
+            if (messageTimeoutId) {
+                clearTimeout(messageTimeoutId);
+                messageTimeoutId = null;
+            }
+
+            messageTextEl.textContent = message;
+            restartButton.style.display = showRestartButton ? 'block' : 'none';
+            gameMessageEl.style.display = 'block';
+            gameMessageEl.style.opacity = '1';
+
+            if (isTemporary) {
+                messageTimeoutId = setTimeout(() => {
+                    gameMessageEl.style.opacity = '0';
+                    setTimeout(() => {
+                        gameMessageEl.style.display = 'none';
+                    }, 500);
+                }, 2500);
+            }
+
+            console.log("Game Message Displayed:", message);
+        }
+
+        // Hides the game message
+        function hideGameMessage() {
+            cardTooltip.style.display = 'none'; // Ensure tooltip is hidden if game message covers it
+            gameMessageEl.style.display = 'none';
+            console.log("Game Message Hidden.");
+        }
+
+        // --- Game Core Functions ---
+
+        // Initializes the game state
+        function initializeGame() {
+            console.log("Initializing game...");
+            playerHealth = 20;
+            playerMana = 0;
+            playerMaxMana = 0;
+            opponentHealth = 20;
+            opponentMana = 0;
+            opponentMaxMana = 0;
+            turn = 0;
+            playerDeck = [];
+            playerHand = [];
+            playerPlayArea = [];
+            playerLocation = null;
+            opponentDeck = [];
+            opponentHand = [];
+            opponentPlayArea = [];
+            opponentLocation = null;
+            selectedAttacker = null;
+            playerHasMulliganed = false;
+            opponentHasMulliganed = false;
+            currentSpellDamageBoostPlayer = 0;
+            currentSpellDamageBoostOpponent = 0;
+            currentCreatureAttackBoostPlayer = 0;
+            currentCreatureDefenseBoostPlayer = 0;
+            currentCreatureAttackBoostOpponent = 0;
+            currentCreatureDefenseBoostOpponent = 0;
+            foresightCards = [];
+
+            if (messageTimeoutId) {
+                clearTimeout(messageTimeoutId);
+                messageTimeoutId = null;
+            }
+
+            hideGameMessage();
+            mulliganOverlay.style.display = 'none';
+            foresightOverlay.style.display = 'none';
+            hideCardTooltip();
+
+            updateUI();
+            startGame();
+            console.log("Game initialized.");
+        }
+
+        // Starts the game by drawing initial hands and initiating mulligan
+        function startGame() {
+            console.log("Starting game...");
+            playerDeck = shuffle([...allCards, ...allCards, ...allCards]);
+            opponentDeck = shuffle([...allCards, ...allCards, ...allCards]);
+
+            for (let i = 0; i < 4; i++) {
+                drawCard(playerDeck, playerHand, playerHandEl, true);
+            }
+
+            for (let i = 0; i < 5; i++) {
+                drawCard(opponentDeck, opponentHand, null, false);
+            }
+            aiMulligan();
+
+            promptPlayerMulligan();
+            console.log("Initial hands drawn. Waiting for player mulligan decision.");
+        }
+
+        // Prompts the player to mulligan
+        function promptPlayerMulligan() {
+            mulliganOverlay.style.display = 'flex';
+            mulliganHandDisplay.innerHTML = '';
+            playerHand.forEach(cardData => {
+                const cardEl = createCardElement(cardData, true, true);
+                mulliganHandDisplay.appendChild(cardEl);
+            });
+
+            keepHandButton.onclick = () => {
+                mulliganOverlay.style.display = 'none';
+                startPlayerTurn();
+            };
+            mulliganButton.onclick = () => {
+                if (!playerHasMulliganed) {
+                    console.log("Player choosing to mulligan.");
+                    playerHasMulliganed = true;
+                    playerDeck = shuffle([...playerDeck, ...playerHand]);
+                    playerHand = [];
+                    playerHandEl.innerHTML = '<p class="text-gray-500">Drawing new hand...</p>';
+                    mulliganHandDisplay.innerHTML = '<p class="text-gray-500">Drawing new hand...</p>';
+
+                    for (let i = 0; i < 4; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    mulliganOverlay.style.display = 'none';
+                    startPlayerTurn();
+                } else {
+                    console.log("Player already mulliganed. Keeping hand.");
+                    mulliganOverlay.style.display = 'none';
+                    startPlayerTurn();
+                }
+            };
+        }
+
+        // AI's mulligan logic
+        function aiMulligan() {
+            if (opponentHasMulliganed) return;
+
+            const handCosts = opponentHand.map(card => card.cost);
+            const totalCost = handCosts.reduce((sum, cost) => sum + cost, 0);
+            const avgCost = totalCost / opponentHand.length;
+            const hasCreature = opponentHand.some(card => card.type === 'creature');
+            const hasManaCreature = opponentHand.some(card => card.type === 'creature' && card.mana_per_turn);
+            const hasManaLocation = opponentHand.some(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn');
+            const hasDelayedManaLocation = opponentHand.some(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn_delayed');
+
+            if (avgCost > 3 || (!hasCreature && totalCost > 2) || (turn < 3 && !hasManaCreature && !hasManaLocation && !hasDelayedManaLocation && Math.random() < 0.6)) {
+                console.log("Opponent choosing to mulligan.");
+                opponentHasMulliganed = true;
+                opponentDeck = shuffle([...opponentDeck, ...opponentHand]);
+                opponentHand = [];
+                for (let i = 0; i < 5; i++) {
+                    drawCard(opponentDeck, opponentHand, null, false);
+                }
+            } else {
+                console.log("Opponent keeping hand.");
+            }
+        }
+
+        // Draws a card from deck to hand
+        function drawCard(deck, hand, handEl, isPlayer = true) {
+            if (deck.length > 0) {
+                const cardData = deck.shift();
+                hand.push(cardData);
+                if (isPlayer && handEl) {
+                    if (handEl.querySelector('p')) handEl.innerHTML = '';
+                    const cardEl = createCardElement(cardData, true);
+                    handEl.appendChild(cardEl);
+                    updatePlayableCards();
+                }
+                console.log(`${isPlayer ? 'Player' : 'Opponent'} drew a card: ${cardData.name}`);
+                return cardData;
+            } else {
+                console.log(`${isPlayer ? 'Player' : 'Opponent'} deck is empty.`);
+                if (isPlayer) {
+                    showGameMessage("Your deck is empty! You take 1 damage for not drawing a card.");
+                    playerHealth--;
+                    updateUI();
+                    if (playerHealth <= 0) {
+                        endGame('opponent');
+                    }
+                }
+                return null;
+            }
+        }
+
+        // Updates all UI elements
+        function updateUI() {
+            playerHealthEl.textContent = playerHealth;
+            playerManaEl.textContent = playerMana;
+            playerMaxManaEl.textContent = playerMaxMana;
+            opponentHealthEl.textContent = opponentHealth;
+            gameStatusEl.textContent = (turn % 2 !== 0) ? 'Your Turn' : 'Opponent\'s Turn';
+            endTurnButton.disabled = (turn % 2 === 0);
+
+            renderLocation(playerLocation, playerLocationAreaEl, true);
+            renderLocation(opponentLocation, opponentLocationAreaEl, false);
+
+            updatePlayableCards();
+            updateAttackableCards();
+            console.log(`UI Updated: Player Health: ${playerHealth}, Mana: ${playerMana}/${playerMaxMana}, Opponent Health: ${opponentHealth}. Turn: ${gameStatusEl.textContent}`);
+        }
+
+        // Renders cards in a given area (e.g., play area)
+        function renderCardsInArea(cardsArray, areaEl, isPlayerCard = true) {
+            areaEl.innerHTML = '';
+            if (cardsArray.length === 0) {
+                areaEl.innerHTML = `<p class="text-gray-500">${isPlayerCard ? 'Your' : 'Opponent\'s'} creatures will appear here.</p>`;
+                console.log(`${isPlayerCard ? 'Player' : 'Opponent'}'s play area is empty.`);
+                return;
+            }
+            cardsArray.forEach(cardData => {
+                const cardEl = createCardElement(cardData, isPlayerCard);
+                if (cardData.type === 'creature') {
+                    cardEl.dataset.currentAttack = cardData.currentAttack || cardData.attack;
+                    cardEl.dataset.currentDefense = cardData.currentDefense || cardData.defense;
+                    if (cardData.has_divine_shield) cardEl.dataset.hasDivineShield = 'true';
+                }
+                updateCardStatsDisplay(cardEl);
+                areaEl.appendChild(cardEl);
+            });
+            console.log(`Rendered ${cardsArray.length} cards in ${isPlayerCard ? 'player' : 'opponent'}'s play area.`);
+        }
+
+        // Renders the active location card
+        function renderLocation(locationData, locationAreaEl, isPlayer = true) {
+            locationAreaEl.innerHTML = '';
+            if (locationData) {
+                const cardEl = createCardElement(locationData, isPlayer);
+                cardEl.classList.remove('cursor-pointer');
+                cardEl.removeEventListener('click', handleCardClick);
+                locationAreaEl.appendChild(cardEl);
+                console.log(`${isPlayer ? 'Player' : 'Opponent'}'s active location: ${locationData.name}`);
+            } else {
+                locationAreaEl.innerHTML = `<p class="text-gray-500">${isPlayer ? 'Your' : 'Opponent\'s'} active location.</p>`;
+                console.log(`${isPlayer ? 'Player' : 'Opponent'}'s location area is empty.`);
+            }
+        }
+
+        // --- Player Turn Logic ---
+
+        function startPlayerTurn() {
+            console.log("--- Starting Player Turn ---");
+            turn++;
+            playerMaxMana = Math.min(10, playerMaxMana + 1);
+
+            currentSpellDamageBoostPlayer = 0;
+            currentCreatureAttackBoostPlayer = 0;
+            currentCreatureDefenseBoostPlayer = 0;
+
+            let currentManaGain = 0;
+            playerPlayArea.forEach(creature => {
+                if (creature.mana_per_turn) {
+                    if (creature.mana_condition) {
+                        if (creature.mana_condition.type === 'control_other_creature') {
+                            if (playerPlayArea.length > 1) {
+                                currentManaGain += creature.mana_per_turn;
+                            }
+                        } else if (creature.mana_condition.type === 'control_location') {
+                            if (playerLocation) {
+                                currentManaGain += creature.mana_per_turn;
+                            }
+                        }
+                    } else {
+                        currentManaGain += creature.mana_per_turn;
+                    }
+                }
+            });
+            if (playerLocation) {
+                if (playerLocation.passive_effect.type === 'mana_per_turn') {
+                    currentManaGain += playerLocation.passive_effect.value;
+                } else if (playerLocation.passive_effect.type === 'mana_per_turn_delayed' && turn >= playerLocation.passive_effect.start_turn) {
+                    currentManaGain += playerLocation.passive_effect.value;
+                } else if (playerLocation.passive_effect.type === 'spell_damage_boost') {
+                    currentSpellDamageBoostPlayer = playerLocation.passive_effect.value;
+                    console.log(`Player's spell damage boosted by ${currentSpellDamageBoostPlayer} from ${playerLocation.name}.`);
+                } else if (playerLocation.passive_effect.type === 'creature_stat_boost_all') {
+                    currentCreatureAttackBoostPlayer += playerLocation.passive_effect.attack_value;
+                    currentCreatureDefenseBoostPlayer += playerLocation.passive_effect.defense_value;
+                    console.log(`Player's creatures boosted by +${currentCreatureAttackBoostPlayer}⚔️/+${currentCreatureDefenseBoostPlayer}❤️ from ${playerLocation.name}.`);
+                } else if (playerLocation.passive_effect.type === 'draw_card_per_turn') {
+                    for (let i = 0; i < playerLocation.passive_effect.value; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    showGameMessage(`Your ${playerLocation.name} grants you ${playerLocation.passive_effect.value} extra card draw!`);
+                }
+            }
+            playerMana = playerMaxMana + currentManaGain;
+            console.log(`Player's base max mana: ${playerMaxMana}, creature/location mana: ${currentManaGain}. Total mana: ${playerMana}`);
+
+            if (playerLocation && playerLocation.passive_effect.type === 'health_regen') {
+                const healValue = playerLocation.passive_effect.value;
+                playerHealth = Math.min(20, playerHealth + healValue);
+                showGameMessage(`Your ${playerLocation.name} heals you for ${healValue} health!`);
+            }
+
+            drawCard(playerDeck, playerHand, playerHandEl, true);
+            updateUI();
+            clearAttackerSelection();
+            console.log("Player turn setup complete.");
+        }
+
+        // Handles clicking a card in hand or on the board
+        function handleCardClick(cardEl, cardData) {
+            console.log("Card clicked:", cardData.name, "Type:", cardData.type, "Cost:", cardData.cost);
+            console.log("Current player mana:", playerMana);
+            console.log("Current turn:", turn);
+            console.log("Game Status Text:", gameStatusEl.textContent);
+
+            if (turn === 0) {
+                console.log("Still in mulligan phase, cannot interact with cards.");
+                return;
+            }
+            if (gameStatusEl.textContent !== 'Your Turn') {
+                console.log("Not player's turn, cannot interact with cards.");
+                return;
+            }
+
+            const isCardInHand = playerHand.some(card => card.id === cardData.id && card.cost === cardData.cost && card.type === cardData.type);
+
+            console.log("Is card in hand (array check)?", isCardInHand);
+
+            if (isCardInHand) {
+                console.log("Card is in hand. Checking mana and type...");
+                if (playerMana < cardData.cost) {
+                    console.log(`Not enough mana to play ${cardData.name}. Mana: ${playerMana}, Cost: ${cardData.cost}`);
+                    showGameMessage("Not enough mana to play this card!", false, true);
+                    return;
+                }
+
+                if (cardData.type === 'creature') {
+                    console.log(`Attempting to play creature: ${cardData.name}`);
+                    playCreatureCard(cardData, cardEl);
+                } else if (cardData.type === 'spell') {
+                    console.log(`Attempting to cast spell: ${cardData.name}`);
+                    castSpell(cardData, 'player');
+                    const index = playerHand.indexOf(cardData);
+                    if (index > -1) {
+                        playerHand.splice(index, 1);
+                    }
+                    cardEl.remove();
+                    updateUI();
+                } else if (cardData.type === 'location') {
+                    console.log(`Attempting to play location: ${cardData.name}`);
+                    playLocationCard(cardData, cardEl);
+                    const index = playerHand.indexOf(cardData);
+                    if (index > -1) {
+                        playerHand.splice(index, 1);
+                    }
+                    cardEl.remove();
+                    updateUI();
+                }
+            } else if (playerPlayAreaEl.contains(cardEl) && cardData.type === 'creature') {
+                console.log("Card is on player's board (creature). Attempting to select for attack.");
+                if (selectedAttacker === cardEl) {
+                    console.log("Deselecting attacker.");
+                    clearAttackerSelection();
+                } else {
+                    console.log(`Selecting ${cardData.name} as attacker.`);
+                    clearAttackerSelection();
+                    selectedAttacker = cardEl;
+                    selectedAttacker.classList.add('attackable');
+                    opponentPlayAreaEl.classList.add('targetable');
+                    document.getElementById('opponent-stats').classList.add('targetable');
+                }
+            } else {
+                console.log("Clicked card is not in hand or a playable creature on board.");
+            }
+        }
+
+        // Plays a creature card from hand to play area
+        function playCreatureCard(cardData, cardEl) {
+            playerMana -= cardData.cost;
+            const index = playerHand.indexOf(cardData);
+            if (index > -1) {
+                playerHand.splice(index, 1);
+            }
+            cardEl.remove();
+
+            const newCardInstance = { ...cardData, currentAttack: cardData.attack, currentDefense: cardData.defense };
+            newCardInstance.currentAttack += currentCreatureAttackBoostPlayer;
+            newCardInstance.currentDefense += currentCreatureDefenseBoostPlayer;
+
+            playerPlayArea.push(newCardInstance);
+            renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+
+            if (cardData.on_play_effect) {
+                applyOnPlayEffect(cardData.on_play_effect, 'player');
+            }
+
+            updateUI();
+            console.log(`Player played creature ${cardData.name}. Remaining mana: ${playerMana}`);
+        }
+
+        // Applies an on-play effect for creatures
+        function applyOnPlayEffect(effect, owner = 'player') {
+            let message = '';
+            if (effect.type === 'buff_random_friendly_creature_attack') {
+                const buffValue = effect.value;
+                let targetCreatures = (owner === 'player' ? playerPlayArea : opponentPlayArea);
+                let targetAreaEl = (owner === 'player' ? playerPlayAreaEl : opponentPlayAreaEl);
+
+                const eligibleTargets = targetCreatures.filter(c => c.on_play_effect !== effect);
+
+                if (eligibleTargets.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * eligibleTargets.length);
+                    const targetCreature = eligibleTargets[randomIndex];
+                    targetCreature.currentAttack = parseInt(targetCreature.currentAttack) + buffValue;
+                    message = `${effect.text.replace('a random friendly creature', targetCreature.name)}!`;
+                    renderCardsInArea(targetCreatures, targetAreaEl, owner === 'player');
+                } else {
+                    message = `No other friendly creatures to buff from ${effect.text}!`;
+                }
+            } else if (effect.type === 'draw_card') {
+                const drawValue = effect.value;
+                if (owner === 'player') {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    message = `${effect.text.replace('on play', 'from ' + effect.text + ' on play')}!`;
+                } else {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    message = `${effect.text.replace('on play', 'from ' + effect.text + ' on play')}!`;
+                }
+            }
+            showGameMessage(message, false, true);
+            updateUI();
+        }
+
+        // Plays a location card
+        function playLocationCard(cardData, cardEl) {
+            playerMana -= cardData.cost;
+            playerLocation = cardData;
+            renderLocation(playerLocation, playerLocationAreaEl, true);
+
+            if (cardData.passive_effect.type === 'damage_to_opponent_on_play') {
+                const damageValue = cardData.passive_effect.value;
+                opponentHealth -= damageValue;
+                showGameMessage(`Your ${cardData.name} erupts, dealing ${damageValue} damage to the opponent!`);
+                if (opponentHealth <= 0) endGame('player');
+            }
+
+            updateUI();
+            console.log(`Player played location ${cardData.name}. Remaining mana: ${playerMana}`);
+        }
+
+
+        // Casts a spell card
+        function castSpell(cardData, caster = 'player') {
+            let message = '';
+            let spellDamageModifier = (caster === 'player' ? currentSpellDamageBoostPlayer : currentSpellDamageBoostOpponent);
+
+            if (caster === 'player') {
+                playerMana -= cardData.cost;
+            } else {
+                opponentMana -= cardData.cost;
+            }
+
+            if (cardData.effect.type === 'damage') {
+                const damageValue = cardData.effect.value + spellDamageModifier;
+                if (caster === 'player') {
+                    if (opponentPlayArea.length > 0) {
+                        let targetCreature = opponentPlayArea.reduce((min, current) =>
+                            (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), opponentPlayArea[0]);
+                        targetCreature.currentDefense -= damageValue;
+                        message = `Your ${cardData.name} deals ${damageValue} damage to opponent's ${targetCreature.name}!`;
+                        if (targetCreature.currentDefense <= 0) {
+                            const index = opponentPlayArea.indexOf(targetCreature);
+                            if (index > -1) {
+                                opponentPlayArea.splice(index, 1);
+                                message += ` ${targetCreature.name} was defeated!`;
+                                applyDeathEffect(targetCreature, 'opponent');
+                            }
+                        }
+                        renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                    } else {
+                        opponentHealth -= damageValue;
+                        message = `Your ${cardData.name} deals ${damageValue} damage to the opponent!`;
+                        if (opponentHealth <= 0) endGame('player');
+                    }
+                } else {
+                    if (playerPlayArea.length > 0) {
+                        let targetCreature = playerPlayArea.reduce((min, current) =>
+                            (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), playerPlayArea[0]);
+                        targetCreature.currentDefense -= damageValue;
+                        message = `Opponent's ${cardData.name} deals ${damageValue} damage to your ${targetCreature.name}!`;
+                        if (targetCreature.currentDefense <= 0) {
+                            const index = playerPlayArea.indexOf(targetCreature);
+                            if (index > -1) {
+                                playerPlayArea.splice(index, 1);
+                                message += ` ${targetCreature.name} was defeated!`;
+                                applyDeathEffect(targetCreature, 'player');
+                            }
+                        }
+                        renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+                    } else {
+                        playerHealth -= damageValue;
+                        message = `Opponent's ${cardData.name} deals ${damageValue} damage to you!`;
+                        if (playerHealth <= 0) endGame('opponent');
+                    }
+                }
+            } else if (cardData.effect.type === 'aoe_damage_enemy_creatures') {
+                const damageValue = cardData.effect.value + spellDamageModifier;
+                let targets = (caster === 'player' ? opponentPlayArea : playerPlayArea);
+                let ownerOfTargets = (caster === 'player' ? 'opponent' : 'player');
+                let targetAreaEl = (caster === 'player' ? opponentPlayAreaEl : playerPlayAreaEl);
+                let creaturesDefeated = [];
+
+                targets.forEach(creature => {
+                    creature.currentDefense -= damageValue;
+                    if (creature.currentDefense <= 0) {
+                        creaturesDefeated.push(creature);
+                    }
+                });
+
+                creaturesDefeated.forEach(defeatedCreature => {
+                    const index = targets.indexOf(defeatedCreature);
+                    if (index > -1) {
+                        targets.splice(index, 1);
+                        applyDeathEffect(defeatedCreature, ownerOfTargets);
+                    }
+                });
+                renderCardsInArea(targets, targetAreaEl, ownerOfTargets === 'player');
+                message = `${cardData.name} deals ${damageValue} damage to all ${ownerOfTargets}'s creatures!`;
+            }
+            else if (cardData.effect.type === 'heal') {
+                const healValue = cardData.effect.value;
+                if (caster === 'player') {
+                    playerHealth = Math.min(20, playerHealth + healValue);
+                    message = `Your ${cardData.name} heals you for ${healValue} health!`;
+                } else {
+                    opponentHealth = Math.min(20, opponentHealth + healValue);
+                    message = `Opponent's ${cardData.name} heals them for ${healValue} health!`;
+                }
+            } else if (cardData.effect.type === 'draw_card') {
+                const drawValue = effect.value; // Corrected from cardData.effect.value to effect.value for consistency
+                if (caster === 'player') {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(playerDeck, playerHand, playerHandEl, true);
+                    }
+                    message = `You draw ${drawValue} card${drawValue > 1 ? 's' : ''} from ${cardData.name}!`;
+                } else {
+                    for (let i = 0; i < drawValue; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    message = `Opponent draws ${drawValue} card${drawValue > 1 ? 's' : ''} from ${cardData.name}!`;
+                }
+            } else if (cardData.effect.type === 'buff_random_creature_attack') {
+                const buffValue = cardData.effect.value;
+                let targetCreatures = (caster === 'player' ? playerPlayArea : opponentPlayArea);
+                let targetAreaEl = (caster === 'player' ? playerPlayAreaEl : opponentPlayAreaEl);
+
+                if (targetCreatures.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * targetCreatures.length);
+                    const targetCreature = targetCreatures[randomIndex];
+                    targetCreature.currentAttack = parseInt(targetCreature.currentAttack) + buffValue;
+                    message = `${cardData.name} buffs ${targetCreature.name} for +${buffValue} Attack!`;
+                    renderCardsInArea(targetCreatures, targetAreaEl, caster === 'player');
+                } else {
+                    message = `${cardData.name} had no creatures to buff!`;
+                }
+            } else if (cardData.effect.type === 'grant_divine_shield') {
+                let targetCreatures = (caster === 'player' ? playerPlayArea : opponentPlayArea);
+                let targetAreaEl = (caster === 'player' ? playerPlayAreaEl : opponentPlayAreaEl);
+
+                if (targetCreatures.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * targetCreatures.length);
+                    const targetCreature = targetCreatures[randomIndex];
+                    targetCreature.has_divine_shield = true;
+                    message = `${cardData.name} grants Divine Shield to ${targetCreature.name}!`;
+                    renderCardsInArea(targetCreatures, targetAreaEl, caster === 'player');
+                } else {
+                    message = `${cardData.name} had no creatures to shield!`;
+                }
+            } else if (cardData.effect.type === 'discard_random_card') {
+                const discardValue = cardData.effect.value;
+                let targetHand = (caster === 'player' ? opponentHand : playerHand);
+                let targetHandEl = (caster === 'player' ? null : playerHandEl);
+
+                if (targetHand.length > 0) {
+                    for (let i = 0; i < discardValue; i++) {
+                        if (targetHand.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * targetHand.length);
+                            const discardedCard = targetHand.splice(randomIndex, 1)[0];
+                            message = `${cardData.name} forces ${caster === 'player' ? 'opponent' : 'you'} to discard ${discardedCard.name}!`;
+                        } else {
+                            message = `${caster === 'player' ? 'Opponent' : 'You'} had no cards to discard!`;
+                            break;
+                        }
+                    }
+                    if (targetHandEl) {
+                        playerHandEl.innerHTML = '';
+                        playerHand.forEach(card => playerHandEl.appendChild(createCardElement(card, true)));
+                        updatePlayableCards();
+                    }
+                } else {
+                    message = `${caster === 'player' ? 'Opponent' : 'You'} had no cards to discard!`;
+                }
+            } else if (cardData.effect.type === 'scry') {
+                const scryValue = cardData.effect.value;
+                let deckToScry = (caster === 'player' ? playerDeck : opponentDeck);
+                let handToAddTo = (caster === 'player' ? playerHand : opponentHand);
+                let handElToUpdate = (caster === 'player' ? playerHandEl : null);
+
+                if (deckToScry.length === 0) {
+                    message = `No cards left in deck to scry!`;
+                    showGameMessage(message);
+                    updateUI();
+                    return;
+                }
+
+                foresightCards = [];
+                for (let i = 0; i < Math.min(scryValue, deckToScry.length); i++) {
+                    foresightCards.push(deckToScry.shift());
+                }
+
+                if (caster === 'player') {
+                    foresightOverlay.style.display = 'flex';
+                    foresightCardsDisplay.innerHTML = '';
+                    foresightCards.forEach(card => {
+                        const cardEl = createCardElement(card, true, false, true);
+                        cardEl.classList.add('cursor-pointer');
+                        cardEl.onclick = () => chooseForesightCard(card);
+                        foresightCardsDisplay.appendChild(cardEl);
+                    });
+                    message = `You look at the top ${foresightCards.length} cards...`;
+                } else {
+                    foresightCards.sort((a, b) => a.cost - b.cost);
+                    const chosenCard = foresightCards.shift();
+                    handToAddTo.push(chosenCard);
+                    deckToScry.push(...foresightCards);
+                    shuffle(deckToScry);
+                    message = `Opponent uses Foresight!`;
+                    showGameMessage(message);
+                    updateUI();
+                }
+            }
+            if (cardData.effect.type !== 'scry' || caster === 'opponent') {
+                showGameMessage(message, false, true);
+                updateUI();
+            }
+            console.log(`${caster} cast ${cardData.name}.`);
+        }
+
+        // Handles player choosing a card from Foresight
+        function chooseForesightCard(chosenCardData) {
+            const index = foresightCards.indexOf(chosenCardData);
+            if (index > -1) {
+                foresightCards.splice(index, 1);
+            }
+            playerHand.push(chosenCardData);
+            playerDeck.push(...foresightCards);
+            shuffle(playerDeck);
+
+            foresightCards = [];
+            foresightOverlay.style.display = 'none';
+            showGameMessage(`You chose ${chosenCardData.name} from Foresight!`);
+            updateUI();
+        }
+
+        // Updates which cards in hand are playable (highlight based on mana)
+        function updatePlayableCards() {
+            playerHandEl.querySelectorAll('.card').forEach(cardEl => {
+                const cardCost = parseInt(cardEl.dataset.cost);
+                if (playerMana >= cardCost) {
+                    cardEl.classList.add('playable');
+                } else {
+                    cardEl.classList.remove('playable');
+                }
+            });
+        }
+
+        // Updates which cards on board are attackable
+        function updateAttackableCards() {
+            playerPlayAreaEl.querySelectorAll('.card').forEach(cardEl => {
+                if (cardEl !== selectedAttacker) {
+                    cardEl.classList.remove('attackable');
+                }
+            });
+        }
+
+        // Clears any selected attacker
+        function clearAttackerSelection() {
+            if (selectedAttacker) {
+                selectedAttacker.classList.remove('attackable');
+                selectedAttacker = null;
+                console.log("Attacker selection cleared.");
+            }
+            opponentPlayAreaEl.classList.remove('targetable');
+            document.getElementById('opponent-stats').classList.remove('targetable');
+        }
+
+        // Handles attacking the opponent directly
+        function attackOpponent() {
+            if (selectedAttacker) {
+                const attackerCardData = playerPlayArea.find(c => c.id === selectedAttacker.dataset.cardId &&
+                                                                c.currentAttack == selectedAttacker.dataset.currentAttack &&
+                                                                c.currentDefense == selectedAttacker.dataset.currentDefense);
+                if (attackerCardData) {
+                    let attackValue = parseInt(attackerCardData.currentAttack);
+                    if (playerLocation && playerLocation.passive_effect.type === 'creature_attack_boost') {
+                        attackValue += playerLocation.passive_effect.value;
+                    }
+                    attackValue += currentCreatureAttackBoostPlayer;
+
+                    opponentHealth -= attackValue;
+                    showGameMessage(`Your ${attackerCardData.name} attacks the opponent for ${attackValue} damage!`);
+                    updateUI();
+                    clearAttackerSelection();
+                    if (opponentHealth <= 0) {
+                        endGame('player');
+                    }
+                    console.log(`Player's ${attackerCardData.name} attacked opponent. Opponent Health: ${opponentHealth}`);
+                }
+            }
+        }
+
+        // Handles attacking an opponent's creature
+        function attackCreature(attackerCardEl, targetCardEl) {
+            const attackerCardData = playerPlayArea.find(c => c.id === attackerCardEl.dataset.cardId &&
+                                                            c.currentAttack == selectedAttacker.dataset.currentAttack &&
+                                                            c.currentDefense == selectedAttacker.dataset.currentDefense);
+            const targetCardData = opponentPlayArea.find(c => c.id === targetCardEl.dataset.cardId &&
+                                                            c.currentAttack == targetCardEl.dataset.currentAttack &&
+                                                            c.currentDefense == targetCardEl.dataset.currentDefense);
+
+            if (attackerCardData && targetCardData) {
+                let attackerAttack = parseInt(attackerCardData.currentAttack);
+                const attackerDefense = parseInt(attackerCardData.currentDefense);
+                let targetAttack = parseInt(targetCardData.currentAttack);
+                const targetDefense = parseInt(targetCardData.currentDefense);
+
+                if (playerLocation && playerLocation.passive_effect.type === 'creature_attack_boost') {
+                    attackerAttack += playerLocation.passive_effect.value;
+                }
+                attackerAttack += currentCreatureAttackBoostPlayer;
+
+                if (opponentLocation && opponentLocation.passive_effect.type === 'creature_attack_boost') {
+                    targetAttack += opponentLocation.passive_effect.value;
+                }
+                targetDefense += currentCreatureDefenseBoostOpponent;
+
+                console.log(`${attackerCardData.name} (A:${attackerAttack}, D:${attackerDefense}) attacks ${targetCardData.name} (A:${targetAttack}, D:${targetDefense})`);
+
+                if (targetCardData.has_divine_shield) {
+                    targetCardData.has_divine_shield = false;
+                    showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`);
+                    attackingCreature.currentDefense -= targetAttack;
+                } else {
+                    targetCardData.currentDefense -= attackerAttack;
+                    attackingCreature.currentDefense -= targetAttack;
+                }
+
+                if (targetCardData.on_attacked_effect && targetCardData.on_attacked_effect.type === 'damage_attacker') {
+                    const retaliateDamage = targetCardData.on_attacked_effect.value;
+                    attackingCreature.currentDefense -= retaliateDamage;
+                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`);
+                }
+
+                showGameMessage(`${attackerCardData.name} attacks ${targetCardData.name}!`);
+
+                if (targetCardData.currentDefense <= 0) {
+                    const index = opponentPlayArea.indexOf(targetCardData);
+                    if (index > -1) {
+                        opponentPlayArea.splice(index, 1);
+                        showGameMessage(`Your ${targetCardData.name} was defeated!`);
+                        applyDeathEffect(targetCardData, 'opponent');
+                    }
+                }
+                if (attackerCardData.currentDefense <= 0) {
+                    const index = playerPlayArea.indexOf(attackerCardData);
+                    if (index > -1) {
+                        playerPlayArea.splice(index, 1);
+                        showGameMessage(`${attackerCardData.name} was defeated!`);
+                        applyDeathEffect(attackerCardData, 'player');
+                    }
+                }
+
+                renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+                renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                updateUI();
+                clearAttackerSelection();
+            }
+        }
+
+        // --- Opponent (AI) Turn Logic ---
+
+        async function startOpponentTurn() {
+            console.log("--- Starting Opponent Turn ---");
+            turn++;
+            gameStatusEl.textContent = 'Opponent\'s Turn';
+            endTurnButton.disabled = true;
+            clearAttackerSelection();
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            opponentMaxMana = Math.min(10, opponentMaxMana + 1);
+
+            currentSpellDamageBoostOpponent = 0;
+            currentCreatureAttackBoostOpponent = 0;
+            currentCreatureDefenseBoostOpponent = 0;
+
+            let opponentCreatureMana = 0;
+            opponentPlayArea.forEach(creature => {
+                if (creature.mana_per_turn) {
+                    if (creature.mana_condition) {
+                        if (creature.mana_condition.type === 'control_other_creature') {
+                            if (opponentPlayArea.length > 1) {
+                                opponentCreatureMana += creature.mana_per_turn;
+                            }
+                        } else if (creature.mana_condition.type === 'control_location') {
+                            if (opponentLocation) {
+                                opponentCreatureMana += creature.mana_per_turn;
+                            }
+                        }
+                    } else {
+                        opponentCreatureMana += creature.mana_per_turn;
+                    }
+                }
+            });
+            if (opponentLocation) {
+                if (opponentLocation.passive_effect.type === 'mana_per_turn') {
+                    opponentCreatureMana += opponentLocation.passive_effect.value;
+                } else if (opponentLocation.passive_effect.type === 'mana_per_turn_delayed' && turn >= opponentLocation.passive_effect.start_turn) {
+                    opponentCreatureMana += opponentLocation.passive_effect.value;
+                } else if (opponentLocation.passive_effect.type === 'spell_damage_boost') {
+                    currentSpellDamageBoostOpponent = opponentLocation.passive_effect.value;
+                    console.log(`Opponent's spell damage boosted by ${currentSpellDamageBoostOpponent} from ${opponentLocation.name}.`);
+                } else if (opponentLocation.passive_effect.type === 'creature_stat_boost_all') {
+                    currentCreatureAttackBoostOpponent += opponentLocation.passive_effect.attack_value;
+                    currentCreatureDefenseBoostOpponent += opponentLocation.passive_effect.defense_value;
+                    console.log(`Opponent's creatures boosted by +${currentCreatureAttackBoostOpponent}⚔️/+${currentCreatureDefenseBoostOpponent}❤️ from ${opponentLocation.name}.`);
+                } else if (opponentLocation.passive_effect.type === 'draw_card_per_turn') {
+                    for (let i = 0; i < opponentLocation.passive_effect.value; i++) {
+                        drawCard(opponentDeck, opponentHand, null, false);
+                    }
+                    showGameMessage(`Opponent's ${opponentLocation.name} grants them ${opponentLocation.passive_effect.value} extra card draw!`);
+                }
+            }
+            opponentMana = opponentMaxMana + opponentCreatureMana;
+            console.log(`Opponent's base max mana: ${opponentMaxMana}, creature/location mana: ${opponentCreatureMana}. Total mana: ${opponentMana}`);
+
+            if (opponentLocation && opponentLocation.passive_effect.type === 'health_regen') {
+                const healValue = opponentLocation.passive_effect.value;
+                opponentHealth = Math.min(20, opponentHealth + healValue);
+                showGameMessage(`Opponent's ${opponentLocation.name} heals them for ${healValue} health!`);
+            }
+
+            drawCard(opponentDeck, opponentHand, null, false);
+            console.log(`Opponent Mana: ${opponentMana}/${opponentMaxMana}`);
+
+            let playedCardThisTurn = true;
+            while (playedCardThisTurn) {
+                playedCardThisTurn = false;
+
+                const healingSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'heal' && card.cost <= opponentMana);
+                if (healingSpells.length > 0 && opponentHealth <= 15) {
+                    healingSpells.sort((a, b) => b.effect.value - a.effect.value);
+                    const spellToCast = healingSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const damageSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'damage' && card.cost <= opponentMana);
+                if (damageSpells.length > 0) {
+                    damageSpells.sort((a, b) => b.effect.value - a.effect.value);
+                    const spellToCast = damageSpells[0];
+                    if (playerPlayArea.length > 0 || playerHealth <= 10) {
+                        await new Promise(resolve => setTimeout(resolve, 700));
+                        castSpell(spellToCast, 'opponent');
+                        const index = opponentHand.indexOf(spellToCast);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const aoeDamageSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'aoe_damage_enemy_creatures' && card.cost <= opponentMana);
+                if (aoeDamageSpells.length > 0 && playerPlayArea.length >= 2) {
+                    const spellToCast = aoeDamageSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const drawSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'draw_card' && card.cost <= opponentMana);
+                if (drawSpells.length > 0) {
+                    const spellToCast = drawSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const buffSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'buff_random_creature_attack' && card.cost <= opponentMana);
+                if (buffSpells.length > 0 && opponentPlayArea.length > 0) {
+                    const spellToCast = buffSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const divineShieldSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'grant_divine_shield' && card.cost <= opponentMana);
+                if (divineShieldSpells.length > 0 && opponentPlayArea.length > 0 && playerPlayArea.length > 0) {
+                    const creatureToProtect = opponentPlayArea.reduce((max, current) =>
+                        (parseInt(current.currentDefense) > parseInt(max.currentDefense) ? current : max), opponentPlayArea[0]);
+                    if (creatureToProtect && !creatureToProtect.has_divine_shield) {
+                        const spellToCast = divineShieldSpells[0];
+                        await new Promise(resolve => setTimeout(resolve, 700));
+                        castSpell(spellToCast, 'opponent');
+                        const index = opponentHand.indexOf(spellToCast);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const discardSpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'discard_random_card' && card.cost <= opponentMana);
+                if (discardSpells.length > 0 && playerHand.length > 2) {
+                    const spellToCast = discardSpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const scrySpells = opponentHand.filter(card => card.type === 'spell' && card.effect.type === 'scry' && card.cost <= opponentMana);
+                if (scrySpells.length > 0 && (opponentHand.length < 3 || !opponentHand.some(c => c.type === 'creature' || c.mana_per_turn))) {
+                    const spellToCast = scrySpells[0];
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    castSpell(spellToCast, 'opponent');
+                    const index = opponentHand.indexOf(spellToCast);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+
+                const manaLocations = opponentHand.filter(card => card.type === 'location' && (card.passive_effect.type === 'mana_per_turn' || card.passive_effect.type === 'mana_per_turn_delayed') && card.cost <= opponentMana);
+                if (manaLocations.length > 0 && (turn < 5 || (opponentLocation && opponentLocation.passive_effect.type !== 'mana_per_turn' && opponentLocation.passive_effect.type !== 'mana_per_turn_delayed'))) {
+                    manaLocations.sort((a, b) => a.cost - b.cost);
+                    const locationToPlay = manaLocations[0];
+                    opponentMana -= locationToPlay.cost;
+                    opponentLocation = locationToPlay;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${locationToPlay.name}!`);
+                    const index = opponentHand.indexOf(locationToPlay);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const spellDamageLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'spell_damage_boost' && card.cost <= opponentMana);
+                if (spellDamageLocation && (damageSpells.length > 0 || aoeDamageSpells.length > 0)) {
+                    opponentMana -= spellDamageLocation.cost;
+                    opponentLocation = spellDamageLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${spellDamageLocation.name}!`);
+                    const index = opponentHand.indexOf(spellDamageLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const creatureStatBoostLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'creature_stat_boost_all' && card.cost <= opponentMana);
+                if (creatureStatBoostLocation && opponentPlayArea.length > 0) {
+                    opponentMana -= creatureStatBoostLocation.cost;
+                    opponentLocation = creatureStatBoostLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${creatureStatBoostLocation.name}!`);
+                    const index = opponentHand.indexOf(creatureStatBoostLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+                const drawLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'draw_card_per_turn' && card.cost <= opponentMana);
+                if (drawLocation) {
+                    opponentMana -= drawLocation.cost;
+                    opponentLocation = drawLocation;
+                    renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                    showGameMessage(`Opponent plays ${drawLocation.name}!`);
+                    const index = opponentHand.indexOf(drawLocation);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    playedCardThisTurn = true;
+                    continue;
+                }
+
+
+                const otherLocations = opponentHand.filter(card => card.type === 'location' && card.cost <= opponentMana && card.passive_effect.type !== 'mana_per_turn' && card.passive_effect.type !== 'mana_per_turn_delayed' && card.passive_effect.type !== 'spell_damage_boost' && card.passive_effect.type !== 'creature_stat_boost_all' && card.passive_effect.type !== 'draw_card_per_turn');
+                if (otherLocations.length > 0) {
+                    let bestLocation = null;
+                    if (opponentHealth <= 10) {
+                        bestLocation = otherLocations.find(loc => loc.passive_effect.type === 'health_regen');
+                    }
+                    if (!bestLocation && otherLocations.length > 0) {
+                        bestLocation = otherLocations[0];
+                    }
+
+                    if (bestLocation) {
+                        opponentMana -= bestLocation.cost;
+                        opponentLocation = bestLocation;
+                        renderLocation(opponentLocation, opponentLocationAreaEl, false);
+                        showGameMessage(`Opponent plays ${bestLocation.name}!`);
+                        if (bestLocation.passive_effect.type === 'damage_to_opponent_on_play') {
+                            const damageValue = bestLocation.passive_effect.value;
+                            playerHealth -= damageValue;
+                            showGameMessage(`Opponent's ${bestLocation.name} erupts, dealing ${damageValue} damage to you!`);
+                            if (playerHealth <= 0) endGame('opponent');
+                        }
+                        const index = opponentHand.indexOf(bestLocation);
+                        if (index > -1) {
+                            opponentHand.splice(index, 1);
+                        }
+                        playedCardThisTurn = true;
+                        continue;
+                    }
+                }
+
+                const playableCreatures = opponentHand.filter(card => card.type === 'creature' && card.cost <= opponentMana);
+                if (playableCreatures.length > 0) {
+                    playableCreatures.sort((a, b) => {
+                        const aGainsManaByCreature = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
+                        const bGainsManaByCreature = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
+                        const aGainsManaByLocation = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_location' && opponentLocation;
+                        const bGainsManaByLocation = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_location' && opponentLocation;
+
+                        const aHasOnPlayBuff = a.on_play_effect && a.on_play_effect.type === 'buff_random_friendly_creature_attack' && opponentPlayArea.length > 0;
+                        const bHasOnPlayBuff = b.on_play_effect && b.on_play_effect.type === 'buff_random_friendly_creature_attack' && opponentPlayArea.length > 0;
+
+                        const aHasOnPlayDraw = a.on_play_effect && a.on_play_effect.type === 'draw_card';
+                        const bHasOnPlayDraw = b.on_play_effect && b.on_play_effect.type === 'draw_card';
+
+
+                        if ((aGainsManaByCreature || aGainsManaByLocation) && !(bGainsManaByCreature || bGainsManaByLocation)) return -1;
+                        if (!(aGainsManaByCreature || aGainsManaByLocation) && (bGainsManaByCreature || bGainsManaByLocation)) return 1;
+
+                        if (aHasOnPlayDraw && !bHasOnPlayDraw) return -1;
+                        if (!aHasOnPlayDraw && bHasOnPlayDraw) return 1;
+
+                        if (aHasOnPlayBuff && !bHasOnPlayBuff) return -1;
+                        if (!aHasOnPlayBuff && bHasOnPlayBuff) return 1;
+
+                        return b.cost - a.cost;
+                    });
+
+                    const cardToPlay = playableCreatures[0];
+
+                    opponentMana -= cardToPlay.cost;
+                    const index = opponentHand.indexOf(cardToPlay);
+                    if (index > -1) {
+                        opponentHand.splice(index, 1);
+                    }
+                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardData.defense }; // Fixed: use cardData.defense here
+                    newCardInstance.currentAttack += currentCreatureAttackBoostOpponent;
+                    newCardInstance.currentDefense += currentCreatureDefenseBoostOpponent;
+
+                    opponentPlayArea.push(newCardInstance);
+                    renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                    showGameMessage(`Opponent plays ${cardToPlay.name}!`);
+                    updateUI();
+
+                    if (cardToPlay.on_play_effect) {
+                        applyOnPlayEffect(cardToPlay.on_play_effect, 'opponent');
+                    }
+
+                    playedCardThisTurn = true;
+                }
+            }
+            console.log("Opponent finished playing cards.");
+
+            await new Promise(resolve => setTimeout(resolve, 700));
+            console.log("Opponent starting attack phase.");
+            const attackingCreatures = [...opponentPlayArea];
+            for (const attackingCreature of attackingCreatures) {
+                if (!opponentPlayArea.includes(attackingCreature)) {
+                    console.log(`Attacking creature ${attackingCreature.name} no longer on board, skipping attack.`);
+                    continue;
+                }
+
+                let attackerAttack = parseInt(attackingCreature.currentAttack);
+                if (opponentLocation && opponentLocation.passive_effect.type === 'creature_attack_boost') {
+                    attackerAttack += opponentLocation.passive_effect.value;
+                }
+                attackerAttack += currentCreatureAttackBoostOpponent;
+
+
+                if (playerPlayArea.length > 0) {
+                    let targetCreature = playerPlayArea.reduce((min, current) =>
+                        (parseInt(current.currentDefense) < parseInt(min.currentDefense) ? current : min), playerPlayArea[0]);
+
+                    const targetAttack = parseInt(targetCreature.currentAttack);
+                    let targetDefenseModified = parseInt(targetCreature.currentDefense) + currentCreatureDefenseBoostPlayer;
+
+
+                    console.log(`${attackingCreature.name} (A:${attackerAttack}, D:${attackingCreature.currentDefense}) attacks ${targetCreature.name} (A:${targetAttack}, D:${targetDefenseModified})`);
+
+                    if (targetCreature.has_divine_shield) {
+                        targetCreature.has_divine_shield = false;
+                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`);
+                        attackingCreature.currentDefense -= targetAttack;
+                    } else {
+                        targetCreature.currentDefense -= attackerAttack;
+                        attackingCreature.currentDefense -= targetAttack;
+                    }
+
+                    if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
+                        const retaliateDamage = targetCreature.on_attacked_effect.value;
+                        attackingCreature.currentDefense -= retaliateDamage;
+                        showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`);
+                    }
+
+
+                    showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`);
+
+                    if (targetCreature.currentDefense <= 0) {
+                        const index = playerPlayArea.indexOf(targetCreature);
+                        if (index > -1) {
+                            playerPlayArea.splice(index, 1);
+                            showGameMessage(`Your ${targetCreature.name} was defeated!`);
+                            applyDeathEffect(targetCreature, 'player');
+                        }
+                    }
+                    if (attackingCreature.currentDefense <= 0) {
+                        const index = opponentPlayArea.indexOf(attackingCreature);
+                        if (index > -1) {
+                            opponentPlayArea.splice(index, 1);
+                            showGameMessage(`${attackingCreature.name} was defeated!`);
+                            applyDeathEffect(attackingCreature, 'opponent');
+                        }
+                    }
+                } else {
+                    playerHealth -= attackerAttack;
+                    showGameMessage(`Opponent's ${attackingCreature.name} attacks you for ${attackerAttack} damage!`);
+                }
+                renderCardsInArea(playerPlayArea, playerPlayAreaEl, true);
+                renderCardsInArea(opponentPlayArea, opponentPlayAreaEl, false);
+                updateUI();
+                await new Promise(resolve => setTimeout(resolve, 700));
+            }
+
+
+            if (playerHealth <= 0) {
+                endGame('opponent');
+            } else {
+                console.log("Opponent turn complete. Transitioning to Player Turn.");
+                setTimeout(startPlayerTurn, 1000);
+            }
+        }
+
+        // --- Game End Logic ---
+
+        function endGame(winner) {
+            console.log(`Game Over! Winner: ${winner}`);
+            let message = '';
+            if (winner === 'player') {
+                message = 'You have defeated the Opponent! Victory is yours!';
+            } else {
+                message = 'The Opponent has defeated you! You were vanquished!';
+            }
+            showGameMessage(message, true);
+            endTurnButton.disabled = true;
+        }
+
+        // --- Event Listeners ---
+
+        endTurnButton.addEventListener('click', () => {
+            console.log("End Turn button clicked!");
+            if (turn % 2 !== 0) { // Only allow ending turn if it's player's turn (odd turn number)
+                clearAttackerSelection();
+                startOpponentTurn();
+            } else {
+                console.log("It's not your turn, or still in mulligan phase, cannot end turn.");
+            }
+        });
+
+        restartButton.addEventListener('click', initializeGame);
+
+        // Event listener for attacking opponent's creatures or opponent directly
+        document.addEventListener('click', (event) => {
+            if (turn === 0 || selectedAttacker === null) {
+                return;
+            }
+
+            const clickedCardEl = event.target.closest('#opponent-play-area .card');
+            if (clickedCardEl) {
+                console.log(`Player's ${selectedAttacker.dataset.cardId} attacking opponent's ${clickedCardEl.dataset.cardId}`);
+                attackCreature(selectedAttacker, clickedCardEl);
+                return;
+            }
+
+            const clickedOpponentStats = event.target.closest('#opponent-stats');
+            if (clickedOpponentStats) {
+                console.log(`Player's ${selectedAttacker.dataset.cardId} attacking opponent directly.`);
+                attackOpponent();
+                return;
+            }
+        });
+
+        // Event delegation for tooltip mouseover/mouseout on the game container
+        gameContainer.addEventListener('mouseover', (event) => {
+            const cardEl = event.target.closest('.card');
+            if (cardEl) {
+                // Find the cardData object that corresponds to this cardEl
+                // This is crucial because cardEl is a DOM element, not the original cardData object
+                let cardData = null;
+                // Check player's hand, play area, and location
+                cardData = playerHand.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
+                           playerPlayArea.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
+                           (playerLocation && playerLocation.id === cardEl.dataset.cardId && playerLocation.type === cardEl.dataset.type ? playerLocation : null) ||
+                           // Check opponent's play area and location
+                           opponentPlayArea.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
+                           (opponentLocation && opponentLocation.id === cardEl.dataset.cardId && opponentLocation.type === cardEl.dataset.type ? opponentLocation : null) ||
+                           // Check mulligan/foresight displays (they use createCardElement with isMulliganDisplay/isForesightDisplay true)
+                           foresightCards.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type);
+
+
+                if (cardData) {
+                    showCardTooltip(event, cardData);
+                }
+            }
+        });
+
+        gameContainer.addEventListener('mouseout', (event) => {
+            const cardEl = event.target.closest('.card');
+            // Only hide if the mouse is moving *out* of a card and not *into* the tooltip itself
+            if (cardEl && !cardTooltip.contains(event.relatedTarget)) {
+                hideCardTooltip();
+            }
+        });
+
+        // Initial game setup on window load
+        window.onload = initializeGame;
+
+    </script>
+</body>
+</html>
