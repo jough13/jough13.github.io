@@ -11,7 +11,8 @@
         /* Base Styles */
         body {
             font-family: 'Inter', sans-serif;
-            background-image: url('https://placehold.co/1920x1080/4A3A2A/E0D0C0?text=Medieval+Background'); /* Placeholder for a medieval background */
+            /* Updated background image URL */
+            background-image: url('https://placehold.co/1920x1080/3A2B1F/E0D0C0?text=Fantasy+Castle+Background'); /* Placeholder for a more detailed fantasy background */
             background-size: cover;
             background-position: center;
             background-attachment: fixed; /* Keep background fixed when scrolling */
@@ -109,7 +110,7 @@
         /* Location Area Styles */
         .location-area {
             background-color: #1a1612;
-            border: 3px solid #8B4513; /* Thicker SaddleBrown for earth/land */
+            border: 3px solid #8B4513; /* SaddleBrown for earth/land */
             border-radius: 1rem;
             padding: 0.85rem; /* Increased padding */
             min-height: 100px; /* Slightly larger */
@@ -509,7 +510,7 @@
 
         /* Card Tooltip Styles */
         #card-tooltip {
-            position: absolute;
+            position: fixed; /* Changed to fixed for viewport-relative positioning */
             background-color: rgba(0, 0, 0, 0.9);
             border: 2px solid #d4af37;
             border-radius: 0.75rem;
@@ -522,7 +523,7 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
             opacity: 0; /* Hidden by default */
             transition: opacity 0.2s ease-in-out;
-            pointer-events: auto; /* IMPORTANT: Allow mouse events on tooltip itself */
+            pointer-events: auto; /* Allow mouse events on tooltip itself */
         }
 
         #card-tooltip h3 {
@@ -1012,7 +1013,7 @@
                 cardEl.classList.remove('cursor-pointer');
             }
 
-            // Mouseover/mouseout listeners are now handled by event delegation on gameContainer
+            // Removed direct mouseover/mouseout listeners here, relying on delegation
             return cardEl;
         }
 
@@ -1033,7 +1034,10 @@
             let effectDesc = '';
 
             if (cardData.type === 'creature') {
-                statsText = `Attack: ${cardData.attack} | Defense: ${cardData.defense}`;
+                // Use current stats if available, otherwise base stats
+                const currentAttack = cardData.currentAttack !== undefined ? cardData.currentAttack : cardData.attack;
+                const currentDefense = cardData.currentDefense !== undefined ? cardData.currentDefense : cardData.defense;
+                statsText = `Attack: ${currentAttack} | Defense: ${currentDefense}`;
                 if (cardData.mana_per_turn) {
                     effectDesc += `Mana: +${cardData.mana_per_turn} per turn`;
                     if (cardData.mana_condition) effectDesc += ` ${cardData.mana_condition.text}`;
@@ -1130,7 +1134,7 @@
                 messageTimeoutId = setTimeout(() => {
                     gameMessageEl.style.opacity = '0';
                     setTimeout(() => {
-                        gameMessageEl.style.display = 'none';
+                        gameMessage.style.display = 'none'; // Corrected: use gameMessage.style.display
                     }, 500);
                 }, 2500);
             }
@@ -2357,21 +2361,64 @@
             if (cardEl) {
                 // Find the cardData object that corresponds to this cardEl
                 // This is crucial because cardEl is a DOM element, not the original cardData object
-                let cardData = null;
-                // Check player's hand, play area, and location
-                cardData = playerHand.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
-                           playerPlayArea.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
-                           (playerLocation && playerLocation.id === cardEl.dataset.cardId && playerLocation.type === cardEl.dataset.type ? playerLocation : null) ||
-                           // Check opponent's play area and location
-                           opponentPlayArea.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type) ||
-                           (opponentLocation && opponentLocation.id === cardEl.dataset.cardId && opponentLocation.type === cardEl.dataset.type ? opponentLocation : null) ||
-                           // Check mulligan/foresight displays (they use createCardElement with isMulliganDisplay/isForesightDisplay true)
-                           foresightCards.find(c => c.id === cardEl.dataset.cardId && c.cost === parseInt(cardEl.dataset.cost) && c.type === cardEl.dataset.type);
+                const cardId = cardEl.dataset.cardId;
+                const cardType = cardEl.dataset.type;
+                const cardCost = parseInt(cardEl.dataset.cost); // Use cost for more specific matching
 
+                let foundCardData = null;
+                let foundIn = '';
 
-                if (cardData) {
-                    showCardTooltip(event, cardData);
+                // Search in player's hand
+                foundCardData = playerHand.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                if (foundCardData) { foundIn = 'playerHand'; }
+
+                // If not found, search in player's play area
+                if (!foundCardData) {
+                    foundCardData = playerPlayArea.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    if (foundCardData) { foundIn = 'playerPlayArea'; }
                 }
+
+                // If not found, check player's location
+                if (!foundCardData && playerLocation && playerLocation.id === cardId && playerLocation.type === cardType) {
+                    foundCardData = playerLocation;
+                    foundIn = 'playerLocation';
+                }
+
+                // If not found, search in opponent's hand (though not visible, data might be there)
+                if (!foundCardData) {
+                    foundCardData = opponentHand.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    if (foundCardData) { foundIn = 'opponentHand'; }
+                }
+
+                // If not found, search in opponent's play area
+                if (!foundCardData) {
+                    foundCardData = opponentPlayArea.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    if (foundCardData) { foundIn = 'opponentPlayArea'; }
+                }
+
+                // If not found, check opponent's location
+                if (!foundCardData && opponentLocation && opponentLocation.id === cardId && opponentLocation.type === cardType) {
+                    foundCardData = opponentLocation;
+                    foundIn = 'opponentLocation';
+                }
+
+                // If not found, check foresight cards (during foresight phase)
+                if (!foundCardData) {
+                    foundCardData = foresightCards.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    if (foundCardData) { foundIn = 'foresightCards'; }
+                }
+
+                console.log("Hovered Card Element ID:", cardId, "Type:", cardType, "Cost:", cardCost);
+                console.log("Found card in:", foundIn);
+                if (foundCardData) {
+                    console.log("Tooltip Data:", foundCardData.name, foundCardData.type);
+                    showCardTooltip(event, foundCardData);
+                } else {
+                    console.log("Card data not found for hovered element.");
+                    hideCardTooltip(); // Hide if no data found
+                }
+            } else {
+                hideCardTooltip(); // Hide if not hovering over a card
             }
         });
 
