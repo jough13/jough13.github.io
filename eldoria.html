@@ -8,74 +8,187 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=MedievalSharp&display=swap" rel="stylesheet">
     <style>
+        /* CSS Variables for Theming */
+        :root {
+            /* Dark Mode Defaults */
+            --bg-body: url('https://images.unsplash.com/photo-1579762715118-a6f1d4b995f5?q=80&w=1935&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+            --bg-container-gradient-start: rgba(15, 10, 5, 0.95);
+            --bg-container-gradient-end: rgba(25, 20, 15, 0.75);
+            --border-main: #8B5A2B;
+            --bg-panel-gradient-start: #4A3A2A;
+            --bg-panel-gradient-end: #3A2E22;
+            --color-header-footer: #FFD700; /* Gold */
+            --bg-stats: #2A1F17;
+            --border-stats: #5A4A3A;
+            --color-stats: #F0E6D6; /* Off-white */
+            --bg-area: #2A1F17;
+            --border-area: #5A4A3A;
+            --bg-location-card-gradient-start: #A0522D; /* Sienna */
+            --bg-location-card-gradient-end: #8B4513; /* SaddleBrown */
+            --border-location-card: #CD853F; /* Peru */
+            --color-location-name: #F4A460; /* SandyBrown */
+            --bg-card-gradient-start: #5C4033; /* Richer brown */
+            --bg-card-gradient-end: #4A3A2A; /* Richer brown */
+            --border-card: #8B5A2B;
+            --bg-card-image: #6B4513;
+            --color-card-emoji: #F0E6D6;
+            --bg-cost-circle-start: #FFD700; /* Gold */
+            --bg-cost-circle-end: #DAA520; /* Goldenrod */
+            --color-cost-circle: #2A1F17;
+            --color-card-name: #FFD700;
+            --color-card-stats: #F0E6D6;
+            --color-card-effect: #F0E6D6;
+            --color-effect-red: #FF6347; /* Tomato */
+            --color-effect-green: #3CB371; /* MediumSeaGreen */
+            --color-effect-orange: #FFA500; /* Orange */
+            --color-effect-blue: #87CEEB; /* SkyBlue */
+            --bg-spell-card-gradient-start: #4B0082; /* Indigo */
+            --bg-spell-card-gradient-end: #6A5ACD; /* SlateBlue */
+            --border-spell-card: #9370DB; /* MediumPurple */
+            --color-spell-name: #E6E6FA; /* LavenderBlush */
+            --color-mana-icon: #00CED1; /* DarkTurquoise */
+            --border-mana-creature: #00CED1;
+            --color-playable-border: #FFD700; /* Gold */
+            --color-attackable-border: #FF4500; /* OrangeRed */
+            --color-targetable-shadow: rgba(255, 0, 0, 0.9);
+            --bg-tooltip: rgba(0, 0, 0, 0.9);
+            --border-tooltip: #d4af37;
+            --color-tooltip-name: #d4af37;
+            --color-tooltip-text: #e0d0c0;
+            --color-text-placeholder: #6b7280; /* gray-500 */
+
+            /* Patterns */
+            --pattern-container: url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'); /* Subtle paper/stone */
+            --pattern-panel: url('https://www.transparenttextures.com/patterns/dark-denim.png'); /* Subtle fabric */
+            --pattern-area: url('https://www.transparenttextures.com/patterns/diagmonds.png'); /* Very subtle geometric */
+        }
+
+        /* Light Mode Overrides */
+        body.light-mode {
+            --bg-body: url('https://images.unsplash.com/photo-1517487881594-2787fdb3810f?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); /* Lighter fantasy background */
+            --bg-container-gradient-start: rgba(240, 235, 225, 0.95); /* Creamy white */
+            --bg-container-gradient-end: rgba(220, 215, 205, 0.85); /* Lighter cream */
+            --border-main: #B08B5B; /* Lighter brown */
+            --bg-panel-gradient-start: #D4C6B5; /* Light brown */
+            --bg-panel-gradient-end: #C4B8A8; /* Lighter brown */
+            --color-header-footer: #8B4513; /* SaddleBrown */
+            --bg-stats: #E0D6C6; /* Lighter cream */
+            --border-stats: #B0A090;
+            --color-stats: #3A2A1A; /* Dark brown */
+            --bg-area: #E0D6C6;
+            --border-area: #B0A090;
+            --bg-location-card-gradient-start: #D2B48C; /* Tan */
+            --bg-location-card-gradient-end: #C1A57B; /* Light tan */
+            --border-location-card: #B8860B; /* Darker gold */
+            --color-location-name: #8B4513;
+            --bg-card-gradient-start: #F5DEB3; /* Wheat */
+            --bg-card-gradient-end: #EBD8B2; /* Light wheat */
+            --border-card: #B8860B; /* Darker gold */
+            --bg-card-image: #D2B48C; /* Tan */
+            --color-card-emoji: #3A2A1A;
+            --bg-cost-circle-start: #DAA520; /* Goldenrod */
+            --bg-cost-circle-end: #B8860B; /* Darker gold */
+            --color-cost-circle: #F0E6D6;
+            --color-card-name: #8B4513; /* SaddleBrown */
+            --color-card-stats: #3A2A1A;
+            --color-card-effect: #3A2A1A;
+            --color-effect-red: #DC143C; /* Crimson */
+            --color-effect-green: #228B22; /* ForestGreen */
+            --color-effect-orange: #FF8C00; /* DarkOrange */
+            --color-effect-blue: #4682B4; /* SteelBlue */
+            --bg-spell-card-gradient-start: #ADD8E6; /* LightBlue */
+            --bg-spell-card-gradient-end: #87CEEB; /* SkyBlue */
+            --border-spell-card: #6495ED; /* CornflowerBlue */
+            --color-spell-name: #191970; /* MidnightBlue */
+            --color-mana-icon: #008B8B; /* DarkCyan */
+            --border-mana-creature: #008B8B;
+            --color-playable-border: #DAA520; /* Goldenrod */
+            --color-attackable-border: #DC143C; /* Crimson */
+            --color-targetable-shadow: rgba(255, 69, 0, 0.7); /* Darker orange-red */
+            --bg-tooltip: rgba(255, 255, 255, 0.9);
+            --border-tooltip: #B8860B;
+            --color-tooltip-name: #8B4513;
+            --color-tooltip-text: #3A2A1A;
+            --color-text-placeholder: #9ca3af; /* gray-400 */
+
+            /* Patterns for Light Mode - can be different or just lighter versions */
+            --pattern-container: url('https://www.transparenttextures.com/patterns/light-honeycomb.png'); /* Lighter subtle pattern */
+            --pattern-panel: url('https://www.transparenttextures.com/patterns/gray-jean.png'); /* Lighter subtle fabric */
+            --pattern-area: url('https://www.transparenttextures.com/patterns/white-diamond.png'); /* Lighter geometric */
+        }
+
+
         /* Base Styles */
         body {
             font-family: 'Inter', sans-serif;
-            /* Updated background image URL */
-            background-image: url('https://placehold.co/1920x1080/3A2B1F/E0D0C0?text=Fantasy+Castle+Background'); /* Placeholder for a more detailed fantasy background */
+            background-image: var(--bg-body);
             background-size: cover;
             background-position: center;
-            background-attachment: fixed; /* Keep background fixed when scrolling */
-            color: #e0d0c0; /* Light parchment color */
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
+            background-attachment: fixed;
+            color: var(--color-stats);
             overflow-y: auto;
-            padding: 20px; /* Add some padding around the whole game */
-            box-sizing: border-box; /* Include padding in element's total width and height */
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         /* Game Container */
         .game-container {
-            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.75)); /* Deeper, more opaque gradient */
-            border: 6px solid #6b4e2e; /* Thicker, wood-like border */
-            border-image: url('https://placehold.co/30x30/6b4e2e/6b4e2e?text=border') 10 / 10px round; /* Placeholder for a repeating border image */
-            border-radius: 1.5rem; /* More rounded corners */
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(255, 255, 255, 0.15); /* Deeper shadow and inner glow */
-            width: 98%; /* Slightly wider */
-            max-width: 1300px; /* Increased max-width */
-            padding: 2.5rem; /* More internal padding */
+            background: linear-gradient(to bottom, var(--bg-container-gradient-start), var(--bg-container-gradient-end));
+            background-image: var(--pattern-container), linear-gradient(to bottom, var(--bg-container-gradient-start), var(--bg-container-gradient-end)); /* Apply pattern on top of gradient */
+            background-repeat: repeat;
+            border: 6px solid var(--border-main);
+            border-image: url('https://placehold.co/30x30/8B5A2B/8B5A2B?text=border') 10 / 10px round;
+            border-radius: 1.5rem;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(255, 255, 255, 0.15);
+            width: 98%;
+            max-width: 1300px;
+            padding: 2.5rem;
             display: flex;
             flex-direction: column;
-            gap: 1.75rem; /* Increased gap between sections */
+            gap: 1.75rem;
             position: relative;
-            margin: 0 auto; /* Center horizontally */
+            margin: 0px auto;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
         }
 
         /* Header and Footer Panels */
         .header-panel, .footer-panel {
-            background: linear-gradient(to bottom, #3a2e22, #2a221a); /* Subtle gradient */
-            border: 3px solid #6b4e2e; /* Thicker border */
-            border-radius: 1.25rem; /* More rounded */
-            padding: 1.25rem; /* Increased padding */
+            background: linear-gradient(to bottom, var(--bg-panel-gradient-start), var(--bg-panel-gradient-end));
+            background-image: var(--pattern-panel), linear-gradient(to bottom, var(--bg-panel-gradient-start), var(--bg-panel-gradient-end));
+            background-repeat: repeat;
+            border: 3px solid var(--border-main);
+            border-radius: 1.25rem;
+            padding: 1.25rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-family: 'MedievalSharp', cursive;
-            font-size: 1.45rem; /* Slightly larger font */
-            color: #d4af37; /* Gold-like color */
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7); /* Text shadow for readability */
-            box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), 0 5px 15px rgba(0, 0, 0, 0.4); /* Deeper inner and outer shadow */
+            font-size: 1.45rem;
+            color: var(--color-header-footer);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+            box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), 0 5px 15px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
         }
 
         .player-info, .opponent-info {
             display: flex;
             align-items: center;
-            gap: 1.25rem; /* Increased gap */
+            gap: 1.25rem;
         }
 
         .player-stats, .opponent-stats {
-            background-color: #1a1612; /* Even darker background */
-            border: 2px solid #4a3a2a; /* Thicker border */
-            border-radius: 1rem; /* More rounded */
-            padding: 0.85rem 1.4rem; /* More padding */
+            background-color: var(--bg-stats);
+            border: 2px solid var(--border-stats);
+            border-radius: 1rem;
+            padding: 0.85rem 1.4rem;
             display: flex;
-            gap: 1.4rem; /* Increased gap */
-            font-size: 1.2rem; /* Slightly larger font */
-            color: #e0d0c0;
-            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6); /* Deeper inner shadow */
+            gap: 1.4rem;
+            font-size: 1.2rem;
+            color: var(--color-stats);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-            transition: all 0.2s ease-in-out; /* Smooth transition for targeting */
+            transition: all 0.2s ease-in-out;
         }
 
         .player-stats:hover, .opponent-stats:hover {
@@ -93,27 +206,30 @@
         }
 
         .opponent-area, .player-area {
-            background-color: #1a1612; /* Darker background for play areas */
-            border: 4px dashed #4a3a2a; /* Thicker dashed border */
+            background-color: var(--bg-area);
+            background-image: var(--pattern-area), linear-gradient(to bottom, var(--bg-area), var(--bg-area)); /* Pattern on top of solid color */
+            background-repeat: repeat;
+            border: 4px dashed var(--border-area);
             border-radius: 1.25rem;
-            padding: 1.5rem; /* More padding */
-            min-height: 200px; /* Increased min-height */
+            padding: 1.5rem;
+            min-height: 200px;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 1.25rem; /* Increased gap */
+            gap: 1.25rem;
             flex-wrap: wrap;
-            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8); /* Deeper inner shadow */
-            transition: all 0.2s ease-in-out; /* Smooth transition for targeting */
+            box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+            transition: all 0.2s ease-in-out;
+            flex-shrink: 0;
         }
 
         /* Location Area Styles */
         .location-area {
-            background-color: #1a1612;
-            border: 3px solid #8B4513; /* SaddleBrown for earth/land */
+            background-color: var(--bg-area);
+            border: 3px solid var(--border-location-card);
             border-radius: 1rem;
-            padding: 0.85rem; /* Increased padding */
-            min-height: 100px; /* Slightly larger */
+            padding: 0.85rem;
+            min-height: 100px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -121,14 +237,15 @@
             margin-top: 0.85rem;
             margin-bottom: 0.85rem;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+            flex-shrink: 0;
         }
 
         .location-area .card {
-            width: 120px; /* Slightly larger location card */
+            width: 120px;
             height: 180px;
-            background: linear-gradient(to bottom, #8B4513, #6B4513); /* Gradient for location card */
-            border-color: #A0522D;
-            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.7); /* Deeper shadow */
+            background: linear-gradient(to bottom, var(--bg-location-card-gradient-start), var(--bg-location-card-gradient-end));
+            border-color: var(--border-location-card);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.7);
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
         }
         .location-area .card:hover {
@@ -136,100 +253,100 @@
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.8);
         }
         .location-area .card .card-name {
-            color: #F4A460;
+            color: var(--color-location-name);
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
         }
         .location-area .card .card-image {
-            background-color: #6B4513;
+            background-color: var(--bg-card-image);
         }
         .location-area .card .card-effect-text {
-            font-size: 0.8rem; /* Slightly larger effect text */
-            color: #e0d0c0;
+            font-size: 0.8rem;
+            color: var(--color-location-effect);
             text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.7);
         }
 
 
         /* Card Base Styles */
         .card {
-            background: linear-gradient(to bottom right, #4a3a2a, #3a2e22); /* Gradient for depth */
-            border: 4px solid #6b4e2e; /* Thicker, more pronounced border */
-            border-radius: 1.25rem; /* More rounded */
-            width: 140px; /* Larger cards */
-            height: 210px; /* Proportionally larger */
+            background: linear-gradient(to bottom right, var(--bg-card-gradient-start), var(--bg-card-gradient-end));
+            border: 4px solid var(--border-card);
+            border-radius: 1.25rem;
+            width: 140px;
+            height: 210px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            padding: 0.85rem; /* More padding */
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.18); /* Deeper shadow and inner glow */
+            padding: 0.85rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(255, 255, 255, 0.18);
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
             cursor: grab;
             position: relative;
             font-family: 'Inter', sans-serif;
-            color: #e0d0c0;
+            color: var(--color-stats);
             user-select: none;
         }
 
         .card:hover {
-            transform: translateY(-10px) scale(1.05); /* More pronounced lift */
-            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.25); /* Stronger shadow */
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 18px 30px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.25);
         }
 
         .card-cost {
             position: absolute;
-            top: 10px; /* Adjusted position */
-            left: 10px; /* Adjusted position */
-            background: radial-gradient(circle at top left, #ffd700, #b8860b); /* Gold radial gradient */
-            color: #2a221a;
-            border: 3px solid #8B7300; /* Darker gold border */
+            top: 10px;
+            left: 10px;
+            background: radial-gradient(circle at top left, var(--bg-cost-circle-start), var(--bg-cost-circle-end));
+            color: var(--color-cost-circle);
+            border: 3px solid var(--border-cost-circle);
             border-radius: 50%;
-            width: 35px; /* Larger cost circle */
+            width: 35px;
             height: 35px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-weight: bold;
-            font-size: 1.1rem; /* Larger font */
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3); /* Shadow for pop-out effect */
+            font-size: 1.1rem;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3);
         }
 
         .card-name {
             font-family: 'MedievalSharp', cursive;
-            font-size: 1.2rem; /* Larger name */
+            font-size: 1.2rem;
             text-align: center;
-            margin-top: 2.2rem; /* More space from cost */
-            color: #d4af37;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8); /* Stronger text shadow */
+            margin-top: 2.2rem;
+            color: var(--color-card-name);
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
         }
 
         .card-image {
-            width: 100px; /* Larger image area */
+            width: 100px;
             height: 100px;
-            background-color: #6b4e2e;
-            border-radius: 0.85rem; /* More rounded */
+            background-color: var(--bg-card-image);
+            border-radius: 0.85rem;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 2.8rem; /* Larger emoji */
-            color: #e0d0c0;
+            font-size: 2.8rem;
+            color: var(--color-card-emoji);
             overflow: hidden;
-            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6); /* Inner shadow */
+            box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
         }
 
         .card-stats {
             display: flex;
             justify-content: space-around;
             width: 100%;
-            font-size: 1.1rem; /* Larger stats */
+            font-size: 1.1rem;
             font-weight: bold;
-            color: #e0d0c0;
-            margin-top: 0.6rem; /* Space below image */
+            color: var(--color-card-stats);
+            margin-top: 0.6rem;
         }
 
         .card-stat {
             display: flex;
             align-items: center;
-            gap: 6px; /* More space between icon and number */
+            gap: 6px;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
         }
 
@@ -237,51 +354,52 @@
             font-family: 'Inter', sans-serif;
             font-size: 0.85rem;
             text-align: center;
-            color: #e0d0c0;
+            color: var(--color-card-effect);
             margin-top: 0.4rem;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
             line-height: 1.2;
         }
-        .card-effect-text.text-red-300 { color: #fca5a5; } /* Lighter red for death effects */
-        .card-effect-text.text-green-300 { color: #86efac; } /* Lighter green for on-play effects */
-        .card-effect-text.text-orange-300 { color: #fdba74; } /* Lighter orange for on-attacked effects */
+        .card-effect-text.text-red-300 { color: var(--color-effect-red); }
+        .card-effect-text.text-green-300 { color: var(--color-effect-green); }
+        .card-effect-text.text-orange-300 { color: var(--color-effect-orange); }
+        .card-effect-text.text-blue-300 { color: var(--color-effect-blue); }
 
 
         /* Specific styles for Spell Cards */
         .card.spell-card {
-            background: linear-gradient(to bottom right, #5d4037, #4e342e); /* Darker brown/magic theme */
-            border-color: #8d6e63; /* Lighter brown/magic border */
+            background: linear-gradient(to bottom right, var(--bg-spell-card-gradient-start), var(--bg-spell-card-gradient-end));
+            border-color: var(--border-spell-card);
         }
         .card.spell-card .card-name {
-            color: #a7d9ff; /* Blueish glow for spells */
-            text-shadow: 0 0 8px rgba(167, 217, 255, 0.8); /* Stronger glow effect */
+            color: var(--color-spell-name);
+            text-shadow: 0 0 8px rgba(167, 217, 255, 0.8);
         }
         .card.spell-card .card-image {
-            background-color: #424242;
-            font-size: 3.2rem; /* Even larger icon for spells */
+            background-color: var(--bg-spell-card-image);
+            font-size: 3.2rem;
         }
 
         /* Specific styles for Mana Creatures */
         .card.mana-creature {
-            border-color: #00bfff; /* Sky blue border for mana creatures */
-            box-shadow: 0 8px 16px rgba(0, 191, 255, 0.6), inset 0 0 10px rgba(0, 191, 255, 0.4); /* Stronger blue glow */
+            border-color: var(--border-mana-creature);
+            box-shadow: 0 8px 16px rgba(0, 191, 255, 0.6), inset 0 0 10px rgba(0, 191, 255, 0.4);
         }
         .card.mana-creature .card-name {
-            color: #00bfff;
+            color: var(--color-mana-icon);
             text-shadow: 0 0 8px rgba(0, 191, 255, 0.8);
         }
         .card.mana-creature .mana-icon {
-            font-size: 1.4rem; /* Larger mana icon */
-            color: #00bfff;
+            font-size: 1.4rem;
+            color: var(--color-mana-icon);
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
         }
         /* Divine Shield Visual */
         .card[data-has-divine-shield="true"] {
-            box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7), inset 0 0 10px 3px rgba(255, 255, 0, 0.5); /* Yellow glow for divine shield */
-            border-color: #ffd700; /* Gold border */
+            box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7), inset 0 0 10px 3px rgba(255, 255, 0, 0.5);
+            border-color: var(--color-playable-border);
         }
         .card[data-has-divine-shield="true"]::after {
-            content: "🛡️"; /* Shield icon */
+            content: "🛡️";
             position: absolute;
             top: 5px;
             right: 5px;
@@ -290,14 +408,24 @@
             text-shadow: 0 0 5px black;
         }
 
+        /* Faction Specific Card Borders & Names */
+        .card[data-faction="Order of the Sun"] { border-color: #FFD700; } /* Gold */
+        .card[data-faction="Order of the Sun"] .card-name { color: #FFD700; }
+        .card[data-faction="Shadow Pact"] { border-color: #8A2BE2; } /* BlueViolet */
+        .card[data-faction="Shadow Pact"] .card-name { color: #8A2BE2; }
+        .card[data-faction="Wildwood Kin"] { border-color: #32CD32; } /* LimeGreen */
+        .card[data-faction="Wildwood Kin"] .card-name { color: #32CD32; }
+        .card[data-faction="Arcane Conclave"] { border-color: #00BFFF; } /* DeepSkyBlue */
+        .card[data-faction="Arcane Conclave"] .card-name { color: #00BFFF; }
+
 
         /* Player Hand Area */
         .player-hand {
-            background-color: #3a2e22;
-            border: 3px solid #6b4e2e;
+            background-color: var(--bg-panel-gradient-end);
+            border: 3px solid var(--border-main);
             border-radius: 1.25rem;
             padding: 1.5rem;
-            min-height: 240px; /* Increased min-height */
+            min-height: 240px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -308,38 +436,37 @@
 
         /* Game Message Overlay */
         .game-message {
-            position: absolute; /* Changed from fixed to absolute */
-            top: 20px; /* Position at the top */
+            position: fixed;
+            top: 20px;
             left: 50%;
-            transform: translateX(-50%); /* Center horizontally */
-            width: auto; /* Width based on content */
-            max-width: 400px; /* Limit max width */
-            background-color: rgba(0, 0, 0, 0.95);
-            border: 3px solid #d4af37;
+            transform: translateX(-50%);
+            width: auto;
+            max-width: 400px;
+            background-color: var(--bg-container-gradient-start);
+            border: 3px solid var(--color-header-footer);
             border-radius: 1rem;
-            padding: 1.5rem 2rem; /* Reduced padding */
+            padding: 1.5rem 2rem;
             text-align: center;
             font-family: 'MedievalSharp', cursive;
-            font-size: 1.8rem; /* Reduced font size for notification */
-            color: #d4af37;
+            font-size: 1.8rem;
+            color: var(--color-header-footer);
             z-index: 3000;
             box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
-            display: none; /* Hidden by default */
-            transition: opacity 0.5s ease-out; /* Smooth fade out */
+            display: none;
+            transition: opacity 0.5s ease-out;
         }
 
         .game-message p {
-            margin-bottom: 0.5rem; /* Reduced margin */
+            margin-bottom: 0.5rem;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
         }
 
         .game-message button {
-            /* This button is now only for game over, so its styling is fine for that */
-            margin-top: 1rem; /* Adjusted margin for restart button */
+            margin-top: 1rem;
             padding: 0.8rem 1.6rem;
-            background-color: #d4af37;
-            color: #2a221a;
-            border: 2px solid #8B7300;
+            background-color: var(--color-header-footer);
+            color: var(--color-cost-circle);
+            border: 2px solid var(--border-cost-circle);
             border-radius: 0.75rem;
             font-family: 'Inter', sans-serif;
             font-size: 1.2rem;
@@ -348,154 +475,34 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
         }
 
-        .game-message button:hover {
-            background-color: #e0c050;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.7);
-        }
-
-        /* Mulligan Overlay */
-        .mulligan-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.98); /* Even more opaque */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 6000; /* Highest z-index */
-        }
-
-        .mulligan-content {
-            background-color: #2a221a;
-            border: 6px solid #d4af37;
-            border-radius: 1.75rem;
-            padding: 3rem;
-            text-align: center;
-            font-family: 'MedievalSharp', cursive;
-            color: #e0d0c0;
-            box-shadow: 0 0 50px rgba(212, 175, 55, 1);
-            max-width: 95%;
-            max-height: 95%;
-            overflow-y: auto;
-        }
-
-        .mulligan-content h2 {
-            font-size: 3.2rem;
-            color: #d4af37;
-            margin-bottom: 1.5rem;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9);
-        }
-
-        .mulligan-content p {
-            font-family: 'Inter', sans-serif;
-            font-size: 1.4rem;
-            margin-bottom: 1.5rem;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-        }
-
-        .mulligan-hand-display {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1.25rem;
-            margin-bottom: 2.5rem;
-            min-height: 220px;
-        }
-
-        .mulligan-hand-display .card {
-            width: 120px; /* Slightly larger cards in mulligan display */
-            height: 180px;
-            cursor: default;
-            transform: none;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
-            border: 3px solid #6b4e2e;
-        }
-        .mulligan-hand-display .card:hover {
-            transform: none;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.6);
-        }
-
-
-        .mulligan-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 2.5rem;
-        }
-
-        .mulligan-buttons button {
-            padding: 1.2rem 2.5rem;
-            background-color: #6b4e2e;
-            color: #e0d0c0;
-            border: 4px solid #4a3a2a;
-            border-radius: 1rem;
-            font-family: 'MedievalSharp', cursive;
-            font-size: 1.4rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
-        }
-
-        .mulligan-buttons button:hover {
-            background-color: #8a6e4e;
-            transform: translateY(-4px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.8);
-        }
-
-        .mulligan-buttons button#keep-hand-button {
-            background-color: #d4af37;
-            color: #2a221a;
-            border-color: #8B7300;
-        }
-
-        .mulligan-buttons button#keep-hand-button:hover {
-            background-color: #e0c050;
-        }
-
-
-        .game-button {
-            padding: 1rem 2rem;
-            background-color: #6b4e2e;
-            color: #e0d0c0;
-            border: 4px solid #4a3a2a;
-            border-radius: 1rem;
-            font-family: 'MedievalSharp', cursive;
-            font-size: 1.3rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4);
-        }
-
         .game-button:hover {
-            background-color: #8a6e4e;
+            background-color: var(--border-stats);
             transform: translateY(-3px);
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.6);
         }
 
         .game-button:disabled {
-            background-color: #4a3a2a;
-            color: #999;
+            background-color: var(--border-stats);
+            color: var(--color-text-placeholder);
             cursor: not-allowed;
             box-shadow: none;
         }
 
         /* Active card in hand for playing */
         .card.playable {
-            border-color: #d4af37; /* Gold border */
-            box-shadow: 0 8px 16px rgba(212, 175, 55, 0.7), inset 0 0 10px rgba(212, 175, 55, 0.5); /* Stronger gold glow */
+            border-color: var(--color-playable-border);
+            box-shadow: 0 8px 16px rgba(212, 175, 55, 0.7), inset 0 0 10px rgba(212, 175, 55, 0.5);
         }
 
         .card.playable:hover {
-            transform: translateY(-15px) scale(1.08); /* More prominent lift */
+            transform: translateY(-15px) scale(1.08);
             box-shadow: 0 20px 40px rgba(212, 175, 55, 1), inset 0 0 15px rgba(212, 175, 55, 0.6);
         }
 
         /* Active card on board for attacking */
         .card.attackable {
-            border-color: #ff4500; /* Orange-red border */
-            box-shadow: 0 8px 16px rgba(255, 69, 0, 0.7), inset 0 0 10px rgba(255, 69, 0, 0.5); /* Stronger red glow */
+            border-color: var(--color-attackable-border);
+            box-shadow: 0 8px 16px rgba(255, 69, 0, 0.7), inset 0 0 10px rgba(255, 69, 0, 0.5);
         }
 
         .card.attackable:hover {
@@ -504,32 +511,32 @@
         }
 
         .targetable {
-            box-shadow: 0 0 25px 10px rgba(255, 0, 0, 0.9); /* More intense red glow for target */
+            box-shadow: 0 0 25px 10px var(--color-targetable-shadow);
             cursor: pointer;
         }
 
         /* Card Tooltip Styles */
         #card-tooltip {
-            position: fixed; /* Changed to fixed for viewport-relative positioning */
-            background-color: rgba(0, 0, 0, 0.9);
-            border: 2px solid #d4af37;
+            position: fixed;
+            background-color: var(--bg-tooltip);
+            border: 2px solid var(--border-tooltip);
             border-radius: 0.75rem;
             padding: 1rem;
-            max-width: 200px; /* Limit tooltip width */
+            max-width: 200px;
             text-align: center;
             font-family: 'Inter', sans-serif;
-            color: #e0d0c0;
-            z-index: 7000; /* Ensure it's on top */
+            color: var(--color-tooltip-text);
+            z-index: 7000;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
-            opacity: 0; /* Hidden by default */
+            opacity: 0;
             transition: opacity 0.2s ease-in-out;
-            pointer-events: auto; /* Allow mouse events on tooltip itself */
+            pointer-events: auto;
         }
 
         #card-tooltip h3 {
             font-family: 'MedievalSharp', cursive;
             font-size: 1.2rem;
-            color: #d4af37;
+            color: var(--color-tooltip-name);
             margin-bottom: 0.5rem;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
         }
@@ -631,7 +638,7 @@
                 border-width: 1px;
             }
             .game-message {
-                font-size: 1.2rem; /* Even smaller for mobile */
+                font-size: 1.2rem;
                 padding: 0.8rem 1.2rem;
                 border-width: 2px;
             }
@@ -686,6 +693,7 @@
             </div>
             <div id="game-status" class="text-center">Your Turn</div>
             <div class="flex items-center gap-2">
+                <button id="theme-toggle-button" class="game-button">Toggle Theme</button>
                 <button id="end-turn-button" class="game-button">End Turn</button>
             </div>
         </div>
@@ -734,8 +742,7 @@
                 <h2>Mulligan Phase</h2>
                 <p>Your Starting Hand:</p>
                 <div id="mulligan-hand-display" class="mulligan-hand-display">
-                    <!-- Cards will be rendered here -->
-                </div>
+                    </div>
                 <p>Would you like to redraw your hand? (Once per game)</p>
                 <div class="mulligan-buttons">
                     <button id="keep-hand-button">Keep Hand</button>
@@ -750,8 +757,7 @@
                 <h2>Foresight</h2>
                 <p>Choose one card to put into your hand. The rest go to the bottom of your deck.</p>
                 <div id="foresight-cards-display" class="mulligan-hand-display">
-                    <!-- Cards will be rendered here -->
-                </div>
+                    </div>
             </div>
         </div>
 
@@ -824,55 +830,65 @@
         const tooltipCardStats = document.getElementById('tooltip-card-stats'); // New
         const tooltipCardEffect = document.getElementById('tooltip-card-effect'); // New
         const gameContainer = document.querySelector('.game-container'); // Get the game container for event delegation
+        const themeToggleButton = document.getElementById('theme-toggle-button'); // New
 
 
         // Card Data (Example Cards)
         const allCards = [
-            { id: 'knight', name: 'Gallant Knight', cost: 2, attack: 2, defense: 2, image: '🛡️', type: 'creature' },
-            { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '🏹', type: 'creature' },
-            { id: 'wizard', name: 'Mystic Wizard', cost: 3, attack: 3, defense: 2, image: '🧙', type: 'creature' },
-            { id: 'goblin', name: 'Sneaky Goblin', cost: 1, attack: 2, defense: 1, image: '👹', type: 'creature' },
-            { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature' },
-            { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature' },
-            { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature' },
-            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature' },
-            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature' },
-            { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature' },
-            { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature' },
-            { id: 'rogue', name: 'Shadow Rogue', cost: 1, attack: 2, defense: 1, image: '🗡️', type: 'creature' },
-            { id: 'griffin', name: 'Sky Griffin', cost: 4, attack: 3, defense: 3, image: '🦅', type: 'creature' },
-            { id: 'treant', name: 'Ancient Treant', cost: 4, attack: 2, defense: 6, image: '🌳', type: 'creature' },
-            { id: 'sorceress', name: 'Dark Sorceress', cost: 3, attack: 2, defense: 3, image: '🔮', type: 'creature' },
-            { id: 'direwolf', name: 'Dire Wolf', cost: 2, attack: 2, defense: 2, image: '🐺', type: 'creature' },
+            { id: 'knight', name: 'Gallant Knight', cost: 2, attack: 2, defense: 2, image: '🛡️', type: 'creature', faction: 'Order of the Sun' },
+            { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '🏹', type: 'creature', faction: 'Wildwood Kin' },
+            { id: 'wizard', name: 'Mystic Wizard', cost: 3, attack: 3, defense: 2, image: '🧙', type: 'creature', faction: 'Arcane Conclave' },
+            { id: 'goblin', name: 'Sneaky Goblin', cost: 1, attack: 2, defense: 1, image: '👹', type: 'creature', faction: 'Shadow Pact' },
+            { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature', faction: 'Shadow Pact' },
+            { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature', faction: 'Order of the Sun' },
+            { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature', faction: 'Arcane Conclave' },
+            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature', faction: 'Shadow Pact' },
+            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature', faction: 'Order of the Sun' },
+            { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature', faction: 'Arcane Conclave' },
+            { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature', faction: 'Order of the Sun' },
+            { id: 'rogue', name: 'Shadow Rogue', cost: 1, attack: 2, defense: 1, image: '🗡️', type: 'creature', faction: 'Shadow Pact' },
+            { id: 'griffin', name: 'Sky Griffin', cost: 4, attack: 3, defense: 3, image: '🦅', type: 'creature', faction: 'Order of the Sun' },
+            { id: 'treant', name: 'Ancient Treant', cost: 4, attack: 2, defense: 6, image: '🌳', type: 'creature', faction: 'Wildwood Kin' },
+            { id: 'sorceress', name: 'Dark Sorceress', cost: 3, attack: 2, defense: 3, image: '🔮', type: 'creature', faction: 'Arcane Conclave' },
+            { id: 'direwolf', name: 'Dire Wolf', cost: 2, attack: 2, defense: 2, image: '🐺', type: 'creature', faction: 'Wildwood Kin' },
             // --- SPELL CARDS ---
-            { id: 'fireball', name: 'Fireball', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '☄️' },
-            { id: 'healing_potion', name: 'Healing Potion', cost: 1, type: 'spell', effect: { type: 'heal', value: 4, text: 'Heal 4 health' }, image: '🧪' },
-            { id: 'lightning_bolt', name: 'Lightning Bolt', cost: 3, type: 'spell', effect: { type: 'damage', value: 4, text: 'Deal 4 damage to target' }, image: '⚡' },
-            { id: 'minor_heal', name: 'Minor Heal', cost: 1, type: 'spell', effect: { type: 'heal', value: 2, text: 'Heal 2 health' }, image: '✨' },
-            { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜' },
+            { id: 'fireball', name: 'Fireball', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '☄️', faction: 'Arcane Conclave' },
+            { id: 'healing_potion', name: 'Healing Potion', cost: 1, type: 'spell', effect: { type: 'heal', value: 4, text: 'Heal 4 health' }, image: '🧪', faction: 'Order of the Sun' },
+            { id: 'lightning_bolt', name: 'Lightning Bolt', cost: 3, type: 'spell', effect: { type: 'damage', value: 4, text: 'Deal 4 damage to target' }, image: '⚡', faction: 'Arcane Conclave' },
+            { id: 'minor_heal', name: 'Minor Heal', cost: 1, type: 'spell', effect: { type: 'heal', value: 2, text: 'Heal 2 health' }, image: '✨', faction: 'Order of the Sun' },
+            { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜', faction: 'Arcane Conclave' },
             // --- RESOURCE CREATURES (Mana Generators) ---
-            { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null },
-            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null },
-            { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null },
-            { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' } },
+            { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
+            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
+            { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null, faction: 'Order of the Sun' },
+            { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' }, faction: 'Wildwood Kin' },
             // --- LOCATION CARDS ---
-            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '🌿' },
-            { id: 'healing_spring', name: 'Healing Spring', cost: 2, type: 'location', passive_effect: { type: 'health_regen', value: 2, text: 'Heal 2 HP/turn' }, image: '💧' },
-            { id: 'training_grounds', name: 'Training Grounds', cost: 2, type: 'location', passive_effect: { type: 'creature_attack_boost', value: 1, text: 'Your creatures get +1⚔️' }, image: '⚔️' },
-            { id: 'volcano_peak', name: 'Volcano Peak', cost: 3, type: 'location', passive_effect: { type: 'damage_to_opponent_on_play', value: 1, text: 'Deal 1 DMG to Opponent on Play' }, image: '🌋' },
-            { id: 'mystic_portal', name: 'Mystic Portal', cost: 2, type: 'location', passive_effect: { type: 'mana_per_turn_delayed', value: 2, start_turn: 3, text: 'Mana +2/turn (Turn 3+)' }, image: '🌌' },
-            { id: 'arcane_tower', name: 'Arcane Tower', cost: 2, type: 'location', passive_effect: { type: 'spell_damage_boost', value: 1, text: 'Your spells deal +1 DMG' }, image: '🗼' },
-            // --- NEW EXPANSION CARDS ---
-            { id: 'guardian_of_peaks', name: 'Guardian of the Peaks', cost: 4, attack: 2, defense: 5, image: '🏔️', type: 'creature', on_attacked_effect: { type: 'damage_attacker', value: 2, text: 'Deals 2 DMG to attacker' } },
-            { id: 'feral_tracker', name: 'Feral Tracker', cost: 2, attack: 2, defense: 2, image: '🐾', type: 'creature', on_play_effect: { type: 'buff_random_friendly_creature_attack', value: 1, text: 'Give a random friendly creature +1⚔️' } },
-            { id: 'divine_shield', name: 'Divine Shield', cost: 2, type: 'spell', effect: { type: 'grant_divine_shield', text: 'Grant Divine Shield to a friendly creature' }, image: '✨' },
-            { id: 'mind_drain', name: 'Mind Drain', cost: 1, type: 'spell', effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, image: '🧠' },
-            { id: 'ancient_library', name: 'Ancient Library', cost: 2, type: 'location', passive_effect: { type: 'draw_card_per_turn', value: 1, text: 'Draw +1 card/turn' }, image: '📚' },
-            { id: 'warriors_guild', name: 'Warrior\'s Guild', cost: 3, type: 'location', passive_effect: { type: 'creature_stat_boost_all', attack_value: 1, defense_value: 1, text: 'Your creatures get +1⚔️/+1❤️' }, image: '🛡️' },
-            // --- NEW OPENING PHASE CARDS ---
-            { id: 'foresight', name: 'Foresight', cost: 1, type: 'spell', effect: { type: 'scry', value: 3, text: 'Look at top 3 cards, draw 1' }, image: '👁️' },
-            { id: 'scribe_apprentice', name: 'Scribe Apprentice', cost: 1, attack: 1, defense: 1, image: '🧑‍🏫', type: 'creature', on_play_effect: { type: 'draw_card', value: 1, text: 'Draw 1 card on play' } },
-            // --- END NEW OPENING PHASE CARDS ---
+            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '🌿', faction: 'Wildwood Kin' },
+            { id: 'healing_spring', name: 'Healing Spring', cost: 2, type: 'location', passive_effect: { type: 'health_regen', value: 2, text: 'Heal 2 HP/turn' }, image: '💧', faction: 'Order of the Sun' },
+            { id: 'training_grounds', name: 'Training Grounds', cost: 2, type: 'location', passive_effect: { type: 'creature_attack_boost', value: 1, text: 'Your creatures get +1⚔️' }, image: '⚔️', faction: 'Shadow Pact' },
+            { id: 'volcano_peak', name: 'Volcano Peak', cost: 3, type: 'location', passive_effect: { type: 'damage_to_opponent_on_play', value: 1, text: 'Deal 1 DMG to Opponent on Play' }, image: '🌋', faction: 'Shadow Pact' },
+            { id: 'mystic_portal', name: 'Mystic Portal', cost: 2, type: 'location', passive_effect: { type: 'mana_per_turn_delayed', value: 2, start_turn: 3, text: 'Mana +2/turn (Turn 3+)' }, image: '🌌', faction: 'Arcane Conclave' },
+            { id: 'arcane_tower', name: 'Arcane Tower', cost: 2, type: 'location', passive_effect: { type: 'spell_damage_boost', value: 1, text: 'Your spells deal +1 DMG' }, image: '🗼', faction: 'Arcane Conclave' },
+            // --- EXPANSION CARDS ---
+            { id: 'guardian_of_peaks', name: 'Guardian of the Peaks', cost: 4, attack: 2, defense: 5, image: '🏔️', type: 'creature', on_attacked_effect: { type: 'damage_attacker', value: 2, text: 'Deals 2 DMG to attacker' }, faction: 'Order of the Sun' },
+            { id: 'feral_tracker', name: 'Feral Tracker', cost: 2, attack: 2, defense: 2, image: '🐾', type: 'creature', on_play_effect: { type: 'buff_random_friendly_creature_attack', value: 1, text: 'Give a random friendly creature +1⚔️' }, faction: 'Wildwood Kin' },
+            { id: 'divine_shield', name: 'Divine Shield', cost: 2, type: 'spell', effect: { type: 'grant_divine_shield', text: 'Grant Divine Shield to a friendly creature' }, image: '✨', faction: 'Order of the Sun' },
+            { id: 'mind_drain', name: 'Mind Drain', cost: 1, type: 'spell', effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, image: '🧠', faction: 'Shadow Pact' },
+            { id: 'ancient_library', name: 'Ancient Library', cost: 2, type: 'location', passive_effect: { type: 'draw_card_per_turn', value: 1, text: 'Draw +1 card/turn' }, image: '📚', faction: 'Arcane Conclave' },
+            { id: 'warriors_guild', name: 'Warrior\'s Guild', cost: 3, type: 'location', passive_effect: { type: 'creature_stat_boost_all', attack_value: 1, defense_value: 1, text: 'Your creatures get +1⚔️/+1❤️' }, image: '🛡️', faction: 'Order of the Sun' },
+            // --- OPENING PHASE CARDS ---
+            { id: 'foresight', name: 'Foresight', cost: 1, type: 'spell', effect: { type: 'scry', value: 3, text: 'Look at top 3 cards, draw 1' }, image: '👁️', faction: 'Arcane Conclave' },
+            { id: 'scribe_apprentice', name: 'Scribe Apprentice', cost: 1, attack: 1, defense: 1, image: '🧑‍🏫', type: 'creature', on_play_effect: { type: 'draw_card', value: 1, text: 'Draw 1 card on play' }, faction: 'Wildwood Kin' },
+            // --- NEW FACTION SYNERGY CREATURES ---
+            { id: 'sun_cleric', name: 'Sun Cleric', cost: 2, attack: 1, defense: 2, image: '☀️', type: 'creature', faction: 'Order of the Sun', faction_bonus: { type: 'defense_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Order of the Sun', text: '(+1❤️ if another Order creature is present)' } },
+            { id: 'shadow_assassin', name: 'Shadow Assassin', cost: 2, attack: 2, defense: 1, image: '🔪', type: 'creature', faction: 'Shadow Pact', faction_bonus: { type: 'attack_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Shadow Pact', text: '(+1⚔️ if another Shadow creature is present)' } },
+            { id: 'grove_warden', name: 'Grove Warden', cost: 3, attack: 1, defense: 3, image: '🌳', type: 'creature', mana_per_turn: 1, faction: 'Wildwood Kin', faction_bonus: { type: 'mana_per_turn_self', value: 1, condition: 'control_other_faction_creature', faction: 'Wildwood Kin', text: '(+1✨ if another Wildwood creature is present)' } },
+            { id: 'apprentice_mage', name: 'Apprentice Mage', cost: 2, attack: 1, defense: 1, image: ' apprentice', type: 'creature', faction: 'Arcane Conclave', faction_bonus: { type: 'spell_damage_boost_global', value: 1, condition: 'control_other_faction_creature', faction: 'Arcane Conclave', text: '(Your spells deal +1 DMG if another Arcane creature is present)' } },
+            // --- KEYWORD CREATURES ---
+            { id: 'paladin_of_light', name: 'Paladin of Light', cost: 3, attack: 2, defense: 3, image: '✨', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding (Takes 1 less damage from all sources)' },
+            { id: 'dark_rider', name: 'Dark Rider', cost: 3, attack: 3, defense: 2, image: '�', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike (Deals combat damage first)' },
+            { id: 'forest_spirit', name: 'Forest Spirit', cost: 2, attack: 1, defense: 1, image: '🍃', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth (+1⚔️/+1❤️ at start of your turn)' },
+            { id: 'arcane_familiar', name: 'Arcane Familiar', cost: 1, attack: 0, defense: 2, image: '🦉', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave (Draw a card when you cast a spell)' },
         ];
 
         // --- Utility Functions ---
@@ -928,6 +944,7 @@
             cardEl.dataset.cardId = cardData.id;
             cardEl.dataset.cost = cardData.cost;
             cardEl.dataset.type = cardData.type; // Add card type to dataset
+            cardEl.dataset.faction = cardData.faction; // Add faction to dataset
 
             let cardStatsHtml = '';
             let manaIconHtml = '';
@@ -935,6 +952,20 @@
             let deathEffectHtml = '';
             let onPlayEffectHtml = '';
             let onAttackedEffectHtml = '';
+            let factionIconHtml = ''; // For displaying faction icon
+            let keywordsHtml = ''; // For displaying keywords
+
+            // Faction Icons (using emojis for simplicity)
+            const factionIcons = {
+                'Order of the Sun': '☀️',
+                'Shadow Pact': '🌑',
+                'Wildwood Kin': '🌳',
+                'Arcane Conclave': '🔮'
+            };
+            if (cardData.faction && factionIcons[cardData.faction]) {
+                factionIconHtml = `<span class="absolute top-1 right-1 text-xl">${factionIcons[cardData.faction]}</span>`;
+            }
+
 
             if (cardData.type === 'creature') {
                 cardEl.dataset.attack = cardData.attack;
@@ -973,6 +1004,12 @@
                     if (cardData.on_attacked_effect.value) cardEl.dataset.onAttackedEffectValue = cardData.on_attacked_effect.value;
                     onAttackedEffectHtml = `<div class="card-effect-text text-orange-300">💥 ${cardData.on_attacked_effect.text}</div>`;
                 }
+                if (cardData.faction_bonus) { // Display faction bonus text on card
+                    effectTextHtml += `<div class="card-effect-text text-blue-300">${cardData.faction_bonus.text}</div>`;
+                }
+                if (cardData.keywords && cardData.keyword_text) { // Display keywords
+                    keywordsHtml = `<div class="card-effect-text text-yellow-300 font-bold">${cardData.keyword_text}</div>`;
+                }
             } else if (cardData.type === 'spell') {
                 cardEl.classList.add('spell-card');
                 cardEl.dataset.effectType = cardData.effect.type;
@@ -997,15 +1034,16 @@
                 <div class="card-cost">${cardData.cost}</div>
                 <div class="card-name">${cardData.name}</div>
                 <div class="card-image">${cardData.image}</div>
+                ${factionIconHtml} <!-- Faction icon added here -->
                 ${cardStatsHtml}
                 ${manaIconHtml}
                 ${onPlayEffectHtml}
                 ${onAttackedEffectHtml}
                 ${deathEffectHtml}
+                ${keywordsHtml} <!-- Keywords added here -->
                 ${effectTextHtml}
             `;
 
-            // Only add click listener if it's a player card and NOT for display purposes
             if (isPlayerCard && !isMulliganDisplay && !isForesightDisplay) {
                 cardEl.classList.add('cursor-pointer');
                 cardEl.addEventListener('click', () => handleCardClick(cardEl, cardData));
@@ -1013,19 +1051,16 @@
                 cardEl.classList.remove('cursor-pointer');
             }
 
-            // Removed direct mouseover/mouseout listeners here, relying on delegation
             return cardEl;
         }
 
         // --- Tooltip Functions ---
         function showCardTooltip(event, cardData) {
-            // Clear any pending hide timer
             if (tooltipHideTimer) {
                 clearTimeout(tooltipHideTimer);
                 tooltipHideTimer = null;
             }
 
-            // Populate tooltip content
             tooltipCardName.textContent = cardData.name;
             tooltipCardCost.textContent = `Cost: ${cardData.cost}`;
             tooltipCardType.textContent = `Type: ${cardData.type.charAt(0).toUpperCase() + cardData.type.slice(1)}`;
@@ -1034,7 +1069,6 @@
             let effectDesc = '';
 
             if (cardData.type === 'creature') {
-                // Use current stats if available, otherwise base stats
                 const currentAttack = cardData.currentAttack !== undefined ? cardData.currentAttack : cardData.attack;
                 const currentDefense = cardData.currentDefense !== undefined ? cardData.currentDefense : cardData.defense;
                 statsText = `Attack: ${currentAttack} | Defense: ${currentDefense}`;
@@ -1051,6 +1085,12 @@
                 if (cardData.death_effect) {
                     effectDesc += (effectDesc ? '\n' : '') + `On Death: ${cardData.death_effect.text}`;
                 }
+                if (cardData.faction_bonus) {
+                    effectDesc += (effectDesc ? '\n' : '') + `Faction: ${cardData.faction_bonus.text}`;
+                }
+                if (cardData.keywords && cardData.keyword_text) {
+                    effectDesc += (effectDesc ? '\n' : '') + `${cardData.keyword_text}`;
+                }
             } else if (cardData.type === 'spell') {
                 effectDesc = cardData.effect.text;
             } else if (cardData.type === 'location') {
@@ -1060,17 +1100,15 @@
             tooltipCardStats.textContent = statsText;
             tooltipCardEffect.textContent = effectDesc;
 
-            // Position tooltip
             const cardRect = event.currentTarget.getBoundingClientRect();
-            // Get tooltip dimensions after content is set
-            cardTooltip.style.display = 'block'; // Temporarily show to get dimensions
-            cardTooltip.style.opacity = '0'; // Keep it invisible for now
+
+            cardTooltip.style.display = 'block';
+            cardTooltip.style.opacity = '0';
             const tooltipRect = cardTooltip.getBoundingClientRect();
 
             let leftPos = cardRect.right + 10;
             let topPos = cardRect.top;
 
-            // Adjust if it goes off screen to the right
             if (leftPos + tooltipRect.width > window.innerWidth - 20) {
                 leftPos = cardRect.left - tooltipRect.width - 10;
                 if (leftPos < 20) {
@@ -1078,7 +1116,6 @@
                 }
             }
 
-            // Adjust if it goes off screen vertically
             if (topPos + tooltipRect.height > window.innerHeight - 20) {
                 topPos = window.innerHeight - tooltipRect.height - 20;
                 if (topPos < 20) {
@@ -1086,14 +1123,12 @@
                 }
             }
 
-
             cardTooltip.style.left = `${leftPos}px`;
             cardTooltip.style.top = `${topPos}px`;
-            cardTooltip.style.opacity = '1'; // Fade in
+            cardTooltip.style.opacity = '1';
         }
 
         function hideCardTooltip() {
-            // Start a timer to hide the tooltip. This allows moving the mouse from the card to the tooltip.
             if (tooltipHideTimer) {
                 clearTimeout(tooltipHideTimer);
             }
@@ -1101,17 +1136,16 @@
                 cardTooltip.style.opacity = '0';
                 setTimeout(() => {
                     cardTooltip.style.display = 'none';
-                }, 200); // Match CSS transition duration
-            }, 100); // Small delay before hiding
+                }, 200);
+            }, 100);
         }
-
 
         // Updates the display of a card's stats (only for creatures)
         function updateCardStatsDisplay(cardEl) {
             if (cardEl.dataset.type === 'creature') {
                 const attackSpan = cardEl.querySelector('.card-stats span:first-child');
                 const defenseSpan = cardEl.querySelector('.card-stats span:last-child');
-                if (attackSpan && defenseSpan) { // Ensure elements exist before updating
+                if (attackSpan && defenseSpan) {
                     attackSpan.innerHTML = `⚔️ ${cardEl.dataset.currentAttack}`;
                     defenseSpan.innerHTML = `❤️ ${cardEl.dataset.currentDefense}`;
                 }
@@ -1134,7 +1168,7 @@
                 messageTimeoutId = setTimeout(() => {
                     gameMessageEl.style.opacity = '0';
                     setTimeout(() => {
-                        gameMessage.style.display = 'none'; // Corrected: use gameMessage.style.display
+                        gameMessageEl.style.display = 'none';
                     }, 500);
                 }, 2500);
             }
@@ -1144,7 +1178,7 @@
 
         // Hides the game message
         function hideGameMessage() {
-            cardTooltip.style.display = 'none'; // Ensure tooltip is hidden if game message covers it
+            cardTooltip.style.display = 'none';
             gameMessageEl.style.display = 'none';
             console.log("Game Message Hidden.");
         }
@@ -1258,10 +1292,17 @@
             const avgCost = totalCost / opponentHand.length;
             const hasCreature = opponentHand.some(card => card.type === 'creature');
             const hasManaCreature = opponentHand.some(card => card.type === 'creature' && card.mana_per_turn);
-            const hasManaLocation = opponentHand.some(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn');
-            const hasDelayedManaLocation = opponentHand.some(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn_delayed');
+            const hasManaLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn');
+            const hasDelayedManaLocation = opponentHand.find(card => card.type === 'location' && card.passive_effect.type === 'mana_per_turn_delayed');
 
-            if (avgCost > 3 || (!hasCreature && totalCost > 2) || (turn < 3 && !hasManaCreature && !hasManaLocation && !hasDelayedManaLocation && Math.random() < 0.6)) {
+            let shouldMulligan = false;
+            if (avgCost > 3 || (!hasCreature && totalCost > 2)) {
+                shouldMulligan = true;
+            } else if (turn < 3 && !hasManaCreature && !hasManaLocation && !hasDelayedManaLocation && Math.random() < 0.6) {
+                shouldMulligan = true;
+            }
+
+            if (shouldMulligan) {
                 console.log("Opponent choosing to mulligan.");
                 opponentHasMulliganed = true;
                 opponentDeck = shuffle([...opponentDeck, ...opponentHand]);
@@ -1365,6 +1406,17 @@
             currentCreatureAttackBoostPlayer = 0;
             currentCreatureDefenseBoostPlayer = 0;
 
+            // Apply Growth keyword for player's creatures
+            playerPlayArea.forEach(creature => {
+                if (creature.keywords && creature.keywords.includes('Growth')) {
+                    creature.currentAttack = parseInt(creature.currentAttack) + 1;
+                    creature.currentDefense = parseInt(creature.currentDefense) + 1;
+                    showGameMessage(`${creature.name} grows! (+1⚔️/+1❤️)`, false, true);
+                }
+            });
+
+
+            // Apply mana from creatures and location
             let currentManaGain = 0;
             playerPlayArea.forEach(creature => {
                 if (creature.mana_per_turn) {
@@ -1837,62 +1889,152 @@
 
         // Handles attacking an opponent's creature
         function attackCreature(attackerCardEl, targetCardEl) {
-            const attackerCardData = playerPlayArea.find(c => c.id === attackerCardEl.dataset.cardId &&
-                                                            c.currentAttack == selectedAttacker.dataset.currentAttack &&
-                                                            c.currentDefense == selectedAttacker.dataset.currentDefense);
-            const targetCardData = opponentPlayArea.find(c => c.id === targetCardEl.dataset.cardId &&
-                                                            c.currentAttack == targetCardEl.dataset.currentAttack &&
-                                                            c.currentDefense == targetCardEl.dataset.currentDefense);
+            // Find the actual card data objects from the game state arrays
+            const attackerCardData = playerPlayArea.find(c => c.id === attackerCardEl.dataset.cardId);
+            const targetCardData = opponentPlayArea.find(c => c.id === targetCardEl.dataset.cardId);
 
             if (attackerCardData && targetCardData) {
                 let attackerAttack = parseInt(attackerCardData.currentAttack);
-                const attackerDefense = parseInt(attackerCardData.currentDefense);
+                let attackerDefense = parseInt(attackerCardData.currentDefense);
                 let targetAttack = parseInt(targetCardData.currentAttack);
-                const targetDefense = parseInt(targetCardData.currentDefense);
+                let targetDefense = parseInt(targetCardData.currentDefense);
 
+                // Apply player's location attack boost to attacker
                 if (playerLocation && playerLocation.passive_effect.type === 'creature_attack_boost') {
                     attackerAttack += playerLocation.passive_effect.value;
                 }
+                // Apply global creature attack boost to attacker
                 attackerAttack += currentCreatureAttackBoostPlayer;
 
+                // Apply opponent's location attack boost to target (as defender)
                 if (opponentLocation && opponentLocation.passive_effect.type === 'creature_attack_boost') {
                     targetAttack += opponentLocation.passive_effect.value;
                 }
+                // Apply global creature defense boost to target (as defender)
                 targetDefense += currentCreatureDefenseBoostOpponent;
 
                 console.log(`${attackerCardData.name} (A:${attackerAttack}, D:${attackerDefense}) attacks ${targetCardData.name} (A:${targetAttack}, D:${targetDefense})`);
 
-                if (targetCardData.has_divine_shield) {
-                    targetCardData.has_divine_shield = false;
-                    showGameMessage(`${targetCardData.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
-                    attackingCreature.currentDefense -= targetAttack;
+                // Determine combat order based on Swiftstrike
+                let attackerDealsDamageFirst = false;
+                let targetDealsDamageFirst = false;
+
+                const attackerHasSwiftstrike = attackerCardData.keywords && attackerCardData.keywords.includes('Swiftstrike');
+                const targetHasSwiftstrike = targetCardData.keywords && targetCardData.keywords.includes('Swiftstrike');
+
+                if (attackerHasSwiftstrike && !targetHasSwiftstrike) {
+                    attackerDealsDamageFirst = true;
+                } else if (!attackerHasSwiftstrike && targetHasSwiftstrike) {
+                    targetDealsDamageFirst = true;
+                }
+
+                if (attackerDealsDamageFirst) {
+                    // Attacker deals damage first
+                    if (targetCreature.has_divine_shield) {
+                        targetCreature.has_divine_shield = false;
+                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                    } else {
+                        if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                            targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                            showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        } else {
+                            targetCreature.currentDefense -= attackerAttack;
+                        }
+                    }
+                    // Check if target is defeated before it can retaliate
+                    if (targetCreature.currentDefense > 0) {
+                        // Target retaliates
+                        if (attackingCreature.has_divine_shield) {
+                            attackingCreature.has_divine_shield = false;
+                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        } else {
+                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                attackingCreature.currentDefense -= targetAttack;
+                            }
+                        }
+                    }
+                } else if (targetDealsDamageFirst) {
+                    // Target deals damage first
+                    if (attackingCreature.has_divine_shield) {
+                        attackingCreature.has_divine_shield = false;
+                        showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                    } else {
+                        if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                            attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                            showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        } else {
+                            attackingCreature.currentDefense -= targetAttack;
+                        }
+                    }
+                    // Check if attacker is defeated before it can retaliate
+                    if (attackingCreature.currentDefense > 0) {
+                        // Attacker retaliates
+                        if (targetCreature.has_divine_shield) {
+                            targetCreature.has_divine_shield = false;
+                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        } else {
+                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                targetCreature.currentDefense -= attackerAttack;
+                            }
+                        }
+                    }
                 } else {
-                    targetCardData.currentDefense -= attackerAttack;
-                    attackingCreature.currentDefense -= targetAttack;
-                }
+                    // Simultaneous combat (neither has Swiftstrike, or both do)
+                    if (targetCreature.has_divine_shield) {
+                        targetCreature.has_divine_shield = false;
+                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                    } else {
+                        if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                            targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                            showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        } else {
+                            targetCreature.currentDefense -= attackerAttack;
+                        }
+                    }
 
-                if (targetCardData.on_attacked_effect && targetCardData.on_attacked_effect.type === 'damage_attacker') {
-                    const retaliateDamage = targetCardData.on_attacked_effect.value;
-                    attackingCreature.currentDefense -= retaliateDamage;
-                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
-                }
-
-                showGameMessage(`${attackerCardData.name} attacks ${targetCardData.name}!`, false, true);
-
-                if (targetCardData.currentDefense <= 0) {
-                    const index = opponentPlayArea.indexOf(targetCardData);
-                    if (index > -1) {
-                        opponentPlayArea.splice(index, 1);
-                        showGameMessage(`Your ${targetCardData.name} was defeated!`, false, true);
-                        applyDeathEffect(targetCardData, 'opponent');
+                    if (attackingCreature.has_divine_shield) {
+                        attackingCreature.has_divine_shield = false;
+                        showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                    } else {
+                        if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                            attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                            showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        } else {
+                            attackingCreature.currentDefense -= targetAttack;
+                        }
                     }
                 }
-                if (attackerCardData.currentDefense <= 0) {
-                    const index = playerPlayArea.indexOf(attackerCardData);
+
+                // Handle on_attacked_effect for target (retaliation) - this applies after all damage
+                if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
+                    const retaliateDamage = targetCreature.on_attacked_effect.value;
+                    attackingCreature.currentDefense -= retaliateDamage;
+                    showGameMessage(`${targetCreature.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
+                }
+
+
+                showGameMessage(`${attackingCreature.name} attacks ${targetCreature.name}!`, false, true);
+
+                if (targetCreature.currentDefense <= 0) {
+                    const index = opponentPlayArea.indexOf(targetCreature);
+                    if (index > -1) {
+                        opponentPlayArea.splice(index, 1);
+                        showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
+                        applyDeathEffect(targetCreature, 'opponent');
+                    }
+                }
+                if (attackingCreature.currentDefense <= 0) {
+                    const index = playerPlayArea.indexOf(attackingCreature);
                     if (index > -1) {
                         playerPlayArea.splice(index, 1);
-                        showGameMessage(`${attackerCardData.name} was defeated!`, false, true);
-                        applyDeathEffect(attackerCardData, 'player');
+                        showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
+                        applyDeathEffect(attackingCreature, 'player');
                     }
                 }
 
@@ -1919,6 +2061,16 @@
             currentSpellDamageBoostOpponent = 0;
             currentCreatureAttackBoostOpponent = 0;
             currentCreatureDefenseBoostOpponent = 0;
+
+            // Apply Growth keyword for opponent's creatures
+            opponentPlayArea.forEach(creature => {
+                if (creature.keywords && creature.keywords.includes('Growth')) {
+                    creature.currentAttack = parseInt(creature.currentAttack) + 1;
+                    creature.currentDefense = parseInt(creature.currentDefense) + 1;
+                    showGameMessage(`${creature.name} grows! (+1⚔️/+1❤️)`, false, true);
+                }
+            });
+
 
             let opponentCreatureMana = 0;
             opponentPlayArea.forEach(creature => {
@@ -2253,15 +2405,103 @@
 
                     console.log(`${attackingCreature.name} (A:${attackerAttack}, D:${attackingCreature.currentDefense}) attacks ${targetCreature.name} (A:${targetAttack}, D:${targetDefenseModified})`);
 
-                    if (targetCreature.has_divine_shield) {
-                        targetCreature.has_divine_shield = false;
-                        showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
-                        attackingCreature.currentDefense -= targetAttack;
-                    } else {
-                        targetCreature.currentDefense -= attackerAttack;
-                        attackingCreature.currentDefense -= targetAttack;
+                    // Determine combat order based on Swiftstrike
+                    let attackerDealsDamageFirst = false;
+                    let targetDealsDamageFirst = false;
+
+                    const attackerHasSwiftstrike = attackingCreature.keywords && attackingCreature.keywords.includes('Swiftstrike');
+                    const targetHasSwiftstrike = targetCreature.keywords && targetCreature.keywords.includes('Swiftstrike');
+
+                    if (attackerHasSwiftstrike && !targetHasSwiftstrike) {
+                        attackerDealsDamageFirst = true;
+                    } else if (!attackerHasSwiftstrike && targetHasSwiftstrike) {
+                        targetDealsDamageFirst = true;
                     }
 
+                    if (attackerDealsDamageFirst) {
+                        // Attacker deals damage first
+                        if (targetCreature.has_divine_shield) {
+                            targetCreature.has_divine_shield = false;
+                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        } else {
+                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                targetCreature.currentDefense -= attackerAttack;
+                            }
+                        }
+                        // Check if target is defeated before it can retaliate
+                        if (targetCreature.currentDefense > 0) {
+                            // Target retaliates
+                            if (attackingCreature.has_divine_shield) {
+                                attackingCreature.has_divine_shield = false;
+                                showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                            } else {
+                                if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                    attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                    showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                                } else {
+                                    attackingCreature.currentDefense -= targetAttack;
+                                }
+                            }
+                        }
+                    } else if (targetDealsDamageFirst) {
+                        // Target deals damage first
+                        if (attackingCreature.has_divine_shield) {
+                            attackingCreature.has_divine_shield = false;
+                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        } else {
+                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                attackingCreature.currentDefense -= targetAttack;
+                            }
+                        }
+                        // Check if attacker is defeated before it can retaliate
+                        if (attackingCreature.currentDefense > 0) {
+                            // Attacker retaliates
+                            if (targetCreature.has_divine_shield) {
+                                targetCreature.has_divine_shield = false;
+                                showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                            } else {
+                                if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                    targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                    showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                                } else {
+                                    targetCreature.currentDefense -= attackerAttack;
+                                }
+                            }
+                        }
+                    } else {
+                        // Simultaneous combat (neither has Swiftstrike, or both do)
+                        if (targetCreature.has_divine_shield) {
+                            targetCreature.has_divine_shield = false;
+                            showGameMessage(`${targetCreature.name}'s Divine Shield absorbed ${attackerAttack} damage!`, false, true);
+                        } else {
+                            if (targetCreature.keywords && targetCreature.keywords.includes('Unyielding')) {
+                                targetCreature.currentDefense -= Math.max(0, attackerAttack - 1);
+                                showGameMessage(`${targetCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                targetCreature.currentDefense -= attackerAttack;
+                            }
+                        }
+
+                        if (attackingCreature.has_divine_shield) {
+                            attackingCreature.has_divine_shield = false;
+                            showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        } else {
+                            if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
+                                attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
+                                showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                            } else {
+                                attackingCreature.currentDefense -= targetAttack;
+                            }
+                        }
+                    }
+
+                    // Handle on_attacked_effect for target (retaliation) - this applies after all damage
                     if (targetCreature.on_attacked_effect && targetCreature.on_attacked_effect.type === 'damage_attacker') {
                         const retaliateDamage = targetCreature.on_attacked_effect.value;
                         attackingCreature.currentDefense -= retaliateDamage;
@@ -2360,10 +2600,9 @@
             const cardEl = event.target.closest('.card');
             if (cardEl) {
                 // Find the cardData object that corresponds to this cardEl
-                // This is crucial because cardEl is a DOM element, not the original cardData object
                 const cardId = cardEl.dataset.cardId;
                 const cardType = cardEl.dataset.type;
-                const cardCost = parseInt(cardEl.dataset.cost); // Use cost for more specific matching
+                const cardCost = parseInt(cardEl.dataset.cost); 
 
                 let foundCardData = null;
                 let foundIn = '';
@@ -2374,14 +2613,14 @@
 
                 // If not found, search in player's play area
                 if (!foundCardData) {
-                    foundCardData = playerPlayArea.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    foundCardData = playerPlayArea.find(c => c.id === cardId && c.currentAttack == cardEl.dataset.currentAttack && c.currentDefense == cardEl.dataset.currentDefense); // Match by current stats for played creatures
                     if (foundCardData) { foundIn = 'playerPlayArea'; }
                 }
 
                 // If not found, check player's location
                 if (!foundCardData && playerLocation && playerLocation.id === cardId && playerLocation.type === cardType) {
                     foundCardData = playerLocation;
-                    foundIn = 'playerLocation';
+                    if (foundCardData) { foundIn = 'playerLocation'; }
                 }
 
                 // If not found, search in opponent's hand (though not visible, data might be there)
@@ -2392,14 +2631,14 @@
 
                 // If not found, search in opponent's play area
                 if (!foundCardData) {
-                    foundCardData = opponentPlayArea.find(c => c.id === cardId && c.cost === cardCost && c.type === cardType);
+                    foundCardData = opponentPlayArea.find(c => c.id === cardId && c.currentAttack == cardEl.dataset.currentAttack && c.currentDefense == cardEl.dataset.currentDefense); // Match by current stats for played creatures
                     if (foundCardData) { foundIn = 'opponentPlayArea'; }
                 }
 
                 // If not found, check opponent's location
                 if (!foundCardData && opponentLocation && opponentLocation.id === cardId && opponentLocation.type === cardType) {
                     foundCardData = opponentLocation;
-                    foundIn = 'opponentLocation';
+                    if (foundCardData) { foundIn = 'opponentLocation'; }
                 }
 
                 // If not found, check foresight cards (during foresight phase)
@@ -2430,8 +2669,27 @@
             }
         });
 
-        // Initial game setup on window load
-        window.onload = initializeGame;
+        // Theme Toggle Logic
+        themeToggleButton.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            // Save preference to local storage
+            if (document.body.classList.contains('light-mode')) {
+                localStorage.setItem('theme', 'light');
+            } else {
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        // Apply saved theme on load
+        window.addEventListener('load', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+            } else {
+                document.body.classList.remove('light-mode');
+            }
+            initializeGame(); // Initialize game after theme is set
+        });
 
     </script>
 </body>
