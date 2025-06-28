@@ -1140,6 +1140,11 @@
             <div id="player-hand" class="player-hand">
                 <p class="text-gray-500">Your hand is empty. Draw a card!</p>
             </div>
+            <!-- Discard Piles Display -->
+            <div class="flex items-center gap-4">
+                <div class="text-sm">Discard: <span id="player-discard-count">0</span></div>
+                <div class="text-sm">Opponent Discard: <span id="opponent-discard-count">0</span></div>
+            </div>
         </div>
 
         <!-- Game Message Overlay -->
@@ -1150,10 +1155,10 @@
 
         <!-- Mulligan Overlay -->
         <div id="mulligan-overlay" class="mulligan-overlay">
-            <div class="mulligan-content">
+            <div class="mulligan-content" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <h2>Mulligan Phase</h2>
                 <p>Your Starting Hand:</p>
-                <div id="mulligan-hand-display" class="mulligan-hand-display">
+                <div id="mulligan-hand-display" class="mulligan-hand-display" style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.25rem;">
                     </div>
                 <p>Would you like to redraw your hand? (Once per game)</p>
                 <div class="mulligan-buttons">
@@ -1212,6 +1217,8 @@
         let foresightCards = []; // Stores cards revealed by Foresight spell
         let messageTimeoutId = null; // To manage the auto-hide of temporary messages
         let tooltipHideTimer = null; // To manage tooltip visibility on mouseout
+        let playerDiscardPile = []; // New: Player's discard pile
+        let opponentDiscardPile = []; // New: Opponent's discard pile
 
 
         // DOM Elements
@@ -1243,6 +1250,8 @@
         const tooltipCardEffect = document.getElementById('tooltip-card-effect'); // New
         const gameContainer = document.querySelector('.game-container'); // Get the game container for event delegation
         const themeToggleButton = document.getElementById('theme-toggle-button'); // New
+        const playerDiscardCountEl = document.getElementById('player-discard-count'); // New
+        const opponentDiscardCountEl = document.getElementById('opponent-discard-count'); // New
 
 
         // Card Data (Example Cards)
@@ -1271,7 +1280,7 @@
             { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜', faction: 'Arcane Conclave' },
             // --- RESOURCE CREATURES (Mana Generators) ---
             { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
-            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
+            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '�', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
             { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null, faction: 'Order of the Sun' },
             { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' }, faction: 'Wildwood Kin' },
             // --- LOCATION CARDS ---
@@ -1645,6 +1654,8 @@
             currentCreatureAttackBoostOpponent = 0;
             currentCreatureDefenseBoostOpponent = 0;
             foresightCards = [];
+            playerDiscardPile = []; // Initialize discard pile
+            opponentDiscardPile = []; // Initialize discard pile
 
             if (messageTimeoutId) {
                 clearTimeout(messageTimeoutId);
@@ -1711,8 +1722,10 @@
                 console.log("Mulligan button clicked during mulligan."); // Debugging log
                 if (!playerHasMulliganed) {
                     playerHasMulliganed = true;
-                    playerDeck = shuffle([...playerDeck, ...playerHand]);
-                    playerHand = [];
+                    // Move mulliganed cards to discard pile
+                    playerHand.forEach(card => playerDiscardPile.push(card));
+                    playerHand = []; // Clear hand
+
                     playerHandEl.innerHTML = '<p class="text-gray-500">Drawing new hand...</p>';
                     mulliganHandDisplay.innerHTML = '<p class="text-gray-500">Drawing new hand...</p>';
 
@@ -1720,6 +1733,7 @@
                         drawCard(playerDeck, playerHand, playerHandEl, true);
                     }
                     mulliganOverlay.style.display = 'none';
+                    updateUI(); // Update UI to show discard pile count
                     startPlayerTurn();
                 } else {
                     console.log("Player already mulliganed. Keeping hand.");
@@ -1751,11 +1765,14 @@
             if (shouldMulligan) {
                 console.log("Opponent choosing to mulligan.");
                 opponentHasMulliganed = true;
-                opponentDeck = shuffle([...opponentDeck, ...opponentHand]);
-                opponentHand = [];
+                // Move mulliganed cards to discard pile
+                opponentHand.forEach(card => opponentDiscardPile.push(card));
+                opponentHand = []; // Clear hand
+
                 for (let i = 0; i < 5; i++) {
                     drawCard(opponentDeck, opponentHand, null, false);
                 }
+                updateUI(); // Update UI to show discard pile count
             } else {
                 console.log("Opponent keeping hand.");
             }
@@ -1800,9 +1817,12 @@
             renderLocation(playerLocation, playerLocationAreaEl, true);
             renderLocation(opponentLocation, opponentLocationAreaEl, false);
 
+            playerDiscardCountEl.textContent = playerDiscardPile.length; // Update discard count
+            opponentDiscardCountEl.textContent = opponentDiscardPile.length; // Update discard count
+
             updatePlayableCards();
             updateAttackableCards();
-            console.log(`UI Updated: Player Health: ${playerHealth}, Mana: ${playerMana}/${playerMaxMana}, Opponent Health: ${opponentHealth}. Turn: ${gameStatusEl.textContent}`);
+            console.log(`UI Updated: Player Health: ${playerHealth}, Mana: ${playerMana}/${playerMaxMana}, Opponent Health: ${opponentHealth}. Turn: ${gameStatusEl.textContent}. Player Discard: ${playerDiscardPile.length}, Opponent Discard: ${opponentDiscardPile.length}`);
         }
 
         // Renders cards in a given area (e.g., play area)
@@ -1858,6 +1878,10 @@
                     creature.currentAttack = parseInt(creature.currentAttack) + 1;
                     creature.currentDefense = parseInt(creature.currentDefense) + 1;
                     showGameMessage(`${creature.name} grows! (+1⚔️/+1❤️)`, false, true);
+                    // If Growth has an on_grow_effect, apply it
+                    if (creature.on_grow_effect) {
+                        applyOnPlayEffect(creature.on_grow_effect, 'player'); // Reusing applyOnPlayEffect for simplicity
+                    }
                 }
             });
 
@@ -1952,6 +1976,7 @@
                     const index = playerHand.indexOf(cardData);
                     if (index > -1) {
                         playerHand.splice(index, 1);
+                        playerDiscardPile.push(cardData); // Move spell to discard pile
                     }
                     cardEl.remove();
                     updateUI();
@@ -2033,6 +2058,7 @@
                         const index = opponentPlayArea.indexOf(targetCreature);
                         if (index > -1) {
                             opponentPlayArea.splice(index, 1);
+                            opponentDiscardPile.push(targetCreature); // Move defeated creature to discard
                             message += ` ${targetCreature.name} was defeated!`;
                             applyDeathEffect(targetCreature, 'opponent');
                         }
@@ -2053,6 +2079,7 @@
                         const index = playerPlayArea.indexOf(targetCreature);
                         if (index > -1) {
                             playerPlayArea.splice(index, 1);
+                            playerDiscardPile.push(targetCreature); // Move defeated creature to discard
                             message += ` ${targetCreature.name} was defeated!`;
                             applyDeathEffect(targetCreature, 'player');
                         }
@@ -2169,6 +2196,7 @@
                             const index = opponentPlayArea.indexOf(targetCreature);
                             if (index > -1) {
                                 opponentPlayArea.splice(index, 1);
+                                opponentDiscardPile.push(targetCreature); // Move defeated creature to discard
                                 message += ` ${targetCreature.name} was defeated!`;
                                 applyDeathEffect(targetCreature, 'opponent');
                             }
@@ -2189,6 +2217,7 @@
                             const index = playerPlayArea.indexOf(targetCreature);
                             if (index > -1) {
                                 playerPlayArea.splice(index, 1);
+                                playerDiscardPile.push(targetCreature); // Move defeated creature to discard
                                 message += ` ${targetCreature.name} was defeated!`;
                                 applyDeathEffect(targetCreature, 'player');
                             }
@@ -2217,6 +2246,7 @@
                     const index = targets.indexOf(defeatedCreature);
                     if (index > -1) {
                         targets.splice(index, 1);
+                        (ownerOfTargets === 'player' ? playerDiscardPile : opponentDiscardPile).push(defeatedCreature); // Move defeated creature to discard
                         applyDeathEffect(defeatedCreature, ownerOfTargets);
                     }
                 });
@@ -2241,6 +2271,7 @@
                     const index = targets.indexOf(defeatedCreature);
                     if (index > -1) {
                         targets.splice(index, 1);
+                        (ownerOfTargets === 'player' ? playerDiscardPile : opponentDiscardPile).push(defeatedCreature); // Move defeated creature to discard
                         applyDeathEffect(defeatedCreature, ownerOfTargets);
                     }
                 });
@@ -2269,6 +2300,7 @@
                             const index = opponentPlayArea.indexOf(targetCreature);
                             if (index > -1) {
                                 opponentPlayArea.splice(index, 1);
+                                opponentDiscardPile.push(targetCreature); // Move defeated creature to discard
                                 message += ` ${targetCreature.name} was defeated!`;
                                 applyDeathEffect(targetCreature, 'opponent');
                             }
@@ -2291,6 +2323,7 @@
                             const index = playerPlayArea.indexOf(targetCreature);
                             if (index > -1) {
                                 playerPlayArea.splice(index, 1);
+                                playerDiscardPile.push(targetCreature); // Move defeated creature to discard
                                 message += ` ${targetCreature.name} was defeated!`;
                                 applyDeathEffect(targetCreature, 'player');
                             }
@@ -2349,20 +2382,21 @@
             } else if (cardData.effect.type === 'discard_random_card') {
                 const discardValue = cardData.effect.value;
                 let targetHand = (caster === 'player' ? opponentHand : playerHand);
-                let targetHandEl = (caster === 'player' ? null : playerHandEl);
+                let targetDiscardPile = (caster === 'player' ? opponentDiscardPile : playerDiscardPile);
 
                 if (targetHand.length > 0) {
                     for (let i = 0; i < discardValue; i++) {
                         if (targetHand.length > 0) {
                             const randomIndex = Math.floor(Math.random() * targetHand.length);
                             const discardedCard = targetHand.splice(randomIndex, 1)[0];
+                            targetDiscardPile.push(discardedCard); // Move discarded card to discard pile
                             message = `${cardData.name} forces ${caster === 'player' ? 'opponent' : 'you'} to discard ${discardedCard.name}!`;
                         } else {
                             message = `${caster === 'player' ? 'Opponent' : 'You'} had no cards to discard!`;
                             break;
                         }
                     }
-                    if (targetHandEl) {
+                    if (caster === 'player') { // Only re-render player's hand if it's the opponent discarding from player
                         playerHandEl.innerHTML = '';
                         playerHand.forEach(card => playerHandEl.appendChild(createCardElement(card, true)));
                         updatePlayableCards();
@@ -2371,17 +2405,17 @@
                     message = `${caster === 'player' ? 'Opponent' : 'You'} had no cards to discard!`;
                 }
             } else if (cardData.effect.type === 'mana_gain') { // For Dark Ritual
-                const manaValue = cardData.effect.value;
+                const manaValue = effect.value;
                 if (caster === 'player') {
                     playerMana += manaValue;
                     showGameMessage(`You gain ${manaValue} temporary mana from ${cardData.name}!`, false, true);
                 } else {
                     opponentMana += manaValue;
-                    showGameMessage(`Opponent gains ${manaValue} temporary mana from ${cardData.name}!`, false, true);
+                    message = `${effect.text.replace('Gain', 'Opponent gains')} ${manaValue} temporary mana from ${effect.text}!`;
                 }
             } else if (cardData.effect.type === 'buff_all_friendly_creatures') { // For Overgrowth
-                const attackBuff = cardData.effect.attack;
-                const defenseBuff = cardData.effect.defense;
+                const attackBuff = effect.attack;
+                const defenseBuff = effect.defense;
                 let targetCreatures = (owner === 'player' ? playerPlayArea : opponentPlayArea);
                 targetCreatures.forEach(creature => {
                     creature.currentAttack = parseInt(creature.currentAttack) + attackBuff;
@@ -2390,7 +2424,7 @@
                 message = `${effect.text}!`;
                 renderCardsInArea(targetCreatures, (owner === 'player' ? playerPlayAreaEl : opponentPlayAreaEl), owner === 'player');
             } else if (cardData.effect.type === 'scry') {
-                const scryValue = cardData.effect.value;
+                const scryValue = effect.value;
                 let deckToScry = (caster === 'player' ? playerDeck : opponentDeck);
                 let handToAddTo = (caster === 'player' ? playerHand : opponentHand);
 
@@ -2429,20 +2463,51 @@
             } else if (cardData.effect.type === 'draw_and_recur') { // For Temporal Shift
                 const drawValue = cardData.effect.draw;
                 const recurType = cardData.effect.recur_type;
-                let discardPile = []; // Placeholder for discard pile (not implemented yet)
+                let targetDiscardPile = (caster === 'player' ? playerDiscardPile : opponentDiscardPile);
+                let targetHand = (caster === 'player' ? playerHand : opponentHand);
+                let targetHandEl = (caster === 'player' ? playerHandEl : null);
+
                 if (caster === 'player') {
                     for (let i = 0; i < drawValue; i++) {
                         drawCard(playerDeck, playerHand, playerHandEl, true);
                     }
                     message = `You draw ${drawValue} cards from ${cardData.name}!`;
-                    // Logic to return a spell from discard pile (requires discard pile implementation)
-                    message += ` (Discard pile not yet implemented for recursion)`;
-                } else {
+                    const spellsInDiscard = targetDiscardPile.filter(c => c.type === recurType);
+                    if (spellsInDiscard.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * spellsInDiscard.length);
+                        const recycledSpell = spellsInDiscard[randomIndex];
+                        const discardIndex = targetDiscardPile.indexOf(recycledSpell);
+                        if (discardIndex > -1) {
+                            targetDiscardPile.splice(discardIndex, 1);
+                            targetHand.push(recycledSpell);
+                            message += ` You return ${recycledSpell.name} from discard!`;
+                            if (targetHandEl) {
+                                targetHandEl.innerHTML = ''; // Re-render hand to show new card
+                                targetHand.forEach(card => targetHandEl.appendChild(createCardElement(card, true)));
+                                updatePlayableCards();
+                            }
+                        }
+                    } else {
+                        message += ` No ${recurType}s in discard to return.`;
+                    }
+                } else { // Opponent's Temporal Shift
                     for (let i = 0; i < drawValue; i++) {
                         drawCard(opponentDeck, opponentHand, null, false);
                     }
                     message = `Opponent draws ${drawValue} cards from ${cardData.name}!`;
-                    message += ` (Discard pile not yet implemented for recursion)`;
+                    const spellsInDiscard = targetDiscardPile.filter(c => c.type === recurType);
+                    if (spellsInDiscard.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * spellsInDiscard.length);
+                        const recycledSpell = spellsInDiscard[randomIndex];
+                        const discardIndex = targetDiscardPile.indexOf(recycledSpell);
+                        if (discardIndex > -1) {
+                            targetDiscardPile.splice(discardIndex, 1);
+                            targetHand.push(recycledSpell);
+                            message += ` Opponent returns ${recycledSpell.name} from discard!`;
+                        }
+                    } else {
+                        message += ` No ${recurType}s in opponent's discard to return.`;
+                    }
                 }
             }
 
@@ -2658,7 +2723,7 @@
                         }
                     }
 
-                    if (attackingCreature.has_divine_shield) {
+                    if (attackerCardData.has_divine_shield) {
                         attackingCreature.has_divine_shield = false;
                         showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
                     } else {
@@ -2674,27 +2739,29 @@
                 // Handle on_attacked_effect for target (retaliation) - this applies after all damage
                 if (targetCardData.on_attacked_effect && targetCardData.on_attacked_effect.type === 'damage_attacker') {
                     const retaliateDamage = targetCardData.on_attacked_effect.value;
-                    attackingCreature.currentDefense -= retaliateDamage;
-                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackingCreature.name}!`, false, true);
+                    attackerCardData.currentDefense -= retaliateDamage;
+                    showGameMessage(`${targetCardData.name} retaliates, dealing ${retaliateDamage} damage to ${attackerCardData.name}!`, false, true);
                 }
 
 
-                showGameMessage(`${attackingCreature.name} attacks ${targetCardData.name}!`, false, true);
+                showGameMessage(`${attackerCardData.name} attacks ${targetCardData.name}!`, false, true);
 
                 if (targetCardData.currentDefense <= 0) {
                     const index = opponentPlayArea.indexOf(targetCardData);
                     if (index > -1) {
                         opponentPlayArea.splice(index, 1);
+                        opponentDiscardPile.push(targetCardData); // Move defeated creature to discard
                         showGameMessage(`Your ${targetCardData.name} was defeated!`, false, true);
                         applyDeathEffect(targetCardData, 'opponent');
                     }
                 }
-                if (attackingCreature.currentDefense <= 0) {
-                    const index = playerPlayArea.indexOf(attackingCreature);
+                if (attackerCardData.currentDefense <= 0) {
+                    const index = playerPlayArea.indexOf(attackerCardData);
                     if (index > -1) {
                         playerPlayArea.splice(index, 1);
-                        showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
-                        applyDeathEffect(attackingCreature, 'player');
+                        playerDiscardPile.push(attackerCardData); // Move defeated creature to discard
+                        showGameMessage(`${attackerCardData.name} was defeated!`, false, true);
+                        applyDeathEffect(attackerCardData, 'player');
                     }
                 }
 
@@ -3196,6 +3263,7 @@
                         const index = playerPlayArea.indexOf(targetCreature);
                         if (index > -1) {
                             playerPlayArea.splice(index, 1);
+                            playerDiscardPile.push(targetCreature); // Move defeated creature to discard
                             showGameMessage(`Your ${targetCreature.name} was defeated!`, false, true);
                             applyDeathEffect(targetCreature, 'player');
                         }
@@ -3204,6 +3272,7 @@
                         const index = opponentPlayArea.indexOf(attackingCreature);
                         if (index > -1) {
                             opponentPlayArea.splice(index, 1);
+                            opponentDiscardPile.push(attackingCreature); // Move defeated creature to discard
                             showGameMessage(`${attackingCreature.name} was defeated!`, false, true);
                             applyDeathEffect(attackingCreature, 'opponent');
                         }
@@ -3243,11 +3312,11 @@
 
         // --- Event Listeners ---
 
-        endTurnButton.addEventListener('click', async () => { // Made async
+        endTurnButton.addEventListener('click', async () => {
             console.log("End Turn button clicked!");
             if (turn % 2 !== 0) { // Only allow ending turn if it's player's turn (odd turn number)
                 clearAttackerSelection();
-                await startOpponentTurn(); // Await the async call
+                await startOpponentTurn();
             } else {
                 console.log("It's not your turn, or still in mulligan phase, cannot end turn.");
             }
@@ -3386,3 +3455,4 @@
     </script>
 </body>
 </html>
+�
