@@ -781,7 +781,7 @@
         
         .card.playable { border-color: var(--color-playable-border); }
         .card.attackable { border-color: var(--color-attackable-border); }
-        .province-slot.targetable, .stronghold-slot.targetable {
+        .province-slot.targetable, .stronghold-slot.targetable, .card.targetable {
              box-shadow: 0 0 25px 10px var(--color-targetable-shadow);
              cursor: pointer;
         }
@@ -925,85 +925,40 @@
         const tooltipCardName = document.getElementById('tooltip-card-name');
         const tooltipCardEffect = document.getElementById('tooltip-card-effect');
         const gameContainer = document.querySelector('.game-container');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
 
 
         const allCards = [
-            // Card data remains the same...
+            // Base Cards
             { id: 'knight', name: 'Gallant Knight', cost: 2, attack: 2, defense: 2, image: '🛡️', type: 'creature', faction: 'Order of the Sun' },
             { id: 'archer', name: 'Forest Archer', cost: 1, attack: 1, defense: 1, image: '🏹', type: 'creature', faction: 'Wildwood Kin' },
             { id: 'wizard', name: 'Mystic Wizard', cost: 3, attack: 3, defense: 2, image: '🧙', type: 'creature', faction: 'Arcane Conclave' },
             { id: 'goblin', name: 'Sneaky Goblin', cost: 1, attack: 2, defense: 1, image: '👹', type: 'creature', faction: 'Shadow Pact' },
             { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature', faction: 'Shadow Pact' },
-            { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature', faction: 'Order of the Sun' },
-            { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature', faction: 'Arcane Conclave' },
-            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature', faction: 'Shadow Pact' },
-            { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature', faction: 'Order of the Sun' },
-            { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature', faction: 'Arcane Conclave' },
-            { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature', faction: 'Order of the Sun' },
-            { id: 'rogue', name: 'Shadow Rogue', cost: 1, attack: 2, defense: 1, image: '🗡️', type: 'creature', faction: 'Shadow Pact' },
-            { id: 'griffin', name: 'Sky Griffin', cost: 4, attack: 3, defense: 3, image: '🦅', type: 'creature', faction: 'Order of the Sun' },
-            { id: 'treant', name: 'Ancient Treant', cost: 4, attack: 2, defense: 6, image: '🌳', type: 'creature', faction: 'Wildwood Kin' },
-            { id: 'sorceress', name: 'Dark Sorceress', cost: 3, attack: 2, defense: 3, image: '🔮', type: 'creature', faction: 'Arcane Conclave' },
-            { id: 'direwolf', name: 'Dire Wolf', cost: 2, attack: 2, defense: 2, image: '🐺', type: 'creature', faction: 'Wildwood Kin' },
-            // --- SPELL CARDS ---
             { id: 'fireball', name: 'Fireball', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '☄️', faction: 'Arcane Conclave' },
-            { id: 'healing_potion', name: 'Healing Potion', cost: 1, type: 'spell', effect: { type: 'heal', value: 4, text: 'Heal 4 health' }, image: '🧪', faction: 'Order of the Sun' },
-            { id: 'lightning_bolt', name: 'Lightning Bolt', cost: 3, type: 'spell', effect: { type: 'damage', value: 4, text: 'Deal 4 damage to target' }, image: '⚡', faction: 'Arcane Conclave' },
-            { id: 'minor_heal', name: 'Minor Heal', cost: 1, type: 'spell', effect: { type: 'heal', value: 2, text: 'Heal 2 health' }, image: '✨', faction: 'Order of the Sun' },
             { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜', faction: 'Arcane Conclave' },
-            // --- RESOURCE CREATURES (Mana Generators) ---
-            { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
-            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
-            { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null, faction: 'Order of the Sun' },
-            { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' }, faction: 'Wildwood Kin' },
-            // --- LOCATION CARDS ---
-            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '�', faction: 'Wildwood Kin' },
-            { id: 'healing_spring', name: 'Healing Spring', cost: 2, type: 'location', passive_effect: { type: 'health_regen', value: 2, text: 'Heal 2 HP/turn' }, image: '💧', faction: 'Order of the Sun' },
-            { id: 'training_grounds', name: 'Training Grounds', cost: 2, type: 'location', passive_effect: { type: 'creature_attack_boost', value: 1, text: 'Your creatures get +1⚔️' }, image: '⚔️', faction: 'Shadow Pact' },
-            { id: 'volcano_peak', name: 'Volcano Peak', cost: 3, type: 'location', passive_effect: { type: 'damage_to_opponent_on_play', value: 1, text: 'Deal 1 DMG to Opponent on Play' }, image: '🌋', faction: 'Shadow Pact' },
-            { id: 'mystic_portal', name: 'Mystic Portal', cost: 2, type: 'location', passive_effect: { type: 'mana_per_turn_delayed', value: 2, start_turn: 3, text: 'Mana +2/turn (Turn 3+)' }, image: '🌌', faction: 'Arcane Conclave' },
-            { id: 'arcane_tower', name: 'Arcane Tower', cost: 2, type: 'location', passive_effect: { type: 'spell_damage_boost', value: 1, text: 'Your spells deal +1 DMG' }, image: '🗼', faction: 'Arcane Conclave' },
-            // --- EXPANSION CARDS ---
-            { id: 'guardian_of_peaks', name: 'Guardian of the Peaks', cost: 4, attack: 2, defense: 5, image: '🏔️', type: 'creature', on_attacked_effect: { type: 'damage_attacker', value: 2, text: 'Deals 2 DMG to attacker' }, faction: 'Order of the Sun' },
-            { id: 'feral_tracker', name: 'Feral Tracker', cost: 2, attack: 2, defense: 2, image: '🐾', type: 'creature', on_play_effect: { type: 'buff_random_friendly_creature_attack', value: 1, text: 'Give a random friendly creature +1⚔️' }, faction: 'Wildwood Kin' },
-            { id: 'divine_shield', name: 'Divine Shield', cost: 2, type: 'spell', effect: { type: 'grant_divine_shield', text: 'Grant Divine Shield to a friendly creature' }, image: '✨', faction: 'Order of the Sun' },
-            { id: 'mind_drain', name: 'Mind Drain', cost: 1, type: 'spell', effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, image: '🧠', faction: 'Shadow Pact' },
-            { id: 'ancient_library', name: 'Ancient Library', cost: 2, type: 'location', passive_effect: { type: 'draw_card_per_turn', value: 1, text: 'Draw +1 card/turn' }, image: '📚', faction: 'Arcane Conclave' },
-            { id: 'warriors_guild', name: 'Warrior\'s Guild', cost: 3, type: 'location', passive_effect: { type: 'creature_stat_boost_all', attack_value: 1, defense_value: 1, text: 'Your creatures get +1⚔️/+1❤️' }, image: '🛡️', faction: 'Order of the Sun' },
-            // --- OPENING PHASE CARDS ---
-            { id: 'foresight', name: 'Foresight', cost: 1, type: 'spell', effect: { type: 'scry', value: 3, text: 'Look at top 3 cards, draw 1' }, image: '👁️', faction: 'Arcane Conclave' },
-            { id: 'scribe_apprentice', name: 'Scribe Apprentice', cost: 1, attack: 1, defense: 1, image: '🧑‍🏫', type: 'creature', on_play_effect: { type: 'draw_card', value: 1, text: 'Draw 1 card on play' }, faction: 'Wildwood Kin' },
-            // --- NEW FACTION SYNERGY CREATURES ---
-            { id: 'sun_cleric', name: 'Sun Cleric', cost: 2, attack: 1, defense: 2, image: '☀️', type: 'creature', faction: 'Order of the Sun', faction_bonus: { type: 'defense_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Order of the Sun', text: '(+1❤️ if another Order creature is present)' } },
-            { id: 'shadow_assassin', name: 'Shadow Assassin', cost: 2, attack: 2, defense: 1, image: '🔪', type: 'creature', faction: 'Shadow Pact', faction_bonus: { type: 'attack_boost_self', value: 1, condition: 'control_other_faction_creature', faction: 'Shadow Pact', text: '(+1⚔️ if another Shadow creature is present)' } },
-            { id: 'grove_warden', name: 'Grove Warden', cost: 3, attack: 1, defense: 3, image: '🌳', type: 'creature', mana_per_turn: 1, faction: 'Wildwood Kin', faction_bonus: { type: 'mana_per_turn_self', value: 1, condition: 'control_other_faction_creature', faction: 'Wildwood Kin', text: '(+1✨ if another Wildwood creature is present)' } },
-            { id: 'apprentice_mage', name: 'Apprentice Mage', cost: 2, attack: 1, defense: 1, image: '🧑‍🎓', type: 'creature', faction: 'Arcane Conclave', faction_bonus: { type: 'spell_damage_boost_global', value: 1, condition: 'control_other_faction_creature', faction: 'Arcane Conclave', text: '(Your spells deal +1 DMG if another Arcane creature is present)' } },
-            // --- KEYWORD CREATURES ---
+            { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, faction: 'Wildwood Kin' },
+            
+            // Keyword Cards
             { id: 'paladin_of_light', name: 'Paladin of Light', cost: 3, attack: 2, defense: 3, image: '✨', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding (Takes 1 less damage from all sources)' },
             { id: 'dark_rider', name: 'Dark Rider', cost: 3, attack: 3, defense: 2, image: '🐎', type: 'creature', faction: 'Shadow Pact', keywords: ['Swiftstrike'], keyword_text: 'Swiftstrike (Deals combat damage first)' },
             { id: 'forest_spirit', name: 'Forest Spirit', cost: 2, attack: 1, defense: 1, image: '🍃', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], keyword_text: 'Growth (+1⚔️/+1❤️ at start of your turn)' },
             { id: 'arcane_familiar', name: 'Arcane Familiar', cost: 1, attack: 0, defense: 2, image: '🦉', type: 'creature', faction: 'Arcane Conclave', keywords: ['Spellweave'], keyword_text: 'Spellweave (Draw a card when you cast a spell)' },
-            // --- NEW COMPLEX MECHANIC CARDS ---
+            
+            // Complex Mechanic Cards
             { id: 'sunlit_champion', name: 'Sunlit Champion', cost: 3, attack: 2, defense: 3, image: '🌟', type: 'creature', faction: 'Order of the Sun', keywords: ['Inspire'], keyword_text: 'Inspire (+1⚔️/+1❤️ when another Order creature is played)' },
             { id: 'nightblade', name: 'Nightblade', cost: 3, attack: 3, defense: 2, image: '🌙', type: 'creature', faction: 'Shadow Pact', keywords: ['Ambush'], keyword_text: 'Ambush (Deal 2 damage to an enemy creature when played)' },
             { id: 'echoing_blast', name: 'Echoing Blast', cost: 2, type: 'spell', effect: { type: 'damage', value: 3, text: 'Deal 3 damage to target' }, image: '🌀', faction: 'Arcane Conclave', keywords: ['Echo'], keyword_text: 'Echo (Pay cost to cast again)' },
-            // --- EVEN MORE NEW CARDS ---
-            { id: 'divine_protector', name: 'Divine Protector', cost: 4, attack: 2, defense: 6, image: '🛡️', type: 'creature', faction: 'Order of the Sun', keywords: ['Unyielding'], keyword_text: 'Unyielding (Takes 1 less damage from all sources)' },
-            { id: 'blessed_bolt', name: 'Blessed Bolt', cost: 2, type: 'spell', effect: { type: 'damage_and_heal', damage: 2, heal: 3, text: 'Deal 2 damage to target, Heal 3 to your hero' }, image: '⚡', faction: 'Order of the Sun' },
-            { id: 'vile_trickster', name: 'Vile Trickster', cost: 2, attack: 2, defense: 1, image: '🃏', type: 'creature', faction: 'Shadow Pact', keywords: ['Ambush'], on_play_effect: { type: 'discard_random_card', value: 1, text: 'Opponent discards 1 random card' }, keyword_text: 'Ambush, On Play: Discard' },
-            { id: 'poison_cloud', name: 'Poison Cloud', cost: 3, type: 'spell', effect: { type: 'aoe_damage_enemy_creatures_and_debuff', damage: 1, debuff_attack: 1, text: 'Deal 1 damage to all enemy creatures, reduce their attack by 1' }, image: '☠️', faction: 'Shadow Pact' },
-            { id: 'spirit_of_the_wilds', name: 'Spirit of the Wilds', cost: 3, attack: 1, defense: 1, image: '🌿', type: 'creature', faction: 'Wildwood Kin', keywords: ['Growth'], on_grow_effect: { type: 'draw_card', value: 1, text: 'Draw a card when this grows' }, keyword_text: 'Growth, On Grow: Draw 1' },
-            { id: 'overgrowth', name: 'Overgrowth', cost: 4, type: 'spell', effect: { type: 'buff_all_friendly_creatures', attack: 1, defense: 1, text: 'Give all your creatures +1⚔️/+1❤️' }, image: '🌱', faction: 'Wildwood Kin' },
-            { id: 'mana_weaver', name: 'Mana Weaver', cost: 2, attack: 1, defense: 3, image: '🧵', type: 'creature', faction: 'Arcane Conclave', mana_per_turn: 1, keywords: ['Spellweave'], keyword_text: 'Spellweave, Mana +1/turn' },
-            { id: 'temporal_shift', name: 'Temporal Shift', cost: 3, type: 'spell', effect: { type: 'draw_and_recur', draw: 2, recur_type: 'spell', text: 'Draw 2 cards, return a spell from discard to hand' }, image: '⏳', faction: 'Arcane Conclave' },
-            // NEW CARDS ADDED
-            { id: 'holy_avenger', name: 'Holy Avenger', cost: 4, attack: 3, defense: 3, image: '🪓', type: 'creature', faction: 'Order of the Sun', keywords: ['Inspire'], on_heal_effect: { type: 'buff_self_attack', value: 1, text: 'Gains +1⚔️ when you heal' }, keyword_text: 'Inspire, On Heal: +1⚔️' },
-            { id: 'divine_intervention', name: 'Divine Intervention', cost: 5, type: 'spell', effect: { type: 'prevent_all_damage_hero', duration: 1, text: 'Prevent all damage to your hero next turn' }, image: '✨', faction: 'Order of the Sun' },
-            { id: 'soul_collector', name: 'Soul Collector', cost: 3, attack: 2, defense: 2, image: '🪝', type: 'creature', faction: 'Shadow Pact', on_enemy_death_effect: { type: 'buff_self_stats', attack: 1, defense: 1, text: 'Gains +1⚔️/+1❤️ when enemy creature dies' }, keyword_text: 'On Enemy Death: +1⚔️/+1❤️' },
-            { id: 'curse_of_weakness', name: 'Curse of Weakness', cost: 2, type: 'spell', effect: { type: 'debuff_creature_stats', attack: 1, defense: 1, text: 'Reduce enemy creature stats by 1/1' }, image: '📉', faction: 'Shadow Pact' },
-            { id: 'elderwood_guardian', name: 'Elderwood Guardian', cost: 6, attack: 4, defense: 8, image: '🌳', type: 'creature', faction: 'Wildwood Kin', mana_per_turn: 1, keywords: ['Growth'], keyword_text: 'Growth, Mana +1/turn' },
-            { id: 'mana_surge', name: 'Mana Surge', cost: 0, type: 'spell', effect: { type: 'mana_gain', value: 3, text: 'Gain 3 temporary mana' }, image: '⚡', faction: 'Arcane Conclave' },
-            { id: 'temporal_loop', name: 'Temporal Loop', cost: 4, type: 'spell', effect: { type: 'draw_and_recur', draw: 1, recur_type: 'spell', text: 'Draw 1 card, return a random spell from discard to hand' }, image: '🔄', faction: 'Arcane Conclave' },
+
+            // Province-Focused Cards
+            { id: 'province_guard', name: 'Province Guard', cost: 3, attack: 2, defense: 4, image: '🏰', type: 'creature', faction: 'Order of the Sun', effect: { type: 'buff_province', value: 2, text: 'On Play: Fortify a province with +2 defense.' } },
+            { id: 'reinforce', name: 'Reinforce', cost: 2, type: 'spell', faction: 'Order of the Sun', image: '🧱', effect: { type: 'temp_buff_province', value: 3, text: 'Give a province +3 defense this turn.' } },
+            { id: 'scout_the_borders', name: 'Scout the Borders', cost: 1, type: 'spell', faction: 'Wildwood Kin', image: '🗺️', effect: { type: 'scry_province', text: 'Look at a card under your province. You may swap it with the top of your deck.' } },
+            { id: 'guerilla_ambusher', name: 'Guerilla Ambusher', cost: 2, attack: 3, defense: 1, image: '🎭', type: 'creature', faction: 'Wildwood Kin', effect: { type: 'province_broken_play', text: 'When a province is broken, you may play this for 1 mana.' } },
+            { id: 'siege_breaker', name: 'Siege Breaker', cost: 4, attack: 4, defense: 3, image: '💣', type: 'creature', faction: 'Shadow Pact', effect: { type: 'stronghold_bonus', value: 2, text: 'Deals +2 damage when attacking a Stronghold.' } },
+            { id: 'sow_discord', name: 'Sow Discord', cost: 2, type: 'spell', faction: 'Shadow Pact', image: '🗣️', effect: { type: 'debuff_province', value: 2, text: 'Target province gets -2 defense this turn.' } },
+            { id: 'scrying_pool', name: 'Scrying Pool', cost: 2, type: 'spell', faction: 'Arcane Conclave', image: '🔮', effect: { type: 'reveal_province_card', text: 'Look at the card under an opponent\'s province.' } },
+            { id: 'leyline_sapper', name: 'Leyline Sapper', cost: 3, attack: 2, defense: 2, image: '🌀', type: 'creature', faction: 'Arcane Conclave', effect: { type: 'province_attack_mana', value: 2, text: 'When this attacks a province and survives, gain 2 mana.' } },
         ];
 
         // --- Utility Functions ---
@@ -1320,7 +1275,7 @@
             }
             
             updateUI();
-            setTimeout(endTurn, 1000);
+            setTimeout(startPlayerTurn, 1000);
         }
 
         function endGame(winner) {
@@ -1403,8 +1358,30 @@
             document.body.style.backgroundPosition = `${xOffset}px ${yOffset}px`;
         });
         
+        // --- Theme Toggle Logic ---
+        const themes = ['dark', 'light-mode', 'forest-theme', 'shadow-theme', 'volcanic-theme', 'winter-theme'];
+        let currentThemeIndex = 0;
+
+        function applyTheme(themeName) {
+            document.body.className = 'font-inter'; // Reset classes
+            if (themeName !== 'dark') document.body.classList.add(themeName);
+            localStorage.setItem('theme', themeName);
+        }
+
+        themeToggleButton.addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            applyTheme(themes[currentThemeIndex]);
+        });
+        
         // --- Initial Load ---
-        window.addEventListener('load', initializeGame);
+        window.addEventListener('load', () => {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme && themes.includes(savedTheme)) {
+                currentThemeIndex = themes.indexOf(savedTheme);
+                applyTheme(savedTheme);
+            }
+            initializeGame();
+        });
         
         function promptPlayerMulligan() {
             mulliganOverlay.style.display = 'flex';
