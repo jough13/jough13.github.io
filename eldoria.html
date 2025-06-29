@@ -366,6 +366,7 @@
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            transition: background-position 0.1s ease-out; /* For parallax */
         }
 
         /* Game Container */
@@ -541,7 +542,38 @@
             font-family: 'Inter', sans-serif;
             color: var(--color-stats);
             user-select: none;
+            overflow: hidden; /* Hide overflow from pseudo-elements */
         }
+        
+        /* Faction Borders */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 1rem; /* Match card's inner radius */
+            pointer-events: none;
+            border: 6px solid transparent;
+            background-clip: padding-box;
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) content-box, 
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        
+        .card.faction-Order-of-the-Sun::before {
+            background-image: radial-gradient(circle, #FFD700, #DAA520);
+        }
+        .card.faction-Shadow-Pact::before {
+            background-image: radial-gradient(circle, #8A2BE2, #4B0082);
+        }
+        .card.faction-Wildwood-Kin::before {
+            background-image: radial-gradient(circle, #32CD32, #228B22);
+        }
+        .card.faction-Arcane-Conclave::before {
+            background-image: radial-gradient(circle, #00BFFF, #1E90FF);
+        }
+
 
         .card:hover {
             transform: translateY(-10px) scale(1.05);
@@ -564,6 +596,7 @@
             font-weight: bold;
             font-size: 1rem;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 0 5px rgba(255, 255, 255, 0.3);
+            z-index: 2;
         }
 
         .card-name {
@@ -578,6 +611,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 90%;
+            z-index: 2;
         }
 
         .card-image {
@@ -592,6 +626,7 @@
             color: var(--color-card-emoji);
             overflow: hidden;
             box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
+            z-index: 2;
         }
 
         .card-stats {
@@ -602,6 +637,7 @@
             font-weight: bold;
             color: var(--color-card-stats);
             margin-top: 0.4rem;
+            z-index: 2;
         }
 
         .card-stat {
@@ -624,6 +660,7 @@
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
+            z-index: 2;
         }
         
         .card.spell-card, .card.location-card {
@@ -646,6 +683,34 @@
             gap: 1rem;
             flex-wrap: wrap;
             box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+            flex-grow: 1; /* Allow hand to take up space */
+        }
+
+        /* Discard Pile Styles */
+        .discard-piles-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+            min-width: 120px; /* Give it some space */
+        }
+
+        .discard-pile {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: var(--bg-stats);
+            border: 1px solid var(--border-stats);
+            border-radius: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            font-size: 1rem;
+            color: var(--color-stats);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .discard-icon {
+            font-size: 1.2rem;
+            opacity: 0.8;
         }
 
         /* Game Message & Mulligan Overlay */
@@ -791,9 +856,15 @@
                 </div>
             </div>
             <div id="player-hand" class="player-hand"></div>
-            <div class="flex items-center gap-4">
-                <div class="text-sm">Discard: <span id="player-discard-count">0</span></div>
-                <div class="text-sm">Opponent Discard: <span id="opponent-discard-count">0</span></div>
+            <div class="discard-piles-container">
+                <div class="discard-pile" title="Your Discard Pile">
+                    <span class="discard-icon">🪦</span>
+                    <span id="player-discard-count">0</span>
+                </div>
+                <div class="discard-pile" title="Opponent's Discard Pile">
+                    <span class="discard-icon">🪦</span>
+                    <span id="opponent-discard-count">0</span>
+                </div>
             </div>
         </div>
 
@@ -865,7 +936,7 @@
             { id: 'ogre', name: 'Mighty Ogre', cost: 4, attack: 4, defense: 4, image: '🦍', type: 'creature', faction: 'Shadow Pact' },
             { id: 'healer', name: 'Devout Healer', cost: 2, attack: 1, defense: 3, image: '⚕️', type: 'creature', faction: 'Order of the Sun' },
             { id: 'dragon', name: 'Ancient Dragon', cost: 5, attack: 5, defense: 5, image: '🐉', type: 'creature', faction: 'Arcane Conclave' },
-            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '�', type: 'creature', faction: 'Shadow Pact' },
+            { id: 'skeleton', name: 'Risen Skeleton', cost: 1, attack: 1, defense: 2, image: '💀', type: 'creature', faction: 'Shadow Pact' },
             { id: 'golem', name: 'Stone Golem', cost: 3, attack: 1, defense: 5, image: '🪨', type: 'creature', faction: 'Order of the Sun' },
             { id: 'fire_elemental', name: 'Fire Elemental', cost: 2, attack: 3, defense: 1, image: '🔥', type: 'creature', faction: 'Arcane Conclave' },
             { id: 'cleric', name: 'Village Cleric', cost: 2, attack: 1, defense: 2, image: '⛪', type: 'creature', faction: 'Order of the Sun' },
@@ -886,7 +957,7 @@
             { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null, faction: 'Order of the Sun' },
             { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' }, faction: 'Wildwood Kin' },
             // --- LOCATION CARDS ---
-            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '🌿', faction: 'Wildwood Kin' },
+            { id: 'forest_shrine', name: 'Forest Shrine', cost: 1, type: 'location', passive_effect: { type: 'mana_per_turn', value: 1, text: 'Mana +1/turn' }, image: '�', faction: 'Wildwood Kin' },
             { id: 'healing_spring', name: 'Healing Spring', cost: 2, type: 'location', passive_effect: { type: 'health_regen', value: 2, text: 'Heal 2 HP/turn' }, image: '💧', faction: 'Order of the Sun' },
             { id: 'training_grounds', name: 'Training Grounds', cost: 2, type: 'location', passive_effect: { type: 'creature_attack_boost', value: 1, text: 'Your creatures get +1⚔️' }, image: '⚔️', faction: 'Shadow Pact' },
             { id: 'volcano_peak', name: 'Volcano Peak', cost: 3, type: 'location', passive_effect: { type: 'damage_to_opponent_on_play', value: 1, text: 'Deal 1 DMG to Opponent on Play' }, image: '🌋', faction: 'Shadow Pact' },
@@ -1062,6 +1133,9 @@
         function createCardElement(card, location) {
             const cardEl = document.createElement('div');
             cardEl.className = 'card';
+            if (card.faction) {
+                cardEl.classList.add(`faction-${card.faction.replace(/ /g, '-')}`);
+            }
             cardEl.dataset.cardId = card.id;
             cardEl.dataset.instanceId = card.instanceId;
             
@@ -1310,6 +1384,24 @@
         // --- Event Listeners ---
         endTurnButton.addEventListener('click', endTurn);
         restartButton.addEventListener('click', initializeGame);
+
+        // Parallax Effect
+        gameContainer.addEventListener('mousemove', (e) => {
+            if (window.innerWidth < 768) return; // Disable on mobile
+            const {
+                left,
+                top,
+                width,
+                height
+            } = gameContainer.getBoundingClientRect();
+            const x = (e.clientX - left) / width;
+            const y = (e.clientY - top) / height;
+            
+            const xOffset = -(x - 0.5) * 20;
+            const yOffset = -(y - 0.5) * 10;
+
+            document.body.style.backgroundPosition = `${xOffset}px ${yOffset}px`;
+        });
         
         // --- Initial Load ---
         window.addEventListener('load', initializeGame);
@@ -1341,4 +1433,3 @@
     </script>
 </body>
 </html>
-�
