@@ -6,7 +6,7 @@
     <title>Echoes of Eldoria</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=MedievalSharp&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=MedievalSharp&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* CSS Variables for Theming */
         :root {
@@ -345,6 +345,9 @@
             overflow-y: auto;
             padding: 20px;
             box-sizing: border-box;
+            text-rendering: optimizeLegibility; /* For smoother font rendering */
+            -webkit-font-smoothing: antialiased; /* For macOS/iOS font smoothing */
+            -moz-osx-font-smoothing: grayscale; /* For Firefox on macOS */
         }
 
         /* Game Container */
@@ -531,11 +534,16 @@
 
         .card-name {
             font-family: 'Cinzel', serif; /* More elegant fantasy font */
+            font-weight: 600; /* Slightly bolder */
             font-size: 1.2rem;
             text-align: center;
             margin-top: 2.2rem;
             color: var(--color-card-name);
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            white-space: nowrap; /* Prevent wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+            max-width: 90%; /* Constrain width to prevent overflow */
         }
 
         .card-image {
@@ -571,12 +579,17 @@
 
         .card-effect-text {
             font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
+            font-size: 0.9rem; /* Slightly larger font */
             text-align: center;
             color: var(--color-card-effect);
             margin-top: 0.4rem;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-            line-height: 1.2;
+            line-height: 1.4; /* Improved line height */
+            overflow: hidden; /* Hide overflow */
+            max-height: 2.8em; /* Limit to 2 lines (1.4em * 2) */
+            display: -webkit-box; /* For multi-line ellipsis */
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
         }
         .card-effect-text.text-red-300 { color: var(--color-effect-red); }
         .card-effect-text.text-green-300 { color: var(--color-effect-green); }
@@ -1280,7 +1293,7 @@
             { id: 'seek_knowledge', name: 'Seek Knowledge', cost: 1, type: 'spell', effect: { type: 'draw_card', value: 1, text: 'Draw 1 card' }, image: '📜', faction: 'Arcane Conclave' },
             // --- RESOURCE CREATURES (Mana Generators) ---
             { id: 'mana_sprite', name: 'Mana Sprite', cost: 1, attack: 0, defense: 1, image: '💎', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
-            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '�', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
+            { id: 'ancient_tree', name: 'Ancient Tree', cost: 2, attack: 0, defense: 3, image: '🌲', type: 'creature', mana_per_turn: 1, mana_condition: null, faction: 'Wildwood Kin' },
             { id: 'runic_golem', name: 'Runic Golem', cost: 3, attack: 1, defense: 4, image: '🗿', type: 'creature', mana_per_turn: 2, mana_condition: null, faction: 'Order of the Sun' },
             { id: 'village_elder', name: 'Village Elder', cost: 1, attack: 0, defense: 1, image: '👴', type: 'creature', mana_per_turn: 1, mana_condition: { type: 'control_other_creature', text: '(if you control another creature)' }, faction: 'Wildwood Kin' },
             // --- LOCATION CARDS ---
@@ -1406,6 +1419,7 @@
                 cardEl.dataset.defense = cardData.defense;
                 cardEl.dataset.currentAttack = cardData.attack;
                 cardEl.dataset.currentDefense = cardData.defense;
+                cardEl.dataset.hasAttacked = 'false'; // Initialize hasAttacked for new creatures
                 if (cardData.mana_per_turn) {
                     cardEl.dataset.manaPerTurn = cardData.mana_per_turn;
                     cardEl.classList.add('mana-creature');
@@ -1481,9 +1495,17 @@
                 ${effectTextHtml}
             `;
 
+            // Store full effect texts in data attributes for tooltip
+            if (cardData.on_play_effect) cardEl.dataset.fullOnPlayEffect = cardData.on_play_effect.text;
+            if (cardData.on_attacked_effect) cardEl.dataset.fullOnAttackedEffect = cardData.on_attacked_effect.text;
+            if (cardData.death_effect) cardEl.dataset.fullDeathEffect = cardData.death_effect.text;
+            if (cardData.faction_bonus) cardEl.dataset.fullFactionBonus = cardData.faction_bonus.text;
+            if (cardData.keywords && cardData.keyword_text) cardEl.dataset.fullKeywordText = cardData.keyword_text;
+
+
             if (isPlayerCard && !isMulliganDisplay && !isForesightDisplay) {
                 cardEl.classList.add('cursor-pointer');
-                cardEl.addEventListener('click', () => handleCardClick(cardEl, cardData));
+                cardEl.addEventListener('click', (event) => handleCardClick(cardEl, cardData, event));
             } else if (isMulliganDisplay || isForesightDisplay) {
                 cardEl.classList.remove('cursor-pointer');
             }
@@ -1492,11 +1514,16 @@
         }
 
         // --- Tooltip Functions ---
-        function showCardTooltip(event, cardData) {
+        function showCardTooltip(event, cardEl) { // Pass cardEl instead of cardData to read data attributes
             if (tooltipHideTimer) {
                 clearTimeout(tooltipHideTimer);
                 tooltipHideTimer = null;
             }
+
+            const cardId = cardEl.dataset.cardId;
+            const cardData = allCards.find(c => c.id === cardId); // Find original cardData for full details
+
+            if (!cardData) return; // Should not happen if cardEl is valid
 
             tooltipCardName.textContent = cardData.name;
             tooltipCardCost.textContent = `Cost: ${cardData.cost}`;
@@ -1506,32 +1533,32 @@
             let effectDesc = '';
 
             if (cardData.type === 'creature') {
-                const currentAttack = cardData.currentAttack !== undefined ? cardData.currentAttack : cardData.attack;
-                const currentDefense = cardData.currentDefense !== undefined ? cardData.currentDefense : cardData.defense;
+                const currentAttack = cardEl.dataset.currentAttack !== undefined ? cardEl.dataset.currentAttack : cardData.attack;
+                const currentDefense = cardEl.dataset.currentDefense !== undefined ? cardEl.dataset.currentDefense : cardData.defense;
                 statsText = `Attack: ${currentAttack} | Defense: ${currentDefense}`;
                 if (cardData.mana_per_turn) {
                     effectDesc += `Mana: +${cardData.mana_per_turn} per turn`;
                     if (cardData.mana_condition) effectDesc += ` ${cardData.mana_condition.text}`;
                 }
-                if (cardData.on_play_effect) {
-                    effectDesc += (effectDesc ? '\n' : '') + `On Play: ${cardData.on_play_effect.text}`;
+                if (cardEl.dataset.fullOnPlayEffect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Play: ${cardEl.dataset.fullOnPlayEffect}`;
                 }
-                if (cardData.on_attacked_effect) {
-                    effectDesc += (effectDesc ? '\n' : '') + `On Attacked: ${cardData.on_attacked_effect.text}`;
+                if (cardEl.dataset.fullOnAttackedEffect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Attacked: ${cardEl.dataset.fullOnAttackedEffect}`;
                 }
-                if (cardData.death_effect) {
-                    effectDesc += (effectDesc ? '\n' : '') + `On Death: ${cardData.death_effect.text}`;
+                if (cardEl.dataset.fullDeathEffect) {
+                    effectDesc += (effectDesc ? '\n' : '') + `On Death: ${cardEl.dataset.fullDeathEffect}`;
                 }
-                if (cardData.faction_bonus) {
-                    effectDesc += (effectDesc ? '\n' : '') + `Faction: ${cardData.faction_bonus.text}`;
+                if (cardEl.dataset.fullFactionBonus) {
+                    effectDesc += (effectDesc ? '\n' : '') + `Faction: ${cardEl.dataset.fullFactionBonus}`;
                 }
-                if (cardData.keywords && cardData.keyword_text) {
-                    effectDesc += (effectDesc ? '\n' : '') + `${cardData.keyword_text}`;
+                if (cardEl.dataset.fullKeywordText) {
+                    effectDesc += (effectDesc ? '\n' : '') + `${cardEl.dataset.fullKeywordText}`;
                 }
             } else if (cardData.type === 'spell') {
                 effectDesc = cardData.effect.text;
-                if (cardData.keywords && cardData.keyword_text) {
-                    effectDesc += (effectDesc ? '\n' : '') + `${cardData.keyword_text}`;
+                if (cardEl.dataset.fullKeywordText) {
+                    effectDesc += (effectDesc ? '\n' : '') + `${cardEl.dataset.fullKeywordText}`;
                 }
             } else if (cardData.type === 'location') {
                 effectDesc = cardData.passive_effect.text;
@@ -1872,6 +1899,11 @@
             currentCreatureAttackBoostPlayer = 0;
             currentCreatureDefenseBoostPlayer = 0;
 
+            // Reset hasAttacked for all player creatures
+            playerPlayArea.forEach(creature => {
+                creature.hasAttacked = false;
+            });
+
             // Apply Growth keyword for player's creatures
             playerPlayArea.forEach(creature => {
                 if (creature.keywords && creature.keywords.includes('Growth')) {
@@ -1992,6 +2024,14 @@
                 }
             } else if (playerPlayAreaEl.contains(cardEl) && cardData.type === 'creature') {
                 console.log("Card is on player's board (creature). Attempting to select for attack.");
+                // Find the actual creature object in playerPlayArea to check hasAttacked
+                const creatureInPlay = playerPlayArea.find(c => c.id === cardData.id);
+
+                if (creatureInPlay && creatureInPlay.hasAttacked) {
+                    showGameMessage(`${creatureInPlay.name} has already attacked this turn!`, false, true);
+                    return;
+                }
+
                 if (selectedAttacker === cardEl) {
                     console.log("Deselecting attacker.");
                     clearAttackerSelection();
@@ -2017,7 +2057,7 @@
             }
             cardEl.remove();
 
-            const newCardInstance = { ...cardData, currentAttack: cardData.attack, currentDefense: cardData.defense };
+            const newCardInstance = { ...cardData, currentAttack: cardData.attack, currentDefense: cardData.defense, hasAttacked: false }; // Initialize hasAttacked
             newCardInstance.currentAttack += currentCreatureAttackBoostPlayer;
             newCardInstance.currentDefense += currentCreatureDefenseBoostPlayer;
 
@@ -2351,7 +2391,7 @@
                     message = `Opponent draws ${drawValue} card${drawValue > 1 ? 's' : ''} from ${cardData.name}!`;
                 }
             } else if (cardData.effect.type === 'buff_random_creature_attack') {
-                const buffValue = cardData.effect.value;
+                const buffValue = effect.value;
                 let targetCreatures = (caster === 'player' ? playerPlayArea : opponentPlayArea);
                 let targetAreaEl = (caster === 'player' ? playerPlayAreaEl : opponentPlayAreaEl);
 
@@ -2570,7 +2610,10 @@
         // Updates which cards on board are attackable
         function updateAttackableCards() {
             playerPlayAreaEl.querySelectorAll('.card').forEach(cardEl => {
-                if (cardEl !== selectedAttacker) {
+                const creatureInPlay = playerPlayArea.find(c => c.id === cardEl.dataset.cardId);
+                if (creatureInPlay && !creatureInPlay.hasAttacked) { // Only add 'attackable' if it hasn't attacked
+                    cardEl.classList.add('attackable');
+                } else {
                     cardEl.classList.remove('attackable');
                 }
             });
@@ -2594,6 +2637,12 @@
                                                                 c.currentAttack == selectedAttacker.dataset.currentAttack &&
                                                                 c.currentDefense == selectedAttacker.dataset.currentDefense);
                 if (attackerCardData) {
+                    if (attackerCardData.hasAttacked) {
+                        showGameMessage(`${attackerCardData.name} has already attacked this turn!`, false, true);
+                        return;
+                    }
+                    attackerCardData.hasAttacked = true; // Mark as attacked
+
                     let attackValue = parseInt(attackerCardData.currentAttack);
                     if (playerLocation && playerLocation.passive_effect.type === 'creature_attack_boost') {
                         attackValue += playerLocation.passive_effect.value;
@@ -2619,6 +2668,13 @@
             const targetCardData = opponentPlayArea.find(c => c.id === targetCardEl.dataset.cardId);
 
             if (attackerCardData && targetCardData) {
+                if (attackerCardData.hasAttacked) {
+                    showGameMessage(`${attackerCardData.name} has already attacked this turn!`, false, true);
+                    return;
+                }
+                attackerCardData.hasAttacked = true; // Mark as attacked
+
+
                 let attackerAttack = parseInt(attackerCardData.currentAttack);
                 let attackerDefense = parseInt(attackerCardData.currentDefense);
                 let targetAttack = parseInt(targetCardData.currentAttack);
@@ -2724,14 +2780,14 @@
                     }
 
                     if (attackerCardData.has_divine_shield) {
-                        attackingCreature.has_divine_shield = false;
-                        showGameMessage(`${attackingCreature.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
+                        attackerCardData.has_divine_shield = false;
+                        showGameMessage(`${attackerCardData.name}'s Divine Shield absorbed ${targetAttack} damage!`, false, true);
                     } else {
-                        if (attackingCreature.keywords && attackingCreature.keywords.includes('Unyielding')) {
-                            attackingCreature.currentDefense -= Math.max(0, targetAttack - 1);
-                            showGameMessage(`${attackingCreature.name} is Unyielding, taking reduced damage!`, false, true);
+                        if (attackerCardData.keywords && attackerCardData.keywords.includes('Unyielding')) {
+                            attackerCardData.currentDefense -= Math.max(0, targetAttack - 1);
+                            showGameMessage(`${attackerCardData.name} is Unyielding, taking reduced damage!`, false, true);
                         } else {
-                            attackingCreature.currentDefense -= targetAttack;
+                            attackerCardData.currentDefense -= targetAttack;
                         }
                     }
                 }
@@ -2796,6 +2852,11 @@
             currentSpellDamageBoostOpponent = 0;
             currentCreatureAttackBoostOpponent = 0;
             currentCreatureDefenseBoostOpponent = 0;
+
+            // Reset hasAttacked for all opponent creatures
+            opponentPlayArea.forEach(creature => {
+                creature.hasAttacked = false;
+            });
 
             // Apply Growth keyword for opponent's creatures
             opponentPlayArea.forEach(creature => {
@@ -3065,8 +3126,8 @@
                 const playableCreatures = opponentHand.filter(card => card.type === 'creature' && card.cost <= opponentMana);
                 if (playableCreatures.length > 0) {
                     playableCreatures.sort((a, b) => {
-                        const aGainsManaByCreature = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
-                        const bGainsManaByCreature = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_other_creature' && opponentPlayArea.length > 0;
+                        const aGainsManaByCreature = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_other_faction_creature' && opponentPlayArea.length > 0;
+                        const bGainsManaByCreature = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_other_faction_creature' && opponentPlayArea.length > 0;
                         const aGainsManaByLocation = a.mana_per_turn && a.mana_condition && a.mana_condition.type === 'control_location' && opponentLocation;
                         const bGainsManaByLocation = b.mana_per_turn && b.mana_condition && b.mana_condition.type === 'control_location' && opponentLocation;
 
@@ -3096,7 +3157,7 @@
                     if (index > -1) {
                         opponentHand.splice(index, 1);
                     }
-                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardToPlay.defense };
+                    const newCardInstance = { ...cardToPlay, currentAttack: cardToPlay.attack, currentDefense: cardToPlay.defense, hasAttacked: false }; // Initialize hasAttacked
                     newCardInstance.currentAttack += currentCreatureAttackBoostOpponent;
                     newCardInstance.currentDefense += currentCreatureDefenseBoostOpponent;
 
@@ -3135,6 +3196,11 @@
                     console.log(`Attacking creature ${attackingCreature.name} no longer on board, skipping attack.`);
                     continue;
                 }
+                if (attackingCreature.hasAttacked) { // Check if AI creature has attacked
+                    console.log(`AI creature ${attackingCreature.name} has already attacked, skipping.`);
+                    continue;
+                }
+                attackingCreature.hasAttacked = true; // Mark AI creature as attacked
 
                 let attackerAttack = parseInt(attackingCreature.currentAttack);
                 if (opponentLocation && opponentLocation.passive_effect.type === 'creature_attack_boost') {
@@ -3405,7 +3471,7 @@
                 console.log("Found card in:", foundIn);
                 if (foundCardData) {
                     console.log("Tooltip Data:", foundCardData.name, foundCardData.type);
-                    showCardTooltip(event, foundCardData);
+                    showCardTooltip(event, cardEl); // Pass cardEl for tooltip
                 } else {
                     console.log("Card data not found for hovered element.");
                     hideCardTooltip(); // Hide if no data found
@@ -3455,4 +3521,3 @@
     </script>
 </body>
 </html>
-�
