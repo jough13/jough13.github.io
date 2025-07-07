@@ -350,17 +350,63 @@
             
             <!-- Section VI: Special Topics -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VI. Special Topics in Health Physics</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VI. Advanced Special Topics in Health Physics</h2>
+                <p class="mb-6">This section covers specialized, high-consequence topics that require a synthesis of physics, engineering controls, and dosimetry. A CHP is expected to be the resident expert on these subjects.</p>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Criticality Safety</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Criticality Safety</h4>
-                    <p>Know the "Six Factors" affecting criticality: <strong>Mass, Geometry, Moderation, Reflection, Concentration, and Interaction/Poisons</strong>.</p>
+                    <h4 class="font-semibold text-lg mb-2">The Six-Factor Formula and $k_{eff}$</h4>
+                    <p>The state of a fissile system is defined by the effective multiplication factor, $k_{eff}$, which is the ratio of neutrons in one generation to the generation before. $k_{eff} = k_{\infty} \cdot P_{NL}$, where $P_{NL}$ is the non-leakage probability.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li>$k_{eff} < 1$: Subcritical. The chain reaction will die out.</li>
+                        <li>$k_{eff} = 1$: Critical. The chain reaction is self-sustaining.</li>
+                        <li>$k_{eff} > 1$: Supercritical. The chain reaction will rapidly increase in power.</li>
+                    </ul>
+                    <p class="mt-2">The "Six Factors" are the physical parameters that are controlled to keep $k_{eff}$ safely below 1:</p>
+                    <ol class="list-decimal list-inside space-y-1 mt-2">
+                        <li><strong>Mass:</strong> Controlling the total amount of fissile material to stay below the critical mass for a given configuration.</li>
+                        <li><strong>Geometry:</strong> Using "geometrically favorable" shapes (e.g., thin slabs, long narrow cylinders) that maximize neutron leakage. A sphere is the most reactive geometry.</li>
+                        <li><strong>Moderation:</strong> Controlling the presence of hydrogenous materials (water, oil, plastic) that slow neutrons down to thermal energies, where the fission cross-section is much higher.</li>
+                        <li><strong>Reflection:</strong> Controlling the proximity of materials (water, concrete, steel) that can scatter neutrons back into the fissile material, effectively reducing the critical mass.</li>
+                        <li><strong>Concentration/Density:</strong> Ensuring the density of fissile atoms is below the critical value. This can involve mixing with non-fissile materials.</li>
+                        <li><strong>Interaction/Poisons:</strong> Using materials with very high neutron absorption cross-sections (e.g., Boron, Cadmium, Gadolinium) to act as "poisons," removing neutrons from the system. Also includes ensuring safe spacing between multiple subcritical units.</li>
+                    </ol>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Criticality Excursion Yield</h4>
+                    <p>In an accident scenario, you may be given the total number of fissions and asked to calculate the dose.</p>
+                    <p class="mt-2">Dose = $\frac{(\text{Total Fissions}) \cdot (\text{Particles/Fission}) \cdot (\text{Flux-to-Dose Factor})}{4 \pi d^2}$</p>
+                    <p class="mt-2">You will be given the yield (e.g., 2.5 neutrons/fission, 8 gammas/fission) and the appropriate flux-to-dose conversion factor for the particles' energy.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Non-Ionizing Radiation</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Laser Safety (ANSI Z136.1)</h4>
+                    <p>Laser safety focuses on preventing thermal or photochemical damage to the eye and skin.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Maximum Permissible Exposure (MPE):</strong> The fundamental limit. It is the level of laser radiation to which a person may be exposed without hazardous effect or adverse biological changes in the eye or skin. It depends on wavelength, exposure duration, and whether the source is point or extended. An MPE table will always be provided.</li>
+                        <li><strong>Nominal Ocular Hazard Distance (NOHD):</strong> The distance along the axis of the laser beam beyond which the beam irradiance or radiant exposure is less than the MPE.</li>
+                        <li><strong>Laser Classifications:</strong> Know the general hazards of each class. Class 1 is safe for viewing. Class 2 is safe for momentary viewing due to the aversion response (0.25 s). Class 3R (formerly IIIa) is marginally unsafe for direct viewing. Class 3B (formerly IIIb) is hazardous for direct viewing. Class 4 is a hazard from direct, specular, and diffuse reflections and can be a fire hazard.</li>
+                    </ul>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Required Optical Density (OD)</h4>
+                    <p>Protective eyewear must reduce the potential exposure to below the MPE.</p>
+                    $$OD = \log_{10} \left( \frac{H_0}{MPE} \right) = \log_{10} \left( \frac{E_0}{MPE_{irradiance}} \right)$$
+                    <p class="mt-2">Where $H_0$ or $E_0$ is the anticipated radiant exposure or irradiance at the eye.</p>
                 </div>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Non-Ionizing Radiation</h4>
-                     <ul class="list-disc list-inside space-y-1 mt-2">
-                        <li><strong>Lasers:</strong> Calculate MPE (from provided tables) and required Optical Density: $OD = \log_{10} \left( \frac{\text{Irradiance at eye}}{\text{MPE}} \right)$.</li>
-                        <li><strong>RF/Microwave:</strong> Calculate far-field power density: $S = \frac{P_{avg} G}{4 \pi d^2}$.</li>
+                    <h4 class="font-semibold text-lg mb-2">RF/Microwave Safety</h4>
+                    <p>The primary hazard from RF/microwave radiation is heating of body tissues.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Near-Field vs. Far-Field:</strong> The boundary between the two is roughly at $R = \frac{2D^2}{\lambda}$, where D is the antenna diameter and $\lambda$ is the wavelength. In the far-field, the beam behaves as a plane wave and power density (S) decreases with the inverse square of distance ($1/d^2$). In the near-field, the relationship is complex, and direct measurements of both E- and H-fields are necessary.</li>
+                        <li><strong>Specific Absorption Rate (SAR):</strong> The primary dosimetric quantity for RF exposure. It is the rate at which energy is absorbed per unit mass of body tissue, measured in watts per kilogram (W/kg). Exposure limits are based on keeping the whole-body average SAR below a certain level (e.g., 0.4 W/kg for controlled environments).</li>
                     </ul>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Far-Field Power Density</h4>
+                    $$S (\text{W/cm}^2) = \frac{P_{avg} G}{4 \pi d^2}$$
+                    <p class="mt-2">Where $P_{avg}$ is the average power ($P_{peak} \times \text{Duty Factor}$), G is the dimensionless antenna gain, and d is the distance.</p>
                 </div>
             </section>
             
