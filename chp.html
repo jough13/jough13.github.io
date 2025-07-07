@@ -9,9 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- KaTeX for LaTeX Math Rendering -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNBIUeNnGoM2H8KjJo3aOIM5dFAHWjV6hJOK7wGgJvSaKSZ" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0i8" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax5AScKmpS5MKYs6ehHdHcZvoB9ic7VeFPS" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 
     <style>
         /* Custom styles for better typography and printing */
@@ -251,21 +251,44 @@
             <!-- Section IV: Instrumentation & Measurement -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">IV. Advanced Instrumentation & Measurement</h2>
-                <p class="mb-6">A deep understanding of detector mechanisms, efficiencies, and statistical limitations is required.</p>
+                <p class="mb-6">This section covers the theory, application, and data analysis related to the instruments used in health physics. A deep understanding of detector mechanisms, efficiencies, and statistical limitations is required.</p>
                 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Gas-Filled Detectors</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Gas-Filled Detector Regions</h4>
-                    <p>You must be able to identify and explain the six regions of the pulse amplitude vs. voltage curve: Recombination, Ionization, Proportional, Limited Proportional, Geiger-Mueller (GM), and Continuous Discharge.</p>
+                    <h4 class="font-semibold text-lg mb-2">The Six-Region Curve</h4>
+                    <p>You must be able to identify and explain each region of the characteristic curve of pulse amplitude vs. applied voltage: Recombination, Ionization, Proportional, Limited Proportional, Geiger-Mueller (GM), and Continuous Discharge.</p>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Ion Chamber Temperature/Pressure Correction</h4>
+                    <p>For vented ion chambers, readings must be corrected to standard conditions (STP, often 22°C and 760 mmHg).</p>
+                    $$Corrected~Reading = Measured~Reading \times \left( \frac{P_{cal}}{P_{meas}} \right) \times \left( \frac{T_{meas}(K)}{T_{cal}(K)} \right)$$
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">GM Detector Dead Time Correction</h4>
+                    <p>GM detectors have a significant "dead time" ($\tau$) after each pulse. For high count rates, the true rate (n) is higher than the measured rate (m).</p>
+                    $$n = \frac{m}{1 - m\tau}$$
                 </div>
 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Scintillation & Semiconductor Detectors</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Neutron Detectors</h4>
+                    <h4 class="font-semibold text-lg mb-2">Gamma Spectroscopy</h4>
+                    <p>You must be able to identify all key features on a gamma spectrum: Photopeak, Compton Edge, Compton Continuum, Backscatter Peak, Single & Double Escape Peaks (at $E_\gamma - 0.511$ MeV and $E_\gamma - 1.022$ MeV), and the Annihilation Peak (at 0.511 MeV).</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Liquid Scintillation Counting (LSC)</h4>
+                    <p>This is the method of choice for low-energy beta emitters (${}^3$H, ${}^{14}$C). The most critical concept is **quenching**, any process that reduces light output. To get an accurate DPM, you must determine the efficiency for each *quenched* sample, typically by using an instrument-generated quench curve.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Neutron Detection</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Neutron Detector Principles</h4>
                     <ul class="list-disc list-inside space-y-1 mt-2">
-                        <li><strong>Slow/Thermal:</strong> Use high cross-section reactions like ${}^{10}B(n,\alpha)$ or ${}^{3}He(n,p)$. Be prepared to explain the "wall effect."</li>
+                        <li><strong>Slow/Thermal:</strong> Use high cross-section reactions like ${}^{10}B(n,\alpha)$ or ${}^{3}He(n,p)$. Be prepared to explain the "wall effect," where a reaction near the detector wall results in incomplete energy deposition and a smaller pulse.</li>
                         <li><strong>Fast:</strong> Use moderation (e.g., Bonner spheres) to thermalize neutrons before detection, or use proton recoil detectors.</li>
                     </ul>
                 </div>
 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Statistics and Quality Control</h3>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Counting Statistics & MDA</h4>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
@@ -273,6 +296,12 @@
                         <li>Propagate Uncertainty: $\sigma_{net} = \sqrt{\frac{R_g}{t_g} + \frac{R_b}{t_b}}$.</li>
                         <li>Calculate MDA using the provided formula, e.g., $MDA (\text{dpm}) = \frac{2.71 + 4.65 \sqrt{R_b t}}{t \cdot \epsilon}$.</li>
                     </ol>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Chi-Square ($\chi^2$) Test</h4>
+                    <p>This test is used to determine if the observed variance in a set of repeated counts is consistent with the expected variance from a Poisson distribution.</p>
+                    $$\chi^2 = \sum_{i=1}^{N} \frac{(C_i - \bar{C})^2}{\bar{C}}$$
+                    <p class="mt-2">The calculated $\chi^2$ value is compared to a table for N-1 degrees of freedom. A value that is too high or too low (typically outside the 5% to 95% probability range) indicates potential instrument malfunction.</p>
                 </div>
             </section>
 
@@ -535,6 +564,22 @@
                         <li><strong>Sum the Doses:</strong> Multiply the ESE by the conversion factor for each procedure and sum the results. For example, a 10-minute pelvic fluoro exam at 4 R/min results in 40 R ESE. With a conversion factor of 421 mrad/R, this contributes $40 \times 421 = 16840$ mrad.</li>
                         <li><strong>Total Dose & Risk:</strong> Summing all procedures might yield a dose in the range of 20+ rad.</li>
                         <li><strong>Conclusion:</strong> A dose of this magnitude at 2 months gestation (period of major organogenesis) carries a significant risk of deterministic effects (e.g., malformations) and an increased risk of stochastic effects. This information must be clearly communicated to the patient and her physician.</li>
+                    </ol>
+                </div>
+
+                <div class="key-calc">
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Release & Dose</h3>
+                    <p><strong>Task:</strong> A plutonium fire results in a constant airborne concentration of $4 \times 10^{-4} \mu Ci/cm^3$ in a room. This is exhausted through a filtered 10m stack. Calculate the ground-level air concentration at the site boundary 1000m downwind.</p>
+                    <p class="mt-4"><strong>Solution Summary:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate Release Rate (Q):</strong> Convert the room concentration to total activity released per second.
+                            $Q (\mu Ci/s) = \text{Room Conc.} (\mu Ci/cm^3) \times \text{Exhaust Rate} (cm^3/s) \times \text{Filter Penetration}$
+                        </li>
+                        <li><strong>Determine Stability Class & Dispersion Coefficients:</strong> Use the given meteorological data (e.g., wind speed, cloud cover, or temperature gradient) to find the Pasquill Stability Class. From the provided graphs, find $\sigma_y$ and $\sigma_z$ for a distance of 1000m. For Class C at 1000m, typically $\sigma_y \approx 100$ m and $\sigma_z \approx 60$ m.</li>
+                        <li><strong>Apply Gaussian Plume Equation:</strong> Use the formula for ground-level, centerline concentration:
+                        $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left[-\frac{1}{2}\left(\frac{H^2}{\sigma_z^2}\right)\right]$$
+                        </li>
+                        <li><strong>Plug in Values & Solve:</strong> Carefully substitute the calculated release rate (Q), the dispersion coefficients, the wind speed (u), and the effective stack height (H) to find the downwind concentration, $\chi$.</li>
                     </ol>
                 </div>
             </section>
