@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive ABHP Part II Study Guide</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for LaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNBIUeNnGoM2H8KjJo3aOIM5dFAHWjV6hJOK7wGgJvSaKSZ" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0i8" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax5AScKmpS5MKYs6ehHdHcZvoB9ic7VeFPS" crossorigin="anonymous"></script>
+
+    <style>
+        /* Custom styles for better typography and printing */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        h1, h2, h3 {
+            font-family: 'Lora', serif;
+        }
+        .content-section {
+            border-left: 3px solid #6366f1; /* indigo-500 */
+            padding-left: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .key-calc, .key-data, .key-concept {
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        .key-calc { background-color: #eef2ff; border: 1px solid #c7d2fe; }
+        .key-data { background-color: #fefce8; border: 1px solid #fde68a; }
+        .key-concept { background-color: #f0f9ff; border: 1px solid #bae6fd; }
+        .katex-display {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 0.5rem 0;
+        }
+        @media print {
+            body { background-color: #ffffff; }
+            .no-print { display: none; }
+            .content-section {
+                border-left: 2px solid #cccccc;
+                padding-left: 1rem;
+                margin-bottom: 1.5rem;
+                page-break-inside: avoid;
+            }
+            h2, h3 { page-break-after: avoid; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Comprehensive Professional Guide</h1>
+            <p class="text-xl text-indigo-600 mt-2">to the ABHP Part II Examination</p>
+        </header>
+
+        <main>
+            <!-- Introduction -->
+            <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of past examinations from 1988 through 2002. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
+            
+            <!-- Section I: Advanced Radiation Physics & Interactions -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">I. Advanced Radiation Physics & Interactions</h2>
+                <p class="mb-6">This section covers the foundational principles of radioactive decay and the interaction of radiation with matter. A deep, quantitative understanding of these topics is essential, as they form the basis for all other domains of health physics.</p>
+                
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Key Numbers & Data</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Electron Rest Mass Energy: $m_e c^2 = 0.511 \text{ MeV}$</li>
+                        <li>Pair Production Threshold: $2 m_e c^2 = 1.022 \text{ MeV}$</li>
+                        <li>Avogadro's Number ($N_A$): $6.023 \times 10^{23} \text{ atoms/mole}$</li>
+                        <li>Working Level (WL) Definition: Any combination of short-lived radon daughters in 1 liter of air that results in the ultimate emission of $1.3 \times 10^5 \text{ MeV}$ of potential alpha energy.</li>
+                        <li>Working Level Month (WLM): An exposure equivalent to inhaling 1 WL for 170 hours.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations & Concepts</h3>
+                
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">1. Radioactive Decay & Energetics</h4>
+                    <p><strong>Key Calculation: Q-value from Mass Excess</strong><br>
+                    Apply the conservation of mass-energy for each decay mode. For example:</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li>Positron ($\beta^+$) Decay: $Q_{\beta^+} = \Delta_{parent} - \Delta_{daughter} - 2m_e c^2$</li>
+                        <li>Electron Capture (EC): $Q_{EC} = \Delta_{parent} - \Delta_{daughter}$</li>
+                        <li>Beta Minus ($\beta^-$) Decay: $Q_{\beta^-} = \Delta_{parent} - \Delta_{daughter}$</li>
+                    </ul>
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">2. Neutron Activation</h4>
+                    <p><strong>Key Calculation: Saturation Activity</strong><br>
+                    First, find the number of target atoms: $N = \frac{(\text{mass}) \cdot (\text{abundance}) \cdot N_A}{\text{Atomic Weight}}$. Then use the saturation activity formula $A_{sat} = N \sigma \phi$ to solve for the unknown, often the neutron flux ($\phi$).</p>
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">3. Photon Interactions</h4>
+                    <p><strong>Key Calculation: Compton Scattering Kinematics</strong><br>
+                    Calculate scattered photon energy ($E'$) and recoil electron energy ($T_e$).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li>Scattered Photon Energy: $E' = \frac{E_0}{1 + \frac{E_0}{m_e c^2}(1 - \cos\theta)}$</li>
+                        <li>Recoil Electron Energy: $T_e = E_0 - E'$</li>
+                    </ul>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">4. Atomic Readjustment</h4>
+                    <p>When an inner shell vacancy is created, the atom relaxes via one of two competitive processes:</p>
+                    <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li><strong>Characteristic X-ray Emission:</strong> Dominant in high-Z elements.</li>
+                        <li><strong>Auger Electron Emission:</strong> Dominant in low-Z elements.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section II: Shielding & External Dose Assessment -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">II. Advanced Shielding & External Dose Assessment</h2>
+                <p class="mb-6">This section moves beyond simple point-source calculations to cover complex geometries, buildup physics, and specialized operational scenarios that are hallmarks of the Part II exam.</p>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Core Concepts in Photon Shielding</h3>
+                
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Key Data & Definitions</h4>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>Gamma Constant ($\Gamma$)</strong>: The unshielded exposure rate (e.g., R/hr) at a unit distance (e.g., 1 m) from a unit activity (e.g., 1 Ci) of a specific radionuclide. It is an empirical value that integrates the energy and yield of all photons from the source.</li>
+                        <li><strong>KERMA vs. Absorbed Dose</strong>:
+                            <ul>
+                                <li><strong>KERMA</strong> (Kinetic Energy Released in Media): Energy transferred from uncharged particles (photons) to charged particles (electrons) per unit mass.</li>
+                                <li><strong>Absorbed Dose</strong>: Energy deposited by charged particles per unit mass. Under conditions of Charged Particle Equilibrium (CPE), KERMA equals Absorbed Dose. A buildup cap on an ion chamber is used to establish CPE in the detector's sensitive volume.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Buildup Factor (B)</h4>
+                    <p>The simple exponential attenuation equation, $I = I_0 e^{-\mu x}$, is only valid for narrow-beam conditions. For shielding calculations, you must account for scattered photons.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Physical Basis:</strong> The buildup factor is a dimensionless multiplier ($B \ge 1$) that corrects the narrow-beam equation for the additional dose contribution from photons that have undergone Compton scattering within the shield but still reach the point of interest.</li>
+                        <li><strong>Dependencies:</strong> B is a function of the initial photon energy, the shield material (Z), and the shield thickness in mean free paths ($mfp = \mu x$).</li>
+                        <li><strong>Layered Shields:</strong> For a multi-layered shield, a common approximation is to use the buildup factor for the *final* material, but calculate it using the total number of mean free paths for the *entire* shield composite.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Shielding for Different Source Geometries</h3>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Line Sources</h4>
+                    <p>For a line source of length L with activity per unit length $C_L$, the dose rate at a point P is given by integrating along the line. For a point 'a' perpendicular to the line:</p>
+                    $$\dot{D} = \frac{\Gamma C_L}{a} (\theta_2 - \theta_1)$$
+                    <p class="mt-2">For an infinitely long line source, $\theta_1 = -\pi/2$ and $\theta_2 = \pi/2$, so the dose rate simplifies to:</p>
+                    $$\dot{D}_{infinite} = \frac{\pi \Gamma C_L}{a}$$
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Area (Disc) Sources</h4>
+                    <p>For a circular disc source of radius R with activity per unit area $C_A$, the dose rate at a height 'h' above the center is:</p>
+                    $$\dot{D} = \pi \Gamma C_A \ln\left(\frac{R^2 + h^2}{h^2}\right)$$
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Specialized Shielding & Dosimetry Scenarios</h3>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Accelerator Shielding (NCRP 51)</h4>
+                    <p>This is a common problem type requiring use of provided graphs.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Find Unshielded Dose Rate:</strong> Use the provided graph of $\dot{D}_0 I^{-1}$ vs. electron energy to find the dose index rate per unit current for the correct angle (0° or 90°). Multiply by the average beam current.</li>
+                        <li><strong>Correct for 90° Spectrum:</strong> For the 90° direction, the spectrum is softer. Use a second graph to find an "equivalent electron energy" and use this lower energy for attenuation calculations.</li>
+                        <li><strong>Find Required Shield Thickness:</strong> Use the required dose rate and the unshielded dose rate to find the necessary transmission factor. Then, use the provided transmission or TVL graphs for the correct material (e.g., concrete) and energy to find the required thickness.</li>
+                    </ol>
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Hot Particle Dosimetry</h4>
+                    <p>This is a localized skin dose calculation, averaged over an area of 1 cm² at a depth of 7 mg/cm².</p>
+                    <p class="mt-2">The dose calculation is a direct multiplication where the area term is 1 cm²:</p>
+                    $$Dose~(rad) = \text{Activity}(\mu Ci) \times \text{Dose Factor} \left(\frac{\text{rad} \cdot \text{cm}^2}{\mu Ci \cdot \text{hr}}\right) \times \text{Time (hr)}$$
+                </div>
+            </section>
+
+            <!-- Section III: Internal Dosimetry & Bioassay -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">III. Internal Dosimetry & Bioassay</h2>
+                <p class="mb-6">This domain tests your ability to apply formalized dosimetry systems and interpret biological monitoring data.</p>
+                
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Key Numbers & Data</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Annual Dose Limits: TEDE (5 rem), Organ CDE (50 rem), LDE (15 rem).</li>
+                        <li>Declared Pregnant Worker (fetus): 0.5 rem over gestation.</li>
+                        <li>Reference Man Breathing Rate: $1.2 \text{ m}^3\text{/hr}$ or $20 \text{ L/min}$.</li>
+                    </ul>
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Intake Assessment from Bioassay</h4>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li>Quantify the total activity in the bioassay sample (e.g., total Bq in a 24-hr urine void).</li>
+                        <li>Find the Intake Retention Fraction (IRF) from the provided tables for the correct nuclide, class, and time post-intake.</li>
+                        <li>Calculate the Initial Intake: $I = \frac{\text{Measured Activity}}{\text{IRF}}$.</li>
+                        <li>Calculate the Committed Effective Dose Equivalent: $CEDE~(rem) = \frac{I~(\mu Ci)}{ALI~(\mu Ci)} \times 5~rem$.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Section IV: Instrumentation & Measurement -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IV. Advanced Instrumentation & Measurement</h2>
+                <p class="mb-6">A deep understanding of detector mechanisms, efficiencies, and statistical limitations is required.</p>
+                
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Gas-Filled Detector Regions</h4>
+                    <p>You must be able to identify and explain the six regions of the pulse amplitude vs. voltage curve: Recombination, Ionization, Proportional, Limited Proportional, Geiger-Mueller (GM), and Continuous Discharge.</p>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Neutron Detectors</h4>
+                    <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li><strong>Slow/Thermal:</strong> Use high cross-section reactions like ${}^{10}B(n,\alpha)$ or ${}^{3}He(n,p)$. Be prepared to explain the "wall effect."</li>
+                        <li><strong>Fast:</strong> Use moderation (e.g., Bonner spheres) to thermalize neutrons before detection, or use proton recoil detectors.</li>
+                    </ul>
+                </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Counting Statistics & MDA</h4>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li>Calculate Net Rate: $R_{net} = R_g - R_b$.</li>
+                        <li>Propagate Uncertainty: $\sigma_{net} = \sqrt{\frac{R_g}{t_g} + \frac{R_b}{t_b}}$.</li>
+                        <li>Calculate MDA using the provided formula, e.g., $MDA (\text{dpm}) = \frac{2.71 + 4.65 \sqrt{R_b t}}{t \cdot \epsilon}$.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Section V: Operational Scenarios & Emergency Response -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Operational Scenarios & Emergency Response</h2>
+                <p class="mb-6">These questions integrate multiple domains into a practical problem.</p>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Atmospheric Dispersion (Gaussian Plume)</h4>
+                    <p>For a ground-level, centerline concentration, the formula simplifies to:</p>
+                    $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left[-\frac{1}{2}\left(\frac{H^2}{\sigma_z^2}\right)\right]$$
+                    <p class="mt-2">Your task is to find the stability class, look up $\sigma_y$ and $\sigma_z$ from the provided graphs, and carefully plug in all variables with consistent units.</p>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Emergency Response Priorities</h4>
+                    <ol class="list-decimal list-inside space-y-1 mt-2">
+                        <li>Personnel Safety & Medical Aid</li>
+                        <li>Hazard Control (Isolate, contain)</li>
+                        <li>Personnel Assessment (Surveys, bioassay)</li>
+                        <li>Area Characterization</li>
+                        <li>Remediation & Reporting</li>
+                    </ol>
+                </div>
+            </section>
+            
+            <!-- Section VI: Special Topics -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VI. Special Topics in Health Physics</h2>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Criticality Safety</h4>
+                    <p>Know the "Six Factors" affecting criticality: <strong>Mass, Geometry, Moderation, Reflection, Concentration, and Interaction/Poisons</strong>.</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Non-Ionizing Radiation</h4>
+                     <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li><strong>Lasers:</strong> Calculate MPE (from provided tables) and required Optical Density: $OD = \log_{10} \left( \frac{\text{Irradiance at eye}}{\text{MPE}} \right)$.</li>
+                        <li><strong>RF/Microwave:</strong> Calculate far-field power density: $S = \frac{P_{avg} G}{4 \pi d^2}$.</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <!-- Section VII: Regulatory -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Key Regulatory Numbers & Standards</h2>
+                 <ul class="list-disc list-inside space-y-1">
+                    <li><strong>Radiation Area:</strong> > 5 mrem/hr at 30 cm.</li>
+                    <li><strong>High Radiation Area:</strong> > 100 mrem/hr at 30 cm.</li>
+                    <li><strong>Transport Index (TI):</strong> Dose rate in mrem/hr at 1 meter from the package surface.</li>
+                    <li><strong>Radioactive Labels (49 CFR):</strong> White-I (Surface < 0.5 mrem/hr, TI=0), Yellow-II (Surface < 50 mrem/hr, TI < 1), Yellow-III (Surface < 200 mrem/hr, TI < 10).</li>
+                </ul>
+            </section>
+
+            <!-- Section VIII: Conceptual Questions -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Mastering Conceptual Questions & Justifications</h2>
+                <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment.</p>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Deterministic vs. Stochastic Effects</h4>
+                    <p>A high acute dose (e.g., 300 rad) causes **deterministic effects** (Acute Radiation Syndrome), which have a threshold and severity that increases with dose. A high CEDE (e.g., 300 rem) represents an increased lifetime probability of **stochastic effects** (cancer), which have no threshold. The former is a medical emergency; the latter is a managed risk.</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Justifying ALARA Controls</h4>
+                    <p>Go beyond "time, distance, shielding." Provide specific, justified actions relevant to the scenario, such as using mock-up training (Time), remote handling tools (Distance), system flushes (Source Reduction), and temporary lead blankets (Shielding).</p>
+                </div>
+            </section>
+
+            <!-- Section IX: Integrated Problems -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Integrated Practice Problems & Detailed Solutions</h2>
+                <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
+                
+                <div class="key-calc">
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 1: The Reactor Coolant System Demineralizer</h3>
+                    <p><strong>Task:</strong> Determine if 2 inches of lead shielding is sufficient to keep a worker's dose below 300 mrem for a 30-minute job near a 60 Ci (initial) ${}^{60}Co$ source that has decayed for 6 months.</p>
+                    <p class="mt-4"><strong>Solution Summary:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Decay Calculation:</strong> The initial 60 Ci decays to <strong>56.2 Ci</strong> over 6 months.</li>
+                        <li><strong>Unshielded Dose Rate:</strong> At the 9 ft distance, the dose rate is calculated to be <strong>9730 mrem/hr</strong>.</li>
+                        <li><strong>Shield Effectiveness:</strong> A 2-inch (5.08 cm) lead shield provides 3.3 mean free paths. Using provided tables, the buildup factor (B) is found to be approximately <strong>2.15</strong>.</li>
+                        <li><strong>Shielded Dose Rate:</strong> $\dot{D}_{sh} = \dot{D}_{unsh} \cdot B \cdot e^{-\mu x} = (9730) \cdot (2.15) \cdot e^{-3.3} \approx \textbf{772 mrem/hr}$.</li>
+                        <li><strong>Total Dose:</strong> For a 30-minute (0.5 hr) job, the dose is $772 \times 0.5 = \textbf{386 mrem}$.</li>
+                        <li><strong>Conclusion:</strong> The projected dose of 386 mrem **exceeds** the 300 mrem limit. The shielding is not sufficient.</li>
+                    </ol>
+                </div>
+
+                <div class="key-calc">
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 2: Fetal Dose from Diagnostic X-Rays</h3>
+                    <p><strong>Task:</strong> Estimate the total fetal dose from multiple diagnostic procedures performed on a woman who was 2 months pregnant.</p>
+                    <p class="mt-4"><strong>Solution Summary:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate Dose per Procedure:</strong> For each exam (e.g., Pelvic Film, Lumbar Spine Film, CT, Fluoro), calculate the total Entrance Skin Exposure (ESE) in Roentgens.</li>
+                        <li><strong>Apply Conversion Factors:</strong> Using the provided table (e.g., from NCRP 54), find the mrad/R conversion factor for the specific projection and beam quality (HVL).</li>
+                        <li><strong>Sum the Doses:</strong> Multiply the ESE by the conversion factor for each procedure and sum the results. For example, a 10-minute pelvic fluoro exam at 4 R/min results in 40 R ESE. With a conversion factor of 421 mrad/R, this contributes $40 \times 421 = 16840$ mrad.</li>
+                        <li><strong>Total Dose & Risk:</strong> Summing all procedures might yield a dose in the range of 20+ rad.</li>
+                        <li><strong>Conclusion:</strong> A dose of this magnitude at 2 months gestation (period of major organogenesis) carries a significant risk of deterministic effects (e.g., malformations) and an increased risk of stochastic effects. This information must be clearly communicated to the patient and her physician.</li>
+                    </ol>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- KaTeX Auto-render script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>
