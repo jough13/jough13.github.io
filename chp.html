@@ -61,7 +61,7 @@
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Comprehensive Professional Guide</h1>
             <p class="text-xl text-indigo-600 mt-2">to the ABHP Part II Examination</p>
-            <p class="text-sm text-slate-500 mt-4">Version 2.3 - Last Updated: July 7, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 2.4 - Last Updated: July 7, 2025</p>
         </header>
 
         <main>
@@ -163,9 +163,11 @@
 
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Line Sources</h4>
-                    <p>For a line source of length L with activity per unit length $C_L$, the dose rate at a point P is given by integrating along the line. For a point 'a' perpendicular to the line:</p>
+                    <p>For a line source of activity per unit length $C_L$, the dose rate at a point P located at a perpendicular distance 'a' is given by:</p>
                     $$\dot{D} = \frac{\Gamma C_L}{a} (\theta_2 - \theta_1)$$
-                    <p class="mt-2">For an infinitely long line source, $\theta_1 = -\pi/2$ and $\theta_2 = \pi/2$, so the dose rate simplifies to:</p>
+                    <p class="mt-2">Where $\theta_1$ and $\theta_2$ are the angles (in radians) to the ends of the line. An equivalent form using distances along the line ($x_1, x_2$) is:</p>
+                    $$\dot{D} = \frac{\Gamma C_L}{a} \left(\arctan\frac{x_2}{a} - \arctan\frac{x_1}{a}\right)$$
+                    <p class="mt-2">For an infinitely long line source, the dose rate simplifies to:</p>
                     $$\dot{D}_{infinite} = \frac{\pi \Gamma C_L}{a}$$
                 </div>
 
@@ -655,7 +657,7 @@
 
                 <div class="key-calc">
                     <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Release & Dose</h3>
-                    <p><strong>Task:</strong> A plutonium fire results in a constant airborne concentration of $4 \times 10^{-4} \mu Ci/cm^3$ in a room with an exhaust rate of $7 m^3/min$. This is exhausted through a HEPA filter (99.95% efficient) and a 10m stack. Calculate the ground-level air concentration at the site boundary 1000m downwind under Class C stability with a 7 m/s wind.</p>
+                    <p><strong>Task:</strong> A plutonium fire results in a constant airborne concentration of $4 \times 10^{-4} \mu Ci/cm^3$ in a room with an exhaust rate of $7 m^3/min$. This is exhausted through a filtered 10m stack. Calculate the ground-level air concentration at the site boundary 1000m downwind under Class C stability with a 7 m/s wind.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
                         <li><strong>Calculate Release Rate (Q):</strong>
