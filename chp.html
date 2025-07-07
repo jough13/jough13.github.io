@@ -122,7 +122,7 @@
                 </div>
             </section>
 
-            <!-- Section II: Shielding & External Dose Assessment -->
+            <!-- Section II: Advanced Shielding & External Dose Assessment -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">II. Advanced Shielding & External Dose Assessment</h2>
                 <p class="mb-6">This section moves beyond simple point-source calculations to cover complex geometries, buildup physics, and specialized operational scenarios that are hallmarks of the Part II exam.</p>
@@ -190,27 +190,62 @@
 
             <!-- Section III: Internal Dosimetry & Bioassay -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">III. Internal Dosimetry & Bioassay</h2>
-                <p class="mb-6">This domain tests your ability to apply formalized dosimetry systems and interpret biological monitoring data.</p>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">III. Advanced Internal Dosimetry & Bioassay</h2>
+                <p class="mb-6">This domain tests your ability to apply formalized dosimetry systems, understand their underlying models, and interpret bioassay data in complex situations.</p>
                 
-                <div class="key-data">
-                    <h4 class="font-semibold text-lg mb-2">Key Numbers & Data</h4>
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>Annual Dose Limits: TEDE (5 rem), Organ CDE (50 rem), LDE (15 rem).</li>
-                        <li>Declared Pregnant Worker (fetus): 0.5 rem over gestation.</li>
-                        <li>Reference Man Breathing Rate: $1.2 \text{ m}^3\text{/hr}$ or $20 \text{ L/min}$.</li>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">ICRP Dosimetric Models</h3>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The ICRP 30 vs. ICRP 66+ Respiratory Tract Models</h4>
+                    <p>The exam questions are based on the ICRP 26/30 system, but awareness of the newer models shows advanced knowledge.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>ICRP 30 Model:</strong> A simple three-compartment model (Nasopharyngeal, Tracheobronchial, Pulmonary). Material is cleared from each region by mechanical processes or absorption into blood, with fixed rates for solubility classes D, W, and Y.</li>
+                        <li><strong>ICRP 66+ Model:</strong> A much more detailed anatomical model (ET1, ET2, BB, bb, AI regions). It treats clearance as a competition between mechanical transport (e.g., mucus escalator) and absorption into blood. It replaces solubility classes with absorption Types F (Fast), M (Medium), and S (Slow). This model provides more realistic, particle-size-dependent dose estimates.</li>
                     </ul>
                 </div>
 
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Key Dosimetric Quantities</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Annual Limit on Intake (ALI):</strong> The activity of a radionuclide that, if taken in by Reference Man, would result in a CEDE of 5 rem (stochastic limit) or a CDE to any organ of 50 rem (deterministic limit). The more restrictive of the two values is the tabulated ALI.</li>
+                        <li><strong>Derived Air Concentration (DAC):</strong> The concentration in air ($\mu$Ci/mL) that, if breathed for a working year (2000 hours at 1.2 m³/hr), results in an intake of one ALI. $DAC = ALI / 2400 m^3$.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Bioassay Interpretation and Calculation</h3>
+
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Intake Assessment from Bioassay</h4>
+                    <p>This is a cornerstone skill. The process involves using a measured biological sample to infer the original intake.</p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li>Quantify the total activity in the bioassay sample (e.g., total Bq in a 24-hr urine void).</li>
-                        <li>Find the Intake Retention Fraction (IRF) from the provided tables for the correct nuclide, class, and time post-intake.</li>
-                        <li>Calculate the Initial Intake: $I = \frac{\text{Measured Activity}}{\text{IRF}}$.</li>
-                        <li>Calculate the Committed Effective Dose Equivalent: $CEDE~(rem) = \frac{I~(\mu Ci)}{ALI~(\mu Ci)} \times 5~rem$.</li>
+                        <li><strong>Quantify the Bioassay Result:</strong> Determine the total activity in the sample or organ (e.g., total Bq in a 24-hr urine void). Be sure to scale up from an aliquot if necessary.</li>
+                        <li><strong>Find the Intake Retention Fraction (IRF):</strong> The exam will provide a table of IRF values versus time post-intake for the specific nuclide and solubility class. The IRF is the fraction of the initial intake activity expected to be present in the measured compartment at that specific time.</li>
+                        <li><strong>Calculate the Initial Intake (I):</strong> $I = \frac{\text{Measured Activity}}{\text{IRF}}$.</li>
+                        <li><strong>Calculate the Committed Effective Dose Equivalent (CEDE):</strong> $CEDE~(rem) = \frac{I~(\mu Ci)}{ALI~(\mu Ci)} \times 5~rem$.</li>
                     </ol>
                 </div>
+
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: MIRD Dose</h4>
+                    <p>For medical applications, the MIRD formalism is used. The mean absorbed dose to a target organ (T) from activity in a source organ (S) is:</p>
+                    $$\bar{D}(T \leftarrow S) = \tilde{A}_S \cdot S(T \leftarrow S)$$
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate Effective Half-Life ($T_{eff}$):</strong> $\frac{1}{T_{eff}} = \frac{1}{T_{phys}} + \frac{1}{T_{bio}}$.</li>
+                        <li><strong>Calculate Cumulated Activity ($\tilde{A}$):</strong> This is the total number of disintegrations. $\tilde{A} (\mu\text{Ci} \cdot \text{hr}) = A_0 (\mu\text{Ci}) \times T_{eff} (\text{hr}) \times 1.443$.</li>
+                        <li><strong>Calculate Absorbed Dose ($\bar{D}$):</strong> $\bar{D} (\text{rad}) = \tilde{A} \times S$, where S is the provided S-factor (rad/$\mu$Ci-hr).</li>
+                    </ol>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Medical Interventions</h4>
+                    <p>For significant intakes, certain medical countermeasures can reduce the resulting dose.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Blocking Agents (e.g., KI):</strong> Saturates the target organ (thyroid) with stable iodine, preventing the uptake of radioactive iodine. Must be administered *before or very shortly after* the intake to be effective.</li>
+                        <li><strong>Chelation Therapy (e.g., DTPA):</strong> Binds with transuranics (Pu, Am) in the bloodstream to form a stable complex that is rapidly excreted. It is most effective when given quickly after an intake of *soluble* material.</li>
+                        <li><strong>Lung Lavage:</strong> A high-risk medical procedure to physically wash *insoluble* material out of the lungs. Only considered in cases of extremely high, life-threatening intakes.</li>
+                    </ul>
+                </div>
+
             </section>
 
             <!-- Section IV: Instrumentation & Measurement -->
