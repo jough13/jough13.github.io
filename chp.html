@@ -464,15 +464,45 @@
 
             <!-- Section VIII: Conceptual Questions -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Mastering Conceptual Questions & Justifications</h2>
-                <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment.</p>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Advanced Conceptual Questions & Justifications</h2>
+                <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Deterministic vs. Stochastic Effects</h4>
-                    <p>A high acute dose (e.g., 300 rad) causes **deterministic effects** (Acute Radiation Syndrome), which have a threshold and severity that increases with dose. A high CEDE (e.g., 300 rem) represents an increased lifetime probability of **stochastic effects** (cancer), which have no threshold. The former is a medical emergency; the latter is a managed risk.</p>
+                    <p><strong>Common Question:</strong> "Compare the expected health effects from a high acute dose versus a high CEDE from a chronic intake."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> A high acute dose (e.g., 300 rad) causes **deterministic effects** by killing a large number of cells, leading to organ failure. The effect has a dose threshold, and its severity increases with dose. The response should identify the specific Acute Radiation Syndrome (ARS), such as the hematopoietic syndrome, and its clinical progression. In contrast, a high CEDE (e.g., 300 rem) from a chronic intake represents an increased lifetime probability of **stochastic effects** (cancer), which are non-threshold and probabilistic. The CEDE is a risk-based regulatory quantity for prospective control and does not predict immediate clinical symptoms. The former is a medical emergency; the latter is a managed risk.</p>
                 </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Detector Physics and Operational Principles</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Instrument Response and Limitations</h4>
+                    <p><strong>Common Question:</strong> "Why does an uncompensated GM survey meter over-respond to low-energy photons?"</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> The GM tube's response is based on the *number* of ionizing events, not the energy deposited. The photoelectric effect, which dominates at low photon energies, has a cross-section highly dependent on the absorber's atomic number ($Z^4$ to $Z^5$). The high-Z material of the GM tube wall has a much higher probability of interacting with low-energy photons than air does. Therefore, for a given exposure rate (defined by energy absorption in air), many more low-energy photons interact with the detector wall than high-energy photons, each producing a photoelectron that triggers a full avalanche (a "count"). This results in a disproportionately high count rate at low energies, causing the meter to read higher than the true exposure rate. Energy compensation involves adding a filter of a specific material and thickness to selectively attenuate these low-energy photons, flattening the detector's energy response.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Operational Health Physics Principles</h3>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Justifying ALARA Controls</h4>
-                    <p>Go beyond "time, distance, shielding." Provide specific, justified actions relevant to the scenario, such as using mock-up training (Time), remote handling tools (Distance), system flushes (Source Reduction), and temporary lead blankets (Shielding).</p>
+                    <p><strong>Common Question:</strong> "List and justify five ALARA controls for the described job."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> Go beyond simply listing "time, distance, shielding." Provide specific, justified actions relevant to the scenario.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Source Reduction:</strong> "Perform a system flush to reduce the source term. This is the most effective control as it reduces dose rates for all subsequent work and minimizes the potential for contamination."</li>
+                        <li><strong>Time Reduction:</strong> "Conduct pre-job mock-up training on a non-radioactive model. This allows workers to practice complex tasks, ensuring they can be performed efficiently and correctly the first time, thereby minimizing their time in the radiation area."</li>
+                        <li><strong>Distance Maximization:</strong> "Utilize remote handling tools (e.g., long-handled wrenches, grippers). This maximizes the distance from high dose-rate components, taking advantage of the inverse square law to dramatically reduce worker exposure."</li>
+                        <li><strong>Shielding:</strong> "Install temporary lead blankets directly on the component being worked on. This provides localized shielding that is often more effective and practical than shielding the worker."</li>
+                        <li><strong>Engineering Controls:</strong> "Erect a ventilated tent around the work area. This containment prevents the spread of airborne contamination to adjacent areas and helps to keep worker breathing zones at lower concentrations, thereby reducing potential internal doses."</li>
+                    </ol>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Art of the Justifiable Assumption</h4>
+                    <p>Stating your assumptions is how you define the boundaries of your calculation and show the grader you understand the model's limitations.</p>
+                    <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
+                        <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
+                        <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
+                    </ul>
                 </div>
             </section>
 
