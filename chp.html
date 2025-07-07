@@ -61,7 +61,7 @@
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Comprehensive Professional Guide</h1>
             <p class="text-xl text-indigo-600 mt-2">to the ABHP Part II Examination</p>
-            <p class="text-sm text-slate-500 mt-4">Version 2.5 - Last Updated: July 7, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 2.6 - Last Updated: July 7, 2025</p>
         </header>
 
         <main>
@@ -656,25 +656,7 @@
                 </div>
 
                 <div class="key-calc">
-                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Release & Dose</h3>
-                    <p><strong>Task:</strong> A plutonium fire results in a constant airborne concentration of $4 \times 10^{-4} \mu Ci/cm^3$ in a room with an exhaust rate of $7 m^3/min$. This is exhausted through a filtered 10m stack. Calculate the ground-level air concentration at the site boundary 1000m downwind under Class C stability with a 7 m/s wind.</p>
-                    <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
-                    <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate Release Rate (Q):</strong>
-                            $Q = (4 \times 10^{-4} \frac{\mu Ci}{cm^3}) \times (7 \frac{m^3}{min}) \times (\frac{1 min}{60 s}) \times (\frac{10^6 cm^3}{1 m^3}) \times (1 - 0.9995) = \textbf{23.3 } \mu\textbf{Ci/s}$
-                        </li>
-                        <li><strong>Determine Dispersion Coefficients:</strong> From the provided Pasquill-Gifford graphs for 1000m and Class C stability: $\sigma_y \approx 100$ m and $\sigma_z \approx 60$ m.</li>
-                        <li><strong>Apply Gaussian Plume Equation:</strong>
-                        $$\chi = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left[-\frac{1}{2}\left(\frac{H^2}{\sigma_z^2}\right)\right]$$
-                        </li>
-                        <li><strong>Plug in Values & Solve:</strong>
-                        $$\chi = \frac{23.3}{\pi (100)(60)(7)} \exp\left[-\frac{1}{2}\left(\frac{10^2}{60^2}\right)\right] = (1.77 \times 10^{-4}) \exp[-0.0139] = \textbf{1.75} \times \textbf{10}^{\textbf{-4}} \mu\textbf{Ci/m}^{\textbf{3}}$$
-                        </li>
-                    </ol>
-                </div>
-                
-                <div class="key-calc">
-                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 4: Environmental Pathway Analysis</h3>
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Pathway Analysis</h3>
                     <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $8.81 \times 10^3$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
