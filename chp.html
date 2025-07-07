@@ -61,6 +61,7 @@
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Comprehensive Professional Guide</h1>
             <p class="text-xl text-indigo-600 mt-2">to the ABHP Part II Examination</p>
+            <p class="text-sm text-slate-500 mt-4">Version 2.0 - Last Updated: July 7, 2025</p>
         </header>
 
         <main>
@@ -541,9 +542,83 @@
                 </div>
             </section>
 
-            <!-- Section IX: Integrated Problems -->
+             <!-- Section IX: Power Reactor Health Physics -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Integrated Practice Problems & Detailed Solutions</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Power Reactor Health Physics</h2>
+                <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">PWR vs. BWR Radiological Characteristics</h4>
+                    <p>Understanding the fundamental design differences is key to understanding their radiological signatures.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
+                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Major Source Terms</h4>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Activation Products:</strong> These are the dominant source of occupational dose during maintenance and outages. They are formed when corrosion products (from pipes, valves, etc.) circulate through the core and are activated by neutrons.
+                            <ul>
+                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.26$ years.</li>
+                                <li><strong>${}^{58}$Co:</strong> Formed from ${}^{58}$Ni. A major dose contributor during the first year after shutdown. $T_{1/2} = 71$ days.</li>
+                                <li><strong>${}^{54}$Mn, ${}^{59}$Fe, ${}^{51}$Cr:</strong> Other common activation products.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Fission Products:</strong> Released to the coolant through minor defects in the fuel cladding.
+                            <ul>
+                                <li><strong>Noble Gases (Kr, Xe):</strong> Gaseous and mobile. A primary component of gaseous effluent and a submersion dose hazard.</li>
+                                <li><strong>Iodines (${}^{131}$I):</strong> Volatile and pose a significant internal hazard to the thyroid. A key nuclide in accident analysis.</li>
+                                <li><strong>Cesium (${}^{137}$Cs):</strong> Soluble and chemically reactive. A major component of liquid waste and a long-term contamination concern.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Tritium (${}^{3}$H):</strong> Produced by ternary fission and neutron activation of boron (used for chemical shim in PWRs) and deuterium. It is ubiquitous in reactor systems and difficult to remove.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations in Reactor Health Physics</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity Buildup in a Cleanup System</h4>
+                    <p><strong>Problem Archetype:</strong> Reactor coolant containing a specific concentration of a radionuclide is passed through a cleanup system (like a demineralizer) with a given flow rate and efficiency. Calculate the activity accumulated in the system after a certain run time.</p>
+                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate the Source Rate (S):</strong> This is the rate at which activity is removed from the coolant and added to the demineralizer.
+                            $$S (\text{Ci/s}) = \text{Coolant Conc.} (\text{Ci/mL}) \times \text{Flow Rate} (\text{mL/s}) \times \text{Efficiency}$$
+                        </li>
+                        <li><strong>Apply the Activity Buildup Equation:</strong> The activity in the demineralizer, A(t), builds up over time, balanced by its own radioactive decay ($\lambda$).
+                            $$A(t) = \frac{S}{\lambda} (1 - e^{-\lambda t})$$
+                        </li>
+                        <li><strong>Solve for A(t):</strong> Plug in the calculated source rate (S), the decay constant ($\lambda$) for the radionuclide, and the run time (t).</li>
+                    </ol>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Fission Product Inventory</h4>
+                    <p><strong>Problem Archetype:</strong> A reactor operates at a specific power level for a given number of days. Calculate the core inventory of a key fission product (e.g., ${}^{137}$Cs) at shutdown.</p>
+                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate the Fission Rate (F):</strong> Convert the thermal power of the reactor to fissions per second.
+                            $$F (\text{fissions/s}) = \frac{\text{Power (MWth)} \times (10^6 \text{ J/s/MWth})}{(\text{MeV/fission}) \times (1.602 \times 10^{-13} \text{ J/MeV})}$$
+                        </li>
+                        <li><strong>Calculate the Production Rate (R) of the Fission Product:</strong>
+                            $$R (\text{atoms/s}) = F (\text{fissions/s}) \times \text{Fission Yield (Y)}$$
+                        </li>
+                        <li><strong>Calculate the Equilibrium Activity:</strong> The number of atoms of the fission product, N(t), at time t is given by:
+                            $$N(t) = \frac{R}{\lambda}(1 - e^{-\lambda t})$$
+                        </li>
+                        <li><strong>Convert to Activity:</strong> The activity is $A(t) = N(t)\lambda$. Therefore:
+                            $$A(t) = R(1 - e^{-\lambda t})$$
+                            Plug in the production rate (R), the decay constant ($\lambda$) for the fission product, and the operating time (t).
+                        </li>
+                    </ol>
+                </div>
+            </section>
+            
+            <!-- Section X: Integrated Problems -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
                 
                 <div class="key-calc">
@@ -621,80 +696,6 @@
                         Be extremely careful with unit conversions between pCi, $\mu$Ci, and Ci.
                         </li>
                         <li><strong>Conclusion:</strong> Compare the calculated dose to the public dose limit of 100 mrem/year to determine compliance.</li>
-                    </ol>
-                </div>
-            </section>
-
-             <!-- Section X: Power Reactor Health Physics -->
-            <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Power Reactor Health Physics</h2>
-                <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">PWR vs. BWR Radiological Characteristics</h4>
-                    <p>Understanding the fundamental design differences is key to understanding their radiological signatures.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
-                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
-                    </ul>
-                </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
-                <div class="key-data">
-                    <h4 class="font-semibold text-lg mb-2">Major Source Terms</h4>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Activation Products:</strong> These are the dominant source of occupational dose during maintenance and outages. They are formed when corrosion products (from pipes, valves, etc.) circulate through the core and are activated by neutrons.
-                            <ul>
-                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.26$ years.</li>
-                                <li><strong>${}^{58}$Co:</strong> Formed from ${}^{58}$Ni. A major dose contributor during the first year after shutdown. $T_{1/2} = 71$ days.</li>
-                                <li><strong>${}^{54}$Mn, ${}^{59}$Fe, ${}^{51}$Cr:</strong> Other common activation products.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Fission Products:</strong> Released to the coolant through minor defects in the fuel cladding.
-                            <ul>
-                                <li><strong>Noble Gases (Kr, Xe):</strong> Gaseous and mobile. A primary component of gaseous effluent and a submersion dose hazard.</li>
-                                <li><strong>Iodines (${}^{131}$I):</strong> Volatile and pose a significant internal hazard to the thyroid. A key nuclide in accident analysis.</li>
-                                <li><strong>Cesium (${}^{137}$Cs):</strong> Soluble and chemically reactive. A major component of liquid waste and a long-term contamination concern.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Tritium (${}^{3}$H):</strong> Produced by ternary fission and neutron activation of boron (used for chemical shim in PWRs) and deuterium. It is ubiquitous in reactor systems and difficult to remove.</li>
-                    </ul>
-                </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations in Reactor Health Physics</h3>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity Buildup in a Cleanup System</h4>
-                    <p><strong>Problem Archetype:</strong> Reactor coolant containing a specific concentration of a radionuclide is passed through a cleanup system (like a demineralizer) with a given flow rate and efficiency. Calculate the activity accumulated in the system after a certain run time.</p>
-                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
-                    <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate the Source Rate (S):</strong> This is the rate at which activity is removed from the coolant and added to the demineralizer.
-                            $$S (\text{Ci/s}) = \text{Coolant Conc.} (\text{Ci/mL}) \times \text{Flow Rate} (\text{mL/s}) \times \text{Efficiency}$$
-                        </li>
-                        <li><strong>Apply the Activity Buildup Equation:</strong> The activity in the demineralizer, A(t), builds up over time, balanced by its own radioactive decay ($\lambda$).
-                            $$A(t) = \frac{S}{\lambda} (1 - e^{-\lambda t})$$
-                        </li>
-                        <li><strong>Solve for A(t):</strong> Plug in the calculated source rate (S), the decay constant ($\lambda$) for the radionuclide, and the run time (t).</li>
-                    </ol>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Fission Product Inventory</h4>
-                    <p><strong>Problem Archetype:</strong> A reactor operates at a specific power level for a given number of days. Calculate the core inventory of a key fission product (e.g., ${}^{137}$Cs) at shutdown.</p>
-                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
-                    <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate the Fission Rate (F):</strong> Convert the thermal power of the reactor to fissions per second.
-                            $$F (\text{fissions/s}) = \frac{\text{Power (MWth)} \times (10^6 \text{ J/s/MWth})}{(\text{MeV/fission}) \times (1.602 \times 10^{-13} \text{ J/MeV})}$$
-                        </li>
-                        <li><strong>Calculate the Production Rate (R) of the Fission Product:</strong>
-                            $$R (\text{atoms/s}) = F (\text{fissions/s}) \times \text{Fission Yield (Y)}$$
-                        </li>
-                        <li><strong>Calculate the Equilibrium Activity:</strong> The number of atoms of the fission product, N(t), at time t is given by:
-                            $$N(t) = \frac{R}{\lambda}(1 - e^{-\lambda t})$$
-                        </li>
-                        <li><strong>Convert to Activity:</strong> The activity is $A(t) = N(t)\lambda$. Therefore:
-                            $$A(t) = R(1 - e^{-\lambda t})$$
-                            Plug in the production rate (R), the decay constant ($\lambda$) for the fission product, and the operating time (t).
-                        </li>
                     </ol>
                 </div>
             </section>
