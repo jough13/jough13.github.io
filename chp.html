@@ -278,25 +278,73 @@
 
             <!-- Section V: Operational Scenarios & Emergency Response -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Operational Scenarios & Emergency Response</h2>
-                <p class="mb-6">These questions integrate multiple domains into a practical problem.</p>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Advanced Operational Scenarios & Emergency Response</h2>
+                <p class="mb-6">This section focuses on integrating multiple health physics domains to solve complex, practical problems. Mastery here requires applying fundamental principles to dynamic, often incompletely defined, situations.</p>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Deconstructing the Scenario: A Systematic Approach</h4>
+                    <p>When faced with a scenario, systematically extract the key information:</p>
+                    <ol class="list-decimal list-inside space-y-1 mt-2">
+                        <li><strong>The Radionuclide(s):</strong> Identify emissions, half-life, chemical form (solubility), and key dosimetric data (ALI, DAC, $\Gamma$).</li>
+                        <li><strong>The Timeline:</strong> Note the start time, duration of exposure, and time of any bioassay samples.</li>
+                        <li><strong>The Geometry & Location:</strong> Determine room dimensions, source configuration (point, line, area), and worker locations.</li>
+                        <li><strong>Personnel Actions:</strong> Note the tasks performed, PPE used (especially respirators and their Protection Factor), and exposure duration.</li>
+                        <li><strong>The Core Question:</strong> Clearly identify what needs to be calculated or assessed (e.g., intake, CEDE, external dose, required controls).</li>
+                    </ol>
+                </div>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Modeling Airborne Radioactivity</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Room Air Concentration</h4>
+                    <p>The concentration in a ventilated room is governed by the differential equation: $\frac{dA}{dt} = S - \lambda_{eff}A$, where S is the source rate and $\lambda_{eff} = \lambda_R + \lambda_V$ is the effective removal constant (radiological + ventilation).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>"Puff" Release (Instantaneous):</strong> The concentration decays from an initial value $\chi_0$.
+                        $$\chi(t) = \chi_0 e^{-\lambda_{eff}t}$$</li>
+                        <li><strong>Constant Leak (S):</strong> The concentration builds up to an equilibrium value.
+                        $$\chi(t) = \frac{S}{\lambda_{eff} V} (1 - e^{-\lambda_{eff}t})$$</li>
+                        <li><strong>Intake Calculation:</strong> The total intake is the integral of the air concentration multiplied by the breathing rate (B) over the exposure time ($t_{exp}$): $I = B \int_0^{t_{exp}} \chi(t) dt$.</li>
+                    </ul>
+                </div>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Dose and Risk Assessment in Emergencies</h3>
 
                 <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Atmospheric Dispersion (Gaussian Plume)</h4>
-                    <p>For a ground-level, centerline concentration, the formula simplifies to:</p>
-                    $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left[-\frac{1}{2}\left(\frac{H^2}{\sigma_z^2}\right)\right]$$
-                    <p class="mt-2">Your task is to find the stability class, look up $\sigma_y$ and $\sigma_z$ from the provided graphs, and carefully plug in all variables with consistent units.</p>
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Dose from Ground Contamination</h4>
+                    <p>In the aftermath of a release, inhalation dose from resuspended material can be significant.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate Resuspended Air Concentration ($\chi_{res}$):</strong> $\chi_{res} (\text{Bq/m}^3) = C_A (\text{Bq/m}^2) \times R_f (\text{m}^{-1})$, where $C_A$ is the ground activity concentration and $R_f$ is the resuspension factor (typically $10^{-5}$ to $10^{-9}$ m⁻¹).</li>
+                        <li><strong>Calculate Intake (I):</strong> $I (\text{Bq}) = \chi_{res} \times \text{Breathing Rate (B)} \times \text{Time (t)}$.</li>
+                        <li><strong>Calculate Dose:</strong> Use the appropriate dose conversion factor (DCF) in Sv/Bq to find the CEDE.</li>
+                    </ol>
+                </div>
+                
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Criticality Accident Dosimetry</h4>
+                    <p>A criticality accident presents unique dosimetric challenges due to the intense, short, mixed radiation field.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Dose Reconstruction:</strong> Since active instruments will be saturated, dose is reconstructed using passive methods.
+                            <ul>
+                                <li><strong>Activation Foils:</strong> Indium (for thermal neutrons), sulfur (for fast neutrons > 3 MeV), and gold foils are placed in criticality dosimeter lockets. Their post-incident activity is measured to determine neutron fluence.</li>
+                                <li><strong>Biological Dosimetry:</strong> The reaction ${}^{23}Na(n,\gamma){}^{24}Na$ in the body is a primary indicator. A whole-body count or blood sample analysis for ${}^{24}Na$ can provide an excellent estimate of the average whole-body neutron dose.</li>
+                                <li><strong>Chromosome Aberration Analysis:</strong> Counting dicentrics in lymphocytes provides a dose estimate, especially useful days after the event.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Key Calculation: Dose from Fissions:</strong> $\dot{D} = \frac{(\text{fissions}) \cdot (\text{particles/fission}) \cdot (\text{DCF})}{4 \pi d^2}$. You will be given the fission yield (e.g., 2.5 n/fission, 8 $\gamma$/fission) and a flux-to-dose conversion factor (DCF).</li>
+                    </ul>
                 </div>
 
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Emergency Response Priorities</h4>
-                    <ol class="list-decimal list-inside space-y-1 mt-2">
-                        <li>Personnel Safety & Medical Aid</li>
-                        <li>Hazard Control (Isolate, contain)</li>
-                        <li>Personnel Assessment (Surveys, bioassay)</li>
-                        <li>Area Characterization</li>
-                        <li>Remediation & Reporting</li>
-                    </ol>
+                    <h4 class="font-semibold text-lg mb-2">Emergency Planning & Protective Actions</h4>
+                    <p>Your response should demonstrate knowledge of established frameworks.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Emergency Plan Elements:</strong> Key components include: Emergency Action Levels (EALs), notification protocols, offsite dose assessment capabilities, and pre-staged emergency equipment.</li>
+                        <li><strong>Protective Action Guides (PAGs):</strong> These are projected dose levels at which protective actions for the public are recommended.
+                            <ul>
+                                <li><strong>Early Phase PAG:</strong> Typically 1-5 rem TEDE. Triggers actions like sheltering or evacuation.</li>
+                                <li><strong>Thyroid Protection:</strong> Administration of Potassium Iodide (KI) is recommended if the projected thyroid CDE from radioiodine exceeds ~5-10 rem.</li>
+                            </ul>
+                        </li>
+                    </ul>
                 </div>
             </section>
             
