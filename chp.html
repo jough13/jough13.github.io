@@ -72,52 +72,58 @@
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">I. Advanced Radiation Physics & Interactions</h2>
                 <p class="mb-6">This section covers the foundational principles of radioactive decay and the interaction of radiation with matter. A deep, quantitative understanding of these topics is essential, as they form the basis for all other domains of health physics.</p>
                 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">1. Radioactive Decay & Energetics</h3>
                 <div class="key-data">
                     <h4 class="font-semibold text-lg mb-2">Key Numbers & Data</h4>
                     <ul class="list-disc list-inside space-y-1">
                         <li>Electron Rest Mass Energy: $m_e c^2 = 0.511 \text{ MeV}$</li>
                         <li>Pair Production Threshold: $2 m_e c^2 = 1.022 \text{ MeV}$</li>
                         <li>Avogadro's Number ($N_A$): $6.023 \times 10^{23} \text{ atoms/mole}$</li>
-                        <li>Working Level (WL) Definition: Any combination of short-lived radon daughters in 1 liter of air that results in the ultimate emission of $1.3 \times 10^5 \text{ MeV}$ of potential alpha energy.</li>
-                        <li>Working Level Month (WLM): An exposure equivalent to inhaling 1 WL for 170 hours.</li>
                     </ul>
                 </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations & Concepts</h3>
-                
                 <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">1. Radioactive Decay & Energetics</h4>
-                    <p><strong>Key Calculation: Q-value from Mass Excess</strong><br>
-                    Apply the conservation of mass-energy for each decay mode. For example:</p>
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Q-value from Mass Excess</h4>
+                    <p>Apply the conservation of mass-energy for each decay mode using atomic mass excesses ($\Delta$).</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li>Positron ($\beta^+$) Decay: $Q_{\beta^+} = \Delta_{parent} - \Delta_{daughter} - 2m_e c^2$</li>
                         <li>Electron Capture (EC): $Q_{EC} = \Delta_{parent} - \Delta_{daughter}$</li>
                         <li>Beta Minus ($\beta^-$) Decay: $Q_{\beta^-} = \Delta_{parent} - \Delta_{daughter}$</li>
                     </ul>
                 </div>
-
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">2. Neutron Activation</h4>
-                    <p><strong>Key Calculation: Saturation Activity</strong><br>
-                    First, find the number of target atoms: $N = \frac{(\text{mass}) \cdot (\text{abundance}) \cdot N_A}{\text{Atomic Weight}}$. Then use the saturation activity formula $A_{sat} = N \sigma \phi$ to solve for the unknown, often the neutron flux ($\phi$).</p>
-                </div>
-
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">3. Photon Interactions</h4>
-                    <p><strong>Key Calculation: Compton Scattering Kinematics</strong><br>
-                    Calculate scattered photon energy ($E'$) and recoil electron energy ($T_e$).</p>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Parent-Daughter Equilibria</h4>
+                    <p>The activity of a daughter nuclide, $A_2$, at time t is given by the Bateman equation:</p>
+                    $$A_2(t) = \frac{\lambda_2}{\lambda_2 - \lambda_1} A_1(0) (e^{-\lambda_1 t} - e^{-\lambda_2 t}) + A_2(0)e^{-\lambda_2 t}$$
                     <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li>Scattered Photon Energy: $E' = \frac{E_0}{1 + \frac{E_0}{m_e c^2}(1 - \cos\theta)}$</li>
-                        <li>Recoil Electron Energy: $T_e = E_0 - E'$</li>
+                        <li><strong>Transient Equilibrium ($T_{1} > T_{2}$):</strong> Occurs when the parent is longer-lived than the daughter (e.g., ${}^{99}$Mo/${}^{99m}$Tc). After several daughter half-lives, the daughter appears to decay with the parent's half-life. The activity ratio becomes constant: $\frac{A_2}{A_1} = \frac{\lambda_2}{\lambda_2 - \lambda_1}$.</li>
+                        <li><strong>Secular Equilibrium ($T_{1} \gg T_{2}$):</strong> Occurs when the parent is much longer-lived (e.g., ${}^{90}$Sr/${}^{90}$Y). At equilibrium, the activities become equal: $A_2 \approx A_1$.</li>
                     </ul>
                 </div>
 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">2. Neutron Activation</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity from Neutron Irradiation</h4>
+                    <p>The activity of a product nuclide after an irradiation time ($t_{irrad}$) followed by a decay time (t) is:</p>
+                    $$A(t) = N \sigma \phi (1 - e^{-\lambda t_{irrad}})e^{-\lambda t}$$
+                    <p class="mt-2">Where $N$ is the number of target atoms, $\sigma$ is the cross-section, $\phi$ is the neutron flux, and $\lambda$ is the product's decay constant. For saturation ($t_{irrad} \to \infty$), the term $(1 - e^{-\lambda t_{irrad}})$ becomes 1.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">3. Interaction of Radiation with Matter</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">4. Atomic Readjustment</h4>
-                    <p>When an inner shell vacancy is created, the atom relaxes via one of two competitive processes:</p>
-                    <ul class="list-disc list-inside space-y-1 mt-2">
-                        <li><strong>Characteristic X-ray Emission:</strong> Dominant in high-Z elements.</li>
-                        <li><strong>Auger Electron Emission:</strong> Dominant in low-Z elements.</li>
+                    <h4 class="font-semibold text-lg mb-2">Photon Interactions: The "Big Three"</h4>
+                    <p>Understanding the relative importance of the three main photon interactions is crucial for shielding, dosimetry, and detector selection.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Photoelectric Effect:</strong> An "all or nothing" absorption of a photon by a bound atomic electron. It is the dominant interaction for **low-energy photons** and in **high-Z materials**. The cross-section is approximately proportional to $\frac{Z^4}{E^3}$. This interaction is responsible for the high efficiency of NaI detectors at low energies and the effectiveness of lead shielding.</li>
+                        <li><strong>Compton Scattering:</strong> An interaction with a "free" or loosely-bound electron. The photon scatters at an angle, losing some of its energy to the recoil electron. It is the dominant interaction for **mid-energy photons** (approx. 0.5-5 MeV) in most materials, including tissue. This is the primary source of scatter in shielding and the physical basis for the Compton continuum in a gamma spectrum.</li>
+                        <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of **1.022 MeV**. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for **high-energy photons** in **high-Z materials**.</li>
+                    </ul>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Charged Particle Interactions</h4>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Linear Energy Transfer (LET):</strong> The average energy deposited by a charged particle per unit path length. High-LET radiation (alphas, protons) is more biologically damaging than low-LET radiation (betas, gammas) for the same absorbed dose.</li>
+                        <li><strong>Bragg Peak:</strong> Heavy charged particles (alphas, protons) deposit the majority of their energy at the very end of their track. This peak in energy deposition is called the Bragg peak and is the principle behind proton therapy.</li>
+                        <li><strong>Beta Spectrum:</strong> Beta particles are emitted with a continuous spectrum of energies up to a maximum ($E_{max}$). This is because the decay energy is shared with a neutrino. This continuous spectrum is why beta attenuation in matter appears roughly exponential, even though individual electrons have a finite range.</li>
                     </ul>
                 </div>
             </section>
