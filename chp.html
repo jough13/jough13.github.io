@@ -412,13 +412,54 @@
             
             <!-- Section VII: Regulatory -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Key Regulatory Numbers & Standards</h2>
-                 <ul class="list-disc list-inside space-y-1">
-                    <li><strong>Radiation Area:</strong> > 5 mrem/hr at 30 cm.</li>
-                    <li><strong>High Radiation Area:</strong> > 100 mrem/hr at 30 cm.</li>
-                    <li><strong>Transport Index (TI):</strong> Dose rate in mrem/hr at 1 meter from the package surface.</li>
-                    <li><strong>Radioactive Labels (49 CFR):</strong> White-I (Surface < 0.5 mrem/hr, TI=0), Yellow-II (Surface < 50 mrem/hr, TI < 1), Yellow-III (Surface < 200 mrem/hr, TI < 10).</li>
-                </ul>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Advanced Regulatory & Standards Frameworks</h2>
+                <p class="mb-6">A CHP must not only know the dose limits but also understand the philosophy behind them, how they are applied in practice, and the specific requirements for different situations like transportation and effluent control.</p>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Occupational Dose Limits & Summation</h3>
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Key Dose Limits (10 CFR 20 / ICRP 60)</h4>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Total Effective Dose Equivalent (TEDE): <strong>5 rem/year (50 mSv/year)</strong></li>
+                        <li>Lens Dose Equivalent (LDE): <strong>15 rem/year (150 mSv/year)</strong></li>
+                        <li>Shallow Dose Equivalent (SDE) to skin/extremities: <strong>50 rem/year (500 mSv/year)</strong></li>
+                        <li>Declared Pregnant Worker (to fetus): <strong>0.5 rem (5 mSv)</strong> over the entire gestation period.</li>
+                    </ul>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Total Effective Dose Equivalent (TEDE)</h4>
+                    <p>TEDE is the sum of the deep dose equivalent (DDE) from external sources and the committed effective dose equivalent (CEDE) from internal sources.</p>
+                    $$TEDE = DDE_{ext} + \sum_j CEDE_j$$
+                    <p class="mt-2">The CEDE for an intake of radionuclide 'j' is calculated as:</p>
+                    $$CEDE_j = \frac{\text{Intake}_j (\mu Ci)}{ALI_j (\mu Ci)} \times 5 \text{ rem}$$
+                    <p class="mt-2">For multiple internal and external sources, you must sum all components to ensure the total does not exceed the 5 rem limit.</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Sum of Fractions Rule</h4>
+                    <p>To control exposure to multiple sources (internal or external), the sum of the ratios of the exposure to the applicable limit must not exceed 1.</p>
+                    $$\frac{DDE}{5 \text{ rem}} + \sum_j \frac{\text{Intake}_j}{ALI_j} \le 1$$
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Public Dose & Effluent Control</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Dose Limits for Members of the Public</h4>
+                     <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li>The annual limit is <strong>0.1 rem (1 mSv) TEDE</strong>.</li>
+                        <li>The dose rate in any unrestricted area from an external source must not exceed <strong>2 mrem in any one hour</strong>.</li>
+                        <li>Effluent Concentration (EC) values in 10 CFR 20 Appendix B are derived such that if a member of the public were continuously exposed to that concentration in air or water, they would not exceed the 0.1 rem annual limit.</li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Radioactive Materials Transportation (49 CFR 173)</h3>
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Package Labeling Criteria</h4>
+                    <p>The required label is determined by the highest value of either the surface dose rate or the Transport Index (TI).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Transport Index (TI):</strong> The maximum dose rate in **mrem/hr** at **1 meter** from the package surface. For fissile material, the TI also includes a criticality component.</li>
+                        <li><strong>White-I:</strong> Surface dose rate $\le 0.5$ mrem/hr AND TI = 0.</li>
+                        <li><strong>Yellow-II:</strong> Surface dose rate $\le 50$ mrem/hr AND TI $\le 1$.</li>
+                        <li><strong>Yellow-III:</strong> Surface dose rate $\le 200$ mrem/hr AND TI $\le 10$. (A reading > 200 mrem/hr requires the shipment to be under exclusive use).</li>
+                    </ul>
+                </div>
             </section>
 
             <!-- Section VIII: Conceptual Questions -->
