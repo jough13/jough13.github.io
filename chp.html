@@ -685,13 +685,17 @@
     <!-- KaTeX Auto-render script -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: "$$", right: "$$", display: true},
-                    {left: "$", right: "$", display: false}
-                ],
-                throwOnError: false
-            });
+            // This function will be called once the DOM is fully loaded
+            // It searches for math expressions and renders them using KaTeX
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ],
+                    throwOnError: false
+                });
+            }
         });
     </script>
 </body>
