@@ -65,14 +65,55 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.17 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.18 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
-            <!-- Introduction -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">Quick Reference: Constants & Conversions</h2>
+                <p class="mb-6">A collection of fundamental constants and conversion factors frequently used in health physics calculations. Memorizing these is highly recommended.</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="key-data">
+                            <h4 class="font-semibold text-lg mb-2">Fundamental Constants</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Avogadro's Number ($N_A$): $6.022 \times 10^{23}$ atoms/mole</li>
+                                <li>Electron Rest Mass: $0.511$ MeV/c²</li>
+                            </ul>
+                        </div>
+                        <div class="key-data mt-4">
+                            <h4 class="font-semibold text-lg mb-2">Activity Units</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>1 Curie (Ci) = $3.7 \times 10^{10}$ Bq (dps)</li>
+                                <li>1 Becquerel (Bq) = 1 dps = $2.7 \times 10^{-11}$ Ci</li>
+                                <li>1 $\mu$Ci = $2.22 \times 10^6$ dpm</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="key-data">
+                            <h4 class="font-semibold text-lg mb-2">Dose & Exposure Units</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li>Exposure (Roentgen): 1 R = $2.58 \times 10^{-4}$ C/kg air</li>
+                                <li>Absorbed Dose (rad): 1 rad = 100 erg/g = 0.01 Gy</li>
+                                <li>Dose Equivalent (rem): 1 rem = 0.01 Sv</li>
+                            </ul>
+                        </div>
+                        <div class="key-data mt-4">
+                            <h4 class="font-semibold text-lg mb-2">Rules of Thumb</h4>
+                            <ul class="list-disc list-inside space-y-1">
+                                 <li>$E_{avg}$ for beta $\approx \frac{1}{3} E_{max}$</li>
+                                 <li>Co-60 $\Gamma \approx 1.3 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
+                                 <li>Ir-192 $\Gamma \approx 0.5 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
             <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of historical examinations and updated with key concepts from modern standards and recommendations. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
             
-            <!-- Section I: Radiation Physics & Interactions -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">I. Radiation Physics & Interactions</h2>
                 <p class="mb-6">This section covers the foundational principles of radioactive decay and the interaction of radiation with matter. A deep, quantitative understanding of these topics is essential, as they form the basis for all other domains of health physics.</p>
@@ -169,7 +210,6 @@
                 </div>
             </section>
 
-            <!-- Section II: Shielding & External Dose Assessment -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">II. Shielding & External Dose Assessment</h2>
                 <p class="mb-6">This section moves beyond simple point-source calculations to cover complex geometries, buildup physics, and specialized operational scenarios that are hallmarks of the Part II exam.</p>
@@ -237,7 +277,6 @@
                 </div>
             </section>
 
-            <!-- Section III: Internal Dosimetry & Bioassay -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">III. Internal Dosimetry & Bioassay</h2>
                 <p class="mb-6">This domain tests your ability to apply formalized dosimetry systems, understand their underlying models, and interpret bioassay data in complex situations.</p>
@@ -297,7 +336,6 @@
 
             </section>
 
-            <!-- Section IV: Instrumentation & Measurement -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">IV. Instrumentation & Measurement</h2>
                 <p class="mb-6">This section covers the theory, application, and data analysis related to the instruments used in health physics. A deep understanding of detector mechanisms, efficiencies, and statistical limitations is required.</p>
@@ -356,7 +394,6 @@
                 </div>
             </section>
 
-            <!-- Section V: Operational Scenarios & Emergency Response -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Operational Scenarios & Emergency Response</h2>
                 <p class="mb-6">This section focuses on integrating multiple health physics domains to solve complex, practical problems. Mastery here requires applying fundamental principles to dynamic, often incompletely defined, situations.</p>
@@ -428,7 +465,6 @@
                 </div>
             </section>
             
-            <!-- Section VI: Special Topics -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">VI. Special Topics in Health Physics</h2>
                 <p class="mb-6">This section covers specialized, high-consequence topics that require a synthesis of physics, engineering controls, and dosimetry. A CHP is expected to be the resident expert on these subjects.</p>
@@ -488,9 +524,25 @@
                     $$S (\text{W/cm}^2) = \frac{P_{avg} G}{4 \pi d^2}$$
                     <p class="mt-2">Where $P_{avg}$ is the average power ($P_{peak} \times \text{Duty Factor}$), G is the dimensionless antenna gain, and d is the distance.</p>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Ultraviolet (UV) Radiation Safety</h4>
+                    <p>UV radiation is typically categorized by wavelength, with each category having different penetration abilities and biological effects.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>UVA (315-400 nm):</strong> Long-wave UV, often called "black light." It penetrates deepest and is primarily associated with skin aging and wrinkling.</li>
+                        <li><strong>UVB (280-315 nm):</strong> Mid-range UV, which is the primary cause of skin reddening (erythema) and sunburn. It is also the main cause of most skin cancers.</li>
+                        <li><strong>UVC (100-280 nm):</strong> Short-wave UV, which is the most damaging but is almost completely absorbed by the Earth's ozone layer. It is commonly found in germicidal lamps. The primary hazards are to the eye (photokeratitis) and skin (erythema).</li>
+                    </ul>
+                </div>
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">ACGIH UV Threshold Limit Values (TLVs)</h4>
+                    <p>The American Conference of Governmental Industrial Hygienists (ACGIH) sets TLVs for UV radiation. For the actinic region (UVC and UVB), the TLV is based on a spectral weighting function, $S(\lambda)$, to account for the varying biological effectiveness at different wavelengths.</p>
+                    <ul class="list-disc list-inside space-y-1 mt-2">
+                        <li>The TLV for the actinic region (200-315 nm) is **3 mJ/cm²** effective irradiance, integrated over an 8-hour day.</li>
+                        <li>For UVA (315-400 nm), the TLV is **1 J/cm²** for exposure times greater than 1000 seconds.</li>
+                    </ul>
+                </div>
             </section>
             
-            <!-- Section VII: Regulatory -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Regulatory & Standards Frameworks</h2>
                 <p class="mb-6">A CHP must not only know the dose limits but also understand the philosophy behind them, how they are applied in practice, and the specific requirements for different situations like transportation and effluent control.</p>
@@ -555,7 +607,6 @@
                 </div>
             </section>
 
-            <!-- Section VIII: Conceptual Questions -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
@@ -595,12 +646,11 @@
                         <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
                         <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
                         <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ul>
+                    </ol>
                 </div>
             </section>
 
-             <!-- Section IX: Power Reactor Health Physics -->
-            <section class="content-section">
+             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Power Reactor Health Physics</h2>
                 <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
 
@@ -674,7 +724,6 @@
                 </div>
             </section>
             
-            <!-- Section X: Environmental HP & Decommissioning -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Environmental HP & Decommissioning</h2>
                 <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
@@ -734,7 +783,6 @@
                 </div>
             </section>
             
-            <!-- Section XI: Formula Sheet -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
@@ -762,7 +810,6 @@
                 </div>
             </section>
             
-            <!-- Section XII: Integrated Problems -->
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
