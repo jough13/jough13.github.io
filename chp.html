@@ -43,7 +43,7 @@
             padding: 0.5rem 0;
         }
         .image-buffer {
-            padding: 8px;
+            padding: 8px 4px 8px 16px;
             background-color: white;
         }
         
@@ -65,12 +65,12 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.15 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.16 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
             <!-- Introduction -->
-            <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of past examinations from 1988 through 2002. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
+            <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of historical examinations and updated with key concepts from modern standards and recommendations. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
             
             <!-- Section I: Radiation Physics & Interactions -->
             <section class="content-section">
@@ -497,14 +497,27 @@
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Occupational Dose Limits & Summation</h3>
                 <div class="key-data">
-                    <h4 class="font-semibold text-lg mb-2">Key Dose Limits (10 CFR 20 / ICRP 60)</h4>
+                    <h4 class="font-semibold text-lg mb-2">Key Dose Limits (10 CFR 20 & ICRP)</h4>
                     <ul class="list-disc list-inside space-y-1">
                         <li>Total Effective Dose Equivalent (TEDE): <strong>5 rem/year (50 mSv/year)</strong></li>
-                        <li>Lens Dose Equivalent (LDE): <strong>15 rem/year (150 mSv/year)</strong></li>
+                        <li>Lens Dose Equivalent (LDE): <strong>15 rem/year (150 mSv/year)</strong> per 10 CFR 20.
+                            <br><em class="text-sm text-slate-600">Note: ICRP 118 (2012) recommends a lower limit of 20 mSv/year, averaged over 5 years, with no single year exceeding 50 mSv.</em>
+                        </li>
                         <li>Shallow Dose Equivalent (SDE) to skin/extremities: <strong>50 rem/year (500 mSv/year)</strong></li>
                         <li>Declared Pregnant Worker (to fetus): <strong>0.5 rem (5 mSv)</strong> over the entire gestation period.</li>
                     </ul>
                 </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Key Update: ICRP 60 vs. ICRP 103</h4>
+                    <p>While U.S. regulations (10 CFR 20) are based on ICRP 26/30 and 60, a modern CHP should be aware of the 2007 recommendations in ICRP 103.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Tissue Weighting Factors ($w_T$):</strong> ICRP 103 updated the list of tissues and their weighting factors. For example, the gonad weighting factor was reduced from 0.20 to 0.08, while breast was increased from 0.05 to 0.12. A "remainder" category was also changed.</li>
+                        <li><strong>Radiation Weighting Factors ($w_R$):</strong> The concept of a continuous Quality Factor Q(L) was replaced with specific $w_R$ values for radiation types (e.g., 20 for alpha particles, a continuous function for neutrons).</li>
+                        <li><strong>Effective Dose:</strong> The term "Effective Dose" (E) is used instead of "Total Effective Dose Equivalent" (TEDE), though the concepts are functionally similar for regulatory purposes.</li>
+                    </ul>
+                </div>
+
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Total Effective Dose Equivalent (TEDE)</h4>
                     <p>TEDE is the sum of the deep dose equivalent (DDE) from external sources and the committed effective dose equivalent (CEDE) from internal sources.</p>
@@ -582,7 +595,7 @@
                         <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
                         <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
                         <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ol>
+                    </ul>
                 </div>
             </section>
 
