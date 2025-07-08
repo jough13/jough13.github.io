@@ -61,7 +61,7 @@
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Comprehensive Professional Guide</h1>
             <p class="text-xl text-indigo-600 mt-2">to the ABHP Part II Examination</p>
-            <p class="text-sm text-slate-500 mt-4">Version 2.6 - Last Updated: July 7, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 2.8 - Last Updated: July 7, 2025</p>
         </header>
 
         <main>
@@ -618,9 +618,37 @@
                 </div>
             </section>
             
-            <!-- Section X: Integrated Problems -->
+            <!-- Section X: Formula Sheet -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Integrated Practice Problems & Detailed Solutions</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Key Formula Sheet & Applications</h2>
+                <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
+                <div class="key-calc">
+                    <ul class="list-none space-y-4">
+                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide. Ensure the half-life is in seconds.</li>
+                        <li>$N_{2}(t)=\frac{N_{1}^{0}\lambda_{1}}{\lambda_{2}-\lambda_{1}}[e^{-\lambda_{1}t}-e^{-\lambda_{2}t}]$<br><strong>Use:</strong> The Bateman equation for calculating the number of daughter atoms ($N_2$) at time t from an initial number of parent atoms ($N_1^0$). This is fundamental for parent-daughter equilibrium problems.</li>
+                        <li>$\dot{X}(d)=\frac{\Gamma C_{l}(\theta_{1}+\theta_{2})}{d}$<br><strong>Use:</strong> To calculate the dose rate from a finite line source. Note this form uses the sum of the angles, which assumes the angles are measured from the ends of the line to the perpendicular. The form $(\theta_2 - \theta_1)$ is also common. Know what your angles represent.</li>
+                        <li>$\dot{X}(d)=\Gamma C_{a}\pi \ln[\frac{(r^{2}+d^{2})}{d^{2}}]$<br><strong>Use:</strong> To calculate the dose rate from a disc source at a point on its central axis.</li>
+                        <li>$D=73.8 C E_{\beta}T_{1/2}(1-e^{-\lambda t})$<br><strong>Use:</strong> An MIRD-like formula for calculating the cumulative dose from a beta emitter in an organ over time t. C is concentration, E is average beta energy.</li>
+                        <li>$R_{\beta}=412 E^{(1.265-0.0954 \ln E)}$<br><strong>Use:</strong> A common empirical formula for calculating the range of beta particles in mg/cm². $E$ is the maximum beta energy in MeV.</li>
+                    </ul>
+                </div>
+                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Statistics</h3>
+                <div class="key-calc">
+                     <ul class="list-none space-y-4">
+                        <li>$\sigma_{s}=[\frac{r_{s+b}}{t_{s+b}}+\frac{r_{b}}{t_{b}}]^{1/2}$<br><strong>Use:</strong> To calculate the standard deviation of the net sample count rate ($r_s$) from the gross rate ($r_{s+b}$) and background rate ($r_b$). This is fundamental for error propagation in counting.</li>
+                        <li>$\frac{t_{s+b}}{t_{b}}=\sqrt{\frac{r_{s+b}}{r_{b}}}$<br><strong>Use:</strong> To determine the optimum division of a fixed total counting time to minimize the uncertainty in the net count rate.</li>
+                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the background *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
+                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section XI: Integrated Problems -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
                 
                 <div class="key-calc">
@@ -656,7 +684,25 @@
                 </div>
 
                 <div class="key-calc">
-                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Pathway Analysis</h3>
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Release & Dose</h3>
+                    <p><strong>Task:</strong> A plutonium fire results in a constant airborne concentration of $4 \times 10^{-4} \mu Ci/cm^3$ in a room with an exhaust rate of $7 m^3/min$. This is exhausted through a filtered 10m stack. Calculate the ground-level air concentration at the site boundary 1000m downwind under Class C stability with a 7 m/s wind.</p>
+                    <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Calculate Release Rate (Q):</strong>
+                            $Q = (4 \times 10^{-4} \frac{\mu Ci}{cm^3}) \times (7 \frac{m^3}{min}) \times (\frac{1 min}{60 s}) \times (\frac{10^6 cm^3}{1 m^3}) \times (1 - 0.9995) = \textbf{23.3 } \mu\textbf{Ci/s}$
+                        </li>
+                        <li><strong>Determine Dispersion Coefficients:</strong> From the provided Pasquill-Gifford graphs for 1000m and Class C stability: $\sigma_y \approx 100$ m and $\sigma_z \approx 60$ m.</li>
+                        <li><strong>Apply Gaussian Plume Equation:</strong>
+                        $$\chi = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left[-\frac{1}{2}\left(\frac{H^2}{\sigma_z^2}\right)\right]$$
+                        </li>
+                        <li><strong>Plug in Values & Solve:</strong>
+                        $$\chi = \frac{23.3}{\pi (100)(60)(7)} \exp\left[-\frac{1}{2}\left(\frac{10^2}{60^2}\right)\right] = (1.77 \times 10^{-4}) \exp[-0.0139] = \textbf{1.75} \times \textbf{10}^{\textbf{-4}} \mu\textbf{Ci/m}^{\textbf{3}}$$
+                        </li>
+                    </ol>
+                </div>
+                
+                <div class="key-calc">
+                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 4: Environmental Pathway Analysis</h3>
                     <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $8.81 \times 10^3$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
@@ -672,34 +718,6 @@
                         </li>
                         <li><strong>Conclusion:</strong> This is an extremely high dose, far exceeding the public limit. The calculation highlights the power of bioaccumulation. (Note: The inputs for this exam problem lead to a very high, unrealistic result, but the methodology is the key takeaway).</li>
                     </ol>
-                </div>
-            </section>
-            
-            <!-- Section XI: Formula Sheet -->
-            <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
-                <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
-                
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
-                <div class="key-calc">
-                    <ul class="list-none space-y-4">
-                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide. Ensure the half-life is in seconds.</li>
-                        <li>$N_{2}(t)=\frac{N_{1}^{0}\lambda_{1}}{\lambda_{2}-\lambda_{1}}[e^{-\lambda_{1}t}-e^{-\lambda_{2}t}]$<br><strong>Use:</strong> The Bateman equation for calculating the number of daughter atoms ($N_2$) at time t from an initial number of parent atoms ($N_1^0$). This is fundamental for parent-daughter equilibrium problems.</li>
-                        <li>$\dot{X}(d)=\frac{\Gamma C_{l}(\theta_{1}+\theta_{2})}{d}$<br><strong>Use:</strong> To calculate the dose rate from a finite line source. Note this form uses the sum of the angles, which assumes the angles are measured from the ends of the line to the perpendicular. The form $(\theta_2 - \theta_1)$ is also common. Know what your angles represent.</li>
-                        <li>$\dot{X}(d)=\Gamma C_{a}\pi \ln[\frac{(r^{2}+d^{2})}{d^{2}}]$<br><strong>Use:</strong> To calculate the dose rate from a disc source at a point on its central axis.</li>
-                        <li>$D=73.8 C E_{\beta}T_{1/2}(1-e^{-\lambda t})$<br><strong>Use:</strong> An MIRD-like formula for calculating the cumulative dose from a beta emitter in an organ over time t. C is concentration, E is average beta energy.</li>
-                        <li>$R_{\beta}=412 E^{(1.265-0.0954 \ln E)}$<br><strong>Use:</strong> A common empirical formula for calculating the range of beta particles in mg/cm². $E$ is the maximum beta energy in MeV.</li>
-                    </ul>
-                </div>
-                
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Statistics</h3>
-                <div class="key-calc">
-                     <ul class="list-none space-y-4">
-                        <li>$\sigma_{s}=[\frac{r_{s+b}}{t_{s+b}}+\frac{r_{b}}{t_{b}}]^{1/2}$<br><strong>Use:</strong> To calculate the standard deviation of the net sample count rate ($r_s$) from the gross rate ($r_{s+b}$) and background rate ($r_b$). This is fundamental for error propagation in counting.</li>
-                        <li>$\frac{t_{s+b}}{t_{b}}=\sqrt{\frac{r_{s+b}}{r_{b}}}$<br><strong>Use:</strong> To determine the optimum division of a fixed total counting time to minimize the uncertainty in the net count rate.</li>
-                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the background *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
-                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
-                    </ul>
                 </div>
             </section>
         </main>
