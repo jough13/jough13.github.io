@@ -42,6 +42,24 @@
             overflow-y: hidden;
             padding: 0.5rem 0;
         }
+        .svg-diagram {
+            max-width: 600px;
+            margin: 1.5rem auto;
+            display: block;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            background-color: #ffffff;
+        }
+        .svg-diagram text {
+             font-family: 'Inter', sans-serif;
+             font-size: 14px;
+             fill: #334155;
+        }
+        .svg-diagram .label-bold {
+            font-weight: 600;
+        }
+
         @media print {
             body { background-color: #ffffff; }
             .no-print { display: none; }
@@ -60,7 +78,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.3 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.5 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
@@ -104,7 +122,7 @@
                     <p>Beyond simple decay, you must understand the processes by which an excited nucleus reaches its ground state.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Gamma Emission:</strong> An excited nucleus releases energy by emitting a photon (gamma ray) of a discrete energy corresponding to the difference between nuclear energy levels.</li>
-                        <li><strong>Internal Conversion (IC):</strong> An excited nucleus transfers its energy directly to an orbital electron (usually from the K or L shell), ejecting it from the atom. This is a radiationless transition and is competitive with gamma emission. The ejected electron is called a conversion electron. IC is more probable in **high-Z** nuclei and for **low-energy transitions**.</li>
+                        <li><strong>Internal Conversion (IC):</strong> An excited nucleus transfers its energy directly to an orbital electron (usually from the K or L shell), ejecting it from the atom. This is a radiationless transition and is competitive with gamma emission. The ejected electron is called a conversion electron. IC is more probable in <strong>high-Z</strong> nuclei and for <strong>low-energy transitions</strong>.</li>
                         <li><strong>Isomeric Transition (IT):</strong> Occurs in nuclides with a metastable state (e.g., ${}^{99m}$Tc, ${}^{137m}$Ba). The nucleus remains in an excited state for a measurable half-life before de-exciting, typically via gamma emission or internal conversion.</li>
                     </ul>
                 </div>
@@ -141,9 +159,9 @@
                     <h4 class="font-semibold text-lg mb-2">Photon Interactions: The "Big Three"</h4>
                     <p>Understanding the relative importance of the three main photon interactions is crucial for shielding, dosimetry, and detector selection.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Photoelectric Effect:</strong> An "all or nothing" absorption of a photon by a bound atomic electron. It is the dominant interaction for **low-energy photons** and in **high-Z materials**. The cross-section is approximately proportional to $\frac{Z^4}{E^3}$. This interaction is responsible for the high efficiency of NaI detectors at low energies and the effectiveness of lead shielding.</li>
-                        <li><strong>Compton Scattering:</strong> An interaction with a "free" or loosely-bound electron. The photon scatters at an angle, losing some of its energy to the recoil electron. It is the dominant interaction for **mid-energy photons** (approx. 0.5-5 MeV) in most materials, including tissue. This is the primary source of scatter in shielding and the physical basis for the Compton continuum in a gamma spectrum.</li>
-                        <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of **1.022 MeV**. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for **high-energy photons** in **high-Z materials**.</li>
+                        <li><strong>Photoelectric Effect:</strong> An "all or nothing" absorption of a photon by a bound atomic electron. It is the dominant interaction for <strong>low-energy photons</strong> and in <strong>high-Z materials</strong>. The cross-section is approximately proportional to $\frac{Z^4}{E^3}$. This interaction is responsible for the high efficiency of NaI detectors at low energies and the effectiveness of lead shielding.</li>
+                        <li><strong>Compton Scattering:</strong> An interaction with a "free" or loosely-bound electron. The photon scatters at an angle, losing some of its energy to the recoil electron. It is the dominant interaction for <strong>mid-energy photons</strong> (approx. 0.5-5 MeV) in most materials, including tissue. This is the primary source of scatter in shielding and the physical basis for the Compton continuum in a gamma spectrum.</li>
+                        <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of <strong>1.022 MeV</strong>. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for <strong>high-energy photons</strong> in <strong>high-Z materials</strong>.</li>
                     </ul>
                 </div>
                  <div class="key-concept">
@@ -246,6 +264,52 @@
                         <li><strong>ICRP 30 Model:</strong> A simple three-compartment model (Nasopharyngeal, Tracheobronchial, Pulmonary). Material is cleared from each region by mechanical processes or absorption into blood, with fixed rates for solubility classes D, W, and Y.</li>
                         <li><strong>ICRP 66+ Model:</strong> A much more detailed anatomical model (ET1, ET2, BB, bb, AI regions). It treats clearance as a competition between mechanical transport (e.g., mucus escalator) and absorption into blood. It replaces solubility classes with absorption Types F (Fast), M (Medium), and S (Slow). This model provides more realistic, particle-size-dependent dose estimates.</li>
                     </ul>
+                     <svg viewBox="0 0 600 350" class="svg-diagram" aria-labelledby="icrp-title">
+                        <title id="icrp-title">Simplified ICRP 66+ Human Respiratory Tract Model</title>
+                        <text x="300" y="25" text-anchor="middle" class="label-bold">ICRP 66+ Respiratory Tract Model</text>
+                        
+                        <!-- Extrathoracic -->
+                        <rect x="20" y="50" width="150" height="80" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
+                        <text x="95" y="80" text-anchor="middle" class="label-bold">Extrathoracic</text>
+                        <text x="95" y="100" text-anchor="middle">ET1 (Nose/Mouth)</text>
+                        <text x="95" y="120" text-anchor="middle">ET2 (Pharynx/Larynx)</text>
+                        
+                        <!-- Bronchial/Bronchiolar -->
+                        <rect x="220" y="120" width="160" height="100" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
+                        <text x="300" y="150" text-anchor="middle" class="label-bold">Thoracic</text>
+                        <text x="300" y="170" text-anchor="middle">BB (Bronchi)</text>
+                        <text x="300" y="190" text-anchor="middle">bb (Bronchioles)</text>
+
+                        <!-- Alveolar -->
+                        <rect x="420" y="180" width="160" height="60" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
+                        <text x="500" y="210" text-anchor="middle" class="label-bold">AI (Alveolar)</text>
+
+                        <!-- Arrows -->
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1"/>
+                            </marker>
+                        </defs>
+                        <path d="M170,90 H 220 V 130" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <text x="195" y="105" text-anchor="middle">Inhaled</text>
+                        <path d="M380,170 H 420 V 190" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        
+                        <!-- Clearance -->
+                        <text x="300" y="300" text-anchor="middle" class="label-bold">Clearance Pathways</text>
+                        <path d="M95,130 V 250 H 150" fill="none" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <text x="110" y="270" text-anchor="middle">To GI Tract</text>
+                        <path d="M300,220 V 250 H 150" fill="none" stroke="#fbbf24" stroke-width="2"/>
+                        <path d="M500,240 V 280 H 350 V 220" fill="none" stroke="#fbbf24" stroke-width="2"/>
+                        
+                        <path d="M300,110 V 70 H 450 V 100" fill="none" stroke="#f43f5e" stroke-width="2" marker-end="url(#arrowhead)"/>
+                        <text x="400" y="60" text-anchor="middle">To Blood</text>
+                        <path d="M500,170 V 120 H 450" fill="none" stroke="#f43f5e" stroke-width="2"/>
+
+                        <rect x="20" y="320" width="15" height="15" fill="#fbbf24"/>
+                        <text x="40" y="332">Mechanical Transport</text>
+                        <rect x="220" y="320" width="15" height="15" fill="#f43f5e"/>
+                        <text x="240" y="332">Absorption to Blood</text>
+                    </svg>
                 </div>
 
                 <div class="key-data">
@@ -317,6 +381,33 @@
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Gamma Spectroscopy</h4>
                     <p>You must be able to identify all key features on a gamma spectrum: Photopeak, Compton Edge, Compton Continuum, Backscatter Peak, Single & Double Escape Peaks (at $E_\gamma - 0.511$ MeV and $E_\gamma - 1.022$ MeV), and the Annihilation Peak (at 0.511 MeV).</p>
+                     <svg viewBox="0 0 600 400" class="svg-diagram" aria-labelledby="gamma-title">
+                        <title id="gamma-title">Typical Gamma Ray Spectrum (e.g., NaI Detector)</title>
+                        <!-- Axes -->
+                        <path d="M50 350 L 550 350" stroke="#334155" stroke-width="2"/> <!-- X-axis -->
+                        <path d="M50 350 L 50 50" stroke="#334155" stroke-width="2"/> <!-- Y-axis -->
+                        <text x="300" y="380" text-anchor="middle">Energy</text>
+                        <text x="20" y="200" text-anchor="middle" transform="rotate(-90 20 200)">Counts</text>
+
+                        <!-- Spectrum Curve -->
+                        <path d="M50 350 Q 150 250, 250 330 T 380 100 Q 390 80, 400 90 T 420 300 L 420 350" fill="none" stroke="#6366f1" stroke-width="3"/>
+                        <path d="M420 300 C 450 200, 480 250, 500 340" fill="none" stroke="#6366f1" stroke-width="3" stroke-dasharray="4"/>
+                        
+                        <!-- Labels -->
+                        <text x="180" y="200" class="label-bold">Compton Continuum</text>
+                        <path d="M220 215 L 280 310" stroke="#10b981" stroke-width="1.5"/>
+                        
+                        <text x="350" y="60" class="label-bold">Photopeak</text>
+                        <path d="M380 75 L 400 90" stroke="#10b981" stroke-width="1.5"/>
+
+                        <text x="430" y="150" class="label-bold">Compton Edge</text>
+                        <path d="M450 165 L 420 280" stroke="#10b981" stroke-width="1.5"/>
+                        
+                        <circle cx="150" cy="305" r="3" fill="#ef4444"/>
+                        <text x="70" y="290" class="label-bold">Backscatter</text>
+                        <text x="70" y="305" class="label-bold">Peak</text>
+                        <path d="M140 295 L 148 303" stroke="#ef4444" stroke-width="1.5"/>
+                    </svg>
                 </div>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Liquid Scintillation Counting (LSC)</h4>
@@ -527,7 +618,7 @@
                     <h4 class="font-semibold text-lg mb-2">Package Labeling Criteria</h4>
                     <p>The required label is determined by the highest value of either the surface dose rate or the Transport Index (TI).</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Transport Index (TI):</strong> The maximum dose rate in **mrem/hr** at **1 meter** from the package surface. For fissile material, the TI also includes a criticality component.</li>
+                        <li><strong>Transport Index (TI):</strong> The maximum dose rate in <strong>mrem/hr</strong> at <strong>1 meter</strong> from the package surface. For fissile material, the TI also includes a criticality component.</li>
                         <li><strong>White-I:</strong> Surface dose rate $\le 0.5$ mrem/hr AND TI = 0.</li>
                         <li><strong>Yellow-II:</strong> Surface dose rate $\le 50$ mrem/hr AND TI $\le 1$.</li>
                         <li><strong>Yellow-III:</strong> Surface dose rate $\le 200$ mrem/hr AND TI $\le 10$. (A reading > 200 mrem/hr requires the shipment to be under exclusive use).</li>
@@ -544,7 +635,7 @@
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Deterministic vs. Stochastic Effects</h4>
                     <p><strong>Common Question:</strong> "Compare the expected health effects from a high acute dose versus a high CEDE from a chronic intake."</p>
-                    <p class="mt-2"><strong>Expert Justification:</strong> A high acute dose (e.g., 300 rad) causes **deterministic effects** by killing a large number of cells, leading to organ failure. The effect has a dose threshold, and its severity increases with dose. The response should identify the specific Acute Radiation Syndrome (ARS), such as the hematopoietic syndrome, and its clinical progression. In contrast, a high CEDE (e.g., 300 rem) from a chronic intake represents an increased lifetime probability of **stochastic effects** (cancer), which are non-threshold and probabilistic. The CEDE is a risk-based regulatory quantity for prospective control and does not predict immediate clinical symptoms. The former is a medical emergency; the latter is a managed risk.</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> A high acute dose (e.g., 300 rad) causes <strong>deterministic effects</strong> by killing a large number of cells, leading to organ failure. The effect has a dose threshold, and its severity increases with dose. The response should identify the specific Acute Radiation Syndrome (ARS), such as the hematopoietic syndrome, and its clinical progression. In contrast, a high CEDE (e.g., 300 rem) from a chronic intake represents an increased lifetime probability of <strong>stochastic effects</strong> (cancer), which are non-threshold and probabilistic. The CEDE is a risk-based regulatory quantity for prospective control and does not predict immediate clinical symptoms. The former is a medical emergency; the latter is a managed risk.</p>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Detector Physics and Operational Principles</h3>
@@ -592,6 +683,41 @@
                         <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
                         <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
                     </ul>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <svg viewBox="0 0 300 250" class="svg-diagram" aria-labelledby="pwr-title">
+                            <title id="pwr-title">Simplified Pressurized Water Reactor (PWR)</title>
+                            <text x="150" y="20" text-anchor="middle" class="label-bold">PWR (Pressurized)</text>
+                            <!-- Primary Loop -->
+                            <rect x="20" y="40" width="100" height="150" fill="#e0f2fe" stroke="#38bdf8" rx="5"/>
+                            <text x="70" y="60" text-anchor="middle">Reactor</text>
+                             <rect x="40" y="70" width="60" height="10" fill="#f87171"/>
+                            <text x="70" y="120" text-anchor="middle">Core</text>
+                            <rect x="180" y="40" width="100" height="150" fill="#fecaca" stroke="#f87171" rx="5"/>
+                            <text x="230" y="60" text-anchor="middle">Steam Gen.</text>
+                            <path d="M120 80 H 180" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <path d="M180 150 H 120" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <text x="150" y="75" text-anchor="middle" fill="#0284c7">Primary</text>
+                            <!-- Secondary Loop -->
+                            <path d="M230 80 C 280 80, 280 180, 230 180" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4"/>
+                            <text x="265" y="130" text-anchor="middle" fill="#dc2626">Secondary</text>
+                            <text x="265" y="145" text-anchor="middle" fill="#dc2626">(To Turbine)</text>
+                        </svg>
+                        <svg viewBox="0 0 300 250" class="svg-diagram" aria-labelledby="bwr-title">
+                            <title id="bwr-title">Simplified Boiling Water Reactor (BWR)</title>
+                            <text x="150" y="20" text-anchor="middle" class="label-bold">BWR (Boiling)</text>
+                            <rect x="20" y="40" width="100" height="150" fill="#e0f2fe" stroke="#38bdf8" rx="5"/>
+                            <text x="70" y="60" text-anchor="middle">Reactor</text>
+                            <rect x="40" y="150" width="60" height="10" fill="#f87171"/>
+                            <text x="70" y="140" text-anchor="middle">Core</text>
+                            <!-- Steam Bubbles -->
+                            <circle cx="50" cy="110" r="2" fill="#fff"/> <circle cx="60" cy="90" r="3" fill="#fff"/> <circle cx="80" cy="120" r="2" fill="#fff"/> <circle cx="90" cy="100" r="3" fill="#fff"/>
+                            <!-- Steam Line -->
+                            <path d="M70 40 V 20 H 230 V 80" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrowhead)"/>
+                            <text x="150" y="40" text-anchor="middle" fill="#dc2626">Steam to Turbine</text>
+                            <path d="M230 150 H 120" fill="none" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrowhead)"/>
+                            <text x="175" y="165" text-anchor="middle" fill="#0284c7">Water Return</text>
+                        </svg>
+                    </div>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
@@ -675,7 +801,7 @@
                      <ul class="list-none space-y-4">
                         <li>$\sigma_{s}=[\frac{r_{s+b}}{t_{s+b}}+\frac{r_{b}}{t_{b}}]^{1/2}$<br><strong>Use:</strong> To calculate the standard deviation of the net sample count rate ($r_s$) from the gross rate ($r_{s+b}$) and background rate ($r_b$). This is fundamental for error propagation in counting.</li>
                         <li>$\frac{t_{s+b}}{t_{b}}=\sqrt{\frac{r_{s+b}}{r_{b}}}$<br><strong>Use:</strong> To determine the optimum division of a fixed total counting time to minimize the uncertainty in the net count rate.</li>
-                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the background *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
+                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
                         <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
                     </ul>
                 </div>
