@@ -65,10 +65,12 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.18 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.19 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
+            <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of historical examinations and updated with key concepts from modern standards and recommendations. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
+            
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">Quick Reference: Constants & Conversions</h2>
                 <p class="mb-6">A collection of fundamental constants and conversion factors frequently used in health physics calculations. Memorizing these is highly recommended.</p>
@@ -111,8 +113,6 @@
                     </div>
                 </div>
             </section>
-            
-            <p class="text-lg italic text-slate-600 mb-12 border-l-4 border-indigo-300 pl-4">This guide provides an expert-level analysis of the concepts and problem-solving methodologies required for the American Board of Health Physics (ABHP) Part II Comprehensive Examination. The content is synthesized from a detailed review of historical examinations and updated with key concepts from modern standards and recommendations. It is designed for candidates seeking a deep, operational understanding of health physics principles to demonstrate for certification.</p>
             
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">I. Radiation Physics & Interactions</h2>
@@ -395,73 +395,47 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Operational Scenarios & Emergency Response</h2>
-                <p class="mb-6">This section focuses on integrating multiple health physics domains to solve complex, practical problems. Mastery here requires applying fundamental principles to dynamic, often incompletely defined, situations.</p>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Problem-Solving Methodologies</h2>
+                <p class="mb-6">This section focuses on the practical application of fundamental principles to solve complex problems. It covers how to combine formulas and model dynamic scenarios, which are key skills for the exam.</p>
 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Unit Analysis & Formula Derivation</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Deconstructing the Scenario: A Systematic Approach</h4>
-                    <p>When faced with a scenario, systematically extract the key information:</p>
-                    <ol class="list-decimal list-inside space-y-1 mt-2">
-                        <li><strong>The Radionuclide(s):</strong> Identify emissions, half-life, chemical form (solubility), and key dosimetric data (ALI, DAC, $\Gamma$).</li>
-                        <li><strong>The Timeline:</strong> Note the start time, duration of exposure, and time of any bioassay samples.</li>
-                        <li><strong>The Geometry & Location:</strong> Determine room dimensions, source configuration (point, line, area), and worker locations.</li>
-                        <li><strong>Personnel Actions:</strong> Note the tasks performed, PPE used (especially respirators and their Protection Factor), and exposure duration.</li>
-                        <li><strong>The Core Question:</strong> Clearly identify what needs to be calculated or assessed (e.g., intake, CEDE, external dose, required controls).</li>
-                    </ol>
-                </div>
-                
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Modeling Airborne Radioactivity</h3>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Room Air Concentration</h4>
-                    <p>The concentration in a ventilated room is governed by the differential equation: $\frac{dA}{dt} = S - \lambda_{eff}A$, where S is the source rate and $\lambda_{eff} = \lambda_R + \lambda_V$ is the effective removal constant (radiological + ventilation).</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>"Puff" Release (Instantaneous):</strong> The concentration decays from an initial value $\chi_0$.
-                        $$\chi(t) = \chi_0 e^{-\lambda_{eff}t}$$</li>
-                        <li><strong>Constant Leak (S):</strong> The concentration builds up to an equilibrium value.
-                        $$\chi(t) = \frac{S}{\lambda_{eff} V} (1 - e^{-\lambda_{eff}t})$$</li>
-                        <li><strong>Intake Calculation:</strong> The total intake is the integral of the air concentration multiplied by the breathing rate (B) over the exposure time ($t_{exp}$): $I = B \int_0^{t_{exp}} \chi(t) dt$.</li>
-                    </ul>
-                </div>
-                
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Dose and Risk Assessment in Emergencies</h3>
-
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Dose from Ground Contamination</h4>
-                    <p>In the aftermath of a release, inhalation dose from resuspended material can be significant.</p>
+                    <h4 class="font-semibold text-lg mb-2">Building Equations from Scratch</h4>
+                    <p>On the exam, you may not be given the exact formula you need. A critical skill is the ability to derive a formula on the fly using dimensional analysis (i.e., making sure the units cancel correctly). Start with what you're given, what you need to find, and then find the conversion factors and constants that bridge the gap.</p>
+                    <p class="mt-2"><strong>Example:</strong> Derive an equation for the dose rate (mrem/hr) at 1 meter above an infinitely large, uniformly contaminated surface, given the contamination level in dpm/100 cm².</p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate Resuspended Air Concentration ($\chi_{res}$):</strong> $\chi_{res} (\text{Bq/m}^3) = C_A (\text{Bq/m}^2) \times R_f (\text{m}^{-1})$, where $C_A$ is the ground activity concentration and $R_f$ is the resuspension factor (typically $10^{-5}$ to $10^{-9}$ m⁻¹).</li>
-                        <li><strong>Calculate Intake (I):</strong> $I (\text{Bq}) = \chi_{res} \times \text{Breathing Rate (B)} \times \text{Time (t)}$.</li>
-                        <li><strong>Calculate Dose:</strong> Use the appropriate dose conversion factor (DCF) in Sv/Bq to find the CEDE.</li>
+                        <li><strong>Start with the Goal Unit:</strong> $\frac{mrem}{hr}$</li>
+                        <li><strong>Introduce the Given:</strong> You have $\frac{dpm}{100 cm^2}$. You need to convert this to a flux ($\frac{\gamma}{cm^2 \cdot s}$). This requires knowing the gamma yield (Y, $\frac{\gamma}{dis}$) and assuming an emission geometry (e.g., $2\pi$ for a surface).</li>
+                        <li><strong>Build the Conversion Chain:</strong>
+                            $$\frac{mrem}{hr} = \left( \frac{dpm}{100 cm^2} \right) \times \left( \frac{1 dis}{dpm} \right) \times \left( \frac{Y \gamma}{dis} \right) \times \left( \frac{1 min}{60 s} \right) \times \left( \frac{60 min}{1 hr} \right) \times \left( \frac{100^2 cm^2}{m^2} \right) \times ...$$
+                        </li>
+                        <li><strong>Bridge Flux to Dose Rate:</strong> The final link is a flux-to-dose-rate conversion factor, which will be given in a form like $(\frac{mrem/hr}{\gamma/cm^2 \cdot s})$. By carefully arranging these factors, you can cancel all intermediate units and arrive at the desired final unit.</li>
                     </ol>
                 </div>
-                
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Criticality Accident Dosimetry</h4>
-                    <p>A criticality accident presents unique dosimetric challenges due to the intense, short, mixed radiation field.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Dose Reconstruction:</strong> Since active instruments will be saturated, dose is reconstructed using passive methods.
-                            <ul>
-                                <li><strong>Activation Foils:</strong> Indium (for thermal neutrons), sulfur (for fast neutrons > 3 MeV), and gold foils are placed in criticality dosimeter lockets. Their post-incident activity is measured to determine neutron fluence.</li>
-                                <li><strong>Biological Dosimetry:</strong> The reaction ${}^{23}Na(n,\gamma){}^{24}Na$ in the body is a primary indicator. A whole-body count or blood sample analysis for ${}^{24}Na$ can provide an excellent estimate of the average whole-body neutron dose.</li>
-                                <li><strong>Chromosome Aberration Analysis:</strong> Counting dicentrics in lymphocytes provides a dose estimate, especially useful days after the event.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Key Calculation: Dose from Fissions:</strong> $\dot{D} = \frac{(\text{fissions}) \cdot (\text{particles/fission}) \cdot (\text{DCF})}{4 \pi d^2}$. You will be given the fission yield (e.g., 2.5 n/fission, 8 $\gamma$/fission) and a flux-to-dose conversion factor (DCF).</li>
-                    </ul>
-                </div>
 
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Modeling Simultaneous Processes: Release & Decay</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Emergency Planning & Protective Actions</h4>
-                    <p>Your response should demonstrate knowledge of established frameworks.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Emergency Plan Elements:</strong> Key components include: Emergency Action Levels (EALs), notification protocols, offsite dose assessment capabilities, and pre-staged emergency equipment.</li>
-                        <li><strong>Protective Action Guides (PAGs):</strong> These are projected dose levels at which protective actions for the public are recommended.
-                            <ul>
-                                <li><strong>Early Phase PAG:</strong> Typically 1-5 rem TEDE. Triggers actions like sheltering or evacuation.</li>
-                                <li><strong>Thyroid Protection:</strong> Administration of Potassium Iodide (KI) is recommended if the projected thyroid CDE from radioiodine exceeds ~5-10 rem.</li>
-                            </ul>
+                    <h4 class="font-semibold text-lg mb-2">The Governing Differential Equation</h4>
+                    <p>Many complex operational problems (e.g., a radioactive gas leak into a ventilated room) can be modeled with a simple first-order differential equation. The rate of change of activity in a volume is the difference between the rate at which activity enters and the rate at which it is removed.</p>
+                    $$\frac{dA}{dt} = (\text{Source Rate}) - (\text{Removal Rate}) = S - \lambda_{eff}A(t)$$
+                    <p class="mt-2">The key is to correctly define the **effective removal constant**, $\lambda_{eff}$. It is the sum of all removal constants:</p>
+                    $$\lambda_{eff} = \lambda_{Radiological} + \lambda_{Ventilation} + \lambda_{Other}$$
+                    <p class="mt-2">Where $\lambda_{Ventilation}$ is the ventilation rate (in air changes per hour/minute) and $\lambda_{Other}$ could be a cleanup filter, etc.</p>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Scenarios: Puff vs. Continuous Release</h4>
+                    <p>The solution to the governing equation depends on the source term (S):</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>"Puff" Release (S=0 after t=0):</strong> An instantaneous release of activity $A_0$ into a room. The activity concentration $\chi(t)$ decreases over time.
+                        $$\chi(t) = \chi_0 e^{-\lambda_{eff}t}$$
+                        The total integrated intake (I) over a time T is: $I = \int_0^T B \cdot \chi(t) dt = \frac{B \cdot \chi_0}{\lambda_{eff}}(1-e^{-\lambda_{eff}T})$
+                        </li>
+                        <li><strong>Constant Leak (S > 0):</strong> A constant leak into a clean room. The activity concentration builds up to an equilibrium value.
+                        $$\chi(t) = \frac{S}{\lambda_{eff} V} (1 - e^{-\lambda_{eff}t})$$
+                        The total integrated intake (I) over a time T is: $I = \int_0^T B \cdot \chi(t) dt = \frac{B \cdot S}{\lambda_{eff} V} \left[ T - \frac{1}{\lambda_{eff}}(1-e^{-\lambda_{eff}T}) \right]$
                         </li>
                     </ul>
+                    <p class="mt-2">Where B is the breathing rate and V is the room volume.</p>
                 </div>
             </section>
             
@@ -544,7 +518,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Regulatory & Standards Frameworks</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Regulatory & Standards Frameworks</h2>
                 <p class="mb-6">A CHP must not only know the dose limits but also understand the philosophy behind them, how they are applied in practice, and the specific requirements for different situations like transportation and effluent control.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Occupational Dose Limits & Summation</h3>
@@ -608,7 +582,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
@@ -646,12 +620,12 @@
                         <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
                         <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
                         <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ol>
+                    </ul>
                 </div>
             </section>
 
              <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Power Reactor Health Physics</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Power Reactor Health Physics</h2>
                 <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
@@ -725,7 +699,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Environmental HP & Decommissioning</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Environmental HP & Decommissioning</h2>
                 <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
@@ -784,7 +758,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
@@ -811,7 +785,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Integrated Practice Problems & Detailed Solutions</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
                 
                 <div class="key-calc">
