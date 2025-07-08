@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.16 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.17 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
@@ -674,9 +674,69 @@
                 </div>
             </section>
             
-            <!-- Section X: Formula Sheet -->
+            <!-- Section X: Environmental HP & Decommissioning -->
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Key Formula Sheet & Applications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Environmental HP & Decommissioning</h2>
+                <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">MARSSIM Process Overview</h4>
+                    <p>The <strong>Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM)</strong> provides a standard, technically defensible methodology for demonstrating compliance with a dose- or risk-based regulation. It is essential for decommissioning and license termination (e.g., per 10 CFR 20 Subpart E).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Data Quality Objectives (DQOs):</strong> A 7-step planning process to ensure that the type, quantity, and quality of data collected are appropriate for the decision to be made. The steps include: stating the problem, identifying the decision, identifying inputs, defining boundaries, developing a decision rule, specifying error tolerances, and optimizing the design.</li>
+                        <li><strong>Area Classification:</strong> Areas are classified based on their potential for contamination, which directs the level of survey effort (i.e., the number of samples).
+                            <ul>
+                                <li><strong>Class 1:</strong> Highest potential for contamination (e.g., > DCGL); requires the highest survey density.</li>
+                                <li><strong>Class 2:</strong> Lower potential for contamination, but still some potential for levels > DCGL.</li>
+                                <li><strong>Class 3:</strong> Lowest potential; not expected to contain any residual radioactivity above background.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Survey Design:</strong> The FSS typically uses a systematic grid sampling pattern to ensure full coverage and avoid bias.</li>
+                    </ul>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Derived Concentration Guideline Level (DCGL)</h4>
+                    <p>The DCGL is the radionuclide-specific surface or soil concentration that would result in a dose equal to the release limit (e.g., 25 mrem/yr). It is the operational benchmark for the Final Status Survey.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>DCGLw:</strong> The primary guideline, representing the average concentration over a wide area that meets the dose limit. It is calculated using pathway analysis models: $DCGL_W = \frac{\text{Dose Limit}}{\text{Pathway Dose Conversion Factor}}$.</li>
+                        <li><strong>DCGLemc:</strong> An elevated measurement comparison for small areas of higher activity. It is calculated using an Area Factor (AF) from a table: $DCGL_{EMC} = AF \times DCGL_W$.</li>
+                        <li><strong>Unity Rule:</strong> For multiple radionuclides, the sum of the ratios of their concentrations (C) to their respective DCGLs must not exceed 1: $$\sum_{i} \frac{C_i}{DCGL_{W,i}} \le 1$$</li>
+                    </ul>
+                </div>
+                 <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Number of Samples (N)</h4>
+                    <p>The number of data points required for the Sign or WRS test is calculated to ensure the survey has enough statistical power to make a correct decision.</p>
+                     $$N = \frac{(Z_{1-\alpha} + Z_{1-\beta})^2}{4(\text{Sign } P - 0.5)^2}$$
+                    <p class="mt-2">Where $Z_{1-\alpha}$ and $Z_{1-\beta}$ are quantiles from the standard normal distribution corresponding to the desired Type I ($\alpha$) and Type II ($\beta$) error rates. P is the probability that a random measurement will be less than the DCGL when the true median is at the Lower Bound of the Gray Region (LBGR).</p>
+                </div>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">MARSSIM Statistical Tests</h4>
+                    <p>Because measurements have uncertainty, statistical tests are required to make a decision with a known level of confidence. The **null hypothesis ($H_0$)** is always that the survey unit **exceeds** the release criterion.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Sign Test:</strong> A simple non-parametric test used when the contaminant is not present in background. It compares each measurement directly to the DCGL. The goal is to reject $H_0$.</li>
+                        <li><strong>Wilcoxon Rank Sum (WRS) Test:</strong> A non-parametric test used when the contaminant *is* present in background. It compares the distribution of measurements from the survey area to the distribution of measurements from a clean reference (background) area to determine if the survey area is statistically "dirtier" than the reference area.</li>
+                        <li><strong>Decision Errors:</strong> You must know the definitions of Type I ($\alpha$) and Type II ($\beta$) errors.
+                            <ul>
+                                <li><strong>Type I Error ($\alpha$):</strong> Deciding the survey unit is clean when it is actually dirty (a "false positive" for the cleanup). This is the error MARSSIM primarily seeks to control.</li>
+                                <li><strong>Type II Error ($\beta$):</strong> Deciding the survey unit is dirty when it is actually clean (a "false negative" for the cleanup, leading to unnecessary remediation).</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Pathway Modeling</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Gaussian Plume Model (Centerline)</h4>
+                    <p>This is the standard model for estimating the downwind air concentration ($\chi$) from a continuous airborne release from a stack.</p>
+                    $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left(-\frac{h^2}{2\sigma_z^2}\right)$$
+                    <p class="mt-2">Where Q is the source release rate (e.g., Ci/s), u is the wind speed, h is the effective release height, and $\sigma_y, \sigma_z$ are the dispersion coefficients, which are functions of downwind distance (x) and atmospheric stability class (A-F).</p>
+                </div>
+            </section>
+            
+            <!-- Section XI: Formula Sheet -->
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
@@ -699,54 +759,6 @@
                         <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
                         <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
                     </ul>
-                </div>
-            </section>
-            
-            <!-- Section XI: Environmental HP & Decommissioning -->
-            <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Environmental HP & Decommissioning</h2>
-                <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">MARSSIM Process Overview</h4>
-                    <p>The <strong>Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM)</strong> provides a standard, technically defensible methodology for demonstrating compliance with a dose- or risk-based regulation. It is essential for decommissioning and license termination (e.g., per 10 CFR 20 Subpart E).</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Data Quality Objectives (DQOs):</strong> A 7-step planning process to ensure that the type, quantity, and quality of data collected are appropriate for the decision to be made.</li>
-                        <li><strong>Area Classification:</strong> Areas are classified based on their potential for contamination, which determines the level of survey effort required.
-                            <ul>
-                                <li><strong>Class 1:</strong> Highest potential for contamination; requires the highest survey density.</li>
-                                <li><strong>Class 2:</strong> Lower potential for contamination.</li>
-                                <li><strong>Class 3:</strong> Lowest potential; not expected to contain any residual radioactivity.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Survey Types:</strong> MARSSIM distinguishes between scoping, characterization, remedial action support, and final status surveys (FSS). The FSS is the key survey used to demonstrate compliance for final release.</li>
-                    </ul>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Derived Concentration Guideline Level (DCGL)</h4>
-                    <p>The DCGL is the radionuclide-specific surface or soil concentration that would result in a dose equal to the release limit (e.g., 25 mrem/yr). It is the operational benchmark for the Final Status Survey.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>DCGLw:</strong> The primary guideline, representing the average concentration over a wide area that meets the dose limit.</li>
-                        <li><strong>DCGLemc:</strong> An elevated measurement comparison for small areas of higher activity. It is calculated using an Area Factor (AF) from a table: $DCGL_{EMC} = AF \times DCGL_W$.</li>
-                        <li><strong>Unity Rule:</strong> For multiple radionuclides, the sum of the ratios of their concentrations (C) to their respective DCGLs must not exceed 1: $$\sum_{i} \frac{C_i}{DCGL_{W,i}} \le 1$$</li>
-                    </ul>
-                </div>
-                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">MARSSIM Statistical Tests</h4>
-                    <p>Because measurements have uncertainty, statistical tests are required to make a decision with a known level of confidence.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Sign Test:</strong> A simple non-parametric test used when the contaminant is not present in background. It compares each measurement directly to the DCGL. The null hypothesis is that the area exceeds the limit.</li>
-                        <li><strong>Wilcoxon Rank Sum (WRS) Test:</strong> A non-parametric test used when the contaminant *is* present in background. It compares the distribution of measurements from the survey area to the distribution of measurements from a clean reference (background) area.</li>
-                    </ul>
-                </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Pathway Modeling</h3>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Gaussian Plume Model (Centerline)</h4>
-                    <p>This is the standard model for estimating the downwind air concentration ($\chi$) from a continuous airborne release from a stack.</p>
-                    $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left(-\frac{h^2}{2\sigma_z^2}\right)$$
-                    <p class="mt-2">Where Q is the source release rate (e.g., Ci/s), u is the wind speed, h is the effective release height, and $\sigma_y, \sigma_z$ are the dispersion coefficients, which are functions of downwind distance (x) and atmospheric stability class (A-F).</p>
                 </div>
             </section>
             
