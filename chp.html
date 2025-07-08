@@ -42,27 +42,7 @@
             overflow-y: hidden;
             padding: 0.5rem 0;
         }
-        .svg-diagram {
-            max-width: 600px;
-            margin: 1.5rem auto;
-            display: block;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            background-color: #ffffff;
-        }
-        .svg-diagram text {
-             font-family: 'Inter', sans-serif;
-             font-size: 14px;
-             fill: #334155;
-        }
-        .svg-diagram .label-bold {
-            font-weight: 600;
-        }
-        .svg-diagram .label-sm {
-            font-size: 12px;
-        }
-
+        
         @media print {
             body { background-color: #ffffff; }
             .no-print { display: none; }
@@ -81,7 +61,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.9 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.10 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
@@ -267,62 +247,6 @@
                         <li><strong>ICRP 30 Model:</strong> A simple three-compartment model (Nasopharyngeal, Tracheobronchial, Pulmonary). Material is cleared from each region by mechanical processes or absorption into blood, with fixed rates for solubility classes D, W, and Y.</li>
                         <li><strong>ICRP 66+ Model:</strong> A much more detailed anatomical model (ET1, ET2, BB, bb, AI regions). It treats clearance as a competition between mechanical transport (e.g., mucus escalator) and absorption into blood. It replaces solubility classes with absorption Types F (Fast), M (Medium), and S (Slow). This model provides more realistic, particle-size-dependent dose estimates.</li>
                     </ul>
-                     <svg viewBox="0 0 600 350" class="svg-diagram" aria-labelledby="icrp-title">
-                        <title id="icrp-title">Simplified ICRP 66+ Human Respiratory Tract Model</title>
-                        <text x="300" y="25" text-anchor="middle" class="label-bold">ICRP 66+ Respiratory Tract Model</text>
-                        
-                        <defs>
-                            <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-                                <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1"/>
-                            </marker>
-                            <marker id="arrowhead-yellow" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-                                <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
-                            </marker>
-                             <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
-                                <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444"/>
-                            </marker>
-                        </defs>
-
-                        <!-- Inhaled -->
-                        <path d="M20 90 H 80" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
-                        <text x="45" y="85" text-anchor="middle">Inhaled</text>
-
-                        <!-- Extrathoracic -->
-                        <rect x="80" y="50" width="150" height="80" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
-                        <text x="155" y="80" text-anchor="middle" class="label-bold">Extrathoracic</text>
-                        <text x="155" y="100" text-anchor="middle">ET1 & ET2</text>
-                        
-                        <!-- Thoracic -->
-                        <rect x="290" y="120" width="160" height="100" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
-                        <text x="370" y="145" text-anchor="middle" class="label-bold">Thoracic</text>
-                        <text x="370" y="170" text-anchor="middle">BB (Bronchi)</text>
-                        <text x="370" y="195" text-anchor="middle">bb (Bronchioles)</text>
-
-                        <!-- Alveolar -->
-                        <rect x="290" y="240" width="160" height="60" fill="#f0f9ff" stroke="#bae6fd" rx="5"/>
-                        <text x="370" y="275" text-anchor="middle" class="label-bold">AI (Alveolar)</text>
-
-                        <!-- Pathways -->
-                        <path d="M230 90 H 290 V 130" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
-                        <path d="M450 170 H 520 V 275 H 450" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
-
-                        <!-- Clearance to GI -->
-                        <path d="M155 130 V 200 H 20" fill="none" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrowhead-yellow)"/>
-                        <text x="80" y="165" text-anchor="middle" class="label-sm">To GI Tract</text>
-                        <path d="M290 170 H 250 V 200" fill="none" stroke="#f59e0b" stroke-width="2"/>
-                        
-                        <!-- Clearance to Blood -->
-                        <path d="M370 120 V 70 H 550" fill="none" stroke="#ef4444" stroke-width="2" marker-end="url(#arrowhead-red)"/>
-                        <text x="460" y="65" text-anchor="middle" class="label-sm">To Blood</text>
-                        <path d="M370 240 V 220 H 290" fill="none" stroke="#f59e0b" stroke-width="2"/>
-                        <path d="M370 300 V 320 H 550" fill="none" stroke="#ef4444" stroke-width="2"/>
-                        
-                        <!-- Legend -->
-                        <rect x="20" y="320" width="15" height="15" fill="#f59e0b"/>
-                        <text x="40" y="332">Mechanical Transport</text>
-                        <rect x="220" y="320" width="15" height="15" fill="#ef4444"/>
-                        <text x="240" y="332">Absorption to Blood</text>
-                    </svg>
                 </div>
 
                 <div class="key-data">
@@ -394,41 +318,6 @@
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Gamma Spectroscopy</h4>
                     <p>You must be able to identify all key features on a gamma spectrum: Photopeak, Compton Edge, Compton Continuum, Backscatter Peak, Single & Double Escape Peaks (at $E_\gamma - 0.511$ MeV and $E_\gamma - 1.022$ MeV), and the Annihilation Peak (at 0.511 MeV).</p>
-                     <svg viewBox="0 0 600 400" class="svg-diagram" aria-labelledby="gamma-title-2">
-                        <title id="gamma-title-2">Annotated Gamma Ray Spectrum</title>
-                        <!-- Axes -->
-                        <path d="M50 350 L 580 350" stroke="#334155" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
-                        <path d="M50 350 L 50 30" stroke="#334155" stroke-width="2" marker-end="url(#arrowhead-blue)"/>
-                        <text x="590" y="355">Energy</text>
-                        <text x="15" y="25" class="label-bold">Counts</text>
-
-                        <!-- Spectrum Curve -->
-                        <path d="M50 350 C 100 280, 200 340, 300 200 C 320 160, 340 180, 350 210 C 380 150, 400 160, 420 80 C 425 60, 435 60, 440 80 C 460 180, 480 250, 500 345" fill="none" stroke="#6366f1" stroke-width="3"/>
-                        
-                        <!-- Labels -->
-                        <text x="425" y="45" class="label-bold">Photopeak ($E_\gamma$)</text>
-                        <path d="M430 55 L 430 75" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-                        
-                        <text x="500" y="200" class="label-bold">Compton Edge</text>
-                        <path d="M510 215 L 480 300" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-                        
-                        <text x="200" y="200" class="label-bold">Compton Continuum</text>
-                        
-                        <text x="100" y="250" class="label-bold">Backscatter Peak</text>
-                        <path d="M150 260 L 170 320" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-
-                        <text x="220" y="100" class="label-bold">Annihilation Peak</text>
-                        <text x="220" y="115" class="label-sm">(0.511 MeV)</text>
-                        <path d="M250 125 L 260 170" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-
-                        <text x="320" y="120" class="label-bold">Double Escape</text>
-                        <text x="320" y="135" class="label-sm">($E_\gamma - 1.022$)</text>
-                        <path d="M340 145 L 330 190" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-
-                        <text x="380" y="180" class="label-bold">Single Escape</text>
-                        <text x="380" y="195" class="label-sm">($E_\gamma - 0.511$)</text>
-                        <path d="M400 205 L 380 225" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-                    </svg>
                 </div>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Liquid Scintillation Counting (LSC)</h4>
@@ -687,7 +576,7 @@
                         <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
                         <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
                         <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ul>
+                    </ol>
                 </div>
             </section>
 
@@ -704,62 +593,6 @@
                         <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
                         <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
                     </ul>
-                    <div class="grid md:grid-cols-2 gap-4">
-                        <svg viewBox="0 0 300 280" class="svg-diagram" aria-labelledby="pwr-title-2">
-                            <title id="pwr-title-2">Simplified Pressurized Water Reactor (PWR)</title>
-                            <text x="150" y="20" text-anchor="middle" class="label-bold">PWR (Pressurized)</text>
-                            
-                            <!-- Containment -->
-                            <rect x="5" y="30" width="290" height="245" fill="#f1f5f9" stroke="#94a3b8" rx="15"/>
-                            <text x="150" y="50" text-anchor="middle" class="label-sm text-slate-500">Containment Building</text>
-
-                            <!-- Primary Loop -->
-                            <rect x="20" y="60" width="100" height="150" fill="#e0f2fe" stroke="#38bdf8" rx="5"/>
-                            <rect x="40" y="100" width="60" height="20" fill="#f87171"/>
-                            <text x="70" y="80" text-anchor="middle">Reactor</text>
-                            <text x="70" y="115" text-anchor="middle" class="label-sm" fill="white">Core</text>
-                            
-                            <rect x="180" y="60" width="100" height="150" fill="#fecaca" stroke="#f87171" rx="5"/>
-                            <text x="230" y="80" text-anchor="middle">Steam Gen.</text>
-                            
-                            <path d="M120 100 H 180" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowhead-blue)"/>
-                            <path d="M180 170 H 120" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowhead-blue)"/>
-                            <text x="150" y="95" text-anchor="middle" fill="#0284c7" class="label-bold">Primary</text>
-                            
-                            <!-- Secondary Loop -->
-                            <path d="M230 100 C 280 100, 280 120, 280 130 L 280 250 H 350" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-red)"/>
-                            <path d="M180 130 L 180 250 H 110" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-blue)"/>
-                            <text x="260" y="265" text-anchor="middle" fill="#dc2626">Steam to Turbine</text>
-                            <text x="145" y="265" text-anchor="middle" fill="#2563eb">Water Return</text>
-                        </svg>
-                        <svg viewBox="0 0 300 280" class="svg-diagram" aria-labelledby="bwr-title-2">
-                            <title id="bwr-title-2">Simplified Boiling Water Reactor (BWR)</title>
-                            <text x="150" y="20" text-anchor="middle" class="label-bold">BWR (Boiling)</text>
-                            
-                            <!-- Reactor Building -->
-                            <rect x="5" y="30" width="140" height="245" fill="#f1f5f9" stroke="#94a3b8" rx="15"/>
-                            <text x="75" y="50" text-anchor="middle" class="label-sm text-slate-500">Reactor Building</text>
-
-                            <rect x="20" y="60" width="110" height="180" fill="#e0f2fe" stroke="#38bdf8" rx="5"/>
-                            <rect x="40" y="180" width="70" height="20" fill="#f87171"/>
-                            <text x="75" y="80" text-anchor="middle">Reactor</text>
-                            <text x="75" y="195" text-anchor="middle" class="label-sm" fill="white">Core</text>
-                            
-                            <!-- Steam Bubbles -->
-                            <circle cx="50" cy="150" r="2" fill="#fff"/> <circle cx="65" cy="130" r="3" fill="#fff"/> <circle cx="85" cy="160" r="2" fill="#fff"/> <circle cx="100" cy="140" r="3" fill="#fff"/>
-                            
-                            <!-- Steam Line -->
-                            <path d="M75 60 V 40 H 225 V 80" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrowhead-red)"/>
-                            <text x="150" y="60" text-anchor="middle" fill="#dc2626">Steam to Turbine</text>
-                            <!-- Water Return -->
-                            <path d="M225 180 H 75" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-blue)"/>
-                            <text x="150" y="195" text-anchor="middle" fill="#2563eb">Water Return</text>
-
-                             <!-- Turbine Building -->
-                            <rect x="155" y="30" width="140" height="245" fill="#f1f5f9" stroke="#94a3b8" rx="15"/>
-                            <text x="225" y="50" text-anchor="middle" class="label-sm text-slate-500">Turbine Building</text>
-                        </svg>
-                    </div>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
