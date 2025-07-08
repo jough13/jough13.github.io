@@ -60,7 +60,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.1 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.2 - Last Updated: July 8, 2025</p>
         </header>
 
         <main>
@@ -99,8 +99,36 @@
                         <li><strong>Secular Equilibrium ($T_{1} \gg T_{2}$):</strong> Occurs when the parent is much longer-lived (e.g., ${}^{90}$Sr/${}^{90}$Y). At equilibrium, the activities become equal: $A_2 \approx A_1$.</li>
                     </ul>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Decay Schemes & Nuclear Transitions</h4>
+                    <p>Beyond simple decay, you must understand the processes by which an excited nucleus reaches its ground state.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Gamma Emission:</strong> An excited nucleus releases energy by emitting a photon (gamma ray) of a discrete energy corresponding to the difference between nuclear energy levels.</li>
+                        <li><strong>Internal Conversion (IC):</strong> An excited nucleus transfers its energy directly to an orbital electron (usually from the K or L shell), ejecting it from the atom. This is a radiationless transition and is competitive with gamma emission. The ejected electron is called a conversion electron. IC is more probable in **high-Z** nuclei and for **low-energy transitions**.</li>
+                        <li><strong>Isomeric Transition (IT):</strong> Occurs in nuclides with a metastable state (e.g., ${}^{99m}$Tc, ${}^{137m}$Ba). The nucleus remains in an excited state for a measurable half-life before de-exciting, typically via gamma emission or internal conversion.</li>
+                    </ul>
+                </div>
 
-                <h3 class="text-2xl font-semibold mt-6 mb-3">2. Neutron Activation</h3>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">2. Neutron Physics</h3>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Neutron Sources & Interactions</h4>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Sources:</strong> Be familiar with common neutron sources:
+                            <ul>
+                                <li><strong>Spontaneous Fission (SF):</strong> e.g., ${}^{252}$Cf.</li>
+                                <li><strong>$(\alpha, n)$ Reactions:</strong> An alpha emitter mixed with a light element, e.g., AmBe or PuBe.</li>
+                                <li><strong>Photoneutron $(\gamma, n)$ Reactions:</strong> High-energy photons (>~8 MeV) interacting with matter, common around high-energy accelerators.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Interactions:</strong>
+                            <ul>
+                                <li><strong>Elastic Scattering:</strong> "Billiard ball" collision where kinetic energy is conserved. This is the primary mechanism for moderating (slowing down) fast neutrons, and it is most efficient with low-Z materials (like hydrogen in water or polyethylene).</li>
+                                <li><strong>Inelastic Scattering:</strong> The neutron is captured and re-emitted with lower energy, leaving the target nucleus in an excited state. This has an energy threshold and is important for fast neutrons in high-Z materials.</li>
+                                <li><strong>Radiative Capture $(n, \gamma)$:</strong> The dominant interaction for thermal neutrons. The nucleus absorbs the neutron and emits a prompt gamma ray. This is the basis for most activation calculations.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity from Neutron Irradiation</h4>
                     <p>The activity of a product nuclide after an irradiation time ($t_{irrad}$) followed by a decay time (t) is:</p>
@@ -116,6 +144,14 @@
                         <li><strong>Photoelectric Effect:</strong> An "all or nothing" absorption of a photon by a bound atomic electron. It is the dominant interaction for **low-energy photons** and in **high-Z materials**. The cross-section is approximately proportional to $\frac{Z^4}{E^3}$. This interaction is responsible for the high efficiency of NaI detectors at low energies and the effectiveness of lead shielding.</li>
                         <li><strong>Compton Scattering:</strong> An interaction with a "free" or loosely-bound electron. The photon scatters at an angle, losing some of its energy to the recoil electron. It is the dominant interaction for **mid-energy photons** (approx. 0.5-5 MeV) in most materials, including tissue. This is the primary source of scatter in shielding and the physical basis for the Compton continuum in a gamma spectrum.</li>
                         <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of **1.022 MeV**. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for **high-energy photons** in **high-Z materials**.</li>
+                    </ul>
+                </div>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Attenuation vs. Absorption Coefficients</h4>
+                    <p>It is critical to distinguish between the linear attenuation coefficient ($\mu$) and the energy absorption coefficient ($\mu_{en}$).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Linear Attenuation Coefficient ($\mu$):</strong> Describes the fraction of photons removed from a narrow beam per unit thickness. It includes all interactions (photoelectric, Compton, pair production). It is used for shielding calculations: $I = I_0 e^{-\mu x}$.</li>
+                        <li><strong>Energy Absorption Coefficient ($\mu_{en}$):</strong> Describes the fraction of photon energy that is deposited in the material via the kinetic energy of secondary electrons. It is always less than $\mu$ because it excludes the energy carried away by scattered photons, annihilation photons, and bremsstrahlung. It is used for calculating KERMA and absorbed dose.</li>
                     </ul>
                 </div>
                 <div class="key-concept">
