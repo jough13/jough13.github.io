@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.25 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.26 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -728,7 +728,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Conceptual Questions & Justifications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
@@ -791,7 +791,7 @@
             </section>
 
              <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Power Reactor Health Physics</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Power Reactor Health Physics</h2>
                 <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
@@ -800,9 +800,19 @@
                     <p>Understanding the fundamental design differences is key to understanding their radiological signatures.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
-                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
+                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (from the ${}^{16}O(n,p){}^{16}N$ reaction), a high-energy (6.1 MeV) gamma emitter with a very short (7.1 s) half-life, which causes "turbine shine."</li>
                     </ul>
                     <img src="image-7302f456.jpg" alt="Diagram comparing the layout of a Boiling Water Reactor (BWR) and a Pressurized Water Reactor (PWR)." class="w-full max-w-3xl mx-auto my-4 rounded-lg shadow-md border image-buffer">
+                </div>
+                
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">CRUD and Source Term Management</h4>
+                    <p>CRUD (Chalk River Unidentified Deposits) refers to activated corrosion products that are the primary source of occupational dose during reactor outages.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Formation:</strong> Metal components (pipes, valves) corrode, releasing ions (e.g., Co, Ni, Fe) into the primary coolant. These ions circulate through the reactor core, where they are activated by the intense neutron flux.</li>
+                        <li><strong>Deposition:</strong> These now-radioactive ions deposit on surfaces throughout the primary system, creating high dose rate "hot spots." ${}^{60}$Co is the most significant long-term contributor to this dose.</li>
+                        <li><strong>Control:</strong> Source term reduction strategies, such as controlling coolant chemistry (e.g., pH) and using materials with low cobalt content, are critical ALARA measures.</li>
+                    </ul>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
@@ -811,7 +821,7 @@
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Activation Products:</strong> These are the dominant source of occupational dose during maintenance and outages. They are formed when corrosion products (from pipes, valves, etc.) circulate through the core and are activated by neutrons.
                             <ul>
-                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.26$ years.</li>
+                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.27$ years.</li>
                                 <li><strong>${}^{58}$Co:</strong> Formed from ${}^{58}$Ni. A major dose contributor during the first year after shutdown. $T_{1/2} = 71$ days.</li>
                                 <li><strong>${}^{54}$Mn, ${}^{59}$Fe, ${}^{51}$Cr:</strong> Other common activation products.</li>
                             </ul>
@@ -828,6 +838,12 @@
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations in Reactor Health Physics</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Worker Stay Time</h4>
+                    <p>A fundamental ALARA calculation is determining the maximum time a worker can spend in a radiation field without exceeding a dose limit.</p>
+                    $$Stay~Time = \frac{\text{Dose Limit} - \text{Dose Already Received}}{\text{Dose Rate}}$$
+                    <p class="mt-2">Ensure all units are consistent (e.g., mrem and mrem/hr).</p>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity Buildup in a Cleanup System</h4>
                     <p><strong>Problem Archetype:</strong> Reactor coolant containing a specific concentration of a radionuclide is passed through a cleanup system (like a demineralizer) with a given flow rate and efficiency. Calculate the activity accumulated in the system after a certain run time.</p>
@@ -865,7 +881,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Environmental HP & Decommissioning</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Environmental HP & Decommissioning</h2>
                 <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
@@ -924,7 +940,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Key Formula Sheet & Applications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
@@ -951,7 +967,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Integrated Practice Problems & Detailed Solutions</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
                 
                 <div class="key-calc">
@@ -1023,7 +1039,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIV. Glossary of Key Terms & Acronyms</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Glossary of Key Terms & Acronyms</h2>
                 <div class="key-concept">
                     <ul class="list-none space-y-2">
                         <li><strong>ACGIH:</strong> American Conference of Governmental Industrial Hygienists - Sets occupational exposure limits for non-ionizing radiation (TLVs).</li>
