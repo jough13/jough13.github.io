@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comprehensive ABHP Part II Study Guide</title>
     
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- KaTeX for LaTeX Math Rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNBIUeNnGoM2H8KjJo3aOIM5dFAHWjV6hJOK7wGgJvSaKSZ" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0i8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax5AScKmpS5MKYs6ehHdHcZvoB9ic7VeFPS" crossorigin="anonymous"></script>
@@ -65,7 +63,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.19 - Last Updated: July 8, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.27 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -75,41 +73,61 @@
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">Quick Reference: Constants & Conversions</h2>
                 <p class="mb-6">A collection of fundamental constants and conversion factors frequently used in health physics calculations. Memorizing these is highly recommended.</p>
 
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <div class="key-data">
-                            <h4 class="font-semibold text-lg mb-2">Fundamental Constants</h4>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>Avogadro's Number ($N_A$): $6.022 \times 10^{23}$ atoms/mole</li>
-                                <li>Electron Rest Mass: $0.511$ MeV/c²</li>
-                            </ul>
-                        </div>
-                        <div class="key-data mt-4">
-                            <h4 class="font-semibold text-lg mb-2">Activity Units</h4>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>1 Curie (Ci) = $3.7 \times 10^{10}$ Bq (dps)</li>
-                                <li>1 Becquerel (Bq) = 1 dps = $2.7 \times 10^{-11}$ Ci</li>
-                                <li>1 $\mu$Ci = $2.22 \times 10^6$ dpm</li>
-                            </ul>
-                        </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Fundamental Constants</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Avogadro's Number ($N_A$): $6.022 \times 10^{23}$ atoms/mole</li>
+                            <li>Electron Rest Mass: $0.511$ MeV/c²</li>
+                        </ul>
                     </div>
-                    <div>
-                        <div class="key-data">
-                            <h4 class="font-semibold text-lg mb-2">Dose & Exposure Units</h4>
-                            <ul class="list-disc list-inside space-y-1">
-                                <li>Exposure (Roentgen): 1 R = $2.58 \times 10^{-4}$ C/kg air</li>
-                                <li>Absorbed Dose (rad): 1 rad = 100 erg/g = 0.01 Gy</li>
-                                <li>Dose Equivalent (rem): 1 rem = 0.01 Sv</li>
-                            </ul>
-                        </div>
-                        <div class="key-data mt-4">
-                            <h4 class="font-semibold text-lg mb-2">Rules of Thumb</h4>
-                            <ul class="list-disc list-inside space-y-1">
-                                 <li>$E_{avg}$ for beta $\approx \frac{1}{3} E_{max}$</li>
-                                 <li>Co-60 $\Gamma \approx 1.3 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
-                                 <li>Ir-192 $\Gamma \approx 0.5 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
-                            </ul>
-                        </div>
+                    <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Activity Units</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>1 Curie (Ci) = $3.7 \times 10^{10}$ Bq (dps)</li>
+                            <li>1 Becquerel (Bq) = 1 dps = $2.7 \times 10^{-11}$ Ci</li>
+                            <li>1 $\mu$Ci = $2.22 \times 10^6$ dpm</li>
+                        </ul>
+                    </div>
+                    <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Dose & Exposure Units</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>1 R = $2.58 \times 10^{-4}$ C/kg air</li>
+                            <li>1 rad = 100 erg/g = 0.01 Gy</li>
+                            <li>1 rem = 0.01 Sv</li>
+                        </ul>
+                    </div>
+                    <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Key Half-Lives</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                             <li>H-3: 12.3 y</li>
+                             <li>C-14: 5730 y</li>
+                             <li>Co-60: 5.27 y</li>
+                             <li>Sr-90: 29.1 y</li>
+                             <li>I-131: 8.02 d</li>
+                             <li>Cs-137: 30.1 y</li>
+                             <li>Ra-226: 1600 y</li>
+                             <li>Pu-239: 24,100 y</li>
+                        </ul>
+                    </div>
+                     <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Rules of Thumb</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                             <li>$E_{avg}$ for beta $\approx \frac{1}{3} E_{max}$</li>
+                             <li>Co-60 $\Gamma \approx 1.3 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
+                             <li>Ir-192 $\Gamma \approx 0.5 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
+                             <li>Cs-137 $\Gamma \approx 0.33 \frac{R \cdot m^2}{hr \cdot Ci}$</li>
+                             <li>HVL (Concrete) for Co-60 $\approx$ 2 in</li>
+                             <li>TVL (Lead) for Co-60 $\approx$ 2 in</li>
+                        </ul>
+                    </div>
+                     <div class="key-data">
+                        <h4 class="font-semibold text-lg mb-2">Miscellaneous</h4>
+                        <ul class="list-disc list-inside space-y-1">
+                             <li>Std. Atmospheric Pressure: 760 mmHg</li>
+                             <li>Reference Man Breathing Rate: 1.2 m³/hr</li>
+                             <li>Working Year: 2000 hr</li>
+                        </ul>
                     </div>
                 </div>
             </section>
@@ -156,6 +174,14 @@
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">2. Neutron Physics</h3>
+                <div class="key-data">
+                    <h4 class="font-semibold text-lg mb-2">Neutron Energy Classifications</h4>
+                     <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Thermal Neutrons:</strong> In thermal equilibrium with their surroundings (~0.025 eV).</li>
+                        <li><strong>Epithermal Neutrons:</strong> Energy range from ~0.1 eV to ~100 keV.</li>
+                        <li><strong>Fast Neutrons:</strong> Energy range from ~100 keV to ~20 MeV.</li>
+                    </ul>
+                </div>
                  <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Neutron Sources & Interactions</h4>
                     <ul class="list-disc list-inside space-y-2 mt-2">
@@ -179,7 +205,13 @@
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity from Neutron Irradiation</h4>
                     <p>The activity of a product nuclide after an irradiation time ($t_{irrad}$) followed by a decay time (t) is:</p>
                     $$A(t) = N \sigma \phi (1 - e^{-\lambda t_{irrad}})e^{-\lambda t}$$
-                    <p class="mt-2">Where $N$ is the number of target atoms, $\sigma$ is the cross-section, $\phi$ is the neutron flux, and $\lambda$ is the product's decay constant. For saturation ($t_{irrad} \to \infty$), the term $(1 - e^{-\lambda t_{irrad}})$ becomes 1.</p>
+                    <p class="mt-2">Where $N$ is the number of target atoms, $\sigma$ is the cross-section, and $\phi$ is the neutron flux. The term $(1 - e^{-\lambda t_{irrad}})$ is the **saturation factor**. As $t_{irrad} \to \infty$, this term approaches 1, and the activity reaches its maximum possible value, the **saturation activity ($A_{sat} = N \sigma \phi$)**.</p>
+                </div>
+                 <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Fast Neutron Shielding</h4>
+                    <p>For fast neutrons, an empirical "removal" cross-section ($\Sigma_R$) can be used for shielding calculations in a manner analogous to photon attenuation.</p>
+                    $$\phi(x) = \phi_0 e^{-\Sigma_R x}$$
+                    <p class="mt-2">Where $\phi_0$ is the initial fast neutron flux, $\phi(x)$ is the flux after passing through a thickness x of shield material. This method is an approximation that accounts for the removal of fast neutrons from the beam by all types of interactions.</p>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">3. Interaction of Radiation with Matter</h3>
@@ -190,6 +222,23 @@
                         <li><strong>Photoelectric Effect:</strong> An "all or nothing" absorption of a photon by a bound atomic electron. It is the dominant interaction for <strong>low-energy photons</strong> and in <strong>high-Z materials</strong>. The cross-section is approximately proportional to $\frac{Z^4}{E^3}$. This interaction is responsible for the high efficiency of NaI detectors at low energies and the effectiveness of lead shielding.</li>
                         <li><strong>Compton Scattering:</strong> An interaction with a "free" or loosely-bound electron. The photon scatters at an angle, losing some of its energy to the recoil electron. It is the dominant interaction for <strong>mid-energy photons</strong> (approx. 0.5-5 MeV) in most materials, including tissue. This is the primary source of scatter in shielding and the physical basis for the Compton continuum in a gamma spectrum.</li>
                         <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of <strong>1.022 MeV</strong>. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for <strong>high-energy photons</strong> in <strong>high-Z materials</strong>.</li>
+                    </ul>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Photon Interaction Dominance</h4>
+                    <p>Being able to sketch the regions of dominance for the "Big Three" interactions as a function of photon energy and absorber atomic number (Z) is a classic exam topic.</p>
+                    <img src="image-36dd102d.webp" alt="Chart showing the dominant photon interaction mechanism based on photon energy and the atomic number of the absorber." class="w-full max-w-2xl mx-auto my-4 rounded-lg shadow-md border">
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Compton Scattering Kinematics</h4>
+                    <p>You must be able to calculate the energy of the scattered photon ($E_{\gamma'}$) and the recoil electron ($T_e$).</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Scattered Photon Energy:</strong>
+                        $$E_{\gamma'} = \frac{E_\gamma}{1 + \frac{E_\gamma}{m_e c^2}(1 - \cos\theta)}$$
+                        Where $\theta$ is the photon scattering angle. The maximum energy transfer (minimum $E_{\gamma'}$) occurs at a 180° backscatter.</li>
+                        <li><strong>Recoil Electron Energy:</strong> By conservation of energy:
+                        $$T_e = E_\gamma - E_{\gamma'}$$
+                        The maximum electron energy, which defines the "Compton Edge" in a spectrum, occurs at 180° photon scatter.</li>
                     </ul>
                 </div>
                  <div class="key-concept">
@@ -206,6 +255,19 @@
                         <li><strong>Linear Energy Transfer (LET):</strong> The average energy deposited by a charged particle per unit path length. High-LET radiation (alphas, protons) is more biologically damaging than low-LET radiation (betas, gammas) for the same absorbed dose.</li>
                         <li><strong>Bragg Peak:</strong> Heavy charged particles (alphas, protons) deposit the majority of their energy at the very end of their track. This peak in energy deposition is called the Bragg peak and is the principle behind proton therapy.</li>
                         <li><strong>Beta Spectrum:</strong> Beta particles are emitted with a continuous spectrum of energies up to a maximum ($E_{max}$). This is because the decay energy is shared with a neutrino. This continuous spectrum is why beta attenuation in matter appears roughly exponential, even though individual electrons have a finite range.</li>
+                    </ul>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Alpha Particle Range in Air</h4>
+                    <p>A useful empirical formula for the range of an alpha particle in air at standard temperature and pressure is:</p>
+                    $$R_{air} (cm) = 0.32 E_{\alpha} (MeV)^{3/2}$$
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Bremsstrahlung Production</h4>
+                    <p>Bremsstrahlung ("braking radiation") is produced when a high-energy charged particle (typically an electron) decelerates rapidly in the electric field of a nucleus. This is a key consideration for beta shielding.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Energy Dependence:</strong> The fraction of energy lost to bremsstrahlung is proportional to the initial electron energy (E) and the atomic number (Z) of the absorber: $$f \approx \frac{ZE}{800}$$</li>
+                        <li><strong>Shielding Implication:</strong> To shield high-energy beta emitters (e.g., Sr-90/Y-90), a low-Z material (like plastic or aluminum) should be used as the primary shield to minimize bremsstrahlung production. A high-Z material (like lead) can then be placed outside the low-Z shield to attenuate the bremsstrahlung x-rays produced.</li>
                     </ul>
                 </div>
             </section>
@@ -346,6 +408,14 @@
                     <p>You must be able to identify and explain each region of the characteristic curve of pulse amplitude vs. applied voltage: Recombination, Ionization, Proportional, Limited Proportional, Geiger-Mueller (GM), and Continuous Discharge.</p>
                     <img src="6rc.jpg" alt="The six-region curve for gas-filled detectors, showing the relationship between applied voltage and the number of ion pairs collected." class="w-full max-w-2xl mx-auto my-4 rounded-lg shadow-md border">
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Proportional Counters</h4>
+                    <p>Operating in the proportional region allows for energy discrimination. The pulse height is proportional to the initial energy deposited.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Gas Multiplication:</strong> Unlike ion chambers, the applied voltage is high enough to accelerate primary electrons, causing them to create secondary ionizations. This "gas amplification" (typically $10^2$ to $10^4$) results in a much larger, but still proportional, output pulse.</li>
+                        <li><strong>Applications:</strong> Because they can distinguish between particle energies, proportional counters are excellent for spectroscopy of low-energy radiations (alphas, betas) and for discriminating between them (e.g., alpha counting in the presence of a high beta background).</li>
+                    </ul>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Ion Chamber Temperature/Pressure Correction</h4>
                     <p>For vented ion chambers, readings must be corrected to standard conditions (STP, often 22°C and 760 mmHg).</p>
@@ -364,6 +434,14 @@
                     <img src="image-3c83b3de.webp" alt="Detailed Gamma Ray Spectrum showing Photopeak, Compton Edge, and Escape Peaks." class="w-full max-w-3xl mx-auto my-4 rounded-lg shadow-md border">
                 </div>
                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Semiconductor Detectors (HPGe)</h4>
+                     <p>High-Purity Germanium (HPGe) detectors are the gold standard for gamma spectroscopy.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Superior Resolution:</strong> The energy required to create an electron-hole pair in germanium (~3 eV) is much lower than the energy to create an ion pair in a gas or a photoelectron in a scintillator. This results in a much larger number of charge carriers for a given photon energy, leading to vastly superior energy resolution (sharper peaks).</li>
+                        <li><strong>Trade-offs:</strong> HPGe detectors are more expensive than NaI scintillators, have lower efficiency (due to smaller crystal sizes), and must be cooled to liquid nitrogen temperatures to reduce thermal noise.</li>
+                    </ul>
+                </div>
+                <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Liquid Scintillation Counting (LSC)</h4>
                     <p>This is the method of choice for low-energy beta emitters (${}^3$H, ${}^{14}$C). The most critical concept is **quenching**, any process that reduces light output. To get an accurate DPM, you must determine the efficiency for each *quenched* sample, typically by using an instrument-generated quench curve.</p>
                 </div>
@@ -374,6 +452,7 @@
                     <ul class="list-disc list-inside space-y-1 mt-2">
                         <li><strong>Slow/Thermal:</strong> Use high cross-section reactions like ${}^{10}B(n,\alpha)$ or ${}^{3}He(n,p)$. Be prepared to explain the "wall effect," where a reaction near the detector wall results in incomplete energy deposition and a smaller pulse.</li>
                         <li><strong>Fast:</strong> Use moderation (e.g., Bonner spheres) to thermalize neutrons before detection, or use proton recoil detectors.</li>
+                        <li><strong>Bonner Spheres:</strong> A set of polyethylene spheres of different diameters with a thermal neutron detector (like a LiI scintillator) at the center. The varying moderator thickness makes each sphere most sensitive to a different neutron energy. By taking measurements with multiple spheres and using an "unfolding" algorithm, one can reconstruct the neutron energy spectrum.</li>
                     </ul>
                 </div>
 
@@ -397,6 +476,23 @@
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Problem-Solving Methodologies</h2>
                 <p class="mb-6">This section focuses on the practical application of fundamental principles to solve complex problems. It covers how to combine formulas and model dynamic scenarios, which are key skills for the exam.</p>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Order of Magnitude Estimations</h4>
+                    <p>Before beginning a complex calculation, perform a quick, "back-of-the-envelope" estimate to determine if your potential answer is reasonable. This can prevent significant errors caused by unit conversions or calculator mistakes. Use rules of thumb and round constants to simplify the math (e.g., $\pi \approx 3$).</p>
+                    <p class="mt-2"><strong>Example:</strong> If asked for the dose rate from 1 Ci of Co-60 at 1 meter, you should immediately know the answer is ~1.3 R/hr. If your detailed calculation yields a result in the mR/hr or thousands of R/hr, you have made an error.</p>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Working Backwards from the Answer</h4>
+                    <p>For multi-step problems, a useful strategy is to start with the final desired quantity and work backwards to the information you are given.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Identify the Goal:</strong> What is the final unit and quantity you need to calculate (e.g., CEDE in rem)?</li>
+                        <li><strong>Find the Final Equation:</strong> What is the immediate precursor formula to get that answer? (e.g., $CEDE = (\text{Intake}/ALI) \times 5$ rem).</li>
+                        <li><strong>Assess Inputs:</strong> For each input in that formula (Intake, ALI), is it given or does it need to be calculated?</li>
+                        <li><strong>Repeat:</strong> For each input that must be calculated, repeat the process, identifying the precursor formula and its inputs, until you have a chain of calculations that connects the initial given information to the final answer.</li>
+                    </ol>
+                </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Unit Analysis & Formula Derivation</h3>
                 <div class="key-concept">
@@ -462,6 +558,10 @@
                         <li><strong>Interaction/Poisons:</strong> Using materials with very high neutron absorption cross-sections (e.g., Boron, Cadmium, Gadolinium) to act as "poisons," removing neutrons from the system. Also includes ensuring safe spacing between multiple subcritical units.</li>
                     </ol>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Double Contingency Principle</h4>
+                    <p>This is the fundamental safety philosophy in criticality safety. It requires that a process be designed to be safe, assuming that **two independent, concurrent, and unlikely changes** in conditions have occurred before a criticality accident is possible. In practice, this means that no single error or equipment failure should be able to cause a criticality.</p>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Criticality Excursion Yield</h4>
                     <p>In an accident scenario, you may be given the total number of fissions and asked to calculate the dose.</p>
@@ -484,6 +584,12 @@
                     <p>Protective eyewear must reduce the potential exposure to below the MPE.</p>
                     $$OD = \log_{10} \left( \frac{H_0}{MPE} \right) = \log_{10} \left( \frac{E_0}{MPE_{irradiance}} \right)$$
                     <p class="mt-2">Where $H_0$ or $E_0$ is the anticipated radiant exposure or irradiance at the eye.</p>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Nominal Ocular Hazard Distance (NOHD)</h4>
+                    <p>The NOHD is the distance at which the beam has spread enough for the irradiance to equal the MPE.</p>
+                    $$NOHD = \frac{1}{\phi} \sqrt{\frac{4 \Phi}{\pi \cdot MPE} - a^2}$$
+                    <p class="mt-2">Where $\Phi$ is the total power, $\phi$ is the beam divergence, and 'a' is the initial beam diameter.</p>
                 </div>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">RF/Microwave Safety</h4>
@@ -518,7 +624,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Regulatory & Standards Frameworks</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Regulatory & Standards Frameworks</h2>
                 <p class="mb-6">A CHP must not only know the dose limits but also understand the philosophy behind them, how they are applied in practice, and the specific requirements for different situations like transportation and effluent control.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Occupational Dose Limits & Summation</h3>
@@ -544,6 +650,21 @@
                     </ul>
                 </div>
 
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Planned Special and Emergency Exposures</h4>
+                    <p>Situations may arise where exceeding the standard occupational dose limits is necessary. These are tightly controlled.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Planned Special Exposure (PSE):</strong> Authorized by a licensee in advance for an exceptional situation. Per 10 CFR 20, a PSE is allowed only if it does not exceed the annual limits (5 rem TEDE, 50 rem to any organ) and the lifetime dose from all PSEs does not exceed 5 times the annual limit (i.e., 25 rem TEDE).</li>
+                        <li><strong>Emergency Worker Guidelines (NCRP/EPA):</strong> These are not regulations but guidance for emergency response.
+                            <ul>
+                                <li><strong>~10 rem:</strong> All activities during an emergency.</li>
+                                <li><strong>~25 rem:</strong> Protecting valuable property.</li>
+                                <li><strong>>25 rem (up to ~100 rem):</strong> Lifesaving activities or protecting large populations, only for volunteers who are fully aware of the risks.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Total Effective Dose Equivalent (TEDE)</h4>
                     <p>TEDE is the sum of the deep dose equivalent (DDE) from external sources and the committed effective dose equivalent (CEDE) from internal sources.</p>
@@ -562,9 +683,10 @@
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Dose Limits for Members of the Public</h4>
                      <ul class="list-disc list-inside space-y-1 mt-2">
-                        <li>The annual limit is <strong>0.1 rem (1 mSv) TEDE</strong>.</li>
+                        <li>The annual limit is <strong>0.1 rem (1 mSv) TEDE</strong> from licensed operations.</li>
                         <li>The dose rate in any unrestricted area from an external source must not exceed <strong>2 mrem in any one hour</strong>.</li>
                         <li>Effluent Concentration (EC) values in 10 CFR 20 Appendix B are derived such that if a member of the public were continuously exposed to that concentration in air or water, they would not exceed the 0.1 rem annual limit.</li>
+                        <li>The limit for license termination (decommissioning) is **25 mrem/year** to an average member of the critical group (10 CFR 20.1402).</li>
                     </ul>
                 </div>
 
@@ -582,7 +704,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Conceptual Questions & Justifications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
@@ -597,6 +719,26 @@
                     <h4 class="font-semibold text-lg mb-2">Instrument Response and Limitations</h4>
                     <p><strong>Common Question:</strong> "Why does an uncompensated GM survey meter over-respond to low-energy photons?"</p>
                     <p class="mt-2"><strong>Expert Justification:</strong> The GM tube's response is based on the *number* of ionizing events, not the energy deposited. The photoelectric effect, which dominates at low photon energies, has a cross-section highly dependent on the absorber's atomic number ($Z^4$ to $Z^5$). The high-Z material of the GM tube wall has a much higher probability of interacting with low-energy photons than air does. Therefore, for a given exposure rate (defined by energy absorption in air), many more low-energy photons interact with the detector wall than high-energy photons, each producing a photoelectron that triggers a full avalanche (a "count"). This results in a disproportionately high count rate at low energies, causing the meter to read higher than the true exposure rate. Energy compensation involves adding a filter of a specific material and thickness to selectively attenuate these low-energy photons, flattening the detector's energy response.</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Ion Chamber vs. GM for Dose Rate vs. Contamination</h4>
+                    <p><strong>Common Question:</strong> "Why is an ion chamber the preferred instrument for an accurate dose rate measurement, while a GM survey meter is preferred for finding contamination?"</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> The choice is based on the fundamental operating principle of each detector. An **ion chamber** operates in the ionization region, where it collects the primary charge created by radiation. The resulting current is directly proportional to the energy deposited in the gas volume. This makes its response relatively independent of photon energy, allowing for accurate dose rate (energy/mass) measurements. A **GM meter**, however, operates with a much higher voltage, causing each ionizing event, regardless of its initial energy, to trigger a full avalanche of charge. This "all-or-nothing" response makes it incredibly sensitive to even single ionizing events, which is ideal for detecting the presence of low levels of contamination. However, because it cannot distinguish between low- and high-energy events, it is not suitable for accurate dose rate measurements.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Internal Dosimetry & Regulatory Philosophy</h3>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">ALI for Soluble vs. Insoluble Plutonium</h4>
+                    <p><strong>Common Question:</strong> "Explain why the ALI for inhalation of soluble Plutonium-239 (Class W) is much lower than for insoluble Pu-239 (Class Y)."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> This is a classic question that tests understanding of how ALIs are derived. The ALI is the lower of two values: the intake that would give 5 rem CEDE (stochastic risk) or 50 rem CDE (deterministic risk) to any organ.
+                        <br>For **insoluble (Class Y)** Pu-239, the material is cleared very slowly from the lungs. It irradiates the lung tissue for a long time, and the dose to the lung is the limiting factor. The lung CDE of 50 rem is reached before the CEDE of 5 rem.
+                        <br>For **soluble (Class W)** Pu-239, the material is absorbed from the lungs into the bloodstream and deposits primarily on the bone surfaces. The bone surface cells are highly radiosensitive. Because of the high LET of alpha particles and the high weighting factor for bone surfaces, the effective dose from this systemic uptake is very high. In this case, the stochastic CEDE limit of 5 rem is reached with a much smaller intake than the 50 rem deterministic limit to any single organ. Therefore, the ALI for soluble Pu-239 is lower (more restrictive).
+                    </p>
+                </div>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Justification for the Sum of Fractions Rule</h4>
+                    <p><strong>Common Question:</strong> "Explain the regulatory basis and purpose of the 'sum of fractions' rule."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> The sum of fractions rule is a mechanism to ensure that the total risk from all exposure pathways (external and internal from multiple radionuclides) is controlled to a level consistent with the primary dose limit (e.g., 5 rem TEDE). Radiation protection limits are based on an acceptable level of total risk. If a worker received, for example, 75% of their external dose limit and 75% of their internal dose limit for a single nuclide, each exposure would be individually compliant, but the total risk to the worker would exceed the intended level. By requiring the sum of the ratios of each exposure to its respective limit to be less than or equal to one, the rule ensures the total risk is kept at or below the level deemed acceptable by the regulations.</p>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Operational Health Physics Principles</h3>
@@ -625,7 +767,7 @@
             </section>
 
              <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Power Reactor Health Physics</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Power Reactor Health Physics</h2>
                 <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
@@ -634,9 +776,19 @@
                     <p>Understanding the fundamental design differences is key to understanding their radiological signatures.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
-                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (a high-energy gamma emitter) in the steam lines and turbine.</li>
+                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (from the ${}^{16}O(n,p){}^{16}N$ reaction), a high-energy (6.1 MeV) gamma emitter with a very short (7.1 s) half-life, which causes "turbine shine."</li>
                     </ul>
                     <img src="image-7302f456.jpg" alt="Diagram comparing the layout of a Boiling Water Reactor (BWR) and a Pressurized Water Reactor (PWR)." class="w-full max-w-3xl mx-auto my-4 rounded-lg shadow-md border image-buffer">
+                </div>
+                
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">CRUD and Source Term Management</h4>
+                    <p>CRUD (Chalk River Unidentified Deposits) refers to activated corrosion products that are the primary source of occupational dose during reactor outages.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Formation:</strong> Metal components (pipes, valves) corrode, releasing ions (e.g., Co, Ni, Fe) into the primary coolant. These ions circulate through the reactor core, where they are activated by the intense neutron flux.</li>
+                        <li><strong>Deposition:</strong> These now-radioactive ions deposit on surfaces throughout the primary system, creating high dose rate "hot spots." ${}^{60}$Co is the most significant long-term contributor to this dose.</li>
+                        <li><strong>Control:</strong> Source term reduction strategies, such as controlling coolant chemistry (e.g., pH) and using materials with low cobalt content, are critical ALARA measures.</li>
+                    </ul>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
@@ -645,7 +797,7 @@
                     <ul class="list-disc list-inside space-y-2 mt-2">
                         <li><strong>Activation Products:</strong> These are the dominant source of occupational dose during maintenance and outages. They are formed when corrosion products (from pipes, valves, etc.) circulate through the core and are activated by neutrons.
                             <ul>
-                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.26$ years.</li>
+                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.27$ years.</li>
                                 <li><strong>${}^{58}$Co:</strong> Formed from ${}^{58}$Ni. A major dose contributor during the first year after shutdown. $T_{1/2} = 71$ days.</li>
                                 <li><strong>${}^{54}$Mn, ${}^{59}$Fe, ${}^{51}$Cr:</strong> Other common activation products.</li>
                             </ul>
@@ -662,6 +814,12 @@
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations in Reactor Health Physics</h3>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Worker Stay Time</h4>
+                    <p>A fundamental ALARA calculation is determining the maximum time a worker can spend in a radiation field without exceeding a dose limit.</p>
+                    $$Stay~Time = \frac{\text{Dose Limit} - \text{Dose Already Received}}{\text{Dose Rate}}$$
+                    <p class="mt-2">Ensure all units are consistent (e.g., mrem and mrem/hr).</p>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity Buildup in a Cleanup System</h4>
                     <p><strong>Problem Archetype:</strong> Reactor coolant containing a specific concentration of a radionuclide is passed through a cleanup system (like a demineralizer) with a given flow rate and efficiency. Calculate the activity accumulated in the system after a certain run time.</p>
@@ -699,7 +857,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Environmental HP & Decommissioning</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Environmental HP & Decommissioning</h2>
                 <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
@@ -717,6 +875,10 @@
                         </li>
                         <li><strong>Survey Design:</strong> The FSS typically uses a systematic grid sampling pattern to ensure full coverage and avoid bias.</li>
                     </ul>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Gray Region & Decision Errors</h4>
+                    <p>A key concept in MARSSIM survey design is the "Gray Region," which is the range of concentrations between the Lower Bound of the Gray Region (LBGR) and the DCGL. This is the range where decision errors are most likely to occur. The width of this region ($\Delta = DCGL - LBGR$) is a critical input for calculating the required number of samples. A smaller gray region (a more stringent survey) requires more samples to achieve the desired statistical confidence.</p>
                 </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Derived Concentration Guideline Level (DCGL)</h4>
@@ -747,8 +909,20 @@
                         </li>
                     </ul>
                 </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Pathway Modeling</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">RESRAD</h4>
+                    <p>The **RESRAD (RESidual RADioactivity)** family of computer codes, developed by Argonne National Laboratory, are the standard tools used to perform the pathway analysis needed to derive site-specific DCGLs. The codes model the transport of radionuclides from soil and surfaces through multiple environmental pathways (e.g., groundwater, plant uptake, inhalation, direct exposure) to calculate a dose to a defined human receptor.</p>
+                </div>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Monitoring Program Design</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Key Principles</h4>
+                    <p>The goal of an environmental monitoring program is to verify effluent controls, detect unexpected releases, and assess public dose.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Indicator Locations:</strong> Placed where concentrations are expected to be highest based on modeling (e.g., downwind, downstream).</li>
+                        <li><strong>Background Locations:</strong> Placed far from the site, in a location that is unimpacted by site activities, to measure natural background levels for comparison.</li>
+                        <li><strong>Sample Media:</strong> Air, water (surface and ground), soil, sediment, and biota (e.g., vegetation, fish) are chosen based on the expected radionuclides and the most likely exposure pathways to the public.</li>
+                    </ul>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Gaussian Plume Model (Centerline)</h4>
                     <p>This is the standard model for estimating the downwind air concentration ($\chi$) from a continuous airborne release from a stack.</p>
@@ -758,34 +932,38 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Key Formula Sheet & Applications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
                 
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Basic Decay & Dose</h3>
                 <div class="key-calc">
                     <ul class="list-none space-y-4">
-                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide. Ensure the half-life is in seconds.</li>
-                        <li>$N_{2}(t)=\frac{N_{1}^{0}\lambda_{1}}{\lambda_{2}-\lambda_{1}}[e^{-\lambda_{1}t}-e^{-\lambda_{2}t}]$<br><strong>Use:</strong> The Bateman equation for calculating the number of daughter atoms ($N_2$) at time t from an initial number of parent atoms ($N_1^0$). This is fundamental for parent-daughter equilibrium problems.</li>
-                        <li>$\dot{X}(d)=\frac{\Gamma C_{l}(\theta_{1}+\theta_{2})}{d}$<br><strong>Use:</strong> To calculate the dose rate from a finite line source. Note this form uses the sum of the angles, which assumes the angles are measured from the ends of the line to the perpendicular. The form $(\theta_2 - \theta_1)$ is also common. Know what your angles represent.</li>
-                        <li>$\dot{X}(d)=\Gamma C_{a}\pi \ln[\frac{(r^{2}+d^{2})}{d^{2}}]$<br><strong>Use:</strong> To calculate the dose rate from a disc source at a point on its central axis.</li>
-                        <li>$D=73.8 C E_{\beta}T_{1/2}(1-e^{-\lambda t})$<br><strong>Use:</strong> An MIRD-like formula for calculating the cumulative dose from a beta emitter in an organ over time t. C is concentration, E is average beta energy.</li>
-                        <li>$R_{\beta}=412 E^{(1.265-0.0954 \ln E)}$<br><strong>Use:</strong> A common empirical formula for calculating the range of beta particles in mg/cm². $E$ is the maximum beta energy in MeV.</li>
+                        <li>$A(t) = A_0 e^{-\lambda t}$<br><strong>Use:</strong> Basic radioactive decay.</li>
+                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide.</li>
+                        <li>$\dot{D}(x) = \frac{\Gamma A}{x^2}$<br><strong>Use:</strong> Point source dose rate calculation.</li>
+                        <li>$D(x) = D_0 B e^{-\mu x}$<br><strong>Use:</strong> Shielding calculation with buildup factor (B).</li>
                     </ul>
                 </div>
-                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Internal Dosimetry</h3>
+                 <div class="key-calc">
+                    <ul class="list-none space-y-4">
+                        <li>$\frac{1}{T_{eff}} = \frac{1}{T_{phys}} + \frac{1}{T_{bio}}$<br><strong>Use:</strong> Calculating effective half-life.</li>
+                        <li>$CEDE~(rem) = \frac{I~(\mu Ci)}{ALI~(\mu Ci)} \times 5~rem$<br><strong>Use:</strong> Calculating CEDE from a known intake and ALI.</li>
+                        <li>$I = B \times t \times \chi$<br><strong>Use:</strong> Basic intake calculation from air concentration ($\chi$).</li>
+                    </ul>
+                </div>
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Statistics</h3>
                 <div class="key-calc">
                      <ul class="list-none space-y-4">
-                        <li>$\sigma_{s}=[\frac{r_{s+b}}{t_{s+b}}+\frac{r_{b}}{t_{b}}]^{1/2}$<br><strong>Use:</strong> To calculate the standard deviation of the net sample count rate ($r_s$) from the gross rate ($r_{s+b}$) and background rate ($r_b$). This is fundamental for error propagation in counting.</li>
-                        <li>$\frac{t_{s+b}}{t_{b}}=\sqrt{\frac{r_{s+b}}{r_{b}}}$<br><strong>Use:</strong> To determine the optimum division of a fixed total counting time to minimize the uncertainty in the net count rate.</li>
-                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
-                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
+                        <li>$\sigma_{net} = \sqrt{\frac{C_g}{t_g^2} + \frac{C_b}{t_b^2}}$<br><strong>Use:</strong> Propagating uncertainty for net count rate.</li>
+                        <li>$L_D \approx 4.65 \sqrt{R_b / t_b}$<br><strong>Use:</strong> Simplified Currie formula for the Lower Limit of Detection (in cps).</li>
+                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(C_{i}-\overline{C})^{2}}{\overline{C}}$<br><strong>Use:</strong> The Chi-Square test for counter performance.</li>
                     </ul>
                 </div>
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Integrated Practice Problems & Detailed Solutions</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Integrated Practice Problems & Detailed Solutions</h2>
                 <p class="mb-6">This section applies the guide's principles to full, multi-part exam questions to demonstrate integrated problem-solving.</p>
                 
                 <div class="key-calc">
@@ -793,7 +971,7 @@
                     <p><strong>Task:</strong> Determine if 2 inches of lead shielding is sufficient to keep a worker's dose below 300 mrem for a 30-minute job near a 60 Ci (initial) ${}^{60}Co$ source that has decayed for 6 months.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Decay Calculation:</strong> $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.26y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
+                        <li><strong>Decay Calculation:</strong> $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.27y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
                         <li><strong>Unshielded Dose Rate:</strong> $\dot{D}_{unsh} = \frac{\Gamma A}{d^2} = \frac{(1.3 \frac{R \cdot m^2}{hr \cdot Ci}) \cdot (56.2 \text{ Ci})}{(2.74 \text{ m})^2} = 9.73 \frac{R}{hr} = \textbf{9730 mrem/hr}$.</li>
                         <li><strong>Shield Effectiveness:</strong> A 2-inch (5.08 cm) lead shield with $\mu = 0.65 \text{ cm}^{-1}$ provides $\mu x = 3.3$ mfp. Interpolating provided buildup data for 3.3 mfp gives $B \approx 2.15$.</li>
                         <li><strong>Shielded Dose Rate:</strong> $\dot{D}_{sh} = \dot{D}_{unsh} \cdot B \cdot e^{-\mu x} = (9730) \cdot (2.15) \cdot e^{-3.3} \approx \textbf{772 mrem/hr}$.</li>
@@ -821,21 +999,21 @@
                 </div>
 
                 <div class="key-calc">
-                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Pathway Analysis</h3>
-                    <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $8.81 \times 10^3$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
+                    <h3 class="font-semibold text-lg mb-2">Practice Problem 3: Environmental Pathway Analysis</h3>
+                    <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $0.881$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
                         <li><strong>Calculate Concentration in Fish ($C_{fish}$):</strong>
-                        $$C_{fish} = (8.81 \times 10^3 \frac{pCi}{mL}) \times (\frac{1000 mL}{L}) \times (2000 \frac{L}{kg}) = 1.76 \times 10^{10} \frac{pCi}{kg}$$
+                        $$C_{fish} = (0.881 \frac{pCi}{mL}) \times (\frac{1000 mL}{L}) \times (2000 \frac{L}{kg}) = 1.76 \times 10^{6} \frac{pCi}{kg}$$
                         </li>
                         <li><strong>Calculate Annual Intake (I):</strong>
-                        $$I = (1.76 \times 10^{10} \frac{pCi}{kg}) \times (0.25 \frac{kg}{day}) \times (365 \frac{day}{yr}) = 1.61 \times 10^{12} \frac{pCi}{yr}$$
+                        $$I = (1.76 \times 10^{6} \frac{pCi}{kg}) \times (0.25 \frac{kg}{day}) \times (365 \frac{day}{yr}) = 1.61 \times 10^{8} \frac{pCi}{yr}$$
                         </li>
                         <li><strong>Convert to CEDE:</strong> Convert intake to $\mu$Ci and use the ALI.
-                        $$I = 1.61 \times 10^{12} pCi \times \frac{1 \mu Ci}{10^6 pCi} = 1.61 \times 10^6 \mu Ci$$
-                        $$CEDE (\text{rem}) = \frac{1.61 \times 10^6 \mu\text{Ci}}{100 \mu\text{Ci}} \times 5 \text{ rem} = \textbf{80,500 rem}$$
+                        $$I = 1.61 \times 10^{8} pCi \times \frac{1 \mu Ci}{10^6 pCi} = 161 \mu Ci$$
+                        $$CEDE (\text{rem}) = \frac{161 \mu\text{Ci}}{100 \mu\text{Ci}} \times 5 \text{ rem} = \textbf{8.05 rem}$$
                         </li>
-                        <li><strong>Conclusion:</strong> This is an extremely high dose, far exceeding the public limit. The calculation highlights the power of bioaccumulation. (Note: The inputs for this exam problem lead to a very high, unrealistic result, but the methodology is the key takeaway).</li>
+                        <li><strong>Conclusion:</strong> This is a very high dose, far exceeding the public limit of 0.1 rem/yr, and demonstrates the significant dose impact of bioaccumulation in environmental pathways.</li>
                     </ol>
                 </div>
                  <div class="key-calc">
@@ -853,6 +1031,44 @@
                         <li><strong>Compare to Critical Value:</strong> From a MARSSIM table (e.g., Table I.3) for N=10 measurements and a Type I error rate ($\alpha$) of 0.05, the critical value (k) is 8. This means we need 8 or more measurements to be less than the DCGL to be confident the area is clean.</li>
                         <li><strong>Conclusion:</strong> We reject the null hypothesis ($H_0$) if S+ is less than or equal to the number of non-zero measurements minus the critical value (10 - k). Here, we need S+ $\le$ (10 - 8) = 2. Since our calculated S+ of 1 is less than or equal to 2, we **reject the null hypothesis**. The survey unit meets the release criterion.</li>
                     </ol>
+                </div>
+            </section>
+
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Glossary of Key Terms & Acronyms</h2>
+                <div class="key-concept">
+                    <ul class="list-none space-y-2">
+                        <li><strong>ACGIH:</strong> American Conference of Governmental Industrial Hygienists - Sets occupational exposure limits for non-ionizing radiation (TLVs).</li>
+                        <li><strong>ALI (Annual Limit on Intake):</strong> The activity of a radionuclide that, if inhaled or ingested, would result in a CEDE of 5 rem or a CDE of 50 rem to any organ.</li>
+                        <li><strong>ALARA:</strong> As Low As Reasonably Achievable - The guiding principle of radiation protection.</li>
+                        <li><strong>AMAD (Activity Median Aerodynamic Diameter):</strong> The median aerodynamic diameter of an aerosol, used to characterize particle size distribution for internal dosimetry.</li>
+                        <li><strong>ANSI:</strong> American National Standards Institute - Develops consensus standards, including for laser safety (Z136.1).</li>
+                        <li><strong>Buildup Factor (B):</strong> A correction factor used in shielding calculations to account for the contribution of scattered photons to the dose.</li>
+                        <li><strong>BWR (Boiling Water Reactor):</strong> A type of nuclear reactor where water boils in the core, and the resulting steam directly drives a turbine.</li>
+                        <li><strong>CDE / CEDE:</strong> Committed Dose Equivalent / Committed Effective Dose Equivalent - The dose received over 50 years from an intake of radioactive material.</li>
+                        <li><strong>CPE (Charged Particle Equilibrium):</strong> A condition where the energy of charged particles leaving a volume is balanced by the energy of charged particles entering it. Under CPE, KERMA equals absorbed dose.</li>
+                        <li><strong>Cross Section ($\sigma$):</strong> A measure of the probability of an interaction between a particle and a target nucleus, typically measured in barns ($10^{-24}$ cm²).</li>
+                        <li><strong>DAC (Derived Air Concentration):</strong> The airborne concentration of a radionuclide that, if breathed for a working year, would result in an intake of one ALI.</li>
+                        <li><strong>DCGL (Derived Concentration Guideline Level):</strong> A radionuclide concentration limit used in decommissioning to demonstrate that a site meets the release criterion (e.g., 25 mrem/yr).</li>
+                        <li><strong>DDE (Deep Dose Equivalent):</strong> The external dose equivalent at a tissue depth of 1 cm (1000 mg/cm²).</li>
+                        <li><strong>DQO (Data Quality Objective):</strong> A systematic planning process used in MARSSIM to ensure that the data collected will be sufficient to support the desired decision.</li>
+                        <li><strong>HVL (Half-Value Layer):</strong> The thickness of a material required to reduce the intensity of a radiation beam to one-half its original value.</li>
+                        <li><strong>ICRP:</strong> International Commission on Radiological Protection - An international body that provides recommendations and guidance on radiation protection.</li>
+                        <li><strong>KERMA (Kinetic Energy Released in Media):</strong> The energy transferred from uncharged particles (photons, neutrons) to charged particles per unit mass of a medium.</li>
+                        <li><strong>LET (Linear Energy Transfer):</strong> The rate at which a charged particle deposits energy as it travels through matter.</li>
+                        <li><strong>MARSSIM:</strong> Multi-Agency Radiation Survey and Site Investigation Manual - A standardized methodology for decommissioning surveys.</li>
+                        <li><strong>MPE (Maximum Permissible Exposure):</strong> The highest level of laser radiation to which a person can be exposed without hazardous effects.</li>
+                        <li><strong>NCRP:</strong> National Council on Radiation Protection and Measurements - A U.S. organization that issues recommendations on radiation protection.</li>
+                        <li><strong>NOHD (Nominal Ocular Hazard Distance):</strong> The distance from a laser at which the beam irradiance equals the MPE.</li>
+                        <li><strong>PAG (Protective Action Guide):</strong> A projected dose at which a specific protective action (e.g., sheltering, evacuation) is recommended during an emergency.</li>
+                        <li><strong>PWR (Pressurized Water Reactor):</strong> A type of nuclear reactor with separate primary (reactor) and secondary (turbine) coolant loops.</li>
+                        <li><strong>Q-value:</strong> The total energy released in a nuclear reaction or decay.</li>
+                        <li><strong>SAR (Specific Absorption Rate):</strong> The rate at which RF/microwave energy is absorbed per unit mass of body tissue.</li>
+                        <li><strong>TEDE (Total Effective Dose Equivalent):</strong> The sum of the external deep dose equivalent (DDE) and the internal committed effective dose equivalent (CEDE).</li>
+                        <li><strong>TLV (Threshold Limit Value):</strong> Exposure guidelines for occupational health hazards, including non-ionizing radiation, issued by the ACGIH.</li>
+                        <li><strong>TVL (Tenth-Value Layer):</strong> The thickness of a material required to reduce the intensity of a radiation beam to one-tenth its original value.</li>
+                        <li><strong>WRS (Wilcoxon Rank Sum) Test:</strong> A statistical test used in MARSSIM when the contaminant is also present in the background.</li>
+                    </ul>
                 </div>
             </section>
 
