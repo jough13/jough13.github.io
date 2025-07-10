@@ -900,6 +900,10 @@
                         <li><strong>Survey Design:</strong> The FSS typically uses a systematic grid sampling pattern to ensure full coverage and avoid bias.</li>
                     </ul>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Gray Region & Decision Errors</h4>
+                    <p>A key concept in MARSSIM survey design is the "Gray Region," which is the range of concentrations between the Lower Bound of the Gray Region (LBGR) and the DCGL. This is the range where decision errors are most likely to occur. The width of this region ($\Delta = DCGL - LBGR$) is a critical input for calculating the required number of samples. A smaller gray region (a more stringent survey) requires more samples to achieve the desired statistical confidence.</p>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Derived Concentration Guideline Level (DCGL)</h4>
                     <p>The DCGL is the radionuclide-specific surface or soil concentration that would result in a dose equal to the release limit (e.g., 25 mrem/yr). It is the operational benchmark for the Final Status Survey.</p>
@@ -929,8 +933,20 @@
                         </li>
                     </ul>
                 </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Pathway Modeling</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">RESRAD</h4>
+                    <p>The **RESRAD (RESidual RADioactivity)** family of computer codes, developed by Argonne National Laboratory, are the standard tools used to perform the pathway analysis needed to derive site-specific DCGLs. The codes model the transport of radionuclides from soil and surfaces through multiple environmental pathways (e.g., groundwater, plant uptake, inhalation, direct exposure) to calculate a dose to a defined human receptor.</p>
+                </div>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Monitoring Program Design</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Key Principles</h4>
+                    <p>The goal of an environmental monitoring program is to verify effluent controls, detect unexpected releases, and assess public dose.</p>
+                    <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Indicator Locations:</strong> Placed where concentrations are expected to be highest based on modeling (e.g., downwind, downstream).</li>
+                        <li><strong>Background Locations:</strong> Placed far from the site, in a location that is unimpacted by site activities, to measure natural background levels for comparison.</li>
+                        <li><strong>Sample Media:</strong> Air, water (surface and ground), soil, sediment, and biota (e.g., vegetation, fish) are chosen based on the expected radionuclides and the most likely exposure pathways to the public.</li>
+                    </ul>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Gaussian Plume Model (Centerline)</h4>
                     <p>This is the standard model for estimating the downwind air concentration ($\chi$) from a continuous airborne release from a stack.</p>
