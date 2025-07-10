@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.23 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.24 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -582,6 +582,10 @@
                         <li><strong>Interaction/Poisons:</strong> Using materials with very high neutron absorption cross-sections (e.g., Boron, Cadmium, Gadolinium) to act as "poisons," removing neutrons from the system. Also includes ensuring safe spacing between multiple subcritical units.</li>
                     </ol>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Double Contingency Principle</h4>
+                    <p>This is the fundamental safety philosophy in criticality safety. It requires that a process be designed to be safe, assuming that **two independent, concurrent, and unlikely changes** in conditions have occurred before a criticality accident is possible. In practice, this means that no single error or equipment failure should be able to cause a criticality.</p>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Criticality Excursion Yield</h4>
                     <p>In an accident scenario, you may be given the total number of fissions and asked to calculate the dose.</p>
@@ -604,6 +608,12 @@
                     <p>Protective eyewear must reduce the potential exposure to below the MPE.</p>
                     $$OD = \log_{10} \left( \frac{H_0}{MPE} \right) = \log_{10} \left( \frac{E_0}{MPE_{irradiance}} \right)$$
                     <p class="mt-2">Where $H_0$ or $E_0$ is the anticipated radiant exposure or irradiance at the eye.</p>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Nominal Ocular Hazard Distance (NOHD)</h4>
+                    <p>The NOHD is the distance at which the beam has spread enough for the irradiance to equal the MPE.</p>
+                    $$NOHD = \frac{1}{\phi} \sqrt{\frac{4 \Phi}{\pi \cdot MPE} - a^2}$$
+                    <p class="mt-2">Where $\Phi$ is the total power, $\phi$ is the beam divergence, and 'a' is the initial beam diameter.</p>
                 </div>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">RF/Microwave Safety</h4>
