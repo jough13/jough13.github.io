@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.24 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.25 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -728,7 +728,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
@@ -743,6 +743,26 @@
                     <h4 class="font-semibold text-lg mb-2">Instrument Response and Limitations</h4>
                     <p><strong>Common Question:</strong> "Why does an uncompensated GM survey meter over-respond to low-energy photons?"</p>
                     <p class="mt-2"><strong>Expert Justification:</strong> The GM tube's response is based on the *number* of ionizing events, not the energy deposited. The photoelectric effect, which dominates at low photon energies, has a cross-section highly dependent on the absorber's atomic number ($Z^4$ to $Z^5$). The high-Z material of the GM tube wall has a much higher probability of interacting with low-energy photons than air does. Therefore, for a given exposure rate (defined by energy absorption in air), many more low-energy photons interact with the detector wall than high-energy photons, each producing a photoelectron that triggers a full avalanche (a "count"). This results in a disproportionately high count rate at low energies, causing the meter to read higher than the true exposure rate. Energy compensation involves adding a filter of a specific material and thickness to selectively attenuate these low-energy photons, flattening the detector's energy response.</p>
+                </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Ion Chamber vs. GM for Dose Rate vs. Contamination</h4>
+                    <p><strong>Common Question:</strong> "Why is an ion chamber the preferred instrument for an accurate dose rate measurement, while a GM survey meter is preferred for finding contamination?"</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> The choice is based on the fundamental operating principle of each detector. An **ion chamber** operates in the ionization region, where it collects the primary charge created by radiation. The resulting current is directly proportional to the energy deposited in the gas volume. This makes its response relatively independent of photon energy, allowing for accurate dose rate (energy/mass) measurements. A **GM meter**, however, operates with a much higher voltage, causing each ionizing event, regardless of its initial energy, to trigger a full avalanche of charge. This "all-or-nothing" response makes it incredibly sensitive to even single ionizing events, which is ideal for detecting the presence of low levels of contamination. However, because it cannot distinguish between low- and high-energy events, it is not suitable for accurate dose rate measurements.</p>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Internal Dosimetry & Regulatory Philosophy</h3>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">ALI for Soluble vs. Insoluble Plutonium</h4>
+                    <p><strong>Common Question:</strong> "Explain why the ALI for inhalation of soluble Plutonium-239 (Class W) is much lower than for insoluble Pu-239 (Class Y)."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> This is a classic question that tests understanding of how ALIs are derived. The ALI is the lower of two values: the intake that would give 5 rem CEDE (stochastic risk) or 50 rem CDE (deterministic risk) to any organ.
+                        <br>For **insoluble (Class Y)** Pu-239, the material is cleared very slowly from the lungs. It irradiates the lung tissue for a long time, and the dose to the lung is the limiting factor. The lung CDE of 50 rem is reached before the CEDE of 5 rem.
+                        <br>For **soluble (Class W)** Pu-239, the material is absorbed from the lungs into the bloodstream and deposits primarily on the bone surfaces. The bone surface cells are highly radiosensitive. Because of the high LET of alpha particles and the high weighting factor for bone surfaces, the effective dose from this systemic uptake is very high. In this case, the stochastic CEDE limit of 5 rem is reached with a much smaller intake than the 50 rem deterministic limit to any single organ. Therefore, the ALI for soluble Pu-239 is lower (more restrictive).
+                    </p>
+                </div>
+                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Justification for the Sum of Fractions Rule</h4>
+                    <p><strong>Common Question:</strong> "Explain the regulatory basis and purpose of the 'sum of fractions' rule."</p>
+                    <p class="mt-2"><strong>Expert Justification:</strong> The sum of fractions rule is a mechanism to ensure that the total risk from all exposure pathways (external and internal from multiple radionuclides) is controlled to a level consistent with the primary dose limit (e.g., 5 rem TEDE). Radiation protection limits are based on an acceptable level of total risk. If a worker received, for example, 75% of their external dose limit and 75% of their internal dose limit for a single nuclide, each exposure would be individually compliant, but the total risk to the worker would exceed the intended level. By requiring the sum of the ratios of each exposure to its respective limit to be less than or equal to one, the rule ensures the total risk is kept at or below the level deemed acceptable by the regulations.</p>
                 </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Operational Health Physics Principles</h3>
