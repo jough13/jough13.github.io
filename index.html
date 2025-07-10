@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comprehensive ABHP Part II Study Guide</title>
     
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- KaTeX for LaTeX Math Rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMQNBIUeNnGoM2H8KjJo3aOIM5dFAHWjV6hJOK7wGgJvSaKSZ" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0i8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax5AScKmpS5MKYs6ehHdHcZvoB9ic7VeFPS" crossorigin="anonymous"></script>
@@ -65,7 +63,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.26 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.27 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -232,22 +230,17 @@
                     <svg viewBox="0 0 500 350" class="svg-diagram" aria-labelledby="interaction-title">
                         <title id="interaction-title">Photon Interaction Dominance Chart</title>
                         <text x="250" y="25" text-anchor="middle" class="label-bold">Photon Interaction Dominance</text>
-                        <!-- Axes -->
                         <path d="M50 300 L 480 300" stroke="#334155" stroke-width="2"/>
                         <text x="250" y="330" text-anchor="middle">Photon Energy (MeV)</text>
                         <path d="M50 300 L 50 40" stroke="#334155" stroke-width="2"/>
                         <text x="15" y="175" text-anchor="middle" transform="rotate(-90 15 175)">Atomic Number (Z)</text>
-                        <!-- Energy Ticks -->
                         <text x="100" y="315" font-size="10">0.1</text>
                         <text x="250" y="315" font-size="10">1.0</text>
                         <text x="400" y="315" font-size="10">10</text>
-                        <!-- Z Ticks -->
                         <text x="40" y="250" font-size="10" text-anchor="end">20</text>
                         <text x="40" y="100" font-size="10" text-anchor="end">80</text>
-                        <!-- Dividing Lines -->
                         <path d="M80 40 C 150 200, 200 280, 280 300" stroke="#334155" stroke-width="1.5" stroke-dasharray="4"/>
                         <path d="M250 40 C 300 150, 350 250, 450 300" stroke="#334155" stroke-width="1.5" stroke-dasharray="4"/>
-                        <!-- Region Labels -->
                         <text x="150" y="150" class="label-bold" font-size="18">Photoelectric</text>
                         <text x="350" y="250" class="label-bold" font-size="18">Compton</text>
                         <text x="380" y="120" class="label-bold" font-size="18">Pair Production</text>
@@ -959,25 +952,29 @@
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
                 
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Ionizing Radiation</h3>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Basic Decay & Dose</h3>
                 <div class="key-calc">
                     <ul class="list-none space-y-4">
-                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide. Ensure the half-life is in seconds.</li>
-                        <li>$N_{2}(t)=\frac{N_{1}^{0}\lambda_{1}}{\lambda_{2}-\lambda_{1}}[e^{-\lambda_{1}t}-e^{-\lambda_{2}t}]$<br><strong>Use:</strong> The Bateman equation for calculating the number of daughter atoms ($N_2$) at time t from an initial number of parent atoms ($N_1^0$). This is fundamental for parent-daughter equilibrium problems.</li>
-                        <li>$\dot{X}(d)=\frac{\Gamma C_{l}(\theta_{1}+\theta_{2})}{d}$<br><strong>Use:</strong> To calculate the dose rate from a finite line source. Note this form uses the sum of the angles, which assumes the angles are measured from the ends of the line to the perpendicular. The form $(\theta_2 - \theta_1)$ is also common. Know what your angles represent.</li>
-                        <li>$\dot{X}(d)=\Gamma C_{a}\pi \ln[\frac{(r^{2}+d^{2})}{d^{2}}]$<br><strong>Use:</strong> To calculate the dose rate from a disc source at a point on its central axis.</li>
-                        <li>$D=73.8 C E_{\beta}T_{1/2}(1-e^{-\lambda t})$<br><strong>Use:</strong> An MIRD-like formula for calculating the cumulative dose from a beta emitter in an organ over time t. C is concentration, E is average beta energy.</li>
-                        <li>$R_{\beta}=412 E^{(1.265-0.0954 \ln E)}$<br><strong>Use:</strong> A common empirical formula for calculating the range of beta particles in mg/cm². $E$ is the maximum beta energy in MeV.</li>
+                        <li>$A(t) = A_0 e^{-\lambda t}$<br><strong>Use:</strong> Basic radioactive decay.</li>
+                        <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide.</li>
+                        <li>$\dot{D}(x) = \frac{\Gamma A}{x^2}$<br><strong>Use:</strong> Point source dose rate calculation.</li>
+                        <li>$D(x) = D_0 B e^{-\mu x}$<br><strong>Use:</strong> Shielding calculation with buildup factor (B).</li>
                     </ul>
                 </div>
-                
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Internal Dosimetry</h3>
+                 <div class="key-calc">
+                    <ul class="list-none space-y-4">
+                        <li>$\frac{1}{T_{eff}} = \frac{1}{T_{phys}} + \frac{1}{T_{bio}}$<br><strong>Use:</strong> Calculating effective half-life.</li>
+                        <li>$CEDE~(rem) = \frac{I~(\mu Ci)}{ALI~(\mu Ci)} \times 5~rem$<br><strong>Use:</strong> Calculating CEDE from a known intake and ALI.</li>
+                        <li>$I = B \times t \times \chi$<br><strong>Use:</strong> Basic intake calculation from air concentration ($\chi$).</li>
+                    </ul>
+                </div>
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Statistics</h3>
                 <div class="key-calc">
                      <ul class="list-none space-y-4">
-                        <li>$\sigma_{s}=[\frac{r_{s+b}}{t_{s+b}}+\frac{r_{b}}{t_{b}}]^{1/2}$<br><strong>Use:</strong> To calculate the standard deviation of the net sample count rate ($r_s$) from the gross rate ($r_{s+b}$) and background rate ($r_b$). This is fundamental for error propagation in counting.</li>
-                        <li>$\frac{t_{s+b}}{t_{b}}=\sqrt{\frac{r_{s+b}}{r_{b}}}$<br><strong>Use:</strong> To determine the optimum division of a fixed total counting time to minimize the uncertainty in the net count rate.</li>
-                        <li>$L_{D}=4.653 \sigma_{b}+2.706$<br><strong>Use:</strong> The "Currie" formula for the Lower Limit of Detection, where $\sigma_b$ is the standard deviation of the *counts* (not count rate). This is used to determine the smallest amount of activity that can be statistically detected.</li>
-                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(\chi_{i}-\overline{x})^{2}}{\sigma^{2}}$<br><strong>Use:</strong> The Chi-Square test. Used to check if a counting system is behaving statistically as expected. You compare the calculated $\chi^2$ value to a table to check for instrument malfunction or other sources of non-statistical variation.</li>
+                        <li>$\sigma_{net} = \sqrt{\frac{C_g}{t_g^2} + \frac{C_b}{t_b^2}}$<br><strong>Use:</strong> Propagating uncertainty for net count rate.</li>
+                        <li>$L_D \approx 4.65 \sqrt{R_b / t_b}$<br><strong>Use:</strong> Simplified Currie formula for the Lower Limit of Detection (in cps).</li>
+                        <li>$\chi^{2}=\frac{\sum_{i=1}^{n}(C_{i}-\overline{C})^{2}}{\overline{C}}$<br><strong>Use:</strong> The Chi-Square test for counter performance.</li>
                     </ul>
                 </div>
             </section>
@@ -991,7 +988,7 @@
                     <p><strong>Task:</strong> Determine if 2 inches of lead shielding is sufficient to keep a worker's dose below 300 mrem for a 30-minute job near a 60 Ci (initial) ${}^{60}Co$ source that has decayed for 6 months.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Decay Calculation:</strong> $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.26y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
+                        <li><strong>Decay Calculation:</strong> $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.27y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
                         <li><strong>Unshielded Dose Rate:</strong> $\dot{D}_{unsh} = \frac{\Gamma A}{d^2} = \frac{(1.3 \frac{R \cdot m^2}{hr \cdot Ci}) \cdot (56.2 \text{ Ci})}{(2.74 \text{ m})^2} = 9.73 \frac{R}{hr} = \textbf{9730 mrem/hr}$.</li>
                         <li><strong>Shield Effectiveness:</strong> A 2-inch (5.08 cm) lead shield with $\mu = 0.65 \text{ cm}^{-1}$ provides $\mu x = 3.3$ mfp. Interpolating provided buildup data for 3.3 mfp gives $B \approx 2.15$.</li>
                         <li><strong>Shielded Dose Rate:</strong> $\dot{D}_{sh} = \dot{D}_{unsh} \cdot B \cdot e^{-\mu x} = (9730) \cdot (2.15) \cdot e^{-3.3} \approx \textbf{772 mrem/hr}$.</li>
@@ -1020,20 +1017,20 @@
 
                 <div class="key-calc">
                     <h3 class="font-semibold text-lg mb-2">Practice Problem 3: Environmental Pathway Analysis</h3>
-                    <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $8.81 \times 10^3$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
+                    <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $0.881$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
                         <li><strong>Calculate Concentration in Fish ($C_{fish}$):</strong>
-                        $$C_{fish} = (8.81 \times 10^3 \frac{pCi}{mL}) \times (\frac{1000 mL}{L}) \times (2000 \frac{L}{kg}) = 1.76 \times 10^{10} \frac{pCi}{kg}$$
+                        $$C_{fish} = (0.881 \frac{pCi}{mL}) \times (\frac{1000 mL}{L}) \times (2000 \frac{L}{kg}) = 1.76 \times 10^{6} \frac{pCi}{kg}$$
                         </li>
                         <li><strong>Calculate Annual Intake (I):</strong>
-                        $$I = (1.76 \times 10^{10} \frac{pCi}{kg}) \times (0.25 \frac{kg}{day}) \times (365 \frac{day}{yr}) = 1.61 \times 10^{12} \frac{pCi}{yr}$$
+                        $$I = (1.76 \times 10^{6} \frac{pCi}{kg}) \times (0.25 \frac{kg}{day}) \times (365 \frac{day}{yr}) = 1.61 \times 10^{8} \frac{pCi}{yr}$$
                         </li>
                         <li><strong>Convert to CEDE:</strong> Convert intake to $\mu$Ci and use the ALI.
-                        $$I = 1.61 \times 10^{12} pCi \times \frac{1 \mu Ci}{10^6 pCi} = 1.61 \times 10^6 \mu Ci$$
-                        $$CEDE (\text{rem}) = \frac{1.61 \times 10^6 \mu\text{Ci}}{100 \mu\text{Ci}} \times 5 \text{ rem} = \textbf{80,500 rem}$$
+                        $$I = 1.61 \times 10^{8} pCi \times \frac{1 \mu Ci}{10^6 pCi} = 161 \mu Ci$$
+                        $$CEDE (\text{rem}) = \frac{161 \mu\text{Ci}}{100 \mu\text{Ci}} \times 5 \text{ rem} = \textbf{8.05 rem}$$
                         </li>
-                        <li><strong>Conclusion:</strong> This is an extremely high dose, far exceeding the public limit. The calculation highlights the power of bioaccumulation. (Note: The inputs for this exam problem lead to a very high, unrealistic result, but the methodology is the key takeaway).</li>
+                        <li><strong>Conclusion:</strong> This is a very high dose, far exceeding the public limit of 0.1 rem/yr, and demonstrates the significant dose impact of bioaccumulation in environmental pathways.</li>
                     </ol>
                 </div>
                  <div class="key-calc">
@@ -1061,14 +1058,18 @@
                         <li><strong>ACGIH:</strong> American Conference of Governmental Industrial Hygienists - Sets occupational exposure limits for non-ionizing radiation (TLVs).</li>
                         <li><strong>ALI (Annual Limit on Intake):</strong> The activity of a radionuclide that, if inhaled or ingested, would result in a CEDE of 5 rem or a CDE of 50 rem to any organ.</li>
                         <li><strong>ALARA:</strong> As Low As Reasonably Achievable - The guiding principle of radiation protection.</li>
+                        <li><strong>AMAD (Activity Median Aerodynamic Diameter):</strong> The median aerodynamic diameter of an aerosol, used to characterize particle size distribution for internal dosimetry.</li>
                         <li><strong>ANSI:</strong> American National Standards Institute - Develops consensus standards, including for laser safety (Z136.1).</li>
+                        <li><strong>Buildup Factor (B):</strong> A correction factor used in shielding calculations to account for the contribution of scattered photons to the dose.</li>
                         <li><strong>BWR (Boiling Water Reactor):</strong> A type of nuclear reactor where water boils in the core, and the resulting steam directly drives a turbine.</li>
                         <li><strong>CDE / CEDE:</strong> Committed Dose Equivalent / Committed Effective Dose Equivalent - The dose received over 50 years from an intake of radioactive material.</li>
                         <li><strong>CPE (Charged Particle Equilibrium):</strong> A condition where the energy of charged particles leaving a volume is balanced by the energy of charged particles entering it. Under CPE, KERMA equals absorbed dose.</li>
+                        <li><strong>Cross Section ($\sigma$):</strong> A measure of the probability of an interaction between a particle and a target nucleus, typically measured in barns ($10^{-24}$ cm²).</li>
                         <li><strong>DAC (Derived Air Concentration):</strong> The airborne concentration of a radionuclide that, if breathed for a working year, would result in an intake of one ALI.</li>
                         <li><strong>DCGL (Derived Concentration Guideline Level):</strong> A radionuclide concentration limit used in decommissioning to demonstrate that a site meets the release criterion (e.g., 25 mrem/yr).</li>
                         <li><strong>DDE (Deep Dose Equivalent):</strong> The external dose equivalent at a tissue depth of 1 cm (1000 mg/cm²).</li>
                         <li><strong>DQO (Data Quality Objective):</strong> A systematic planning process used in MARSSIM to ensure that the data collected will be sufficient to support the desired decision.</li>
+                        <li><strong>HVL (Half-Value Layer):</strong> The thickness of a material required to reduce the intensity of a radiation beam to one-half its original value.</li>
                         <li><strong>ICRP:</strong> International Commission on Radiological Protection - An international body that provides recommendations and guidance on radiation protection.</li>
                         <li><strong>KERMA (Kinetic Energy Released in Media):</strong> The energy transferred from uncharged particles (photons, neutrons) to charged particles per unit mass of a medium.</li>
                         <li><strong>LET (Linear Energy Transfer):</strong> The rate at which a charged particle deposits energy as it travels through matter.</li>
@@ -1078,9 +1079,12 @@
                         <li><strong>NOHD (Nominal Ocular Hazard Distance):</strong> The distance from a laser at which the beam irradiance equals the MPE.</li>
                         <li><strong>PAG (Protective Action Guide):</strong> A projected dose at which a specific protective action (e.g., sheltering, evacuation) is recommended during an emergency.</li>
                         <li><strong>PWR (Pressurized Water Reactor):</strong> A type of nuclear reactor with separate primary (reactor) and secondary (turbine) coolant loops.</li>
+                        <li><strong>Q-value:</strong> The total energy released in a nuclear reaction or decay.</li>
                         <li><strong>SAR (Specific Absorption Rate):</strong> The rate at which RF/microwave energy is absorbed per unit mass of body tissue.</li>
                         <li><strong>TEDE (Total Effective Dose Equivalent):</strong> The sum of the external deep dose equivalent (DDE) and the internal committed effective dose equivalent (CEDE).</li>
                         <li><strong>TLV (Threshold Limit Value):</strong> Exposure guidelines for occupational health hazards, including non-ionizing radiation, issued by the ACGIH.</li>
+                        <li><strong>TVL (Tenth-Value Layer):</strong> The thickness of a material required to reduce the intensity of a radiation beam to one-tenth its original value.</li>
+                        <li><strong>WRS (Wilcoxon Rank Sum) Test:</strong> A statistical test used in MARSSIM when the contaminant is also present in the background.</li>
                     </ul>
                 </div>
             </section>
@@ -1088,7 +1092,6 @@
         </main>
     </div>
 
-    <!-- KaTeX Auto-render script -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             // This function will be called once the DOM is fully loaded
