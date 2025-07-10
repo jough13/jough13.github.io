@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.28 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.29 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -871,171 +871,89 @@
                 </div>
             </section>
 
-             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Power Reactor Health Physics</h2>
-                <p class="mb-6">This section covers the unique radiological challenges and calculations specific to commercial nuclear power plants. A CHP is expected to understand the sources of radiation, the operational controls, and the specific calculations related to reactor systems.</p>
+            <section class="content-section">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Problem-Solving Methodologies</h2>
+                <p class="mb-6">This section focuses on the practical application of fundamental principles to solve complex problems. It covers how to combine formulas and model dynamic scenarios, which are key skills for the exam.</p>
 
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Concepts & Reactor Types</h3>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">PWR vs. BWR Radiological Characteristics</h4>
-                    <p>Understanding the fundamental design differences is key to understanding their radiological signatures.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Pressurized Water Reactor (PWR):</strong> The primary coolant loop is separate from the secondary loop that drives the turbine. The primary coolant is kept under very high pressure to prevent boiling. This design contains most of the fission and activation products within the containment building.</li>
-                        <li><strong>Boiling Water Reactor (BWR):</strong> The water boils directly in the reactor vessel, and the resulting steam is sent directly to the turbine. This means that any radionuclides in the coolant are transported throughout the steam cycle, leading to contamination and radiation fields in the turbine building. The most significant radiological issue during operation is the creation of ${}^{16}\text{N}$ (from the ${}^{16}O(n,p){}^{16}N$ reaction), a high-energy (6.1 MeV) gamma emitter with a very short (7.1 s) half-life, which causes "turbine shine."</li>
-                    </ul>
-                    <img src="image-7302f456.jpg" alt="Diagram comparing the layout of a Boiling Water Reactor (BWR) and a Pressurized Water Reactor (PWR)." class="w-full max-w-3xl mx-auto my-4 rounded-lg shadow-md border image-buffer">
+                    <h4 class="font-semibold text-lg mb-2">Order of Magnitude Estimations</h4>
+                    <p>Before beginning a complex calculation, perform a quick, "back-of-the-envelope" estimate to determine if your potential answer is reasonable. This can prevent significant errors caused by unit conversions or calculator mistakes. Use rules of thumb and round constants to simplify the math (e.g., $\pi \approx 3$).</p>
+                    <p class="mt-2"><strong>Example:</strong> If asked for the dose rate from 1 Ci of Co-60 at 1 meter, you should immediately know the answer is ~1.3 R/hr. If your detailed calculation yields a result in the mR/hr or thousands of R/hr, you have made an error.</p>
                 </div>
-                
+
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">CRUD and Source Term Management</h4>
-                    <p>CRUD (Chalk River Unidentified Deposits) refers to activated corrosion products that are the primary source of occupational dose during reactor outages.</p>
+                    <h4 class="font-semibold text-lg mb-2">Working Backwards from the Answer</h4>
+                    <p>For multi-step problems, a useful strategy is to start with the final desired quantity and work backwards to the information you are given.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Identify the Goal:</strong> What is the final unit and quantity you need to calculate (e.g., CEDE in rem)?</li>
+                        <li><strong>Find the Final Equation:</strong> What is the immediate precursor formula to get that answer? (e.g., $CEDE = (\text{Intake}/ALI) \times 5$ rem).</li>
+                        <li><strong>Assess Inputs:</strong> For each input in that formula (Intake, ALI), is it given or does it need to be calculated?</li>
+                        <li><strong>Repeat:</strong> For each input that must be calculated, repeat the process, identifying the precursor formula and its inputs, until you have a chain of calculations that connects the initial given information to the final answer.</li>
+                    </ol>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Unit Analysis & Formula Derivation</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Building Equations from Scratch</h4>
+                    <p>On the exam, you may not be given the exact formula you need. A critical skill is the ability to derive a formula on the fly using dimensional analysis (i.e., making sure the units cancel correctly). Start with what you're given, what you need to find, and then find the conversion factors and constants that bridge the gap.</p>
+                    <p class="mt-2"><strong>Example:</strong> Derive an equation for the dose rate (mrem/hr) at 1 meter above an infinitely large, uniformly contaminated surface, given the contamination level in dpm/100 cm².</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Start with the Goal Unit:</strong> $\frac{mrem}{hr}$</li>
+                        <li><strong>Introduce the Given:</strong> You have $\frac{dpm}{100 cm^2}$. You need to convert this to a flux ($\frac{\gamma}{cm^2 \cdot s}$). This requires knowing the gamma yield (Y, $\frac{\gamma}{dis}$) and assuming an emission geometry (e.g., $2\pi$ for a surface).</li>
+                        <li><strong>Build the Conversion Chain:</strong>
+                            $$\frac{mrem}{hr} = \left( \frac{dpm}{100 cm^2} \right) \times \left( \frac{1 dis}{dpm} \right) \times \left( \frac{Y \gamma}{dis} \right) \times \left( \frac{1 min}{60 s} \right) \times \left( \frac{60 min}{1 hr} \right) \times \left( \frac{100^2 cm^2}{m^2} \right) \times ...$$
+                        </li>
+                        <li><strong>Bridge Flux to Dose Rate:</strong> The final link is a flux-to-dose-rate conversion factor, which will be given in a form like $(\frac{mrem/hr}{\gamma/cm^2 \cdot s})$. By carefully arranging these factors, you can cancel all intermediate units and arrive at the desired final unit.</li>
+                    </ol>
+                </div>
+
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Modeling Simultaneous Processes: Release & Decay</h3>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">The Governing Differential Equation</h4>
+                    <p>Many complex operational problems (e.g., a radioactive gas leak into a ventilated room) can be modeled with a simple first-order differential equation. The rate of change of activity in a volume is the difference between the rate at which activity enters and the rate at which it is removed.</p>
+                    $$\frac{dA}{dt} = (\text{Source Rate}) - (\text{Removal Rate}) = S - \lambda_{eff}A(t)$$
+                    <p class="mt-2">The key is to correctly define the **effective removal constant**, $\lambda_{eff}$. It is the sum of all removal constants:</p>
+                    $$\lambda_{eff} = \lambda_{Radiological} + \lambda_{Ventilation} + \lambda_{Other}$$
+                    <p class="mt-2">Where $\lambda_{Ventilation}$ is the ventilation rate (in air changes per hour/minute) and $\lambda_{Other}$ could be a cleanup filter, etc.</p>
+                </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Scenarios: Puff vs. Continuous Release</h4>
+                    <p>The solution to the governing equation depends on the source term (S):</p>
                      <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Formation:</strong> Metal components (pipes, valves) corrode, releasing ions (e.g., Co, Ni, Fe) into the primary coolant. These ions circulate through the reactor core, where they are activated by the intense neutron flux.</li>
-                        <li><strong>Deposition:</strong> These now-radioactive ions deposit on surfaces throughout the primary system, creating high dose rate "hot spots." ${}^{60}$Co is the most significant long-term contributor to this dose.</li>
-                        <li><strong>Control:</strong> Source term reduction strategies, such as controlling coolant chemistry (e.g., pH) and using materials with low cobalt content, are critical ALARA measures.</li>
+                        <li><strong>"Puff" Release (S=0 after t=0):</strong> An instantaneous release of activity $A_0$ into a room. The activity concentration $\chi(t)$ decreases over time.
+                        $$\chi(t) = \chi_0 e^{-\lambda_{eff}t}$$
+                        The total integrated intake (I) over a time T is: $I = \int_0^T B \cdot \chi(t) dt = \frac{B \cdot \chi_0}{\lambda_{eff}}(1-e^{-\lambda_{eff}T})$
+                        </li>
+                        <li><strong>Constant Leak (S > 0):</strong> A constant leak into a clean room. The activity concentration builds up to an equilibrium value.
+                        $$\chi(t) = \frac{S}{\lambda_{eff} V} (1 - e^{-\lambda_{eff}t})$$
+                        The total integrated intake (I) over a time T is: $I = \int_0^T B \cdot \chi(t) dt = \frac{B \cdot S}{\lambda_{eff} V} \left[ T - \frac{1}{\lambda_{eff}}(1-e^{-\lambda_{eff}T}) \right]$
+                        </li>
                     </ul>
-                </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Radionuclides & Their Significance</h3>
-                <div class="key-data">
-                    <h4 class="font-semibold text-lg mb-2">Major Source Terms</h4>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Activation Products:</strong> These are the dominant source of occupational dose during maintenance and outages. They are formed when corrosion products (from pipes, valves, etc.) circulate through the core and are activated by neutrons.
-                            <ul>
-                                <li><strong>${}^{60}$Co:</strong> The most significant long-term dose contributor. Formed from ${}^{59}$Co in steel alloys. $T_{1/2} = 5.27$ years.</li>
-                                <li><strong>${}^{58}$Co:</strong> Formed from ${}^{58}$Ni. A major dose contributor during the first year after shutdown. $T_{1/2} = 71$ days.</li>
-                                <li><strong>${}^{54}$Mn, ${}^{59}$Fe, ${}^{51}$Cr:</strong> Other common activation products.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Fission Products:</strong> Released to the coolant through minor defects in the fuel cladding.
-                            <ul>
-                                <li><strong>Noble Gases (Kr, Xe):</strong> Gaseous and mobile. A primary component of gaseous effluent and a submersion dose hazard.</li>
-                                <li><strong>Iodines (${}^{131}$I):</strong> Volatile and pose a significant internal hazard to the thyroid. A key nuclide in accident analysis.</li>
-                                <li><strong>Cesium (${}^{137}$Cs):</strong> Soluble and chemically reactive. A major component of liquid waste and a long-term contamination concern.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Tritium (${}^{3}$H):</strong> Produced by ternary fission and neutron activation of boron (used for chemical shim in PWRs) and deuterium. It is ubiquitous in reactor systems and difficult to remove.</li>
-                    </ul>
-                </div>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Key Calculations in Reactor Health Physics</h3>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Worker Stay Time</h4>
-                    <p>A fundamental ALARA calculation is determining the maximum time a worker can spend in a radiation field without exceeding a dose limit.</p>
-                    $$Stay~Time = \frac{\text{Dose Limit} - \text{Dose Already Received}}{\text{Dose Rate}}$$
-                    <p class="mt-2">Ensure all units are consistent (e.g., mrem and mrem/hr).</p>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Activity Buildup in a Cleanup System</h4>
-                    <p><strong>Problem Archetype:</strong> Reactor coolant containing a specific concentration of a radionuclide is passed through a cleanup system (like a demineralizer) with a given flow rate and efficiency. Calculate the activity accumulated in the system after a certain run time.</p>
-                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
-                    <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate the Source Rate (S):</strong> This is the rate at which activity is removed from the coolant and added to the demineralizer.
-                            $$S (\text{Ci/s}) = \text{Coolant Conc.} (\text{Ci/mL}) \times \text{Flow Rate} (\text{mL/s}) \times \text{Efficiency}$$
-                        </li>
-                        <li><strong>Apply the Activity Buildup Equation:</strong> The activity in the demineralizer, A(t), builds up over time, balanced by its own radioactive decay ($\lambda$).
-                            $$A(t) = \frac{S}{\lambda} (1 - e^{-\lambda t})$$
-                        </li>
-                        <li><strong>Solve for A(t):</strong> Plug in the calculated source rate (S), the decay constant ($\lambda$) for the radionuclide, and the run time (t).</li>
-                    </ol>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Fission Product Inventory</h4>
-                    <p><strong>Problem Archetype:</strong> A reactor operates at a specific power level for a given number of days. Calculate the core inventory of a key fission product (e.g., ${}^{137}$Cs) at shutdown.</p>
-                    <p class="mt-2"><strong>Solution Strategy:</strong></p>
-                    <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate the Fission Rate (F):</strong> Convert the thermal power of the reactor to fissions per second.
-                            $$F (\text{fissions/s}) = \frac{\text{Power (MWth)} \times (10^6 \text{ J/s/MWth})}{(\text{MeV/fission}) \times (1.602 \times 10^{-13} \text{ J/MeV})}$$
-                        </li>
-                        <li><strong>Calculate the Production Rate (R) of the Fission Product:</strong>
-                            $$R (\text{atoms/s}) = F (\text{fissions/s}) \times \text{Fission Yield (Y)}$$
-                        </li>
-                        <li><strong>Calculate the Equilibrium Activity:</strong> The number of atoms of the fission product, N(t), at time t is given by:
-                            $$N(t) = \frac{R}{\lambda}(1 - e^{-\lambda t})$$
-                        </li>
-                        <li><strong>Convert to Activity:</strong> The activity is $A(t) = N(t)\lambda$. Therefore:
-                            $$A(t) = R(1 - e^{-\lambda t})$$
-                            Plug in the production rate (R), the decay constant ($\lambda$) for the fission product, and the operating time (t).
-                        </li>
-                    </ol>
+                    <p class="mt-2">Where B is the breathing rate and V is the room volume.</p>
                 </div>
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Environmental HP & Decommissioning</h2>
-                <p class="mb-6">This domain covers the principles and practices for assessing environmental impacts, performing site characterization, and demonstrating that a site or facility meets radiological criteria for release from regulatory control.</p>
-
-                <h3 class="text-2xl font-semibold mt-6 mb-3">The MARSSIM Framework</h3>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XI. Common Mistakes & Exam Pitfalls</h2>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">MARSSIM Process Overview</h4>
-                    <p>The <strong>Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM)</strong> provides a standard, technically defensible methodology for demonstrating compliance with a dose- or risk-based regulation. It is essential for decommissioning and license termination (e.g., per 10 CFR 20 Subpart E).</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Data Quality Objectives (DQOs):</strong> A 7-step planning process to ensure that the type, quantity, and quality of data collected are appropriate for the decision to be made. The steps include: stating the problem, identifying the decision, identifying inputs, defining boundaries, developing a decision rule, specifying error tolerances, and optimizing the design.</li>
-                        <li><strong>Area Classification:</strong> Areas are classified based on their potential for contamination, which directs the level of survey effort (i.e., the number of samples).
-                            <ul>
-                                <li><strong>Class 1:</strong> Highest potential for contamination (e.g., > DCGL); requires the highest survey density.</li>
-                                <li><strong>Class 2:</strong> Lower potential for contamination, but still some potential for levels > DCGL.</li>
-                                <li><strong>Class 3:</strong> Lowest potential; not expected to contain any residual radioactivity above background.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Survey Design:</strong> The FSS typically uses a systematic grid sampling pattern to ensure full coverage and avoid bias.</li>
+                    <h4 class="font-semibold text-lg mb-2">Calculation & Unit Errors</h4>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>Unit Mismatches:</strong> The most common error. Forgetting to convert Ci to $\mu$Ci, hours to minutes, or cm to meters can change an answer by orders of magnitude. Always write out your units and make sure they cancel.</li>
+                        <li><strong>Forgetting Buildup (B):</strong> Shielding calculations for broad beams always require a buildup factor. Forgetting it will result in an underestimate of the dose rate.</li>
+                        <li><strong>$E_{avg}$ vs. $E_{max}$ for Betas:</strong> Dose calculations require the average beta energy ($E_{avg}$), which is roughly 1/3 of the maximum energy ($E_{max}$). Using $E_{max}$ will significantly overestimate the dose.</li>
+                        <li><strong>Decay During Irradiation:</strong> Forgetting the $(1 - e^{-\lambda t_{irrad}})$ saturation factor when calculating activation will overestimate the final activity, especially when the irradiation time is short compared to the half-life.</li>
                     </ul>
                 </div>
                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">The Gray Region & Decision Errors</h4>
-                    <p>A key concept in MARSSIM survey design is the "Gray Region," which is the range of concentrations between the Lower Bound of the Gray Region (LBGR) and the DCGL. This is the range where decision errors are most likely to occur. The width of this region ($\Delta = DCGL - LBGR$) is a critical input for calculating the required number of samples. A smaller gray region (a more stringent survey) requires more samples to achieve the desired statistical confidence.</p>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Derived Concentration Guideline Level (DCGL)</h4>
-                    <p>The DCGL is the radionuclide-specific surface or soil concentration that would result in a dose equal to the release limit (e.g., 25 mrem/yr). It is the operational benchmark for the Final Status Survey.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>DCGLw:</strong> The primary guideline, representing the average concentration over a wide area that meets the dose limit. It is calculated using pathway analysis models: $DCGL_W = \frac{\text{Dose Limit}}{\text{Pathway Dose Conversion Factor}}$.</li>
-                        <li><strong>DCGLemc:</strong> An elevated measurement comparison for small areas of higher activity. It is calculated using an Area Factor (AF) from a table: $DCGL_{EMC} = AF \times DCGL_W$.</li>
-                        <li><strong>Unity Rule:</strong> For multiple radionuclides, the sum of the ratios of their concentrations (C) to their respective DCGLs must not exceed 1: $$\sum_{i} \frac{C_i}{DCGL_{W,i}} \le 1$$</li>
+                    <h4 class="font-semibold text-lg mb-2">Conceptual Errors</h4>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>Confusing Dose Quantities:</strong> Be precise with your terminology. Absorbed Dose (rad/Gy), Dose Equivalent (rem/Sv), and Exposure (R) are not interchangeable.</li>
+                        <li><strong>Misinterpreting Statistical Tests:</strong> Remember that for MARSSIM, the null hypothesis ($H_0$) is that the area is dirty. The goal is to *reject* the null hypothesis to prove the area is clean.</li>
+                        <li><strong>Ignoring Special Cases:</strong> Forgetting that some rules have exceptions (e.g., the need for low-Z material to shield high-energy betas first) is a common pitfall.</li>
                     </ul>
-                </div>
-                 <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Number of Samples (N)</h4>
-                    <p>The number of data points required for the Sign or WRS test is calculated to ensure the survey has enough statistical power to make a correct decision.</p>
-                     $$N = \frac{(Z_{1-\alpha} + Z_{1-\beta})^2}{4(\text{Sign } P - 0.5)^2}$$
-                    <p class="mt-2">Where $Z_{1-\alpha}$ and $Z_{1-\beta}$ are quantiles from the standard normal distribution corresponding to the desired Type I ($\alpha$) and Type II ($\beta$) error rates. P is the probability that a random measurement will be less than the DCGL when the true median is at the Lower Bound of the Gray Region (LBGR).</p>
-                </div>
-                 <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">MARSSIM Statistical Tests</h4>
-                    <p>Because measurements have uncertainty, statistical tests are required to make a decision with a known level of confidence. The **null hypothesis ($H_0$)** is always that the survey unit **exceeds** the release criterion.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Sign Test:</strong> A simple non-parametric test used when the contaminant is not present in background. It compares each measurement directly to the DCGL. The goal is to reject $H_0$.</li>
-                        <li><strong>Wilcoxon Rank Sum (WRS) Test:</strong> A non-parametric test used when the contaminant *is* present in background. It compares the distribution of measurements from the survey area to the distribution of measurements from a clean reference (background) area to determine if the survey area is statistically "dirtier" than the reference area.</li>
-                        <li><strong>Decision Errors:</strong> You must know the definitions of Type I ($\alpha$) and Type II ($\beta$) errors.
-                            <ul>
-                                <li><strong>Type I Error ($\alpha$):</strong> Deciding the survey unit is clean when it is actually dirty (a "false positive" for the cleanup). This is the error MARSSIM primarily seeks to control.</li>
-                                <li><strong>Type II Error ($\beta$):</strong> Deciding the survey unit is dirty when it is actually clean (a "false negative" for the cleanup, leading to unnecessary remediation).</li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">RESRAD</h4>
-                    <p>The **RESRAD (RESidual RADioactivity)** family of computer codes, developed by Argonne National Laboratory, are the standard tools used to perform the pathway analysis needed to derive site-specific DCGLs. The codes model the transport of radionuclides from soil and surfaces through multiple environmental pathways (e.g., groundwater, plant uptake, inhalation, direct exposure) to calculate a dose to a defined human receptor.</p>
-                </div>
-                <h3 class="text-2xl font-semibold mt-6 mb-3">Environmental Monitoring Program Design</h3>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Key Principles</h4>
-                    <p>The goal of an environmental monitoring program is to verify effluent controls, detect unexpected releases, and assess public dose.</p>
-                    <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Indicator Locations:</strong> Placed where concentrations are expected to be highest based on modeling (e.g., downwind, downstream).</li>
-                        <li><strong>Background Locations:</strong> Placed far from the site, in a location that is unimpacted by site activities, to measure natural background levels for comparison.</li>
-                        <li><strong>Sample Media:</strong> Air, water (surface and ground), soil, sediment, and biota (e.g., vegetation, fish) are chosen based on the expected radionuclides and the most likely exposure pathways to the public.</li>
-                    </ul>
-                </div>
-                <div class="key-calc">
-                    <h4 class="font-semibold text-lg mb-2">Gaussian Plume Model (Centerline)</h4>
-                    <p>This is the standard model for estimating the downwind air concentration ($\chi$) from a continuous airborne release from a stack.</p>
-                    $$\chi(x,0,0) = \frac{Q}{\pi \sigma_y \sigma_z u} \exp\left(-\frac{h^2}{2\sigma_z^2}\right)$$
-                    <p class="mt-2">Where Q is the source release rate (e.g., Ci/s), u is the wind speed, h is the effective release height, and $\sigma_y, \sigma_z$ are the dispersion coefficients, which are functions of downwind distance (x) and atmospheric stability class (A-F).</p>
                 </div>
             </section>
-            
+
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">XII. Key Formula Sheet & Applications</h2>
                 <p class="mb-6">This section summarizes key equations from the provided formula sheet and explains their typical application on the exam.</p>
@@ -1047,6 +965,12 @@
                         <li>$SA (Ci/g)=\frac{1.14\times10^{13}}{T_{1/2}(s)\cdot \text{Atomic Mass}}$<br><strong>Use:</strong> To calculate the specific activity of a radionuclide.</li>
                         <li>$\dot{D}(x) = \frac{\Gamma A}{x^2}$<br><strong>Use:</strong> Point source dose rate calculation.</li>
                         <li>$D(x) = D_0 B e^{-\mu x}$<br><strong>Use:</strong> Shielding calculation with buildup factor (B).</li>
+                    </ul>
+                </div>
+                <h3 class="text-2xl font-semibold mt-6 mb-3">Flux to Dose Rate Conversion</h3>
+                <div class="key-calc">
+                     <ul class="list-none space-y-4">
+                        <li>$\dot{D} (\frac{rad}{hr}) = 5.767 \times 10^{-5} \cdot \phi \cdot E \cdot \frac{\mu_{en}}{\rho}$<br><strong>Use:</strong> To calculate the absorbed dose rate in a medium from a known photon flux ($\phi$), photon energy (E), and mass energy absorption coefficient ($\mu_{en}/\rho$).</li>
                     </ul>
                 </div>
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Internal Dosimetry</h3>
@@ -1140,28 +1064,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIV. Common Mistakes & Exam Pitfalls</h2>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Calculation & Unit Errors</h4>
-                    <ul class="list-disc list-inside space-y-2">
-                        <li><strong>Unit Mismatches:</strong> The most common error. Forgetting to convert Ci to $\mu$Ci, hours to minutes, or cm to meters can change an answer by orders of magnitude. Always write out your units and make sure they cancel.</li>
-                        <li><strong>Forgetting Buildup (B):</strong> Shielding calculations for broad beams always require a buildup factor. Forgetting it will result in an underestimate of the dose rate.</li>
-                        <li><strong>$E_{avg}$ vs. $E_{max}$ for Betas:</strong> Dose calculations require the average beta energy ($E_{avg}$), which is roughly 1/3 of the maximum energy ($E_{max}$). Using $E_{max}$ will significantly overestimate the dose.</li>
-                        <li><strong>Decay During Irradiation:</strong> Forgetting the $(1 - e^{-\lambda t_{irrad}})$ saturation factor when calculating activation will overestimate the final activity, especially when the irradiation time is short compared to the half-life.</li>
-                    </ul>
-                </div>
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">Conceptual Errors</h4>
-                    <ul class="list-disc list-inside space-y-2">
-                        <li><strong>Confusing Dose Quantities:</strong> Be precise with your terminology. Absorbed Dose (rad/Gy), Dose Equivalent (rem/Sv), and Exposure (R) are not interchangeable.</li>
-                        <li><strong>Misinterpreting Statistical Tests:</strong> Remember that for MARSSIM, the null hypothesis ($H_0$) is that the area is dirty. The goal is to *reject* the null hypothesis to prove the area is clean.</li>
-                        <li><strong>Ignoring Special Cases:</strong> Forgetting that some rules have exceptions (e.g., the need for low-Z material to shield high-energy betas first) is a common pitfall.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XV. Glossary of Key Terms & Acronyms</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIV. Glossary of Key Terms & Acronyms</h2>
                 <div class="key-concept">
                     <ul class="list-none space-y-2">
                         <li><strong>ACGIH:</strong> American Conference of Governmental Industrial Hygienists - Sets occupational exposure limits for non-ionizing radiation (TLVs).</li>
