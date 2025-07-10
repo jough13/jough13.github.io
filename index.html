@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.22 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.23 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -226,6 +226,33 @@
                         <li><strong>Pair Production:</strong> A high-energy photon interacts in the electric field of a nucleus and is converted into an electron-positron pair. It has a strict energy threshold of <strong>1.022 MeV</strong>. The positron subsequently annihilates, producing two 0.511 MeV photons. This interaction is dominant for <strong>high-energy photons</strong> in <strong>high-Z materials</strong>.</li>
                     </ul>
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Photon Interaction Dominance</h4>
+                    <p>Being able to sketch the regions of dominance for the "Big Three" interactions as a function of photon energy and absorber atomic number (Z) is a classic exam topic.</p>
+                    <svg viewBox="0 0 500 350" class="svg-diagram" aria-labelledby="interaction-title">
+                        <title id="interaction-title">Photon Interaction Dominance Chart</title>
+                        <text x="250" y="25" text-anchor="middle" class="label-bold">Photon Interaction Dominance</text>
+                        <!-- Axes -->
+                        <path d="M50 300 L 480 300" stroke="#334155" stroke-width="2"/>
+                        <text x="250" y="330" text-anchor="middle">Photon Energy (MeV)</text>
+                        <path d="M50 300 L 50 40" stroke="#334155" stroke-width="2"/>
+                        <text x="15" y="175" text-anchor="middle" transform="rotate(-90 15 175)">Atomic Number (Z)</text>
+                        <!-- Energy Ticks -->
+                        <text x="100" y="315" font-size="10">0.1</text>
+                        <text x="250" y="315" font-size="10">1.0</text>
+                        <text x="400" y="315" font-size="10">10</text>
+                        <!-- Z Ticks -->
+                        <text x="40" y="250" font-size="10" text-anchor="end">20</text>
+                        <text x="40" y="100" font-size="10" text-anchor="end">80</text>
+                        <!-- Dividing Lines -->
+                        <path d="M80 40 C 150 200, 200 280, 280 300" stroke="#334155" stroke-width="1.5" stroke-dasharray="4"/>
+                        <path d="M250 40 C 300 150, 350 250, 450 300" stroke="#334155" stroke-width="1.5" stroke-dasharray="4"/>
+                        <!-- Region Labels -->
+                        <text x="150" y="150" class="label-bold" font-size="18">Photoelectric</text>
+                        <text x="350" y="250" class="label-bold" font-size="18">Compton</text>
+                        <text x="380" y="120" class="label-bold" font-size="18">Pair Production</text>
+                    </svg>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Key Calculation: Compton Scattering Kinematics</h4>
                     <p>You must be able to calculate the energy of the scattered photon ($E_{\gamma'}$) and the recoil electron ($T_e$).</p>
@@ -254,11 +281,16 @@
                         <li><strong>Beta Spectrum:</strong> Beta particles are emitted with a continuous spectrum of energies up to a maximum ($E_{max}$). This is because the decay energy is shared with a neutrino. This continuous spectrum is why beta attenuation in matter appears roughly exponential, even though individual electrons have a finite range.</li>
                     </ul>
                 </div>
+                <div class="key-calc">
+                    <h4 class="font-semibold text-lg mb-2">Key Calculation: Alpha Particle Range in Air</h4>
+                    <p>A useful empirical formula for the range of an alpha particle in air at standard temperature and pressure is:</p>
+                    $$R_{air} (cm) = 0.32 E_{\alpha} (MeV)^{3/2}$$
+                </div>
                 <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Bremsstrahlung Production</h4>
                     <p>Bremsstrahlung ("braking radiation") is produced when a high-energy charged particle (typically an electron) decelerates rapidly in the electric field of a nucleus. This is a key consideration for beta shielding.</p>
                     <ul class="list-disc list-inside space-y-2 mt-2">
-                        <li><strong>Energy Dependence:</strong> The fraction of energy lost to bremsstrahlung is proportional to the initial electron energy (E) and the atomic number (Z) of the absorber: $f \approx \frac{ZE}{800}$.</li>
+                        <li><strong>Energy Dependence:</strong> The fraction of energy lost to bremsstrahlung is proportional to the initial electron energy (E) and the atomic number (Z) of the absorber: $$f \approx \frac{ZE}{800}$$</li>
                         <li><strong>Shielding Implication:</strong> To shield high-energy beta emitters (e.g., Sr-90/Y-90), a low-Z material (like plastic or aluminum) should be used as the primary shield to minimize bremsstrahlung production. A high-Z material (like lead) can then be placed outside the low-Z shield to attenuate the bremsstrahlung x-rays produced.</li>
                     </ul>
                 </div>
@@ -400,6 +432,14 @@
                     <p>You must be able to identify and explain each region of the characteristic curve of pulse amplitude vs. applied voltage: Recombination, Ionization, Proportional, Limited Proportional, Geiger-Mueller (GM), and Continuous Discharge.</p>
                     <img src="6rc.jpg" alt="The six-region curve for gas-filled detectors, showing the relationship between applied voltage and the number of ion pairs collected." class="w-full max-w-2xl mx-auto my-4 rounded-lg shadow-md border">
                 </div>
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Proportional Counters</h4>
+                    <p>Operating in the proportional region allows for energy discrimination. The pulse height is proportional to the initial energy deposited.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Gas Multiplication:</strong> Unlike ion chambers, the applied voltage is high enough to accelerate primary electrons, causing them to create secondary ionizations. This "gas amplification" (typically $10^2$ to $10^4$) results in a much larger, but still proportional, output pulse.</li>
+                        <li><strong>Applications:</strong> Because they can distinguish between particle energies, proportional counters are excellent for spectroscopy of low-energy radiations (alphas, betas) and for discriminating between them (e.g., alpha counting in the presence of a high beta background).</li>
+                    </ul>
+                </div>
                 <div class="key-calc">
                     <h4 class="font-semibold text-lg mb-2">Ion Chamber Temperature/Pressure Correction</h4>
                     <p>For vented ion chambers, readings must be corrected to standard conditions (STP, often 22°C and 760 mmHg).</p>
@@ -418,6 +458,14 @@
                     <img src="image-3c83b3de.webp" alt="Detailed Gamma Ray Spectrum showing Photopeak, Compton Edge, and Escape Peaks." class="w-full max-w-3xl mx-auto my-4 rounded-lg shadow-md border">
                 </div>
                 <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Semiconductor Detectors (HPGe)</h4>
+                     <p>High-Purity Germanium (HPGe) detectors are the gold standard for gamma spectroscopy.</p>
+                     <ul class="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Superior Resolution:</strong> The energy required to create an electron-hole pair in germanium (~3 eV) is much lower than the energy to create an ion pair in a gas or a photoelectron in a scintillator. This results in a much larger number of charge carriers for a given photon energy, leading to vastly superior energy resolution (sharper peaks).</li>
+                        <li><strong>Trade-offs:</strong> HPGe detectors are more expensive than NaI scintillators, have lower efficiency (due to smaller crystal sizes), and must be cooled to liquid nitrogen temperatures to reduce thermal noise.</li>
+                    </ul>
+                </div>
+                <div class="key-concept">
                     <h4 class="font-semibold text-lg mb-2">Liquid Scintillation Counting (LSC)</h4>
                     <p>This is the method of choice for low-energy beta emitters (${}^3$H, ${}^{14}$C). The most critical concept is **quenching**, any process that reduces light output. To get an accurate DPM, you must determine the efficiency for each *quenched* sample, typically by using an instrument-generated quench curve.</p>
                 </div>
@@ -428,6 +476,7 @@
                     <ul class="list-disc list-inside space-y-1 mt-2">
                         <li><strong>Slow/Thermal:</strong> Use high cross-section reactions like ${}^{10}B(n,\alpha)$ or ${}^{3}He(n,p)$. Be prepared to explain the "wall effect," where a reaction near the detector wall results in incomplete energy deposition and a smaller pulse.</li>
                         <li><strong>Fast:</strong> Use moderation (e.g., Bonner spheres) to thermalize neutrons before detection, or use proton recoil detectors.</li>
+                        <li><strong>Bonner Spheres:</strong> A set of polyethylene spheres of different diameters with a thermal neutron detector (like a LiI scintillator) at the center. The varying moderator thickness makes each sphere most sensitive to a different neutron energy. By taking measurements with multiple spheres and using an "unfolding" algorithm, one can reconstruct the neutron energy spectrum.</li>
                     </ul>
                 </div>
 
@@ -451,6 +500,23 @@
             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">V. Problem-Solving Methodologies</h2>
                 <p class="mb-6">This section focuses on the practical application of fundamental principles to solve complex problems. It covers how to combine formulas and model dynamic scenarios, which are key skills for the exam.</p>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Order of Magnitude Estimations</h4>
+                    <p>Before beginning a complex calculation, perform a quick, "back-of-the-envelope" estimate to determine if your potential answer is reasonable. This can prevent significant errors caused by unit conversions or calculator mistakes. Use rules of thumb and round constants to simplify the math (e.g., $\pi \approx 3$).</p>
+                    <p class="mt-2"><strong>Example:</strong> If asked for the dose rate from 1 Ci of Co-60 at 1 meter, you should immediately know the answer is ~1.3 R/hr. If your detailed calculation yields a result in the mR/hr or thousands of R/hr, you have made an error.</p>
+                </div>
+
+                <div class="key-concept">
+                    <h4 class="font-semibold text-lg mb-2">Working Backwards from the Answer</h4>
+                    <p>For multi-step problems, a useful strategy is to start with the final desired quantity and work backwards to the information you are given.</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li><strong>Identify the Goal:</strong> What is the final unit and quantity you need to calculate (e.g., CEDE in rem)?</li>
+                        <li><strong>Find the Final Equation:</strong> What is the immediate precursor formula to get that answer? (e.g., $CEDE = (\text{Intake}/ALI) \times 5$ rem).</li>
+                        <li><strong>Assess Inputs:</strong> For each input in that formula (Intake, ALI), is it given or does it need to be calculated?</li>
+                        <li><strong>Repeat:</strong> For each input that must be calculated, repeat the process, identifying the precursor formula and its inputs, until you have a chain of calculations that connects the initial given information to the final answer.</li>
+                    </ol>
+                </div>
 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Unit Analysis & Formula Derivation</h3>
                 <div class="key-concept">
@@ -572,7 +638,7 @@
             </section>
             
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Regulatory & Standards Frameworks</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VII. Regulatory & Standards Frameworks</h2>
                 <p class="mb-6">A CHP must not only know the dose limits but also understand the philosophy behind them, how they are applied in practice, and the specific requirements for different situations like transportation and effluent control.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Occupational Dose Limits & Summation</h3>
@@ -636,7 +702,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">IX. Conceptual Questions & Justifications</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">VIII. Conceptual Questions & Justifications</h2>
                 <p class="mb-6">Answering "why" is as important as answering "how much." This demonstrates professional judgment. The key is to connect fundamental principles to practical outcomes.</p>
                 
                 <h3 class="text-2xl font-semibold mt-6 mb-3">Radiation Biology and Risk Communication</h3>
@@ -674,7 +740,7 @@
                         <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
                         <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
                         <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ol>
+                    </ul>
                 </div>
             </section>
 
@@ -875,7 +941,7 @@
                 </div>
 
                 <div class="key-calc">
-                    <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 3: Environmental Pathway Analysis</h3>
+                    <h3 class="font-semibold text-lg mb-2">Practice Problem 3: Environmental Pathway Analysis</h3>
                     <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $8.81 \times 10^3$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
@@ -911,7 +977,7 @@
             </section>
 
             <section class="content-section">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIII. Glossary of Key Terms & Acronyms</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4">XIV. Glossary of Key Terms & Acronyms</h2>
                 <div class="key-concept">
                     <ul class="list-none space-y-2">
                         <li><strong>ACGIH:</strong> American Conference of Governmental Industrial Hygienists - Sets occupational exposure limits for non-ionizing radiation (TLVs).</li>
