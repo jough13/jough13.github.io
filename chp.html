@@ -65,7 +65,7 @@
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-10">
             <h1 class="text-4xl font-bold text-slate-900">Comprehensive Professional Guide<br>to the ABHP Part II Examination</h1>
-            <p class="text-sm text-slate-500 mt-4">Version 3.29 - Last Updated: July 10, 2025</p>
+            <p class="text-sm text-slate-500 mt-4">Version 3.30 - Last Updated: July 10, 2025</p>
         </header>
 
         <main>
@@ -559,8 +559,7 @@
                         </li>
                         <li><strong>Convert to Activity:</strong> The activity is $A(t) = N(t)\lambda$. Therefore:
                             $$A(t) = R(1 - e^{-\lambda t})$$
-                            Plug in the production rate (R), the decay constant ($\lambda$) for the fission product, and the operating time (t).
-                        </li>
+                            Plug in the production rate (R), the decay constant ($\lambda$) for the fission product, and the operating time (t).</li>
                     </ol>
                 </div>
             </section>
@@ -859,19 +858,9 @@
                         <li><strong>Engineering Controls:</strong> "Erect a ventilated tent around the work area. This containment prevents the spread of airborne contamination to adjacent areas and helps to keep worker breathing zones at lower concentrations, thereby reducing potential internal doses."</li>
                     </ol>
                 </div>
-
-                <div class="key-concept">
-                    <h4 class="font-semibold text-lg mb-2">The Art of the Justifiable Assumption</h4>
-                    <p>Stating your assumptions is how you define the boundaries of your calculation and show the grader you understand the model's limitations.</p>
-                    <ul class="list-disc list-inside space-y-1 mt-2">
-                        <li><strong>Shielding:</strong> "Assuming a point source geometry for a conservative (over)estimate of the dose rate."</li>
-                        <li><strong>Internal Dose:</strong> "Assuming an acute (puff) intake and the default 1 $\mu$m AMAD particle size as per ICRP guidance."</li>
-                        <li><strong>Environmental:</strong> "Assuming uniform mixing in the room volume" or "Assuming the Gaussian plume model is valid and that there is total reflection at the ground (no deposition), which is conservative for air concentration."</li>
-                    </ul>
-                </div>
             </section>
 
-            <section class="content-section">
+             <section class="content-section">
                 <h2 class="text-3xl font-bold text-slate-800 mb-4">X. Problem-Solving Methodologies</h2>
                 <p class="mb-6">This section focuses on the practical application of fundamental principles to solve complex problems. It covers how to combine formulas and model dynamic scenarios, which are key skills for the exam.</p>
 
@@ -997,68 +986,83 @@
                 
                 <div class="key-calc">
                     <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 1: The Reactor Coolant System Demineralizer</h3>
-                    <p><strong>Task:</strong> Determine if 2 inches of lead shielding is sufficient to keep a worker's dose below 300 mrem for a 30-minute job near a 60 Ci (initial) ${}^{60}Co$ source that has decayed for 6 months.</p>
+                    <p><strong>Scenario:</strong> A worker must perform a 30-minute maintenance task at a distance of 2.74 meters from a demineralizer tank. The tank contains 60 Ci of ${}^{60}$Co as a point source. The source was placed in the tank 6 months ago. To reduce dose, a 2-inch thick lead shield is placed between the worker and the tank.
+                    <br><strong>Task:</strong> Determine if this shielding is sufficient to keep the worker's dose for this specific job below an administrative limit of 300 mrem. You are given that the buildup factor for this energy and shield thickness is B=2.15.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Decay Calculation:</strong> $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.27y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
-                        <li><strong>Unshielded Dose Rate:</strong> $\dot{D}_{unsh} = \frac{\Gamma A}{d^2} = \frac{(1.3 \frac{R \cdot m^2}{hr \cdot Ci}) \cdot (56.2 \text{ Ci})}{(2.74 \text{ m})^2} = 9.73 \frac{R}{hr} = \textbf{9730 mrem/hr}$.</li>
-                        <li><strong>Shield Effectiveness:</strong> A 2-inch (5.08 cm) lead shield with $\mu = 0.65 \text{ cm}^{-1}$ provides $\mu x = 3.3$ mfp. Interpolating provided buildup data for 3.3 mfp gives $B \approx 2.15$.</li>
-                        <li><strong>Shielded Dose Rate:</strong> $\dot{D}_{sh} = \dot{D}_{unsh} \cdot B \cdot e^{-\mu x} = (9730) \cdot (2.15) \cdot e^{-3.3} \approx \textbf{772 mrem/hr}$.</li>
-                        <li><strong>Total Dose:</strong> For a 30-minute (0.5 hr) job, the dose is $772 \times 0.5 = \textbf{386 mrem}$.</li>
-                        <li><strong>Conclusion:</strong> The projected dose of 386 mrem **exceeds** the 300 mrem limit. The shielding is not sufficient.</li>
+                        <li><strong>Decay Calculation:</strong> First, calculate the current activity of the source.
+                        $A(t) = A_0 e^{-\lambda t} = (60 \text{ Ci}) \cdot e^{-(\frac{0.693}{5.27y})(0.5y)} = (60 \text{ Ci}) \cdot (0.936) = \textbf{56.2 Ci}$.</li>
+                        <li><strong>Unshielded Dose Rate:</strong> Calculate the dose rate at the worker's location without the shield.
+                        $\dot{D}_{unsh} = \frac{\Gamma A}{d^2} = \frac{(1.3 \frac{R \cdot m^2}{hr \cdot Ci}) \cdot (56.2 \text{ Ci})}{(2.74 \text{ m})^2} = 9.73 \frac{R}{hr} = \textbf{9730 mrem/hr}$.</li>
+                        <li><strong>Shielded Dose Rate:</strong> Apply the attenuation equation, including the buildup factor, to find the dose rate with the shield in place.
+                        $\dot{D}_{sh} = \dot{D}_{unsh} \cdot B \cdot e^{-\mu x} = (9730 \frac{mrem}{hr}) \cdot (2.15) \cdot e^{-(\frac{0.693}{1.25cm})(5.08cm)} \approx \textbf{772 mrem/hr}$.</li>
+                        <li><strong>Total Dose:</strong> Calculate the total dose for the 30-minute (0.5 hr) job.
+                        Dose = $772 \frac{mrem}{hr} \times 0.5~hr = \textbf{386 mrem}$.</li>
+                        <li><strong>Conclusion:</strong> The projected dose of 386 mrem **exceeds** the 300 mrem limit. The shielding is not sufficient, and further ALARA actions (e.g., more shielding, reducing time, increasing distance) are required.</li>
                     </ol>
                 </div>
 
                 <div class="key-calc">
                     <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 2: Fetal Dose from Diagnostic X-Rays</h3>
-                    <p><strong>Task:</strong> Estimate the total fetal dose from multiple diagnostic procedures performed on a woman who was 2 months pregnant.</p>
+                    <p><strong>Scenario:</strong> A patient undergoes a series of diagnostic imaging procedures, including a pelvic CT (2 scans at 1.2 rad/scan) and a pelvic fluoroscopy procedure (10 minutes at 4 R/min ESE). Later, she discovers she was 2 months pregnant at the time.
+                    <br><strong>Task:</strong> Estimate the total fetal dose and discuss the potential risks. You are provided with a table indicating the fetal dose conversion factor for this type of fluoro exam is 421 mrad/R.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate ESE for each procedure:</strong> For each exam type, multiply the number of films/scans/minutes by the given machine output (e.g., R/film).</li>
-                        <li><strong>Apply Conversion Factors:</strong> For each procedure, find the mrad/R conversion factor from the provided table based on the projection (e.g., Pelvic) and beam quality (HVL).</li>
-                        <li><strong>Calculate Dose per Procedure:</strong> Dose = ESE (R) $\times$ Factor (mrad/R).
-                            <ul class="list-disc list-inside ml-4">
-                                <li>Pelvic CT: Given directly as 2 scans $\times$ 1.2 rad/scan = 2400 mrad.</li>
-                                <li>Pelvic Fluoro: 10 min $\times$ 4 R/min = 40 R ESE. Dose = 40 R $\times$ 421 mrad/R = 16840 mrad.</li>
-                            </ul>
-                        </li>
-                        <li><strong>Sum the Doses:</strong> Add the dose contributions from all relevant procedures to get the total fetal dose. The final answer will likely be in the tens of rads.</li>
-                        <li><strong>Conclusion & Risk Discussion:</strong> State the total dose clearly. Explain that at this dose level (~20 rad) and gestational age (2 months, period of major organogenesis), there is a significant risk of deterministic effects (e.g., malformations) and an increased risk of stochastic effects (cancer). This information must be clearly communicated to the patient and her physician.</li>
+                        <li><strong>Calculate Dose from CT:</strong> The dose is given directly.
+                        Dose (CT) = 2 scans $\times$ 1.2 rad/scan = 2.4 rad = 2400 mrad.</li>
+                        <li><strong>Calculate ESE from Fluoro:</strong> Calculate the total Entrance Skin Exposure (ESE).
+                        ESE (Fluoro) = 4 R/min $\times$ 10 min = 40 R.</li>
+                        <li><strong>Calculate Fetal Dose from Fluoro:</strong> Convert the ESE to fetal dose using the given factor.
+                        Dose (Fluoro) = 40 R $\times$ 421 mrad/R = 16840 mrad.</li>
+                        <li><strong>Sum the Doses:</strong> Add the contributions from both procedures.
+                        Total Dose = 2400 mrad + 16840 mrad = 19240 mrad $\approx$ **19.2 rad**.</li>
+                        <li><strong>Conclusion & Risk Discussion:</strong> The estimated fetal dose is approximately 19.2 rad. At this dose level and at this stage of gestation (period of major organogenesis), there is a significant risk of deterministic effects (e.g., malformations, >15-20 rad threshold) and an increased lifetime risk of stochastic effects (cancer). This information must be clearly communicated to the patient and her physician to inform their medical decisions.</li>
                     </ol>
                 </div>
 
                 <div class="key-calc">
                     <h3 class="font-semibold text-lg mb-2">Practice Problem 3: Environmental Pathway Analysis</h3>
-                    <p><strong>Task:</strong> A river has a ${}^{137}$Cs concentration of $0.881$ pCi/mL. Calculate the dose to an individual who consumes 250g of fish per day, given a bioaccumulation factor of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
+                     <p><strong>Scenario:</strong> Routine environmental monitoring detects ${}^{137}$Cs in a river downstream of a facility at a concentration of $0.881$ pCi/mL. A member of the public regularly fishes from this river.
+                    <br><strong>Task:</strong> Calculate the annual dose (CEDE) to this individual, assuming they consume 250g of fish per day. You are given a bioaccumulation factor for Cs-137 in fish of 2000 L/kg and an ingestion ALI of 100 $\mu$Ci.</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
-                        <li><strong>Calculate Concentration in Fish ($C_{fish}$):</strong>
+                        <li><strong>Calculate Concentration in Fish ($C_{fish}$):</strong> Use the bioaccumulation factor to find the concentration in fish from the concentration in water.
                         $$C_{fish} = (0.881 \frac{pCi}{mL}) \times (\frac{1000 mL}{L}) \times (2000 \frac{L}{kg}) = 1.76 \times 10^{6} \frac{pCi}{kg}$$
                         </li>
-                        <li><strong>Calculate Annual Intake (I):</strong>
+                        <li><strong>Calculate Annual Intake (I):</strong> Calculate the total activity ingested over a year.
                         $$I = (1.76 \times 10^{6} \frac{pCi}{kg}) \times (0.25 \frac{kg}{day}) \times (365 \frac{day}{yr}) = 1.61 \times 10^{8} \frac{pCi}{yr}$$
                         </li>
-                        <li><strong>Convert to CEDE:</strong> Convert intake to $\mu$Ci and use the ALI.
+                        <li><strong>Convert to CEDE:</strong> Convert the intake to $\mu$Ci and use the ALI to find the CEDE.
                         $$I = 1.61 \times 10^{8} pCi \times \frac{1 \mu Ci}{10^6 pCi} = 161 \mu Ci$$
                         $$CEDE (\text{rem}) = \frac{161 \mu\text{Ci}}{100 \mu\text{Ci}} \times 5 \text{ rem} = \textbf{8.05 rem}$$
                         </li>
-                        <li><strong>Conclusion:</strong> This is a very high dose, far exceeding the public limit of 0.1 rem/yr, and demonstrates the significant dose impact of bioaccumulation in environmental pathways.</li>
+                        <li><strong>Conclusion:</strong> The calculated annual dose of 8.05 rem is well above the public dose limit of 0.1 rem/yr. This indicates a significant radiological concern that requires immediate investigation and potential remedial action, such as issuing a fish consumption advisory.</li>
                     </ol>
                 </div>
                  <div class="key-calc">
                     <h3 class="text-2xl font-semibold mt-6 mb-3">Practice Problem 4: MARSSIM Final Status Survey</h3>
-                    <p><strong>Task:</strong> A room is being decommissioned. The primary contaminant is ${}^{137}$Cs. The DCGLw is 15,000 dpm/100 cm². A final status survey of 10 measurements is performed. The results are (in dpm/100 cm²): 12k, 11k, 14k, 16k, 9k, 13k, 10k, 11.5k, 14.5k, 8k. Do these results pass the Sign Test?</p>
+                    <p><strong>Scenario:</strong> A room is being decommissioned. The primary contaminant is ${}^{137}$Cs, which is not present in background. The DCGLw is 15,000 dpm/100 cm². A final status survey of 10 measurements is performed.
+                    <br><strong>Task:</strong> The results are (in dpm/100 cm²): 12k, 11k, 14k, 16k, 9k, 13k, 10k, 11.5k, 14.5k, 8k. Do these results pass the Sign Test at a 95% confidence level ($\alpha=0.05$)?</p>
                     <p class="mt-4"><strong>Solution Walkthrough:</strong></p>
                     <ol class="list-decimal list-inside space-y-2 mt-2">
                         <li><strong>State Null Hypothesis ($H_0$):</strong> The median concentration of the survey unit exceeds the DCGL. We want to reject this hypothesis to show the area is clean.</li>
                         <li><strong>Calculate Differences:</strong> For each measurement, calculate the difference: $D_i = \text{Measurement}_i - DCGL_W$.
                             <ul class="list-disc list-inside ml-4">
-                                <li>-3000, -4000, -1000, +1000, -6000, -2000, -5000, -3500, -500, -7000</li>
+                                <li>12000 - 15000 = -3000</li>
+                                <li>11000 - 15000 = -4000</li>
+                                <li>14000 - 15000 = -1000</li>
+                                <li>16000 - 15000 = +1000</li>
+                                <li>9000 - 15000 = -6000</li>
+                                <li>13000 - 15000 = -2000</li>
+                                <li>10000 - 15000 = -5000</li>
+                                <li>11500 - 15000 = -3500</li>
+                                <li>14500 - 15000 = -500</li>
+                                <li>8000 - 15000 = -7000</li>
                             </ul>
                         </li>
                         <li><strong>Count the Signs:</strong> Count the number of positive differences. This is the test statistic, S+. Here, S+ = 1.</li>
-                        <li><strong>Compare to Critical Value:</strong> From a MARSSIM table (e.g., Table I.3) for N=10 measurements and a Type I error rate ($\alpha$) of 0.05, the critical value (k) is 8. This means we need 8 or more measurements to be less than the DCGL to be confident the area is clean.</li>
-                        <li><strong>Conclusion:</strong> We reject the null hypothesis ($H_0$) if S+ is less than or equal to the number of non-zero measurements minus the critical value (10 - k). Here, we need S+ $\le$ (10 - 8) = 2. Since our calculated S+ of 1 is less than or equal to 2, we **reject the null hypothesis**. The survey unit meets the release criterion.</li>
+                        <li><strong>Compare to Critical Value:</strong> From MARSSIM Table I.3 for N=10 measurements and $\alpha=0.05$, the critical value (k) is 8. This means we need 8 or more measurements to be less than the DCGL to be confident the area is clean. Equivalently, we reject $H_0$ if S+ $\le$ (N - k) = (10 - 8) = 2.</li>
+                        <li><strong>Conclusion:</strong> Our calculated test statistic S+ = 1. Since 1 is less than or equal to the critical value of 2, we **reject the null hypothesis**. This means there is sufficient statistical evidence to conclude that the median concentration of the survey unit is less than the DCGL, and the area passes the release criterion.</li>
                     </ol>
                 </div>
             </section>
