@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sortable Radionuclide Lookup Table</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Style for the sticky header */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        /* Styles for sortable columns and arrows */
+        .sortable {
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+        .sortable .sort-arrow {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            opacity: 0.4;
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .sortable .sort-arrow.asc,
+        .sortable .sort-arrow.desc {
+            opacity: 1;
+        }
+        .sortable .sort-arrow.asc::after {
+            content: '▲';
+            font-size: 0.6em;
+        }
+        .sortable .sort-arrow.desc::after {
+            content: '▼';
+            font-size: 0.6em;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="p-6 border-b border-gray-200">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Radionuclide Lookup Table</h1>
+                <p class="mt-2 text-gray-600">A searchable and sortable database of items containing radioactive materials, with NRC exemption values.</p>
+            </div>
+
+            <!-- Search Input -->
+            <div class="p-6 bg-gray-50">
+                <label for="searchInput" class="sr-only">Search</label>
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+            </div>
+
+            <!-- Table Container with Scrolling -->
+            <div class="overflow-x-auto">
+                <table id="lookupTable" class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky-header">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption')">Exemption Value<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity')">Activity<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('units')">Units<span class="sort-arrow"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data rows will be injected here by the script -->
+                    </tbody>
+                </table>
+            </div>
+             <div id="noResults" class="hidden p-6 text-center text-gray-500">
+                No results found.
+            </div>
+        </div>
+        <footer class="text-center mt-6 text-sm text-gray-500">
+            <p>Data provided for informational purposes. Exemption values from 10 CFR 30.71.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Raw Data (before processing) ---
+        const rawTableData = [
+            { name: "M11 Pistol Sights, P/N P00007-8A", nsn: "1005-01-359-8429", radionuclide: "H-3", activity: "18", units: "mCi" },
+            { name: "M11 Pistol Sights, P/N P00008-8A", nsn: "1005-01-359-8431", radionuclide: "H-3", activity: "36", units: "mCi" },
+            { name: "Handle And Firing Mechanism", nsn: "1010-01-043-2050", radionuclide: "H-3", activity: "3.2", units: "Ci" },
+            { name: "Fire Control Instrument Level", nsn: "1200-00-257-2769", radionuclide: "H-3", activity: "80", units: "mCi" },
+            { name: "M1a1 Collimator", nsn: "1240-00-332-1780", radionuclide: "H-3", activity: "10", units: "Ci" },
+            { name: "Lamp, Radioluminous", nsn: "1240-01-051-8472", radionuclide: "H-3", activity: "0.7", units: "Ci" },
+            { name: "Level, Fire Control", nsn: "1240-01-057-0112", radionuclide: "H-3", activity: "0.05", units: "Ci" },
+            { name: "Sight, Unit M64a1", nsn: "1240-01-201-8299", radionuclide: "H-3", activity: "4.99", units: "Ci" },
+            { name: "Telescope, Elbow", nsn: "1240-01-211-3608", radionuclide: "H-3", activity: "1.6", units: "Ci" },
+            { name: "Sight Unit, M67", nsn: "1240-01-366-7322", radionuclide: "H-3", activity: "5.8", units: "Ci" },
+            { name: "Mount, Telescope", nsn: "1240-01-379-7953", radionuclide: "H-3", activity: "6.7", units: "Ci" },
+            { name: "Self-Luminous Weapon Sight, Acog", nsn: "1240-01-412-6608", radionuclide: "H-3", activity: "100", units: "mCi" },
+            { name: "Acog Rifle Sight", nsn: "1240-01-435-1916", radionuclide: "H-3", activity: "100", units: "mCi" },
+            { name: "Sight Unit, M64", nsn: "1240-01-507-8580", radionuclide: "H-3", activity: "3.20", units: "Ci" },
+            { name: "Sight, Bore, Optical (Rco/Acog)", nsn: "1240-01-525-1648", radionuclide: "H-3", activity: "0.1", units: "Ci" },
+            { name: "Sight Reflex Rmr", nsn: "1240-01-581-6250", radionuclide: "H-3", activity: "0.25", units: "Ci" },
+            { name: "Weapon Reflex Sight", nsn: "1240-25-150-7592", radionuclide: "H-3", activity: "10", units: "mCi" },
+            { name: "Model Amm Sources", nsn: "1260-01-510-1032", radionuclide: "Am-241", activity: "8", units: "µCi" },
+            { name: "Receiver-Transmitter", nsn: "1270-01-437-6581", radionuclide: "Am-241", activity: "9", units: "µCi" },
+            { name: "Stabilizer Optics", nsn: "1280-01-300-0940", radionuclide: "Th-232", activity: "4.00E-02", units: "µCi" },
+            { name: "Light Aiming Post M58", nsn: "1290-00-169-1934", radionuclide: "H-3", activity: "5", units: "Ci" },
+            { name: "Light Aiming Post M59", nsn: "1290-00-169-1935", radionuclide: "H-3", activity: "9", units: "Ci" },
+            { name: "Ice Detector Probe", nsn: "1660-00-077-8473", radionuclide: "Sr-90", activity: "50", units: "µCi" },
+            { name: "Regulator, Oxygen Di", nsn: "1660-00-252-7796", radionuclide: "Ra-226", activity: "3", units: "µCi" },
+            { name: "Probe, Ice Detector", nsn: "1660-00-919-0419", radionuclide: "Sr-90", activity: "50", units: "µCi" },
+            { name: "Regulator, Oxygen, De", nsn: "1660-00-927-1996", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
+            { name: "Ils Frequency Selector", nsn: "1660-01-483-2581", radionuclide: "Kr-85", activity: "0.2697", units: "µCi" },
+            { name: "Regulator, Oxygen, De", nsn: "1660-01-492-5521", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
+            { name: "Pod, Aircraft", nsn: "1680-01-186-1430", radionuclide: "Th-232", activity: "0.03", units: "µCi" },
+            { name: "Ils Frequency Selector", nsn: "1680-01-415-5778", radionuclide: "Kr-85", activity: "0.2697", units: "µCi" },
+            { name: "Flap, Ven Primary", nsn: "2480-01-450-1973", radionuclide: "U-238", activity: "0.003", units: "µCi" },
+            { name: "Exciter, Gas Turbine", nsn: "2835-00-601-1317", radionuclide: "Kr-85", activity: "6.9", units: "µCi" },
+            { name: "Igniter, Turbine", nsn: "2835-01-200-0298", radionuclide: "Kr-85", activity: "0.224", units: "µCi" },
+            { name: "Power Unit, Gas Turbine", nsn: "2835-01-267-8229", radionuclide: "Kr-85", activity: "2.914", units: "µCi" },
+            { name: "Power Unit", nsn: "2835-01-373-4275", radionuclide: "Kr-85", activity: "2.92E+00", units: "µCi" },
+            { name: "Flap, Ven Secondary", nsn: "2840-01-438-9479", radionuclide: "U-238", activity: "0.03", units: "µCi" },
+            { name: "Seal, Ven Secondary", nsn: "2840-01-440-7755", radionuclide: "U-238", activity: "0.002", units: "µCi" },
+            { name: "Mixer, Afterburner", nsn: "2840-01-450-1980", radionuclide: "U-238", activity: "0.05", units: "µCi" },
+            { name: "Seal, Ven Primary", nsn: "2840-01-450-1982", radionuclide: "U-238", activity: "0.001", units: "µCi" },
+            { name: "Flameholder, Afterburner", nsn: "2840-01-450-3755", radionuclide: "U-238", activity: "0.06", units: "µCi" },
+            { name: "Ignition Unit", nsn: "2925-00-133-9594", radionuclide: "Kr-85", activity: "0.084", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-00-706-2720", radionuclide: "Cs-137", activity: "10", units: "µCi" },
+            { name: "Ignition Unit", nsn: "2925-00-800-3403", radionuclide: "Kr-85", activity: "5", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-00-968-9594", radionuclide: "Cs-137", activity: "5", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-01-022-3181", radionuclide: "H-3", activity: "13.03", units: "µCi" },
+            { name: "Ignition Exciter", nsn: "2925-01-057-6993", radionuclide: "Kr-85", activity: "0.0029", units: "mCi" },
+            { name: "Vibrator, Ignition", nsn: "2925-01-077-3310", radionuclide: "Kr-85", activity: "0.3", units: "µCi" },
+            { name: "Vibrator, Ignition", nsn: "2925-01-077-6866", radionuclide: "Kr-85", activity: "0.2", units: "µCi" },
+            { name: "Coil Ignition Exciter", nsn: "2925-01-323-9835", radionuclide: "Kr-85", activity: "6", units: "mCi" },
+            { name: "Igniter, Spark Gap", nsn: "2925-01-550-0177", radionuclide: "Kr-85", activity: "0.173", units: "µCi" },
+            { name: "Tungsten Electrodes", nsn: "3439-00-105-9945", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
+            { name: "Ionization Detector", nsn: "4210-00-595-5139", radionuclide: "Am-241", activity: "4", units: "µCi" },
+            { name: "Ionization Sealed Source, Smoke Alarms", nsn: "4210-01-185-2762", radionuclide: "Am-241", activity: "1.6", units: "µCi" },
+            { name: "Gamma Detector", nsn: "4470-00-444-3666", radionuclide: "C-14", activity: "100", units: "µCi" },
+            { name: "Dial Control", nsn: "5355-01-342-2421", radionuclide: "H-3", activity: "2", units: "Ci" },
+            { name: "Dial Scale", nsn: "5355-01-343-1793", radionuclide: "H-3", activity: "1.1", units: "Ci" },
+            { name: "Processor, Video Signal", nsn: "5836-01-052-6952", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
+            { name: "Indicator, Range", nsn: "5840-01-458-6159", radionuclide: "H-3", activity: "3.2", units: "Ci" },
+            { name: "Indicator, Range", nsn: "5840-01-642-5687", radionuclide: "H-3", activity: "3.20", units: "Ci" },
+            { name: "Radar Spark Gap", nsn: "5841-01-054-6758", radionuclide: "Kr-85", activity: "25", units: "mCi" },
+            { name: "Receiver - Transmitter", nsn: "5841-01-056-8647", radionuclide: "H-3", activity: "15", units: "mCi" },
+            { name: "Receiver - Exciter", nsn: "5841-01-554-2099", radionuclide: "Pm-147", activity: "30", units: "µCi" },
+            { name: "Image Intensifiers", nsn: "5855-00-087-2948", radionuclide: "Th-232", activity: "4.9", units: "µCi" },
+            { name: "Nvs Mx-7901a / Tvs-4", nsn: "5855-00-147-2508", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
+            { name: "Anpvs 3a Night Vision Sight Lens", nsn: "5855-00-156-4992", radionuclide: "Th-232", activity: "5.8", units: "µCi" },
+            { name: "Image Intensifier", nsn: "5855-00-177-3502", radionuclide: "Th-232", activity: "4.89", units: "µCi" },
+            { name: "Lens Caps", nsn: "5855-00-409-0915", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Night Vision Scope, Mx 7793/Anpvs 1", nsn: "5855-00-688-9954", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Night Vision System Sub-Assembly, Mx 7794a/Tvs-2a", nsn: "5855-00-791-1653", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Nvs Mk 37 Mod 3", nsn: "5855-00-908-9314", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
+            { name: "Pvs-2b Eye Pieces", nsn: "5855-00-941-3037", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Collimator, Small Arms", nsn: "5855-01-029-8730", radionuclide: "H-3", activity: "6", units: "nCi" },
+            { name: "Night Vision Sight", nsn: "5855-01-037-7339", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
+            { name: "Receiver-Converter, Infrared", nsn: "5855-01-052-6849", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
+            { name: "Afocal Assembly", nsn: "5855-01-052-6944", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
+            { name: "Imager, Infrared", nsn: "5855-01-053-0672", radionuclide: "Th-232", activity: "1.50E-03", units: "µCi" },
+            { name: "An/Pas-7a Infared Viewing Set", nsn: "5855-01-093-3080", radionuclide: "Th-232", activity: "0.1", units: "µCi" },
+            { name: "Image Intensifier", nsn: "5855-01-352-7033", radionuclide: "Th-232", activity: "5.00E-02", units: "µCi" },
+            { name: "Window Infrared", nsn: "5855-01-377-7112", radionuclide: "Th-232", activity: "1.50E-03", units: "µCi" },
+            { name: "Detector Dewar", nsn: "5855-01-486-0038", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
+            { name: "Duplexer", nsn: "5895-00-056-7033", radionuclide: "Co-60", activity: "0.8", units: "µCi" },
+            { name: "Control, Receiver", nsn: "5895-00-688-6030", radionuclide: "Ra-226", activity: "0.17", units: "µCi" },
+            { name: "Tr Tube", nsn: "5895-01-375-6748", radionuclide: "Co-60/H-3", activity: "2.5E-4/12.51", units: "mCi" },
+            { name: "Switch, Toggle", nsn: "5930-00-615-9376", radionuclide: "Ra-226", activity: "0.15", units: "mCi" },
+            { name: "Electron Tube", nsn: "5960-00-001-1632", radionuclide: "Th-232", activity: "0.22", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-054-1987", radionuclide: "Th-232", activity: "3", units: "nCi" },
+            { name: "Electron Tube", nsn: "5960-00-060-3449", radionuclide: "Th-232", activity: "1.10E-09", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-114-4849", radionuclide: "Th-232", activity: "1.80E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-131-6742", radionuclide: "Co-60", activity: "0.0000007", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6004", radionuclide: "Re-187", activity: "0.00001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-134-6012", radionuclide: "Re-187", activity: "4.46E-07", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6031", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6064", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6073", radionuclide: "Re-187", activity: "8.89E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-140-1600", radionuclide: "Kr-85", activity: "1.00E-03", units: "µCi" },
+            { name: "Kn2 Electron Tube", nsn: "5960-00-148-4724", radionuclide: "N-63", activity: "0.5", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-168-8386", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Tube Electron", nsn: "5960-00-170-4582", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-179-4446", radionuclide: "Re-187", activity: "10", units: "pCi" },
+            { name: "Electron Tube", nsn: "5960-00-188-0968", radionuclide: "Kr-85", activity: "5.00E-08", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-3565", radionuclide: "Co-60", activity: "0.000001", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-3574", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-8612", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-193-5127", radionuclide: "Th-232", activity: "2.60E-10", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-220-6892", radionuclide: "Co-60", activity: "0.09", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-262-0161", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-262-0163", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-262-0210", radionuclide: "Re-187", activity: "0.00001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-262-0286", radionuclide: "Co-60", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-280-5585", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Bulb, Pre-Transmit, Th-232", nsn: "5960-00-284-5823", radionuclide: "Th-232", activity: "0.00022", units: "pCi" },
+            { name: "Electron Tube", nsn: "5960-00-297-7099", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-307-9918", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-338-0377", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Magnetron", nsn: "5960-00-476-4750", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-503-4880", radionuclide: "Kr-85", activity: "0.03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-542-7004", radionuclide: "Re-187", activity: "0.00000004", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-552-0082", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-552-8277", radionuclide: "U-238", activity: "0.00000008", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-615-5619", radionuclide: "Th-232", activity: "120", units: "pCi" },
+            { name: "Electron Tube", nsn: "5960-00-624-4718", radionuclide: "Ra-226", activity: "6", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-681-8037", radionuclide: "Co-60", activity: "0.15", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-682-8627", radionuclide: "Re-187", activity: "8.89E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-713-7014", radionuclide: "U-238", activity: "0.08", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-752-6384", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-827-8782", radionuclide: "Re-187", activity: "4.46E-09", units: "Ci" },
+            { name: "Electron Tube, Tr-Limiter, Band-Pass, S-Band", nsn: "5960-01-008-1351", radionuclide: "H-3", activity: "30", units: "mCi" },
+            { name: "Electron Tube, Tr-Limiter, Band-Pass, S-Band", nsn: "5960-01-008-1352", radionuclide: "H-3", activity: "30", units: "mCi" },
+            { name: "Electron Tube, Part No. 8169", nsn: "5960-01-013-9344", radionuclide: "Co-60", activity: "0.1", units: "µCi" },
+            { name: "Tr Tube", nsn: "5960-01-018-1237", radionuclide: "H-3/Co-60", activity: "33,000/1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-027-7252", radionuclide: "H-3", activity: "0.075135135", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-01-036-3839", radionuclide: "Am-241", activity: "0.0045", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-037-3297", radionuclide: "Th-232", activity: "1", units: "nCi" },
+            { name: "Electron Tube", nsn: "5960-01-037-3297", radionuclide: "Th-232", activity: "0.001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-095-5001", radionuclide: "H-3", activity: "0.15", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-01-274-3899", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-274-3900", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-365-5728", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Aegis Electron Tube, Yc-150 Swt", nsn: "5960-01-392-6982", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Cathode Ray Tubes (Electron Tubes)", nsn: "5960-01-418-2641", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-462-6267", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Amplifier Radio", nsn: "5996-01-266-0543", radionuclide: "H-3", activity: "150", units: "µCi" },
+            { name: "Lamp, Metal, Halide", nsn: "6240-01-163-0015", radionuclide: "Kr-85/Th-232", activity: "100/0.2", units: "µCi" },
+            { name: "Lamp, Nuclear", nsn: "6260-01-056-2883", radionuclide: "H-3", activity: "1", units: "Ci" },
+            { name: "Index, Mount", nsn: "6260-01-212-8472", radionuclide: "H-3", activity: "0.03", units: "Ci" },
+            { name: "Sensor, Pick Up Kit", nsn: "6350-00-224-3203", radionuclide: "Pm-147", activity: "90", units: "µCi" },
+            { name: "Ionization Smoke Detector", nsn: "6350-01-593-8401", radionuclide: "Am-241", activity: "9.00E-01", units: "µCi" },
+            { name: "Magnetic Compass", nsn: "6605-00-129-6330", radionuclide: "H-3", activity: "50", units: "mCi" },
+            { name: "Compass, Magnetic", nsn: "6605-00-151-5337", radionuclide: "H-3", activity: "190", units: "mCi" },
+            { name: "Compass, Magnetic", nsn: "6605-01-196-6971", radionuclide: "H-3", activity: "120", units: "mCi" },
+            { name: "Indicator, Turn And", nsn: "6610-00-253-3547", radionuclide: "Ra-226", activity: "0.01", units: "µCi" },
+            { name: "Indicator", nsn: "6620-01-125-8904", radionuclide: "Sr-90", activity: "500", units: "µCi" },
+            { name: "Mount, Telescope", nsn: "6650-01-340-6082", radionuclide: "H-3", activity: "4.19", units: "Ci" },
+            { name: "Telescope, Elbow", nsn: "6650-01-341-5195", radionuclide: "H-3", activity: "0.8", units: "Ci" },
+            { name: "Radiac An/Pdr-27q", nsn: "6665-00-017-8903", radionuclide: "Kr-85", activity: "5", units: "mCi" },
+            { name: "Detector, Helicopter", nsn: "6665-01-278-9145", radionuclide: "Sr-90", activity: "0.01", units: "µCi" },
+            { name: "Detector", nsn: "6665-01-282-7139", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
+            { name: "Im-239 Check Source", nsn: "6665-01-333-5985", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
+            { name: "Chemical, Detector Gid -3", nsn: "6665-01-438-3673", radionuclide: "Ni-63", activity: "30", units: "mCi" },
+            { name: "Vapor Tracer Ii", nsn: "6665-01-491-8523", radionuclide: "Ni-63", activity: "10", units: "mCi" },
+            { name: "Source Set", nsn: "6665-01-546-6120", radionuclide: "Sr-90", activity: "0.15", units: "µCi" },
+            { name: "Detector, Chemical Agent", nsn: "6665-99-203-6162", radionuclide: "Ni-63", activity: "30", units: "mCi" },
+            { name: "Chemical Agent Monitor", nsn: "6665-99-725-9996", radionuclide: "Ni-63", activity: "10", units: "mCi" },
+            { name: "Indicator, Pressure", nsn: "6685-01-356-9967", radionuclide: "Sr-90", activity: "100", units: "µCi" },
+            { name: "Meter, Brightness", nsn: "6695-01-221-3251", radionuclide: "C-14", activity: "50", units: "µCi" },
+            { name: "Markers, Self-Luminious", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" }
+        ];
+
+        // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
+        const exemptionValues = {
+            'Am-241': '0.01 µCi',
+            'C-14': '100 µCi',
+            'Cs-137': '10 µCi',
+            'Co-60': '1 µCi',
+            'H-3': '1,000 µCi',
+            'Kr-85': '100 µCi',
+            'Ni-63': '100 µCi',
+            'N-63': '100 µCi', // Assuming typo for Ni-63
+            'Pm-147': '10 µCi',
+            'Ra-226': '0.1 µCi',
+            'Re-187': '100 µCi',
+            'Sr-90': '0.1 µCi',
+            'Tc-99': '10 µCi',
+            'Th-232': '--',
+            'U-238': '--'
+        };
+
+        /**
+         * Converts activity and units to a standard format where the activity
+         * value is between 1 and 999.
+         * @param {string|number} activity - The original activity value.
+         * @param {string} unit - The original unit.
+         * @returns {{newActivity: string, newUnit: string}}
+         */
+        function standardizeActivity(activity, unit) {
+            let value = parseFloat(String(activity).replace(/,/g, ''));
+            let currentUnit = unit.trim();
+            const units = ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'];
+            let unitIndex = units.indexOf(currentUnit);
+
+            if (unitIndex === -1 || isNaN(value)) {
+                return { newActivity: activity, newUnit: unit };
+            }
+
+            while (value >= 1000 && unitIndex < units.length - 1) {
+                value /= 1000;
+                unitIndex++;
+            }
+
+            while (value < 1 && value !== 0 && unitIndex > 0) {
+                value *= 1000;
+                unitIndex--;
+            }
+
+            let newActivityString;
+            if (value === 0) {
+                newActivityString = "0";
+            } else {
+                newActivityString = parseFloat(value.toPrecision(3)).toString();
+            }
+
+            return { newActivity: newActivityString, newUnit: units[unitIndex] };
+        }
+        
+        /**
+         * Processes the raw data by splitting rows with multiple nuclides and
+         * standardizing the activity and units for all rows.
+         * @param {Array<Object>} data - The raw data array.
+         * @returns {Array<Object>} The processed data.
+         */
+        function processData(data) {
+            const processed = [];
+            data.forEach(item => {
+                const hasMultipleNuclides = item.radionuclide.includes('/');
+                const hasMultipleActivities = item.activity.toString().includes('/');
+
+                if (hasMultipleNuclides && hasMultipleActivities) {
+                    const nuclides = item.radionuclide.split('/');
+                    const activities = item.activity.toString().split('/');
+                    if (nuclides.length === activities.length) {
+                        nuclides.forEach((nuclide, index) => {
+                            const { newActivity, newUnit } = standardizeActivity(activities[index].trim(), item.units);
+                            processed.push({
+                                ...item,
+                                radionuclide: nuclide.trim(),
+                                activity: newActivity,
+                                units: newUnit,
+                            });
+                        });
+                    } else {
+                         const { newActivity, newUnit } = standardizeActivity(item.activity, item.units);
+                        processed.push({ ...item, activity: newActivity, units: newUnit });
+                    }
+                } else {
+                    const { newActivity, newUnit } = standardizeActivity(item.activity, item.units);
+                    processed.push({
+                        ...item,
+                        activity: newActivity,
+                        units: newUnit,
+                    });
+                }
+            });
+            return processed;
+        }
+
+        // --- Process data for the table ---
+        const tableData = processData(rawTableData);
+
+        // --- Add NIIN and Exemption Values ---
+        tableData.forEach(item => {
+            // Add NIIN
+            if (item.nsn) {
+                item.niin = item.nsn.substring(5).replace(/-/g, '');
+            } else {
+                item.niin = '';
+            }
+            // Add Exemption Value
+            item.exemption = exemptionValues[item.radionuclide] || 'N/A';
+        });
+
+        let currentSort = {
+            column: null,
+            direction: 'asc',
+        };
+
+        /**
+         * Clears the table and populates it with data.
+         * @param {Array<Object>} data - The array of data to display.
+         */
+        function populateTable(data) {
+            const tableBody = document.querySelector('#lookupTable tbody');
+            tableBody.innerHTML = ''; // Clear existing rows
+            const rows = data.map(item => `
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${item.name}</td>
+                    <td class="px-6 py-4">${item.nsn}</td>
+                    <td class="px-6 py-4">${item.niin}</td>
+                    <td class="px-6 py-4">${item.radionuclide}</td>
+                    <td class="px-6 py-4">${item.exemption}</td>
+                    <td class="px-6 py-4 text-right">${item.activity}</td>
+                    <td class="px-6 py-4">${item.units}</td>
+                </tr>
+            `).join('');
+            tableBody.innerHTML = rows;
+        }
+
+        /**
+         * Sorts the table by a given column key.
+         * @param {string} columnKey - The key of the object to sort by (e.g., 'name', 'activity').
+         */
+        function sortTable(columnKey) {
+            const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
+            currentSort.direction = isAsc ? 'desc' : 'asc';
+            currentSort.column = columnKey;
+
+            tableData.sort((a, b) => {
+                let valA = a[columnKey];
+                let valB = b[columnKey];
+
+                if (columnKey === 'activity') {
+                    valA = parseFloat(valA);
+                    valB = parseFloat(valB);
+                }
+
+                let comparison = 0;
+                if (typeof valA === 'string' && typeof valB === 'string') {
+                    comparison = valA.localeCompare(valB, undefined, {numeric: true});
+                } else {
+                     if (valA > valB) {
+                        comparison = 1;
+                    } else if (valA < valB) {
+                        comparison = -1;
+                    }
+                }
+
+                return currentSort.direction === 'asc' ? comparison : comparison * -1;
+            });
+
+            updateSortArrows();
+            populateTable(tableData);
+            filterTable(); // Re-apply filter after sorting
+        }
+        
+        /**
+         * Updates the visual arrow indicators in the table headers.
+         */
+        function updateSortArrows() {
+            document.querySelectorAll('.sortable .sort-arrow').forEach(arrow => {
+                arrow.classList.remove('asc', 'desc');
+            });
+
+            const header = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
+            if (header) {
+                const arrow = header.querySelector('.sort-arrow');
+                arrow.classList.add(currentSort.direction);
+            }
+        }
+
+        /**
+         * Filters table rows based on search input.
+         */
+        function filterTable() {
+            const input = document.getElementById("searchInput");
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById("lookupTable");
+            const tr = table.getElementsByTagName("tr");
+            const noResults = document.getElementById("noResults");
+            let visibleRows = 0;
+
+            for (let i = 1; i < tr.length; i++) {
+                let row = tr[i];
+                let display = "none";
+                let tds = row.getElementsByTagName("td");
+                for (let j = 0; j < tds.length; j++) {
+                    if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
+                        display = "";
+                        visibleRows++;
+                        break;
+                    }
+                }
+                row.style.display = display;
+            }
+            noResults.style.display = visibleRows === 0 ? 'block' : 'none';
+        }
+
+        // Initial population of the table on page load.
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTable(tableData);
+        });
+    </script>
+
+</body>
+</html>
