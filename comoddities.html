@@ -111,7 +111,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Radioactive Commodity Lookup</h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items with NRC exemption and DOT A1/A2 values.</p>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items with NRC and DOT exemption values.</p>
             </div>
 
             <!-- Controls: Search and Toggles -->
@@ -148,10 +148,11 @@
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
-                            <th id="exemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption_val')">Exemption Value<span class="sort-arrow"></span></th>
-                            <th id="dotA1Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA1_val')">DOT A1<span class="sort-arrow"></span></th>
-                            <th id="dotA2Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA2_val')">DOT A2<span class="sort-arrow"></span></th>
                             <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
+                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('nrc_exemption_val')">NRC Exemption<span class="sort-arrow"></span></th>
+                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dot_exemption_val')">DOT Exemption<span class="sort-arrow"></span></th>
+                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('un2911_limit_val')">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
+                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
                     <tbody class="dark:divide-gray-700">
@@ -164,8 +165,8 @@
             </div>
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
-            <p>Data provided for informational purposes. Exemption values from 10 CFR 30.71. DOT A1/A2 values from 49 CFR 173.435.</p>
-            <p class="mt-2">Version 1.1 | Last Updated: July 30, 2025</p>
+            <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR 173.436.</p>
+            <p class="mt-2">Version 1.13 | Last Updated: July 30, 2025</p>
         </footer>
     </div>
 
@@ -340,23 +341,68 @@
         ];
 
         // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
-        const exemptionValues = {
+        const nrcExemptionValues = {
             'Am-241': '0.01 µCi', 'C-14': '100 µCi', 'Cs-137': '10 µCi', 'Co-60': '1 µCi',
             'H-3': '1,000 µCi', 'Kr-85': '100 µCi', 'Ni-63': '100 µCi', 'N-63': '100 µCi',
             'Pm-147': '10 µCi', 'Ra-226': '0.1 µCi', 'Re-187': '100 µCi', 'Sr-90': '0.1 µCi',
             'Tc-99': '10 µCi', 'Th-232': '--', 'U-238': '--'
         };
 
-        // --- DOT A1/A2 values from 49 CFR 173.435, in Curies ---
-        const dotValues = {
-            'Am-241': { a1: '27.0', a2: '0.027' }, 'C-14': { a1: '27.0', a2: '27.0' },
-            'Cs-137': { a1: '54.1', a2: '16.2' }, 'Co-60': { a1: '10.8', a2: '10.8' },
-            'H-3': { a1: '1081', a2: '1081' }, 'Kr-85': { a1: '270', a2: '270' },
-            'Ni-63': { a1: '811', a2: '811' }, 'N-63': { a1: '811', a2: '811' },
-            'Pm-147': { a1: '54.1', a2: '54.1' }, 'Ra-226': { a1: '0.541', a2: '0.0811' },
-            'Re-187': { a1: 'Unlimited', a2: 'Unlimited' }, 'Sr-90': { a1: '5.41', a2: '5.41' },
-            'Tc-99': { a1: '18.9', a2: '18.9' }, 'Th-232': { a1: 'Unlimited', a2: 'Unlimited' },
-            'U-238': { a1: 'Unlimited', a2: 'Unlimited' }
+        // --- DOT Exemption values from 49 CFR 173.436 (Consignment) ---
+        const dotExemptionValues = {
+            'H-3': '27 mCi',
+            'Am-241': '0.27 µCi',
+            'Th-232': '0.27 µCi',
+            'Sr-90': '0.27 µCi',
+            'Ra-226': '0.27 µCi',
+            'Kr-85': '0.27 µCi',
+            'U-238': '0.27 µCi',
+            'Cs-137': '0.27 µCi',
+            'Pm-147': '270 µCi',
+            'Co-60': '2.7 µCi',
+            'Re-187': '27 mCi',
+            'Ni-63': '2.7 mCi',
+            'N-63': '2.7 mCi', // Assuming typo for Ni-63
+            'C-14': '270 µCi',
+            'Tc-99': '270 µCi'
+        };
+
+        // --- UN 2911 Excepted Package Limits (per item) ---
+        const un2911Limits = {
+            'Am-241': '0.00027 Ci',
+            'C-14': '0.81 Ci',
+            'Co-60': '0.11 Ci',
+            'Cs-137': '0.16 Ci',
+            'H-3': '22 Ci',
+            'Kr-85': '0.27 Ci',
+            'Ni-63': '8.1 Ci',
+            'N-63': '8.1 Ci', // Assuming typo for Ni-63
+            'Pm-147': '0.54 Ci',
+            'Ra-226': '0.00081 Ci',
+            'Re-187': 'Unlimited',
+            'Sr-90': '0.081 Ci',
+            'Tc-99': '0.24 Ci',
+            'Th-232': 'Unlimited',
+            'U-238': 'Unlimited'
+        };
+
+        // --- UN 2911 Excepted Package Limits (per package) ---
+        const un2911PkgLimits = {
+            'Am-241': '0.027 Ci',
+            'C-14': '81 Ci',
+            'Co-60': '11 Ci',
+            'Cs-137': '16 Ci',
+            'H-3': '220 Ci',
+            'Kr-85': '2.7 Ci',
+            'Ni-63': '810 Ci',
+            'N-63': '810 Ci', // Assuming typo for Ni-63
+            'Pm-147': '54 Ci',
+            'Ra-226': '0.081 Ci',
+            'Re-187': 'Unlimited',
+            'Sr-90': '8.1 Ci',
+            'Tc-99': '24 Ci',
+            'Th-232': 'Unlimited',
+            'U-238': 'Unlimited'
         };
 
         // --- Global State ---
@@ -367,37 +413,21 @@
         const CI_TO_BQ = 3.7e10;
         const ciMultipliers = { 'pCi': 1e-12, 'nCi': 1e-9, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
         
-        /**
-         * Formats a number with thousands separators.
-         * @param {number} number - The number to format.
-         * @returns {string} The formatted number as a string.
-         */
         function formatNumberWithCommas(number) {
-            // toLocaleString is a great way to add locale-aware thousands separators.
             return number.toLocaleString('en-US');
         }
 
-        /**
-         * Converts a string value with a unit (e.g., "10 µCi") to a numeric value in Curies.
-         * @param {string} valueStr - The string to parse (e.g., "10 µCi", "Unlimited", "--").
-         * @returns {number|null} The numeric value in Curies, or null for non-numeric inputs.
-         */
         function parseValueToCi(valueStr) {
             if (typeof valueStr !== 'string' || valueStr === '--' || valueStr.toLowerCase() === 'unlimited') {
                 return null;
             }
             const parts = valueStr.trim().split(/\s+/);
             const value = parseFloat(String(parts[0]).replace(/,/g, ''));
-            const unit = parts[1] || 'Ci'; // Default to Ci if no unit
+            const unit = parts[1] || 'Ci';
             const multiplier = ciMultipliers[unit.trim()] || 1;
             return isNaN(value) ? null : value * multiplier;
         }
 
-        /**
-         * Formats a numeric value in Curies into a human-readable string with an appropriate prefix.
-         * @param {number|null} valueCi - The value in Curies.
-         * @returns {string} The formatted string (e.g., "18.0 mCi").
-         */
         function formatCi(valueCi) {
             if (valueCi === null || typeof valueCi === 'undefined') return '--';
             if (valueCi === 0) return '0 Ci';
@@ -408,34 +438,37 @@
                 value *= 1000;
                 unitIndex--;
             }
-            // Use the new comma formatting function
             return `${formatNumberWithCommas(parseFloat(value.toPrecision(3)))} ${units[unitIndex]}`;
         }
 
-        /**
-         * Formats a numeric value in Curies into a human-readable SI (Becquerel) string.
-         * @param {number|null} valueCi - The value in Curies.
-         * @returns {string} The formatted SI string (e.g., "666 MBq").
-         */
         function formatBq(valueCi) {
             if (valueCi === null || typeof valueCi === 'undefined') return '--';
             if (valueCi === 0) return '0 Bq';
             let valueBq = valueCi * CI_TO_BQ;
             const units = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'];
             let unitIndex = 0;
+
             while (valueBq >= 1000 && unitIndex < units.length - 1) {
                 valueBq /= 1000;
                 unitIndex++;
             }
-             // Use the new comma formatting function
-            return `${formatNumberWithCommas(parseFloat(valueBq.toPrecision(3)))} ${units[unitIndex]}`;
+            
+            let displayValue = parseFloat(valueBq.toPrecision(3));
+
+            if (displayValue >= 999 && unitIndex < units.length - 1) {
+                displayValue = 1;
+                unitIndex++;
+            } 
+            else if (displayValue >= 99.9 && displayValue < 100) {
+                 displayValue = 100;
+            } 
+            else if (displayValue >= 9.99 && displayValue < 10) {
+                 displayValue = 10;
+            }
+
+            return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
         }
 
-        /**
-         * Processes the raw data, calculates all necessary values and formats, and stores them.
-         * @param {Array<Object>} rawData - The raw data array.
-         * @returns {Array<Object>} The fully processed data for the table.
-         */
         function processData(rawData) {
             const processed = [];
             rawData.forEach(item => {
@@ -449,7 +482,7 @@
                         nuclides.forEach((nuclide, index) => {
                             processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[index].trim() }));
                         });
-                        return;
+                        return; 
                     }
                 }
                 processed.push(createRowObject(item));
@@ -457,19 +490,14 @@
             return processed;
         }
         
-        /**
-         * Creates a single, fully-processed row object with all required fields.
-         * @param {Object} item - A raw data item.
-         * @returns {Object} A processed data object.
-         */
         function createRowObject(item) {
             const radionuclide = item.radionuclide.trim();
-            const dotInfo = dotValues[radionuclide] || { a1: 'N/A', a2: 'N/A' };
             
             const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
-            const exemptionVal = parseValueToCi(exemptionValues[radionuclide]);
-            const dotA1Val = parseValueToCi(`${dotInfo.a1} Ci`);
-            const dotA2Val = parseValueToCi(`${dotInfo.a2} Ci`);
+            const nrcExemptionVal = parseValueToCi(nrcExemptionValues[radionuclide]);
+            const dotExemptionVal = parseValueToCi(dotExemptionValues[radionuclide]);
+            const un2911LimitVal = parseValueToCi(un2911Limits[radionuclide]);
+            const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
 
             return {
                 name: item.name,
@@ -478,36 +506,36 @@
                 radionuclide: radionuclide,
                 
                 activity_val: activityVal,
-                exemption_val: exemptionVal,
-                dotA1_val: dotA1Val,
-                dotA2_val: dotA2Val,
+                nrc_exemption_val: nrcExemptionVal,
+                dot_exemption_val: dotExemptionVal,
+                un2911_limit_val: un2911LimitVal,
+                un2911_pkg_limit_val: un2911PkgLimitVal,
                 
                 activity_ci_str: formatCi(activityVal),
-                exemption_ci_str: exemptionVal !== null ? formatCi(exemptionVal) : (exemptionValues[radionuclide] || 'N/A'),
-                dotA1_ci_str: dotA1Val !== null ? formatCi(dotA1Val) : 'Unlimited',
-                dotA2_ci_str: dotA2Val !== null ? formatCi(dotA2Val) : 'Unlimited',
+                nrc_exemption_ci_str: nrcExemptionVal !== null ? formatCi(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
+                dot_exemption_ci_str: dotExemptionVal !== null ? formatCi(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
+                un2911_limit_ci_str: un2911LimitVal !== null ? formatCi(un2911LimitVal) : 'Unlimited',
+                un2911_pkg_limit_ci_str: un2911PkgLimitVal !== null ? formatCi(un2911PkgLimitVal) : 'Unlimited',
 
                 activity_bq_str: formatBq(activityVal),
-                exemption_bq_str: exemptionVal !== null ? formatBq(exemptionVal) : (exemptionValues[radionuclide] || 'N/A'),
-                dotA1_bq_str: dotA1Val !== null ? formatBq(dotA1Val) : 'Unlimited',
-                dotA2_bq_str: dotA2Val !== null ? formatBq(dotA2Val) : 'Unlimited',
+                nrc_exemption_bq_str: nrcExemptionVal !== null ? formatBq(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
+                dot_exemption_bq_str: dotExemptionVal !== null ? formatBq(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
+                un2911_limit_bq_str: un2911LimitVal !== null ? formatBq(un2911LimitVal) : 'Unlimited',
+                un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
             };
         }
 
 
-        /**
-         * Clears the table and populates it with data based on the current unit selection.
-         * @param {Array<Object>} data - The array of data to display.
-         */
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
-            tableBody.innerHTML = ''; // Clear existing rows
+            tableBody.innerHTML = '';
 
             const rows = data.map(item => {
-                const exemption = isSiUnits ? item.exemption_bq_str : item.exemption_ci_str;
-                const dotA1 = isSiUnits ? item.dotA1_bq_str : item.dotA1_ci_str;
-                const dotA2 = isSiUnits ? item.dotA2_bq_str : item.dotA2_ci_str;
+                const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
+                const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
+                const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
+                const un2911PkgLimit = isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str;
                 const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
 
                 return `
@@ -516,20 +544,17 @@
                         <td class="px-6 py-4">${item.nsn}</td>
                         <td class="px-6 py-4">${item.niin}</td>
                         <td class="px-6 py-4">${item.radionuclide}</td>
-                        <td class="px-6 py-4">${exemption}</td>
-                        <td class="px-6 py-4">${dotA1}</td>
-                        <td class="px-6 py-4">${dotA2}</td>
                         <td class="px-6 py-4 text-right">${activity}</td>
+                        <td class="px-6 py-4">${nrcExemption}</td>
+                        <td class="px-6 py-4">${dotExemption}</td>
+                        <td class="px-6 py-4">${un2911Limit}</td>
+                        <td class="px-6 py-4">${un2911PkgLimit}</td>
                     </tr>
                 `;
             }).join('');
             tableBody.innerHTML = rows;
         }
 
-        /**
-         * Sorts the table by a given column key.
-         * @param {string} columnKey - The key of the object to sort by (e.g., 'name', 'activity_val').
-         */
         function sortTable(columnKey) {
             const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
             currentSort.direction = isAsc ? 'desc' : 'asc';
@@ -539,14 +564,13 @@
                 let valA = a[columnKey];
                 let valB = b[columnKey];
                 
-                // Handle nulls (e.g., for 'Unlimited' values) by pushing them to the end
                 if (valA === null) return 1;
                 if (valB === null) return -1;
 
                 let comparison = 0;
                 if (typeof valA === 'string') {
                     comparison = valA.localeCompare(valB, undefined, { numeric: true });
-                } else { // Numeric comparison
+                } else {
                     if (valA > valB) comparison = 1;
                     else if (valA < valB) comparison = -1;
                 }
@@ -556,12 +580,9 @@
 
             updateSortArrows();
             populateTable(tableData);
-            filterTable(); // Re-apply filter after sorting
+            filterTable();
         }
         
-        /**
-         * Updates the visual arrow indicators in the table headers.
-         */
         function updateSortArrows() {
             document.querySelectorAll('.sortable .sort-arrow').forEach(arrow => {
                 arrow.classList.remove('asc', 'desc');
@@ -574,9 +595,6 @@
             }
         }
 
-        /**
-         * Filters table rows based on search input.
-         */
         function filterTable() {
             const input = document.getElementById("searchInput");
             const filter = input.value.toUpperCase();
@@ -585,7 +603,6 @@
             const noResults = document.getElementById("noResults");
             let visibleRows = 0;
 
-            // Start loop from 1 to skip the header row (thead)
             for (let i = 1; i < tr.length; i++) {
                 let row = tr[i];
                 let display = "none";
@@ -594,7 +611,7 @@
                     if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
                         display = "";
                         visibleRows++;
-                        break; // Found a match in this row, no need to check other cells
+                        break;
                     }
                 }
                 row.style.display = display;
@@ -602,27 +619,13 @@
             noResults.style.display = visibleRows === 0 ? 'block' : 'none';
         }
 
-        /**
-         * Updates table headers based on the selected unit system.
-         */
-        function updateTableHeaders() {
-            const isSiUnits = document.getElementById('unitToggle').checked;
-            document.getElementById('dotA1Header').innerHTML = `DOT A1<span class="sort-arrow"></span>`;
-            document.getElementById('dotA2Header').innerHTML = `DOT A2<span class="sort-arrow"></span>`;
-            updateSortArrows(); // Re-apply arrows after changing text
-        }
-
-        // --- Event Listeners and Initial Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
             const unitToggle = document.getElementById('unitToggle');
 
-            // --- Dark Mode Setup ---
-            // Set initial toggle state based on current mode
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
             }
-            // Listen for toggle changes
             darkModeToggle.addEventListener('change', () => {
                 if (darkModeToggle.checked) {
                     document.documentElement.classList.add('dark');
@@ -633,18 +636,14 @@
                 }
             });
 
-            // --- Unit Toggle Setup ---
             unitToggle.addEventListener('change', () => {
-                updateTableHeaders();
                 populateTable(tableData);
-                filterTable(); // Re-apply filter after unit change
+                filterTable();
             });
             
-            // --- Initial Data Load ---
             tableData = processData(rawTableData);
-            updateTableHeaders();
             populateTable(tableData);
-            sortTable('name'); // Initial sort by name
+            sortTable('name');
         });
     </script>
 
