@@ -4,7 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sortable Radioactive Commodity Lookup Table</title>
+    
+    <!-- The main Tailwind CSS script MUST be loaded before the configuration script. -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind CSS to use the 'class' strategy for dark mode.
+        // This tells Tailwind to apply dark styles whenever the 'dark' class is present on the <html> element.
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -86,7 +96,8 @@
         }
     </style>
     <script>
-        // Set dark mode based on saved preference or system setting
+        // This script runs immediately to set the dark mode class on initial load.
+        // This prevents a "flash of incorrect theme" while the page is loading.
         if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark');
         } else {
@@ -94,13 +105,13 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Sortable Radioactive Commodity Lookup Table</h1>
-                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items containing radioactive materials, with NRC exemption and DOT A1/A2 values.</p>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Radioactive Commodity Lookup</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items with NRC exemption and DOT A1/A2 values.</p>
             </div>
 
             <!-- Controls: Search and Toggles -->
@@ -109,16 +120,16 @@
                     <label for="searchInput" class="sr-only">Search</label>
                     <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
                 </div>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-3">
-                        <span class="font-medium text-gray-700 dark:text-gray-300">Traditional (Ci)</span>
+                <div class="flex items-center gap-4 sm:gap-6">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="unitToggle">
                             <span class="slider"></span>
                         </label>
-                        <span class="font-medium text-gray-700 dark:text-gray-300">SI (Bq)</span>
+                        <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Bq</span>
                     </div>
-                     <div class="flex items-center gap-3">
+                     <div class="flex items-center gap-2 sm:gap-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
                         <label class="toggle-switch">
                             <input type="checkbox" id="darkModeToggle">
@@ -137,11 +148,10 @@
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
-                            <th id="exemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption_ci_val')">Exemption Value<span class="sort-arrow"></span></th>
-                            <th id="dotA1Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA1_ci_val')">DOT A1 (Ci)<span class="sort-arrow"></span></th>
-                            <th id="dotA2Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA2_ci_val')">DOT A2 (Ci)<span class="sort-arrow"></span></th>
-                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity_ci_val')">Activity<span class="sort-arrow"></span></th>
-                            <th id="unitsHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('activity_ci_val')">Units<span class="sort-arrow"></span></th>
+                            <th id="exemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption_val')">Exemption Value<span class="sort-arrow"></span></th>
+                            <th id="dotA1Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA1_val')">DOT A1<span class="sort-arrow"></span></th>
+                            <th id="dotA2Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA2_val')">DOT A2<span class="sort-arrow"></span></th>
+                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
                     <tbody class="dark:divide-gray-700">
@@ -331,171 +341,182 @@
 
         // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
         const exemptionValues = {
-            'Am-241': '0.01 µCi',
-            'C-14': '100 µCi',
-            'Cs-137': '10 µCi',
-            'Co-60': '1 µCi',
-            'H-3': '1,000 µCi',
-            'Kr-85': '100 µCi',
-            'Ni-63': '100 µCi',
-            'N-63': '100 µCi', // Assuming typo for Ni-63
-            'Pm-147': '10 µCi',
-            'Ra-226': '0.1 µCi',
-            'Re-187': '100 µCi',
-            'Sr-90': '0.1 µCi',
-            'Tc-99': '10 µCi',
-            'Th-232': '--',
-            'U-238': '--'
+            'Am-241': '0.01 µCi', 'C-14': '100 µCi', 'Cs-137': '10 µCi', 'Co-60': '1 µCi',
+            'H-3': '1,000 µCi', 'Kr-85': '100 µCi', 'Ni-63': '100 µCi', 'N-63': '100 µCi',
+            'Pm-147': '10 µCi', 'Ra-226': '0.1 µCi', 'Re-187': '100 µCi', 'Sr-90': '0.1 µCi',
+            'Tc-99': '10 µCi', 'Th-232': '--', 'U-238': '--'
         };
 
-        // --- DOT A1/A2 values from 49 CFR 173.435, converted from TBq to Ci ---
-        // Conversion factor: 1 TBq = 27.027 Ci
+        // --- DOT A1/A2 values from 49 CFR 173.435, in Curies ---
         const dotValues = {
-            'Am-241': { a1: '27.0', a2: '0.027' },
-            'C-14': { a1: '27.0', a2: '27.0' },
-            'Cs-137': { a1: '54.1', a2: '16.2' },
-            'Co-60': { a1: '10.8', a2: '10.8' },
-            'H-3': { a1: '1081', a2: '1081' },
-            'Kr-85': { a1: '270', a2: '270' },
-            'Ni-63': { a1: '811', a2: '811' },
-            'N-63': { a1: '811', a2: '811' }, // Assuming typo for Ni-63
-            'Pm-147': { a1: '54.1', a2: '54.1' },
-            'Ra-226': { a1: '0.541', a2: '0.0811' },
-            'Re-187': { a1: 'Unlimited', a2: 'Unlimited' },
-            'Sr-90': { a1: '5.41', a2: '5.41' },
-            'Tc-99': { a1: '18.9', a2: '18.9' },
-            'Th-232': { a1: 'Unlimited', a2: 'Unlimited' },
+            'Am-241': { a1: '27.0', a2: '0.027' }, 'C-14': { a1: '27.0', a2: '27.0' },
+            'Cs-137': { a1: '54.1', a2: '16.2' }, 'Co-60': { a1: '10.8', a2: '10.8' },
+            'H-3': { a1: '1081', a2: '1081' }, 'Kr-85': { a1: '270', a2: '270' },
+            'Ni-63': { a1: '811', a2: '811' }, 'N-63': { a1: '811', a2: '811' },
+            'Pm-147': { a1: '54.1', a2: '54.1' }, 'Ra-226': { a1: '0.541', a2: '0.0811' },
+            'Re-187': { a1: 'Unlimited', a2: 'Unlimited' }, 'Sr-90': { a1: '5.41', a2: '5.41' },
+            'Tc-99': { a1: '18.9', a2: '18.9' }, 'Th-232': { a1: 'Unlimited', a2: 'Unlimited' },
             'U-238': { a1: 'Unlimited', a2: 'Unlimited' }
         };
 
+        // --- Global State ---
+        let tableData = [];
+        let currentSort = { column: null, direction: 'asc' };
+        
+        // --- Conversion and Formatting Helpers ---
+        const CI_TO_BQ = 3.7e10;
+        const ciMultipliers = { 'pCi': 1e-12, 'nCi': 1e-9, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+        
         /**
-         * Converts activity and units to a standard format where the activity
-         * value is between 1 and 999.
-         * @param {string|number} activity - The original activity value.
-         * @param {string} unit - The original unit.
-         * @returns {{newActivity: string, newUnit: string}}
+         * Converts a string value with a unit (e.g., "10 µCi") to a numeric value in Curies.
+         * @param {string} valueStr - The string to parse (e.g., "10 µCi", "Unlimited", "--").
+         * @returns {number|null} The numeric value in Curies, or null for non-numeric inputs.
          */
-        function standardizeActivity(activity, unit) {
-            let value = parseFloat(String(activity).replace(/,/g, ''));
-            let currentUnit = unit.trim();
+        function parseValueToCi(valueStr) {
+            if (typeof valueStr !== 'string' || valueStr === '--' || valueStr.toLowerCase() === 'unlimited') {
+                return null;
+            }
+            const parts = valueStr.trim().split(/\s+/);
+            const value = parseFloat(String(parts[0]).replace(/,/g, ''));
+            const unit = parts[1] || 'Ci'; // Default to Ci if no unit
+            const multiplier = ciMultipliers[unit.trim()] || 1;
+            return isNaN(value) ? null : value * multiplier;
+        }
+
+        /**
+         * Formats a numeric value in Curies into a human-readable string with an appropriate prefix.
+         * @param {number|null} valueCi - The value in Curies.
+         * @returns {string} The formatted string (e.g., "18.0 mCi").
+         */
+        function formatCi(valueCi) {
+            if (valueCi === null || typeof valueCi === 'undefined') return '--';
+            if (valueCi === 0) return '0 Ci';
             const units = ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'];
-            let unitIndex = units.indexOf(currentUnit);
-
-            if (unitIndex === -1 || isNaN(value)) {
-                return { newActivity: activity, newUnit: unit };
-            }
-
-            while (value >= 1000 && unitIndex < units.length - 1) {
-                value /= 1000;
-                unitIndex++;
-            }
-
-            while (value < 1 && value !== 0 && unitIndex > 0) {
+            let unitIndex = 4;
+            let value = valueCi;
+            while (value < 1 && unitIndex > 0) {
                 value *= 1000;
                 unitIndex--;
             }
-
-            let newActivityString;
-            if (value === 0) {
-                newActivityString = "0";
-            } else {
-                newActivityString = parseFloat(value.toPrecision(3)).toString();
-            }
-
-            return { newActivity: newActivityString, newUnit: units[unitIndex] };
+            return `${parseFloat(value.toPrecision(3))} ${units[unitIndex]}`;
         }
-        
+
         /**
-         * Processes the raw data by splitting rows with multiple nuclides and
-         * standardizing the activity and units for all rows.
-         * @param {Array<Object>} data - The raw data array.
-         * @returns {Array<Object>} The processed data.
+         * Formats a numeric value in Curies into a human-readable SI (Becquerel) string.
+         * @param {number|null} valueCi - The value in Curies.
+         * @returns {string} The formatted SI string (e.g., "666 MBq").
          */
-        function processData(data) {
+        function formatBq(valueCi) {
+            if (valueCi === null || typeof valueCi === 'undefined') return '--';
+            if (valueCi === 0) return '0 Bq';
+            let valueBq = valueCi * CI_TO_BQ;
+            const units = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'];
+            let unitIndex = 0;
+            while (valueBq >= 1000 && unitIndex < units.length - 1) {
+                valueBq /= 1000;
+                unitIndex++;
+            }
+            return `${parseFloat(valueBq.toPrecision(3))} ${units[unitIndex]}`;
+        }
+
+        /**
+         * Processes the raw data, calculates all necessary values and formats, and stores them.
+         * @param {Array<Object>} rawData - The raw data array.
+         * @returns {Array<Object>} The fully processed data for the table.
+         */
+        function processData(rawData) {
             const processed = [];
-            data.forEach(item => {
+            rawData.forEach(item => {
                 const hasMultipleNuclides = item.radionuclide.includes('/');
-                const hasMultipleActivities = item.activity.toString().includes('/');
+                const hasMultipleActivities = String(item.activity).includes('/');
 
                 if (hasMultipleNuclides && hasMultipleActivities) {
                     const nuclides = item.radionuclide.split('/');
-                    const activities = item.activity.toString().split('/');
+                    const activities = String(item.activity).split('/');
                     if (nuclides.length === activities.length) {
                         nuclides.forEach((nuclide, index) => {
-                            const { newActivity, newUnit } = standardizeActivity(activities[index].trim(), item.units);
-                            processed.push({
-                                ...item,
-                                radionuclide: nuclide.trim(),
-                                activity: newActivity,
-                                units: newUnit,
-                            });
+                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[index].trim() }));
                         });
-                    } else {
-                         const { newActivity, newUnit } = standardizeActivity(item.activity, item.units);
-                        processed.push({ ...item, activity: newActivity, units: newUnit });
+                        return;
                     }
-                } else {
-                    const { newActivity, newUnit } = standardizeActivity(item.activity, item.units);
-                    processed.push({
-                        ...item,
-                        activity: newActivity,
-                        units: newUnit,
-                    });
                 }
+                processed.push(createRowObject(item));
             });
             return processed;
         }
+        
+        /**
+         * Creates a single, fully-processed row object with all required fields.
+         * @param {Object} item - A raw data item.
+         * @returns {Object} A processed data object.
+         */
+        function createRowObject(item) {
+            const radionuclide = item.radionuclide.trim();
+            const dotInfo = dotValues[radionuclide] || { a1: 'N/A', a2: 'N/A' };
+            
+            const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
+            const exemptionVal = parseValueToCi(exemptionValues[radionuclide]);
+            const dotA1Val = parseValueToCi(`${dotInfo.a1} Ci`);
+            const dotA2Val = parseValueToCi(`${dotInfo.a2} Ci`);
 
-        // --- Process data for the table ---
-        const tableData = processData(rawTableData);
+            return {
+                name: item.name,
+                nsn: item.nsn,
+                niin: item.nsn ? item.nsn.substring(5).replace(/-/g, '') : '',
+                radionuclide: radionuclide,
+                
+                activity_val: activityVal,
+                exemption_val: exemptionVal,
+                dotA1_val: dotA1Val,
+                dotA2_val: dotA2Val,
+                
+                activity_ci_str: formatCi(activityVal),
+                exemption_ci_str: exemptionVal !== null ? formatCi(exemptionVal) : (exemptionValues[radionuclide] || 'N/A'),
+                dotA1_ci_str: dotA1Val !== null ? formatCi(dotA1Val) : 'Unlimited',
+                dotA2_ci_str: dotA2Val !== null ? formatCi(dotA2Val) : 'Unlimited',
 
-        // --- Add NIIN, Exemption, and DOT Values ---
-        tableData.forEach(item => {
-            // Add NIIN
-            if (item.nsn) {
-                item.niin = item.nsn.substring(5).replace(/-/g, '');
-            } else {
-                item.niin = '';
-            }
-            // Add Exemption Value
-            item.exemption = exemptionValues[item.radionuclide] || 'N/A';
-            // Add DOT A1/A2 Values
-            const dots = dotValues[item.radionuclide];
-            item.dotA1 = dots ? dots.a1 : 'N/A';
-            item.dotA2 = dots ? dots.a2 : 'N/A';
-        });
+                activity_bq_str: formatBq(activityVal),
+                exemption_bq_str: formatBq(exemptionVal),
+                dotA1_bq_str: formatBq(dotA1Val),
+                dotA2_bq_str: formatBq(dotA2Val),
+            };
+        }
 
-        let currentSort = {
-            column: null,
-            direction: 'asc',
-        };
 
         /**
-         * Clears the table and populates it with data.
+         * Clears the table and populates it with data based on the current unit selection.
          * @param {Array<Object>} data - The array of data to display.
          */
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
+            const isSiUnits = document.getElementById('unitToggle').checked;
             tableBody.innerHTML = ''; // Clear existing rows
-            const rows = data.map(item => `
-                <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">${item.name}</td>
-                    <td class="px-6 py-4">${item.nsn}</td>
-                    <td class="px-6 py-4">${item.niin}</td>
-                    <td class="px-6 py-4">${item.radionuclide}</td>
-                    <td class="px-6 py-4">${item.exemption}</td>
-                    <td class="px-6 py-4">${item.dotA1}</td>
-                    <td class="px-6 py-4">${item.dotA2}</td>
-                    <td class="px-6 py-4 text-right">${item.activity}</td>
-                    <td class="px-6 py-4">${item.units}</td>
-                </tr>
-            `).join('');
+
+            const rows = data.map(item => {
+                const exemption = isSiUnits ? item.exemption_bq_str : item.exemption_ci_str;
+                const dotA1 = isSiUnits ? item.dotA1_bq_str : item.dotA1_ci_str;
+                const dotA2 = isSiUnits ? item.dotA2_bq_str : item.dotA2_ci_str;
+                const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
+
+                return `
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">${item.name}</td>
+                        <td class="px-6 py-4">${item.nsn}</td>
+                        <td class="px-6 py-4">${item.niin}</td>
+                        <td class="px-6 py-4">${item.radionuclide}</td>
+                        <td class="px-6 py-4">${exemption}</td>
+                        <td class="px-6 py-4">${dotA1}</td>
+                        <td class="px-6 py-4">${dotA2}</td>
+                        <td class="px-6 py-4 text-right">${activity}</td>
+                    </tr>
+                `;
+            }).join('');
             tableBody.innerHTML = rows;
         }
 
         /**
          * Sorts the table by a given column key.
-         * @param {string} columnKey - The key of the object to sort by (e.g., 'name', 'activity').
+         * @param {string} columnKey - The key of the object to sort by (e.g., 'name', 'activity_val').
          */
         function sortTable(columnKey) {
             const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
@@ -505,26 +526,20 @@
             tableData.sort((a, b) => {
                 let valA = a[columnKey];
                 let valB = b[columnKey];
-
-                if (columnKey === 'activity' || columnKey === 'dotA1' || columnKey === 'dotA2') {
-                    valA = parseFloat(valA);
-                    valB = parseFloat(valB);
-                }
+                
+                // Handle nulls (e.g., for 'Unlimited' values) by pushing them to the end
+                if (valA === null) return 1;
+                if (valB === null) return -1;
 
                 let comparison = 0;
-                if (typeof valA === 'string' && typeof valB === 'string') {
-                    if (valA.toLowerCase() === 'unlimited') return (currentSort.direction === 'asc' ? 1 : -1);
-                    if (valB.toLowerCase() === 'unlimited') return (currentSort.direction === 'asc' ? -1 : 1);
-                    comparison = valA.localeCompare(valB, undefined, {numeric: true});
-                } else {
-                     if (valA > valB) {
-                        comparison = 1;
-                    } else if (valA < valB) {
-                        comparison = -1;
-                    }
+                if (typeof valA === 'string') {
+                    comparison = valA.localeCompare(valB, undefined, { numeric: true });
+                } else { // Numeric comparison
+                    if (valA > valB) comparison = 1;
+                    else if (valA < valB) comparison = -1;
                 }
 
-                return currentSort.direction === 'asc' ? comparison : comparison * -1;
+                return currentSort.direction === 'asc' ? comparison : -comparison;
             });
 
             updateSortArrows();
@@ -558,6 +573,7 @@
             const noResults = document.getElementById("noResults");
             let visibleRows = 0;
 
+            // Start loop from 1 to skip the header row (thead)
             for (let i = 1; i < tr.length; i++) {
                 let row = tr[i];
                 let display = "none";
@@ -566,7 +582,7 @@
                     if (tds[j].textContent.toUpperCase().indexOf(filter) > -1) {
                         display = "";
                         visibleRows++;
-                        break;
+                        break; // Found a match in this row, no need to check other cells
                     }
                 }
                 row.style.display = display;
@@ -574,15 +590,26 @@
             noResults.style.display = visibleRows === 0 ? 'block' : 'none';
         }
 
+        /**
+         * Updates table headers based on the selected unit system.
+         */
+        function updateTableHeaders() {
+            const isSiUnits = document.getElementById('unitToggle').checked;
+            document.getElementById('dotA1Header').innerHTML = `DOT A1<span class="sort-arrow"></span>`;
+            document.getElementById('dotA2Header').innerHTML = `DOT A2<span class="sort-arrow"></span>`;
+            updateSortArrows(); // Re-apply arrows after changing text
+        }
+
         // --- Event Listeners and Initial Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
+            const unitToggle = document.getElementById('unitToggle');
 
+            // --- Dark Mode Setup ---
             // Set initial toggle state based on current mode
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
             }
-
             // Listen for toggle changes
             darkModeToggle.addEventListener('change', () => {
                 if (darkModeToggle.checked) {
@@ -594,7 +621,18 @@
                 }
             });
 
+            // --- Unit Toggle Setup ---
+            unitToggle.addEventListener('change', () => {
+                updateTableHeaders();
+                populateTable(tableData);
+                filterTable(); // Re-apply filter after unit change
+            });
+            
+            // --- Initial Data Load ---
+            tableData = processData(rawTableData);
+            updateTableHeaders();
             populateTable(tableData);
+            sortTable('name'); // Initial sort by name
         });
     </script>
 
