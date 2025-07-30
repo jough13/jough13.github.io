@@ -44,49 +44,116 @@
             content: '▼';
             font-size: 0.6em;
         }
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2563eb;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
     </style>
+    <script>
+        // Set dark mode based on saved preference or system setting
+        if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+    </script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300">
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div class="p-6 border-b border-gray-200">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Sortable Radioactive Commodity Lookup Table</h1>
-                <p class="mt-2 text-gray-600">A searchable and sortable database of items containing radioactive materials, with NRC exemption and DOT A1/A2 values.</p>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Sortable Radioactive Commodity Lookup Table</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items containing radioactive materials, with NRC exemption and DOT A1/A2 values.</p>
             </div>
 
-            <!-- Search Input -->
-            <div class="p-6 bg-gray-50">
-                <label for="searchInput" class="sr-only">Search</label>
-                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+            <!-- Controls: Search and Toggles -->
+            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col md:flex-row items-center gap-4">
+                <div class="w-full md:flex-grow">
+                    <label for="searchInput" class="sr-only">Search</label>
+                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">Traditional (Ci)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="unitToggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="font-medium text-gray-700 dark:text-gray-300">SI (Bq)</span>
+                    </div>
+                     <div class="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="darkModeToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- Table Container with Scrolling -->
             <div class="overflow-x-auto">
-                <table id="lookupTable" class="w-full text-sm text-left text-gray-600">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky-header">
+                <table id="lookupTable" class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption')">Exemption Value<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA1')">DOT A1 (TBq)<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA2')">DOT A2 (TBq)<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity')">Activity<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('units')">Units<span class="sort-arrow"></span></th>
+                            <th id="exemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('exemption')">Exemption Value<span class="sort-arrow"></span></th>
+                            <th id="dotA1Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA1')">DOT A1 (Ci)<span class="sort-arrow"></span></th>
+                            <th id="dotA2Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dotA2')">DOT A2 (Ci)<span class="sort-arrow"></span></th>
+                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity')">Activity<span class="sort-arrow"></span></th>
+                            <th id="unitsHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('units')">Units<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="dark:divide-gray-700">
                         <!-- Data rows will be injected here by the script -->
                     </tbody>
                 </table>
             </div>
-             <div id="noResults" class="hidden p-6 text-center text-gray-500">
+             <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400">
                 No results found.
             </div>
         </div>
-        <footer class="text-center mt-6 text-sm text-gray-500">
+        <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. Exemption values from 10 CFR 30.71. DOT A1/A2 values from 49 CFR 173.435.</p>
         </footer>
     </div>
@@ -281,21 +348,22 @@
             'U-238': '--'
         };
 
-        // --- DOT A1/A2 values from 49 CFR 173.435 ---
+        // --- DOT A1/A2 values from 49 CFR 173.435, converted from TBq to Ci ---
+        // Conversion factor: 1 TBq = 27.027 Ci
         const dotValues = {
-            'Am-241': { a1: '1', a2: '0.001' },
-            'C-14': { a1: '1', a2: '1' },
-            'Cs-137': { a1: '2', a2: '0.6' },
-            'Co-60': { a1: '0.4', a2: '0.4' },
-            'H-3': { a1: '40', a2: '40' },
-            'Kr-85': { a1: '10', a2: '10' },
-            'Ni-63': { a1: '30', a2: '30' },
-            'N-63': { a1: '30', a2: '30' }, // Assuming typo for Ni-63
-            'Pm-147': { a1: '2', a2: '2' },
-            'Ra-226': { a1: '0.02', a2: '0.003' },
+            'Am-241': { a1: '27.0', a2: '0.027' },
+            'C-14': { a1: '27.0', a2: '27.0' },
+            'Cs-137': { a1: '54.1', a2: '16.2' },
+            'Co-60': { a1: '10.8', a2: '10.8' },
+            'H-3': { a1: '1081', a2: '1081' },
+            'Kr-85': { a1: '270', a2: '270' },
+            'Ni-63': { a1: '811', a2: '811' },
+            'N-63': { a1: '811', a2: '811' }, // Assuming typo for Ni-63
+            'Pm-147': { a1: '54.1', a2: '54.1' },
+            'Ra-226': { a1: '0.541', a2: '0.0811' },
             'Re-187': { a1: 'Unlimited', a2: 'Unlimited' },
-            'Sr-90': { a1: '0.2', a2: '0.2' },
-            'Tc-99': { a1: '0.7', a2: '0.7' },
+            'Sr-90': { a1: '5.41', a2: '5.41' },
+            'Tc-99': { a1: '18.9', a2: '18.9' },
             'Th-232': { a1: 'Unlimited', a2: 'Unlimited' },
             'U-238': { a1: 'Unlimited', a2: 'Unlimited' }
         };
@@ -410,8 +478,8 @@
             const tableBody = document.querySelector('#lookupTable tbody');
             tableBody.innerHTML = ''; // Clear existing rows
             const rows = data.map(item => `
-                <tr class="bg-white border-b hover:bg-gray-50">
-                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${item.name}</td>
+                <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                    <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">${item.name}</td>
                     <td class="px-6 py-4">${item.nsn}</td>
                     <td class="px-6 py-4">${item.niin}</td>
                     <td class="px-6 py-4">${item.radionuclide}</td>
@@ -506,8 +574,26 @@
             noResults.style.display = visibleRows === 0 ? 'block' : 'none';
         }
 
-        // Initial population of the table on page load.
+        // --- Event Listeners and Initial Setup ---
         document.addEventListener('DOMContentLoaded', () => {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+
+            // Set initial toggle state based on current mode
+            if (document.documentElement.classList.contains('dark')) {
+                darkModeToggle.checked = true;
+            }
+
+            // Listen for toggle changes
+            darkModeToggle.addEventListener('change', () => {
+                if (darkModeToggle.checked) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'enabled');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('darkMode', 'disabled');
+                }
+            });
+
             populateTable(tableData);
         });
     </script>
