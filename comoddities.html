@@ -94,6 +94,13 @@
         input:checked + .slider:before {
             transform: translateX(26px);
         }
+        /* Style for selected rows */
+        .selected-row {
+            background-color: #fef9c3; /* A light yellow, works in both light and dark mode */
+        }
+        .dark .selected-row {
+            background-color: #4a4a2a; /* A darker yellow for dark mode */
+        }
     </style>
     <script>
         // This script runs immediately to set the dark mode class on initial load.
@@ -121,6 +128,7 @@
                     <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6">
+                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare Selected</button>
                     <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
                         <label class="toggle-switch">
@@ -144,6 +152,7 @@
                 <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
+                            <th scope="col" class="px-6 py-3 text-center">Select</th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
@@ -166,8 +175,21 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.18 | Last Updated: July 30, 2025</p>
+            <p class="mt-2">Version 1.21 | Last Updated: July 30, 2025</p>
         </footer>
+    </div>
+
+    <!-- Comparison Modal -->
+    <div id="compareModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Compare Selected Items</h2>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="compareContent" class="p-6">
+                <!-- Comparison table will be injected here -->
+            </div>
+        </div>
     </div>
 
     <script>
@@ -531,7 +553,7 @@
             const isSiUnits = document.getElementById('unitToggle').checked;
             tableBody.innerHTML = '';
 
-            const rows = data.map(item => {
+            const rows = data.map((item, index) => {
                 const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
                 const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
                 const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
@@ -540,6 +562,7 @@
 
                 return `
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td class="px-6 py-4 text-center"><input type="checkbox" class="row-checkbox" data-index="${index}"></td>
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">${item.nsn}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">${item.niin}</td>
@@ -622,6 +645,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
             const unitToggle = document.getElementById('unitToggle');
+            const tableBody = document.querySelector('#lookupTable tbody');
+            const compareBtn = document.getElementById('compareBtn');
+            const compareModal = document.getElementById('compareModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const compareContent = document.getElementById('compareContent');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -641,6 +669,61 @@
                 filterTable();
             });
             
+            tableBody.addEventListener('change', (event) => {
+                if (event.target.classList.contains('row-checkbox')) {
+                    const row = event.target.closest('tr');
+                    if (event.target.checked) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+                    compareBtn.disabled = selectedCount < 2;
+                }
+            });
+
+            compareBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                
+                const isSiUnits = document.getElementById('unitToggle').checked;
+
+                let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
+                
+                const headers = ['Attribute', ...selectedData.map(item => item.name)];
+                content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
+                headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
+                content += '</tr></thead><tbody>';
+
+                const attributes = [
+                    { label: 'NSN', key: 'nsn' },
+                    { label: 'NIIN', key: 'niin' },
+                    { label: 'Radionuclide', key: 'radionuclide' },
+                    { label: 'Activity', key: isSiUnits ? 'activity_bq_str' : 'activity_ci_str' },
+                    { label: 'NRC Exemption', key: isSiUnits ? 'nrc_exemption_bq_str' : 'nrc_exemption_ci_str' },
+                    { label: 'DOT Exemption', key: isSiUnits ? 'dot_exemption_bq_str' : 'dot_exemption_ci_str' },
+                    { label: 'UN 2911 Limit (item)', key: isSiUnits ? 'un2911_limit_bq_str' : 'un2911_limit_ci_str' },
+                    { label: 'UN 2911 Limit (package)', key: isSiUnits ? 'un2911_pkg_limit_bq_str' : 'un2911_pkg_limit_ci_str' }
+                ];
+
+                attributes.forEach(attr => {
+                    content += '<tr class="border-b dark:border-gray-700">';
+                    content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
+                    selectedData.forEach(item => {
+                        content += `<td class="px-4 py-2">${item[attr.key]}</td>`;
+                    });
+                    content += '</tr>';
+                });
+
+                content += '</tbody></table></div>';
+                compareContent.innerHTML = content;
+                compareModal.style.display = 'flex';
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                compareModal.style.display = 'none';
+            });
+
             tableData = processData(rawTableData);
             populateTable(tableData);
             sortTable('name');
