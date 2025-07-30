@@ -141,7 +141,7 @@
 
             <!-- Table Container with Scrolling -->
             <div class="overflow-x-auto">
-                <table id="lookupTable" class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
+                <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
@@ -166,7 +166,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR 173.436.</p>
-            <p class="mt-2">Version 1.14 | Last Updated: July 30, 2025</p>
+            <p class="mt-2">Version 1.17 | Last Updated: July 30, 2025</p>
         </footer>
     </div>
 
@@ -244,7 +244,7 @@
             { name: "Night Vision System Sub-Assembly, Mx 7794a/Tvs-2a", nsn: "5855-00-791-1653", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
             { name: "Nvs Mk 37 Mod 3", nsn: "5855-00-908-9314", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
             { name: "Pvs-2b Eye Pieces", nsn: "5855-00-941-3037", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
-            { name: "Collimator, Small Arms", nsn: "5855-01-029-8730", radionuclide: "H-3", activity: "6", units: "nCi" },
+            { name: "Boresight Collimator", nsn: "5855-01-029-8730", radionuclide: "Th-232", activity: "6", units: "nCi" },
             { name: "Night Vision Sight", nsn: "5855-01-037-7339", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
             { name: "Receiver-Converter, Infrared", nsn: "5855-01-052-6849", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
             { name: "Afocal Assembly", nsn: "5855-01-052-6944", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
@@ -540,15 +540,15 @@
 
                 return `
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${item.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${item.nsn}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${item.niin}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${item.radionuclide}</td>
-                        <td class="px-6 py-4 text-right whitespace-nowrap">${activity}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${nrcExemption}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${dotExemption}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${un2911Limit}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${un2911PkgLimit}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left">${item.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.nsn}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.niin}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.radionuclide}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${activity}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${nrcExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${dotExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911Limit}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911PkgLimit}</td>
                     </tr>
                 `;
             }).join('');
