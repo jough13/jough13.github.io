@@ -128,7 +128,8 @@
                     <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN, radionuclide..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
                 </div>
                 <div class="flex items-center gap-4 sm:gap-6">
-                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare Selected</button>
+                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
+                    <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
                     <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
                         <label class="toggle-switch">
@@ -175,7 +176,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.21 | Last Updated: July 30, 2025</p>
+            <p class="mt-2">Version 1.22 | Last Updated: July 30, 2025</p>
         </footer>
     </div>
 
@@ -647,6 +648,7 @@
             const unitToggle = document.getElementById('unitToggle');
             const tableBody = document.querySelector('#lookupTable tbody');
             const compareBtn = document.getElementById('compareBtn');
+            const exportBtn = document.getElementById('exportBtn');
             const compareModal = document.getElementById('compareModal');
             const closeModalBtn = document.getElementById('closeModalBtn');
             const compareContent = document.getElementById('compareContent');
@@ -679,6 +681,7 @@
                     }
                     const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
                     compareBtn.disabled = selectedCount < 2;
+                    exportBtn.disabled = selectedCount === 0;
                 }
             });
 
@@ -722,6 +725,43 @@
 
             closeModalBtn.addEventListener('click', () => {
                 compareModal.style.display = 'none';
+            });
+
+            exportBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                
+                const headers = [
+                    "Name or Nomenclature", "NSN", "NIIN", "Radionuclide", 
+                    "Activity", "NRC Exemption", "DOT Exemption", 
+                    "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
+                ];
+
+                let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+
+                selectedData.forEach(item => {
+                    const row = [
+                        `"${item.name}"`,
+                        item.nsn,
+                        item.niin,
+                        item.radionuclide,
+                        isSiUnits ? item.activity_bq_str : item.activity_ci_str,
+                        isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str,
+                        isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str,
+                        isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str,
+                        isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str
+                    ].join(",");
+                    csvContent += row + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "radioactive_commodities.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             });
 
             tableData = processData(rawTableData);
