@@ -144,15 +144,15 @@
                 <table id="lookupTable" class="w-full text-sm text-left text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
-                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-right" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
-                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('nrc_exemption_val')">NRC Exemption<span class="sort-arrow"></span></th>
-                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('dot_exemption_val')">DOT Exemption<span class="sort-arrow"></span></th>
-                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable" onclick="sortTable('un2911_limit_val')">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
-                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
+                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
+                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nrc_exemption_val')">NRC Exemption<span class="sort-arrow"></span></th>
+                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('dot_exemption_val')">DOT Exemption<span class="sort-arrow"></span></th>
+                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_limit_val')">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
+                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
                     <tbody class="dark:divide-gray-700">
@@ -166,7 +166,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR 173.436.</p>
-            <p class="mt-2">Version 1.13 | Last Updated: July 30, 2025</p>
+            <p class="mt-2">Version 1.14 | Last Updated: July 30, 2025</p>
         </footer>
     </div>
 
@@ -540,15 +540,15 @@
 
                 return `
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">${item.name}</td>
-                        <td class="px-6 py-4">${item.nsn}</td>
-                        <td class="px-6 py-4">${item.niin}</td>
-                        <td class="px-6 py-4">${item.radionuclide}</td>
-                        <td class="px-6 py-4 text-right">${activity}</td>
-                        <td class="px-6 py-4">${nrcExemption}</td>
-                        <td class="px-6 py-4">${dotExemption}</td>
-                        <td class="px-6 py-4">${un2911Limit}</td>
-                        <td class="px-6 py-4">${un2911PkgLimit}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${item.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${item.nsn}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${item.niin}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${item.radionuclide}</td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap">${activity}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${nrcExemption}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${dotExemption}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${un2911Limit}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${un2911PkgLimit}</td>
                     </tr>
                 `;
             }).join('');
