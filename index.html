@@ -183,7 +183,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.33 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.35 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -739,9 +739,16 @@
                 const checkbox = row.querySelector('.row-checkbox');
 
                 if (targetCell.cellIndex === 0) {
-                    checkbox.checked = !checkbox.checked;
-                    const changeEvent = new Event('change', { bubbles: true });
-                    checkbox.dispatchEvent(changeEvent);
+                    if (event.target === checkbox) {
+                        // Let the default checkbox behavior happen, but still fire our change event
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                    } else {
+                        // If the cell is clicked (but not the checkbox itself), toggle the checkbox
+                        checkbox.checked = !checkbox.checked;
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                    }
                 } else {
                     const itemIndex = row.dataset.index;
                     const item = tableData[itemIndex];
