@@ -125,19 +125,34 @@
             </div>
 
             <!-- Controls: Search and Toggles -->
-            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col md:flex-row items-center gap-4">
-                <div class="w-full md:flex-grow flex items-center gap-4">
-                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
-                    <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
-                        <!-- Options will be populated by script -->
-                    </select>
+            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
+                <div class="flex flex-col md:flex-row items-center gap-4 w-full">
+                    <div class="w-full md:flex-grow flex items-center gap-4">
+                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                        <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+                            <!-- Options will be populated by script -->
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-4 sm:gap-2">
+                        <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
+                        <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
+                        <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
+                        <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4 sm:gap-2">
-                    <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
-                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
-                    <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
-                    <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
-                    <div class="flex items-center gap-2 sm:gap-3 ml-4">
+                <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="nrcExemptFilter" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                            <span class="text-gray-700 dark:text-gray-300">NRC Exempt Only</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="dotExemptFilter" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                            <span class="text-gray-700 dark:text-gray-300">DOT Exempt Only</span>
+                        </label>
+                    </div>
+                    <div class="flex-grow"></div>
+                    <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="unitToggle">
@@ -183,7 +198,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.40 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.45 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -393,7 +408,7 @@
             { name: "Chemical Agent Monitor", nsn: "6665-99-725-9996", radionuclide: "Ni-63", activity: "10", units: "mCi" },
             { name: "Indicator, Pressure", nsn: "6685-01-356-9967", radionuclide: "Sr-90", activity: "100", units: "µCi" },
             { name: "Meter, Brightness", nsn: "6695-01-221-3251", radionuclide: "C-14", activity: "50", units: "µCi" },
-            { name: "Marker, Self-Luminious", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" }
+            { name: "Marker, Self-Luminous", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" }
         ];
 
         // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
@@ -657,40 +672,28 @@
             const textFilter = searchInput.value.toUpperCase();
             const radionuclideFilter = document.getElementById('radionuclideFilter');
             const nuclideFilter = radionuclideFilter.value;
-            const table = document.getElementById("lookupTable");
-            const tr = table.getElementsByTagName("tr");
-            const noResults = document.getElementById("noResults");
-            let visibleRows = 0;
+            const nrcExemptOnly = document.getElementById('nrcExemptFilter').checked;
+            const dotExemptOnly = document.getElementById('dotExemptFilter').checked;
 
-            for (let i = 1; i < tr.length; i++) { // Start at 1 to skip header
-                let row = tr[i];
-                let tds = row.getElementsByTagName("td");
+            const filteredData = tableData.filter(item => {
+                const nuclideMatch = nuclideFilter === 'all' || item.radionuclide === nuclideFilter;
                 
-                const rowNuclide = tds[4].textContent; 
-                
-                const nuclideMatch = (nuclideFilter === 'all' || rowNuclide === nuclideFilter);
-                
+                const nrcExemptMatch = !nrcExemptOnly || (item.nrc_exemption_val !== null && item.activity_val <= item.nrc_exemption_val);
+                const dotExemptMatch = !dotExemptOnly || (item.dot_exemption_val !== null && item.activity_val <= item.dot_exemption_val);
+
                 let textMatch = false;
                 if (textFilter === "") {
                     textMatch = true;
                 } else {
-                    // Check all cells for text match
-                    for (let j = 1; j < tds.length; j++) { // Start at 1 to skip checkbox cell
-                        if (tds[j].textContent.toUpperCase().indexOf(textFilter) > -1) {
-                            textMatch = true;
-                            break;
-                        }
-                    }
+                    const searchableValues = [item.name, item.nsn, item.niin];
+                    textMatch = searchableValues.some(val => val && val.toUpperCase().includes(textFilter));
                 }
 
-                if (nuclideMatch && textMatch) {
-                    row.style.display = "";
-                    visibleRows++;
-                } else {
-                    row.style.display = "none";
-                }
-            }
-            noResults.style.display = visibleRows === 0 ? 'block' : 'none';
+                return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
+            });
+
+            populateTable(filteredData);
+            document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -712,6 +715,8 @@
             const summationModal = document.getElementById('summationModal');
             const closeSummationModalBtn = document.getElementById('closeSummationModalBtn');
             const summationContent = document.getElementById('summationContent');
+            const nrcExemptFilter = document.getElementById('nrcExemptFilter');
+            const dotExemptFilter = document.getElementById('dotExemptFilter');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -950,8 +955,9 @@
 
                 selectedItems.forEach((item, index) => {
                     const quantity = document.getElementById(`qty-${index}`).valueAsNumber || 0;
+                    const limitStrKey = limitKey.replace('_val', isSiUnits ? '_bq_str' : '_ci_str');
                     if (!totals[item.radionuclide]) {
-                        totals[item.radionuclide] = { totalActivity: 0, limit: item[limitKey] };
+                        totals[item.radionuclide] = { totalActivity: 0, limit: item[limitKey], limitStr: item[limitStrKey] };
                     }
                     totals[item.radionuclide].totalActivity += item.activity_val * quantity;
                 });
@@ -963,6 +969,7 @@
                     const totalActivity = totals[nuclide].totalActivity;
                     const limit = totals[nuclide].limit;
                     const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
+                    const displayLimit = totals[nuclide].limitStr;
                     
                     if (limit !== null) {
                         sumOfRatios += totalActivity / limit;
@@ -971,6 +978,7 @@
                     totalsContent += `
                         <div class="flex justify-between items-center">
                             <span><strong>${nuclide}:</strong> ${displayTotal}</span>
+                            <span class="text-gray-500 dark:text-gray-400">Limit: ${displayLimit}</span>
                         </div>
                     `;
                 }
@@ -1011,6 +1019,8 @@
             }
 
             radionuclideFilter.addEventListener('change', filterTable);
+            nrcExemptFilter.addEventListener('change', filterTable);
+            dotExemptFilter.addEventListener('change', filterTable);
 
             tableData = processData(rawTableData);
             populateRadionuclideFilter();
