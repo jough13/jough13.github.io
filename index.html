@@ -3,186 +3,1020 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Projects</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Sortable Radioactive Commodity Lookup Table</title>
+    
+    <!-- The main Tailwind CSS script MUST be loaded before the configuration script. -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font -->
+    <script>
+        // Configure Tailwind CSS to use the 'class' strategy for dark mode.
+        // This tells Tailwind to apply dark styles whenever the 'dark' class is present on the <html> element.
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* General background for the page */
-            background-color: #1a202c; /* Equivalent to Tailwind's bg-gray-900 */
         }
-        .project-link {
-            /* Styling for the project links */
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        /* Style for the sticky header */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
-        /* Color-specific hover effects */
-        .project-link.bg-indigo-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2);
+        /* Styles for sortable columns and arrows */
+        .sortable {
+            cursor: pointer;
+            position: relative;
+            user-select: none;
         }
-        .project-link.bg-rose-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2);
+        .sortable .sort-arrow {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            opacity: 0.4;
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
         }
-        .project-link.bg-green-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2);
+        .sortable .sort-arrow.asc,
+        .sortable .sort-arrow.desc {
+            opacity: 1;
         }
-        .project-link.bg-amber-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2);
+        .sortable .sort-arrow.asc::after {
+            content: '▲';
+            font-size: 0.6em;
         }
-        .project-link.bg-slate-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2);
+        .sortable .sort-arrow.desc::after {
+            content: '▼';
+            font-size: 0.6em;
         }
-        .project-link.bg-cyan-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2);
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
         }
-        .project-link.bg-purple-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2);
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-        .project-link.bg-teal-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2);
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
         }
-        .project-link.bg-orange-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2);
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
         }
-        .project-link.bg-stone-600:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2);
+        input:checked + .slider {
+            background-color: #2563eb;
         }
-        .gradient-text {
-            /* Animated gradient text for the main title */
-            background: linear-gradient(90deg, #4f46e5, #db2777, #f59e0b, #10b981);
-            background-size: 400% 400%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientAnimation 10s ease infinite;
-            /* Added padding to prevent clipping of descenders like 'g' */
-            padding-bottom: 0.1em;
-            display: inline-block; /* Ensures padding is applied correctly with background-clip */
+        input:checked + .slider:before {
+            transform: translateX(26px);
         }
-        @keyframes gradientAnimation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Style for selected rows */
+        .selected-row {
+            background-color: #fef9c3; /* A light yellow, works in both light and dark mode */
+        }
+        .dark .selected-row {
+            background-color: #4a4a2a; /* A darker yellow for dark mode */
+        }
+        tr td:not(:first-child) {
+            cursor: pointer;
         }
     </style>
+    <script>
+        // This script runs immediately to set the dark mode class on initial load.
+        // This prevents a "flash of incorrect theme" while the page is loading.
+        if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+    </script>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6 text-white">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
 
-    <!-- Main Container -->
-    <div class="bg-gray-800 p-8 sm:p-12 rounded-xl shadow-2xl w-full max-w-4xl text-center">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Radioactive Commodity Lookup</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items with NRC and DOT exemption values.</p>
+            </div>
 
-        <!-- Header Title -->
-        <header class="mb-10">
-            <h1 class="text-4xl sm:text-5xl font-bold">
-                <span class="gradient-text">My Attempts at Vibe Cobing</span>
-            </h1>
-            <p class="text-gray-400 mt-3 text-lg">Explore my latest projects!</p>
-        </header>
+            <!-- Controls: Search and Toggles -->
+            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col md:flex-row items-center gap-4">
+                <div class="w-full md:flex-grow flex items-center gap-4">
+                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                    <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
+                        <!-- Options will be populated by script -->
+                    </select>
+                </div>
+                <div class="flex items-center gap-4 sm:gap-2">
+                    <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
+                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
+                    <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
+                    <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
+                    <div class="flex items-center gap-2 sm:gap-3 ml-4">
+                        <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="unitToggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Bq</span>
+                    </div>
+                     <div class="flex items-center gap-2 sm:gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 dark:text-gray-300"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="darkModeToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Project Links Section - Now a responsive grid -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Project 1: Wayfinder: Echoes of the Void -->
-            <a href="space_Explorer.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
-                <h3 class="font-semibold text-lg">Wayfinder: Echoes of the Void</h3>
-                <span class="block text-sm text-indigo-200 mt-1 font-normal">Embark on an interstellar journey.</span>
-            </a>
-
-            <!-- Project 2: Realms of Rust and Ruin -->
-            <a href="realms.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <h3 class="font-semibold text-lg">Realms of Rust and Ruin</h3>
-                <span class="block text-sm text-rose-200 mt-1 font-normal">Survive in a post-apocalyptic world.</span>
-            </a>
-
-            <!-- Project 3: Echoes of the Fall -->
-            <a href="echoes_of_the_fall.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-14l-3 3m5 5l3 3m-5-14l3 3M6 21l3-3m5 5l3-3m-8-5l3 3-3 3" /></svg>
-                <h3 class="font-semibold text-lg">Echoes of the Fall</h3>
-                <span class="block text-sm text-green-200 mt-1 font-normal">Explore a world reclaimed by nature.</span>
-            </a>
-
-            <!-- Project 4: Digital Cartographer's Desk -->
-            <a href="cartographers_desk.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-amber-600 hover:bg-amber-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg>
-                <h3 class="font-semibold text-lg">Digital Cartographer's Desk</h3>
-                <span class="block text-sm text-amber-200 mt-1 font-normal">Crafting maps for forgotten worlds.</span>
-            </a>
-
-            <!-- Project 5: Ancient Battle Simulator -->
-            <a href="abs.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-slate-600 hover:bg-slate-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <h3 class="font-semibold text-lg">Ancient Battle Simulator</h3>
-                <span class="block text-sm text-slate-200 mt-1 font-normal">Command legions in historic warfare.</span>
-            </a>
-
-            <!-- Project 6: Radionuclides Identification Tool -->
-            <a href="radionuclides.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <h3 class="font-semibold text-lg">Radionuclides Identification Tool</h3>
-                <span class="block text-sm text-cyan-200 mt-1 font-normal">Analyzing isotopes with precision.</span>
-            </a>
-
-            <!-- Project 7: Budget Tracker -->
-            <a href="finances.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
-                <h3 class="font-semibold text-lg">Budget Tracker</h3>
-                <span class="block text-sm text-purple-200 mt-1 font-normal">Manage your finances with ease.</span>
-            </a>
-            
-            <!-- Project 8: Echoes of Eldoria -->
-            <a href="Eldoria.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-teal-600 hover:bg-teal-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2h2" /></svg>
-                <h3 class="font-semibold text-lg">Echoes of Eldoria</h3>
-                <span class="block text-sm text-teal-200 mt-1 font-normal">A strategic fantasy card game.</span>
-            </a>
-
-            <!-- Project 9: CHP Study Guide -->
-            <a href="chp.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-orange-600 hover:bg-orange-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
-                <h3 class="font-semibold text-lg">CHP Study Guide</h3>
-                <span class="block text-sm text-orange-200 mt-1 font-normal">Your guide to certification success.</span>
-            </a>
-
-            <!-- Project 10: Cartographers of Ruin - A Novel -->
-            <a href="cor_main.html"
-               class="project-link flex flex-col items-center justify-center text-center p-6 bg-stone-600 hover:bg-stone-500 text-white rounded-lg shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
-                <h3 class="font-semibold text-lg">Cartographers of Ruin - A Novel</h3>
-                <span class="block text-sm text-stone-200 mt-1 font-normal">A story of maps and memory.</span>
-            </a>
-        </section>
-
-        <!-- Footer -->
-        <footer class="mt-12 text-gray-500 text-sm">
-            <p>&copy; <span id="currentYear"></span> Jough Donakowski. All rights reserved.</p>
-            <p>Powered by imagination and code.</p>
+            <!-- Table Container with Scrolling -->
+            <div class="overflow-x-auto">
+                <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
+                    <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-center">Select</th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
+                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
+                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nrc_exemption_val')">NRC Exemption<span class="sort-arrow"></span></th>
+                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('dot_exemption_val')">DOT Exemption<span class="sort-arrow"></span></th>
+                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_limit_val')">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
+                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="dark:divide-gray-700">
+                        <!-- Data rows will be injected here by the script -->
+                    </tbody>
+                </table>
+            </div>
+             <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400">
+                No results found.
+            </div>
+        </div>
+        <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
+            <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
+            <p class="mt-2">Version 1.40 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
+    <!-- Comparison Modal -->
+    <div id="compareModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Compare Selected Items</h2>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="compareContent" class="p-6">
+                <!-- Comparison table will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 id="detailModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Item Details</h2>
+                <button id="closeDetailModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="detailContent" class="p-6">
+                <!-- Detail content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Summation Modal -->
+    <div id="summationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Summation Tool</h2>
+                <button id="closeSummationModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="summationContent" class="p-6">
+                <!-- Summation content will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Script to set the current year in the footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        // --- Raw Data (before processing) ---
+        const rawTableData = [
+            { name: "M11 Pistol Sight, P/N P00007-8A", nsn: "1005-01-359-8429", radionuclide: "H-3", activity: "18", units: "mCi" },
+            { name: "M11 Pistol Sight, P/N P00008-8A", nsn: "1005-01-359-8431", radionuclide: "H-3", activity: "36", units: "mCi" },
+            { name: "Handle And Firing Mechanism", nsn: "1010-01-043-2050", radionuclide: "H-3", activity: "3.2", units: "Ci" },
+            { name: "Fire Control Instrument Level", nsn: "1200-00-257-2769", radionuclide: "H-3", activity: "80", units: "mCi" },
+            { name: "M1A1 Collimator", nsn: "1240-00-332-1780", radionuclide: "H-3", activity: "10", units: "Ci" },
+            { name: "Lamp, Radioluminous", nsn: "1240-01-051-8472", radionuclide: "H-3", activity: "0.7", units: "Ci" },
+            { name: "Level, Fire Control", nsn: "1240-01-057-0112", radionuclide: "H-3", activity: "0.05", units: "Ci" },
+            { name: "Sight, Unit M64A1", nsn: "1240-01-201-8299", radionuclide: "H-3", activity: "4.99", units: "Ci" },
+            { name: "Telescope, Elbow", nsn: "1240-01-211-3608", radionuclide: "H-3", activity: "1.6", units: "Ci" },
+            { name: "Sight Unit, M67", nsn: "1240-01-366-7322", radionuclide: "H-3", activity: "5.8", units: "Ci" },
+            { name: "Mount, Telescope", nsn: "1240-01-379-7953", radionuclide: "H-3", activity: "6.7", units: "Ci" },
+            { name: "Self-Luminous Weapon Sight, ACOG", nsn: "1240-01-412-6608", radionuclide: "H-3", activity: "100", units: "mCi" },
+            { name: "ACOG Rifle Sight", nsn: "1240-01-435-1916", radionuclide: "H-3", activity: "100", units: "mCi" },
+            { name: "Sight Unit, M64", nsn: "1240-01-507-8580", radionuclide: "H-3", activity: "3.20", units: "Ci" },
+            { name: "Sight, Bore, Optical (RCO/ACOG)", nsn: "1240-01-525-1648", radionuclide: "H-3", activity: "0.1", units: "Ci" },
+            { name: "Sight Reflex Rmr", nsn: "1240-01-581-6250", radionuclide: "H-3", activity: "0.25", units: "Ci" },
+            { name: "Weapon Reflex Sight", nsn: "1240-25-150-7592", radionuclide: "H-3", activity: "10", units: "mCi" },
+            { name: "Model Amm Source", nsn: "1260-01-510-1032", radionuclide: "Am-241", activity: "8", units: "µCi" },
+            { name: "Receiver-Transmitter", nsn: "1270-01-437-6581", radionuclide: "Am-241", activity: "9", units: "µCi" },
+            { name: "Stabilizer Optics", nsn: "1280-01-300-0940", radionuclide: "Th-232", activity: "4.00E-02", units: "µCi" },
+            { name: "Light Aiming Post M58", nsn: "1290-00-169-1934", radionuclide: "H-3", activity: "5", units: "Ci" },
+            { name: "Light Aiming Post M59", nsn: "1290-00-169-1935", radionuclide: "H-3", activity: "9", units: "Ci" },
+            { name: "Ice Detector Probe", nsn: "1660-00-077-8473", radionuclide: "Sr-90", activity: "50", units: "µCi" },
+            { name: "Regulator, Oxygen Diluter Demand", nsn: "1660-00-252-7796", radionuclide: "Ra-226", activity: "3", units: "µCi" },
+            { name: "Probe, Ice Detector", nsn: "1660-00-919-0419", radionuclide: "Sr-90", activity: "50", units: "µCi" },
+            { name: "Regulator, Oxygen, Demand", nsn: "1660-00-927-1996", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
+            { name: "ILS Frequency Selector", nsn: "1660-01-483-2581", radionuclide: "Kr-85", activity: "0.2697", units: "µCi" },
+            { name: "Regulator, Oxygen, Demand", nsn: "1660-01-492-5521", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
+            { name: "Pod, Aircraft", nsn: "1680-01-186-1430", radionuclide: "Th-232", activity: "0.03", units: "µCi" },
+            { name: "ILS Frequency Selector", nsn: "1680-01-415-5778", radionuclide: "Kr-85", activity: "0.2697", units: "µCi" },
+            { name: "Flap, Ven Primary", nsn: "2480-01-450-1973", radionuclide: "U-238", activity: "0.003", units: "µCi" },
+            { name: "Exciter, Gas Turbine", nsn: "2835-00-601-1317", radionuclide: "Kr-85", activity: "6.9", units: "µCi" },
+            { name: "Igniter, Turbine", nsn: "2835-01-200-0298", radionuclide: "Kr-85", activity: "0.224", units: "µCi" },
+            { name: "Power Unit, Gas Turbine", nsn: "2835-01-267-8229", radionuclide: "Kr-85", activity: "2.914", units: "µCi" },
+            { name: "Power Unit", nsn: "2835-01-373-4275", radionuclide: "Kr-85", activity: "2.92E+00", units: "µCi" },
+            { name: "Flap, Ven Secondary", nsn: "2840-01-438-9479", radionuclide: "U-238", activity: "0.03", units: "µCi" },
+            { name: "Seal, Ven Secondary", nsn: "2840-01-440-7755", radionuclide: "U-238", activity: "0.002", units: "µCi" },
+            { name: "Mixer, Afterburner", nsn: "2840-01-450-1980", radionuclide: "U-238", activity: "0.05", units: "µCi" },
+            { name: "Seal, Ven Primary", nsn: "2840-01-450-1982", radionuclide: "U-238", activity: "0.001", units: "µCi" },
+            { name: "Flameholder, Afterburner", nsn: "2840-01-450-3755", radionuclide: "U-238", activity: "0.06", units: "µCi" },
+            { name: "Ignition Unit", nsn: "2925-00-133-9594", radionuclide: "Kr-85", activity: "0.084", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-00-706-2720", radionuclide: "Cs-137", activity: "10", units: "µCi" },
+            { name: "Ignition Unit", nsn: "2925-00-800-3403", radionuclide: "Kr-85", activity: "5", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-00-968-9594", radionuclide: "Cs-137", activity: "5", units: "µCi" },
+            { name: "Vibrator, Ignition Coil", nsn: "2925-01-022-3181", radionuclide: "H-3", activity: "13.03", units: "µCi" },
+            { name: "Ignition Exciter", nsn: "2925-01-057-6993", radionuclide: "Kr-85", activity: "0.0029", units: "mCi" },
+            { name: "Vibrator, Ignition", nsn: "2925-01-077-3310", radionuclide: "Kr-85", activity: "0.3", units: "µCi" },
+            { name: "Vibrator, Ignition", nsn: "2925-01-077-6866", radionuclide: "Kr-85", activity: "0.2", units: "µCi" },
+            { name: "Coil Ignition Exciter", nsn: "2925-01-323-9835", radionuclide: "Kr-85", activity: "6", units: "mCi" },
+            { name: "Igniter, Spark Gap", nsn: "2925-01-550-0177", radionuclide: "Kr-85", activity: "0.173", units: "µCi" },
+            { name: "Tungsten Electrode", nsn: "3439-00-105-9945", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
+            { name: "Ionization Detector", nsn: "4210-00-595-5139", radionuclide: "Am-241", activity: "4", units: "µCi" },
+            { name: "Ionization Sealed Source, Smoke Alarm", nsn: "4210-01-185-2762", radionuclide: "Am-241", activity: "1.6", units: "µCi" },
+            { name: "Gamma Detector", nsn: "4470-00-444-3666", radionuclide: "C-14", activity: "100", units: "µCi" },
+            { name: "Dial Control", nsn: "5355-01-342-2421", radionuclide: "H-3", activity: "2", units: "Ci" },
+            { name: "Dial Scale", nsn: "5355-01-343-1793", radionuclide: "H-3", activity: "1.1", units: "Ci" },
+            { name: "Processor, Video Signal", nsn: "5836-01-052-6952", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
+            { name: "Indicator, Range", nsn: "5840-01-458-6159", radionuclide: "H-3", activity: "3.2", units: "Ci" },
+            { name: "Indicator, Range", nsn: "5840-01-642-5687", radionuclide: "H-3", activity: "3.20", units: "Ci" },
+            { name: "Radar Spark Gap", nsn: "5841-01-054-6758", radionuclide: "Kr-85", activity: "25", units: "mCi" },
+            { name: "Receiver - Transmitter", nsn: "5841-01-056-8647", radionuclide: "H-3", activity: "15", units: "mCi" },
+            { name: "Receiver - Exciter", nsn: "5841-01-554-2099", radionuclide: "Pm-147", activity: "30", units: "µCi" },
+            { name: "Image Intensifier", nsn: "5855-00-087-2948", radionuclide: "Th-232", activity: "4.9", units: "µCi" },
+            { name: "NVS MX-7901A / TVS-4", nsn: "5855-00-147-2508", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
+            { name: "ANPVS 3A Night Vision Sight Lens", nsn: "5855-00-156-4992", radionuclide: "Th-232", activity: "5.8", units: "µCi" },
+            { name: "Image Intensifier", nsn: "5855-00-177-3502", radionuclide: "Th-232", activity: "4.89", units: "µCi" },
+            { name: "Lens Cap", nsn: "5855-00-409-0915", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Night Vision Scope, MX 7793/ANPVS 1", nsn: "5855-00-688-9954", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Night Vision System Sub-Assembly, Mx 7794a/Tvs-2a", nsn: "5855-00-791-1653", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "NVS Mk 37 Mod 3", nsn: "5855-00-908-9314", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
+            { name: "PVS-2B Eye Piece", nsn: "5855-00-941-3037", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
+            { name: "Boresight Collimator", nsn: "5855-01-029-8730", radionuclide: "Th-232", activity: "6", units: "nCi" },
+            { name: "Night Vision Sight", nsn: "5855-01-037-7339", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
+            { name: "Receiver-Converter, Infrared", nsn: "5855-01-052-6849", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
+            { name: "Afocal Assembly", nsn: "5855-01-052-6944", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
+            { name: "Imager, Infrared", nsn: "5855-01-053-0672", radionuclide: "Th-232", activity: "1.50E-03", units: "µCi" },
+            { name: "AN/PAS-7A Infrared Viewing Set", nsn: "5855-01-093-3080", radionuclide: "Th-232", activity: "0.1", units: "µCi" },
+            { name: "Image Intensifier", nsn: "5855-01-352-7033", radionuclide: "Th-232", activity: "5.00E-02", units: "µCi" },
+            { name: "Window Infrared", nsn: "5855-01-377-7112", radionuclide: "Th-232", activity: "1.50E-03", units: "µCi" },
+            { name: "Detector Dewar", nsn: "5855-01-486-0038", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
+            { name: "Duplexer", nsn: "5895-00-056-7033", radionuclide: "Co-60", activity: "0.8", units: "µCi" },
+            { name: "Control, Receiver", nsn: "5895-00-688-6030", radionuclide: "Ra-226", activity: "0.17", units: "µCi" },
+            { name: "TR Tube", nsn: "5895-01-375-6748", radionuclide: "Co-60/H-3", activity: "2.5E-4/12.51", units: "mCi" },
+            { name: "Switch, Toggle", nsn: "5930-00-615-9376", radionuclide: "Ra-226", activity: "0.15", units: "mCi" },
+            { name: "Electron Tube", nsn: "5960-00-001-1632", radionuclide: "Th-232", activity: "0.22", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-054-1987", radionuclide: "Th-232", activity: "3", units: "nCi" },
+            { name: "Electron Tube", nsn: "5960-00-060-3449", radionuclide: "Th-232", activity: "1.10E-09", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-114-4849", radionuclide: "Th-232", activity: "1.80E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-131-6742", radionuclide: "Co-60", activity: "0.0000007", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6004", radionuclide: "Re-187", activity: "0.00001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-134-6012", radionuclide: "Re-187", activity: "4.46E-07", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6031", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6064", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-134-6073", radionuclide: "Re-187", activity: "8.89E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-140-1600", radionuclide: "Kr-85", activity: "1.00E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-148-4724", radionuclide: "Ni-63", activity: "0.5", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-168-8386", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Tube Electron", nsn: "5960-00-170-4582", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-179-4446", radionuclide: "Re-187", activity: "10", units: "pCi" },
+            { name: "Electron Tube", nsn: "5960-00-188-0968", radionuclide: "Kr-85", activity: "5.00E-08", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-3565", radionuclide: "Co-60", activity: "0.000001", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-3574", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-188-8612", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-193-5127", radionuclide: "Th-232", activity: "2.60E-10", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-220-6892", radionuclide: "Co-60", activity: "0.09", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-262-0161", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-262-0163", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-262-0210", radionuclide: "Re-187", activity: "0.00001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-262-0286", radionuclide: "Co-60", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-280-5585", radionuclide: "Re-187", activity: "1.00E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-297-7099", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-307-9918", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-338-0377", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Magnetron", nsn: "5960-00-476-4750", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-503-4880", radionuclide: "Kr-85", activity: "0.03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-542-7004", radionuclide: "Re-187", activity: "0.00000004", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-552-0082", radionuclide: "Re-187", activity: "0.00000002", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-552-8277", radionuclide: "U-238", activity: "0.00000008", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-615-5619", radionuclide: "Th-232", activity: "120", units: "pCi" },
+            { name: "Electron Tube", nsn: "5960-00-624-4718", radionuclide: "Ra-226", activity: "6", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-681-8037", radionuclide: "Co-60", activity: "0.15", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-682-8627", radionuclide: "Re-187", activity: "8.89E-11", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-00-713-7014", radionuclide: "U-238", activity: "0.08", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-752-6384", radionuclide: "H-3", activity: "1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-00-827-8782", radionuclide: "Re-187", activity: "4.46E-09", units: "Ci" },
+            { name: "Electron Tube, Tr-Limiter, Band-Pass, S-Band", nsn: "5960-01-008-1351", radionuclide: "H-3", activity: "30", units: "mCi" },
+            { name: "Electron Tube, Tr-Limiter, Band-Pass, S-Band", nsn: "5960-01-008-1352", radionuclide: "H-3", activity: "30", units: "mCi" },
+            { name: "Electron Tube", nsn: "5960-01-013-9344", radionuclide: "Co-60", activity: "0.1", units: "µCi" },
+            { name: "TR Tube", nsn: "5960-01-018-1237", radionuclide: "H-3/Co-60", activity: "33,000/1", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-027-7252", radionuclide: "H-3", activity: "0.075135135", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-01-036-3839", radionuclide: "Am-241", activity: "0.0045", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-037-3297", radionuclide: "Th-232", activity: "1", units: "nCi" },
+            { name: "Electron Tube", nsn: "5960-01-037-3297", radionuclide: "Th-232", activity: "0.001", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-095-5001", radionuclide: "H-3", activity: "0.15", units: "Ci" },
+            { name: "Electron Tube", nsn: "5960-01-274-3899", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-274-3900", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-365-5728", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "AEGIS Electron Tube, YV-150 SWT", nsn: "5960-01-392-6982", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Cathode Ray Tube (Electron Tube)", nsn: "5960-01-418-2641", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Electron Tube", nsn: "5960-01-462-6267", radionuclide: "Th-232", activity: "1.10E-03", units: "µCi" },
+            { name: "Amplifier Radio", nsn: "5996-01-266-0543", radionuclide: "H-3", activity: "150", units: "µCi" },
+            { name: "Lamp, Metal, Halide", nsn: "6240-01-163-0015", radionuclide: "Kr-85/Th-232", activity: "100/0.2", units: "µCi" },
+            { name: "Lamp, Nuclear", nsn: "6260-01-056-2883", radionuclide: "H-3", activity: "1", units: "Ci" },
+            { name: "Index, Mount", nsn: "6260-01-212-8472", radionuclide: "H-3", activity: "0.03", units: "Ci" },
+            { name: "Sensor, Pick Up Kit", nsn: "6350-00-224-3203", radionuclide: "Pm-147", activity: "90", units: "µCi" },
+            { name: "Ionization Smoke Detector", nsn: "6350-01-593-8401", radionuclide: "Am-241", activity: "9.00E-01", units: "µCi" },
+            { name: "Magnetic Compass", nsn: "6605-00-129-6330", radionuclide: "H-3", activity: "50", units: "mCi" },
+            { name: "Compass, Magnetic", nsn: "6605-00-151-5337", radionuclide: "H-3", activity: "190", units: "mCi" },
+            { name: "Compass, Magnetic", nsn: "6605-01-196-6971", radionuclide: "H-3", activity: "120", units: "mCi" },
+            { name: "Indicator, Turn And", nsn: "6610-00-253-3547", radionuclide: "Ra-226", activity: "0.01", units: "µCi" },
+            { name: "Indicator", nsn: "6620-01-125-8904", radionuclide: "Sr-90", activity: "500", units: "µCi" },
+            { name: "Mount, Telescope", nsn: "6650-01-340-6082", radionuclide: "H-3", activity: "4.19", units: "Ci" },
+            { name: "Telescope, Elbow", nsn: "6650-01-341-5195", radionuclide: "H-3", activity: "0.8", units: "Ci" },
+            { name: "RADIAC AN/PDR-27Q", nsn: "6665-00-017-8903", radionuclide: "Kr-85", activity: "5", units: "mCi" },
+            { name: "Detector, Helicopter", nsn: "6665-01-278-9145", radionuclide: "Sr-90", activity: "0.01", units: "µCi" },
+            { name: "Detector", nsn: "6665-01-282-7139", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
+            { name: "IM-239 Check Source", nsn: "6665-01-333-5985", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
+            { name: "Detector, Chemical Agent (GID-3)", nsn: "6665-01-438-3673", radionuclide: "Ni-63", activity: "30", units: "mCi" },
+            { name: "Vapor Tracer Ii", nsn: "6665-01-491-8523", radionuclide: "Ni-63", activity: "10", units: "mCi" },
+            { name: "Source Set", nsn: "6665-01-546-6120", radionuclide: "Sr-90", activity: "0.15", units: "µCi" },
+            { name: "Detector, Chemical Agent", nsn: "6665-99-203-6162", radionuclide: "Ni-63", activity: "30", units: "mCi" },
+            { name: "Chemical Agent Monitor", nsn: "6665-99-725-9996", radionuclide: "Ni-63", activity: "10", units: "mCi" },
+            { name: "Indicator, Pressure", nsn: "6685-01-356-9967", radionuclide: "Sr-90", activity: "100", units: "µCi" },
+            { name: "Meter, Brightness", nsn: "6695-01-221-3251", radionuclide: "C-14", activity: "50", units: "µCi" },
+            { name: "Marker, Self-Luminious", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" }
+        ];
+
+        // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
+        const nrcExemptionValues = {
+            'Am-241': '0.01 µCi', 'C-14': '100 µCi', 'Cs-137': '10 µCi', 'Co-60': '1 µCi',
+            'H-3': '1,000 µCi', 'Kr-85': '100 µCi', 'Ni-63': '100 µCi', 'N-63': '100 µCi',
+            'Pm-147': '10 µCi', 'Ra-226': '0.1 µCi', 'Re-187': '100 µCi', 'Sr-90': '0.1 µCi',
+            'Tc-99': '10 µCi', 'Th-232': '--', 'U-238': '--'
+        };
+
+        // --- DOT Exemption values from 49 CFR 173.436 (Consignment) ---
+        const dotExemptionValues = {
+            'H-3': '27 mCi',
+            'Am-241': '0.27 µCi',
+            'Th-232': '0.27 µCi',
+            'Sr-90': '0.27 µCi',
+            'Ra-226': '0.27 µCi',
+            'Kr-85': '0.27 µCi',
+            'U-238': '0.27 µCi',
+            'Cs-137': '0.27 µCi',
+            'Pm-147': '270 µCi',
+            'Co-60': '2.7 µCi',
+            'Re-187': '27 mCi',
+            'Ni-63': '2.7 mCi',
+            'N-63': '2.7 mCi', // Assuming typo for Ni-63
+            'C-14': '270 µCi',
+            'Tc-99': '270 µCi'
+        };
+
+        // --- UN 2911 Excepted Package Limits (per item) ---
+        const un2911Limits = {
+            'Am-241': '0.00027 Ci',
+            'C-14': '0.81 Ci',
+            'Co-60': '0.11 Ci',
+            'Cs-137': '0.16 Ci',
+            'H-3': '22 Ci',
+            'Kr-85': '0.27 Ci',
+            'Ni-63': '8.1 Ci',
+            'N-63': '8.1 Ci', // Assuming typo for Ni-63
+            'Pm-147': '0.54 Ci',
+            'Ra-226': '0.00081 Ci',
+            'Re-187': 'Unlimited',
+            'Sr-90': '0.081 Ci',
+            'Tc-99': '0.24 Ci',
+            'Th-232': 'Unlimited',
+            'U-238': 'Unlimited'
+        };
+
+        // --- UN 2911 Excepted Package Limits (per package) ---
+        const un2911PkgLimits = {
+            'Am-241': '0.027 Ci',
+            'C-14': '81 Ci',
+            'Co-60': '11 Ci',
+            'Cs-137': '16 Ci',
+            'H-3': '220 Ci',
+            'Kr-85': '2.7 Ci',
+            'Ni-63': '810 Ci',
+            'N-63': '810 Ci', // Assuming typo for Ni-63
+            'Pm-147': '54 Ci',
+            'Ra-226': '0.081 Ci',
+            'Re-187': 'Unlimited',
+            'Sr-90': '8.1 Ci',
+            'Tc-99': '24 Ci',
+            'Th-232': 'Unlimited',
+            'U-238': 'Unlimited'
+        };
+
+        // --- Global State ---
+        let tableData = [];
+        let currentSort = { column: null, direction: 'asc' };
+        
+        // --- Conversion and Formatting Helpers ---
+        const CI_TO_BQ = 3.7e10;
+        const ciMultipliers = { 'pCi': 1e-12, 'nCi': 1e-9, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+        
+        function formatNumberWithCommas(number) {
+            return number.toLocaleString('en-US');
+        }
+
+        function parseValueToCi(valueStr) {
+            if (typeof valueStr !== 'string' || valueStr === '--' || valueStr.toLowerCase() === 'unlimited') {
+                return null;
+            }
+            const parts = valueStr.trim().split(/\s+/);
+            const value = parseFloat(String(parts[0]).replace(/,/g, ''));
+            const unit = parts[1] || 'Ci';
+            const multiplier = ciMultipliers[unit.trim()] || 1;
+            return isNaN(value) ? null : value * multiplier;
+        }
+
+        function formatCi(valueCi) {
+            if (valueCi === null || typeof valueCi === 'undefined') return '--';
+            if (valueCi === 0) return '0 Ci';
+            const units = ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'];
+            let unitIndex = 4;
+            let value = valueCi;
+            while (value < 1 && unitIndex > 0) {
+                value *= 1000;
+                unitIndex--;
+            }
+            return `${formatNumberWithCommas(parseFloat(value.toPrecision(3)))} ${units[unitIndex]}`;
+        }
+
+        function formatBq(valueCi) {
+            if (valueCi === null || typeof valueCi === 'undefined') return '--';
+            if (valueCi === 0) return '0 Bq';
+            let valueBq = valueCi * CI_TO_BQ;
+            const units = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'];
+            let unitIndex = 0;
+
+            while (valueBq >= 1000 && unitIndex < units.length - 1) {
+                valueBq /= 1000;
+                unitIndex++;
+            }
+            
+            let displayValue = parseFloat(valueBq.toPrecision(3));
+
+            if (displayValue >= 999 && unitIndex < units.length - 1) {
+                displayValue = 1;
+                unitIndex++;
+            } 
+            else if (displayValue >= 99.9 && displayValue < 100) {
+                 displayValue = 100;
+            } 
+            else if (displayValue >= 9.99 && displayValue < 10) {
+                 displayValue = 10;
+            }
+
+            return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
+        }
+
+        function processData(rawData) {
+            const processed = [];
+            rawData.forEach(item => {
+                const hasMultipleNuclides = item.radionuclide.includes('/');
+                const hasMultipleActivities = String(item.activity).includes('/');
+
+                if (hasMultipleNuclides && hasMultipleActivities) {
+                    const nuclides = item.radionuclide.split('/');
+                    const activities = String(item.activity).split('/');
+                    if (nuclides.length === activities.length) {
+                        nuclides.forEach((nuclide, index) => {
+                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[index].trim() }));
+                        });
+                        return; 
+                    }
+                }
+                processed.push(createRowObject(item));
+            });
+            return processed;
+        }
+        
+        function createRowObject(item) {
+            const radionuclide = item.radionuclide.trim();
+            
+            const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
+            const nrcExemptionVal = parseValueToCi(nrcExemptionValues[radionuclide]);
+            const dotExemptionVal = parseValueToCi(dotExemptionValues[radionuclide]);
+            const un2911LimitVal = parseValueToCi(un2911Limits[radionuclide]);
+            const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
+
+            return {
+                name: item.name,
+                nsn: item.nsn,
+                niin: item.nsn ? item.nsn.substring(5).replace(/-/g, '') : '',
+                radionuclide: radionuclide,
+                
+                activity_val: activityVal,
+                nrc_exemption_val: nrcExemptionVal,
+                dot_exemption_val: dotExemptionVal,
+                un2911_limit_val: un2911LimitVal,
+                un2911_pkg_limit_val: un2911PkgLimitVal,
+                
+                activity_ci_str: formatCi(activityVal),
+                nrc_exemption_ci_str: nrcExemptionVal !== null ? formatCi(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
+                dot_exemption_ci_str: dotExemptionVal !== null ? formatCi(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
+                un2911_limit_ci_str: un2911LimitVal !== null ? formatCi(un2911LimitVal) : 'Unlimited',
+                un2911_pkg_limit_ci_str: un2911PkgLimitVal !== null ? formatCi(un2911PkgLimitVal) : 'Unlimited',
+
+                activity_bq_str: formatBq(activityVal),
+                nrc_exemption_bq_str: nrcExemptionVal !== null ? formatBq(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
+                dot_exemption_bq_str: dotExemptionVal !== null ? formatBq(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
+                un2911_limit_bq_str: un2911LimitVal !== null ? formatBq(un2911LimitVal) : 'Unlimited',
+                un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
+            };
+        }
+
+
+        function populateTable(data) {
+            const tableBody = document.querySelector('#lookupTable tbody');
+            const isSiUnits = document.getElementById('unitToggle').checked;
+            tableBody.innerHTML = '';
+
+            const rows = data.map((item, index) => {
+                const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
+                const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
+                const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
+                const un2911PkgLimit = isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str;
+                const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
+
+                return `
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-index="${index}">
+                        <td class="px-6 py-4 text-center"><input type="checkbox" class="row-checkbox" data-index="${index}"></td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left">${item.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.nsn}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.niin}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.radionuclide}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${activity}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${nrcExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${dotExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911Limit}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911PkgLimit}</td>
+                    </tr>
+                `;
+            }).join('');
+            tableBody.innerHTML = rows;
+        }
+
+        function sortTable(columnKey) {
+            const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
+            currentSort.direction = isAsc ? 'desc' : 'asc';
+            currentSort.column = columnKey;
+
+            tableData.sort((a, b) => {
+                let valA = a[columnKey];
+                let valB = b[columnKey];
+                
+                if (valA === null) return 1;
+                if (valB === null) return -1;
+
+                let comparison = 0;
+                if (typeof valA === 'string') {
+                    comparison = valA.localeCompare(valB, undefined, { numeric: true });
+                } else {
+                    if (valA > valB) comparison = 1;
+                    else if (valA < valB) comparison = -1;
+                }
+
+                return currentSort.direction === 'asc' ? comparison : -comparison;
+            });
+
+            updateSortArrows();
+            populateTable(tableData);
+            filterTable();
+        }
+        
+        function updateSortArrows() {
+            document.querySelectorAll('.sortable .sort-arrow').forEach(arrow => {
+                arrow.classList.remove('asc', 'desc');
+            });
+
+            const header = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
+            if (header) {
+                const arrow = header.querySelector('.sort-arrow');
+                arrow.classList.add(currentSort.direction);
+            }
+        }
+
+        function filterTable() {
+            const searchInput = document.getElementById("searchInput");
+            const textFilter = searchInput.value.toUpperCase();
+            const radionuclideFilter = document.getElementById('radionuclideFilter');
+            const nuclideFilter = radionuclideFilter.value;
+            const table = document.getElementById("lookupTable");
+            const tr = table.getElementsByTagName("tr");
+            const noResults = document.getElementById("noResults");
+            let visibleRows = 0;
+
+            for (let i = 1; i < tr.length; i++) { // Start at 1 to skip header
+                let row = tr[i];
+                let tds = row.getElementsByTagName("td");
+                
+                const rowNuclide = tds[4].textContent; 
+                
+                const nuclideMatch = (nuclideFilter === 'all' || rowNuclide === nuclideFilter);
+                
+                let textMatch = false;
+                if (textFilter === "") {
+                    textMatch = true;
+                } else {
+                    // Check all cells for text match
+                    for (let j = 1; j < tds.length; j++) { // Start at 1 to skip checkbox cell
+                        if (tds[j].textContent.toUpperCase().indexOf(textFilter) > -1) {
+                            textMatch = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (nuclideMatch && textMatch) {
+                    row.style.display = "";
+                    visibleRows++;
+                } else {
+                    row.style.display = "none";
+                }
+            }
+            noResults.style.display = visibleRows === 0 ? 'block' : 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const unitToggle = document.getElementById('unitToggle');
+            const tableBody = document.querySelector('#lookupTable tbody');
+            const compareBtn = document.getElementById('compareBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            const summationBtn = document.getElementById('summationBtn');
+            const compareModal = document.getElementById('compareModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const compareContent = document.getElementById('compareContent');
+            const detailModal = document.getElementById('detailModal');
+            const closeDetailModalBtn = document.getElementById('closeDetailModalBtn');
+            const detailContent = document.getElementById('detailContent');
+            const detailModalTitle = document.getElementById('detailModalTitle');
+            const radionuclideFilter = document.getElementById('radionuclideFilter');
+            const summationModal = document.getElementById('summationModal');
+            const closeSummationModalBtn = document.getElementById('closeSummationModalBtn');
+            const summationContent = document.getElementById('summationContent');
+
+            if (document.documentElement.classList.contains('dark')) {
+                darkModeToggle.checked = true;
+            }
+            darkModeToggle.addEventListener('change', () => {
+                if (darkModeToggle.checked) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'enabled');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('darkMode', 'disabled');
+                }
+            });
+
+            unitToggle.addEventListener('change', () => {
+                populateTable(tableData);
+                filterTable();
+            });
+            
+            tableBody.addEventListener('click', (event) => {
+                const targetCell = event.target.closest('td');
+                if (!targetCell) return;
+
+                const row = targetCell.parentElement;
+                const checkbox = row.querySelector('.row-checkbox');
+
+                if (targetCell.cellIndex === 0) {
+                    if (event.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                    }
+                    const changeEvent = new Event('change', { bubbles: true });
+                    checkbox.dispatchEvent(changeEvent);
+                } else {
+                    const itemIndex = row.dataset.index;
+                    const item = tableData[itemIndex];
+                    showDetailModal(item);
+                }
+            });
+
+            tableBody.addEventListener('change', (event) => {
+                 if (event.target.classList.contains('row-checkbox')) {
+                    const row = event.target.closest('tr');
+                    if (event.target.checked) {
+                        row.classList.add('selected-row');
+                    } else {
+                        row.classList.remove('selected-row');
+                    }
+                    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+                    compareBtn.disabled = selectedCount < 2;
+                    exportBtn.disabled = selectedCount === 0;
+                    clearSelectionBtn.disabled = selectedCount === 0;
+                    summationBtn.disabled = selectedCount === 0;
+                }
+            });
+
+            function showDetailModal(item) {
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                detailModalTitle.textContent = item.name;
+
+                const comparisons = [
+                    { label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
+                    { label: 'DOT Exemption', limit: item.dot_exemption_val, str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str },
+                    { label: 'UN 2911 Limit (item)', limit: item.un2911_limit_val, str: isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str },
+                    { label: 'UN 2911 Limit (package)', limit: item.un2911_pkg_limit_val, str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str }
+                ];
+
+                let content = `<div class="space-y-4">`;
+                content += `<div><strong>NSN:</strong> ${item.nsn}</div>`;
+                content += `<div><strong>NIIN:</strong> ${item.niin}</div>`;
+                if (item.nsn) {
+                    content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
+                }
+                content += `<hr class="dark:border-gray-600">`;
+                content += `<div><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of ${item.radionuclide}</div>`;
+                
+                comparisons.forEach(comp => {
+                    let status, statusColor;
+                    if (item.activity_val === null || comp.limit === null) {
+                        status = 'N/A';
+                        statusColor = 'text-gray-500';
+                    } else if (item.activity_val > comp.limit) {
+                        status = 'ABOVE';
+                        statusColor = 'text-red-500';
+                    } else {
+                        status = 'BELOW';
+                        statusColor = 'text-green-500';
+                    }
+                    content += `<div class="flex justify-between items-center"><span>${comp.label}: ${comp.str}</span> <span class="font-bold ${statusColor}">${status}</span></div>`;
+                });
+
+                content += `</div>`;
+                detailContent.innerHTML = content;
+                detailModal.style.display = 'flex';
+            }
+
+            closeDetailModalBtn.addEventListener('click', () => {
+                detailModal.style.display = 'none';
+            });
+
+            compareBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                
+                const isSiUnits = document.getElementById('unitToggle').checked;
+
+                let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
+                
+                const headers = ['Attribute', ...selectedData.map(item => item.name)];
+                content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
+                headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
+                content += '</tr></thead><tbody>';
+
+                const attributes = [
+                    { label: 'NSN', key: 'nsn' },
+                    { label: 'NIIN', key: 'niin' },
+                    { label: 'Radionuclide', key: 'radionuclide' },
+                    { label: 'Activity', key: isSiUnits ? 'activity_bq_str' : 'activity_ci_str' },
+                    { label: 'NRC Exemption', key: isSiUnits ? 'nrc_exemption_bq_str' : 'nrc_exemption_ci_str' },
+                    { label: 'DOT Exemption', key: isSiUnits ? 'dot_exemption_bq_str' : 'dot_exemption_ci_str' },
+                    { label: 'UN 2911 Limit (item)', key: isSiUnits ? 'un2911_limit_bq_str' : 'un2911_limit_ci_str' },
+                    { label: 'UN 2911 Limit (package)', key: isSiUnits ? 'un2911_pkg_limit_bq_str' : 'un2911_pkg_limit_ci_str' }
+                ];
+
+                attributes.forEach(attr => {
+                    content += '<tr class="border-b dark:border-gray-700">';
+                    content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
+                    selectedData.forEach(item => {
+                        content += `<td class="px-4 py-2">${item[attr.key]}</td>`;
+                    });
+                    content += '</tr>';
+                });
+
+                content += '</tbody></table></div>';
+                compareContent.innerHTML = content;
+                compareModal.style.display = 'flex';
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                compareModal.style.display = 'none';
+            });
+
+            exportBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                
+                const headers = [
+                    "Name or Nomenclature", "NSN", "NIIN", "Radionuclide", 
+                    "Activity", "NRC Exemption", "DOT Exemption", 
+                    "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
+                ];
+
+                let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+
+                selectedData.forEach(item => {
+                    const row = [
+                        `"${item.name}"`,
+                        item.nsn,
+                        item.niin,
+                        item.radionuclide,
+                        isSiUnits ? item.activity_bq_str : item.activity_ci_str,
+                        isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str,
+                        isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str,
+                        isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str,
+                        isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str
+                    ].join(",");
+                    csvContent += row + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "radioactive_commodities.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            clearSelectionBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                selectedCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.closest('tr').classList.remove('selected-row');
+                });
+                compareBtn.disabled = true;
+                exportBtn.disabled = true;
+                clearSelectionBtn.disabled = true;
+                summationBtn.disabled = true;
+            });
+            
+            summationBtn.addEventListener('click', () => {
+                showSummationModal();
+            });
+
+            function showSummationModal() {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                
+                let content = '<div id="summationItems" class="space-y-4">';
+                selectedItems.forEach((item, index) => {
+                    content += `
+                        <div class="flex items-center gap-4">
+                            <label for="qty-${index}" class="w-2/3">${item.name}</label>
+                            <input type="number" id="qty-${index}" data-item-index="${item.originalIndex}" value="1" min="1" class="quantity-input w-1/3 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                        </div>
+                    `;
+                });
+                content += '</div><hr class="my-4 dark:border-gray-600">';
+                content += `
+                    <div class="flex items-center gap-4 mb-4">
+                        <label for="summationLimitSelect" class="font-semibold">Compare Total Against:</label>
+                        <select id="summationLimitSelect" class="px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                            <option value="nrc_exemption_val">NRC Exemption</option>
+                            <option value="dot_exemption_val">DOT Exemption</option>
+                            <option value="un2911_limit_val">UN 2911 Limit (per item)</option>
+                            <option value="un2911_pkg_limit_val">UN 2911 Limit (per package)</option>
+                        </select>
+                    </div>
+                `;
+                content += '<div id="summationTotals" class="space-y-2"></div>';
+                
+                summationContent.innerHTML = content;
+                summationModal.style.display = 'flex';
+                calculateSummationTotals();
+
+                document.getElementById('summationItems').addEventListener('input', calculateSummationTotals);
+                document.getElementById('summationLimitSelect').addEventListener('change', calculateSummationTotals);
+            }
+            
+            function calculateSummationTotals() {
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                const limitKey = document.getElementById('summationLimitSelect').value;
+                const totals = {};
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+
+                selectedItems.forEach((item, index) => {
+                    const quantity = document.getElementById(`qty-${index}`).valueAsNumber || 0;
+                    if (!totals[item.radionuclide]) {
+                        totals[item.radionuclide] = { totalActivity: 0, limit: item[limitKey] };
+                    }
+                    totals[item.radionuclide].totalActivity += item.activity_val * quantity;
+                });
+
+                let totalsContent = '<h3>Total Activity per Radionuclide:</h3>';
+                let sumOfRatios = 0;
+
+                for (const nuclide in totals) {
+                    const totalActivity = totals[nuclide].totalActivity;
+                    const limit = totals[nuclide].limit;
+                    const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
+                    
+                    if (limit !== null) {
+                        sumOfRatios += totalActivity / limit;
+                    }
+
+                    totalsContent += `
+                        <div class="flex justify-between items-center">
+                            <span><strong>${nuclide}:</strong> ${displayTotal}</span>
+                        </div>
+                    `;
+                }
+
+                let sorStatus, sorStatusColor;
+                if (sumOfRatios > 1) {
+                    sorStatus = 'ABOVE (FAIL)';
+                    sorStatusColor = 'text-red-500';
+                } else {
+                    sorStatus = 'BELOW (PASS)';
+                    sorStatusColor = 'text-green-500';
+                }
+
+                totalsContent += `<hr class="my-4 dark:border-gray-600">`;
+                totalsContent += `
+                    <div class="flex justify-between items-center">
+                        <strong>Sum of Ratios:</strong>
+                        <span class="font-bold ${sorStatusColor}">${sumOfRatios.toFixed(3)} - ${sorStatus}</span>
+                    </div>
+                `;
+
+                document.getElementById('summationTotals').innerHTML = totalsContent;
+            }
+
+            closeSummationModalBtn.addEventListener('click', () => {
+                summationModal.style.display = 'none';
+            });
+
+            function populateRadionuclideFilter() {
+                const nuclides = [...new Set(tableData.map(item => item.radionuclide))].sort();
+                radionuclideFilter.innerHTML = '<option value="all">All Radionuclides</option>';
+                nuclides.forEach(nuclide => {
+                    const option = document.createElement('option');
+                    option.value = nuclide;
+                    option.textContent = nuclide;
+                    radionuclideFilter.appendChild(option);
+                });
+            }
+
+            radionuclideFilter.addEventListener('change', filterTable);
+
+            tableData = processData(rawTableData);
+            populateRadionuclideFilter();
+            populateTable(tableData);
+            sortTable('name');
+        });
     </script>
 
 </body>
