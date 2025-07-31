@@ -133,6 +133,7 @@
                     </select>
                 </div>
                 <div class="flex items-center gap-4 sm:gap-2">
+                    <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
                     <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
                     <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
                     <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
@@ -182,7 +183,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.31 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.32 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -208,6 +209,19 @@
             </div>
             <div id="detailContent" class="p-6">
                 <!-- Detail content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Summation Modal -->
+    <div id="summationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Summation Tool</h2>
+                <button id="closeSummationModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="summationContent" class="p-6">
+                <!-- Summation content will be injected here -->
             </div>
         </div>
     </div>
@@ -686,6 +700,7 @@
             const compareBtn = document.getElementById('compareBtn');
             const exportBtn = document.getElementById('exportBtn');
             const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+            const summationBtn = document.getElementById('summationBtn');
             const compareModal = document.getElementById('compareModal');
             const closeModalBtn = document.getElementById('closeModalBtn');
             const compareContent = document.getElementById('compareContent');
@@ -694,6 +709,9 @@
             const detailContent = document.getElementById('detailContent');
             const detailModalTitle = document.getElementById('detailModalTitle');
             const radionuclideFilter = document.getElementById('radionuclideFilter');
+            const summationModal = document.getElementById('summationModal');
+            const closeSummationModalBtn = document.getElementById('closeSummationModalBtn');
+            const summationContent = document.getElementById('summationContent');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -725,6 +743,7 @@
                     compareBtn.disabled = selectedCount < 2;
                     exportBtn.disabled = selectedCount === 0;
                     clearSelectionBtn.disabled = selectedCount === 0;
+                    summationBtn.disabled = selectedCount === 0;
                 } else {
                     const row = event.target.closest('tr');
                     if (row) {
@@ -867,6 +886,80 @@
                 compareBtn.disabled = true;
                 exportBtn.disabled = true;
                 clearSelectionBtn.disabled = true;
+                summationBtn.disabled = true;
+            });
+            
+            summationBtn.addEventListener('click', () => {
+                showSummationModal();
+            });
+
+            function showSummationModal() {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                
+                let content = '<div id="summationItems" class="space-y-4">';
+                selectedItems.forEach((item, index) => {
+                    content += `
+                        <div class="flex items-center gap-4">
+                            <label for="qty-${index}" class="w-2/3">${item.name}</label>
+                            <input type="number" id="qty-${index}" data-index="${index}" value="1" min="1" class="quantity-input w-1/3 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                        </div>
+                    `;
+                });
+                content += '</div><hr class="my-4 dark:border-gray-600"><div id="summationTotals" class="space-y-2"></div>';
+                
+                summationContent.innerHTML = content;
+                summationModal.style.display = 'flex';
+                calculateSummationTotals();
+
+                document.getElementById('summationItems').addEventListener('input', calculateSummationTotals);
+            }
+            
+            function calculateSummationTotals() {
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                const totals = {};
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+
+                selectedItems.forEach((item, index) => {
+                    const quantity = document.getElementById(`qty-${index}`).valueAsNumber || 0;
+                    if (!totals[item.radionuclide]) {
+                        totals[item.radionuclide] = { totalActivity: 0, limit: item.un2911_pkg_limit_val };
+                    }
+                    totals[item.radionuclide].totalActivity += item.activity_val * quantity;
+                });
+
+                let totalsContent = '<h3>Total Activity per Radionuclide:</h3>';
+                for (const nuclide in totals) {
+                    const totalActivity = totals[nuclide].totalActivity;
+                    const limit = totals[nuclide].limit;
+                    const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
+                    const displayLimit = isSiUnits ? formatBq(limit) : formatCi(limit);
+                    
+                    let status, statusColor;
+                    if (limit === null) {
+                        status = 'N/A';
+                        statusColor = 'text-gray-500';
+                    } else if (totalActivity > limit) {
+                        status = 'ABOVE';
+                        statusColor = 'text-red-500';
+                    } else {
+                        status = 'BELOW';
+                        statusColor = 'text-green-500';
+                    }
+
+                    totalsContent += `
+                        <div class="flex justify-between items-center">
+                            <span><strong>${nuclide}:</strong> ${displayTotal}</span>
+                            <span class="font-bold ${statusColor}">${status} (${displayLimit})</span>
+                        </div>
+                    `;
+                }
+                document.getElementById('summationTotals').innerHTML = totalsContent;
+            }
+
+            closeSummationModalBtn.addEventListener('click', () => {
+                summationModal.style.display = 'none';
             });
 
             function populateRadionuclideFilter() {
