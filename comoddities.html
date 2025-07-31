@@ -200,6 +200,8 @@
                         </select>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-center">
+                        <button id="addItemBtn" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Add New Item</button>
+                        <button id="clearAddedBtn" class="px-4 py-2 bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear Added</button>
                         <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
                         <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
                         <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
@@ -272,7 +274,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.55 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.58 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -410,6 +412,56 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Modal -->
+    <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Add Custom Item</h2>
+                <button id="closeAddItemModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="addItemForm" class="space-y-4">
+                    <div>
+                        <label for="itemName" class="block mb-1 font-medium">Name or Nomenclature*</label>
+                        <input type="text" id="itemName" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600" required>
+                    </div>
+                    <div>
+                        <label for="itemNsn" class="block mb-1 font-medium">NSN</label>
+                        <input type="text" id="itemNsn" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div>
+                        <label for="itemNiin" class="block mb-1 font-medium">NIIN</label>
+                        <input type="text" id="itemNiin" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-1">
+                            <label for="itemRadionuclide" class="block mb-1 font-medium">Radionuclide*</label>
+                            <select id="itemRadionuclide" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600" required></select>
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label for="itemActivity" class="block mb-1 font-medium">Activity*</label>
+                            <input type="number" id="itemActivity" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600" required step="any">
+                        </div>
+                        <div class="sm:col-span-1">
+                            <label for="itemUnits" class="block mb-1 font-medium">Units*</label>
+                            <select id="itemUnits" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600" required>
+                                <option>Ci</option>
+                                <option>mCi</option>
+                                <option>µCi</option>
+                                <option>nCi</option>
+                                <option>pCi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-4 pt-4">
+                        <button type="button" id="cancelAddItemBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Item</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -904,6 +956,12 @@
             const loadSelectionBtn = document.getElementById('loadSelectionBtn');
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');
             const clearSavedBtn = document.getElementById('clearSavedBtn');
+            const addItemBtn = document.getElementById('addItemBtn');
+            const addItemModal = document.getElementById('addItemModal');
+            const closeAddItemModalBtn = document.getElementById('closeAddItemModalBtn');
+            const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
+            const addItemForm = document.getElementById('addItemForm');
+            const itemRadionuclideSelect = document.getElementById('itemRadionuclide');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -1266,14 +1324,74 @@
                 });
             });
 
-            tableData = processData(rawTableData);
+            addItemBtn.addEventListener('click', () => {
+                addItemModal.style.display = 'flex';
+            });
+            closeAddItemModalBtn.addEventListener('click', () => {
+                addItemModal.style.display = 'none';
+            });
+            cancelAddItemBtn.addEventListener('click', () => {
+                addItemModal.style.display = 'none';
+            });
+
+            addItemForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newItem = {
+                    name: document.getElementById('itemName').value,
+                    nsn: document.getElementById('itemNsn').value,
+                    niin: document.getElementById('itemNiin').value,
+                    radionuclide: document.getElementById('itemRadionuclide').value,
+                    activity: document.getElementById('itemActivity').value,
+                    units: document.getElementById('itemUnits').value,
+                };
+
+                let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                customItems.push(newItem);
+                localStorage.setItem('customItems', JSON.stringify(customItems));
+
+                tableData = processData([...rawTableData, ...customItems]);
+                populateTable(tableData);
+                filterTable();
+                populateRadionuclideFilter();
+                clearAddedBtn.disabled = false;
+
+                addItemForm.reset();
+                addItemModal.style.display = 'none';
+            });
+
+            clearAddedBtn.addEventListener('click', () => {
+                localStorage.removeItem('customItems');
+                tableData = processData(rawTableData);
+                populateTable(tableData);
+                filterTable();
+                populateRadionuclideFilter();
+                clearAddedBtn.disabled = true;
+            });
+
+            function populateAddItemRadionuclides() {
+                const nuclides = [...new Set(Object.keys(nrcExemptionValues))].sort();
+                itemRadionuclideSelect.innerHTML = '';
+                nuclides.forEach(nuclide => {
+                    const option = document.createElement('option');
+                    option.value = nuclide;
+                    option.textContent = nuclide;
+                    itemRadionuclideSelect.appendChild(option);
+                });
+            }
+
+            const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+            tableData = processData([...rawTableData, ...customItems]);
             populateRadionuclideFilter();
+            populateAddItemRadionuclides();
             populateTable(tableData);
             sortTable('name');
 
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
+            }
+            if (customItems.length > 0) {
+                clearAddedBtn.disabled = false;
             }
         });
     </script>
