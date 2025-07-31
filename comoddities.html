@@ -104,6 +104,72 @@
         tr td:not(:first-child) {
             cursor: pointer;
         }
+
+        /* Responsive Table Styles */
+        @media (max-width: 1024px) {
+            #lookupTable thead {
+                display: none;
+            }
+            #lookupTable, #lookupTable tbody, #lookupTable tr, #lookupTable td {
+                display: block;
+                width: 100%;
+            }
+            #lookupTable tr {
+                margin-bottom: 1.5rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 0.75rem;
+                overflow: hidden;
+            }
+            .dark #lookupTable tr {
+                border-color: #374151;
+            }
+            #lookupTable td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                text-align: right;
+                border-bottom: 1px solid #e5e7eb;
+            }
+            .dark #lookupTable td {
+                border-color: #374151;
+            }
+            #lookupTable td:last-child {
+                border-bottom: none;
+            }
+            #lookupTable td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                text-align: left;
+                padding-right: 1rem;
+                white-space: nowrap;
+            }
+            .dark #lookupTable td::before {
+                color: #d1d5db;
+            }
+            /* Special handling for the first two cells (Checkbox and Name) */
+            #lookupTable td:first-child {
+                justify-content: center; /* Center the checkbox */
+                background-color: #f9fafb;
+            }
+            .dark #lookupTable td:first-child {
+                background-color: #1f2937;
+            }
+            #lookupTable td:nth-child(2) {
+                font-size: 1.125rem; /* lg */
+                font-weight: 600;
+                justify-content: center;
+                text-align: center;
+                background-color: #f9fafb;
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+            .dark #lookupTable td:nth-child(2) {
+                background-color: #1f2937;
+            }
+            #lookupTable td:nth-child(2)::before {
+                display: none; /* Hide the "Name or Nomenclature" label */
+            }
+        }
     </style>
     <script>
         // This script runs immediately to set the dark mode class on initial load.
@@ -125,19 +191,39 @@
             </div>
 
             <!-- Controls: Search and Toggles -->
-            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col md:flex-row items-center gap-4">
-                <div class="w-full md:flex-grow flex items-center gap-4">
-                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
-                    <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200">
-                        <!-- Options will be populated by script -->
-                    </select>
+            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
+                <div class="flex flex-col lg:flex-row items-center gap-4 w-full">
+                    <div class="w-full lg:flex-grow flex flex-col sm:flex-row items-center gap-4">
+                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                        <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto">
+                            <!-- Options will be populated by script -->
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap justify-center">
+                        <button id="helpBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Help</button>
+                        <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
+                        <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
+                        <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
+                        <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4 sm:gap-2">
-                    <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
-                    <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
-                    <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
-                    <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
-                    <div class="flex items-center gap-2 sm:gap-3 ml-4">
+                <div class="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="nrcExemptFilter" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                            <span class="text-gray-700 dark:text-gray-300">NRC Exempt Only</span>
+                        </label>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="dotExemptFilter" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                            <span class="text-gray-700 dark:text-gray-300">DOT Exempt Only</span>
+                        </label>
+                    </div>
+                    <div class="flex-grow"></div>
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <button id="saveSelectionBtn" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Save</button>
+                        <button id="loadSelectionBtn" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Load</button>
+                    </div>
+                    <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
                         <label class="toggle-switch">
                             <input type="checkbox" id="unitToggle">
@@ -183,7 +269,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.37 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.53 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -222,6 +308,103 @@
             </div>
             <div id="summationContent" class="p-6">
                 <!-- Summation content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">User Guide</h2>
+                <button id="closeHelpModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="prose prose-lg dark:prose-invert max-w-none space-y-4">
+                    <div>
+                        <h2 class="!mb-2 font-bold">1. Overview</h2>
+                        <p>This tool is a dynamic, searchable database designed to help you quickly look up information on various radioactive commodities. You can search, sort, and filter a comprehensive list of items, view their activity levels in different units, and compare them against key regulatory limits from the NRC and DOT.</p>
+                    </div>
+                    <hr class="dark:border-gray-600">
+                    <div>
+                        <h2 class="!mb-2 font-bold">2. Core Features</h2>
+                        <div class="space-y-4 pl-4">
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">2.1 Searching and Filtering</h3>
+                                <p>You have several powerful tools to narrow down the list to find exactly what you're looking for:</p>
+                                <ul>
+                                    <li><strong>Text Search:</strong> Simply type in the search bar to filter by <strong>Name</strong>, <strong>NSN</strong>, or <strong>NIIN</strong>. The table will update in real-time as you type.</li>
+                                    <li><strong>Radionuclide Filter:</strong> Use the dropdown menu to display only items containing a specific radionuclide. Select "All Radionuclides" to clear this filter.</li>
+                                    <li><strong>Exemption Filters:</strong>
+                                        <ul>
+                                            <li><strong>NRC Exempt Only:</strong> Check this box to show only items whose activity is at or below the NRC exemption limit.</li>
+                                            <li><strong>DOT Exempt Only:</strong> Check this box to show only items whose activity is at or below the DOT exemption limit for consignments.</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                                <p>All filters work together, allowing you to create highly specific queries.</p>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">2.2 Sorting</h3>
+                                <p>Every column in the table is sortable.</p>
+                                <ul>
+                                    <li><strong>Click a column header once</strong> to sort it in ascending order (A-Z, 0-9).</li>
+                                    <li><strong>Click the same header again</strong> to sort in descending order (Z-A, 9-0). An arrow (▲ or ▼) will appear to indicate the current sort direction.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">2.3 Unit Conversion & Dark Mode</h3>
+                                <ul>
+                                    <li><strong>Ci/Bq Toggle:</strong> Use the toggle switch to instantly convert all activity and limit values between traditional units (Curies) and SI units (Becquerels).</li>
+                                    <li><strong>Dark Mode:</strong> Click the sun/moon icon toggle to switch between light and dark themes for comfortable viewing. Your preference will be saved in your browser.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="dark:border-gray-600">
+                    <div>
+                        <h2 class="!mb-2 font-bold">3. Interactive Tools</h2>
+                        <div class="space-y-4 pl-4">
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">3.1 Selecting Items</h3>
+                                <p>Click the checkbox in the first column of any row to "select" an item. The row will highlight in yellow. This enables the action buttons at the top of the table.</p>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">3.2 Action Buttons</h3>
+                                <p>Once you have selected one or more items, the following buttons will become active:</p>
+                                <ul>
+                                    <li><strong>Summation Tool:</strong> (Requires 1+ items) Opens a powerful calculator for analyzing a potential package or inventory.</li>
+                                    <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
+                                    <li><strong>Export:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
+                                    <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">3.3 Detail View</h3>
+                                <p>Click anywhere on a row (except the "Select" column) to open a detailed pop-up view for that specific item. This view shows:</p>
+                                <ul>
+                                    <li>NSN and NIIN for easy copying.</li>
+                                    <li>A direct link to look up the item on ISO-Group.com.</li>
+                                    <li>A clear, color-coded comparison of the item's activity against all relevant regulatory limits (NRC, DOT, UN 2911).</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1 font-bold">3.4 Summation Tool</h3>
+                                <p>This is the most powerful feature for practical use. After selecting one or more items and clicking "Summation," a modal appears where you can:</p>
+                                <ol>
+                                    <li><strong>Enter Quantities:</strong> Input the number of each selected item you are grouping together.</li>
+                                    <li><strong>Select a Limit:</strong> Use the "Compare Total Against" dropdown to choose which regulatory limit you want to evaluate.</li>
+                                    <li><strong>Analyze Totals:</strong> The tool automatically calculates:
+                                        <ul>
+                                            <li>The total activity for each radionuclide in your group.</li>
+                                            <li>The <strong>Sum of Ratios (SOR)</strong>, which tells you if your combined package is compliant with the selected limit. An SOR of 1.0 or less is a "PASS."</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -393,7 +576,8 @@
             { name: "Chemical Agent Monitor", nsn: "6665-99-725-9996", radionuclide: "Ni-63", activity: "10", units: "mCi" },
             { name: "Indicator, Pressure", nsn: "6685-01-356-9967", radionuclide: "Sr-90", activity: "100", units: "µCi" },
             { name: "Meter, Brightness", nsn: "6695-01-221-3251", radionuclide: "C-14", activity: "50", units: "µCi" },
-            { name: "Marker, Self-Luminious", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" }
+            { name: "Marker, Self-Luminous", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" },
+            { name: "APD 2000", nsn: "6625-07-000-1329", radionuclide: "Ni-63", activity: "10", units: "mCi" }
         ];
 
         // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
@@ -527,6 +711,7 @@
 
         function processData(rawData) {
             const processed = [];
+            let uniqueId = 0;
             rawData.forEach(item => {
                 const hasMultipleNuclides = item.radionuclide.includes('/');
                 const hasMultipleActivities = String(item.activity).includes('/');
@@ -535,18 +720,18 @@
                     const nuclides = item.radionuclide.split('/');
                     const activities = String(item.activity).split('/');
                     if (nuclides.length === activities.length) {
-                        nuclides.forEach((nuclide, index) => {
-                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[index].trim() }));
+                        nuclides.forEach((nuclide, i) => {
+                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[i].trim() }, uniqueId++));
                         });
                         return; 
                     }
                 }
-                processed.push(createRowObject(item));
+                processed.push(createRowObject(item, uniqueId++));
             });
             return processed;
         }
         
-        function createRowObject(item) {
+        function createRowObject(item, id) {
             const radionuclide = item.radionuclide.trim();
             
             const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
@@ -556,6 +741,7 @@
             const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
 
             return {
+                id: id,
                 name: item.name,
                 nsn: item.nsn,
                 niin: item.nsn ? item.nsn.substring(5).replace(/-/g, '') : '',
@@ -587,7 +773,7 @@
             const isSiUnits = document.getElementById('unitToggle').checked;
             tableBody.innerHTML = '';
 
-            const rows = data.map((item, index) => {
+            const rows = data.map((item) => {
                 const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
                 const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
                 const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
@@ -595,8 +781,8 @@
                 const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
 
                 return `
-                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-index="${index}">
-                        <td class="px-6 py-4 text-center"><input type="checkbox" class="row-checkbox" data-index="${index}"></td>
+                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.id}">
+                        <td class="px-6 py-4 text-center"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">${item.nsn}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">${item.niin}</td>
@@ -617,7 +803,9 @@
             currentSort.direction = isAsc ? 'desc' : 'asc';
             currentSort.column = columnKey;
 
-            tableData.sort((a, b) => {
+            const filteredData = getFilteredData();
+
+            filteredData.sort((a, b) => {
                 let valA = a[columnKey];
                 let valB = b[columnKey];
                 
@@ -636,8 +824,7 @@
             });
 
             updateSortArrows();
-            populateTable(tableData);
-            filterTable();
+            populateTable(filteredData);
         }
         
         function updateSortArrows() {
@@ -651,46 +838,37 @@
                 arrow.classList.add(currentSort.direction);
             }
         }
-
-        function filterTable() {
+        
+        function getFilteredData() {
             const searchInput = document.getElementById("searchInput");
             const textFilter = searchInput.value.toUpperCase();
             const radionuclideFilter = document.getElementById('radionuclideFilter');
             const nuclideFilter = radionuclideFilter.value;
-            const table = document.getElementById("lookupTable");
-            const tr = table.getElementsByTagName("tr");
-            const noResults = document.getElementById("noResults");
-            let visibleRows = 0;
+            const nrcExemptOnly = document.getElementById('nrcExemptFilter').checked;
+            const dotExemptOnly = document.getElementById('dotExemptFilter').checked;
 
-            for (let i = 1; i < tr.length; i++) { // Start at 1 to skip header
-                let row = tr[i];
-                let tds = row.getElementsByTagName("td");
+            return tableData.filter(item => {
+                const nuclideMatch = nuclideFilter === 'all' || item.radionuclide === nuclideFilter;
                 
-                const rowNuclide = tds[4].textContent; 
-                
-                const nuclideMatch = (nuclideFilter === 'all' || rowNuclide === nuclideFilter);
-                
+                const nrcExemptMatch = !nrcExemptOnly || (item.nrc_exemption_val !== null && item.activity_val <= item.nrc_exemption_val);
+                const dotExemptMatch = !dotExemptOnly || (item.dot_exemption_val !== null && item.activity_val <= item.dot_exemption_val);
+
                 let textMatch = false;
                 if (textFilter === "") {
                     textMatch = true;
                 } else {
-                    // Check all cells for text match
-                    for (let j = 1; j < tds.length; j++) { // Start at 1 to skip checkbox cell
-                        if (tds[j].textContent.toUpperCase().indexOf(textFilter) > -1) {
-                            textMatch = true;
-                            break;
-                        }
-                    }
+                    const searchableValues = [item.name, item.nsn, item.niin];
+                    textMatch = searchableValues.some(val => val && val.toUpperCase().includes(textFilter));
                 }
 
-                if (nuclideMatch && textMatch) {
-                    row.style.display = "";
-                    visibleRows++;
-                } else {
-                    row.style.display = "none";
-                }
-            }
-            noResults.style.display = visibleRows === 0 ? 'block' : 'none';
+                return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
+            });
+        }
+
+        function filterTable() {
+            const filteredData = getFilteredData();
+            populateTable(filteredData);
+            document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -712,6 +890,13 @@
             const summationModal = document.getElementById('summationModal');
             const closeSummationModalBtn = document.getElementById('closeSummationModalBtn');
             const summationContent = document.getElementById('summationContent');
+            const nrcExemptFilter = document.getElementById('nrcExemptFilter');
+            const dotExemptFilter = document.getElementById('dotExemptFilter');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeHelpModalBtn = document.getElementById('closeHelpModalBtn');
+            const saveSelectionBtn = document.getElementById('saveSelectionBtn');
+            const loadSelectionBtn = document.getElementById('loadSelectionBtn');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -727,8 +912,7 @@
             });
 
             unitToggle.addEventListener('change', () => {
-                populateTable(tableData);
-                filterTable();
+                populateTable(getFilteredData());
             });
             
             tableBody.addEventListener('click', (event) => {
@@ -739,19 +923,14 @@
                 const checkbox = row.querySelector('.row-checkbox');
 
                 if (targetCell.cellIndex === 0) {
-                    if (event.target === checkbox) {
-                        // Let the default checkbox behavior happen, but still fire our change event
-                        const changeEvent = new Event('change', { bubbles: true });
-                        checkbox.dispatchEvent(changeEvent);
-                    } else {
-                        // If the cell is clicked (but not the checkbox itself), toggle the checkbox
+                    if (event.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
-                        const changeEvent = new Event('change', { bubbles: true });
-                        checkbox.dispatchEvent(changeEvent);
                     }
+                    const changeEvent = new Event('change', { bubbles: true });
+                    checkbox.dispatchEvent(changeEvent);
                 } else {
-                    const itemIndex = row.dataset.index;
-                    const item = tableData[itemIndex];
+                    const itemId = row.dataset.id;
+                    const item = tableData.find(d => d.id == itemId);
                     showDetailModal(item);
                 }
             });
@@ -769,6 +948,7 @@
                     exportBtn.disabled = selectedCount === 0;
                     clearSelectionBtn.disabled = selectedCount === 0;
                     summationBtn.disabled = selectedCount === 0;
+                    saveSelectionBtn.disabled = selectedCount === 0;
                 }
             });
 
@@ -818,7 +998,7 @@
 
             compareBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 
                 const isSiUnits = document.getElementById('unitToggle').checked;
 
@@ -860,7 +1040,7 @@
 
             exportBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 const isSiUnits = document.getElementById('unitToggle').checked;
                 
                 const headers = [
@@ -905,6 +1085,7 @@
                 exportBtn.disabled = true;
                 clearSelectionBtn.disabled = true;
                 summationBtn.disabled = true;
+                saveSelectionBtn.disabled = true;
             });
             
             summationBtn.addEventListener('click', () => {
@@ -913,66 +1094,94 @@
 
             function showSummationModal() {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 
                 let content = '<div id="summationItems" class="space-y-4">';
                 selectedItems.forEach((item, index) => {
                     content += `
                         <div class="flex items-center gap-4">
                             <label for="qty-${index}" class="w-2/3">${item.name}</label>
-                            <input type="number" id="qty-${index}" data-index="${index}" value="1" min="1" class="quantity-input w-1/3 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                            <input type="number" id="qty-${index}" data-id="${item.id}" value="1" min="1" class="quantity-input w-1/3 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
                         </div>
                     `;
                 });
-                content += '</div><hr class="my-4 dark:border-gray-600"><div id="summationTotals" class="space-y-2"></div>';
+                content += '</div><hr class="my-4 dark:border-gray-600">';
+                content += `
+                    <div class="flex items-center gap-4 mb-4">
+                        <label for="summationLimitSelect" class="font-semibold">Compare Total Against:</label>
+                        <select id="summationLimitSelect" class="px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
+                            <option value="nrc_exemption_val">NRC Exemption</option>
+                            <option value="dot_exemption_val">DOT Exemption</option>
+                            <option value="un2911_limit_val">UN 2911 Limit (per item)</option>
+                            <option value="un2911_pkg_limit_val">UN 2911 Limit (per package)</option>
+                        </select>
+                    </div>
+                `;
+                content += '<div id="summationTotals" class="space-y-2"></div>';
                 
                 summationContent.innerHTML = content;
                 summationModal.style.display = 'flex';
                 calculateSummationTotals();
 
                 document.getElementById('summationItems').addEventListener('input', calculateSummationTotals);
+                document.getElementById('summationLimitSelect').addEventListener('change', calculateSummationTotals);
             }
             
             function calculateSummationTotals() {
                 const isSiUnits = document.getElementById('unitToggle').checked;
+                const limitKey = document.getElementById('summationLimitSelect').value;
                 const totals = {};
-                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData[cb.dataset.index]);
+                const quantityInputs = document.querySelectorAll('#summationItems .quantity-input');
 
-                selectedItems.forEach((item, index) => {
-                    const quantity = document.getElementById(`qty-${index}`).valueAsNumber || 0;
+                quantityInputs.forEach(input => {
+                    const itemId = input.dataset.id;
+                    const item = tableData.find(d => d.id == itemId);
+                    const quantity = input.valueAsNumber || 0;
+                    const limitStrKey = limitKey.replace('_val', isSiUnits ? '_bq_str' : '_ci_str');
                     if (!totals[item.radionuclide]) {
-                        totals[item.radionuclide] = { totalActivity: 0, limit: item.un2911_pkg_limit_val };
+                        totals[item.radionuclide] = { totalActivity: 0, limit: item[limitKey], limitStr: item[limitStrKey] };
                     }
                     totals[item.radionuclide].totalActivity += item.activity_val * quantity;
                 });
 
                 let totalsContent = '<h3>Total Activity per Radionuclide:</h3>';
+                let sumOfRatios = 0;
+
                 for (const nuclide in totals) {
                     const totalActivity = totals[nuclide].totalActivity;
                     const limit = totals[nuclide].limit;
                     const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
-                    const displayLimit = isSiUnits ? formatBq(limit) : formatCi(limit);
+                    const displayLimit = totals[nuclide].limitStr;
                     
-                    let status, statusColor;
-                    if (limit === null) {
-                        status = 'N/A';
-                        statusColor = 'text-gray-500';
-                    } else if (totalActivity > limit) {
-                        status = 'ABOVE';
-                        statusColor = 'text-red-500';
-                    } else {
-                        status = 'BELOW';
-                        statusColor = 'text-green-500';
+                    if (limit !== null) {
+                        sumOfRatios += totalActivity / limit;
                     }
 
                     totalsContent += `
                         <div class="flex justify-between items-center">
                             <span><strong>${nuclide}:</strong> ${displayTotal}</span>
-                            <span class="font-bold ${statusColor}">${status} (${displayLimit})</span>
+                            <span class="text-gray-500 dark:text-gray-400">Limit: ${displayLimit}</span>
                         </div>
                     `;
                 }
+
+                let sorStatus, sorStatusColor;
+                if (sumOfRatios > 1) {
+                    sorStatus = 'ABOVE (FAIL)';
+                    sorStatusColor = 'text-red-500';
+                } else {
+                    sorStatus = 'BELOW (PASS)';
+                    sorStatusColor = 'text-green-500';
+                }
+
+                totalsContent += `<hr class="my-4 dark:border-gray-600">`;
+                totalsContent += `
+                    <div class="flex justify-between items-center">
+                        <strong>Sum of Ratios:</strong>
+                        <span class="font-bold ${sorStatusColor}">${sumOfRatios.toFixed(3)} - ${sorStatus}</span>
+                    </div>
+                `;
+
                 document.getElementById('summationTotals').innerHTML = totalsContent;
             }
 
@@ -992,11 +1201,53 @@
             }
 
             radionuclideFilter.addEventListener('change', filterTable);
+            nrcExemptFilter.addEventListener('change', filterTable);
+            dotExemptFilter.addEventListener('change', filterTable);
+
+            helpBtn.addEventListener('click', () => {
+                helpModal.style.display = 'flex';
+            });
+            closeHelpModalBtn.addEventListener('click', () => {
+                helpModal.style.display = 'none';
+            });
+
+            saveSelectionBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
+                localStorage.setItem('savedSelection', JSON.stringify(selectedIds));
+                
+                saveSelectionBtn.textContent = 'Saved!';
+                setTimeout(() => {
+                    saveSelectionBtn.textContent = 'Save';
+                }, 1500);
+                
+                loadSelectionBtn.disabled = false;
+            });
+
+            loadSelectionBtn.addEventListener('click', () => {
+                const savedIds = JSON.parse(localStorage.getItem('savedSelection'));
+                if (!savedIds || savedIds.length === 0) return;
+
+                clearSelectionBtn.click();
+
+                savedIds.forEach(id => {
+                    const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                    }
+                });
+            });
 
             tableData = processData(rawTableData);
             populateRadionuclideFilter();
             populateTable(tableData);
             sortTable('name');
+
+            if (localStorage.getItem('savedSelection')) {
+                loadSelectionBtn.disabled = false;
+            }
         });
     </script>
 
