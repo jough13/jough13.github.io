@@ -134,6 +134,7 @@
                         </select>
                     </div>
                     <div class="flex items-center gap-4 sm:gap-2">
+                        <button id="helpBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Help</button>
                         <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
                         <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
                         <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
@@ -198,7 +199,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.45 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.47 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -237,6 +238,103 @@
             </div>
             <div id="summationContent" class="p-6">
                 <!-- Summation content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">User Guide</h2>
+                <button id="closeHelpModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="prose prose-lg dark:prose-invert max-w-none space-y-4">
+                    <div>
+                        <h2 class="!mb-2">1. Overview</h2>
+                        <p>This tool is a dynamic, searchable database designed to help you quickly look up information on various radioactive commodities. You can search, sort, and filter a comprehensive list of items, view their activity levels in different units, and compare them against key regulatory limits from the NRC and DOT.</p>
+                    </div>
+                    <hr class="dark:border-gray-600">
+                    <div>
+                        <h2 class="!mb-2">2. Core Features</h2>
+                        <div class="space-y-4 pl-4">
+                            <div>
+                                <h3 class="!mt-4 !mb-1">2.1 Searching and Filtering</h3>
+                                <p>You have several powerful tools to narrow down the list to find exactly what you're looking for:</p>
+                                <ul>
+                                    <li><strong>Text Search:</strong> Simply type in the search bar to filter by <strong>Name</strong>, <strong>NSN</strong>, or <strong>NIIN</strong>. The table will update in real-time as you type.</li>
+                                    <li><strong>Radionuclide Filter:</strong> Use the dropdown menu to display only items containing a specific radionuclide. Select "All Radionuclides" to clear this filter.</li>
+                                    <li><strong>Exemption Filters:</strong>
+                                        <ul>
+                                            <li><strong>NRC Exempt Only:</strong> Check this box to show only items whose activity is at or below the NRC exemption limit.</li>
+                                            <li><strong>DOT Exempt Only:</strong> Check this box to show only items whose activity is at or below the DOT exemption limit for consignments.</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                                <p>All filters work together, allowing you to create highly specific queries.</p>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1">2.2 Sorting</h3>
+                                <p>Every column in the table is sortable.</p>
+                                <ul>
+                                    <li><strong>Click a column header once</strong> to sort it in ascending order (A-Z, 0-9).</li>
+                                    <li><strong>Click the same header again</strong> to sort in descending order (Z-A, 9-0). An arrow (▲ or ▼) will appear to indicate the current sort direction.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1">2.3 Unit Conversion & Dark Mode</h3>
+                                <ul>
+                                    <li><strong>Ci/Bq Toggle:</strong> Use the toggle switch to instantly convert all activity and limit values between traditional units (Curies) and SI units (Becquerels).</li>
+                                    <li><strong>Dark Mode:</strong> Click the sun/moon icon toggle to switch between light and dark themes for comfortable viewing. Your preference will be saved in your browser.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="dark:border-gray-600">
+                    <div>
+                        <h2 class="!mb-2">3. Interactive Tools</h2>
+                        <div class="space-y-4 pl-4">
+                            <div>
+                                <h3 class="!mt-4 !mb-1">3.1 Selecting Items</h3>
+                                <p>Click the checkbox in the first column of any row to "select" an item. The row will highlight in yellow. This enables the action buttons at the top of the table.</p>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1">3.2 Action Buttons</h3>
+                                <p>Once you have selected one or more items, the following buttons will become active:</p>
+                                <ul>
+                                    <li><strong>Summation Tool:</strong> (Requires 1+ items) Opens a powerful calculator for analyzing a potential package or inventory.</li>
+                                    <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
+                                    <li><strong>Export:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
+                                    <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1">3.3 Detail View</h3>
+                                <p>Click anywhere on a row (except the "Select" column) to open a detailed pop-up view for that specific item. This view shows:</p>
+                                <ul>
+                                    <li>NSN and NIIN for easy copying.</li>
+                                    <li>A direct link to look up the item on ISO-Group.com.</li>
+                                    <li>A clear, color-coded comparison of the item's activity against all relevant regulatory limits (NRC, DOT, UN 2911).</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="!mt-4 !mb-1">3.4 Summation Tool</h3>
+                                <p>This is the most powerful feature for practical use. After selecting one or more items and clicking "Summation," a modal appears where you can:</p>
+                                <ol>
+                                    <li><strong>Enter Quantities:</strong> Input the number of each selected item you are grouping together.</li>
+                                    <li><strong>Select a Limit:</strong> Use the "Compare Total Against" dropdown to choose which regulatory limit you want to evaluate.</li>
+                                    <li><strong>Analyze Totals:</strong> The tool automatically calculates:
+                                        <ul>
+                                            <li>The total activity for each radionuclide in your group.</li>
+                                            <li>The <strong>Sum of Ratios (SOR)</strong>, which tells you if your combined package is compliant with the selected limit. An SOR of 1.0 or less is a "PASS."</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -717,6 +815,9 @@
             const summationContent = document.getElementById('summationContent');
             const nrcExemptFilter = document.getElementById('nrcExemptFilter');
             const dotExemptFilter = document.getElementById('dotExemptFilter');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeHelpModalBtn = document.getElementById('closeHelpModalBtn');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -1021,6 +1122,13 @@
             radionuclideFilter.addEventListener('change', filterTable);
             nrcExemptFilter.addEventListener('change', filterTable);
             dotExemptFilter.addEventListener('change', filterTable);
+
+            helpBtn.addEventListener('click', () => {
+                helpModal.style.display = 'flex';
+            });
+            closeHelpModalBtn.addEventListener('click', () => {
+                helpModal.style.display = 'none';
+            });
 
             tableData = processData(rawTableData);
             populateRadionuclideFilter();
