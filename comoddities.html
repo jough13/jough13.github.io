@@ -200,7 +200,6 @@
                         </select>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-center">
-                        <button id="helpBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Help</button>
                         <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
                         <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
                         <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
@@ -222,6 +221,8 @@
                     <div class="flex items-center gap-2 sm:gap-3">
                         <button id="saveSelectionBtn" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Save</button>
                         <button id="loadSelectionBtn" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Load</button>
+                        <button id="clearSavedBtn" class="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear Saved</button>
+                        <button id="helpBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Help</button>
                     </div>
                     <div class="flex items-center gap-2 sm:gap-3">
                         <span class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300">Ci</span>
@@ -246,7 +247,9 @@
                 <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-center">Select</th>
+                            <th scope="col" class="px-6 py-3 text-center">
+                                <input type="checkbox" id="selectAllCheckbox" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                            </th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
                             <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
@@ -269,7 +272,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.53 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.55 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -377,6 +380,8 @@
                                     <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
                                     <li><strong>Export:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
                                     <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
+                                    <li><strong>Save:</strong> (Requires 1+ items) Stores your current selection in your browser's local storage so you can return to it later.</li>
+                                    <li><strong>Load:</strong> (Requires a saved selection) Clears any current selections and restores your previously saved group.</li>
                                 </ul>
                             </div>
                             <div>
@@ -782,16 +787,16 @@
 
                 return `
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.id}">
-                        <td class="px-6 py-4 text-center"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left">${item.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.nsn}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.niin}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">${item.radionuclide}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">${activity}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">${nrcExemption}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">${dotExemption}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911Limit}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap">${un2911PkgLimit}</td>
+                        <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Radionuclide">${item.radionuclide}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="NRC Exemption">${nrcExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="DOT Exemption">${dotExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="UN 2911 Limit (item)">${un2911Limit}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="UN 2911 Limit (package)">${un2911PkgLimit}</td>
                     </tr>
                 `;
             }).join('');
@@ -897,6 +902,8 @@
             const closeHelpModalBtn = document.getElementById('closeHelpModalBtn');
             const saveSelectionBtn = document.getElementById('saveSelectionBtn');
             const loadSelectionBtn = document.getElementById('loadSelectionBtn');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const clearSavedBtn = document.getElementById('clearSavedBtn');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -1222,6 +1229,7 @@
                 }, 1500);
                 
                 loadSelectionBtn.disabled = false;
+                clearSavedBtn.disabled = false;
             });
 
             loadSelectionBtn.addEventListener('click', () => {
@@ -1240,6 +1248,24 @@
                 });
             });
 
+            clearSavedBtn.addEventListener('click', () => {
+                localStorage.removeItem('savedSelection');
+                clearSavedBtn.disabled = true;
+                loadSelectionBtn.disabled = true;
+            });
+
+            selectAllCheckbox.addEventListener('change', () => {
+                const isChecked = selectAllCheckbox.checked;
+                const visibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr:not([style*="display: none"]) .row-checkbox');
+                visibleCheckboxes.forEach(checkbox => {
+                    if (checkbox.checked !== isChecked) {
+                        checkbox.checked = isChecked;
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                    }
+                });
+            });
+
             tableData = processData(rawTableData);
             populateRadionuclideFilter();
             populateTable(tableData);
@@ -1247,6 +1273,7 @@
 
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
+                clearSavedBtn.disabled = false;
             }
         });
     </script>
