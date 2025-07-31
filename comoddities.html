@@ -274,7 +274,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.58 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.66 | Last Updated: July 31, 2025</p>
         </footer>
     </div>
 
@@ -300,6 +300,9 @@
             </div>
             <div id="detailContent" class="p-6">
                 <!-- Detail content will be injected here -->
+            </div>
+            <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-end gap-4">
+                <!-- Edit/Delete buttons will be injected here -->
             </div>
         </div>
     </div>
@@ -378,12 +381,15 @@
                                 <h3 class="!mt-4 !mb-1 font-bold">3.2 Action Buttons</h3>
                                 <p>Once you have selected one or more items, the following buttons will become active:</p>
                                 <ul>
+                                    <li><strong>Add New Item:</strong> Opens a form to add a custom item to the table.</li>
+                                    <li><strong>Clear Added:</strong> Removes all custom items you have added.</li>
                                     <li><strong>Summation Tool:</strong> (Requires 1+ items) Opens a powerful calculator for analyzing a potential package or inventory.</li>
                                     <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
                                     <li><strong>Export:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
                                     <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
                                     <li><strong>Save:</strong> (Requires 1+ items) Stores your current selection in your browser's local storage so you can return to it later.</li>
                                     <li><strong>Load:</strong> (Requires a saved selection) Clears any current selections and restores your previously saved group.</li>
+                                    <li><strong>Clear Saved:</strong> Removes a saved selection from your browser's memory.</li>
                                 </ul>
                             </div>
                             <div>
@@ -411,6 +417,17 @@
                             </div>
                         </div>
                     </div>
+                    <hr class="dark:border-gray-600">
+                    <div>
+                        <h2 class="!mb-2 font-bold">4. Helpful Links & References</h2>
+                        <div class="space-y-4 pl-4">
+                            <ul>
+                                <li><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part030/part030-0071.html" target="_blank" class="text-blue-500 hover:underline">10 CFR § 30.71 - NRC Exempt Concentrations</a></li>
+                                <li><a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173" target="_blank" class="text-blue-500 hover:underline">49 CFR Part 173 - DOT Shippers General Requirements</a></li>
+                                <li><a href="https://www.iso-group.com/nsn-search" target="_blank" class="text-blue-500 hover:underline">ISO-Group NSN Search</a></li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -420,11 +437,12 @@
     <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Add Custom Item</h2>
+                <h2 id="addItemModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Add Custom Item</h2>
                 <button id="closeAddItemModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
             <div class="p-6">
                 <form id="addItemForm" class="space-y-4">
+                    <input type="hidden" id="itemEditId">
                     <div>
                         <label for="itemName" class="block mb-1 font-medium">Name or Nomenclature*</label>
                         <input type="text" id="itemName" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600" required>
@@ -432,10 +450,6 @@
                     <div>
                         <label for="itemNsn" class="block mb-1 font-medium">NSN</label>
                         <input type="text" id="itemNsn" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600">
-                    </div>
-                    <div>
-                        <label for="itemNiin" class="block mb-1 font-medium">NIIN</label>
-                        <input type="text" id="itemNiin" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:border-gray-600">
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div class="sm:col-span-1">
@@ -457,9 +471,10 @@
                             </select>
                         </div>
                     </div>
+                    <p class="text-sm italic text-gray-500 dark:text-gray-400 pt-2">*Note: Custom items are saved to your browser's local storage. Clearing your browser's cache or history may remove any items you have added.</p>
                     <div class="flex justify-end gap-4 pt-4">
                         <button type="button" id="cancelAddItemBtn" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 rounded-lg">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Item</button>
+                        <button type="submit" id="saveItemBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Save Item</button>
                     </div>
                 </form>
             </div>
@@ -766,10 +781,11 @@
             return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
         }
 
-        function processData(rawData) {
+        function processData(baseData, customData) {
             const processed = [];
             let uniqueId = 0;
-            rawData.forEach(item => {
+
+            baseData.forEach(item => {
                 const hasMultipleNuclides = item.radionuclide.includes('/');
                 const hasMultipleActivities = String(item.activity).includes('/');
 
@@ -778,17 +794,22 @@
                     const activities = String(item.activity).split('/');
                     if (nuclides.length === activities.length) {
                         nuclides.forEach((nuclide, i) => {
-                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[i].trim() }, uniqueId++));
+                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[i].trim(), isCustom: false }, uniqueId++));
                         });
                         return; 
                     }
                 }
-                processed.push(createRowObject(item, uniqueId++));
+                processed.push(createRowObject(item, uniqueId++, false));
             });
+            
+            customData.forEach(item => {
+                 processed.push(createRowObject({ ...item, isCustom: true }, item.id));
+            });
+
             return processed;
         }
         
-        function createRowObject(item, id) {
+        function createRowObject(item, id, isCustom = false) {
             const radionuclide = item.radionuclide.trim();
             
             const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
@@ -799,9 +820,10 @@
 
             return {
                 id: id,
+                isCustom: isCustom,
                 name: item.name,
                 nsn: item.nsn,
-                niin: item.nsn ? item.nsn.substring(5).replace(/-/g, '') : '',
+                niin: item.niin || (item.nsn ? item.nsn.substring(5).replace(/-/g, '') : ''),
                 radionuclide: radionuclide,
                 
                 activity_val: activityVal,
@@ -942,6 +964,7 @@
             const detailModal = document.getElementById('detailModal');
             const closeDetailModalBtn = document.getElementById('closeDetailModalBtn');
             const detailContent = document.getElementById('detailContent');
+            const detailActions = document.getElementById('detailActions');
             const detailModalTitle = document.getElementById('detailModalTitle');
             const radionuclideFilter = document.getElementById('radionuclideFilter');
             const summationModal = document.getElementById('summationModal');
@@ -1054,6 +1077,28 @@
 
                 content += `</div>`;
                 detailContent.innerHTML = content;
+
+                detailActions.innerHTML = '';
+                if(item.isCustom) {
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Edit';
+                    editBtn.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600';
+                    editBtn.onclick = () => {
+                        detailModal.style.display = 'none';
+                        showAddItemModal(item);
+                    };
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
+                    deleteBtn.onclick = () => {
+                        deleteCustomItem(item.id);
+                        detailModal.style.display = 'none';
+                    };
+                    detailActions.appendChild(editBtn);
+                    detailActions.appendChild(deleteBtn);
+                }
+
                 detailModal.style.display = 'flex';
             }
 
@@ -1325,7 +1370,7 @@
             });
 
             addItemBtn.addEventListener('click', () => {
-                addItemModal.style.display = 'flex';
+                showAddItemModal();
             });
             closeAddItemModalBtn.addEventListener('click', () => {
                 addItemModal.style.display = 'none';
@@ -1336,21 +1381,30 @@
 
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const newItem = {
+                const newItemData = {
                     name: document.getElementById('itemName').value,
                     nsn: document.getElementById('itemNsn').value,
-                    niin: document.getElementById('itemNiin').value,
                     radionuclide: document.getElementById('itemRadionuclide').value,
                     activity: document.getElementById('itemActivity').value,
                     units: document.getElementById('itemUnits').value,
                 };
-
+                
                 let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
-                customItems.push(newItem);
-                localStorage.setItem('customItems', JSON.stringify(customItems));
+                const editId = document.getElementById('itemEditId').value;
 
-                tableData = processData([...rawTableData, ...customItems]);
-                populateTable(tableData);
+                if (editId) { // Editing existing item
+                    const index = customItems.findIndex(item => item.id == editId);
+                    if(index > -1) {
+                        customItems[index] = {...newItemData, id: parseInt(editId)};
+                    }
+                } else { // Adding new item
+                    const newId = Date.now();
+                    customItems.push({...newItemData, id: newId });
+                }
+                
+                localStorage.setItem('customItems', JSON.stringify(customItems));
+                
+                tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
                 clearAddedBtn.disabled = false;
@@ -1361,8 +1415,7 @@
 
             clearAddedBtn.addEventListener('click', () => {
                 localStorage.removeItem('customItems');
-                tableData = processData(rawTableData);
-                populateTable(tableData);
+                tableData = processData(rawTableData, []);
                 filterTable();
                 populateRadionuclideFilter();
                 clearAddedBtn.disabled = true;
@@ -1379,8 +1432,47 @@
                 });
             }
 
+            function showAddItemModal(itemToEdit = null) {
+                addItemForm.reset();
+                if (itemToEdit) {
+                    const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                    const originalCustomItem = customItems.find(ci => ci.id === itemToEdit.id);
+
+                    document.getElementById('addItemModalTitle').textContent = 'Edit Custom Item';
+                    document.getElementById('saveItemBtn').textContent = 'Update Item';
+                    document.getElementById('itemEditId').value = itemToEdit.id;
+                    document.getElementById('itemName').value = itemToEdit.name;
+                    document.getElementById('itemNsn').value = itemToEdit.nsn;
+                    document.getElementById('itemRadionuclide').value = itemToEdit.radionuclide;
+                    
+                    if(originalCustomItem) {
+                        document.getElementById('itemActivity').value = originalCustomItem.activity;
+                        document.getElementById('itemUnits').value = originalCustomItem.units;
+                    }
+
+                } else {
+                    document.getElementById('addItemModalTitle').textContent = 'Add Custom Item';
+                    document.getElementById('saveItemBtn').textContent = 'Save Item';
+                    document.getElementById('itemEditId').value = '';
+                }
+                addItemModal.style.display = 'flex';
+            }
+
+            function deleteCustomItem(itemId) {
+                let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                customItems = customItems.filter(item => item.id !== itemId);
+                localStorage.setItem('customItems', JSON.stringify(customItems));
+
+                tableData = processData(rawTableData, customItems);
+                filterTable();
+                populateRadionuclideFilter();
+                if (customItems.length === 0) {
+                    clearAddedBtn.disabled = true;
+                }
+            }
+
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
-            tableData = processData([...rawTableData, ...customItems]);
+            tableData = processData(rawTableData, customItems);
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
             populateTable(tableData);
