@@ -325,7 +325,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.71 | Last Updated: August 1, 2025</p>
+            <p class="mt-2">Version 1.72 | Last Updated: August 1, 2025</p>
         </footer>
     </div>
 
@@ -534,6 +534,24 @@
     </div>
     
     <input type="file" id="importFileInput" class="hidden" accept=".json">
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 text-center">
+                <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11V6m0 8h.01M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <h3 id="confirmModalText" class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">Are you sure?</h3>
+                <button id="confirmModalConfirmBtn" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800 font-medium rounded-lg text-sm inline-flex items-center px-5 py-2.5 text-center mr-2">
+                    Yes, I'm sure
+                </button>
+                <button id="confirmModalCancelBtn" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">
+                    No, cancel
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // --- Raw Data (before processing) ---
@@ -1129,26 +1147,27 @@
                 }
             });
 
-            function copyToClipboard(text, element) {
-                const originalText = element.textContent;
+            function copyToClipboard(text, buttonElement) {
+                const originalContent = buttonElement.innerHTML;
+                
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
                 document.body.appendChild(textarea);
                 textarea.select();
                 try {
                     document.execCommand('copy');
-                    element.textContent = 'Copied!';
-                    element.classList.add('text-green-500');
+                    buttonElement.innerHTML = 'Copied!';
+                    buttonElement.classList.add('text-green-500');
                 } catch (err) {
                     console.error('Failed to copy text: ', err);
-                    element.textContent = 'Error!';
-                    element.classList.add('text-red-500');
+                    buttonElement.innerHTML = 'Error!';
+                    buttonElement.classList.add('text-red-500');
                 }
                 document.body.removeChild(textarea);
 
                 setTimeout(() => {
-                    element.textContent = originalText;
-                    element.classList.remove('text-green-500', 'text-red-500');
+                    buttonElement.innerHTML = originalContent;
+                    buttonElement.classList.remove('text-green-500', 'text-red-500');
                 }, 1500);
             }
 
@@ -1214,7 +1233,7 @@
                         e.stopPropagation();
                         const textToCopy = button.dataset.copy;
                         if(textToCopy) {
-                            copyToClipboard(textToCopy, button.querySelector('svg'));
+                            copyToClipboard(textToCopy, button);
                         }
                     });
                 });
@@ -1224,7 +1243,8 @@
                 const copyDetailsBtn = document.createElement('button');
                 copyDetailsBtn.textContent = 'Copy Details';
                 copyDetailsBtn.className = 'px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600';
-                copyDetailsBtn.onclick = () => {
+                copyDetailsBtn.onclick = (e) => {
+                    e.stopPropagation();
                     let textToCopy = `Item Details:\n--------------------------\n`;
                     textToCopy += `Name: ${item.name}\n`;
                     textToCopy += `NSN: ${item.nsn || 'N/A'}\n`;
@@ -1256,10 +1276,10 @@
                     deleteBtn.textContent = 'Delete';
                     deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
                     deleteBtn.onclick = () => {
-                        if (confirm(`Are you sure you want to delete the item "${item.name}"?`)) {
+                        showConfirmationModal(`Are you sure you want to delete the item "${item.name}"?`, () => {
                             deleteCustomItem(item.id);
                             detailModal.style.display = 'none';
-                        }
+                        });
                     };
                     customActionsContainer.appendChild(editBtn);
                     customActionsContainer.appendChild(deleteBtn);
@@ -1523,9 +1543,11 @@
             });
 
             clearSavedBtn.addEventListener('click', () => {
-                localStorage.removeItem('savedSelection');
-                clearSavedBtn.disabled = true;
-                loadSelectionBtn.disabled = true;
+                showConfirmationModal('Are you sure you want to clear your saved selection?', () => {
+                    localStorage.removeItem('savedSelection');
+                    clearSavedBtn.disabled = true;
+                    loadSelectionBtn.disabled = true;
+                });
             });
 
             selectAllCheckbox.addEventListener('change', () => {
@@ -1552,6 +1574,7 @@
 
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                addItemModal.style.display = 'none'; // Close modal immediately for better UX
                 const newItemData = {
                     name: document.getElementById('itemName').value,
                     nsn: document.getElementById('itemNsn').value,
@@ -1581,17 +1604,16 @@
                 updateCustomItemButtonsState();
 
                 addItemForm.reset();
-                addItemModal.style.display = 'none';
             });
 
             clearAddedBtn.addEventListener('click', () => {
-                if (confirm("Are you sure you want to delete all custom-added items? This action cannot be undone.")) {
+                showConfirmationModal("Are you sure you want to delete all custom-added items? This action cannot be undone.", () => {
                     localStorage.removeItem('customItems');
                     tableData = processData(rawTableData, []);
                     filterTable();
                     populateRadionuclideFilter();
                     updateCustomItemButtonsState();
-                }
+                });
             });
 
             function populateAddItemRadionuclides() {
@@ -1653,7 +1675,7 @@
             exportCustomBtn.addEventListener('click', () => {
                 const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 if (customItems.length === 0) {
-                    alert('No custom items to export.');
+                    showConfirmationModal('No custom items to export.', () => {});
                     return;
                 }
                 const jsonString = JSON.stringify(customItems, null, 2);
@@ -1684,13 +1706,14 @@
                             throw new Error('Imported file is not a valid list.');
                         }
                         
-                        if (confirm('Do you want to REPLACE your current custom items with the imported list?')) {
+                        showConfirmationModal('Do you want to REPLACE your current custom items with the imported list?', () => {
                             localStorage.setItem('customItems', JSON.stringify(importedItems));
                             tableData = processData(rawTableData, importedItems);
                             filterTable();
                             populateRadionuclideFilter();
                             updateCustomItemButtonsState();
-                        }
+                        });
+
                     } catch (error) {
                         alert('Error reading or parsing the file. Please make sure it is a valid JSON file exported from this tool.');
                         console.error("Import error:", error);
@@ -1725,6 +1748,33 @@
                     unitToggle.checked = state.isSiUnits || false;
                 }
             }
+            
+            // --- Custom Confirmation Modal ---
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmModalText = document.getElementById('confirmModalText');
+            const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+            const confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+            let confirmCallback = null;
+
+            function showConfirmationModal(message, onConfirm) {
+                confirmModalText.textContent = message;
+                confirmCallback = onConfirm;
+                confirmModal.style.display = 'flex';
+            }
+
+            confirmModalCancelBtn.addEventListener('click', () => {
+                confirmModal.style.display = 'none';
+                confirmCallback = null;
+            });
+
+            confirmModalConfirmBtn.addEventListener('click', () => {
+                confirmModal.style.display = 'none';
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
+                }
+                confirmCallback = null;
+            });
+
 
             // --- Event Listeners for State Saving ---
             searchInput.addEventListener('input', saveState);
