@@ -130,6 +130,17 @@
             text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
         }
 
+        /* Style for custom-added rows */
+        .custom-row {
+            background-color: #eff6ff; /* blue-50 */
+        }
+        .dark .custom-row {
+            background-color: #1e3a8a; /* A deep blue for dark mode */
+        }
+        .dark .custom-row:hover {
+            background-color: #1e40af; /* A slightly lighter blue for hover */
+        }
+
         /* Responsive Table Styles */
         @media (max-width: 1024px) {
             #lookupTable thead {
@@ -179,6 +190,13 @@
             .dark #lookupTable td:first-child {
                 background-color: #1f2937;
             }
+            #lookupTable tr.custom-row td:first-child {
+                background-color: #dbeafe;
+            }
+            .dark #lookupTable tr.custom-row td:first-child {
+                background-color: #1e3a8a;
+            }
+
             #lookupTable td:nth-child(2) {
                 font-size: 1.125rem; /* lg */
                 font-weight: 600;
@@ -190,6 +208,12 @@
             }
             .dark #lookupTable td:nth-child(2) {
                 background-color: #1f2937;
+            }
+            #lookupTable tr.custom-row td:nth-child(2) {
+                background-color: #dbeafe;
+            }
+            .dark #lookupTable tr.custom-row td:nth-child(2) {
+                background-color: #1e3a8a;
             }
             #lookupTable td:nth-child(2)::before {
                 display: none; /* Hide the "Name or Nomenclature" label */
@@ -301,7 +325,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.68 | Last Updated: August 1, 2025</p>
+            <p class="mt-2">Version 1.71 | Last Updated: August 1, 2025</p>
         </footer>
     </div>
 
@@ -328,8 +352,8 @@
             <div id="detailContent" class="p-6">
                 <!-- Detail content will be injected here -->
             </div>
-            <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-end gap-4">
-                <!-- Edit/Delete buttons will be injected here -->
+            <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-between items-center">
+                <!-- Action buttons will be injected here -->
             </div>
         </div>
     </div>
@@ -897,10 +921,19 @@
                 const un2911PkgLimit = isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str;
                 const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
 
+                const rowClasses = ['border-b', 'dark:border-gray-700', 'hover:bg-gray-50', 'dark:hover:bg-gray-600'];
+                if (item.isCustom) {
+                    rowClasses.push('custom-row');
+                } else {
+                    rowClasses.push('bg-white', 'dark:bg-gray-800');
+                }
+
+                const customIcon = item.isCustom ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="inline-block ml-2 text-blue-600 dark:text-blue-300" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>` : '';
+
                 return `
-                    <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.id}">
+                    <tr class="${rowClasses.join(' ')}" data-id="${item.id}">
                         <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}${customIcon}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Radionuclide">${item.radionuclide}</td>
@@ -987,6 +1020,7 @@
             populateTable(filteredData);
             document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
             updateSelectionState();
+            saveState(); // Save state whenever filters change
         }
 
         function updateSelectionState() {
@@ -1034,6 +1068,7 @@
             const importCustomBtn = document.getElementById('importCustomBtn');
             const exportCustomBtn = document.getElementById('exportCustomBtn');
             const importFileInput = document.getElementById('importFileInput');
+            const searchInput = document.getElementById('searchInput');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1050,8 +1085,8 @@
             });
 
             unitToggle.addEventListener('change', () => {
-                // Just re-render the table with the current data
                 populateTable(getFilteredData());
+                saveState();
             });
             
             tableBody.addEventListener('click', (event) => {
@@ -1062,15 +1097,12 @@
                 const checkbox = row.querySelector('.row-checkbox');
 
                 if (targetCell.cellIndex === 0) {
-                    // If the click is on the checkbox cell but not the checkbox itself, toggle it
                     if (event.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
                     }
-                    // Dispatch a change event to trigger the selection logic
                     const changeEvent = new Event('change', { bubbles: true });
                     checkbox.dispatchEvent(changeEvent);
                 } else {
-                    // If any other cell is clicked, show the detail modal
                     const itemId = row.dataset.id;
                     const item = tableData.find(d => d.id == itemId);
                     if (item) {
@@ -1097,13 +1129,36 @@
                 }
             });
 
+            function copyToClipboard(text, element) {
+                const originalText = element.textContent;
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    element.textContent = 'Copied!';
+                    element.classList.add('text-green-500');
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    element.textContent = 'Error!';
+                    element.classList.add('text-red-500');
+                }
+                document.body.removeChild(textarea);
+
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.classList.remove('text-green-500', 'text-red-500');
+                }, 1500);
+            }
+
             function showDetailModal(item) {
                 const isSiUnits = document.getElementById('unitToggle').checked;
                 detailModalTitle.textContent = item.name;
 
                 let content = `<div class="space-y-4">`;
-                content += `<div><strong>NSN:</strong> ${item.nsn || 'N/A'}</div>`;
-                content += `<div><strong>NIIN:</strong> ${item.niin || 'N/A'}</div>`;
+                content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${item.nsn || 'N/A'} <button data-copy="${item.nsn || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy NSN"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg></button></span></div>`;
+                content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${item.niin || 'N/A'} <button data-copy="${item.niin || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy NIIN"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg></button></span></div>`;
                 if (item.nsn) {
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
@@ -1154,7 +1209,40 @@
                 content += `</div>`;
                 detailContent.innerHTML = content;
 
+                detailContent.querySelectorAll('.copy-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const textToCopy = button.dataset.copy;
+                        if(textToCopy) {
+                            copyToClipboard(textToCopy, button.querySelector('svg'));
+                        }
+                    });
+                });
+
                 detailActions.innerHTML = '';
+                
+                const copyDetailsBtn = document.createElement('button');
+                copyDetailsBtn.textContent = 'Copy Details';
+                copyDetailsBtn.className = 'px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600';
+                copyDetailsBtn.onclick = () => {
+                    let textToCopy = `Item Details:\n--------------------------\n`;
+                    textToCopy += `Name: ${item.name}\n`;
+                    textToCopy += `NSN: ${item.nsn || 'N/A'}\n`;
+                    textToCopy += `NIIN: ${item.niin || 'N/A'}\n`;
+                    textToCopy += `Radionuclide: ${item.radionuclide}\n`;
+                    textToCopy += `Activity: ${isSiUnits ? item.activity_bq_str : item.activity_ci_str}\n`;
+                    textToCopy += `--------------------------\n`;
+                    comparisons.forEach(comp => {
+                        let status = (item.activity_val === null || comp.limit === null) ? 'N/A' : (item.activity_val > comp.limit ? 'ABOVE' : 'BELOW');
+                        textToCopy += `${comp.label}: ${comp.str} (${status})\n`;
+                    });
+                    copyToClipboard(textToCopy, copyDetailsBtn);
+                };
+                detailActions.appendChild(copyDetailsBtn);
+
+                const customActionsContainer = document.createElement('div');
+                customActionsContainer.className = 'flex gap-4';
+                
                 if(item.isCustom) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'Edit';
@@ -1173,9 +1261,10 @@
                             detailModal.style.display = 'none';
                         }
                     };
-                    detailActions.appendChild(editBtn);
-                    detailActions.appendChild(deleteBtn);
+                    customActionsContainer.appendChild(editBtn);
+                    customActionsContainer.appendChild(deleteBtn);
                 }
+                detailActions.appendChild(customActionsContainer);
 
                 detailModal.style.display = 'flex';
             }
@@ -1396,10 +1485,6 @@
                 });
             }
 
-            radionuclideFilter.addEventListener('change', filterTable);
-            nrcExemptFilter.addEventListener('change', filterTable);
-            dotExemptFilter.addEventListener('change', filterTable);
-
             helpBtn.addEventListener('click', () => {
                 helpModal.style.display = 'flex';
             });
@@ -1617,6 +1702,35 @@
                 reader.readAsText(file);
             });
 
+            // --- State Management ---
+            function saveState() {
+                const state = {
+                    searchTerm: searchInput.value,
+                    radionuclide: radionuclideFilter.value,
+                    nrcExempt: nrcExemptFilter.checked,
+                    dotExempt: dotExemptFilter.checked,
+                    isSiUnits: unitToggle.checked
+                };
+                localStorage.setItem('lookupTableState', JSON.stringify(state));
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem('lookupTableState');
+                if (savedState) {
+                    const state = JSON.parse(savedState);
+                    searchInput.value = state.searchTerm || '';
+                    radionuclideFilter.value = state.radionuclide || 'all';
+                    nrcExemptFilter.checked = state.nrcExempt || false;
+                    dotExemptFilter.checked = state.dotExempt || false;
+                    unitToggle.checked = state.isSiUnits || false;
+                }
+            }
+
+            // --- Event Listeners for State Saving ---
+            searchInput.addEventListener('input', saveState);
+            radionuclideFilter.addEventListener('change', saveState);
+            nrcExemptFilter.addEventListener('change', saveState);
+            dotExemptFilter.addEventListener('change', saveState);
 
             // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
@@ -1624,6 +1738,9 @@
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
             updateCustomItemButtonsState();
+            
+            loadState(); // Load saved filters and toggles
+            filterTable(); // Apply loaded filters
             sortTable('name'); // Initial sort
 
             if (localStorage.getItem('savedSelection')) {
