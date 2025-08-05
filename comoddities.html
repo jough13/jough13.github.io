@@ -781,10 +781,12 @@
             return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
         }
 
+        // --- Data Processing ---
         function processData(baseData, customData) {
             const processed = [];
             let uniqueId = 0;
 
+            // Process the initial, hardcoded data
             baseData.forEach(item => {
                 const hasMultipleNuclides = item.radionuclide.includes('/');
                 const hasMultipleActivities = String(item.activity).includes('/');
@@ -794,16 +796,22 @@
                     const activities = String(item.activity).split('/');
                     if (nuclides.length === activities.length) {
                         nuclides.forEach((nuclide, i) => {
-                            processed.push(createRowObject({ ...item, radionuclide: nuclide.trim(), activity: activities[i].trim(), isCustom: false }, uniqueId++));
+                            // Create a new item object for each part of the multi-nuclide entry
+                            const singleItem = { ...item, radionuclide: nuclide.trim(), activity: activities[i].trim() };
+                            // Pass `false` for isCustom since this is base data
+                            processed.push(createRowObject(singleItem, uniqueId++, false));
                         });
-                        return; 
+                        return; // Skip the final push for the original multi-nuclide item
                     }
                 }
+                // Process regular base data items
                 processed.push(createRowObject(item, uniqueId++, false));
             });
             
+            // Process custom data from local storage
             customData.forEach(item => {
-                 processed.push(createRowObject({ ...item, isCustom: true }, item.id));
+                // Pass `true` for isCustom since this is user-added data
+                processed.push(createRowObject(item, item.id, true));
             });
 
             return processed;
@@ -863,8 +871,8 @@
                     <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.id}">
                         <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Radionuclide">${item.radionuclide}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="NRC Exemption">${nrcExemption}</td>
@@ -948,6 +956,13 @@
             const filteredData = getFilteredData();
             populateTable(filteredData);
             document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
+            updateSelectionState();
+        }
+
+        function updateSelectionState() {
+            const allVisibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
+            const allVisibleChecked = Array.from(allVisibleCheckboxes).every(cb => cb.checked);
+            document.getElementById('selectAllCheckbox').checked = allVisibleCheckboxes.length > 0 && allVisibleChecked;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -985,6 +1000,7 @@
             const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
             const addItemForm = document.getElementById('addItemForm');
             const itemRadionuclideSelect = document.getElementById('itemRadionuclide');
+            const clearAddedBtn = document.getElementById('clearAddedBtn');
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -1000,6 +1016,7 @@
             });
 
             unitToggle.addEventListener('change', () => {
+                // Just re-render the table with the current data
                 populateTable(getFilteredData());
             });
             
@@ -1011,15 +1028,20 @@
                 const checkbox = row.querySelector('.row-checkbox');
 
                 if (targetCell.cellIndex === 0) {
+                    // If the click is on the checkbox cell but not the checkbox itself, toggle it
                     if (event.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
                     }
+                    // Dispatch a change event to trigger the selection logic
                     const changeEvent = new Event('change', { bubbles: true });
                     checkbox.dispatchEvent(changeEvent);
                 } else {
+                    // If any other cell is clicked, show the detail modal
                     const itemId = row.dataset.id;
                     const item = tableData.find(d => d.id == itemId);
-                    showDetailModal(item);
+                    if (item) {
+                        showDetailModal(item);
+                    }
                 }
             });
 
@@ -1037,6 +1059,7 @@
                     clearSelectionBtn.disabled = selectedCount === 0;
                     summationBtn.disabled = selectedCount === 0;
                     saveSelectionBtn.disabled = selectedCount === 0;
+                    updateSelectionState();
                 }
             });
 
@@ -1052,8 +1075,8 @@
                 ];
 
                 let content = `<div class="space-y-4">`;
-                content += `<div><strong>NSN:</strong> ${item.nsn}</div>`;
-                content += `<div><strong>NIIN:</strong> ${item.niin}</div>`;
+                content += `<div><strong>NSN:</strong> ${item.nsn || 'N/A'}</div>`;
+                content += `<div><strong>NIIN:</strong> ${item.niin || 'N/A'}</div>`;
                 if (item.nsn) {
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
@@ -1092,8 +1115,10 @@
                     deleteBtn.textContent = 'Delete';
                     deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
                     deleteBtn.onclick = () => {
-                        deleteCustomItem(item.id);
-                        detailModal.style.display = 'none';
+                        if (confirm(`Are you sure you want to delete the item "${item.name}"?`)) {
+                            deleteCustomItem(item.id);
+                            detailModal.style.display = 'none';
+                        }
                     };
                     detailActions.appendChild(editBtn);
                     detailActions.appendChild(deleteBtn);
@@ -1134,7 +1159,7 @@
                     content += '<tr class="border-b dark:border-gray-700">';
                     content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
                     selectedData.forEach(item => {
-                        content += `<td class="px-4 py-2">${item[attr.key]}</td>`;
+                        content += `<td class="px-4 py-2">${item[attr.key] || ''}</td>`;
                     });
                     content += '</tr>';
                 });
@@ -1159,19 +1184,19 @@
                     "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
                 ];
 
-                let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+                let csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h}"`).join(",") + "\n";
 
                 selectedData.forEach(item => {
                     const row = [
                         `"${item.name}"`,
-                        item.nsn,
-                        item.niin,
-                        item.radionuclide,
-                        isSiUnits ? item.activity_bq_str : item.activity_ci_str,
-                        isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str,
-                        isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str,
-                        isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str,
-                        isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str
+                        `"${item.nsn || ''}"`,
+                        `"${item.niin || ''}"`,
+                        `"${item.radionuclide}"`,
+                        `"${isSiUnits ? item.activity_bq_str : item.activity_ci_str}"`,
+                        `"${isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str}"`,
+                        `"${isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str}"`,
+                        `"${isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str}"`,
+                        `"${isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str}"`
                     ].join(",");
                     csvContent += row + "\n";
                 });
@@ -1196,6 +1221,7 @@
                 clearSelectionBtn.disabled = true;
                 summationBtn.disabled = true;
                 saveSelectionBtn.disabled = true;
+                selectAllCheckbox.checked = false;
             });
             
             summationBtn.addEventListener('click', () => {
@@ -1263,7 +1289,7 @@
                     const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
                     const displayLimit = totals[nuclide].limitStr;
                     
-                    if (limit !== null) {
+                    if (limit !== null && limit > 0) {
                         sumOfRatios += totalActivity / limit;
                     }
 
@@ -1286,7 +1312,7 @@
 
                 totalsContent += `<hr class="my-4 dark:border-gray-600">`;
                 totalsContent += `
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center text-lg">
                         <strong>Sum of Ratios:</strong>
                         <span class="font-bold ${sorStatusColor}">${sumOfRatios.toFixed(3)} - ${sorStatus}</span>
                     </div>
@@ -1359,7 +1385,7 @@
 
             selectAllCheckbox.addEventListener('change', () => {
                 const isChecked = selectAllCheckbox.checked;
-                const visibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr:not([style*="display: none"]) .row-checkbox');
+                const visibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
                 visibleCheckboxes.forEach(checkbox => {
                     if (checkbox.checked !== isChecked) {
                         checkbox.checked = isChecked;
@@ -1414,11 +1440,13 @@
             });
 
             clearAddedBtn.addEventListener('click', () => {
-                localStorage.removeItem('customItems');
-                tableData = processData(rawTableData, []);
-                filterTable();
-                populateRadionuclideFilter();
-                clearAddedBtn.disabled = true;
+                if (confirm("Are you sure you want to delete all custom-added items? This action cannot be undone.")) {
+                    localStorage.removeItem('customItems');
+                    tableData = processData(rawTableData, []);
+                    filterTable();
+                    populateRadionuclideFilter();
+                    clearAddedBtn.disabled = true;
+                }
             });
 
             function populateAddItemRadionuclides() {
@@ -1471,12 +1499,12 @@
                 }
             }
 
+            // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
             tableData = processData(rawTableData, customItems);
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
-            populateTable(tableData);
-            sortTable('name');
+            sortTable('name'); // Initial sort
 
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
