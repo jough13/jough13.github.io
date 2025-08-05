@@ -104,6 +104,31 @@
         tr td:not(:first-child) {
             cursor: pointer;
         }
+        
+        /* Styles for new progress/bar charts */
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 0.375rem; /* rounded-md */
+            overflow: hidden;
+            margin-top: 0.25rem; /* mt-1 */
+        }
+        .dark .progress-bar-container {
+            background-color: #374151; /* dark:bg-gray-700 */
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 0.375rem; /* rounded-md */
+            transition: width 0.5s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+        }
 
         /* Responsive Table Styles */
         @media (max-width: 1024px) {
@@ -201,10 +226,12 @@
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-center">
                         <button id="addItemBtn" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Add New Item</button>
+                        <button id="importCustomBtn" class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">Import Custom</button>
+                        <button id="exportCustomBtn" class="px-4 py-2 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export Custom</button>
                         <button id="clearAddedBtn" class="px-4 py-2 bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear Added</button>
                         <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
                         <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
-                        <button id="exportBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export</button>
+                        <button id="exportSelectionBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export Selection</button>
                         <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
                     </div>
                 </div>
@@ -274,7 +301,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.67 | Last Updated: July 31, 2025</p>
+            <p class="mt-2">Version 1.68 | Last Updated: August 1, 2025</p>
         </footer>
     </div>
 
@@ -382,10 +409,11 @@
                                 <p>Once you have selected one or more items, the following buttons will become active:</p>
                                 <ul>
                                     <li><strong>Add New Item:</strong> Opens a form to add a custom item to the table.</li>
+                                    <li><strong>Import/Export Custom:</strong> Save your custom-added items to a file or load them from a file. This is useful for backups or sharing with others.</li>
                                     <li><strong>Clear Added:</strong> Removes all custom items you have added.</li>
                                     <li><strong>Summation Tool:</strong> (Requires 1+ items) Opens a powerful calculator for analyzing a potential package or inventory.</li>
                                     <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
-                                    <li><strong>Export:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
+                                    <li><strong>Export Selection:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
                                     <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
                                     <li><strong>Save:</strong> (Requires 1+ items) Stores your current selection in your browser's local storage so you can return to it later.</li>
                                     <li><strong>Load:</strong> (Requires a saved selection) Clears any current selections and restores your previously saved group.</li>
@@ -480,6 +508,8 @@
             </div>
         </div>
     </div>
+    
+    <input type="file" id="importFileInput" class="hidden" accept=".json">
 
     <script>
         // --- Raw Data (before processing) ---
@@ -970,7 +1000,7 @@
             const unitToggle = document.getElementById('unitToggle');
             const tableBody = document.querySelector('#lookupTable tbody');
             const compareBtn = document.getElementById('compareBtn');
-            const exportBtn = document.getElementById('exportBtn');
+            const exportSelectionBtn = document.getElementById('exportSelectionBtn');
             const clearSelectionBtn = document.getElementById('clearSelectionBtn');
             const summationBtn = document.getElementById('summationBtn');
             const compareModal = document.getElementById('compareModal');
@@ -1001,6 +1031,10 @@
             const addItemForm = document.getElementById('addItemForm');
             const itemRadionuclideSelect = document.getElementById('itemRadionuclide');
             const clearAddedBtn = document.getElementById('clearAddedBtn');
+            const importCustomBtn = document.getElementById('importCustomBtn');
+            const exportCustomBtn = document.getElementById('exportCustomBtn');
+            const importFileInput = document.getElementById('importFileInput');
+
 
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
@@ -1055,7 +1089,7 @@
                     }
                     const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
                     compareBtn.disabled = selectedCount < 2;
-                    exportBtn.disabled = selectedCount === 0;
+                    exportSelectionBtn.disabled = selectedCount === 0;
                     clearSelectionBtn.disabled = selectedCount === 0;
                     summationBtn.disabled = selectedCount === 0;
                     saveSelectionBtn.disabled = selectedCount === 0;
@@ -1067,6 +1101,15 @@
                 const isSiUnits = document.getElementById('unitToggle').checked;
                 detailModalTitle.textContent = item.name;
 
+                let content = `<div class="space-y-4">`;
+                content += `<div><strong>NSN:</strong> ${item.nsn || 'N/A'}</div>`;
+                content += `<div><strong>NIIN:</strong> ${item.niin || 'N/A'}</div>`;
+                if (item.nsn) {
+                    content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
+                }
+                content += `<hr class="dark:border-gray-600 my-4">`;
+                content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of ${item.radionuclide}</div>`;
+                
                 const comparisons = [
                     { label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
                     { label: 'DOT Exemption', limit: item.dot_exemption_val, str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str },
@@ -1074,17 +1117,9 @@
                     { label: 'UN 2911 Limit (package)', limit: item.un2911_pkg_limit_val, str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str }
                 ];
 
-                let content = `<div class="space-y-4">`;
-                content += `<div><strong>NSN:</strong> ${item.nsn || 'N/A'}</div>`;
-                content += `<div><strong>NIIN:</strong> ${item.niin || 'N/A'}</div>`;
-                if (item.nsn) {
-                    content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
-                }
-                content += `<hr class="dark:border-gray-600">`;
-                content += `<div><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of ${item.radionuclide}</div>`;
-                
                 comparisons.forEach(comp => {
-                    let status, statusColor;
+                    let status, statusColor, percentage = 0;
+                    
                     if (item.activity_val === null || comp.limit === null) {
                         status = 'N/A';
                         statusColor = 'text-gray-500';
@@ -1095,7 +1130,25 @@
                         status = 'BELOW';
                         statusColor = 'text-green-500';
                     }
+
+                    if (item.activity_val !== null && comp.limit !== null && comp.limit > 0) {
+                        percentage = Math.min((item.activity_val / comp.limit) * 100, 100);
+                    }
+
+                    content += `<div class="mb-3">`;
                     content += `<div class="flex justify-between items-center"><span>${comp.label}: ${comp.str}</span> <span class="font-bold ${statusColor}">${status}</span></div>`;
+                    
+                    if (status !== 'N/A') {
+                        const barColor = statusColor.replace('text-', 'bg-');
+                        content += `
+                            <div class="progress-bar-container">
+                                <div class="progress-bar ${barColor}" style="width: ${percentage}%;">
+                                    ${percentage.toFixed(0)}%
+                                </div>
+                            </div>
+                        `;
+                    }
+                    content += `</div>`;
                 });
 
                 content += `</div>`;
@@ -1173,7 +1226,7 @@
                 compareModal.style.display = 'none';
             });
 
-            exportBtn.addEventListener('click', () => {
+            exportSelectionBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 const isSiUnits = document.getElementById('unitToggle').checked;
@@ -1204,7 +1257,7 @@
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "radioactive_commodities.csv");
+                link.setAttribute("download", "radioactive_commodities_selection.csv");
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -1217,7 +1270,7 @@
                     checkbox.closest('tr').classList.remove('selected-row');
                 });
                 compareBtn.disabled = true;
-                exportBtn.disabled = true;
+                exportSelectionBtn.disabled = true;
                 clearSelectionBtn.disabled = true;
                 summationBtn.disabled = true;
                 saveSelectionBtn.disabled = true;
@@ -1309,12 +1362,19 @@
                     sorStatus = 'BELOW (PASS)';
                     sorStatusColor = 'text-green-500';
                 }
+                const sorPercentage = Math.min(sumOfRatios * 100, 100);
+                const sorBarColor = sorStatusColor.replace('text-', 'bg-');
 
                 totalsContent += `<hr class="my-4 dark:border-gray-600">`;
                 totalsContent += `
                     <div class="flex justify-between items-center text-lg">
                         <strong>Sum of Ratios:</strong>
                         <span class="font-bold ${sorStatusColor}">${sumOfRatios.toFixed(3)} - ${sorStatus}</span>
+                    </div>
+                    <div class="progress-bar-container mt-2">
+                        <div class="progress-bar ${sorBarColor}" style="width: ${sorPercentage}%;">
+                             ${sumOfRatios.toFixed(2)} / 1.0
+                        </div>
                     </div>
                 `;
 
@@ -1433,7 +1493,7 @@
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
-                clearAddedBtn.disabled = false;
+                updateCustomItemButtonsState();
 
                 addItemForm.reset();
                 addItemModal.style.display = 'none';
@@ -1445,7 +1505,7 @@
                     tableData = processData(rawTableData, []);
                     filterTable();
                     populateRadionuclideFilter();
-                    clearAddedBtn.disabled = true;
+                    updateCustomItemButtonsState();
                 }
             });
 
@@ -1494,24 +1554,81 @@
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
-                if (customItems.length === 0) {
-                    clearAddedBtn.disabled = true;
-                }
+                updateCustomItemButtonsState();
             }
+
+            // --- Import/Export Custom Items ---
+            function updateCustomItemButtonsState() {
+                const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                const hasCustomItems = customItems.length > 0;
+                clearAddedBtn.disabled = !hasCustomItems;
+                exportCustomBtn.disabled = !hasCustomItems;
+            }
+
+            exportCustomBtn.addEventListener('click', () => {
+                const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                if (customItems.length === 0) {
+                    alert('No custom items to export.');
+                    return;
+                }
+                const jsonString = JSON.stringify(customItems, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'radioactive_commodities_custom.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+
+            importCustomBtn.addEventListener('click', () => {
+                importFileInput.click();
+            });
+
+            importFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedItems = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedItems)) {
+                            throw new Error('Imported file is not a valid list.');
+                        }
+                        
+                        if (confirm('Do you want to REPLACE your current custom items with the imported list?')) {
+                            localStorage.setItem('customItems', JSON.stringify(importedItems));
+                            tableData = processData(rawTableData, importedItems);
+                            filterTable();
+                            populateRadionuclideFilter();
+                            updateCustomItemButtonsState();
+                        }
+                    } catch (error) {
+                        alert('Error reading or parsing the file. Please make sure it is a valid JSON file exported from this tool.');
+                        console.error("Import error:", error);
+                    } finally {
+                        // Reset file input to allow importing the same file again
+                        event.target.value = null;
+                    }
+                };
+                reader.readAsText(file);
+            });
+
 
             // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
             tableData = processData(rawTableData, customItems);
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
+            updateCustomItemButtonsState();
             sortTable('name'); // Initial sort
 
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
-            }
-            if (customItems.length > 0) {
-                clearAddedBtn.disabled = false;
             }
         });
     </script>
