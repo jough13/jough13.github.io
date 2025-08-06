@@ -170,6 +170,18 @@
         .dark .details-toggle-btn:hover {
             background-color: #374151; /* gray-700 */
         }
+        
+        /* NEW: Style for search result highlighting */
+        .highlight {
+            background-color: #fef08a; /* yellow-200 */
+            color: #713f12; /* yellow-900 */
+            border-radius: 2px;
+            padding: 1px 0;
+        }
+        .dark .highlight {
+            background-color: #facc15; /* yellow-400 */
+            color: #422006; /* yellow-950 */
+        }
 
         /* NEW: Toast Notification Styles */
         #toastContainer {
@@ -329,7 +341,15 @@
             <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
                 <div class="flex flex-col lg:flex-row items-center gap-4 w-full">
                     <div class="w-full lg:flex-grow flex flex-col sm:flex-row items-center gap-4">
-                        <input type="text" id="searchInput" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                        <!-- NEW: Search bar container -->
+                        <div class="relative w-full lg:flex-grow">
+                            <input type="text" id="searchInput" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                            <button id="clearSearchBtn" class="absolute inset-y-0 right-0 flex items-center pr-3 hidden" title="Clear search">
+                                <svg class="h-5 w-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
                         <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto">
                             <!-- Options will be populated by script -->
                         </select>
@@ -412,7 +432,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.76 | Last Updated: August 6, 2025</p>
+            <p class="mt-2">Version 1.77 | Last Updated: August 6, 2025</p>
         </footer>
     </div>
 
@@ -1058,10 +1078,21 @@
             };
         }
 
+        // NEW: Helper function to highlight search terms
+        function highlightText(text, searchTerm) {
+            if (!searchTerm || !text) {
+                return text;
+            }
+            // Escape special characters in search term for regex
+            const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
+            return text.replace(regex, `<span class="highlight">$1</span>`);
+        }
 
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
+            const searchTerm = document.getElementById('searchInput').value; // Get search term
             tableBody.innerHTML = '';
 
             const rows = data.map((item) => {
@@ -1079,13 +1110,18 @@
                 }
 
                 const customIcon = item.isCustom ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="inline-block ml-2 text-blue-600 dark:text-blue-300" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>` : '';
+                
+                // Apply highlighting
+                const highlightedName = highlightText(item.name, searchTerm);
+                const highlightedNsn = highlightText(item.nsn, searchTerm);
+                const highlightedNiin = highlightText(item.niin, searchTerm);
 
                 return `
                     <tr class="${rowClasses.join(' ')}" data-id="${item.id}">
                         <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
-                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}${customIcon}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NSN">${item.nsn || ''}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NIIN">${item.niin || ''}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${highlightedName}${customIcon}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NSN">${highlightedNsn || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NIIN">${highlightedNiin || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center radionuclide-link text-blue-500 hover:underline cursor-pointer" data-label="Radionuclide" data-radionuclide="${item.radionuclide}">${item.radionuclide}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="NRC Exemption">${nrcExemption}</td>
@@ -1261,6 +1297,7 @@
             const closeRadionuclideModalBtn = document.getElementById('closeRadionuclideModalBtn');
             const tooltipModal = document.getElementById('tooltipModal');
             const closeTooltipModalBtn = document.getElementById('closeTooltipModalBtn');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1345,6 +1382,19 @@
                 try {
                     document.execCommand('copy');
                     showToast('Copied to clipboard!', 'success');
+                    
+                    // NEW: Visual feedback on the button
+                    const clipboardIcon = buttonElement.querySelector('.clipboard-icon');
+                    const checkmarkIcon = buttonElement.querySelector('.checkmark-icon');
+                    if (clipboardIcon && checkmarkIcon) {
+                        clipboardIcon.style.display = 'none';
+                        checkmarkIcon.style.display = 'inline-block';
+                        setTimeout(() => {
+                            clipboardIcon.style.display = 'inline-block';
+                            checkmarkIcon.style.display = 'none';
+                        }, 1500);
+                    }
+
                 } catch (err) {
                     console.error('Failed to copy text: ', err);
                     showToast('Failed to copy!', 'error');
@@ -1356,9 +1406,18 @@
                 const isSiUnits = document.getElementById('unitToggle').checked;
                 detailModalTitle.textContent = item.name;
 
+                // NEW: HTML for copy buttons with two icons
+                const copyButtonHTML = (copyText) => `
+                    <button data-copy="${copyText || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy">
+                        <svg class="clipboard-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg>
+                        <svg class="checkmark-icon w-4 h-4 text-green-500 hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                    </button>
+                `;
+
                 let content = `<div class="space-y-4">`;
-                content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${item.nsn || 'N/A'} <button data-copy="${item.nsn || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy NSN"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg></button></span></div>`;
-                content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${item.niin || 'N/A'} <button data-copy="${item.niin || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy NIIN"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg></button></span></div>`;
+                content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${item.nsn || 'N/A'} ${copyButtonHTML(item.nsn)}</span></div>`;
+                content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${item.niin || 'N/A'} ${copyButtonHTML(item.niin)}</span></div>`;
+
                 if (item.nsn) {
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
@@ -1941,7 +2000,9 @@
                     radionuclide: radionuclideFilter.value,
                     nrcExempt: nrcExemptFilter.checked,
                     dotExempt: dotExemptFilter.checked,
-                    isSiUnits: unitToggle.checked
+                    isSiUnits: unitToggle.checked,
+                    sortColumn: currentSort.column, // NEW: Save sort column
+                    sortDirection: currentSort.direction // NEW: Save sort direction
                 };
                 localStorage.setItem('lookupTableState', JSON.stringify(state));
             }
@@ -1955,6 +2016,9 @@
                     nrcExemptFilter.checked = state.nrcExempt || false;
                     dotExemptFilter.checked = state.dotExempt || false;
                     unitToggle.checked = state.isSiUnits || false;
+                    // NEW: Load sort state, with a default
+                    currentSort.column = state.sortColumn || 'name';
+                    currentSort.direction = state.sortDirection || 'asc';
                 }
             }
             
@@ -2095,24 +2159,32 @@
                 tooltipModal.style.display = 'flex';
             }
             
-            // --- BUG FIX: Add event listener for the tooltip modal close button ---
             closeTooltipModalBtn.addEventListener('click', () => {
                 tooltipModal.style.display = 'none';
             });
 
-
-            // --- Event Listeners for State Saving ---
+            // --- Event Listeners for State Saving & UI Updates ---
             const debouncedFilterAndSave = debounce(() => {
                 filterTable();
                 saveState();
             }, 300);
 
-            searchInput.addEventListener('input', debouncedFilterAndSave);
+            searchInput.addEventListener('input', () => {
+                clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
+                debouncedFilterAndSave();
+            });
+
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                clearSearchBtn.classList.add('hidden');
+                filterTable();
+                saveState();
+            });
+
             radionuclideFilter.addEventListener('change', () => { filterTable(); saveState(); });
             nrcExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
             dotExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
             unitToggle.addEventListener('change', () => { filterTable(); saveState(); });
-
 
             // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
@@ -2121,9 +2193,13 @@
             populateAddItemRadionuclides();
             updateCustomItemButtonsState();
             
-            loadState(); // Load saved filters and toggles
-            filterTable(); // Apply loaded filters
-            sortTable('name'); // Initial sort
+            loadState(); // Load saved state
+            
+            // Apply loaded state
+            clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
+            filterTable(); 
+            sortTable(currentSort.column); // Apply loaded sort
+            updateSortArrows(); // Ensure arrows are correct on initial load
 
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
