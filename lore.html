@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lore | The Great Silence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* This CSS is identical to the main page to ensure a consistent look and feel. */
+        :root {
+            --color-deep-space: #0a0f18;
+            --color-content-bg: #ffffff;
+            --color-text-main: #212529;
+            --color-text-headings: #000000;
+            --color-accent-hud: #0056b3;
+            --color-accent-amber: #c75c00;
+            --color-archive-glitch: #0a663e;
+            --font-heading: 'Exo 2', sans-serif;
+            --font-body: 'Lora', serif;
+            --font-mono: 'Source-Code-Pro', monospace;
+        }
+
+        @keyframes stars-drift {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        body {
+            background-color: var(--color-deep-space);
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            animation: stars-drift 1200s linear infinite;
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem 1rem; 
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--color-content-bg);
+            color: var(--color-text-main);
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        nav {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            font-family: var(--font-heading);
+            color: var(--color-accent-hud);
+            text-decoration: none;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9em;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.3s, background-color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--color-content-bg);
+            background-color: var(--color-accent-hud);
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: var(--font-heading);
+            color: var(--color-text-headings);
+            font-weight: 400;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+        }
+
+        h1 { font-size: 2.5rem; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
+        h2 { font-size: 2rem; color: var(--color-accent-amber); }
+        h3 { font-size: 1.5rem; border-bottom: none; }
+        h4 { font-size: 1.2rem; color: var(--color-text-main); border-bottom: none; font-weight: 700;}
+
+
+        p { margin-bottom: 1.5rem; }
+
+        a {
+            color: var(--color-accent-hud);
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        
+        a:hover {
+            color: var(--color-text-headings);
+            text-decoration: underline;
+        }
+        
+        /* Style for the classified document header */
+        .document-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+        .document-header strong {
+            color: #d9534f; /* A red color for the clearance level */
+            text-transform: uppercase;
+        }
+        
+        .document-header.fta-clearance strong {
+             color: #5cb85c; /* A green color for FTA clearance */
+        }
+
+        .case-study {
+            background-color: rgba(200, 92, 0, 0.05); /* Light amber background */
+            border-left: 3px solid var(--color-accent-amber);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+        .case-study h3, .case-study h4 {
+            margin-top: 0;
+            color: var(--color-accent-amber);
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            margin: 3rem 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <!-- Updated nav links for the lore page -->
+            <a href="index.html">Foreword</a>
+            <a href="lore.html" class="active">Lore</a>
+            <a href="#starmap">Starmap</a>
+            <a href="#gallery">Gallery</a>
+            <a href="#chapters">Chapters</a>
+        </nav>
+
+        <main>
+            <article>
+                <h2>Archive Index</h2>
+                <ul>
+                    <li><a href="#helios-memo">Economic Primer: The Principle of Temporal Arbitrage</a></li>
+                    <li><a href="#fta-charter">The Alliance Charter: A Guide to Slow-Trade & Mutual Survival</a></li>
+                </ul>
+
+                <hr>
+
+                <section id="helios-memo">
+                    <h3>Economic Primer</h3>
+                    
+                    <div class="document-header">
+                        DOCUMENT ID: HELIOS-DIRECTORATE-STRATEGY-MEMO-77-GAMMA<br>
+                        SUBJECT: Foundational Principles of Relativistic Economics & Temporal Arbitrage<br>
+                        COMPILED BY: The Office of CEO Alistair Caine (Archived GSY 2550)<br>
+                        CLEARANCE: <strong>DIRECTORATE LEVEL - EYES ONLY</strong>
+                    </div>
+
+                    <h4>I. Abstract: The Economics of Yesterday's News</h4>
+                    <p>In a light-speed-limited universe, information is history... To Helios Dynamics, it is a predictive tool. Temporal Arbitrage is the science of using our superior relativistic drive technology to act on "past" events in a timeframe that allows us to control their "future."</p>
+
+                    <div class="case-study">
+                        <h4>II. The Mechanism: A Practical Example</h4>
+                        <p>The principle is best illustrated with a classic case study: the acquisition of the independent mining colony on Cygnus X-1's third moon, "Promise."...</p>
+                    </div>
+
+                    <h4>III. Applications & Implications</h4>
+                    <p><strong>Economic:</strong> This is our primary tool for market manipulation, hostile takeovers, and resource acquisition...</p>
+                    <p><strong>The Human Cost (The "Time Ghosts"):</strong> This strategy requires a special class of employee... They are permanently disconnected from the normal flow of human history...</p>
+
+                    <h4>IV. Strategic Vulnerabilities</h4>
+                    <p>Temporal Arbitrage is our greatest strength, but it relies on predictable history. It is useless against chaotic, non-linear events. The Galactic Archive is the ultimate wildcard...</p>
+                </section>
+
+                <hr>
+
+                <section id="fta-charter">
+                    <h3>The Alliance Charter</h3>
+
+                    <div class="document-header fta-clearance">
+                        DOCUMENT ID: FTA-GUIDE-NEW-CAPTAINS-V3.4<br>
+                        SUBJECT: An Introduction to the Principles of the Free-Trader Alliance<br>
+                        COMPILED BY: The Concord of Captains, New Geneva Office<br>
+                        CLEARANCE: <strong>FTA MEMBERS - EYES ONLY</strong>
+                    </div>
+
+                    <h4>I. Foreword: More Than a Guild, Less Than a Nation</h4>
+                    <p>Welcome, Captain. You are now part of the oldest and most resilient institution in the human diaspora... The Free-Trader Alliance is a promise. It is a handshake across the void. It is a recognition that out here, in the long, slow dark between worlds, the only things that truly have value are a signed contract, a good reputation, and a ship that will answer your distress call.</p>
+
+                    <h4>II. The Concord of Captains: The First Among Equals</h4>
+                    <p>The Alliance has no central ruler. Our leadership is a decentralized council of our most respected and trusted peers, known as The Concord of Captains...</p>
+
+                    <h4>III. The Trust Ledger: The Currency of Reputation</h4>
+                    <p>A credit can be forged. A corporate promise can be broken. A reputation on the Trust Ledger is absolute... A high Trust Score is more valuable than a hold full of platinum. It grants you access to the best contracts, lines of credit based on your name alone, and safe harbor in any FTA-aligned port.</p>
+
+                    <h4>IV. Hauler-Clan Culture: The Ship as the World</h4>
+                    <p>For the oldest FTA families, the ship is not a vehicle; it is the homeworld... The "Legacy Cairn" is the practice of interring crew members who die mid-voyage within the ship's own structure... The "Data-Psalm" is the ritual exchange of long, personal data-bursts and family histories with other Hauler-Clans...</p>
+
+                    <h4>V. The Driftways: The Unwritten Maps</h4>
+                    <p>The FTA's greatest strategic advantage over Helios and the Mandate is its mastery of secret, un-charted space... To betray the location of a Driftway is the ultimate crime within the Alliance, punishable by being permanently blacklisted from the Trust Ledger.</p>
+                </section>
+
+            </article>
+        </main>
+    </div>
+</body>
+</html>
