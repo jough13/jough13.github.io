@@ -140,6 +140,41 @@
         .dark .custom-row:hover {
             background-color: #1e40af; /* A slightly lighter blue for hover */
         }
+        
+        /* NEW: Toast Notification Styles */
+        #toastContainer {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .toast {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            animation: toast-fade-in 0.3s ease-out;
+        }
+        .toast.success { background-color: #22c55e; } /* green-500 */
+        .toast.error { background-color: #ef4444; } /* red-500 */
+        .toast.info { background-color: #3b82f6; } /* blue-500 */
+        
+        @keyframes toast-fade-in {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toast-fade-out {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
+        }
+        .toast.fade-out {
+            animation: toast-fade-out 0.3s ease-in forwards;
+        }
+
 
         /* Responsive Table Styles */
         @media (max-width: 1024px) {
@@ -231,6 +266,9 @@
     </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
+    
+    <!-- NEW: Toast Notification Container -->
+    <div id="toastContainer"></div>
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
@@ -243,7 +281,7 @@
             <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
                 <div class="flex flex-col lg:flex-row items-center gap-4 w-full">
                     <div class="w-full lg:flex-grow flex flex-col sm:flex-row items-center gap-4">
-                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
+                        <input type="text" id="searchInput" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
                         <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto">
                             <!-- Options will be populated by script -->
                         </select>
@@ -1048,6 +1086,31 @@
             document.getElementById('selectAllCheckbox').checked = allVisibleCheckboxes.length > 0 && allVisibleChecked;
         }
 
+        // --- NEW: Debounce helper function ---
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // --- NEW: Toast Notification function ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                toast.addEventListener('animationend', () => {
+                    toast.remove();
+                });
+            }, 3000); // Toast disappears after 3 seconds
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
             const unitToggle = document.getElementById('unitToggle');
@@ -1150,27 +1213,18 @@
             });
 
             function copyToClipboard(text, buttonElement) {
-                const originalContent = buttonElement.innerHTML;
-                
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
                 document.body.appendChild(textarea);
                 textarea.select();
                 try {
                     document.execCommand('copy');
-                    buttonElement.innerHTML = 'Copied!';
-                    buttonElement.classList.add('text-green-500');
+                    showToast('Copied to clipboard!', 'success');
                 } catch (err) {
                     console.error('Failed to copy text: ', err);
-                    buttonElement.innerHTML = 'Error!';
-                    buttonElement.classList.add('text-red-500');
+                    showToast('Failed to copy!', 'error');
                 }
                 document.body.removeChild(textarea);
-
-                setTimeout(() => {
-                    buttonElement.innerHTML = originalContent;
-                    buttonElement.classList.remove('text-green-500', 'text-red-500');
-                }, 1500);
             }
 
             function showDetailModal(item) {
@@ -1520,12 +1574,7 @@
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
                 localStorage.setItem('savedSelection', JSON.stringify(selectedIds));
-                
-                saveSelectionBtn.textContent = 'Saved!';
-                setTimeout(() => {
-                    saveSelectionBtn.textContent = 'Save';
-                }, 1500);
-                
+                showToast('Selection saved!', 'success');
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
             });
@@ -1544,6 +1593,7 @@
                         checkbox.dispatchEvent(changeEvent);
                     }
                 });
+                showToast('Selection loaded.', 'info');
             });
 
             clearSavedBtn.addEventListener('click', () => {
@@ -1551,6 +1601,7 @@
                     localStorage.removeItem('savedSelection');
                     clearSavedBtn.disabled = true;
                     loadSelectionBtn.disabled = true;
+                    showToast('Saved selection cleared.', 'success');
                 });
             });
 
@@ -1595,9 +1646,11 @@
                     if(index > -1) {
                         customItems[index] = {...newItemData, id: parseInt(editId)};
                     }
+                    showToast('Item updated!', 'success');
                 } else { // Adding new item
                     const newId = Date.now();
                     customItems.push({...newItemData, id: newId });
+                    showToast('Item added!', 'success');
                 }
                 
                 localStorage.setItem('customItems', JSON.stringify(customItems));
@@ -1617,6 +1670,7 @@
                     filterTable();
                     populateRadionuclideFilter();
                     updateCustomItemButtonsState();
+                    showToast('All custom items have been deleted.', 'success');
                 });
             });
 
@@ -1666,6 +1720,7 @@
                 filterTable();
                 populateRadionuclideFilter();
                 updateCustomItemButtonsState();
+                showToast('Item deleted.', 'success');
             }
 
             // --- Import/Export Custom Items ---
@@ -1679,7 +1734,7 @@
             exportCustomBtn.addEventListener('click', () => {
                 const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 if (customItems.length === 0) {
-                    showConfirmationModal('No custom items to export.', () => {});
+                    showToast('No custom items to export.', 'error');
                     return;
                 }
                 const jsonString = JSON.stringify(customItems, null, 2);
@@ -1692,6 +1747,7 @@
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
+                showToast('Custom items exported!', 'success');
             });
 
             importCustomBtn.addEventListener('click', () => {
@@ -1716,10 +1772,11 @@
                             filterTable();
                             populateRadionuclideFilter();
                             updateCustomItemButtonsState();
+                            showToast('Custom items imported successfully!', 'success');
                         });
 
                     } catch (error) {
-                        alert('Error reading or parsing the file. Please make sure it is a valid JSON file exported from this tool.');
+                        showToast('Error reading or parsing the file.', 'error');
                         console.error("Import error:", error);
                     } finally {
                         // Reset file input to allow importing the same file again
@@ -1814,10 +1871,11 @@
 
 
             // --- Event Listeners for State Saving ---
-            searchInput.addEventListener('input', saveState);
-            radionuclideFilter.addEventListener('change', saveState);
-            nrcExemptFilter.addEventListener('change', saveState);
-            dotExemptFilter.addEventListener('change', saveState);
+            // DEBOUNCE: We now use a debounced listener instead of the inline onkeyup
+            searchInput.addEventListener('input', debounce(filterTable, 300));
+            radionuclideFilter.addEventListener('change', filterTable);
+            nrcExemptFilter.addEventListener('change', filterTable);
+            dotExemptFilter.addEventListener('change', filterTable);
 
             // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
