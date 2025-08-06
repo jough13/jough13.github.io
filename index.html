@@ -259,9 +259,9 @@
         // This script runs immediately to set the dark mode class on initial load.
         // This prevents a "flash of incorrect theme" while the page is loading.
         if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
+            document.documentElement.classList.add('dark');
         } else {
-          document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove('dark');
         }
     </script>
 </head>
@@ -364,7 +364,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.72 | Last Updated: August 1, 2025</p>
+            <p class="mt-2">Version 1.74 | Last Updated: August 6, 2025</p>
         </footer>
     </div>
 
@@ -490,6 +490,7 @@
                                     <li>NSN and NIIN for easy copying.</li>
                                     <li>A direct link to look up the item on ISO-Group.com.</li>
                                     <li>A clear, color-coded comparison of the item's activity against all relevant regulatory limits (NRC, DOT, UN 2911).</li>
+                                    <li>A clickable info icon <svg class="inline-block w-4 h-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg> next to each limit for a plain-language explanation.</li>
                                 </ul>
                             </div>
                             <div>
@@ -601,6 +602,19 @@
             </div>
             <div id="radionuclideContent" class="p-6">
                 <!-- Radionuclide details will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Tooltip Modal -->
+    <div id="tooltipModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 id="tooltipModalTitle" class="text-xl font-bold text-gray-900 dark:text-white"></h2>
+                <button id="closeTooltipModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="tooltipContent" class="p-6">
+                <!-- Tooltip content will be injected here -->
             </div>
         </div>
     </div>
@@ -1108,7 +1122,7 @@
             populateTable(filteredData);
             document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
             updateSelectionState();
-            saveState(); 
+            // saveState(); // REMOVED FROM HERE
         }
 
         function updateSelectionState() {
@@ -1185,6 +1199,8 @@
             const clearFiltersBtn = document.getElementById('clearFiltersBtn');
             const radionuclideDetailModal = document.getElementById('radionuclideDetailModal');
             const closeRadionuclideModalBtn = document.getElementById('closeRadionuclideModalBtn');
+            const tooltipModal = document.getElementById('tooltipModal');
+            const closeTooltipModalBtn = document.getElementById('closeTooltipModalBtn');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1280,10 +1296,10 @@
                 content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of <span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${item.radionuclide}">${item.radionuclide}</span></div>`;
                 
                 const comparisons = [
-                    { label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
-                    { label: 'DOT Exemption', limit: item.dot_exemption_val, str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str },
-                    { label: 'UN 2911 Limit (item)', limit: item.un2911_limit_val, str: isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str },
-                    { label: 'UN 2911 Limit (package)', limit: item.un2911_pkg_limit_val, str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str }
+                    { key: 'nrc_exemption_val', label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
+                    { key: 'dot_exemption_val', label: 'DOT Exemption', limit: item.dot_exemption_val, str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str },
+                    { key: 'un2911_limit_val', label: 'UN 2911 Limit (item)', limit: item.un2911_limit_val, str: isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str },
+                    { key: 'un2911_pkg_limit_val', label: 'UN 2911 Limit (package)', limit: item.un2911_pkg_limit_val, str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str }
                 ];
 
                 comparisons.forEach(comp => {
@@ -1305,7 +1321,13 @@
                     }
 
                     content += `<div class="mb-3">`;
-                    content += `<div class="flex justify-between items-center"><span>${comp.label}: ${comp.str}</span> <span class="font-bold ${statusColor}">${status}</span></div>`;
+                    content += `<div class="flex justify-between items-center">
+                                    <span class="flex items-center">
+                                        ${comp.label}: ${comp.str}
+                                        <svg data-tooltip-key="${comp.key}" class="tooltip-icon ml-2 w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                                    </span> 
+                                    <span class="font-bold ${statusColor}">${status}</span>
+                                </div>`;
                     
                     if (status !== 'N/A') {
                         const barColor = statusColor.replace('text-', 'bg-');
@@ -1340,6 +1362,15 @@
                         if(textToCopy) {
                             copyToClipboard(textToCopy, button);
                         }
+                    });
+                });
+
+                // NEW: Add listener for tooltip icons
+                detailContent.querySelectorAll('.tooltip-icon').forEach(icon => {
+                    icon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const tooltipKey = e.currentTarget.dataset.tooltipKey;
+                        showTooltipModal(tooltipKey);
                     });
                 });
 
@@ -1897,7 +1928,7 @@
             });
 
             // --- Enhanced Modal Interaction Logic ---
-            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal];
+            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal];
 
             // Close on Escape key
             document.addEventListener('keydown', (event) => {
@@ -1942,6 +1973,63 @@
 
             closeRadionuclideModalBtn.addEventListener('click', () => {
                 radionuclideDetailModal.style.display = 'none';
+            });
+
+            // --- BUG FIX: Add Tooltip Modal function ---
+            function showTooltipModal(tooltipKey) {
+                const tooltipModalTitle = document.getElementById('tooltipModalTitle');
+                const tooltipContent = document.getElementById('tooltipContent');
+
+                const tooltipData = {
+                    'nrc_exemption_val': {
+                        title: 'NRC Exemption Limit',
+                        content: `
+                            <p class="mb-2">This value comes from <strong>10 CFR § 30.71, Schedule B</strong>.</p>
+                            <p class="mb-2">It represents the maximum activity of a specific radionuclide that can be contained in a single "exempt quantity" item.</p>
+                            <p>If an item's activity is at or below this limit, it is generally exempt from NRC licensing requirements for possession and use, provided it's not part of a larger aggregated quantity.</p>
+                            <a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part030/part030-0071.html" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
+                        `
+                    },
+                    'dot_exemption_val': {
+                        title: 'DOT Exemption Limit (Consignment)',
+                        content: `
+                            <p class="mb-2">This value comes from the "Activity limit for an exempt consignment" column in the table at <strong>49 CFR § 173.436</strong>.</p>
+                            <p class="mb-2">It represents the maximum total activity of a specific radionuclide that can be in a single shipment (consignment) to be considered exempt from most hazmat shipping regulations.</p>
+                            <p>This is a consignment-level limit, not a per-item or per-package limit.</p>
+                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.436" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
+                        `
+                    },
+                    'un2911_limit_val': {
+                        title: 'UN 2911 Limit (Per Item)',
+                        content: `
+                            <p class="mb-2">This value comes from the "Item limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p>
+                            <p class="mb-2">It is the maximum activity of a specific radionuclide allowed in a single instrument or article to be shipped as an "Excepted package" under UN 2911.</p>
+                            <p>Items meeting this limit can be shipped with reduced regulatory requirements compared to fully regulated radioactive material.</p>
+                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
+                        `
+                    },
+                    'un2911_pkg_limit_val': {
+                        title: 'UN 2911 Limit (Per Package)',
+                        content: `
+                            <p class="mb-2">This value comes from the "Package limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p>
+                            <p class="mb-2">It is the maximum total activity of a specific radionuclide allowed in a single package containing one or more excepted items to be shipped under UN 2911.</p>
+                            <p>Even if individual items are below the item limit, the total activity in the package must not exceed this limit.</p>
+                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
+                        `
+                    }
+                };
+
+                const data = tooltipData[tooltipKey];
+                if (!data) return;
+
+                tooltipModalTitle.innerHTML = data.title;
+                tooltipContent.innerHTML = data.content;
+                tooltipModal.style.display = 'flex';
+            }
+            
+            // --- BUG FIX: Add event listener for the tooltip modal close button ---
+            closeTooltipModalBtn.addEventListener('click', () => {
+                tooltipModal.style.display = 'none';
             });
 
 
