@@ -247,6 +247,7 @@
                         <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto">
                             <!-- Options will be populated by script -->
                         </select>
+                        <button id="clearFiltersBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 whitespace-nowrap">Clear Filters</button>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-center">
                         <button id="addItemBtn" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Add New Item</button>
@@ -1087,6 +1088,7 @@
             const exportCustomBtn = document.getElementById('exportCustomBtn');
             const importFileInput = document.getElementById('importFileInput');
             const searchInput = document.getElementById('searchInput');
+            const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1770,11 +1772,44 @@
             });
 
             confirmModalConfirmBtn.addEventListener('click', () => {
-                confirmModal.style.display = 'none'; // Close this modal first
                 if (typeof confirmCallback === 'function') {
-                    confirmCallback(); // Then run the action
+                    confirmCallback(); // Run the action
                 }
+                // We no longer hide the confirmModal here, as the callback is now responsible for it.
                 confirmCallback = null;
+            });
+
+            // --- NEW: Clear Filters Button Logic ---
+            clearFiltersBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                radionuclideFilter.value = 'all';
+                nrcExemptFilter.checked = false;
+                dotExemptFilter.checked = false;
+                filterTable(); // This will re-filter and also save the cleared state
+            });
+
+            // --- NEW: Enhanced Modal Interaction Logic ---
+            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal];
+
+            // Close on Escape key
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    // Find the topmost open modal and close it
+                    const openModal = allModals.find(m => m.style.display !== 'none');
+                    if (openModal) {
+                        openModal.style.display = 'none';
+                    }
+                }
+            });
+
+            // Close on overlay click
+            allModals.forEach(modal => {
+                modal.addEventListener('click', (event) => {
+                    // If the click is on the modal's immediate background, close it
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
             });
 
 
