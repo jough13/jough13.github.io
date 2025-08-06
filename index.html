@@ -101,7 +101,7 @@
         .dark .selected-row {
             background-color: #4a4a2a; /* A darker yellow for dark mode */
         }
-        tr td:not(:first-child) {
+        tr td:not(:first-child):not(.radionuclide-link) {
             cursor: pointer;
         }
         
@@ -592,6 +592,19 @@
         </div>
     </div>
 
+    <!-- NEW: Radionuclide Detail Modal -->
+    <div id="radionuclideDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h2 id="radionuclideModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Radionuclide Details</h2>
+                <button id="closeRadionuclideModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            </div>
+            <div id="radionuclideContent" class="p-6">
+                <!-- Radionuclide details will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Raw Data (before processing) ---
         const rawTableData = [
@@ -762,6 +775,24 @@
             { name: "Marker, Self-Luminous", nsn: "9905-99-931-5348", radionuclide: "H-3", activity: "0.61", units: "Ci" },
             { name: "APD 2000", nsn: "6625-07-000-1329", radionuclide: "Ni-63", activity: "10", units: "mCi" }
         ];
+
+        // --- NEW: Radionuclide Detail Data ---
+        const radionuclideDetails = {
+            'H-3': { name: 'Tritium', halfLife: '12.3 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Tritium' },
+            'Am-241': { name: 'Americium-241', halfLife: '432.2 years', decayMode: 'Alpha, Gamma', wiki: 'https://en.wikipedia.org/wiki/Americium-241' },
+            'Th-232': { name: 'Thorium-232', halfLife: '14.05 billion years', decayMode: 'Alpha', wiki: 'https://en.wikipedia.org/wiki/Thorium-232' },
+            'Sr-90': { name: 'Strontium-90', halfLife: '28.8 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Strontium-90' },
+            'Ra-226': { name: 'Radium-226', halfLife: '1600 years', decayMode: 'Alpha, Gamma', wiki: 'https://en.wikipedia.org/wiki/Radium-226' },
+            'Kr-85': { name: 'Krypton-85', halfLife: '10.75 years', decayMode: 'Beta, Gamma', wiki: 'https://en.wikipedia.org/wiki/Krypton-85' },
+            'U-238': { name: 'Uranium-238', halfLife: '4.468 billion years', decayMode: 'Alpha', wiki: 'https://en.wikipedia.org/wiki/Uranium-238' },
+            'Cs-137': { name: 'Caesium-137', halfLife: '30.17 years', decayMode: 'Beta, Gamma', wiki: 'https://en.wikipedia.org/wiki/Caesium-137' },
+            'Pm-147': { name: 'Promethium-147', halfLife: '2.62 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Promethium-147' },
+            'Co-60': { name: 'Cobalt-60', halfLife: '5.27 years', decayMode: 'Beta, Gamma', wiki: 'https://en.wikipedia.org/wiki/Cobalt-60' },
+            'Re-187': { name: 'Rhenium-187', halfLife: '43.3 billion years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Rhenium-187' },
+            'Ni-63': { name: 'Nickel-63', halfLife: '100.1 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Nickel-63' },
+            'C-14': { name: 'Carbon-14', halfLife: '5730 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Carbon-14' },
+            'Tc-99': { name: 'Technetium-99', halfLife: '211,100 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Technetium-99' }
+        };
 
         // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
         const nrcExemptionValues = {
@@ -993,7 +1024,7 @@
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}${customIcon}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin || ''}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Radionuclide">${item.radionuclide}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center radionuclide-link text-blue-500 hover:underline cursor-pointer" data-label="Radionuclide" data-radionuclide="${item.radionuclide}">${item.radionuclide}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="NRC Exemption">${nrcExemption}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="DOT Exemption">${dotExemption}</td>
@@ -1152,6 +1183,8 @@
             const importFileInput = document.getElementById('importFileInput');
             const searchInput = document.getElementById('searchInput');
             const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+            const radionuclideDetailModal = document.getElementById('radionuclideDetailModal');
+            const closeRadionuclideModalBtn = document.getElementById('closeRadionuclideModalBtn');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1175,6 +1208,13 @@
             tableBody.addEventListener('click', (event) => {
                 const targetCell = event.target.closest('td');
                 if (!targetCell) return;
+
+                // NEW: Handle radionuclide link click separately
+                if (targetCell.classList.contains('radionuclide-link')) {
+                    const nuclideId = targetCell.dataset.radionuclide;
+                    showRadionuclideModal(nuclideId);
+                    return; // Stop further execution to prevent item detail modal
+                }
 
                 const row = targetCell.parentElement;
                 const checkbox = row.querySelector('.row-checkbox');
@@ -1836,7 +1876,7 @@
                 confirmCallback = null;
             });
 
-            // --- NEW: Clear Filters Button Logic ---
+            // --- Clear Filters Button Logic ---
             clearFiltersBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 radionuclideFilter.value = 'all';
@@ -1845,8 +1885,8 @@
                 filterTable(); // This will re-filter and also save the cleared state
             });
 
-            // --- NEW: Enhanced Modal Interaction Logic ---
-            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal];
+            // --- Enhanced Modal Interaction Logic ---
+            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal];
 
             // Close on Escape key
             document.addEventListener('keydown', (event) => {
@@ -1867,6 +1907,30 @@
                         modal.style.display = 'none';
                     }
                 });
+            });
+
+            // --- NEW: Radionuclide Detail Modal Logic ---
+            function showRadionuclideModal(nuclideId) {
+                const details = radionuclideDetails[nuclideId];
+                if (!details) return;
+
+                const modalTitle = document.getElementById('radionuclideModalTitle');
+                const modalContent = document.getElementById('radionuclideContent');
+
+                modalTitle.textContent = `${details.name} (${nuclideId})`;
+                
+                let content = `<div class="space-y-3">`;
+                content += `<div class="flex justify-between"><strong>Half-life:</strong> <span>${details.halfLife}</span></div>`;
+                content += `<div class="flex justify-between"><strong>Decay Mode:</strong> <span>${details.decayMode}</span></div>`;
+                content += `<div class="mt-4"><a href="${details.wiki}" target="_blank" class="text-blue-500 hover:underline">Learn More on Wikipedia</a></div>`;
+                content += `</div>`;
+
+                modalContent.innerHTML = content;
+                radionuclideDetailModal.style.display = 'flex';
+            }
+
+            closeRadionuclideModalBtn.addEventListener('click', () => {
+                radionuclideDetailModal.style.display = 'none';
             });
 
 
