@@ -1278,7 +1278,7 @@
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
                 content += `<hr class="dark:border-gray-600 my-4">`;
-                content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of ${item.radionuclide}</div>`;
+                content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of <span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${item.radionuclide}">${item.radionuclide}</span></div>`;
                 
                 const comparisons = [
                     { label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
@@ -1323,6 +1323,16 @@
 
                 content += `</div>`;
                 detailContent.innerHTML = content;
+
+                // Add listener for the new radionuclide link in the detail modal
+                const nuclideLink = detailContent.querySelector('.radionuclide-link');
+                if (nuclideLink) {
+                    nuclideLink.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const nuclideId = e.target.dataset.radionuclide;
+                        showRadionuclideModal(nuclideId);
+                    });
+                }
 
                 detailContent.querySelectorAll('.copy-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
