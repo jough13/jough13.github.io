@@ -148,6 +148,29 @@
             background-color: #1e40af; /* A slightly lighter blue for hover */
         }
         
+        /* NEW: Styles for mobile details toggle */
+        .toggle-cell {
+            display: none;
+        }
+        .details-toggle-btn {
+            width: 100%;
+            padding: 0.5rem;
+            font-weight: 600;
+            color: #3b82f6; /* blue-500 */
+            border-radius: 0.5rem;
+            background-color: transparent;
+            transition: background-color 0.2s;
+        }
+        .details-toggle-btn:hover {
+            background-color: #dbeafe; /* blue-100 */
+        }
+        .dark .details-toggle-btn {
+            color: #60a5fa; /* blue-400 */
+        }
+        .dark .details-toggle-btn:hover {
+            background-color: #374151; /* gray-700 */
+        }
+
         /* NEW: Toast Notification Styles */
         #toastContainer {
             position: fixed;
@@ -224,6 +247,24 @@
             .dark #lookupTable td::before {
                 color: #d1d5db;
             }
+
+            /* NEW: Mobile view improvements */
+            #lookupTable td.expandable {
+                display: none;
+            }
+            #lookupTable tr.details-visible td.expandable {
+                display: flex;
+            }
+            #lookupTable td.toggle-cell {
+                display: flex;
+                justify-content: center;
+                background-color: #f3f4f6; /* gray-100 */
+                border-bottom: none;
+            }
+            .dark #lookupTable td.toggle-cell {
+                background-color: #1f2937; /* gray-800 */
+            }
+
             /* Special handling for the first two cells (Checkbox and Name) */
             #lookupTable td:first-child {
                 justify-content: center; /* Center the checkbox */
@@ -299,7 +340,7 @@
                         <button id="importCustomBtn" class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">Import Custom</button>
                         <button id="exportCustomBtn" class="px-4 py-2 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export Custom</button>
                         <button id="clearAddedBtn" class="px-4 py-2 bg-indigo-700 text-white rounded-lg hover:bg-indigo-800 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear Added</button>
-                        <button id="summationBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Summation</button>
+                        <button id="packageBuilderBtn" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Build Package</button>
                         <button id="compareBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Compare</button>
                         <button id="exportSelectionBtn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Export Selection</button>
                         <button id="clearSelectionBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Clear</button>
@@ -371,7 +412,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.75 | Last Updated: August 6, 2025</p>
+            <p class="mt-2">Version 1.76 | Last Updated: August 6, 2025</p>
         </footer>
     </div>
 
@@ -404,15 +445,15 @@
         </div>
     </div>
 
-    <!-- Summation Modal -->
-    <div id="summationModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <!-- Package Builder Modal -->
+    <div id="packageBuilderModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-full overflow-y-auto">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Summation Tool</h2>
-                <button id="closeSummationModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Package Builder</h2>
+                <button id="closePackageBuilderModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="summationContent" class="p-6">
-                <!-- Summation content will be injected here -->
+            <div id="packageBuilderContent" class="p-6">
+                <!-- Package builder content will be injected here -->
             </div>
         </div>
     </div>
@@ -481,7 +522,7 @@
                                     <li><strong>Add New Item:</strong> Opens a form to add a custom item to the table.</li>
                                     <li><strong>Import/Export Custom:</strong> Save your custom-added items to a file or load them from a file. This is useful for backups or sharing with others.</li>
                                     <li><strong>Clear Added:</strong> Removes all custom items you have added.</li>
-                                    <li><strong>Summation Tool:</strong> (Requires 1+ items) Opens a powerful calculator for analyzing a potential package or inventory.</li>
+                                    <li><strong>Build Package:</strong> (Requires 1+ items) Opens a powerful calculator to determine the shipping classification of your items.</li>
                                     <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
                                     <li><strong>Export Selection:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
                                     <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
@@ -501,15 +542,15 @@
                                 </ul>
                             </div>
                             <div>
-                                <h3 class="!mt-4 !mb-1 font-bold">3.4 Summation Tool</h3>
-                                <p>This is the most powerful feature for practical use. After selecting one or more items and clicking "Summation," a modal appears where you can:</p>
+                                <h3 class="!mt-4 !mb-1 font-bold">3.4 Package Builder</h3>
+                                <p>This is the most powerful feature for practical use. After selecting one or more items and clicking "Build Package," a modal appears where you can:</p>
                                 <ol>
                                     <li><strong>Enter Quantities:</strong> Input the number of each selected item you are grouping together.</li>
-                                    <li><strong>Select a Limit:</strong> Use the "Compare Total Against" dropdown to choose which regulatory limit you want to evaluate.</li>
-                                    <li><strong>Analyze Totals:</strong> The tool automatically calculates:
+                                    <li><strong>Analyze Classification:</strong> The tool automatically calculates the Sum of Ratios (SOR) for different regulatory limits and provides a final classification for your package:
                                         <ul>
-                                            <li>The total activity for each radionuclide in your group.</li>
-                                            <li>The <strong>Sum of Ratios (SOR)</strong>, which tells you if your combined package is compliant with the selected limit. An SOR of 1.0 or less is a "PASS."</li>
+                                            <li><strong>Exempt Consignment:</strong> The package meets the DOT's requirements for exemption and can be shipped without most hazmat regulations.</li>
+                                            <li><strong>Excepted Package (UN 2911):</strong> The package meets the limits for shipment as an excepted package, which has reduced regulatory requirements.</li>
+                                            <li><strong>Regulated as Class 7 (Requires Type A Package):</strong> The package exceeds the limits for both Exempt and Excepted status and must be shipped as fully regulated Class 7 hazardous material.</li>
                                         </ul>
                                     </li>
                                 </ol>
@@ -1043,14 +1084,17 @@
                     <tr class="${rowClasses.join(' ')}" data-id="${item.id}">
                         <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${item.name}${customIcon}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NSN">${item.nsn || ''}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center" data-label="NIIN">${item.niin || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NSN">${item.nsn || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NIIN">${item.niin || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center radionuclide-link text-blue-500 hover:underline cursor-pointer" data-label="Radionuclide" data-radionuclide="${item.radionuclide}">${item.radionuclide}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="NRC Exemption">${nrcExemption}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="DOT Exemption">${dotExemption}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="UN 2911 Limit (item)">${un2911Limit}</td>
-                        <td class="px-6 py-4 text-center whitespace-nowrap" data-label="UN 2911 Limit (package)">${un2911PkgLimit}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="NRC Exemption">${nrcExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="DOT Exemption">${dotExemption}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="UN 2911 Limit (item)">${un2911Limit}</td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="UN 2911 Limit (package)">${un2911PkgLimit}</td>
+                        <td class="toggle-cell">
+                            <button class="details-toggle-btn">Show More</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -1179,7 +1223,7 @@
             const compareBtn = document.getElementById('compareBtn');
             const exportSelectionBtn = document.getElementById('exportSelectionBtn');
             const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-            const summationBtn = document.getElementById('summationBtn');
+            const packageBuilderBtn = document.getElementById('packageBuilderBtn');
             const compareModal = document.getElementById('compareModal');
             const closeModalBtn = document.getElementById('closeModalBtn');
             const compareContent = document.getElementById('compareContent');
@@ -1189,9 +1233,9 @@
             const detailActions = document.getElementById('detailActions');
             const detailModalTitle = document.getElementById('detailModalTitle');
             const radionuclideFilter = document.getElementById('radionuclideFilter');
-            const summationModal = document.getElementById('summationModal');
-            const closeSummationModalBtn = document.getElementById('closeSummationModalBtn');
-            const summationContent = document.getElementById('summationContent');
+            const packageBuilderModal = document.getElementById('packageBuilderModal');
+            const closePackageBuilderModalBtn = document.getElementById('closePackageBuilderModalBtn');
+            const packageBuilderContent = document.getElementById('packageBuilderContent');
             const nrcExemptFilter = document.getElementById('nrcExemptFilter');
             const dotExemptFilter = document.getElementById('dotExemptFilter');
             const helpBtn = document.getElementById('helpBtn');
@@ -1237,26 +1281,36 @@
             });
             
             tableBody.addEventListener('click', (event) => {
+                // Handle "Show More/Less" button click on mobile
+                const toggleBtn = event.target.closest('.details-toggle-btn');
+                if (toggleBtn) {
+                    const row = toggleBtn.closest('tr');
+                    row.classList.toggle('details-visible');
+                    toggleBtn.textContent = row.classList.contains('details-visible') ? 'Show Less' : 'Show More';
+                    return; // Stop further processing
+                }
+
                 const targetCell = event.target.closest('td');
                 if (!targetCell) return;
 
-                // NEW: Handle radionuclide link click separately
+                // Handle radionuclide link click
                 if (targetCell.classList.contains('radionuclide-link')) {
                     const nuclideId = targetCell.dataset.radionuclide;
                     showRadionuclideModal(nuclideId);
-                    return; // Stop further execution to prevent item detail modal
+                    return;
                 }
 
                 const row = targetCell.parentElement;
                 const checkbox = row.querySelector('.row-checkbox');
 
+                // Handle checkbox cell click
                 if (targetCell.cellIndex === 0) {
                     if (event.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
                     }
                     const changeEvent = new Event('change', { bubbles: true });
                     checkbox.dispatchEvent(changeEvent);
-                } else {
+                } else { // Handle other cell clicks to open detail modal
                     const itemId = row.dataset.id;
                     const item = tableData.find(d => d.id == itemId);
                     if (item) {
@@ -1277,7 +1331,7 @@
                     compareBtn.disabled = selectedCount < 2;
                     exportSelectionBtn.disabled = selectedCount === 0;
                     clearSelectionBtn.disabled = selectedCount === 0;
-                    summationBtn.disabled = selectedCount === 0;
+                    packageBuilderBtn.disabled = selectedCount === 0;
                     saveSelectionBtn.disabled = selectedCount === 0;
                     updateSelectionState();
                 }
@@ -1535,117 +1589,109 @@
                 compareBtn.disabled = true;
                 exportSelectionBtn.disabled = true;
                 clearSelectionBtn.disabled = true;
-                summationBtn.disabled = true;
+                packageBuilderBtn.disabled = true;
                 saveSelectionBtn.disabled = true;
                 selectAllCheckbox.checked = false;
             });
             
-            summationBtn.addEventListener('click', () => {
-                showSummationModal();
+            packageBuilderBtn.addEventListener('click', () => {
+                showPackageBuilderModal();
             });
 
-            function showSummationModal() {
+            function showPackageBuilderModal() {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 
-                let content = '<div id="summationItems" class="space-y-4">';
+                let content = '<div id="packageBuilderItems" class="space-y-4">';
                 selectedItems.forEach((item, index) => {
                     content += `
                         <div class="flex items-center gap-4">
-                            <label for="qty-${index}" class="w-2/3">${item.name}</label>
+                            <label for="qty-${index}" class="w-2/3">${item.name} (${item.radionuclide})</label>
                             <input type="number" id="qty-${index}" data-id="${item.id}" value="1" min="1" class="quantity-input w-1/3 px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
                         </div>
                     `;
                 });
-                content += '</div><hr class="my-4 dark:border-gray-600">';
-                content += `
-                    <div class="flex items-center gap-4 mb-4">
-                        <label for="summationLimitSelect" class="font-semibold">Compare Total Against:</label>
-                        <select id="summationLimitSelect" class="px-2 py-1 rounded border dark:bg-gray-700 dark:border-gray-600">
-                            <option value="nrc_exemption_val">NRC Exemption</option>
-                            <option value="dot_exemption_val">DOT Exemption</option>
-                            <option value="un2911_limit_val">UN 2911 Limit (per item)</option>
-                            <option value="un2911_pkg_limit_val">UN 2911 Limit (per package)</option>
-                        </select>
-                    </div>
-                `;
-                content += '<div id="summationTotals" class="space-y-2"></div>';
+                content += '</div>';
+                content += '<div id="packageBuilderTotals" class="mt-6 space-y-4"></div>';
                 
-                summationContent.innerHTML = content;
-                summationModal.style.display = 'flex';
-                calculateSummationTotals();
+                packageBuilderContent.innerHTML = content;
+                packageBuilderModal.style.display = 'flex';
+                calculatePackageTotals();
 
-                document.getElementById('summationItems').addEventListener('input', calculateSummationTotals);
-                document.getElementById('summationLimitSelect').addEventListener('change', calculateSummationTotals);
+                document.getElementById('packageBuilderItems').addEventListener('input', calculatePackageTotals);
             }
             
-            function calculateSummationTotals() {
+            function calculatePackageTotals() {
                 const isSiUnits = document.getElementById('unitToggle').checked;
-                const limitKey = document.getElementById('summationLimitSelect').value;
-                const totals = {};
-                const quantityInputs = document.querySelectorAll('#summationItems .quantity-input');
-
-                quantityInputs.forEach(input => {
-                    const itemId = input.dataset.id;
-                    const item = tableData.find(d => d.id == itemId);
-                    const quantity = input.valueAsNumber || 0;
-                    const limitStrKey = limitKey.replace('_val', isSiUnits ? '_bq_str' : '_ci_str');
-                    if (!totals[item.radionuclide]) {
-                        totals[item.radionuclide] = { totalActivity: 0, limit: item[limitKey], limitStr: item[limitStrKey] };
-                    }
-                    totals[item.radionuclide].totalActivity += item.activity_val * quantity;
+                const quantityInputs = document.querySelectorAll('#packageBuilderItems .quantity-input');
+                const selectedItemsInBuilder = Array.from(quantityInputs).map(input => {
+                    const item = tableData.find(d => d.id == input.dataset.id);
+                    return { ...item, quantity: input.valueAsNumber || 0 };
                 });
 
-                let totalsContent = '<h3>Total Activity per Radionuclide:</h3>';
-                let sumOfRatios = 0;
+                const totals = {};
+                let isAnyItemOverLimit = false;
+
+                selectedItemsInBuilder.forEach(item => {
+                    if (item.quantity > 0 && item.un2911_limit_val !== null && item.activity_val > item.un2911_limit_val) {
+                        isAnyItemOverLimit = true;
+                    }
+                    if (!totals[item.radionuclide]) {
+                        totals[item.radionuclide] = { totalActivity: 0, exemptLimit: item.dot_exemption_val, exceptedLimit: item.un2911_pkg_limit_val };
+                    }
+                    totals[item.radionuclide].totalActivity += item.activity_val * item.quantity;
+                });
+
+                let exemptSOR = 0;
+                let exceptedSOR = 0;
 
                 for (const nuclide in totals) {
-                    const totalActivity = totals[nuclide].totalActivity;
-                    const limit = totals[nuclide].limit;
-                    const displayTotal = isSiUnits ? formatBq(totalActivity) : formatCi(totalActivity);
-                    const displayLimit = totals[nuclide].limitStr;
-                    
-                    if (limit !== null && limit > 0) {
-                        sumOfRatios += totalActivity / limit;
+                    if (totals[nuclide].exemptLimit !== null && totals[nuclide].exemptLimit > 0) {
+                        exemptSOR += totals[nuclide].totalActivity / totals[nuclide].exemptLimit;
                     }
-
-                    totalsContent += `
-                        <div class="flex justify-between items-center">
-                            <span><strong>${nuclide}:</strong> ${displayTotal}</span>
-                            <span class="text-gray-500 dark:text-gray-400">Limit: ${displayLimit}</span>
-                        </div>
-                    `;
+                    if (totals[nuclide].exceptedLimit !== null && totals[nuclide].exceptedLimit > 0) {
+                        exceptedSOR += totals[nuclide].totalActivity / totals[nuclide].exceptedLimit;
+                    }
                 }
 
-                let sorStatus, sorStatusColor;
-                if (sumOfRatios > 1) {
-                    sorStatus = 'ABOVE (FAIL)';
-                    sorStatusColor = 'text-red-500';
+                let classification, explanation, statusColor;
+
+                if (exemptSOR <= 1) {
+                    classification = 'Exempt Consignment';
+                    statusColor = 'bg-green-500';
+                    explanation = 'This package meets the requirements for an Exempt Consignment per 49 CFR § 173.436. It can be shipped without most Class 7 (radioactive) hazmat requirements.';
+                } else if (exceptedSOR <= 1 && !isAnyItemOverLimit) {
+                    classification = 'Excepted Package (UN 2911)';
+                    statusColor = 'bg-yellow-500';
+                    explanation = 'This package meets the requirements for an Excepted Package per 49 CFR § 173.425. It can be shipped with reduced regulatory requirements (e.g., no shipping papers required).';
                 } else {
-                    sorStatus = 'BELOW (PASS)';
-                    sorStatusColor = 'text-green-500';
+                    classification = 'Regulated as Class 7 (Requires Type A Package)';
+                    statusColor = 'bg-red-500';
+                    explanation = 'This package exceeds the limits for both Exempt and Excepted status. It must be shipped as a fully regulated Class 7 (radioactive) Type A package, which requires certified packaging, shipping papers, and hazmat training.';
+                     if (isAnyItemOverLimit) {
+                        explanation += ' This is because at least one item exceeds its individual limit for excepted packages.'
+                    }
                 }
-                const sorPercentage = Math.min(sumOfRatios * 100, 100);
-                const sorBarColor = sorStatusColor.replace('text-', 'bg-');
 
-                totalsContent += `<hr class="my-4 dark:border-gray-600">`;
-                totalsContent += `
-                    <div class="flex justify-between items-center text-lg">
-                        <strong>Sum of Ratios:</strong>
-                        <span class="font-bold ${sorStatusColor}">${sumOfRatios.toFixed(3)} - ${sorStatus}</span>
+                let totalsContent = `
+                    <hr class="dark:border-gray-600">
+                    <div class="p-4 rounded-lg ${statusColor} text-white">
+                        <h3 class="text-xl font-bold text-center">${classification}</h3>
                     </div>
-                    <div class="progress-bar-container mt-2">
-                        <div class="progress-bar ${sorBarColor}" style="width: ${sorPercentage}%;">
-                             ${sumOfRatios.toFixed(2)} / 1.0
-                        </div>
+                    <p class="text-sm dark:text-gray-400">${explanation}</p>
+                    <div class="mt-4">
+                        <h4 class="font-semibold">Calculation Details:</h4>
+                        <p><strong>Exempt Consignment SOR:</strong> ${exemptSOR.toFixed(3)} (Limit: 1.0)</p>
+                        <p><strong>Excepted Package SOR:</strong> ${exceptedSOR.toFixed(3)} (Limit: 1.0)</p>
+                        ${isAnyItemOverLimit ? '<p class="text-red-500"><strong>Note:</strong> At least one item exceeds its individual UN 2911 limit.</p>' : ''}
                     </div>
                 `;
 
-                document.getElementById('summationTotals').innerHTML = totalsContent;
+                document.getElementById('packageBuilderTotals').innerHTML = totalsContent;
             }
 
-            closeSummationModalBtn.addEventListener('click', () => {
-                summationModal.style.display = 'none';
+            closePackageBuilderModalBtn.addEventListener('click', () => {
+                packageBuilderModal.style.display = 'none';
             });
 
             function populateRadionuclideFilter() {
@@ -1944,7 +1990,7 @@
             });
 
             // --- Enhanced Modal Interaction Logic ---
-            const allModals = [compareModal, detailModal, summationModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal];
+            const allModals = [compareModal, detailModal, packageBuilderModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal];
 
             // Close on Escape key
             document.addEventListener('keydown', (event) => {
