@@ -1108,7 +1108,7 @@
             populateTable(filteredData);
             document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
             updateSelectionState();
-            saveState(); // Save state whenever filters change
+            saveState(); 
         }
 
         function updateSelectionState() {
@@ -1201,8 +1201,7 @@
             });
 
             unitToggle.addEventListener('change', () => {
-                populateTable(getFilteredData());
-                saveState();
+                filterTable();
             });
             
             tableBody.addEventListener('click', (event) => {
@@ -1892,7 +1891,9 @@
                 radionuclideFilter.value = 'all';
                 nrcExemptFilter.checked = false;
                 dotExemptFilter.checked = false;
-                filterTable(); // This will re-filter and also save the cleared state
+                // NEW: Explicitly remove the saved state
+                localStorage.removeItem('lookupTableState');
+                filterTable(); 
             });
 
             // --- Enhanced Modal Interaction Logic ---
@@ -1945,11 +1946,17 @@
 
 
             // --- Event Listeners for State Saving ---
-            // DEBOUNCE: We now use a debounced listener instead of the inline onkeyup
-            searchInput.addEventListener('input', debounce(filterTable, 300));
-            radionuclideFilter.addEventListener('change', filterTable);
-            nrcExemptFilter.addEventListener('change', filterTable);
-            dotExemptFilter.addEventListener('change', filterTable);
+            const debouncedFilterAndSave = debounce(() => {
+                filterTable();
+                saveState();
+            }, 300);
+
+            searchInput.addEventListener('input', debouncedFilterAndSave);
+            radionuclideFilter.addEventListener('change', () => { filterTable(); saveState(); });
+            nrcExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
+            dotExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
+            unitToggle.addEventListener('change', () => { filterTable(); saveState(); });
+
 
             // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
