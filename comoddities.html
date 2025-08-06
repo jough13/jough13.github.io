@@ -427,7 +427,7 @@
                 </table>
             </div>
              <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400">
-                No results found.
+                <!-- Content will be set by JavaScript -->
             </div>
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
@@ -1215,10 +1215,21 @@
 
         function filterTable() {
             const filteredData = getFilteredData();
+            const noResultsDiv = document.getElementById("noResults");
+
             populateTable(filteredData);
-            document.getElementById("noResults").style.display = filteredData.length === 0 ? 'block' : 'none';
+
+            if (filteredData.length === 0) {
+                noResultsDiv.innerHTML = `
+                    <p class="font-semibold">No results found.</p>
+                    <p class="mt-2 text-sm">Try adjusting your search term or clearing some filters.</p>
+                `;
+                noResultsDiv.style.display = 'block';
+            } else {
+                noResultsDiv.style.display = 'none';
+            }
+
             updateSelectionState();
-            // saveState(); // REMOVED FROM HERE
         }
 
         function updateSelectionState() {
