@@ -54,6 +54,13 @@
             content: '▼';
             font-size: 0.6em;
         }
+        /* NEW: Style for the currently sorted column header */
+        .sorted-column {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        .dark .sorted-column {
+            background-color: #4b5563; /* gray-600 */
+        }
         /* Toggle Switch Styles */
         .toggle-switch {
             position: relative;
@@ -364,7 +371,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.74 | Last Updated: August 6, 2025</p>
+            <p class="mt-2">Version 1.75 | Last Updated: August 6, 2025</p>
         </footer>
     </div>
 
@@ -1080,14 +1087,23 @@
         }
         
         function updateSortArrows() {
-            document.querySelectorAll('.sortable .sort-arrow').forEach(arrow => {
-                arrow.classList.remove('asc', 'desc');
+            // Remove sort indicators from all columns first
+            document.querySelectorAll('.sortable').forEach(th => {
+                th.classList.remove('sorted-column');
+                const arrow = th.querySelector('.sort-arrow');
+                if (arrow) {
+                    arrow.classList.remove('asc', 'desc');
+                }
             });
 
+            // Apply sort indicator to the current column
             const header = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
             if (header) {
+                header.classList.add('sorted-column');
                 const arrow = header.querySelector('.sort-arrow');
-                arrow.classList.add(currentSort.direction);
+                if (arrow) {
+                    arrow.classList.add(currentSort.direction);
+                }
             }
         }
         
