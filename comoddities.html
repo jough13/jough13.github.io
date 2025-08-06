@@ -1435,7 +1435,7 @@
                     });
                 });
 
-                // NEW: Add listener for tooltip icons
+                // Add listener for tooltip icons
                 detailContent.querySelectorAll('.tooltip-icon').forEach(icon => {
                     icon.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -1446,25 +1446,32 @@
 
                 detailActions.innerHTML = '';
                 
-                const copyDetailsBtn = document.createElement('button');
-                copyDetailsBtn.textContent = 'Copy Details';
-                copyDetailsBtn.className = 'px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600';
-                copyDetailsBtn.onclick = (e) => {
+                // --- NEW: Add to Package button logic ---
+                const addToPackageBtn = document.createElement('button');
+                const checkbox = document.querySelector(`.row-checkbox[data-id="${item.id}"]`);
+
+                function updateAddToPackageButtonState() {
+                    if (checkbox && checkbox.checked) {
+                        addToPackageBtn.textContent = 'Remove from Package';
+                        addToPackageBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
+                    } else {
+                        addToPackageBtn.textContent = 'Add to Package';
+                        addToPackageBtn.className = 'px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600';
+                    }
+                }
+
+                updateAddToPackageButtonState(); // Set initial state
+
+                addToPackageBtn.onclick = (e) => {
                     e.stopPropagation();
-                    let textToCopy = `Item Details:\n--------------------------\n`;
-                    textToCopy += `Name: ${item.name}\n`;
-                    textToCopy += `NSN: ${item.nsn || 'N/A'}\n`;
-                    textToCopy += `NIIN: ${item.niin || 'N/A'}\n`;
-                    textToCopy += `Radionuclide: ${item.radionuclide}\n`;
-                    textToCopy += `Activity: ${isSiUnits ? item.activity_bq_str : item.activity_ci_str}\n`;
-                    textToCopy += `--------------------------\n`;
-                    comparisons.forEach(comp => {
-                        let status = (item.activity_val === null || comp.limit === null) ? 'N/A' : (item.activity_val > comp.limit ? 'ABOVE' : 'BELOW');
-                        textToCopy += `${comp.label}: ${comp.str} (${status})\n`;
-                    });
-                    copyToClipboard(textToCopy, copyDetailsBtn);
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                        updateAddToPackageButtonState(); // Update button after click
+                    }
                 };
-                detailActions.appendChild(copyDetailsBtn);
+                detailActions.appendChild(addToPackageBtn);
 
                 const customActionsContainer = document.createElement('div');
                 customActionsContainer.className = 'flex gap-4';
@@ -1483,7 +1490,6 @@
                     deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
                     deleteBtn.onclick = () => {
                         showConfirmationModal(`Are you sure you want to delete the item "${item.name}"?`, () => {
-                            // Hide modals before performing the delete action to prevent rendering issues.
                             detailModal.style.display = 'none';
                             confirmModal.style.display = 'none';
                             deleteCustomItem(item.id);
