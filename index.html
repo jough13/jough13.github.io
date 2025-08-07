@@ -432,7 +432,7 @@
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.78 | Last Updated: August 6, 2025</p>
+            <p class="mt-2">Version 1.81 | Last Updated: August 7, 2025</p>
         </footer>
     </div>
 
@@ -545,7 +545,7 @@
                                     <li><strong>Add New Item:</strong> Opens a form to add a custom item to the table.</li>
                                     <li><strong>Import/Export Custom:</strong> Save your custom-added items to a file or load them from a file. This is useful for backups or sharing with others.</li>
                                     <li><strong>Clear Added:</strong> Removes all custom items you have added.</li>
-                                    <li><strong>Prepare Disposal Request:</strong> (Requires 1+ items) Opens a form to generate a Low-Level Radioactive Waste (LLRW) disposal request.</li>
+                                    <li><strong>Prepare Disposal Request:</strong> (Requires 1+ items) Opens a form to generate a Low-Level Radioactive Waste (LLRW) disposal request. This form includes a live package analysis to determine shipping requirements.</li>
                                     <li><strong>Compare:</strong> (Requires 2+ items) Opens a pop-up that displays a side-by-side comparison of the selected items.</li>
                                     <li><strong>Export Selection:</strong> (Requires 1+ items) Downloads a <code>.csv</code> file of the selected items, with values reflecting the current Ci/Bq unit setting.</li>
                                     <li><strong>Clear:</strong> (Requires 1+ items) Instantly deselects all checked items.</li>
@@ -570,6 +570,7 @@
                                 <ol>
                                     <li><strong>Fill in Command and POC info:</strong> Provide details about your command and at least two points of contact.</li>
                                     <li><strong>Complete Item Details:</strong> The form will pre-populate with your selected items. Fill in the remaining information for each item type, such as quantity, serial number, and physical description.</li>
+                                    <li><strong>Review Package Analysis:</strong> At the bottom of the form, a live analysis calculates the total package activity and determines the correct shipping category based on the sum-of-fractions rule.</li>
                                     <li><strong>Specify Pickup Location:</strong> Enter the address and building number for the waste pickup.</li>
                                     <li><strong>Generate & Print:</strong> Click the "Generate & Print Request" button to create a formatted document ready for printing and submission.</li>
                                 </ol>
@@ -940,6 +941,25 @@
             'U-238': 'Unlimited'
         };
 
+        // --- BUG FIX: Add DOT A2 values from 49 CFR 173.435 (Type A Package) ---
+        const dotA2Values = {
+            'Am-241': '0.027 Ci',
+            'C-14': '54 Ci',
+            'Co-60': '11 Ci',
+            'Cs-137': '16 Ci',
+            'H-3': '1100 Ci',
+            'Kr-85': '270 Ci',
+            'Ni-63': '810 Ci',
+            'N-63': '810 Ci', // Assuming typo for Ni-63
+            'Pm-147': '54 Ci',
+            'Ra-226': '0.54 Ci',
+            'Re-187': 'Unlimited',
+            'Sr-90': '8.1 Ci',
+            'Tc-99': '54 Ci',
+            'Th-232': 'Unlimited',
+            'U-238': 'Unlimited'
+        };
+
         // --- Global State ---
         let tableData = [];
         let currentSort = { column: null, direction: 'asc' };
@@ -1048,6 +1068,7 @@
             const dotExemptionVal = parseValueToCi(dotExemptionValues[radionuclide]);
             const un2911LimitVal = parseValueToCi(un2911Limits[radionuclide]);
             const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
+            const dotA2Val = parseValueToCi(dotA2Values[radionuclide]); // BUG FIX: Add A2 value parsing
 
             return {
                 id: id,
@@ -1062,6 +1083,7 @@
                 dot_exemption_val: dotExemptionVal,
                 un2911_limit_val: un2911LimitVal,
                 un2911_pkg_limit_val: un2911PkgLimitVal,
+                dot_a2_val: dotA2Val, // BUG FIX: Store A2 value
                 
                 activity_ci_str: formatCi(activityVal),
                 nrc_exemption_ci_str: nrcExemptionVal !== null ? formatCi(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
@@ -1743,7 +1765,7 @@
                             <span class="hidden group-open:inline">▼</span>
                             Item Details
                         </summary>
-                        <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
+                        <div id="disposalItemsContainer" class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
                 `;
                 selectedItems.forEach((item, index) => {
                     content += `
@@ -1755,7 +1777,7 @@
                                 <div><label class="block text-sm font-medium">DEMIL</label><input type="text" data-form-id="demil" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div class="md:col-span-2"><label class="block text-sm font-medium">Serial #(s)</label><div class="serial-number-container space-y-2"><input type="text" data-form-id="serial" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div><button type="button" class="add-serial-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another serial #</button></div>
                                 <div><label class="block text-sm font-medium">SSDR</label><input type="text" data-form-id="ssdr" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                <div><label class="block text-sm font-medium"># each</label><input type="number" value="1" min="1" data-form-id="quantity" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium"># each</label><input type="number" value="1" min="1" data-form-id="quantity" class="quantity-input mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <!-- Radioactivity Info -->
                                 <div><label class="block text-sm font-medium">Radionuclide</label><input type="text" value="${item.radionuclide}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
                                 <div><label class="block text-sm font-medium">Activity</label><input type="text" value="${item.activity_ci_str}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
@@ -1792,10 +1814,17 @@
                         </div>
                     </details>
                 `;
+                
+                // NEW: Package Analysis Section
+                content += `<div id="packageAnalysis" class="mt-6"></div>`;
 
                 content += '</form>';
                 disposalRequestContent.innerHTML = content;
                 disposalRequestModal.style.display = 'flex';
+
+                // Initial calculation and set up listener
+                calculateDisposalPackageAnalysis();
+                disposalRequestContent.querySelector('#disposalItemsContainer').addEventListener('input', calculateDisposalPackageAnalysis);
             }
             
             closeDisposalRequestModalBtn.addEventListener('click', () => {
@@ -1822,6 +1851,117 @@
                 }
             });
 
+            // BUG FIX: Implement the package analysis function
+            function calculateDisposalPackageAnalysis() {
+                const analysisContainer = document.getElementById('packageAnalysis');
+                if (!analysisContainer) return;
+
+                const itemCards = document.querySelectorAll('.disposal-item');
+                let dotExemptSum = 0;
+                let un2911PkgSum = 0;
+                let typeASum = 0;
+                let analysisDetails = [];
+
+                itemCards.forEach(card => {
+                    const itemId = card.dataset.itemId;
+                    const itemData = tableData.find(d => d.id == itemId);
+                    const quantityInput = card.querySelector('.quantity-input');
+                    const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 0;
+
+                    if (!itemData || isNaN(quantity) || quantity <= 0) {
+                        return;
+                    }
+
+                    const totalActivity = itemData.activity_val * quantity;
+                    let detailRow = { name: itemData.name, qty: quantity, activity: formatCi(totalActivity), dot: 'N/A', un2911: 'N/A', typeA: 'N/A' };
+
+                    if (itemData.dot_exemption_val) {
+                        const fraction = totalActivity / itemData.dot_exemption_val;
+                        dotExemptSum += fraction;
+                        detailRow.dot = fraction.toFixed(3);
+                    }
+                    if (itemData.un2911_pkg_limit_val) {
+                        const fraction = totalActivity / itemData.un2911_pkg_limit_val;
+                        un2911PkgSum += fraction;
+                        detailRow.un2911 = fraction.toFixed(3);
+                    }
+                    if (itemData.dot_a2_val) {
+                        const fraction = totalActivity / itemData.dot_a2_val;
+                        typeASum += fraction;
+                        detailRow.typeA = fraction.toFixed(3);
+                    }
+                    analysisDetails.push(detailRow);
+                });
+
+                let classification = '';
+                let classificationColor = '';
+                if (dotExemptSum <= 1) {
+                    classification = 'Exempt from regulation per 49 CFR § 173.436.';
+                    classificationColor = 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+                } else if (un2911PkgSum <= 1) {
+                    classification = 'Limited Quantity Excepted Package (UN 2911)';
+                    classificationColor = 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
+                } else if (typeASum <= 1) {
+                    classification = 'Type A Package';
+                    classificationColor = 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
+                } else {
+                    classification = 'Exceeds Type A limits. Requires Type B package.';
+                    classificationColor = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+                }
+
+                let content = `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                            <span class="group-open:hidden">►</span>
+                            <span class="hidden group-open:inline">▼</span>
+                            Package Analysis
+                        </summary>
+                        <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
+                            <div class="p-4 rounded-lg ${classificationColor}">
+                                <h4 class="font-bold">Package Classification:</h4>
+                                <p>${classification}</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-2">Sum of Fractions Calculation:</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-left">
+                                        <thead class="bg-gray-100 dark:bg-gray-700">
+                                            <tr>
+                                                <th class="px-2 py-1">Item</th>
+                                                <th class="px-2 py-1 text-center">Qty</th>
+                                                <th class="px-2 py-1 text-center">Total Activity</th>
+                                                <th class="px-2 py-1 text-center">Exempt Fraction</th>
+                                                <th class="px-2 py-1 text-center">UN 2911 Fraction</th>
+                                                <th class="px-2 py-1 text-center">Type A Fraction</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${analysisDetails.map(row => `
+                                                <tr class="border-b dark:border-gray-700">
+                                                    <td class="px-2 py-1">${row.name}</td>
+                                                    <td class="px-2 py-1 text-center">${row.qty}</td>
+                                                    <td class="px-2 py-1 text-center">${row.activity}</td>
+                                                    <td class="px-2 py-1 text-center">${row.dot}</td>
+                                                    <td class="px-2 py-1 text-center">${row.un2911}</td>
+                                                    <td class="px-2 py-1 text-center">${row.typeA}</td>
+                                                </tr>
+                                            `).join('')}
+                                            <tr class="font-bold bg-gray-50 dark:bg-gray-800">
+                                                <td class="px-2 py-1 text-right" colspan="3">Total Sum of Fractions:</td>
+                                                <td class="px-2 py-1 text-center ${dotExemptSum > 1 ? 'text-red-500' : 'text-green-500'}">${dotExemptSum.toFixed(3)}</td>
+                                                <td class="px-2 py-1 text-center ${un2911PkgSum > 1 ? 'text-red-500' : 'text-green-500'}">${un2911PkgSum.toFixed(3)}</td>
+                                                <td class="px-2 py-1 text-center ${typeASum > 1 ? 'text-red-500' : 'text-green-500'}">${typeASum.toFixed(3)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                `;
+                analysisContainer.innerHTML = content;
+            }
+
             // NEW: Updated Print functionality to handle all user input and images
             document.getElementById('generateRequestBtn').addEventListener('click', async () => {
                 const form = document.getElementById('disposalRequestForm');
@@ -1840,6 +1980,8 @@
                     });
                 };
 
+                const analysisContentHTML = document.getElementById('packageAnalysis').innerHTML;
+
                 let printContent = `
                     <html>
                     <head>
@@ -1857,6 +1999,40 @@
                             .grid-item strong { font-weight: 600; font-size: 0.875rem; color: #555; }
                             .item-card { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
                             .item-image { max-width: 100%; height: auto; margin-top: 1rem; border-radius: 0.25rem; }
+                            /* Styles from the main page for the analysis section */
+                            .group[open] .group-open\\:mb-4 { margin-bottom: 1rem; }
+                            .list-none { list-style-type: none; }
+                            .cursor-pointer { cursor: pointer; }
+                            .group .group-open\\:hidden { display: inline; }
+                            .group[open] .group-open\\:hidden { display: none; }
+                            .group .hidden { display: none; }
+                            .group[open] .hidden { display: inline; }
+                            .border-l-2 { border-left-width: 2px; }
+                            .pl-4 { padding-left: 1rem; }
+                            .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+                            .p-4 { padding: 1rem; }
+                            .rounded-lg { border-radius: 0.5rem; }
+                            .bg-green-100 { background-color: #dcfce7; } .text-green-800 { color: #166534; }
+                            .bg-blue-100 { background-color: #dbeafe; } .text-blue-800 { color: #1e40af; }
+                            .bg-yellow-100 { background-color: #fef08a; } .text-yellow-800 { color: #854d0e; }
+                            .bg-red-100 { background-color: #fee2e2; } .text-red-800 { color: #991b1b; }
+                            .font-bold { font-weight: 700; }
+                            .font-semibold { font-weight: 600; }
+                            .mb-2 { margin-bottom: 0.5rem; }
+                            .overflow-x-auto { overflow-x: auto; }
+                            .w-full { width: 100%; }
+                            .text-sm { font-size: 0.875rem; }
+                            .text-left { text-align: left; }
+                            thead { display: table-header-group; }
+                            .bg-gray-100 { background-color: #f3f4f6; }
+                            th, td { padding: 0.5rem; }
+                            .text-center { text-align: center; }
+                            tbody { display: table-row-group; }
+                            .border-b { border-bottom-width: 1px; border-color: #e5e7eb; }
+                            .bg-gray-50 { background-color: #f9fafb; }
+                            .text-right { text-align: right; }
+                            .text-red-500 { color: #ef4444; }
+                            .text-green-500 { color: #22c55e; }
                         </style>
                     </head>
                     <body>
@@ -1976,6 +2152,9 @@
                                 <div class="grid-item"><strong>Address:</strong> <span>${getValue('pickupAddress')}</span></div>
                                 <div class="grid-item"><strong>Building #:</strong> <span>${getValue('pickupBuilding')}</span></div>
                             </div>
+                        </div>
+                        <div class="section">
+                            ${analysisContentHTML}
                         </div>
                     </body>
                     </html>
