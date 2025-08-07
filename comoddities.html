@@ -338,7 +338,7 @@
             </div>
 
             <!-- Controls: Search and Toggles -->
-            <div id="controlsContainer" class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
+            <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
                 <div class="flex flex-col lg:flex-row items-center gap-4 w-full">
                     <div class="w-full lg:flex-grow flex flex-col sm:flex-row items-center gap-4">
                         <!-- NEW: Search bar container -->
@@ -1424,24 +1424,31 @@
             const disposalRequestContent = document.getElementById('disposalRequestContent');
             const nrcExemptFilter = document.getElementById('nrcExemptFilter');
             const dotExemptFilter = document.getElementById('dotExemptFilter');
+            const helpBtn = document.getElementById('helpBtn');
             const helpModal = document.getElementById('helpModal');
             const closeHelpModalBtn = document.getElementById('closeHelpModalBtn');
             const saveSelectionBtn = document.getElementById('saveSelectionBtn');
             const loadSelectionBtn = document.getElementById('loadSelectionBtn');
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');
             const clearSavedBtn = document.getElementById('clearSavedBtn');
+            const addItemBtn = document.getElementById('addItemBtn');
             const addItemModal = document.getElementById('addItemModal');
             const closeAddItemModalBtn = document.getElementById('closeAddItemModalBtn');
             const cancelAddItemBtn = document.getElementById('cancelAddItemBtn');
             const addItemForm = document.getElementById('addItemForm');
             const itemRadionuclideSelect = document.getElementById('itemRadionuclide');
+            const clearAddedBtn = document.getElementById('clearAddedBtn');
+            const importCustomBtn = document.getElementById('importCustomBtn');
+            const exportCustomBtn = document.getElementById('exportCustomBtn');
             const importFileInput = document.getElementById('importFileInput');
             const searchInput = document.getElementById('searchInput');
+            const clearFiltersBtn = document.getElementById('clearFiltersBtn');
             const radionuclideDetailModal = document.getElementById('radionuclideDetailModal');
             const closeRadionuclideModalBtn = document.getElementById('closeRadionuclideModalBtn');
             const tooltipModal = document.getElementById('tooltipModal');
             const closeTooltipModalBtn = document.getElementById('closeTooltipModalBtn');
-            const controlsContainer = document.getElementById('controlsContainer');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
 
 
             if (document.documentElement.classList.contains('dark')) {
@@ -1709,201 +1716,236 @@
             closeDetailModalBtn.addEventListener('click', () => {
                 detailModal.style.display = 'none';
             });
-            
-            // Refactored to use a single event listener for controls
-            controlsContainer.addEventListener('click', (event) => {
-                const target = event.target.closest('button'); // Find the button that was clicked
-                if (!target) return;
 
-                const targetId = target.id;
+            compareBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
+                
+                const isSiUnits = document.getElementById('unitToggle').checked;
 
-                switch (targetId) {
-                    case 'compareBtn': {
-                        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                        const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                        
-                        const isSiUnits = document.getElementById('unitToggle').checked;
+                let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
+                
+                const headers = ['Attribute', ...selectedData.map(item => item.name)];
+                content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
+                headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
+                content += '</tr></thead><tbody>';
 
-                        let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
-                        
-                        const headers = ['Attribute', ...selectedData.map(item => item.name)];
-                        content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
-                        headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
-                        content += '</tr></thead><tbody>';
+                const attributes = [
+                    { label: 'NSN', key: 'nsn' },
+                    { label: 'NIIN', key: 'niin' },
+                    { label: 'Radionuclide', key: 'radionuclide' },
+                    { label: 'Activity', key: isSiUnits ? 'activity_bq_str' : 'activity_ci_str' },
+                    { label: 'NRC Exemption', key: isSiUnits ? 'nrc_exemption_bq_str' : 'nrc_exemption_ci_str' },
+                    { label: 'DOT Exemption', key: isSiUnits ? 'dot_exemption_bq_str' : 'dot_exemption_ci_str' },
+                    { label: 'UN 2911 Limit (item)', key: isSiUnits ? 'un2911_limit_bq_str' : 'un2911_limit_ci_str' },
+                    { label: 'UN 2911 Limit (package)', key: isSiUnits ? 'un2911_pkg_limit_bq_str' : 'un2911_pkg_limit_ci_str' }
+                ];
 
-                        const attributes = [
-                            { label: 'NSN', key: 'nsn' },
-                            { label: 'NIIN', key: 'niin' },
-                            { label: 'Radionuclide', key: 'radionuclide' },
-                            { label: 'Activity', key: isSiUnits ? 'activity_bq_str' : 'activity_ci_str' },
-                            { label: 'NRC Exemption', key: isSiUnits ? 'nrc_exemption_bq_str' : 'nrc_exemption_ci_str' },
-                            { label: 'DOT Exemption', key: isSiUnits ? 'dot_exemption_bq_str' : 'dot_exemption_ci_str' },
-                            { label: 'UN 2911 Limit (item)', key: isSiUnits ? 'un2911_limit_bq_str' : 'un2911_limit_ci_str' },
-                            { label: 'UN 2911 Limit (package)', key: isSiUnits ? 'un2911_pkg_limit_bq_str' : 'un2911_pkg_limit_ci_str' }
-                        ];
+                attributes.forEach(attr => {
+                    content += '<tr class="border-b dark:border-gray-700">';
+                    content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
+                    selectedData.forEach(item => {
+                        content += `<td class="px-4 py-2">${item[attr.key] || ''}</td>`;
+                    });
+                    content += '</tr>';
+                });
 
-                        attributes.forEach(attr => {
-                            content += '<tr class="border-b dark:border-gray-700">';
-                            content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
-                            selectedData.forEach(item => {
-                                content += `<td class="px-4 py-2">${item[attr.key] || ''}</td>`;
-                            });
-                            content += '</tr>';
-                        });
-
-                        content += '</tbody></table></div>';
-                        compareContent.innerHTML = content;
-                        compareModal.style.display = 'flex';
-                        break;
-                    }
-                    case 'exportSelectionBtn': {
-                        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                        const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                        const isSiUnits = document.getElementById('unitToggle').checked;
-                        
-                        const headers = [
-                            "Name or Nomenclature", "NSN", "NIIN", "Radionuclide", 
-                            "Activity", "NRC Exemption", "DOT Exemption", 
-                            "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
-                        ];
-
-                        let csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h}"`).join(",") + "\n";
-
-                        selectedData.forEach(item => {
-                            const row = [
-                                `"${item.name}"`,
-                                `"${item.nsn || ''}"`,
-                                `"${item.niin || ''}"`,
-                                `"${item.radionuclide}"`,
-                                `"${isSiUnits ? item.activity_bq_str : item.activity_ci_str}"`,
-                                `"${isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str}"`,
-                                `"${isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str}"`,
-                                `"${isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str}"`,
-                                `"${isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str}"`
-                            ].join(",");
-                            csvContent += row + "\n";
-                        });
-
-                        const encodedUri = encodeURI(csvContent);
-                        const link = document.createElement("a");
-                        link.setAttribute("href", encodedUri);
-                        link.setAttribute("download", "radioactive_commodities_selection.csv");
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        break;
-                    }
-                    case 'clearSelectionBtn': {
-                        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                        selectedCheckboxes.forEach(checkbox => {
-                            checkbox.checked = false;
-                            checkbox.closest('tr').classList.remove('selected-row');
-                        });
-                        compareBtn.disabled = true;
-                        exportSelectionBtn.disabled = true;
-                        clearSelectionBtn.disabled = true;
-                        disposalRequestBtn.disabled = true;
-                        saveSelectionBtn.disabled = true;
-                        selectAllCheckbox.checked = false;
-                        break;
-                    }
-                    case 'disposalRequestBtn':
-                        showDisposalRequestModal();
-                        break;
-                    case 'helpBtn':
-                        helpModal.style.display = 'flex';
-                        break;
-                    case 'saveSelectionBtn': {
-                        const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
-                        localStorage.setItem('savedSelection', JSON.stringify(selectedIds));
-                        showToast('Selection saved!', 'success');
-                        loadSelectionBtn.disabled = false;
-                        clearSavedBtn.disabled = false;
-                        break;
-                    }
-                    case 'loadSelectionBtn': {
-                        const savedIds = JSON.parse(localStorage.getItem('savedSelection'));
-                        if (!savedIds || savedIds.length === 0) return;
-
-                        document.getElementById('clearSelectionBtn').click(); // Reuse existing clear logic
-
-                        savedIds.forEach(id => {
-                            const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
-                            if (checkbox) {
-                                checkbox.checked = true;
-                                const changeEvent = new Event('change', { bubbles: true });
-                                checkbox.dispatchEvent(changeEvent);
-                            }
-                        });
-                        showToast('Selection loaded.', 'info');
-                        break;
-                    }
-                    case 'clearSavedBtn':
-                        showConfirmationModal('Are you sure you want to clear your saved selection?', () => {
-                            localStorage.removeItem('savedSelection');
-                            clearSavedBtn.disabled = true;
-                            loadSelectionBtn.disabled = true;
-                            showToast('Saved selection cleared.', 'success');
-                            confirmModal.style.display = 'none';
-                        });
-                        break;
-                    case 'addItemBtn':
-                        showAddItemModal();
-                        break;
-                    case 'importCustomBtn':
-                        importFileInput.click();
-                        break;
-                    case 'exportCustomBtn': {
-                        const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
-                        if (customItems.length === 0) {
-                            showToast('No custom items to export.', 'error');
-                            return;
-                        }
-                        const jsonString = JSON.stringify(customItems, null, 2);
-                        const blob = new Blob([jsonString], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = 'radioactive_commodities_custom.json';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url);
-                        showToast('Custom items exported!', 'success');
-                        break;
-                    }
-                    case 'clearAddedBtn':
-                        showConfirmationModal("Are you sure you want to delete all custom-added items? This action cannot be undone.", () => {
-                            localStorage.removeItem('customItems');
-                            tableData = processData(rawTableData, []);
-                            filterTable();
-                            populateRadionuclideFilter();
-                            updateCustomItemButtonsState();
-                            showToast('All custom items have been deleted.', 'success');
-                            confirmModal.style.display = 'none';
-                        });
-                        break;
-                    case 'clearFiltersBtn':
-                        searchInput.value = '';
-                        radionuclideFilter.value = 'all';
-                        nrcExemptFilter.checked = false;
-                        dotExemptFilter.checked = false;
-                        localStorage.removeItem('lookupTableState');
-                        filterTable(); 
-                        break;
-                    case 'clearSearchBtn':
-                        searchInput.value = '';
-                        target.classList.add('hidden');
-                        filterTable();
-                        saveState();
-                        break;
-                }
+                content += '</tbody></table></div>';
+                compareContent.innerHTML = content;
+                compareModal.style.display = 'flex';
             });
 
             closeModalBtn.addEventListener('click', () => {
                 compareModal.style.display = 'none';
             });
+
+            exportSelectionBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
+                const isSiUnits = document.getElementById('unitToggle').checked;
+                
+                const headers = [
+                    "Name or Nomenclature", "NSN", "NIIN", "Radionuclide", 
+                    "Activity", "NRC Exemption", "DOT Exemption", 
+                    "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
+                ];
+
+                let csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h}"`).join(",") + "\n";
+
+                selectedData.forEach(item => {
+                    const row = [
+                        `"${item.name}"`,
+                        `"${item.nsn || ''}"`,
+                        `"${item.niin || ''}"`,
+                        `"${item.radionuclide}"`,
+                        `"${isSiUnits ? item.activity_bq_str : item.activity_ci_str}"`,
+                        `"${isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str}"`,
+                        `"${isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str}"`,
+                        `"${isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str}"`,
+                        `"${isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str}"`
+                    ].join(",");
+                    csvContent += row + "\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "radioactive_commodities_selection.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            clearSelectionBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                selectedCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.closest('tr').classList.remove('selected-row');
+                });
+                compareBtn.disabled = true;
+                exportSelectionBtn.disabled = true;
+                clearSelectionBtn.disabled = true;
+                disposalRequestBtn.disabled = true;
+                saveSelectionBtn.disabled = true;
+                selectAllCheckbox.checked = false;
+            });
+            
+            disposalRequestBtn.addEventListener('click', () => {
+                showDisposalRequestModal();
+            });
+
+            function showDisposalRequestModal() {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
+                
+                let content = '<form id="disposalRequestForm" class="space-y-6">';
+
+                // Section 1: Command Information
+                content += `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                            <span class="group-open:hidden">►</span>
+                            <span class="hidden group-open:inline">▼</span>
+                            Command Information
+                        </summary>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
+                            <div><label class="block text-sm font-medium">UIC</label><input type="text" data-form-id="uic" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Command Name</label><input type="text" data-form-id="commandName" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div class="md:col-span-2"><label class="block text-sm font-medium">Street Address</label><input type="text" data-form-id="streetAddress" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">City</label><input type="text" data-form-id="city" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">State</label><input type="text" data-form-id="state" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Zip</label><input type="text" data-form-id="zip" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Country (if not USA)</label><input type="text" data-form-id="country" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        </div>
+                    </details>
+                `;
+
+                // Section 2: Command POCs
+                content += `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                             <span class="group-open:hidden">►</span>
+                            <span class="hidden group-open:inline">▼</span>
+                            Command POCs (at least two!)
+                        </summary>
+                        <div class="space-y-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
+                            <!-- POC 1 -->
+                            <div class="p-4 border rounded-lg dark:border-gray-600">
+                                <h4 class="font-semibold mb-2">POC 1</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc1Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc1Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc1Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc1BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc1MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                </div>
+                            </div>
+                            <!-- POC 2 -->
+                            <div class="p-4 border rounded-lg dark:border-gray-600">
+                                <h4 class="font-semibold mb-2">POC 2</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc2Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc2Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc2Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc2BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                    <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc2MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                </div>
+                            </div>
+                             <div><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
+                        </div>
+                    </details>
+                `;
+
+                // Section 3: Item Details
+                content += `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                            <span class="group-open:hidden">►</span>
+                            <span class="hidden group-open:inline">▼</span>
+                            Item Details
+                        </summary>
+                        <div id="disposalItemsContainer" class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
+                `;
+                selectedItems.forEach((item, index) => {
+                    content += `
+                        <div class="p-4 border rounded-lg dark:border-gray-600 disposal-item" data-item-id="${item.id}">
+                            <h4 class="font-semibold mb-2 text-base">${item.name}</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <!-- Item Description -->
+                                <div><label class="block text-sm font-medium">NSN</label><input type="text" value="${item.nsn || ''}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
+                                <div><label class="block text-sm font-medium">DEMIL</label><input type="text" data-form-id="demil" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div class="md:col-span-2"><label class="block text-sm font-medium">Serial #(s)</label><div class="serial-number-container space-y-2"><input type="text" data-form-id="serial" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div><button type="button" class="add-serial-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another serial #</button></div>
+                                <div><label class="block text-sm font-medium">SSDR</label><input type="text" data-form-id="ssdr" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium"># each</label><input type="number" value="1" min="1" data-form-id="quantity" class="quantity-input mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <!-- Radioactivity Info -->
+                                <div><label class="block text-sm font-medium">Radionuclide</label><input type="text" value="${item.radionuclide}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
+                                <div><label class="block text-sm font-medium">Activity</label><input type="text" value="${item.activity_ci_str}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
+                                <div><label class="block text-sm font-medium">Assay Date</label><input type="date" data-form-id="assayDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Licensed</label><select data-form-id="licensed" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"><option>No</option><option>Yes</option></select></div>
+                                <div class="md:col-span-2"><label class="block text-sm font-medium">NRC License # / MML Permit #</label><input type="text" data-form-id="licenseNumber" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <!-- Physical Description -->
+                                <div><label class="block text-sm font-medium">Form</label><input type="text" data-form-id="form" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Volume</label><input type="text" data-form-id="volume" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Weight</label><input type="text" data-form-id="weight" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div class="md:col-span-3"><label class="block text-sm font-medium">Other Info</label><input type="text" data-form-id="otherInfo" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div class="md:col-span-3"><label class="block text-sm font-medium">Pictures</label><div class="picture-container space-y-2"><input type="file" data-form-id="picture" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300 dark:hover:file:bg-gray-600"></div><button type="button" class="add-picture-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another picture</button></div>
+                                <!-- Manufacturer Info -->
+                                <div><label class="block text-sm font-medium">Company Name</label><input type="text" data-form-id="mfgName" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Part/Model #</label><input type="text" data-form-id="mfgModel" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Date (on item)</label><input type="text" data-form-id="mfgDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                content += `</div></details>`;
+
+                // Section 4: Pickup Location
+                content += `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                             <span class="group-open:hidden">►</span>
+                            <span class="hidden group-open:inline">▼</span>
+                            Pickup Location
+                        </summary>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
+                            <div class="md:col-span-2"><label class="block text-sm font-medium">Address</label><input type="text" data-form-id="pickupAddress" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Building #</label><input type="text" data-form-id="pickupBuilding" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        </div>
+                    </details>
+                `;
+                
+                // NEW: Package Analysis Section
+                content += `<div id="packageAnalysis" class="mt-6"></div>`;
+
+                content += '</form>';
+                disposalRequestContent.innerHTML = content;
+                disposalRequestModal.style.display = 'flex';
+
+                // Initial calculation and set up listener
+                calculateDisposalPackageAnalysis();
+                disposalRequestContent.querySelector('#disposalItemsContainer').addEventListener('input', calculateDisposalPackageAnalysis);
+                
+            }
             
             closeDisposalRequestModalBtn.addEventListener('click', () => {
                 disposalRequestModal.style.display = 'none';
@@ -2256,8 +2298,46 @@
                 });
             }
 
+            helpBtn.addEventListener('click', () => {
+                helpModal.style.display = 'flex';
+            });
             closeHelpModalBtn.addEventListener('click', () => {
                 helpModal.style.display = 'none';
+            });
+
+            saveSelectionBtn.addEventListener('click', () => {
+                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+                const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
+                localStorage.setItem('savedSelection', JSON.stringify(selectedIds));
+                showToast('Selection saved!', 'success');
+                loadSelectionBtn.disabled = false;
+                clearSavedBtn.disabled = false;
+            });
+
+            loadSelectionBtn.addEventListener('click', () => {
+                const savedIds = JSON.parse(localStorage.getItem('savedSelection'));
+                if (!savedIds || savedIds.length === 0) return;
+
+                clearSelectionBtn.click();
+
+                savedIds.forEach(id => {
+                    const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const changeEvent = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(changeEvent);
+                    }
+                });
+                showToast('Selection loaded.', 'info');
+            });
+
+            clearSavedBtn.addEventListener('click', () => {
+                showConfirmationModal('Are you sure you want to clear your saved selection?', () => {
+                    localStorage.removeItem('savedSelection');
+                    clearSavedBtn.disabled = true;
+                    loadSelectionBtn.disabled = true;
+                    showToast('Saved selection cleared.', 'success');
+                });
             });
 
             selectAllCheckbox.addEventListener('change', () => {
@@ -2270,6 +2350,16 @@
                         checkbox.dispatchEvent(changeEvent);
                     }
                 });
+            });
+
+            addItemBtn.addEventListener('click', () => {
+                showAddItemModal();
+            });
+            closeAddItemModalBtn.addEventListener('click', () => {
+                addItemModal.style.display = 'none';
+            });
+            cancelAddItemBtn.addEventListener('click', () => {
+                addItemModal.style.display = 'none';
             });
 
             addItemForm.addEventListener('submit', (e) => {
@@ -2306,6 +2396,17 @@
                 updateCustomItemButtonsState();
 
                 addItemForm.reset();
+            });
+
+            clearAddedBtn.addEventListener('click', () => {
+                showConfirmationModal("Are you sure you want to delete all custom-added items? This action cannot be undone.", () => {
+                    localStorage.removeItem('customItems');
+                    tableData = processData(rawTableData, []);
+                    filterTable();
+                    populateRadionuclideFilter();
+                    updateCustomItemButtonsState();
+                    showToast('All custom items have been deleted.', 'success');
+                });
             });
 
             function populateAddItemRadionuclides() {
@@ -2361,9 +2462,32 @@
             function updateCustomItemButtonsState() {
                 const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 const hasCustomItems = customItems.length > 0;
-                document.getElementById('clearAddedBtn').disabled = !hasCustomItems;
-                document.getElementById('exportCustomBtn').disabled = !hasCustomItems;
+                clearAddedBtn.disabled = !hasCustomItems;
+                exportCustomBtn.disabled = !hasCustomItems;
             }
+
+            exportCustomBtn.addEventListener('click', () => {
+                const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                if (customItems.length === 0) {
+                    showToast('No custom items to export.', 'error');
+                    return;
+                }
+                const jsonString = JSON.stringify(customItems, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'radioactive_commodities_custom.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showToast('Custom items exported!', 'success');
+            });
+
+            importCustomBtn.addEventListener('click', () => {
+                importFileInput.click();
+            });
 
             importFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
@@ -2384,7 +2508,6 @@
                             populateRadionuclideFilter();
                             updateCustomItemButtonsState();
                             showToast('Custom items imported successfully!', 'success');
-                            confirmModal.style.display = 'none';
                         });
 
                     } catch (error) {
@@ -2451,6 +2574,17 @@
                 }
                 // We no longer hide the confirmModal here, as the callback is now responsible for it.
                 confirmCallback = null;
+            });
+
+            // --- Clear Filters Button Logic ---
+            clearFiltersBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                radionuclideFilter.value = 'all';
+                nrcExemptFilter.checked = false;
+                dotExemptFilter.checked = false;
+                // NEW: Explicitly remove the saved state
+                localStorage.removeItem('lookupTableState');
+                filterTable(); 
             });
 
             // --- Enhanced Modal Interaction Logic ---
@@ -2567,7 +2701,17 @@
                 clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
                 debouncedFilterAndSave();
             });
+
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                clearSearchBtn.classList.add('hidden');
+                filterTable();
+                saveState();
+            });
             
+            // Add listener for the new CSV export button
+            exportCsvBtn.addEventListener('click', exportDisposalRequestAsCSV);
+
             radionuclideFilter.addEventListener('change', () => { filterTable(); saveState(); });
             nrcExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
             dotExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
