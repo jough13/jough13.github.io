@@ -4,320 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sortable Radioactive Commodity Lookup Table</title>
-    
-    <!-- The main Tailwind CSS script MUST be loaded before the configuration script. -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Configure Tailwind CSS to use the 'class' strategy for dark mode.
-        // This tells Tailwind to apply dark styles whenever the 'dark' class is present on the <html> element.
         tailwind.config = {
             darkMode: 'class'
         }
     </script>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        /* Style for the sticky header */
-        .sticky-header {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        /* Styles for sortable columns and arrows */
-        .sortable {
-            cursor: pointer;
-            position: relative;
-            user-select: none;
-        }
-        .sortable .sort-arrow {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            opacity: 0.4;
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        .sortable .sort-arrow.asc,
-        .sortable .sort-arrow.desc {
-            opacity: 1;
-        }
-        .sortable .sort-arrow.asc::after {
-            content: '▲';
-            font-size: 0.6em;
-        }
-        .sortable .sort-arrow.desc::after {
-            content: '▼';
-            font-size: 0.6em;
-        }
-        /* NEW: Style for the currently sorted column header */
-        .sorted-column {
-            background-color: #e5e7eb; /* gray-200 */
-        }
-        .dark .sorted-column {
-            background-color: #4b5563; /* gray-600 */
-        }
-        /* Toggle Switch Styles */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #2563eb;
-        }
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-        /* Style for selected rows */
-        .selected-row {
-            background-color: #fef9c3; /* A light yellow, works in both light and dark mode */
-        }
-        .dark .selected-row {
-            background-color: #4a4a2a; /* A darker yellow for dark mode */
-        }
-        tr td:not(:first-child):not(.radionuclide-link) {
-            cursor: pointer;
-        }
-        
-        /* Styles for new progress/bar charts */
-        .progress-bar-container {
-            width: 100%;
-            height: 20px;
-            background-color: #e5e7eb; /* gray-200 */
-            border-radius: 0.375rem; /* rounded-md */
-            overflow: hidden;
-            margin-top: 0.25rem; /* mt-1 */
-        }
-        .dark .progress-bar-container {
-            background-color: #374151; /* dark:bg-gray-700 */
-        }
-        .progress-bar {
-            height: 100%;
-            border-radius: 0.375rem; /* rounded-md */
-            transition: width 0.5s ease-in-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
-        }
-
-        /* Style for custom-added rows */
-        .custom-row {
-            background-color: #eff6ff; /* blue-50 */
-        }
-        .dark .custom-row {
-            background-color: #1e3a8a; /* A deep blue for dark mode */
-        }
-        .dark .custom-row:hover {
-            background-color: #1e40af; /* A slightly lighter blue for hover */
-        }
-        
-        /* NEW: Styles for mobile details toggle */
-        .toggle-cell {
-            display: none;
-        }
-        .details-toggle-btn {
-            width: 100%;
-            padding: 0.5rem;
-            font-weight: 600;
-            color: #3b82f6; /* blue-500 */
-            border-radius: 0.5rem;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-        .details-toggle-btn:hover {
-            background-color: #dbeafe; /* blue-100 */
-        }
-        .dark .details-toggle-btn {
-            color: #60a5fa; /* blue-400 */
-        }
-        .dark .details-toggle-btn:hover {
-            background-color: #374151; /* gray-700 */
-        }
-        
-        /* NEW: Style for search result highlighting */
-        .highlight {
-            background-color: #fef08a; /* yellow-200 */
-            color: #713f12; /* yellow-900 */
-            border-radius: 2px;
-            padding: 1px 0;
-        }
-        .dark .highlight {
-            background-color: #facc15; /* yellow-400 */
-            color: #422006; /* yellow-950 */
-        }
-
-        /* NEW: Toast Notification Styles */
-        #toastContainer {
-            position: fixed;
-            top: 1.5rem;
-            right: 1.5rem;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .toast {
-            padding: 1rem;
-            border-radius: 0.5rem;
-            color: white;
-            font-weight: 500;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            animation: toast-fade-in 0.3s ease-out;
-        }
-        .toast.success { background-color: #22c55e; } /* green-500 */
-        .toast.error { background-color: #ef4444; } /* red-500 */
-        .toast.info { background-color: #3b82f6; } /* blue-500 */
-        
-        @keyframes toast-fade-in {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes toast-fade-out {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); }
-        }
-        .toast.fade-out {
-            animation: toast-fade-out 0.3s ease-in forwards;
-        }
-
-
-        /* Responsive Table Styles */
+        body { font-family: 'Inter', sans-serif; }
+        .sticky-header { position: sticky; top: 0; z-index: 10; }
+        .sortable { cursor: pointer; position: relative; user-select: none; }
+        .sortable .sort-arrow { display: inline-block; width: 1em; height: 1em; opacity: 0.4; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
+        .sortable .sort-arrow.asc, .sortable .sort-arrow.desc { opacity: 1; }
+        .sortable .sort-arrow.asc::after { content: '▲'; font-size: 0.6em; }
+        .sortable .sort-arrow.desc::after { content: '▼'; font-size: 0.6em; }
+        .sorted-column { background-color: #e5e7eb; }
+        .dark .sorted-column { background-color: #4b5563; }
+        .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2563eb; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .selected-row { background-color: #fef9c3; }
+        .dark .selected-row { background-color: #4a4a2a; }
+        tr td:not(:first-child):not(.radionuclide-link) { cursor: pointer; }
+        .progress-bar-container { width: 100%; height: 20px; background-color: #e5e7eb; border-radius: 0.375rem; overflow: hidden; margin-top: 0.25rem; }
+        .dark .progress-bar-container { background-color: #374151; }
+        .progress-bar { height: 100%; border-radius: 0.375rem; transition: width 0.5s ease-in-out; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+        .custom-row { background-color: #eff6ff; }
+        .dark .custom-row { background-color: #1e3a8a; }
+        .dark .custom-row:hover { background-color: #1e40af; }
+        .toggle-cell { display: none; }
+        .details-toggle-btn { width: 100%; padding: 0.5rem; font-weight: 600; color: #3b82f6; border-radius: 0.5rem; background-color: transparent; transition: background-color 0.2s; }
+        .details-toggle-btn:hover { background-color: #dbeafe; }
+        .dark .details-toggle-btn { color: #60a5fa; }
+        .dark .details-toggle-btn:hover { background-color: #374151; }
+        .highlight { background-color: #fef08a; color: #713f12; border-radius: 2px; padding: 1px 0; }
+        .dark .highlight { background-color: #facc15; color: #422006; }
+        #toastContainer { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; display: flex; flex-direction: column; gap: 0.75rem; }
+        .toast { padding: 1rem; border-radius: 0.5rem; color: white; font-weight: 500; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); animation: toast-fade-in 0.3s ease-out; }
+        .toast.success { background-color: #22c55e; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        @keyframes toast-fade-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toast-fade-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+        .toast.fade-out { animation: toast-fade-out 0.3s ease-in forwards; }
         @media (max-width: 1024px) {
-            #lookupTable thead {
-                display: none;
-            }
-            #lookupTable, #lookupTable tbody, #lookupTable tr, #lookupTable td {
-                display: block;
-                width: 100%;
-            }
-            #lookupTable tr {
-                margin-bottom: 1.5rem;
-                border: 1px solid #e5e7eb;
-                border-radius: 0.75rem;
-                overflow: hidden;
-            }
-            .dark #lookupTable tr {
-                border-color: #374151;
-            }
-            #lookupTable td {
-                display: flex;
-                justify-content: space-between;
-                padding: 0.75rem 1rem;
-                text-align: right;
-                border-bottom: 1px solid #e5e7eb;
-            }
-            .dark #lookupTable td {
-                border-color: #374151;
-            }
-            #lookupTable td:last-child {
-                border-bottom: none;
-            }
-            #lookupTable td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                text-align: left;
-                padding-right: 1rem;
-                white-space: nowrap;
-            }
-            .dark #lookupTable td::before {
-                color: #d1d5db;
-            }
-
-            /* NEW: Mobile view improvements */
-            #lookupTable td.expandable {
-                display: none;
-            }
-            #lookupTable tr.details-visible td.expandable {
-                display: flex;
-            }
-            #lookupTable td.toggle-cell {
-                display: flex;
-                justify-content: center;
-                background-color: #f3f4f6; /* gray-100 */
-                border-bottom: none;
-            }
-            .dark #lookupTable td.toggle-cell {
-                background-color: #1f2937; /* gray-800 */
-            }
-
-            /* Special handling for the first two cells (Checkbox and Name) */
-            #lookupTable td:first-child {
-                justify-content: center; /* Center the checkbox */
-                background-color: #f9fafb;
-            }
-            .dark #lookupTable td:first-child {
-                background-color: #1f2937;
-            }
-            #lookupTable tr.custom-row td:first-child {
-                background-color: #dbeafe;
-            }
-            .dark #lookupTable tr.custom-row td:first-child {
-                background-color: #1e3a8a;
-            }
-
-            #lookupTable td:nth-child(2) {
-                font-size: 1.125rem; /* lg */
-                font-weight: 600;
-                justify-content: center;
-                text-align: center;
-                background-color: #f9fafb;
-                padding-top: 1rem;
-                padding-bottom: 1rem;
-            }
-            .dark #lookupTable td:nth-child(2) {
-                background-color: #1f2937;
-            }
-            #lookupTable tr.custom-row td:nth-child(2) {
-                background-color: #dbeafe;
-            }
-            .dark #lookupTable tr.custom-row td:nth-child(2) {
-                background-color: #1e3a8a;
-            }
-            #lookupTable td:nth-child(2)::before {
-                display: none; /* Hide the "Name or Nomenclature" label */
-            }
+            #lookupTable thead { display: none; }
+            #lookupTable, #lookupTable tbody, #lookupTable tr, #lookupTable td { display: block; width: 100%; }
+            #lookupTable tr { margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; }
+            .dark #lookupTable tr { border-color: #374151; }
+            #lookupTable td { display: flex; justify-content: space-between; padding: 0.75rem 1rem; text-align: right; border-bottom: 1px solid #e5e7eb; }
+            .dark #lookupTable td { border-color: #374151; }
+            #lookupTable td:last-child { border-bottom: none; }
+            #lookupTable td::before { content: attr(data-label); font-weight: 600; text-align: left; padding-right: 1rem; white-space: nowrap; }
+            .dark #lookupTable td::before { color: #d1d5db; }
+            #lookupTable td.expandable { display: none; }
+            #lookupTable tr.details-visible td.expandable { display: flex; }
+            #lookupTable td.toggle-cell { display: flex; justify-content: center; background-color: #f3f4f6; border-bottom: none; }
+            .dark #lookupTable td.toggle-cell { background-color: #1f2937; }
+            #lookupTable td:first-child { justify-content: center; background-color: #f9fafb; }
+            .dark #lookupTable td:first-child { background-color: #1f2937; }
+            #lookupTable tr.custom-row td:first-child { background-color: #dbeafe; }
+            .dark #lookupTable tr.custom-row td:first-child { background-color: #1e3a8a; }
+            #lookupTable td:nth-child(2) { font-size: 1.125rem; font-weight: 600; justify-content: center; text-align: center; background-color: #f9fafb; padding-top: 1rem; padding-bottom: 1rem; }
+            .dark #lookupTable td:nth-child(2) { background-color: #1f2937; }
+            #lookupTable tr.custom-row td:nth-child(2) { background-color: #dbeafe; }
+            .dark #lookupTable tr.custom-row td:nth-child(2) { background-color: #1e3a8a; }
+            #lookupTable td:nth-child(2)::before { display: none; }
         }
     </style>
     <script>
-        // This script runs immediately to set the dark mode class on initial load.
-        // This prevents a "flash of incorrect theme" while the page is loading.
         if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -326,22 +85,16 @@
     </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
-    
-    <!-- NEW: Toast Notification Container -->
     <div id="toastContainer"></div>
-
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
             <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Radioactive Commodity Lookup</h1>
                 <p class="mt-2 text-gray-600 dark:text-gray-400">A searchable and sortable database of items with NRC and DOT exemption values.</p>
             </div>
-
-            <!-- Controls: Search and Toggles -->
             <div class="p-6 bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-4">
                 <div class="flex flex-col lg:flex-row items-center gap-4 w-full">
                     <div class="w-full lg:flex-grow flex flex-col sm:flex-row items-center gap-4">
-                        <!-- NEW: Search bar container -->
                         <div class="relative w-full lg:flex-grow">
                             <input type="text" id="searchInput" placeholder="Search by name, NSN, NIIN..." class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" autocomplete="off">
                             <button id="clearSearchBtn" class="absolute inset-y-0 right-0 flex items-center pr-3 hidden" title="Clear search">
@@ -350,9 +103,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto">
-                            <!-- Options will be populated by script -->
-                        </select>
+                        <select id="radionuclideFilter" class="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200 w-full sm:w-auto"></select>
                         <button id="clearFiltersBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 whitespace-nowrap">Clear Filters</button>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap justify-center">
@@ -401,8 +152,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Table Container with Scrolling -->
             <div class="overflow-x-auto">
                 <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
@@ -421,14 +170,10 @@
                             <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
-                    <tbody class="dark:divide-gray-700">
-                        <!-- Data rows will be injected here by the script -->
-                    </tbody>
+                    <tbody class="dark:divide-gray-700"></tbody>
                 </table>
             </div>
-             <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400">
-                <!-- Content will be set by JavaScript -->
-            </div>
+             <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400"></div>
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
@@ -436,45 +181,34 @@
         </footer>
     </div>
 
-    <!-- Comparison Modal -->
     <div id="compareModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">Compare Selected Items</h2>
                 <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="compareContent" class="p-6">
-                <!-- Comparison table will be injected here -->
-            </div>
+            <div id="compareContent" class="p-6"></div>
         </div>
     </div>
 
-    <!-- Detail Modal -->
     <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="detailModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Item Details</h2>
                 <button id="closeDetailModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="detailContent" class="p-6">
-                <!-- Detail content will be injected here -->
-            </div>
-            <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-between items-center">
-                <!-- Action buttons will be injected here -->
-            </div>
+            <div id="detailContent" class="p-6"></div>
+            <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-between items-center"></div>
         </div>
     </div>
 
-    <!-- Disposal Request Modal -->
     <div id="disposalRequestModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">Prepare Disposal Request</h2>
                 <button id="closeDisposalRequestModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="disposalRequestContent" class="p-6 overflow-y-auto">
-                <!-- Disposal request content will be injected here -->
-            </div>
+            <div id="disposalRequestContent" class="p-6 overflow-y-auto"></div>
             <div class="p-4 border-t dark:border-gray-700 flex justify-end gap-4">
                  <button id="exportCsvBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Export as .csv</button>
                  <button id="generateRequestBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate & Print Request</button>
@@ -482,7 +216,6 @@
         </div>
     </div>
 
-    <!-- Help Modal -->
     <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
@@ -605,7 +338,6 @@
         </div>
     </div>
 
-    <!-- Add Item Modal -->
     <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
@@ -655,7 +387,6 @@
     
     <input type="file" id="importFileInput" class="hidden" accept=".json">
 
-    <!-- Confirmation Modal -->
     <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-6 text-center">
@@ -673,34 +404,27 @@
         </div>
     </div>
 
-    <!-- NEW: Radionuclide Detail Modal -->
     <div id="radionuclideDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="radionuclideModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Radionuclide Details</h2>
                 <button id="closeRadionuclideModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="radionuclideContent" class="p-6">
-                <!-- Radionuclide details will be injected here -->
-            </div>
+            <div id="radionuclideContent" class="p-6"></div>
         </div>
     </div>
 
-    <!-- NEW: Tooltip Modal -->
     <div id="tooltipModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="tooltipModalTitle" class="text-xl font-bold text-gray-900 dark:text-white"></h2>
                 <button id="closeTooltipModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
             </div>
-            <div id="tooltipContent" class="p-6">
-                <!-- Tooltip content will be injected here -->
-            </div>
+            <div id="tooltipContent" class="p-6"></div>
         </div>
     </div>
 
     <script>
-        // --- Raw Data (before processing) ---
         const rawTableData = [
             { name: "M11 Pistol Sight, P/N P00007-8A", nsn: "1005-01-359-8429", radionuclide: "H-3", activity: "18", units: "mCi" },
             { name: "M11 Pistol Sight, P/N P00008-8A", nsn: "1005-01-359-8431", radionuclide: "H-3", activity: "36", units: "mCi" },
@@ -870,7 +594,6 @@
             { name: "APD 2000", nsn: "6625-07-000-1329", radionuclide: "Ni-63", activity: "10", units: "mCi" }
         ];
 
-        // --- NEW: Radionuclide Detail Data ---
         const radionuclideDetails = {
             'H-3': { name: 'Tritium', halfLife: '12.3 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Tritium' },
             'Am-241': { name: 'Americium-241', halfLife: '432.2 years', decayMode: 'Alpha, Gamma', wiki: 'https://en.wikipedia.org/wiki/Americium-241' },
@@ -888,7 +611,6 @@
             'Tc-99': { name: 'Technetium-99', halfLife: '211,100 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Technetium-99' }
         };
 
-        // --- NRC Exemption values from 10 CFR 30.71, Schedule B ---
         const nrcExemptionValues = {
             'Am-241': '0.01 µCi', 'C-14': '100 µCi', 'Cs-137': '10 µCi', 'Co-60': '1 µCi',
             'H-3': '1,000 µCi', 'Kr-85': '100 µCi', 'Ni-63': '100 µCi', 'N-63': '100 µCi',
@@ -896,87 +618,37 @@
             'Tc-99': '10 µCi', 'Th-232': '--', 'U-238': '--'
         };
 
-        // --- DOT Exemption values from 49 CFR 173.436 (Consignment) ---
         const dotExemptionValues = {
-            'H-3': '27 mCi',
-            'Am-241': '0.27 µCi',
-            'Th-232': '0.27 µCi',
-            'Sr-90': '0.27 µCi',
-            'Ra-226': '0.27 µCi',
-            'Kr-85': '0.27 µCi',
-            'U-238': '0.27 µCi',
-            'Cs-137': '0.27 µCi',
-            'Pm-147': '270 µCi',
-            'Co-60': '2.7 µCi',
-            'Re-187': '27 mCi',
-            'Ni-63': '2.7 mCi',
-            'N-63': '2.7 mCi', // Assuming typo for Ni-63
-            'C-14': '270 µCi',
-            'Tc-99': '270 µCi'
+            'H-3': '27 mCi', 'Am-241': '0.27 µCi', 'Th-232': '0.27 µCi', 'Sr-90': '0.27 µCi',
+            'Ra-226': '0.27 µCi', 'Kr-85': '0.27 µCi', 'U-238': '0.27 µCi', 'Cs-137': '0.27 µCi',
+            'Pm-147': '270 µCi', 'Co-60': '2.7 µCi', 'Re-187': '27 mCi', 'Ni-63': '2.7 mCi',
+            'N-63': '2.7 mCi', 'C-14': '270 µCi', 'Tc-99': '270 µCi'
         };
 
-        // --- UN 2911 Excepted Package Limits (per item) ---
         const un2911Limits = {
-            'Am-241': '0.00027 Ci',
-            'C-14': '0.81 Ci',
-            'Co-60': '0.11 Ci',
-            'Cs-137': '0.16 Ci',
-            'H-3': '22 Ci',
-            'Kr-85': '0.27 Ci',
-            'Ni-63': '8.1 Ci',
-            'N-63': '8.1 Ci', // Assuming typo for Ni-63
-            'Pm-147': '0.54 Ci',
-            'Ra-226': '0.00081 Ci',
-            'Re-187': 'Unlimited',
-            'Sr-90': '0.081 Ci',
-            'Tc-99': '0.24 Ci',
-            'Th-232': 'Unlimited',
-            'U-238': 'Unlimited'
+            'Am-241': '0.00027 Ci', 'C-14': '0.81 Ci', 'Co-60': '0.11 Ci', 'Cs-137': '0.16 Ci',
+            'H-3': '22 Ci', 'Kr-85': '0.27 Ci', 'Ni-63': '8.1 Ci', 'N-63': '8.1 Ci',
+            'Pm-147': '0.54 Ci', 'Ra-226': '0.00081 Ci', 'Re-187': 'Unlimited', 'Sr-90': '0.081 Ci',
+            'Tc-99': '0.24 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
 
-        // --- UN 2911 Excepted Package Limits (per package) ---
         const un2911PkgLimits = {
-            'Am-241': '0.027 Ci',
-            'C-14': '81 Ci',
-            'Co-60': '11 Ci',
-            'Cs-137': '16 Ci',
-            'H-3': '220 Ci',
-            'Kr-85': '2.7 Ci',
-            'Ni-63': '810 Ci',
-            'N-63': '810 Ci', // Assuming typo for Ni-63
-            'Pm-147': '54 Ci',
-            'Ra-226': '0.081 Ci',
-            'Re-187': 'Unlimited',
-            'Sr-90': '8.1 Ci',
-            'Tc-99': '24 Ci',
-            'Th-232': 'Unlimited',
-            'U-238': 'Unlimited'
+            'Am-241': '0.027 Ci', 'C-14': '81 Ci', 'Co-60': '11 Ci', 'Cs-137': '16 Ci',
+            'H-3': '220 Ci', 'Kr-85': '2.7 Ci', 'Ni-63': '810 Ci', 'N-63': '810 Ci',
+            'Pm-147': '54 Ci', 'Ra-226': '0.081 Ci', 'Re-187': 'Unlimited', 'Sr-90': '8.1 Ci',
+            'Tc-99': '24 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
 
-        // --- BUG FIX: Add DOT A2 values from 49 CFR 173.435 (Type A Package) ---
         const dotA2Values = {
-            'Am-241': '0.027 Ci',
-            'C-14': '54 Ci',
-            'Co-60': '11 Ci',
-            'Cs-137': '16 Ci',
-            'H-3': '1100 Ci',
-            'Kr-85': '270 Ci',
-            'Ni-63': '810 Ci',
-            'N-63': '810 Ci', // Assuming typo for Ni-63
-            'Pm-147': '54 Ci',
-            'Ra-226': '0.54 Ci',
-            'Re-187': 'Unlimited',
-            'Sr-90': '8.1 Ci',
-            'Tc-99': '54 Ci',
-            'Th-232': 'Unlimited',
-            'U-238': 'Unlimited'
+            'Am-241': '0.027 Ci', 'C-14': '54 Ci', 'Co-60': '11 Ci', 'Cs-137': '16 Ci',
+            'H-3': '1100 Ci', 'Kr-85': '270 Ci', 'Ni-63': '810 Ci', 'N-63': '810 Ci',
+            'Pm-147': '54 Ci', 'Ra-226': '0.54 Ci', 'Re-187': 'Unlimited', 'Sr-90': '8.1 Ci',
+            'Tc-99': '54 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
 
-        // --- Global State ---
         let tableData = [];
         let currentSort = { column: null, direction: 'asc' };
         
-        // --- Conversion and Formatting Helpers ---
         const CI_TO_BQ = 3.7e10;
         const ciMultipliers = { 'pCi': 1e-12, 'nCi': 1e-9, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
         
@@ -1014,95 +686,66 @@
             let valueBq = valueCi * CI_TO_BQ;
             const units = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'];
             let unitIndex = 0;
-
             while (valueBq >= 1000 && unitIndex < units.length - 1) {
                 valueBq /= 1000;
                 unitIndex++;
             }
-            
             let displayValue = parseFloat(valueBq.toPrecision(3));
-
             if (displayValue >= 999 && unitIndex < units.length - 1) {
                 displayValue = 1;
                 unitIndex++;
-            } 
-            else if (displayValue >= 99.9 && displayValue < 100) {
+            } else if (displayValue >= 99.9 && displayValue < 100) {
                  displayValue = 100;
-            } 
-            else if (displayValue >= 9.99 && displayValue < 10) {
+            } else if (displayValue >= 9.99 && displayValue < 10) {
                  displayValue = 10;
             }
-
             return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
         }
 
-        // --- Data Processing ---
         function processData(baseData, customData) {
             const processed = [];
             let uniqueId = 0;
-
-            // Process the initial, hardcoded data
             baseData.forEach(item => {
                 const hasMultipleNuclides = item.radionuclide.includes('/');
                 const hasMultipleActivities = String(item.activity).includes('/');
-
                 if (hasMultipleNuclides && hasMultipleActivities) {
                     const nuclides = item.radionuclide.split('/');
                     const activities = String(item.activity).split('/');
                     if (nuclides.length === activities.length) {
                         nuclides.forEach((nuclide, i) => {
-                            // Create a new item object for each part of the multi-nuclide entry
                             const singleItem = { ...item, radionuclide: nuclide.trim(), activity: activities[i].trim() };
-                            // Pass `false` for isCustom since this is base data
                             processed.push(createRowObject(singleItem, uniqueId++, false));
                         });
-                        return; // Skip the final push for the original multi-nuclide item
+                        return;
                     }
                 }
-                // Process regular base data items
                 processed.push(createRowObject(item, uniqueId++, false));
             });
-            
-            // Process custom data from local storage
             customData.forEach(item => {
-                // Pass `true` for isCustom since this is user-added data
                 processed.push(createRowObject(item, item.id, true));
             });
-
             return processed;
         }
         
         function createRowObject(item, id, isCustom = false) {
             const radionuclide = item.radionuclide.trim();
-            
             const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
             const nrcExemptionVal = parseValueToCi(nrcExemptionValues[radionuclide]);
             const dotExemptionVal = parseValueToCi(dotExemptionValues[radionuclide]);
             const un2911LimitVal = parseValueToCi(un2911Limits[radionuclide]);
             const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
-            const dotA2Val = parseValueToCi(dotA2Values[radionuclide]); // BUG FIX: Add A2 value parsing
-
+            const dotA2Val = parseValueToCi(dotA2Values[radionuclide]);
             return {
-                id: id,
-                isCustom: isCustom,
-                name: item.name,
-                nsn: item.nsn,
+                id: id, isCustom: isCustom, name: item.name, nsn: item.nsn,
                 niin: item.niin || (item.nsn ? item.nsn.substring(5).replace(/-/g, '') : ''),
-                radionuclide: radionuclide,
-                
-                activity_val: activityVal,
-                nrc_exemption_val: nrcExemptionVal,
-                dot_exemption_val: dotExemptionVal,
-                un2911_limit_val: un2911LimitVal,
-                un2911_pkg_limit_val: un2911PkgLimitVal,
-                dot_a2_val: dotA2Val, // BUG FIX: Store A2 value
-                
+                radionuclide: radionuclide, activity_val: activityVal, nrc_exemption_val: nrcExemptionVal,
+                dot_exemption_val: dotExemptionVal, un2911_limit_val: un2911LimitVal,
+                un2911_pkg_limit_val: un2911PkgLimitVal, dot_a2_val: dotA2Val,
                 activity_ci_str: formatCi(activityVal),
                 nrc_exemption_ci_str: nrcExemptionVal !== null ? formatCi(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
                 dot_exemption_ci_str: dotExemptionVal !== null ? formatCi(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
                 un2911_limit_ci_str: un2911LimitVal !== null ? formatCi(un2911LimitVal) : 'Unlimited',
                 un2911_pkg_limit_ci_str: un2911PkgLimitVal !== null ? formatCi(un2911PkgLimitVal) : 'Unlimited',
-
                 activity_bq_str: formatBq(activityVal),
                 nrc_exemption_bq_str: nrcExemptionVal !== null ? formatBq(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
                 dot_exemption_bq_str: dotExemptionVal !== null ? formatBq(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
@@ -1111,12 +754,8 @@
             };
         }
 
-        // NEW: Helper function to highlight search terms
         function highlightText(text, searchTerm) {
-            if (!searchTerm || !text) {
-                return text;
-            }
-            // Escape special characters in search term for regex
+            if (!searchTerm || !text) { return text; }
             const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
             return text.replace(regex, `<span class="highlight">$1</span>`);
@@ -1125,30 +764,21 @@
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
-            const searchTerm = document.getElementById('searchInput').value; // Get search term
+            const searchTerm = document.getElementById('searchInput').value;
             tableBody.innerHTML = '';
-
             const rows = data.map((item) => {
                 const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
                 const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
                 const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
                 const un2911PkgLimit = isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str;
                 const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
-
                 const rowClasses = ['border-b', 'dark:border-gray-700', 'hover:bg-gray-50', 'dark:hover:bg-gray-600'];
-                if (item.isCustom) {
-                    rowClasses.push('custom-row');
-                } else {
-                    rowClasses.push('bg-white', 'dark:bg-gray-800');
-                }
-
+                if (item.isCustom) { rowClasses.push('custom-row'); } 
+                else { rowClasses.push('bg-white', 'dark:bg-gray-800'); }
                 const customIcon = item.isCustom ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="inline-block ml-2 text-blue-600 dark:text-blue-300" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>` : '';
-                
-                // Apply highlighting
                 const highlightedName = highlightText(item.name, searchTerm);
                 const highlightedNsn = highlightText(item.nsn, searchTerm);
                 const highlightedNiin = highlightText(item.niin, searchTerm);
-
                 return `
                     <tr class="${rowClasses.join(' ')}" data-id="${item.id}">
                         <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
@@ -1161,11 +791,8 @@
                         <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="DOT Exemption">${dotExemption}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="UN 2911 Limit (item)">${un2911Limit}</td>
                         <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="UN 2911 Limit (package)">${un2911PkgLimit}</td>
-                        <td class="toggle-cell">
-                            <button class="details-toggle-btn">Show More</button>
-                        </td>
-                    </tr>
-                `;
+                        <td class="toggle-cell"><button class="details-toggle-btn">Show More</button></td>
+                    </tr>`;
             }).join('');
             tableBody.innerHTML = rows;
         }
@@ -1174,16 +801,12 @@
             const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
             currentSort.direction = isAsc ? 'desc' : 'asc';
             currentSort.column = columnKey;
-
             const filteredData = getFilteredData();
-
             filteredData.sort((a, b) => {
                 let valA = a[columnKey];
                 let valB = b[columnKey];
-                
                 if (valA === null) return 1;
                 if (valB === null) return -1;
-
                 let comparison = 0;
                 if (typeof valA === 'string') {
                     comparison = valA.localeCompare(valB, undefined, { numeric: true });
@@ -1191,32 +814,23 @@
                     if (valA > valB) comparison = 1;
                     else if (valA < valB) comparison = -1;
                 }
-
                 return currentSort.direction === 'asc' ? comparison : -comparison;
             });
-
             updateSortArrows();
             populateTable(filteredData);
         }
         
         function updateSortArrows() {
-            // Remove sort indicators from all columns first
             document.querySelectorAll('.sortable').forEach(th => {
                 th.classList.remove('sorted-column');
                 const arrow = th.querySelector('.sort-arrow');
-                if (arrow) {
-                    arrow.classList.remove('asc', 'desc');
-                }
+                if (arrow) { arrow.classList.remove('asc', 'desc'); }
             });
-
-            // Apply sort indicator to the current column
             const header = document.querySelector(`th[onclick="sortTable('${currentSort.column}')"]`);
             if (header) {
                 header.classList.add('sorted-column');
                 const arrow = header.querySelector('.sort-arrow');
-                if (arrow) {
-                    arrow.classList.add(currentSort.direction);
-                }
+                if (arrow) { arrow.classList.add(currentSort.direction); }
             }
         }
         
@@ -1227,13 +841,10 @@
             const nuclideFilter = radionuclideFilter.value;
             const nrcExemptOnly = document.getElementById('nrcExemptFilter').checked;
             const dotExemptOnly = document.getElementById('dotExemptFilter').checked;
-
             return tableData.filter(item => {
                 const nuclideMatch = nuclideFilter === 'all' || item.radionuclide === nuclideFilter;
-                
                 const nrcExemptMatch = !nrcExemptOnly || (item.nrc_exemption_val !== null && item.activity_val <= item.nrc_exemption_val);
                 const dotExemptMatch = !dotExemptOnly || (item.dot_exemption_val !== null && item.activity_val <= item.dot_exemption_val);
-
                 let textMatch = false;
                 if (textFilter === "") {
                     textMatch = true;
@@ -1241,7 +852,6 @@
                     const searchableValues = [item.name, item.nsn, item.niin];
                     textMatch = searchableValues.some(val => val && val.toUpperCase().includes(textFilter));
                 }
-
                 return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
             });
         }
@@ -1249,19 +859,13 @@
         function filterTable() {
             const filteredData = getFilteredData();
             const noResultsDiv = document.getElementById("noResults");
-
             populateTable(filteredData);
-
             if (filteredData.length === 0) {
-                noResultsDiv.innerHTML = `
-                    <p class="font-semibold">No results found.</p>
-                    <p class="mt-2 text-sm">Try adjusting your search term or clearing some filters.</p>
-                `;
+                noResultsDiv.innerHTML = `<p class="font-semibold">No results found.</p><p class="mt-2 text-sm">Try adjusting your search term or clearing some filters.</p>`;
                 noResultsDiv.style.display = 'block';
             } else {
                 noResultsDiv.style.display = 'none';
             }
-
             updateSelectionState();
         }
 
@@ -1271,7 +875,6 @@
             document.getElementById('selectAllCheckbox').checked = allVisibleCheckboxes.length > 0 && allVisibleChecked;
         }
 
-        // --- NEW: Debounce helper function ---
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
@@ -1280,115 +883,66 @@
             };
         }
 
-        // --- NEW: Toast Notification function ---
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.textContent = message;
             container.appendChild(toast);
-
             setTimeout(() => {
                 toast.classList.add('fade-out');
                 toast.addEventListener('animationend', () => {
                     toast.remove();
                 });
-            }, 3000); // Toast disappears after 3 seconds
+            }, 3000);
         }
         
-        // --- FIX: Export Disposal Request as CSV ---
         function exportDisposalRequestAsCSV() {
             const form = document.getElementById('disposalRequestForm');
             if (!form) return;
-
-            // Helper to safely create CSV cells
             const escapeCsvCell = (cell) => {
                 if (cell === null || typeof cell === 'undefined') return '""';
                 let str = String(cell);
-                // If the string contains a comma, double quote, or newline, enclose it in double quotes.
                 if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                    // Also, any double quotes within the string must be escaped by another double quote.
                     str = `"${str.replace(/"/g, '""')}"`;
                 }
                 return str;
             };
-
             const headers = [
-                // Command Info
                 'UIC', 'Command Name', 'Street Address', 'City', 'State', 'Zip', 'Country',
-                // POC 1
                 'POC 1 Name', 'POC 1 Title', 'POC 1 Email', 'POC 1 Business #', 'POC 1 Mobile #',
-                // POC 2
                 'POC 2 Name', 'POC 2 Title', 'POC 2 Email', 'POC 2 Business #', 'POC 2 Mobile #',
-                'Security Requirements',
-                // Pickup Location
-                'Pickup Address', 'Pickup Building',
-                // Item Details
+                'Security Requirements', 'Pickup Address', 'Pickup Building',
                 'Item Name', 'NSN', 'Quantity', 'Serial #(s)', 'DEMIL', 'SSDR', 'Radionuclide', 'Activity (Ci)', 'Assay Date',
                 'Licensed', 'License/Permit #', 'Form', 'Volume', 'Weight', 'Other Info',
                 'Mfg. Name', 'Mfg. Model', 'Mfg. Date'
             ];
-
             let csvString = headers.join(",") + "\n";
-
             const itemCards = form.querySelectorAll('.disposal-item');
-            
             itemCards.forEach(itemCard => {
                 const itemId = itemCard.dataset.itemId;
                 const itemData = tableData.find(d => d.id == itemId);
-                
                 const getFieldValue = (id) => itemCard.querySelector(`[data-form-id="${id}"]`)?.value || '';
                 const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
-                const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; '); // Use semicolon for multiple serials
-
+                const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; ');
                 const rowData = [
-                    // Command Info (same for all rows)
-                    form.querySelector('[data-form-id="uic"]').value,
-                    form.querySelector('[data-form-id="commandName"]').value,
-                    form.querySelector('[data-form-id="streetAddress"]').value,
-                    form.querySelector('[data-form-id="city"]').value,
-                    form.querySelector('[data-form-id="state"]').value,
-                    form.querySelector('[data-form-id="zip"]').value,
-                    form.querySelector('[data-form-id="country"]').value,
-                    // POC 1
-                    form.querySelector('[data-form-id="poc1Name"]').value,
-                    form.querySelector('[data-form-id="poc1Title"]').value,
-                    form.querySelector('[data-form-id="poc1Email"]').value,
-                    form.querySelector('[data-form-id="poc1BusinessPhone"]').value,
-                    form.querySelector('[data-form-id="poc1MobilePhone"]').value,
-                    // POC 2
-                    form.querySelector('[data-form-id="poc2Name"]').value,
-                    form.querySelector('[data-form-id="poc2Title"]').value,
-                    form.querySelector('[data-form-id="poc2Email"]').value,
-                    form.querySelector('[data-form-id="poc2BusinessPhone"]').value,
-                    form.querySelector('[data-form-id="poc2MobilePhone"]').value,
-                    form.querySelector('[data-form-id="security"]').value,
-                    // Pickup Location
-                    form.querySelector('[data-form-id="pickupAddress"]').value,
-                    form.querySelector('[data-form-id="pickupBuilding"]').value,
-                    // Item Details
-                    itemData.name,
-                    itemData.nsn,
-                    getFieldValue('quantity'),
-                    serials,
-                    getFieldValue('demil'),
-                    getFieldValue('ssdr'),
-                    itemData.radionuclide,
-                    itemData.activity_ci_str,
-                    getFieldValue('assayDate'),
-                    getFieldValue('licensed'),
-                    getFieldValue('licenseNumber'),
-                    getFieldValue('form'),
-                    getFieldValue('volume'),
-                    getFieldValue('weight'),
-                    getFieldValue('otherInfo'),
-                    getFieldValue('mfgName'),
-                    getFieldValue('mfgModel'),
-                    getFieldValue('mfgDate')
+                    form.querySelector('[data-form-id="uic"]').value, form.querySelector('[data-form-id="commandName"]').value,
+                    form.querySelector('[data-form-id="streetAddress"]').value, form.querySelector('[data-form-id="city"]').value,
+                    form.querySelector('[data-form-id="state"]').value, form.querySelector('[data-form-id="zip"]').value,
+                    form.querySelector('[data-form-id="country"]').value, form.querySelector('[data-form-id="poc1Name"]').value,
+                    form.querySelector('[data-form-id="poc1Title"]').value, form.querySelector('[data-form-id="poc1Email"]').value,
+                    form.querySelector('[data-form-id="poc1BusinessPhone"]').value, form.querySelector('[data-form-id="poc1MobilePhone"]').value,
+                    form.querySelector('[data-form-id="poc2Name"]').value, form.querySelector('[data-form-id="poc2Title"]').value,
+                    form.querySelector('[data-form-id="poc2Email"]').value, form.querySelector('[data-form-id="poc2BusinessPhone"]').value,
+                    form.querySelector('[data-form-id="poc2MobilePhone"]').value, form.querySelector('[data-form-id="security"]').value,
+                    form.querySelector('[data-form-id="pickupAddress"]').value, form.querySelector('[data-form-id="pickupBuilding"]').value,
+                    itemData.name, itemData.nsn, getFieldValue('quantity'), serials, getFieldValue('demil'), getFieldValue('ssdr'),
+                    itemData.radionuclide, itemData.activity_ci_str, getFieldValue('assayDate'), getFieldValue('licensed'),
+                    getFieldValue('licenseNumber'), getFieldValue('form'), getFieldValue('volume'), getFieldValue('weight'),
+                    getFieldValue('otherInfo'), getFieldValue('mfgName'), getFieldValue('mfgModel'), getFieldValue('mfgDate')
                 ];
                 csvString += rowData.map(escapeCsvCell).join(",") + "\n";
             });
-
             const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -1400,7 +954,6 @@
             URL.revokeObjectURL(url);
             showToast('Disposal request exported as CSV!', 'success');
         }
-
 
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
@@ -1450,7 +1003,6 @@
             const clearSearchBtn = document.getElementById('clearSearchBtn');
             const exportCsvBtn = document.getElementById('exportCsvBtn');
 
-
             if (document.documentElement.classList.contains('dark')) {
                 darkModeToggle.checked = true;
             }
@@ -1469,36 +1021,29 @@
             });
             
             tableBody.addEventListener('click', (event) => {
-                // Handle "Show More/Less" button click on mobile
                 const toggleBtn = event.target.closest('.details-toggle-btn');
                 if (toggleBtn) {
                     const row = toggleBtn.closest('tr');
                     row.classList.toggle('details-visible');
                     toggleBtn.textContent = row.classList.contains('details-visible') ? 'Show Less' : 'Show More';
-                    return; // Stop further processing
+                    return;
                 }
-
                 const targetCell = event.target.closest('td');
                 if (!targetCell) return;
-
-                // Handle radionuclide link click
                 if (targetCell.classList.contains('radionuclide-link')) {
                     const nuclideId = targetCell.dataset.radionuclide;
                     showRadionuclideModal(nuclideId);
                     return;
                 }
-
                 const row = targetCell.parentElement;
                 const checkbox = row.querySelector('.row-checkbox');
-
-                // Handle checkbox cell click
                 if (targetCell.cellIndex === 0) {
                     if (event.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
                     }
                     const changeEvent = new Event('change', { bubbles: true });
                     checkbox.dispatchEvent(changeEvent);
-                } else { // Handle other cell clicks to open detail modal
+                } else {
                     const itemId = row.dataset.id;
                     const item = tableData.find(d => d.id == itemId);
                     if (item) {
@@ -1533,8 +1078,6 @@
                 try {
                     document.execCommand('copy');
                     showToast('Copied to clipboard!', 'success');
-                    
-                    // NEW: Visual feedback on the button
                     const clipboardIcon = buttonElement.querySelector('.clipboard-icon');
                     const checkmarkIcon = buttonElement.querySelector('.checkmark-icon');
                     if (clipboardIcon && checkmarkIcon) {
@@ -1545,7 +1088,6 @@
                             checkmarkIcon.style.display = 'none';
                         }, 1500);
                     }
-
                 } catch (err) {
                     console.error('Failed to copy text: ', err);
                     showToast('Failed to copy!', 'error');
@@ -1556,35 +1098,27 @@
             function showDetailModal(item) {
                 const isSiUnits = document.getElementById('unitToggle').checked;
                 detailModalTitle.textContent = item.name;
-
-                // NEW: HTML for copy buttons with two icons
                 const copyButtonHTML = (copyText) => `
                     <button data-copy="${copyText || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy">
                         <svg class="clipboard-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5-.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 7a.5.5 0 0 1 .5-.5h15a.5.5 0 0 1 0 1h-15A.5.5 0 0 1-1 7z"/></svg>
                         <svg class="checkmark-icon w-4 h-4 text-green-500 hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-                    </button>
-                `;
-
+                    </button>`;
                 let content = `<div class="space-y-4">`;
                 content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${item.nsn || 'N/A'} ${copyButtonHTML(item.nsn)}</span></div>`;
                 content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${item.niin || 'N/A'} ${copyButtonHTML(item.niin)}</span></div>`;
-
                 if (item.nsn) {
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
                 content += `<hr class="dark:border-gray-600 my-4">`;
                 content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of <span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${item.radionuclide}">${item.radionuclide}</span></div>`;
-                
                 const comparisons = [
                     { key: 'nrc_exemption_val', label: 'NRC Exemption', limit: item.nrc_exemption_val, str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str },
                     { key: 'dot_exemption_val', label: 'DOT Exemption', limit: item.dot_exemption_val, str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str },
                     { key: 'un2911_limit_val', label: 'UN 2911 Limit (item)', limit: item.un2911_limit_val, str: isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str },
                     { key: 'un2911_pkg_limit_val', label: 'UN 2911 Limit (package)', limit: item.un2911_pkg_limit_val, str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str }
                 ];
-
                 comparisons.forEach(comp => {
                     let status, statusColor, percentage = 0;
-                    
                     if (item.activity_val === null || comp.limit === null) {
                         status = 'N/A';
                         statusColor = 'text-gray-500';
@@ -1595,11 +1129,9 @@
                         status = 'BELOW';
                         statusColor = 'text-green-500';
                     }
-
                     if (item.activity_val !== null && comp.limit !== null && comp.limit > 0) {
                         percentage = Math.min((item.activity_val / comp.limit) * 100, 100);
                     }
-
                     content += `<div class="mb-3">`;
                     content += `<div class="flex justify-between items-center">
                                     <span class="flex items-center">
@@ -1608,7 +1140,6 @@
                                     </span> 
                                     <span class="font-bold ${statusColor}">${status}</span>
                                 </div>`;
-                    
                     if (status !== 'N/A') {
                         const barColor = statusColor.replace('text-', 'bg-');
                         content += `
@@ -1616,16 +1147,12 @@
                                 <div class="progress-bar ${barColor}" style="width: ${percentage}%;">
                                     ${percentage.toFixed(0)}%
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     }
                     content += `</div>`;
                 });
-
                 content += `</div>`;
                 detailContent.innerHTML = content;
-
-                // Add listener for the new radionuclide link in the detail modal
                 const nuclideLink = detailContent.querySelector('.radionuclide-link');
                 if (nuclideLink) {
                     nuclideLink.addEventListener('click', (e) => {
@@ -1634,18 +1161,13 @@
                         showRadionuclideModal(nuclideId);
                     });
                 }
-
                 detailContent.querySelectorAll('.copy-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const textToCopy = button.dataset.copy;
-                        if(textToCopy) {
-                            copyToClipboard(textToCopy, button);
-                        }
+                        if(textToCopy) { copyToClipboard(textToCopy, button); }
                     });
                 });
-
-                // Add listener for tooltip icons
                 detailContent.querySelectorAll('.tooltip-icon').forEach(icon => {
                     icon.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -1653,13 +1175,9 @@
                         showTooltipModal(tooltipKey);
                     });
                 });
-
                 detailActions.innerHTML = '';
-                
-                // --- NEW: Add to Package button logic ---
                 const addToPackageBtn = document.createElement('button');
                 const checkbox = document.querySelector(`.row-checkbox[data-id="${item.id}"]`);
-
                 function updateAddToPackageButtonState() {
                     if (checkbox && checkbox.checked) {
                         addToPackageBtn.textContent = 'Remove from Package';
@@ -1669,23 +1187,19 @@
                         addToPackageBtn.className = 'px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600';
                     }
                 }
-
-                updateAddToPackageButtonState(); // Set initial state
-
+                updateAddToPackageButtonState();
                 addToPackageBtn.onclick = (e) => {
                     e.stopPropagation();
                     if (checkbox) {
                         checkbox.checked = !checkbox.checked;
                         const changeEvent = new Event('change', { bubbles: true });
                         checkbox.dispatchEvent(changeEvent);
-                        updateAddToPackageButtonState(); // Update button after click
+                        updateAddToPackageButtonState();
                     }
                 };
                 detailActions.appendChild(addToPackageBtn);
-
                 const customActionsContainer = document.createElement('div');
                 customActionsContainer.className = 'flex gap-4';
-                
                 if(item.isCustom) {
                     const editBtn = document.createElement('button');
                     editBtn.textContent = 'Edit';
@@ -1694,7 +1208,6 @@
                         detailModal.style.display = 'none';
                         showAddItemModal(item);
                     };
-
                     const deleteBtn = document.createElement('button');
                     deleteBtn.textContent = 'Delete';
                     deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
@@ -1709,7 +1222,6 @@
                     customActionsContainer.appendChild(deleteBtn);
                 }
                 detailActions.appendChild(customActionsContainer);
-
                 detailModal.style.display = 'flex';
             }
 
@@ -1720,19 +1232,14 @@
             compareBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                
                 const isSiUnits = document.getElementById('unitToggle').checked;
-
                 let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
-                
                 const headers = ['Attribute', ...selectedData.map(item => item.name)];
                 content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
                 headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
                 content += '</tr></thead><tbody>';
-
                 const attributes = [
-                    { label: 'NSN', key: 'nsn' },
-                    { label: 'NIIN', key: 'niin' },
+                    { label: 'NSN', key: 'nsn' }, { label: 'NIIN', key: 'niin' },
                     { label: 'Radionuclide', key: 'radionuclide' },
                     { label: 'Activity', key: isSiUnits ? 'activity_bq_str' : 'activity_ci_str' },
                     { label: 'NRC Exemption', key: isSiUnits ? 'nrc_exemption_bq_str' : 'nrc_exemption_ci_str' },
@@ -1740,7 +1247,6 @@
                     { label: 'UN 2911 Limit (item)', key: isSiUnits ? 'un2911_limit_bq_str' : 'un2911_limit_ci_str' },
                     { label: 'UN 2911 Limit (package)', key: isSiUnits ? 'un2911_pkg_limit_bq_str' : 'un2911_pkg_limit_ci_str' }
                 ];
-
                 attributes.forEach(attr => {
                     content += '<tr class="border-b dark:border-gray-700">';
                     content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
@@ -1749,7 +1255,6 @@
                     });
                     content += '</tr>';
                 });
-
                 content += '</tbody></table></div>';
                 compareContent.innerHTML = content;
                 compareModal.style.display = 'flex';
@@ -1763,21 +1268,11 @@
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
                 const isSiUnits = document.getElementById('unitToggle').checked;
-                
-                const headers = [
-                    "Name or Nomenclature", "NSN", "NIIN", "Radionuclide", 
-                    "Activity", "NRC Exemption", "DOT Exemption", 
-                    "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"
-                ];
-
+                const headers = ["Name or Nomenclature", "NSN", "NIIN", "Radionuclide", "Activity", "NRC Exemption", "DOT Exemption", "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"];
                 let csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h}"`).join(",") + "\n";
-
                 selectedData.forEach(item => {
                     const row = [
-                        `"${item.name}"`,
-                        `"${item.nsn || ''}"`,
-                        `"${item.niin || ''}"`,
-                        `"${item.radionuclide}"`,
+                        `"${item.name}"`, `"${item.nsn || ''}"`, `"${item.niin || ''}"`, `"${item.radionuclide}"`,
                         `"${isSiUnits ? item.activity_bq_str : item.activity_ci_str}"`,
                         `"${isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str}"`,
                         `"${isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str}"`,
@@ -1786,7 +1281,6 @@
                     ].join(",");
                     csvContent += row + "\n";
                 });
-
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
@@ -1817,16 +1311,11 @@
             function showDisposalRequestModal() {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                
                 let content = '<form id="disposalRequestForm" class="space-y-6">';
-
-                // Section 1: Command Information
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                            <span class="group-open:hidden">►</span>
-                            <span class="hidden group-open:inline">▼</span>
-                            Command Information
+                            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command Information
                         </summary>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
                             <div><label class="block text-sm font-medium">UIC</label><input type="text" data-form-id="uic" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
@@ -1837,19 +1326,13 @@
                             <div><label class="block text-sm font-medium">Zip</label><input type="text" data-form-id="zip" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                             <div><label class="block text-sm font-medium">Country (if not USA)</label><input type="text" data-form-id="country" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                         </div>
-                    </details>
-                `;
-
-                // Section 2: Command POCs
+                    </details>`;
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                             <span class="group-open:hidden">►</span>
-                            <span class="hidden group-open:inline">▼</span>
-                            Command POCs (at least two!)
+                             <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
                         </summary>
                         <div class="space-y-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
-                            <!-- POC 1 -->
                             <div class="p-4 border rounded-lg dark:border-gray-600">
                                 <h4 class="font-semibold mb-2">POC 1</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1860,7 +1343,6 @@
                                     <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc1MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 </div>
                             </div>
-                            <!-- POC 2 -->
                             <div class="p-4 border rounded-lg dark:border-gray-600">
                                 <h4 class="font-semibold mb-2">POC 2</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1873,85 +1355,62 @@
                             </div>
                              <div><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
                         </div>
-                    </details>
-                `;
-
-                // Section 3: Item Details
+                    </details>`;
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                            <span class="group-open:hidden">►</span>
-                            <span class="hidden group-open:inline">▼</span>
-                            Item Details
+                            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Item Details
                         </summary>
-                        <div id="disposalItemsContainer" class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
-                `;
+                        <div id="disposalItemsContainer" class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">`;
                 selectedItems.forEach((item, index) => {
                     content += `
                         <div class="p-4 border rounded-lg dark:border-gray-600 disposal-item" data-item-id="${item.id}">
                             <h4 class="font-semibold mb-2 text-base">${item.name}</h4>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <!-- Item Description -->
                                 <div><label class="block text-sm font-medium">NSN</label><input type="text" value="${item.nsn || ''}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
                                 <div><label class="block text-sm font-medium">DEMIL</label><input type="text" data-form-id="demil" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div class="md:col-span-2"><label class="block text-sm font-medium">Serial #(s)</label><div class="serial-number-container space-y-2"><input type="text" data-form-id="serial" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div><button type="button" class="add-serial-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another serial #</button></div>
                                 <div><label class="block text-sm font-medium">SSDR</label><input type="text" data-form-id="ssdr" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium"># each</label><input type="number" value="1" min="1" data-form-id="quantity" class="quantity-input mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                <!-- Radioactivity Info -->
                                 <div><label class="block text-sm font-medium">Radionuclide</label><input type="text" value="${item.radionuclide}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
                                 <div><label class="block text-sm font-medium">Activity</label><input type="text" value="${item.activity_ci_str}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
                                 <div><label class="block text-sm font-medium">Assay Date</label><input type="date" data-form-id="assayDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Licensed</label><select data-form-id="licensed" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"><option>No</option><option>Yes</option></select></div>
                                 <div class="md:col-span-2"><label class="block text-sm font-medium">NRC License # / MML Permit #</label><input type="text" data-form-id="licenseNumber" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                <!-- Physical Description -->
                                 <div><label class="block text-sm font-medium">Form</label><input type="text" data-form-id="form" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Volume</label><input type="text" data-form-id="volume" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Weight</label><input type="text" data-form-id="weight" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div class="md:col-span-3"><label class="block text-sm font-medium">Other Info</label><input type="text" data-form-id="otherInfo" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div class="md:col-span-3"><label class="block text-sm font-medium">Pictures</label><div class="picture-container space-y-2"><input type="file" data-form-id="picture" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300 dark:hover:file:bg-gray-600"></div><button type="button" class="add-picture-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another picture</button></div>
-                                <!-- Manufacturer Info -->
                                 <div><label class="block text-sm font-medium">Company Name</label><input type="text" data-form-id="mfgName" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Part/Model #</label><input type="text" data-form-id="mfgModel" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Date (on item)</label><input type="text" data-form-id="mfgDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
                 content += `</div></details>`;
-
-                // Section 4: Pickup Location
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                             <span class="group-open:hidden">►</span>
-                            <span class="hidden group-open:inline">▼</span>
-                            Pickup Location
+                             <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Pickup Location
                         </summary>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
                             <div class="md:col-span-2"><label class="block text-sm font-medium">Address</label><input type="text" data-form-id="pickupAddress" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                             <div><label class="block text-sm font-medium">Building #</label><input type="text" data-form-id="pickupBuilding" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                         </div>
-                    </details>
-                `;
-                
-                // NEW: Package Analysis Section
+                    </details>`;
                 content += `<div id="packageAnalysis" class="mt-6"></div>`;
-
                 content += '</form>';
                 disposalRequestContent.innerHTML = content;
                 disposalRequestModal.style.display = 'flex';
-
-                // Initial calculation and set up listener
                 calculateDisposalPackageAnalysis();
                 disposalRequestContent.querySelector('#disposalItemsContainer').addEventListener('input', calculateDisposalPackageAnalysis);
-                
             }
             
             closeDisposalRequestModalBtn.addEventListener('click', () => {
                 disposalRequestModal.style.display = 'none';
             });
             
-            // NEW: Event delegation for dynamic buttons in disposal form
             disposalRequestContent.addEventListener('click', (e) => {
                 if (e.target.classList.contains('add-serial-btn')) {
                     const container = e.target.previousElementSibling;
@@ -1971,30 +1430,22 @@
                 }
             });
 
-            // BUG FIX: Implement the package analysis function
             function calculateDisposalPackageAnalysis() {
                 const analysisContainer = document.getElementById('packageAnalysis');
                 if (!analysisContainer) return;
-
                 const itemCards = document.querySelectorAll('.disposal-item');
                 let dotExemptSum = 0;
                 let un2911PkgSum = 0;
                 let typeASum = 0;
                 let analysisDetails = [];
-
                 itemCards.forEach(card => {
                     const itemId = card.dataset.itemId;
                     const itemData = tableData.find(d => d.id == itemId);
                     const quantityInput = card.querySelector('.quantity-input');
                     const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 0;
-
-                    if (!itemData || isNaN(quantity) || quantity <= 0) {
-                        return;
-                    }
-
+                    if (!itemData || isNaN(quantity) || quantity <= 0) { return; }
                     const totalActivity = itemData.activity_val * quantity;
                     let detailRow = { name: itemData.name, qty: quantity, activity: formatCi(totalActivity), dot: 'N/A', un2911: 'N/A', typeA: 'N/A' };
-
                     if (itemData.dot_exemption_val) {
                         const fraction = totalActivity / itemData.dot_exemption_val;
                         dotExemptSum += fraction;
@@ -2012,7 +1463,6 @@
                     }
                     analysisDetails.push(detailRow);
                 });
-
                 let classification = '';
                 let classificationColor = '';
                 if (dotExemptSum <= 1) {
@@ -2028,13 +1478,10 @@
                     classification = 'Exceeds Type A limits. Requires Type B package.';
                     classificationColor = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
                 }
-
                 let content = `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                            <span class="group-open:hidden">►</span>
-                            <span class="hidden group-open:inline">▼</span>
-                            Package Analysis
+                            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Package Analysis
                         </summary>
                         <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">
                             <div class="p-4 rounded-lg ${classificationColor}">
@@ -2047,25 +1494,18 @@
                                     <table class="w-full text-sm text-left">
                                         <thead class="bg-gray-100 dark:bg-gray-700">
                                             <tr>
-                                                <th class="px-2 py-1">Item</th>
-                                                <th class="px-2 py-1 text-center">Qty</th>
-                                                <th class="px-2 py-1 text-center">Total Activity</th>
-                                                <th class="px-2 py-1 text-center">Exempt Fraction</th>
-                                                <th class="px-2 py-1 text-center">UN 2911 Fraction</th>
-                                                <th class="px-2 py-1 text-center">Type A Fraction</th>
+                                                <th class="px-2 py-1">Item</th><th class="px-2 py-1 text-center">Qty</th>
+                                                <th class="px-2 py-1 text-center">Total Activity</th><th class="px-2 py-1 text-center">Exempt Fraction</th>
+                                                <th class="px-2 py-1 text-center">UN 2911 Fraction</th><th class="px-2 py-1 text-center">Type A Fraction</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             ${analysisDetails.map(row => `
                                                 <tr class="border-b dark:border-gray-700">
-                                                    <td class="px-2 py-1">${row.name}</td>
-                                                    <td class="px-2 py-1 text-center">${row.qty}</td>
-                                                    <td class="px-2 py-1 text-center">${row.activity}</td>
-                                                    <td class="px-2 py-1 text-center">${row.dot}</td>
-                                                    <td class="px-2 py-1 text-center">${row.un2911}</td>
-                                                    <td class="px-2 py-1 text-center">${row.typeA}</td>
-                                                </tr>
-                                            `).join('')}
+                                                    <td class="px-2 py-1">${row.name}</td><td class="px-2 py-1 text-center">${row.qty}</td>
+                                                    <td class="px-2 py-1 text-center">${row.activity}</td><td class="px-2 py-1 text-center">${row.dot}</td>
+                                                    <td class="px-2 py-1 text-center">${row.un2911}</td><td class="px-2 py-1 text-center">${row.typeA}</td>
+                                                </tr>`).join('')}
                                             <tr class="font-bold bg-gray-50 dark:bg-gray-800">
                                                 <td class="px-2 py-1 text-right" colspan="3">Total Sum of Fractions:</td>
                                                 <td class="px-2 py-1 text-center ${dotExemptSum > 1 ? 'text-red-500' : 'text-green-500'}">${dotExemptSum.toFixed(3)}</td>
@@ -2077,20 +1517,16 @@
                                 </div>
                             </div>
                         </div>
-                    </details>
-                `;
+                    </details>`;
                 analysisContainer.innerHTML = content;
             }
 
-            // NEW: Updated Print functionality to handle all user input and images
             document.getElementById('generateRequestBtn').addEventListener('click', async () => {
                 const form = document.getElementById('disposalRequestForm');
-                
                 const getValue = (id) => {
                     const el = form.querySelector(`[data-form-id="${id}"]`);
                     return el ? el.value : 'N/A';
                 };
-
                 const readFileAsDataURL = (file) => {
                     return new Promise((resolve, reject) => {
                         const reader = new FileReader();
@@ -2099,106 +1535,57 @@
                         reader.readAsDataURL(file);
                     });
                 };
-
                 const analysisContentHTML = document.getElementById('packageAnalysis').innerHTML;
-
                 let printContent = `
-                    <html>
-                    <head>
-                        <title>Disposal Request</title>
-                        <script src="https://cdn.tailwindcss.com"><\/script>
-                        <style>
-                            body { font-family: "Inter", sans-serif; padding: 2rem; }
-                            h1, h2, h3 { font-weight: bold; margin-bottom: 0.5rem; margin-top: 1rem; }
-                            h1 { font-size: 1.5rem; }
-                            h2 { font-size: 1.25rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
-                            h3 { font-size: 1.1rem; }
-                            .section { margin-bottom: 1.5rem; page-break-inside: avoid; }
-                            .grid-print { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-                            .grid-item { display: flex; flex-direction: column; }
-                            .grid-item strong { font-weight: 600; font-size: 0.875rem; color: #555; }
-                            .item-card { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
-                            .item-image { max-width: 100%; height: auto; margin-top: 1rem; border-radius: 0.25rem; }
-                            /* Styles from the main page for the analysis section */
-                            .group[open] .group-open\\:mb-4 { margin-bottom: 1rem; }
-                            .list-none { list-style-type: none; }
-                            .cursor-pointer { cursor: pointer; }
-                            .group .group-open\\:hidden { display: inline; }
-                            .group[open] .group-open\\:hidden { display: none; }
-                            .group .hidden { display: none; }
-                            .group[open] .hidden { display: inline; }
-                            .border-l-2 { border-left-width: 2px; }
-                            .pl-4 { padding-left: 1rem; }
-                            .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
-                            .p-4 { padding: 1rem; }
-                            .rounded-lg { border-radius: 0.5rem; }
-                            .bg-green-100 { background-color: #dcfce7; } .text-green-800 { color: #166534; }
-                            .bg-blue-100 { background-color: #dbeafe; } .text-blue-800 { color: #1e40af; }
-                            .bg-yellow-100 { background-color: #fef08a; } .text-yellow-800 { color: #854d0e; }
-                            .bg-red-100 { background-color: #fee2e2; } .text-red-800 { color: #991b1b; }
-                            .font-bold { font-weight: 700; }
-                            .font-semibold { font-weight: 600; }
-                            .mb-2 { margin-bottom: 0.5rem; }
-                            .overflow-x-auto { overflow-x: auto; }
-                            .w-full { width: 100%; }
-                            .text-sm { font-size: 0.875rem; }
-                            .text-left { text-align: left; }
-                            thead { display: table-header-group; }
-                            .bg-gray-100 { background-color: #f3f4f6; }
-                            th, td { padding: 0.5rem; }
-                            .text-center { text-align: center; }
-                            tbody { display: table-row-group; }
-                            .border-b { border-bottom-width: 1px; border-color: #e5e7eb; }
-                            .bg-gray-50 { background-color: #f9fafb; }
-                            .text-right { text-align: right; }
-                            .text-red-500 { color: #ef4444; }
-                            .text-green-500 { color: #22c55e; }
-                        </style>
-                    </head>
-                    <body>
-                        <h1>LLRW Disposal Request</h1>
-                        
-                        <div class="section">
-                            <h2>Command Information</h2>
-                            <div class="grid-print">
-                                <div class="grid-item"><strong>UIC:</strong> <span>${getValue('uic')}</span></div>
-                                <div class="grid-item"><strong>Command Name:</strong> <span>${getValue('commandName')}</span></div>
-                                <div class="grid-item"><strong>Street Address:</strong> <span>${getValue('streetAddress')}</span></div>
-                                <div class="grid-item"><strong>City:</strong> <span>${getValue('city')}</span></div>
-                                <div class="grid-item"><strong>State:</strong> <span>${getValue('state')}</span></div>
-                                <div class="grid-item"><strong>Zip:</strong> <span>${getValue('zip')}</span></div>
-                                <div class="grid-item"><strong>Country:</strong> <span>${getValue('country')}</span></div>
-                            </div>
-                        </div>
-
-                        <div class="section">
-                            <h2>Command POCs</h2>
-                            <h3>POC 1</h3>
-                            <div class="grid-print">
-                                <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc1Name')}</span></div>
-                                <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc1Title')}</span></div>
-                                <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc1Email')}</span></div>
-                                <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc1BusinessPhone')}</span></div>
-                                <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc1MobilePhone')}</span></div>
-                            </div>
-                             <h3 class="mt-4">POC 2</h3>
-                            <div class="grid-print">
-                                <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc2Name')}</span></div>
-                                <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc2Title')}</span></div>
-                                <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc2Email')}</span></div>
-                                <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc2BusinessPhone')}</span></div>
-                                <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc2MobilePhone')}</span></div>
-                            </div>
-                            <div class="grid-item mt-4"><strong>Facility Security Access Requirements:</strong> <span>${getValue('security')}</span></div>
-                        </div>
-
-                        <div class="section">
-                            <h2>Item Details</h2>
-                `;
-
+                    <html><head><title>Disposal Request</title><script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { font-family: "Inter", sans-serif; padding: 2rem; } h1, h2, h3 { font-weight: bold; margin-bottom: 0.5rem; margin-top: 1rem; }
+                        h1 { font-size: 1.5rem; } h2 { font-size: 1.25rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
+                        h3 { font-size: 1.1rem; } .section { margin-bottom: 1.5rem; page-break-inside: avoid; }
+                        .grid-print { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+                        .grid-item { display: flex; flex-direction: column; } .grid-item strong { font-weight: 600; font-size: 0.875rem; color: #555; }
+                        .item-card { border: 1px solid #ccc; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
+                        .item-image { max-width: 100%; height: auto; margin-top: 1rem; border-radius: 0.25rem; }
+                        .group[open] .group-open\\:mb-4 { margin-bottom: 1rem; } .list-none { list-style-type: none; }
+                        .cursor-pointer { cursor: pointer; } .group .group-open\\:hidden { display: inline; }
+                        .group[open] .group-open\\:hidden { display: none; } .group .hidden { display: none; }
+                        .group[open] .hidden { display: inline; } .border-l-2 { border-left-width: 2px; } .pl-4 { padding-left: 1rem; }
+                        .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; } .p-4 { padding: 1rem; }
+                        .rounded-lg { border-radius: 0.5rem; } .bg-green-100 { background-color: #dcfce7; } .text-green-800 { color: #166534; }
+                        .bg-blue-100 { background-color: #dbeafe; } .text-blue-800 { color: #1e40af; } .bg-yellow-100 { background-color: #fef08a; }
+                        .text-yellow-800 { color: #854d0e; } .bg-red-100 { background-color: #fee2e2; } .text-red-800 { color: #991b1b; }
+                        .font-bold { font-weight: 700; } .font-semibold { font-weight: 600; } .mb-2 { margin-bottom: 0.5rem; }
+                        .overflow-x-auto { overflow-x: auto; } .w-full { width: 100%; } .text-sm { font-size: 0.875rem; }
+                        .text-left { text-align: left; } thead { display: table-header-group; } .bg-gray-100 { background-color: #f3f4f6; }
+                        th, td { padding: 0.5rem; } .text-center { text-align: center; } tbody { display: table-row-group; }
+                        .border-b { border-bottom-width: 1px; border-color: #e5e7eb; } .bg-gray-50 { background-color: #f9fafb; }
+                        .text-right { text-align: right; } .text-red-500 { color: #ef4444; } .text-green-500 { color: #22c55e; }
+                    </style></head><body><h1>LLRW Disposal Request</h1>
+                        <div class="section"><h2>Command Information</h2><div class="grid-print">
+                            <div class="grid-item"><strong>UIC:</strong> <span>${getValue('uic')}</span></div>
+                            <div class="grid-item"><strong>Command Name:</strong> <span>${getValue('commandName')}</span></div>
+                            <div class="grid-item"><strong>Street Address:</strong> <span>${getValue('streetAddress')}</span></div>
+                            <div class="grid-item"><strong>City:</strong> <span>${getValue('city')}</span></div>
+                            <div class="grid-item"><strong>State:</strong> <span>${getValue('state')}</span></div>
+                            <div class="grid-item"><strong>Zip:</strong> <span>${getValue('zip')}</span></div>
+                            <div class="grid-item"><strong>Country:</strong> <span>${getValue('country')}</span></div>
+                        </div></div>
+                        <div class="section"><h2>Command POCs</h2><h3>POC 1</h3><div class="grid-print">
+                            <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc1Name')}</span></div>
+                            <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc1Title')}</span></div>
+                            <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc1Email')}</span></div>
+                            <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc1BusinessPhone')}</span></div>
+                            <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc1MobilePhone')}</span></div>
+                        </div><h3 class="mt-4">POC 2</h3><div class="grid-print">
+                            <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc2Name')}</span></div>
+                            <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc2Title')}</span></div>
+                            <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc2Email')}</span></div>
+                            <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc2BusinessPhone')}</span></div>
+                            <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc2MobilePhone')}</span></div>
+                        </div><div class="grid-item mt-4"><strong>Facility Security Access Requirements:</strong> <span>${getValue('security')}</span></div></div>
+                        <div class="section"><h2>Item Details</h2>`;
                 const imagePromises = [];
                 const itemCards = form.querySelectorAll('.disposal-item');
-                
                 itemCards.forEach((itemCard, index) => {
                     const itemId = itemCard.dataset.itemId;
                     const itemData = tableData.find(d => d.id == itemId);
@@ -2208,83 +1595,52 @@
                     };
                     const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
                     const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join(', ');
-                    
                     const fileInputs = itemCard.querySelectorAll('input[type="file"]');
                     fileInputs.forEach(input => {
                         if (input.files[0]) {
-                            imagePromises.push(readFileAsDataURL(input.files[0]).then(imageDataUrl => ({
-                                name: itemData.name,
-                                url: imageDataUrl
-                            })));
+                            imagePromises.push(readFileAsDataURL(input.files[0]).then(imageDataUrl => ({ name: itemData.name, url: imageDataUrl })));
                         }
                     });
-
                     printContent += `
-                        <div class="item-card">
-                            <h3>Item ${index + 1}: ${itemData.name}</h3>
-                            <div class="grid-print">
-                                <div class="grid-item"><strong>NSN:</strong> <span>${itemData.nsn || 'N/A'}</span></div>
-                                <div class="grid-item"><strong># each:</strong> <span>${getItemValue('quantity')}</span></div>
-                                <div class="grid-item"><strong>DEMIL:</strong> <span>${getItemValue('demil')}</span></div>
-                                <div class="grid-item"><strong>Serial #(s):</strong> <span>${serials}</span></div>
-                                <div class="grid-item"><strong>SSDR:</strong> <span>${getItemValue('ssdr')}</span></div>
-                                <div class="grid-item"><strong>Radionuclide:</strong> <span>${itemData.radionuclide}</span></div>
-                                <div class="grid-item"><strong>Activity:</strong> <span>${itemData.activity_ci_str}</span></div>
-                                <div class="grid-item"><strong>Assay Date:</strong> <span>${getItemValue('assayDate')}</span></div>
-                                <div class="grid-item"><strong>Licensed:</strong> <span>${getItemValue('licensed')}</span></div>
-                                <div class="grid-item"><strong>License/Permit #:</strong> <span>${getItemValue('licenseNumber')}</span></div>
-                                <div class="grid-item"><strong>Form:</strong> <span>${getItemValue('form')}</span></div>
-                                <div class="grid-item"><strong>Volume:</strong> <span>${getItemValue('volume')}</span></div>
-                                <div class="grid-item"><strong>Weight:</strong> <span>${getItemValue('weight')}</span></div>
-                                <div class="grid-item"><strong>Other Info:</strong> <span>${getItemValue('otherInfo')}</span></div>
-                                <div class="grid-item"><strong>Mfg. Name:</strong> <span>${getItemValue('mfgName')}</span></div>
-                                <div class="grid-item"><strong>Mfg. Model:</strong> <span>${getItemValue('mfgModel')}</span></div>
-                                <div class="grid-item"><strong>Mfg. Date:</strong> <span>${getItemValue('mfgDate')}</span></div>
-                            </div>
-                        </div>
-                    `;
+                        <div class="item-card"><h3>Item ${index + 1}: ${itemData.name}</h3><div class="grid-print">
+                            <div class="grid-item"><strong>NSN:</strong> <span>${itemData.nsn || 'N/A'}</span></div>
+                            <div class="grid-item"><strong># each:</strong> <span>${getItemValue('quantity')}</span></div>
+                            <div class="grid-item"><strong>DEMIL:</strong> <span>${getItemValue('demil')}</span></div>
+                            <div class="grid-item"><strong>Serial #(s):</strong> <span>${serials}</span></div>
+                            <div class="grid-item"><strong>SSDR:</strong> <span>${getItemValue('ssdr')}</span></div>
+                            <div class="grid-item"><strong>Radionuclide:</strong> <span>${itemData.radionuclide}</span></div>
+                            <div class="grid-item"><strong>Activity:</strong> <span>${itemData.activity_ci_str}</span></div>
+                            <div class="grid-item"><strong>Assay Date:</strong> <span>${getItemValue('assayDate')}</span></div>
+                            <div class="grid-item"><strong>Licensed:</strong> <span>${getItemValue('licensed')}</span></div>
+                            <div class="grid-item"><strong>License/Permit #:</strong> <span>${getItemValue('licenseNumber')}</span></div>
+                            <div class="grid-item"><strong>Form:</strong> <span>${getItemValue('form')}</span></div>
+                            <div class="grid-item"><strong>Volume:</strong> <span>${getItemValue('volume')}</span></div>
+                            <div class="grid-item"><strong>Weight:</strong> <span>${getItemValue('weight')}</span></div>
+                            <div class="grid-item"><strong>Other Info:</strong> <span>${getItemValue('otherInfo')}</span></div>
+                            <div class="grid-item"><strong>Mfg. Name:</strong> <span>${getItemValue('mfgName')}</span></div>
+                            <div class="grid-item"><strong>Mfg. Model:</strong> <span>${getItemValue('mfgModel')}</span></div>
+                            <div class="grid-item"><strong>Mfg. Date:</strong> <span>${getItemValue('mfgDate')}</span></div>
+                        </div></div>`;
                 });
-
-                printContent += `</div>`; // Close Item Details section
-
-                // Wait for all images to be read
+                printContent += `</div>`;
                 const images = await Promise.all(imagePromises);
                 if (images.length > 0) {
-                    printContent += `
-                        <div class="section" style="page-break-before: always;">
-                            <h2>Attached Images</h2>
-                    `;
+                    printContent += `<div class="section" style="page-break-before: always;"><h2>Attached Images</h2>`;
                     images.forEach(image => {
-                        printContent += `
-                            <div class="item-card">
-                                <h3>${image.name}</h3>
-                                <img src="${image.url}" class="item-image">
-                            </div>
-                        `;
+                        printContent += `<div class="item-card"><h3>${image.name}</h3><img src="${image.url}" class="item-image"></div>`;
                     });
                     printContent += `</div>`;
                 }
-
                 printContent += `
-                        <div class="section">
-                            <h2>Pickup Location</h2>
-                            <div class="grid-print">
-                                <div class="grid-item"><strong>Address:</strong> <span>${getValue('pickupAddress')}</span></div>
-                                <div class="grid-item"><strong>Building #:</strong> <span>${getValue('pickupBuilding')}</span></div>
-                            </div>
-                        </div>
-                        <div class="section">
-                            ${analysisContentHTML}
-                        </div>
-                    </body>
-                    </html>
-                `;
-
+                    <div class="section"><h2>Pickup Location</h2><div class="grid-print">
+                        <div class="grid-item"><strong>Address:</strong> <span>${getValue('pickupAddress')}</span></div>
+                        <div class="grid-item"><strong>Building #:</strong> <span>${getValue('pickupBuilding')}</span></div>
+                    </div></div><div class="section">${analysisContentHTML}</div></body></html>`;
                 const printWindow = window.open('', '', 'height=800,width=800');
                 printWindow.document.write(printContent);
                 printWindow.document.close();
                 printWindow.focus();
-                setTimeout(() => { printWindow.print(); }, 500); // Timeout to allow styles and images to load
+                setTimeout(() => { printWindow.print(); }, 500);
             });
 
             function populateRadionuclideFilter() {
@@ -2298,12 +1654,8 @@
                 });
             }
 
-            helpBtn.addEventListener('click', () => {
-                helpModal.style.display = 'flex';
-            });
-            closeHelpModalBtn.addEventListener('click', () => {
-                helpModal.style.display = 'none';
-            });
+            helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
+            closeHelpModalBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });
 
             saveSelectionBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
@@ -2317,9 +1669,7 @@
             loadSelectionBtn.addEventListener('click', () => {
                 const savedIds = JSON.parse(localStorage.getItem('savedSelection'));
                 if (!savedIds || savedIds.length === 0) return;
-
                 clearSelectionBtn.click();
-
                 savedIds.forEach(id => {
                     const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
                     if (checkbox) {
@@ -2352,49 +1702,34 @@
                 });
             });
 
-            addItemBtn.addEventListener('click', () => {
-                showAddItemModal();
-            });
-            closeAddItemModalBtn.addEventListener('click', () => {
-                addItemModal.style.display = 'none';
-            });
-            cancelAddItemBtn.addEventListener('click', () => {
-                addItemModal.style.display = 'none';
-            });
+            addItemBtn.addEventListener('click', () => { showAddItemModal(); });
+            closeAddItemModalBtn.addEventListener('click', () => { addItemModal.style.display = 'none'; });
+            cancelAddItemBtn.addEventListener('click', () => { addItemModal.style.display = 'none'; });
 
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                addItemModal.style.display = 'none'; // Close modal immediately for better UX
+                addItemModal.style.display = 'none';
                 const newItemData = {
-                    name: document.getElementById('itemName').value,
-                    nsn: document.getElementById('itemNsn').value,
-                    radionuclide: document.getElementById('itemRadionuclide').value,
-                    activity: document.getElementById('itemActivity').value,
+                    name: document.getElementById('itemName').value, nsn: document.getElementById('itemNsn').value,
+                    radionuclide: document.getElementById('itemRadionuclide').value, activity: document.getElementById('itemActivity').value,
                     units: document.getElementById('itemUnits').value,
                 };
-                
                 let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 const editId = document.getElementById('itemEditId').value;
-
-                if (editId) { // Editing existing item
+                if (editId) {
                     const index = customItems.findIndex(item => item.id == editId);
-                    if(index > -1) {
-                        customItems[index] = {...newItemData, id: parseInt(editId)};
-                    }
+                    if(index > -1) { customItems[index] = {...newItemData, id: parseInt(editId)}; }
                     showToast('Item updated!', 'success');
-                } else { // Adding new item
+                } else {
                     const newId = Date.now();
                     customItems.push({...newItemData, id: newId });
                     showToast('Item added!', 'success');
                 }
-                
                 localStorage.setItem('customItems', JSON.stringify(customItems));
-                
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
                 updateCustomItemButtonsState();
-
                 addItemForm.reset();
             });
 
@@ -2425,19 +1760,16 @@
                 if (itemToEdit) {
                     const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                     const originalCustomItem = customItems.find(ci => ci.id === itemToEdit.id);
-
                     document.getElementById('addItemModalTitle').textContent = 'Edit Custom Item';
                     document.getElementById('saveItemBtn').textContent = 'Update Item';
                     document.getElementById('itemEditId').value = itemToEdit.id;
                     document.getElementById('itemName').value = itemToEdit.name;
                     document.getElementById('itemNsn').value = itemToEdit.nsn;
                     document.getElementById('itemRadionuclide').value = itemToEdit.radionuclide;
-                    
                     if(originalCustomItem) {
                         document.getElementById('itemActivity').value = originalCustomItem.activity;
                         document.getElementById('itemUnits').value = originalCustomItem.units;
                     }
-
                 } else {
                     document.getElementById('addItemModalTitle').textContent = 'Add Custom Item';
                     document.getElementById('saveItemBtn').textContent = 'Save Item';
@@ -2450,7 +1782,6 @@
                 let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 customItems = customItems.filter(item => item.id !== itemId);
                 localStorage.setItem('customItems', JSON.stringify(customItems));
-
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
@@ -2458,7 +1789,6 @@
                 showToast('Item deleted.', 'success');
             }
 
-            // --- Import/Export Custom Items ---
             function updateCustomItemButtonsState() {
                 const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
                 const hasCustomItems = customItems.length > 0;
@@ -2492,7 +1822,6 @@
             importFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
@@ -2500,7 +1829,6 @@
                         if (!Array.isArray(importedItems)) {
                             throw new Error('Imported file is not a valid list.');
                         }
-                        
                         showConfirmationModal('Do you want to REPLACE your current custom items with the imported list?', () => {
                             localStorage.setItem('customItems', JSON.stringify(importedItems));
                             tableData = processData(rawTableData, importedItems);
@@ -2509,28 +1837,22 @@
                             updateCustomItemButtonsState();
                             showToast('Custom items imported successfully!', 'success');
                         });
-
                     } catch (error) {
                         showToast('Error reading or parsing the file.', 'error');
                         console.error("Import error:", error);
                     } finally {
-                        // Reset file input to allow importing the same file again
                         event.target.value = null;
                     }
                 };
                 reader.readAsText(file);
             });
 
-            // --- State Management ---
             function saveState() {
                 const state = {
-                    searchTerm: searchInput.value,
-                    radionuclide: radionuclideFilter.value,
-                    nrcExempt: nrcExemptFilter.checked,
-                    dotExempt: dotExemptFilter.checked,
-                    isSiUnits: unitToggle.checked,
-                    sortColumn: currentSort.column, // NEW: Save sort column
-                    sortDirection: currentSort.direction // NEW: Save sort direction
+                    searchTerm: searchInput.value, radionuclide: radionuclideFilter.value,
+                    nrcExempt: nrcExemptFilter.checked, dotExempt: dotExemptFilter.checked,
+                    isSiUnits: unitToggle.checked, sortColumn: currentSort.column,
+                    sortDirection: currentSort.direction
                 };
                 localStorage.setItem('lookupTableState', JSON.stringify(state));
             }
@@ -2544,13 +1866,11 @@
                     nrcExemptFilter.checked = state.nrcExempt || false;
                     dotExemptFilter.checked = state.dotExempt || false;
                     unitToggle.checked = state.isSiUnits || false;
-                    // NEW: Load sort state, with a default
                     currentSort.column = state.sortColumn || 'name';
                     currentSort.direction = state.sortDirection || 'asc';
                 }
             }
             
-            // --- Custom Confirmation Modal ---
             const confirmModal = document.getElementById('confirmModal');
             const confirmModalText = document.getElementById('confirmModalText');
             const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
@@ -2570,63 +1890,44 @@
 
             confirmModalConfirmBtn.addEventListener('click', () => {
                 if (typeof confirmCallback === 'function') {
-                    confirmCallback(); // Run the action
+                    confirmCallback();
                 }
-                // We no longer hide the confirmModal here, as the callback is now responsible for it.
                 confirmCallback = null;
             });
 
-            // --- Clear Filters Button Logic ---
             clearFiltersBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 radionuclideFilter.value = 'all';
                 nrcExemptFilter.checked = false;
                 dotExemptFilter.checked = false;
-                // NEW: Explicitly remove the saved state
                 localStorage.removeItem('lookupTableState');
                 filterTable(); 
             });
 
-            // --- Enhanced Modal Interaction Logic ---
             const allModals = [compareModal, detailModal, disposalRequestModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal];
-
-            // Close on Escape key
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
-                    // Find the topmost open modal and close it
                     const openModal = allModals.find(m => m.style.display !== 'none');
-                    if (openModal) {
-                        openModal.style.display = 'none';
-                    }
+                    if (openModal) { openModal.style.display = 'none'; }
                 }
             });
-
-            // Close on overlay click
             allModals.forEach(modal => {
                 modal.addEventListener('click', (event) => {
-                    // If the click is on the modal's immediate background, close it
-                    if (event.target === modal) {
-                        modal.style.display = 'none';
-                    }
+                    if (event.target === modal) { modal.style.display = 'none'; }
                 });
             });
 
-            // --- NEW: Radionuclide Detail Modal Logic ---
             function showRadionuclideModal(nuclideId) {
                 const details = radionuclideDetails[nuclideId];
                 if (!details) return;
-
                 const modalTitle = document.getElementById('radionuclideModalTitle');
                 const modalContent = document.getElementById('radionuclideContent');
-
                 modalTitle.textContent = `${details.name} (${nuclideId})`;
-                
                 let content = `<div class="space-y-3">`;
                 content += `<div class="flex justify-between"><strong>Half-life:</strong> <span>${details.halfLife}</span></div>`;
                 content += `<div class="flex justify-between"><strong>Decay Mode:</strong> <span>${details.decayMode}</span></div>`;
                 content += `<div class="mt-4"><a href="${details.wiki}" target="_blank" class="text-blue-500 hover:underline">Learn More on Wikipedia</a></div>`;
                 content += `</div>`;
-
                 modalContent.innerHTML = content;
                 radionuclideDetailModal.style.display = 'flex';
             }
@@ -2635,53 +1936,17 @@
                 radionuclideDetailModal.style.display = 'none';
             });
 
-            // --- BUG FIX: Add Tooltip Modal function ---
             function showTooltipModal(tooltipKey) {
                 const tooltipModalTitle = document.getElementById('tooltipModalTitle');
                 const tooltipContent = document.getElementById('tooltipContent');
-
                 const tooltipData = {
-                    'nrc_exemption_val': {
-                        title: 'NRC Exemption Limit',
-                        content: `
-                            <p class="mb-2">This value comes from <strong>10 CFR § 30.71, Schedule B</strong>.</p>
-                            <p class="mb-2">It represents the maximum activity of a specific radionuclide that can be contained in a single "exempt quantity" item.</p>
-                            <p>If an item's activity is at or below this limit, it is generally exempt from NRC licensing requirements for possession and use, provided it's not part of a larger aggregated quantity.</p>
-                            <a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part030/part030-0071.html" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
-                        `
-                    },
-                    'dot_exemption_val': {
-                        title: 'DOT Exemption Limit (Consignment)',
-                        content: `
-                            <p class="mb-2">This value comes from the "Activity limit for an exempt consignment" column in the table at <strong>49 CFR § 173.436</strong>.</p>
-                            <p class="mb-2">It represents the maximum total activity of a specific radionuclide that can be in a single shipment (consignment) to be considered exempt from most hazmat shipping regulations.</p>
-                            <p>This is a consignment-level limit, not a per-item or per-package limit.</p>
-                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.436" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
-                        `
-                    },
-                    'un2911_limit_val': {
-                        title: 'UN 2911 Limit (Per Item)',
-                        content: `
-                            <p class="mb-2">This value comes from the "Item limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p>
-                            <p class="mb-2">It is the maximum activity of a specific radionuclide allowed in a single instrument or article to be shipped as an "Excepted package" under UN 2911.</p>
-                            <p>Items meeting this limit can be shipped with reduced regulatory requirements compared to fully regulated radioactive material.</p>
-                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
-                        `
-                    },
-                    'un2911_pkg_limit_val': {
-                        title: 'UN 2911 Limit (Per Package)',
-                        content: `
-                            <p class="mb-2">This value comes from the "Package limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p>
-                            <p class="mb-2">It is the maximum total activity of a specific radionuclide allowed in a single package containing one or more excepted items to be shipped under UN 2911.</p>
-                            <p>Even if individual items are below the item limit, the total activity in the package must not exceed this limit.</p>
-                            <a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>
-                        `
-                    }
+                    'nrc_exemption_val': { title: 'NRC Exemption Limit', content: `<p class="mb-2">This value comes from <strong>10 CFR § 30.71, Schedule B</strong>.</p><p class="mb-2">It represents the maximum activity of a specific radionuclide that can be contained in a single "exempt quantity" item.</p><p>If an item's activity is at or below this limit, it is generally exempt from NRC licensing requirements for possession and use, provided it's not part of a larger aggregated quantity.</p><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part030/part030-0071.html" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>` },
+                    'dot_exemption_val': { title: 'DOT Exemption Limit (Consignment)', content: `<p class="mb-2">This value comes from the "Activity limit for an exempt consignment" column in the table at <strong>49 CFR § 173.436</strong>.</p><p class="mb-2">It represents the maximum total activity of a specific radionuclide that can be in a single shipment (consignment) to be considered exempt from most hazmat shipping regulations.</p><p>This is a consignment-level limit, not a per-item or per-package limit.</p><a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.436" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>` },
+                    'un2911_limit_val': { title: 'UN 2911 Limit (Per Item)', content: `<p class="mb-2">This value comes from the "Item limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p><p class="mb-2">It is the maximum activity of a specific radionuclide allowed in a single instrument or article to be shipped as an "Excepted package" under UN 2911.</p><p>Items meeting this limit can be shipped with reduced regulatory requirements compared to fully regulated radioactive material.</p><a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>` },
+                    'un2911_pkg_limit_val': { title: 'UN 2911 Limit (Per Package)', content: `<p class="mb-2">This value comes from the "Package limits" column in the table at <strong>49 CFR § 173.425</strong> for "Instruments and articles".</p><p class="mb-2">It is the maximum total activity of a specific radionuclide allowed in a single package containing one or more excepted items to be shipped under UN 2911.</p><p>Even if individual items are below the item limit, the total activity in the package must not exceed this limit.</p><a href="https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.425" target="_blank" class="text-blue-500 hover:underline">View Regulation</a>` }
                 };
-
                 const data = tooltipData[tooltipKey];
                 if (!data) return;
-
                 tooltipModalTitle.innerHTML = data.title;
                 tooltipContent.innerHTML = data.content;
                 tooltipModal.style.display = 'flex';
@@ -2691,7 +1956,6 @@
                 tooltipModal.style.display = 'none';
             });
 
-            // --- Event Listeners for State Saving & UI Updates ---
             const debouncedFilterAndSave = debounce(() => {
                 filterTable();
                 saveState();
@@ -2709,35 +1973,27 @@
                 saveState();
             });
             
-            // Add listener for the new CSV export button
             exportCsvBtn.addEventListener('click', exportDisposalRequestAsCSV);
-
             radionuclideFilter.addEventListener('change', () => { filterTable(); saveState(); });
             nrcExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
             dotExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
             unitToggle.addEventListener('change', () => { filterTable(); saveState(); });
 
-            // --- Initial Load ---
             const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
             tableData = processData(rawTableData, customItems);
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
             updateCustomItemButtonsState();
-            
-            loadState(); // Load saved state
-            
-            // Apply loaded state
+            loadState();
             clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
             filterTable(); 
-            sortTable(currentSort.column); // Apply loaded sort
-            updateSortArrows(); // Ensure arrows are correct on initial load
-
+            sortTable(currentSort.column);
+            updateSortArrows();
             if (localStorage.getItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
             }
         });
     </script>
-
 </body>
 </html>
