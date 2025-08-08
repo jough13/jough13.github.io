@@ -915,62 +915,101 @@
         }
         
         function exportDisposalRequestAsCSV() {
-            const form = document.getElementById('disposalRequestForm');
-            if (!form) return;
-            const escapeCsvCell = (cell) => {
-                if (cell === null || typeof cell === 'undefined') return '""';
-                let str = String(cell);
-                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                    str = `"${str.replace(/"/g, '""')}"`;
-                }
-                return str;
-            };
-            const headers = [
-                'UIC', 'Command Name', 'Street Address', 'City', 'State', 'Zip', 'Country',
-                'POC 1 Name', 'POC 1 Title', 'POC 1 Email', 'POC 1 Business #', 'POC 1 Mobile #',
-                'POC 2 Name', 'POC 2 Title', 'POC 2 Email', 'POC 2 Business #', 'POC 2 Mobile #',
-                'Security Requirements', 'Pickup Address', 'Pickup Building',
-                'Item Name', 'NSN', 'Quantity', 'Serial #(s)', 'DEMIL', 'SSDR', 'Radionuclide', 'Activity (Ci)', 'Assay Date',
-                'Licensed', 'License/Permit #', 'Form', 'Volume', 'Weight', 'Other Info',
-                'Mfg. Name', 'Mfg. Model', 'Mfg. Date'
-            ];
-            let csvString = headers.join(",") + "\n";
-            const itemCards = form.querySelectorAll('.disposal-item');
-            itemCards.forEach(itemCard => {
-                const itemId = itemCard.dataset.itemId;
-                const itemData = tableData.find(d => d.id == itemId);
-                const getFieldValue = (id) => itemCard.querySelector(`[data-form-id="${id}"]`)?.value || '';
-                const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
-                const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; ');
-                const rowData = [
-                    form.querySelector('[data-form-id="uic"]').value, form.querySelector('[data-form-id="commandName"]').value,
-                    form.querySelector('[data-form-id="streetAddress"]').value, form.querySelector('[data-form-id="city"]').value,
-                    form.querySelector('[data-form-id="state"]').value, form.querySelector('[data-form-id="zip"]').value,
-                    form.querySelector('[data-form-id="country"]').value, form.querySelector('[data-form-id="poc1Name"]').value,
-                    form.querySelector('[data-form-id="poc1Title"]').value, form.querySelector('[data-form-id="poc1Email"]').value,
-                    form.querySelector('[data-form-id="poc1BusinessPhone"]').value, form.querySelector('[data-form-id="poc1MobilePhone"]').value,
-                    form.querySelector('[data-form-id="poc2Name"]').value, form.querySelector('[data-form-id="poc2Title"]').value,
-                    form.querySelector('[data-form-id="poc2Email"]').value, form.querySelector('[data-form-id="poc2BusinessPhone"]').value,
-                    form.querySelector('[data-form-id="poc2MobilePhone"]').value, form.querySelector('[data-form-id="security"]').value,
-                    form.querySelector('[data-form-id="pickupAddress"]').value, form.querySelector('[data-form-id="pickupBuilding"]').value,
-                    itemData.name, itemData.nsn, getFieldValue('quantity'), serials, getFieldValue('demil'), getFieldValue('ssdr'),
-                    itemData.radionuclide, itemData.activity_ci_str, getFieldValue('assayDate'), getFieldValue('licensed'),
-                    getFieldValue('licenseNumber'), getFieldValue('form'), getFieldValue('volume'), getFieldValue('weight'),
-                    getFieldValue('otherInfo'), getFieldValue('mfgName'), getFieldValue('mfgModel'), getFieldValue('mfgDate')
-                ];
-                csvString += rowData.map(escapeCsvCell).join(",") + "\n";
-            });
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "disposal_request.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            showToast('Disposal request exported as CSV!', 'success');
+    const form = document.getElementById('disposalRequestForm');
+    if (!form) return;
+    
+    const escapeCsvCell = (cell) => {
+        if (cell === null || typeof cell === 'undefined') return '""';
+        let str = String(cell);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            str = `"${str.replace(/"/g, '""')}"`;
         }
+        return str;
+    };
+
+    // 1. Gather all POC data from the form first
+    const pocs = [];
+    const pocCards = form.querySelectorAll('.poc-card'); // Use the new class
+    pocCards.forEach((card, index) => {
+        const pocNumber = index + 1;
+        // Find inputs within this specific card
+        const getValue = (field) => card.querySelector(`[data-form-id="poc${pocNumber}${field}"]`)?.value || '';
+        pocs.push({
+            name: getValue('Name'),
+            title: getValue('Title'),
+            email: getValue('Email'),
+            businessPhone: getValue('BusinessPhone'),
+            mobilePhone: getValue('MobilePhone')
+        });
+    });
+
+    // 2. Build CSV headers dynamically based on how many POCs were found
+    const staticHeadersStart = [
+        'UIC', 'Command Name', 'Street Address', 'City', 'State', 'Zip', 'Country'
+    ];
+    const pocHeaders = [];
+    pocs.forEach((poc, index) => {
+        const pocNumber = index + 1;
+        pocHeaders.push(
+            `POC ${pocNumber} Name`, `POC ${pocNumber} Title`, `POC ${pocNumber} Email`,
+            `POC ${pocNumber} Business #`, `POC ${pocNumber} Mobile #`
+        );
+    });
+    const staticHeadersEnd = [
+        'Security Requirements', 'Pickup Address', 'Pickup Building',
+        'Item Name', 'NSN', 'Quantity', 'Serial #(s)', 'DEMIL', 'SSDR', 'Radionuclide', 'Activity (Ci)', 'Assay Date',
+        'Licensed', 'License/Permit #', 'Form', 'Volume', 'Weight', 'Other Info',
+        'Mfg. Name', 'Mfg. Model', 'Mfg. Date'
+    ];
+    const headers = [...staticHeadersStart, ...pocHeaders, ...staticHeadersEnd];
+    let csvString = headers.map(escapeCsvCell).join(",") + "\n";
+
+    // 3. Build each item row, including all collected POC data in each row
+    const itemCards = form.querySelectorAll('.disposal-item');
+    itemCards.forEach(itemCard => {
+        const itemId = itemCard.dataset.itemId;
+        const itemData = tableData.find(d => d.id == itemId);
+        const getFieldValue = (id) => itemCard.querySelector(`[data-form-id="${id}"]`)?.value || '';
+
+        const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
+        const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; ');
+
+        const staticRowDataStart = [
+            form.querySelector('[data-form-id="uic"]').value, form.querySelector('[data-form-id="commandName"]').value,
+            form.querySelector('[data-form-id="streetAddress"]').value, form.querySelector('[data-form-id="city"]').value,
+            form.querySelector('[data-form-id="state"]').value, form.querySelector('[data-form-id="zip"]').value,
+            form.querySelector('[data-form-id="country"]').value
+        ];
+
+        const pocRowData = [];
+        pocs.forEach(poc => {
+            pocRowData.push(poc.name, poc.title, poc.email, poc.businessPhone, poc.mobilePhone);
+        });
+
+        const staticRowDataEnd = [
+            form.querySelector('[data-form-id="security"]').value,
+            form.querySelector('[data-form-id="pickupAddress"]').value, form.querySelector('[data-form-id="pickupBuilding"]').value,
+            itemData.name, itemData.nsn, getFieldValue('quantity'), serials, getFieldValue('demil'), getFieldValue('ssdr'),
+            itemData.radionuclide, itemData.activity_ci_str, getFieldValue('assayDate'), getFieldValue('licensed'),
+            getFieldValue('licenseNumber'), getFieldValue('form'), getFieldValue('volume'), getFieldValue('weight'),
+            getFieldValue('otherInfo'), getFieldValue('mfgName'), getFieldValue('mfgModel'), getFieldValue('mfgDate')
+        ];
+
+        const rowData = [...staticRowDataStart, ...pocRowData, ...staticRowDataEnd];
+        csvString += rowData.map(escapeCsvCell).join(",") + "\n";
+    });
+    
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "disposal_request.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Disposal request exported as CSV!', 'success');
+}
 
         document.addEventListener('DOMContentLoaded', () => {
             const darkModeToggle = document.getElementById('darkModeToggle');
@@ -1333,6 +1372,20 @@
                 showDisposalRequestModal();
             });
 
+function createPocHtml(pocNumber) {
+    return `
+        <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
+            <h4 class="font-semibold mb-2">POC ${pocNumber}</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc${pocNumber}Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc${pocNumber}Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc${pocNumber}Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc${pocNumber}BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc${pocNumber}MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+            </div>
+        </div>`;
+}
+
             function showDisposalRequestModal() {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
@@ -1352,35 +1405,40 @@
                             <div><label class="block text-sm font-medium">Country (if not USA)</label><input type="text" data-form-id="country" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                         </div>
                     </details>`;
-                content += `
-                    <details class="group" open>
-                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-                             <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
-                        </summary>
-                        <div class="space-y-4 border-l-2 border-gray-200 dark:border-gray-600 pl-4">
-                            <div class="p-4 border rounded-lg dark:border-gray-600">
-                                <h4 class="font-semibold mb-2">POC 1</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc1Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc1Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc1Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc1BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc1MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                </div>
-                            </div>
-                            <div class="p-4 border rounded-lg dark:border-gray-600">
-                                <h4 class="font-semibold mb-2">POC 2</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc2Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc2Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc2Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc2BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                    <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc2MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                </div>
-                            </div>
-                             <div><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
-                        </div>
-                    </details>`;
+              
+  content += `
+    <details class="group" open>
+        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
+        </summary>
+        <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4">
+            <div id="pocContainer" class="space-y-4">
+                <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
+                    <h4 class="font-semibold mb-2">POC 1</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc1Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc1Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc1Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc1BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc1MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                    </div>
+                </div>
+                <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
+                    <h4 class="font-semibold mb-2">POC 2</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc2Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc2Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc2Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc2BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc2MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" id="addPocBtn" class="mt-4 text-sm text-blue-600 hover:underline">+ Add another POC</button>
+            <div class="mt-4"><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
+        </div>
+    </details>`;
+
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
@@ -1468,6 +1526,12 @@
                     newInput.className = 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300 dark:hover:file:bg-gray-600';
                     container.appendChild(newInput);
                 }
+		if (e.target.id === 'addPocBtn') {
+      		    const pocContainer = document.getElementById('pocContainer');
+       	            const newPocNumber = pocContainer.children.length + 1;
+      		    const newPocCardHtml = createPocHtml(newPocNumber);
+	            pocContainer.insertAdjacentHTML('beforeend', newPocCardHtml);
+		}
             });
 
             function calculateDisposalPackageAnalysis() {
@@ -1999,18 +2063,20 @@
             generateMemoBtn.addEventListener('click', () => {
                 const form = document.getElementById('disposalRequestForm');
                 const poc1Name = form.querySelector('[data-form-id="poc1Name"]').value || '[POC 1 Name]';
+                const poc1Email = form.querySelector('[data-form-id="poc1Email"]').value || '[POC 1 Email]';
                 const fundingChoice = form.querySelector('[data-form-id="funding"]').value;
                 const commandName = form.querySelector('[data-form-id="commandName"]').value || '[Command Name]';
                 const commandAddress = form.querySelector('[data-form-id="streetAddress"]').value || '[Command Address]';
                 const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
                 const memoText = `
-    5104
-    Ser ##/###
-    ${date}
+                                                                                                                                   5104
+                                                                                                                                   Ser ##/###
+                                                                                                                                   ${date}
+
 
 From:   Title, ${commandName}, ${commandAddress}
-To:     Officer in Charge, Naval Sea Systems Command Detachment, Radiological Affairs Support Office (RASO), 160 Main Road, Yorktown, VA 23691-0260
+To:     Officer in Charge, Naval Sea Systems Command Detachment, Radiological Affairs Support Office (RASO)
 
 Subj:   REQUEST FOR LOW-LEVEL RADIOACTIVE WASTE DISPOSAL
 
@@ -2019,9 +2085,9 @@ Encl:   (1) Low-Level Radioactive Waste Disposal Request – Command Information
 
 The purpose of this letter is to request disposal of low-level radioactive waste (LLRW). Enclosure (1) provides information about the command and my LLRW point of contact. Enclosure (2) provides the command’s LLRW inventory. The command ${fundingChoice} intend to provide funds for this disposal.
 
-Enclosures (1) and (2) are provided in both hardcopy and electronic format.
+Enclosures (1) and (2) are provided in electronic format.
 
-The point of contact is ${poc1Name}.
+The point of contact is ${poc1Name} who can be reached at ${poc1Email}.
 
 
 
