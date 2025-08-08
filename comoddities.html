@@ -1412,27 +1412,9 @@ function createPocHtml(pocNumber) {
             <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
         </summary>
         <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4">
-            <div id="pocContainer" class="space-y-4">
-                <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
-                    <h4 class="font-semibold mb-2">POC 1</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc1Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc1Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc1Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc1BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc1MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                    </div>
-                </div>
-                <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
-                    <h4 class="font-semibold mb-2">POC 2</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc2Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc2Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc2Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc2BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                        <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc2MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                    </div>
-                </div>
+                        <div id="pocContainer" class="space-y-4">
+                ${createPocHtml(1)}
+                ${createPocHtml(2)}
             </div>
             <button type="button" id="addPocBtn" class="mt-4 text-sm text-blue-600 hover:underline">+ Add another POC</button>
             <div class="mt-4"><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
