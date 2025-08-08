@@ -1992,12 +1992,13 @@ function createPocHtml(pocNumber) {
                 confirmCallback = null;
             });
 
-            confirmModalConfirmBtn.addEventListener('click', () => {
-                if (typeof confirmCallback === 'function') {
-                    confirmCallback();
-                }
-                confirmCallback = null;
-            });
+		confirmModalConfirmBtn.addEventListener('click', () => {
+		    if (typeof confirmCallback === 'function') {
+		        confirmCallback();
+		    }
+		    confirmModal.style.display = 'none'; // Add this line to hide the modal
+		    confirmCallback = null;
+		});
 
             clearFiltersBtn.addEventListener('click', () => {
                 searchInput.value = '';
