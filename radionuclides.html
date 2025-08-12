@@ -208,8 +208,8 @@
     </script>
 
     <script type="text/babel">
-        const VERSION = '2.3.0';
-        const LAST_UPDATED = 'June 25, 2024';
+        const VERSION = '2.4.0';
+        const LAST_UPDATED = 'July 2, 2024';
         const sources = {
             nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
             wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
@@ -229,7 +229,6 @@
             const unit = parts[1]?.toLowerCase();
             if (isNaN(value)) return 0;
             const unitMultipliers = { 'billion': 3600 * 24 * 365.25 * 1e9, 'million': 3600 * 24 * 365.25 * 1e6, 'kiloyears': 3600 * 24 * 365.25 * 1e3, 'years': 3600 * 24 * 365.25, 'year': 3600 * 24 * 365.25, 'days': 3600 * 24, 'day': 3600 * 24, 'hours': 3600, 'hour': 3600, 'minutes': 60, 'minute': 60, 'seconds': 1, 'second': 1, 's': 1, 'milliseconds': 1e-3, 'millisecond': 1e-3, 'microseconds': 1e-6, 'microsecond': 1e-6, };
-            // Iterate over sorted keys to match longest unit first (e.g. 'years' before 's')
             const sortedKeys = Object.keys(unitMultipliers).sort((a, b) => b.length - a.length);
             for (const key of sortedKeys) {
                 if (unit?.startsWith(key)) { return value * unitMultipliers[key]; }
@@ -321,30 +320,134 @@
             };
             return ( <div className="p-4 animate-fade-in"> <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"> <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2> <div className="space-y-4"> <div><label className="text-sm font-medium">Value</label><input type="number" value={value} onChange={e => setValue(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div className="flex gap-4"> <div className="flex-1"> <label className="text-sm font-medium">From</label> <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.entries(units).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select> </div> <div className="flex-1"> <label className="text-sm font-medium">To</label> <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.entries(units).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select> </div> </div> <button onClick={handleConvert} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Convert</button> {error && <p className="text-red-500 text-sm">{error}</p>} {result && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">{value} {fromUnit} = {result} {toUnit}</p>} </div> </div> </div> );
         };
-        const HalfLifeCalculator = ({ radionuclides }) => {
+        const DecayCalculator = ({ radionuclides }) => {
             const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-            const [initialAmount, setInitialAmount] = React.useState(100);
-            const [timeElapsed, setTimeElapsed] = React.useState(1);
+            const [calculationMode, setCalculationMode] = React.useState('findRemaining'); // 'findRemaining', 'findTime', 'findInitial'
+            const [initialActivity, setInitialActivity] = React.useState('100');
+            const [remainingActivity, setRemainingActivity] = React.useState('');
+            const [timeElapsed, setTimeElapsed] = React.useState('1');
             const [timeUnit, setTimeUnit] = React.useState('years');
-            const [remainingAmount, setRemainingAmount] = React.useState(null);
+            const [result, setResult] = React.useState(null);
             const [error, setError] = React.useState('');
             const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
             const sortedRadionuclides = React.useMemo(() => {
                 const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
                 return [...radionuclides].filter(r => r.halfLife !== 'Stable').sort((a, b) => { const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderA !== orderB) { return orderB - orderA; } return a.name.localeCompare(b.name); });
             }, [radionuclides]);
+
             const handleCalculate = () => {
-                if (!selectedNuclide) { setError('Please select a radionuclide.'); setRemainingAmount(null); return; }
-                 const N0 = parseFloat(initialAmount); const t = parseFloat(timeElapsed);
-                 if (isNaN(N0) || isNaN(t) || N0 < 0 || t < 0) { setError('Please enter valid, non-negative numbers for amount and time.'); setRemainingAmount(null); return; }
+                if (!selectedNuclide) { setError('Please select a radionuclide.'); setResult(null); return; }
                 const T_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-                if (T_seconds === Infinity) { setError('Cannot calculate decay for a stable nuclide.'); setRemainingAmount(N0.toPrecision(4)); return; }
+                if (T_seconds === Infinity) { setError('Cannot calculate decay for a stable nuclide.'); setResult(null); return; }
+                
                 const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 3.15576e10, 'megayears': 3.15576e13, 'gigayears': 3.15576e16 };
-                const t_seconds = t * unitConversions[timeUnit];
-                const Nt = N0 * Math.pow(0.5, t_seconds / T_seconds);
-                setError(''); setRemainingAmount(Nt.toPrecision(4));
+
+                setError('');
+                setResult(null);
+
+                try {
+                    switch (calculationMode) {
+                        case 'findRemaining': {
+                            const N0 = parseFloat(initialActivity);
+                            const t = parseFloat(timeElapsed);
+                            if (isNaN(N0) || isNaN(t) || N0 < 0 || t < 0) { throw new Error('Initial activity and time must be non-negative numbers.'); }
+                            const t_seconds = t * unitConversions[timeUnit];
+                            const Nt = N0 * Math.pow(0.5, t_seconds / T_seconds);
+                            setResult({ value: Nt.toPrecision(4), unit: '', label: 'Remaining Activity' });
+                            break;
+                        }
+                        case 'findTime': {
+                            const N0 = parseFloat(initialActivity);
+                            const Nt = parseFloat(remainingActivity);
+                            if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
+                            if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
+                            if (Nt === 0) { setResult({ value: 'Infinite', unit: '', label: 'Time Elapsed' }); break; }
+                            const t_seconds = -T_seconds * (Math.log(Nt / N0) / Math.log(2));
+                            const t_final = t_seconds / unitConversions[timeUnit];
+                            setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
+                            break;
+                        }
+                        case 'findInitial': {
+                            const Nt = parseFloat(remainingActivity);
+                            const t = parseFloat(timeElapsed);
+                            if (isNaN(Nt) || isNaN(t) || Nt < 0 || t < 0) { throw new Error('Remaining activity and time must be non-negative numbers.'); }
+                            const t_seconds = t * unitConversions[timeUnit];
+                            const N0 = Nt / Math.pow(0.5, t_seconds / T_seconds);
+                            setResult({ value: N0.toPrecision(4), unit: '', label: 'Initial Activity' });
+                            break;
+                        }
+                        default:
+                            throw new Error('Invalid calculation mode.');
+                    }
+                } catch (e) {
+                    setError(e.message);
+                }
             };
-            return ( <div className="p-4 animate-fade-in"> <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"> <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Half-Life Decay Calculator</h2> <div className="space-y-4"> <div> <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label> <select onChange={(e) => setSelectedNuclide(radionuclides.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"> <option>Select a nuclide...</option> {sortedRadionuclides.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)} </select> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-sm font-medium">Initial Amount</label><input type="number" value={initialAmount} onChange={e => setInitialAmount(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div><label className="text-sm font-medium">Time Elapsed</label><input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> </div> <div> <label className="text-sm font-medium">Time Unit</label> <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"> {timeUnits.map(u => <option key={u} value={u}>{u}</option>)} </select> </div> <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button> {error && <p className="text-red-500 text-sm text-center">{error}</p>} {remainingAmount !== null && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">Remaining Amount: {remainingAmount}</p>} </div> </div> </div> );
+            
+            const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
+                <div>
+                    <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
+                    <div className="flex gap-2 mt-1">
+                        <input 
+                            type="number" 
+                            value={value} 
+                            onChange={e => setter(e.target.value)} 
+                            disabled={!isEnabled}
+                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
+                        />
+                        {unitOptions && (
+                             <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
+                                {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        )}
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="p-4 animate-fade-in">
+                    <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                                <select onChange={(e) => setSelectedNuclide(radionuclides.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                    <option value="">Select a nuclide...</option>
+                                    {sortedRadionuclides.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
+                                <div className="flex flex-wrap gap-4 mt-2">
+                                    {['findRemaining', 'findTime', 'findInitial'].map(mode => (
+                                        <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
+                                            <span className="text-sm">{mode === 'findRemaining' ? 'Remaining Activity' : mode === 'findTime' ? 'Time Elapsed' : 'Initial Activity'}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
+                                {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode !== 'findRemaining')}
+                                {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits)}
+                            </div>
+
+                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                            
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {result && (
+                                <div className="text-lg font-bold text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
+                                    <span>{result.value} {result.unit}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
         };
         const MassActivityCalculator = ({ radionuclides }) => {
             const [selectedNuclide, setSelectedNuclide] = React.useState(null);
@@ -455,7 +558,6 @@
             }
             const handleNuclideSelection = (nuclide) => {
                 setNuclideName(nuclide.name); setResult(nuclide); setSuggestions([]); setErrorMessage(''); setActiveView('home'); setCurrentDecaySeriesId(null);
-                // Dynamically set the best half-life unit to display
                 const seconds = parseHalfLifeToSeconds(nuclide.halfLife);
                 setDisplayHalfLifeUnit(getBestHalfLifeUnit(seconds));
                 updateSearchHistory(nuclide);
@@ -480,14 +582,13 @@
                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy };
                 switch (activeView) {
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
-                    case 'calculator': return <HalfLifeCalculator radionuclides={radionuclides} />;
+                    case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
                     case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;
                     case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} />;
                     case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
                     case 'home': default: 
-                        // Show the nuclide card on home view if there's a result
                         if (result) { return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} /></div> }
                         return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} />;
                 }
