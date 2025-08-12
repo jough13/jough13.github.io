@@ -31,9 +31,8 @@
 
     <!-- 
       Radionuclide data is separated into its own script tag.
-      This makes the main application logic cleaner and easier to manage,
-      while still allowing the preview to function correctly since all data
-      is in a single file.
+      This makes the main application logic cleaner and easier to manage.
+      The full dataset can be pasted back in by the user.
     -->
     <script>
         const RADIONUCLIDE_DATA = [
@@ -203,13 +202,17 @@
              { name: 'Lead-208', symbol: 'Pb-208', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Thallium-208', daughter: 'Stable', commonUses: ['Final stable product of Th-232 decay series', 'Geological dating'], category: 'Stable/Reference', commonality: 'N/A' },
              { name: 'Selenium-76', symbol: 'Se-76', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['Reference for stable selenium', 'not a radionuclide use'], category: 'Stable/Reference', commonality: 'N/A' },
              { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' } },
+             { name: 'Xenon-131 (stable)', symbol: 'Xe-131', halfLife: 'Stable', daughter: 'Stable'},
+             { name: 'Molybdenum-99', symbol: 'Mo-99', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.214 MeV (max)'], gamma: ['0.739 MeV', '0.181 MeV'], alpha: [] }, halfLife: '65.94 hours', decayConstant: '0.0105 hour⁻¹', specificActivity: '1.77 x 10^16 Bq/g', parent: 'Uranium-235 Fission', daughter: 'Technetium-99m', commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' } },
+             { name: 'Technetium-99m', symbol: 'Tc-99m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.1405 MeV'], alpha: [] }, halfLife: '6.01 hours', decayConstant: '0.115 hour⁻¹', specificActivity: '1.95 x 10^17 Bq/g', parent: 'Molybdenum-99', daughter: 'Technetium-99', commonUses: ['Medical diagnostic imaging (most common medical isotope for various scans: bone, heart, kidney, brain, etc.)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc', decayConstant: 'nndc' } },
+             { name: 'Technetium-99', symbol: 'Tc-99', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.294 MeV (max)'], gamma: [], alpha: [] }, halfLife: '211,100 years', decayConstant: '3.28 x 10⁻⁶ year⁻¹', specificActivity: '6.3 x 10^8 Bq/g', parent: 'Technetium-99m', daughter: 'Ruthenium-99 (stable)', commonUses: ['Daughter product of Tc-99m', 'Environmental tracer', 'Long-lived fission product in nuclear waste'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
              { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } }
         ];
     </script>
 
     <script type="text/babel">
-        const VERSION = '2.4.0';
-        const LAST_UPDATED = 'July 2, 2024';
+        const VERSION = '2.5.0';
+        const LAST_UPDATED = 'July 3, 2024';
         const sources = {
             nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
             wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
@@ -322,14 +325,14 @@
         };
         const DecayCalculator = ({ radionuclides }) => {
             const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-            const [calculationMode, setCalculationMode] = React.useState('findRemaining'); // 'findRemaining', 'findTime', 'findInitial'
+            const [calculationMode, setCalculationMode] = React.useState('findRemaining'); // 'findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'
             const [initialActivity, setInitialActivity] = React.useState('100');
             const [remainingActivity, setRemainingActivity] = React.useState('');
             const [timeElapsed, setTimeElapsed] = React.useState('1');
-            const [timeUnit, setTimeUnit] = React.useState('years');
+            const [timeUnit, setTimeUnit] = React.useState('days');
             const [result, setResult] = React.useState(null);
             const [error, setError] = React.useState('');
-            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years'];
             const sortedRadionuclides = React.useMemo(() => {
                 const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
                 return [...radionuclides].filter(r => r.halfLife !== 'Stable').sort((a, b) => { const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderA !== orderB) { return orderB - orderA; } return a.name.localeCompare(b.name); });
@@ -337,22 +340,23 @@
 
             const handleCalculate = () => {
                 if (!selectedNuclide) { setError('Please select a radionuclide.'); setResult(null); return; }
-                const T_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-                if (T_seconds === Infinity) { setError('Cannot calculate decay for a stable nuclide.'); setResult(null); return; }
+                const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+                if (T1_seconds === Infinity) { setError('Cannot calculate decay for a stable nuclide.'); setResult(null); return; }
                 
-                const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 3.15576e10, 'megayears': 3.15576e13, 'gigayears': 3.15576e16 };
-
+                const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
                 setError('');
                 setResult(null);
 
                 try {
+                    const t = parseFloat(timeElapsed);
+                    if (isNaN(t) || t < 0) { throw new Error('Time elapsed must be a non-negative number.'); }
+                    const t_seconds = t * unitConversions[timeUnit];
+
                     switch (calculationMode) {
                         case 'findRemaining': {
                             const N0 = parseFloat(initialActivity);
-                            const t = parseFloat(timeElapsed);
-                            if (isNaN(N0) || isNaN(t) || N0 < 0 || t < 0) { throw new Error('Initial activity and time must be non-negative numbers.'); }
-                            const t_seconds = t * unitConversions[timeUnit];
-                            const Nt = N0 * Math.pow(0.5, t_seconds / T_seconds);
+                            if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
+                            const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
                             setResult({ value: Nt.toPrecision(4), unit: '', label: 'Remaining Activity' });
                             break;
                         }
@@ -362,18 +366,51 @@
                             if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
                             if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
                             if (Nt === 0) { setResult({ value: 'Infinite', unit: '', label: 'Time Elapsed' }); break; }
-                            const t_seconds = -T_seconds * (Math.log(Nt / N0) / Math.log(2));
-                            const t_final = t_seconds / unitConversions[timeUnit];
+                            const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
+                            const t_final = t_seconds_calc / unitConversions[timeUnit];
                             setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
                             break;
                         }
                         case 'findInitial': {
                             const Nt = parseFloat(remainingActivity);
-                            const t = parseFloat(timeElapsed);
-                            if (isNaN(Nt) || isNaN(t) || Nt < 0 || t < 0) { throw new Error('Remaining activity and time must be non-negative numbers.'); }
-                            const t_seconds = t * unitConversions[timeUnit];
-                            const N0 = Nt / Math.pow(0.5, t_seconds / T_seconds);
+                            if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
+                            const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
                             setResult({ value: N0.toPrecision(4), unit: '', label: 'Initial Activity' });
+                            break;
+                        }
+                        case 'findDaughterActivity': {
+                            const N0_parent = parseFloat(initialActivity);
+                            if (isNaN(N0_parent) || N0_parent < 0) { throw new Error('Initial parent activity must be a non-negative number.'); }
+                            
+                            const daughterName = selectedNuclide.daughter.split(' ')[0];
+                            const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                            
+                            if (!daughterNuclide) { throw new Error(`Daughter nuclide "${selectedNuclide.daughter}" not found in the database.`); }
+                            
+                            const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+                            if (T2_seconds === Infinity) {
+                                 const Nt_parent = N0_parent * Math.pow(0.5, t_seconds / T1_seconds);
+                                 const daughter_activity = N0_parent - Nt_parent;
+                                 setResult({
+                                     parent: { value: Nt_parent.toPrecision(4), name: selectedNuclide.name },
+                                     daughter: { value: daughter_activity.toPrecision(4), name: daughterNuclide.name }
+                                 });
+                                break;
+                            }
+                            
+                            const lambda1 = Math.log(2) / T1_seconds;
+                            const lambda2 = Math.log(2) / T2_seconds;
+
+                            if (Math.abs(lambda1 - lambda2) < 1e-9) { throw new Error("Parent and daughter decay constants are too similar for this calculation."); }
+
+                            // Bateman equation for A2(t), assuming A2(0) = 0
+                            const N_daughter = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
+                            const Nt_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
+
+                            setResult({
+                                parent: { value: Nt_parent.toPrecision(4), name: selectedNuclide.name },
+                                daughter: { value: N_daughter.toPrecision(4), name: daughterNuclide.name }
+                            });
                             break;
                         }
                         default:
@@ -388,13 +425,7 @@
                 <div>
                     <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
                     <div className="flex gap-2 mt-1">
-                        <input 
-                            type="number" 
-                            value={value} 
-                            onChange={e => setter(e.target.value)} 
-                            disabled={!isEnabled}
-                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
-                        />
+                        <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
                         {unitOptions && (
                              <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
                                 {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
@@ -419,11 +450,13 @@
                             
                             <div>
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
-                                <div className="flex flex-wrap gap-4 mt-2">
-                                    {['findRemaining', 'findTime', 'findInitial'].map(mode => (
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                                    {['findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'].map(mode => (
                                         <label key={mode} className="flex items-center gap-2 cursor-pointer">
                                             <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
-                                            <span className="text-sm">{mode === 'findRemaining' ? 'Remaining Activity' : mode === 'findTime' ? 'Time Elapsed' : 'Initial Activity'}</span>
+                                            <span className="text-sm">{
+                                                { 'findRemaining': 'Remaining Activity', 'findTime': 'Time Elapsed', 'findInitial': 'Initial Activity', 'findDaughterActivity': 'Daughter Activity' }[mode]
+                                            }</span>
                                         </label>
                                     ))}
                                 </div>
@@ -431,7 +464,7 @@
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                                 {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
-                                {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode !== 'findRemaining')}
+                                {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
                                 {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits)}
                             </div>
 
@@ -440,8 +473,23 @@
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                             {result && (
                                 <div className="text-lg font-bold text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
-                                    <span>{result.value} {result.unit}</span>
+                                    {result.label ? (
+                                        <>
+                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
+                                            <span>{result.value} {result.unit}</span>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div>
+                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name}</span>
+                                                <span>{result.parent.value}</span>
+                                            </div>
+                                            <div>
+                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity</span>
+                                                <span>{result.daughter.value}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
