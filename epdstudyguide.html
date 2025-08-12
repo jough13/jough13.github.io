@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environmental Programs Manager Study Guide - US Navy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .prose p {
+            margin-bottom: 1.25em;
+        }
+        .prose h2 {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .prose h3 {
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+        }
+        .prose h4 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #1e3a8a; /* Navy Blue */
+        }
+        .prose ul li, .prose ol li {
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .prose blockquote {
+            border-left-color: #3b82f6;
+            background-color: #eff6ff;
+            padding: 1rem 1.5rem;
+            border-radius: 0.25rem;
+            margin: 1.5rem 0;
+        }
+        .prose blockquote p {
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+        .info-box {
+            background-color: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0.25rem;
+        }
+        .sidebar-nav-sublink {
+            padding-left: 2.75rem; /* Indent sublinks */
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* For the instrument table */
+        .prose table {
+            width: 100%;
+            margin-top: 1.5em;
+            margin-bottom: 1.5em;
+        }
+        .prose th {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .prose th, .prose td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem 0.75rem;
+        }
+        /* Quiz Styles */
+        .quiz-option.correct {
+            background-color: #dcfce7; /* Green-100 */
+            border-color: #22c55e; /* Green-500 */
+        }
+        .quiz-option.incorrect {
+            background-color: #fee2e2; /* Red-100 */
+            border-color: #ef4444; /* Red-500 */
+        }
+        .quiz-option label {
+            cursor: pointer;
+            display: block;
+            padding: 0.75rem 1rem;
+        }
+        /* Flashcard Styles */
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            width: 100%;
+            height: 250px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .flashcard-front {
+            background-color: #f8fafc;
+        }
+        .flashcard-back {
+            background-color: #eff6ff;
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 leading-relaxed">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-20">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-blue-800" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 12c0-5.25-4.25-9.5-9.5-9.5S2.5 6.75 2.5 12s4.25 9.5 9.5 9.5s9.5-4.25 9.5-9.5z"/><path d="M12 2v20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10m0-20A15.3 15.3 0 0 0 8 12a15.3 15.3 0 0 0 4 10"/></svg>
+                    <h1 class="ml-3 text-xl font-bold text-slate-800">Environmental Programs Manager Study Guide</h1>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row">
+            <!-- Sidebar Navigation -->
+            <aside id="sidebar" class="w-full md:w-64 lg:w-72 flex-shrink-0 md:sticky md:top-16 md:h-[calc(100vh-4rem)] bg-white p-4 rounded-lg shadow-sm mt-4 md:mt-8 transition-transform transform -translate-x-full md:translate-x-0 fixed md:relative z-10 overflow-y-auto">
+                <nav class="space-y-1">
+                    <h3 class="px-3 text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Main Topics</h3>
+                    <a href="#superfund" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">I. Superfund Program</a>
+                    <a href="#marssim" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">II. MARSSIM</a>
+                    <a href="#nrc" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">III. NRC Regulatory Guidance</a>
+                    <a href="#ncrp" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">IV. NCRP Report No. 115</a>
+                    <a href="#bio-effects" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">V. Biological Effects of Radiation</a>
+                    <a href="#radionuclides" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">VI. Common Radionuclides</a>
+                    <a href="#navy-guidance" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">VII. DON Specific Guidance</a>
+                    <a href="#arars" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">VIII. ARARs</a>
+                    <a href="#waste-management" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">IX. Waste Management & Disposal</a>
+                    <a href="#instrumentation" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">X. Radiation Instrumentation</a>
+                    <a href="#references" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">XI. References</a>
+                    <hr class="my-4">
+                    <h3 class="px-3 text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Assessments</h3>
+                    <a href="#quiz" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">Quiz</a>
+                    <a href="#essay" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">Essay Questions</a>
+                    <a href="#glossary" class="block px-3 py-2 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900">Glossary</a>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="w-full md:pl-8 mt-4 md:mt-8">
+                <div class="bg-white p-6 sm:p-8 rounded-lg shadow-sm prose max-w-none">
+                    
+                    <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded-md mb-8 not-prose" role="alert">
+                        <p class="font-bold text-lg">Decontamination and Decommissioning: A Comprehensive Study Guide</p>
+                        <p>For qualification as an Environmental Programs Manager for radioactive waste sites within the US Navy.</p>
+                    </div>
+
+                    <!-- Superfund Program Section -->
+                    <section id="superfund">
+                        <h2 class="!font-bold !text-slate-900">I. Superfund Program (EPA)</h2>
+                        <p>The Superfund program, administered by the U.S. Environmental Protection Agency (EPA), addresses the cleanup of hazardous waste sites. Established in 1980 by the <strong>Comprehensive Environmental Response, Compensation, and Liability Act (CERCLA)</strong>, it empowers the EPA to clean up sites and to compel responsible parties to either perform or reimburse cleanup efforts. The program's procedures are detailed in the <strong>National Oil and Hazardous Substances Pollution Contingency Plan (NCP)</strong>, found in 40 CFR Part 300.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">A. Discovery and Responsibility</h3>
+                        <p><strong>Site Discovery:</strong> Hazardous waste sites are "discovered" when their presence is made known to the EPA, often reported by residents, agencies, or businesses. These sites commonly include manufacturing facilities, processing plants, landfills, and mining sites where wastes were dumped, left open, or improperly managed.</p>
+                        <p><strong>Potentially Responsible Party (PRP):</strong> Upon discovery, EPA identifies generators, transporters, owners, and operators of the hazardous waste. These entities are considered PRPs. EPA's policy is "enforcement first," meaning they will first try to get PRPs to conduct and pay for cleanup activities. If a PRP refuses, EPA can use Superfund money to perform the cleanup and then sue the PRP to recover the costs. Liability under CERCLA is strict (a party is liable if they contributed to the contamination, regardless of fault), joint and several (any one PRP can be held liable for the entire cleanup cost), and retroactive (applies to actions taken before CERCLA was enacted).</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">B. The Superfund Process and Community Involvement</h3>
+                        <p>The Superfund process is structured to ensure that contaminated sites are addressed in a systematic and protective manner. EPA encourages community involvement throughout, including the formation of Community Advisory Groups (CAGs) and providing Technical Assistance Grants (TAGs) to communities.</p>
+                        <h4>Key Stages of the Superfund Remedial Process:</h4>
+                        <ol>
+                            <li><strong>Preliminary Assessment/Site Inspection (PA/SI):</strong> EPA reviews existing information and inspects the site to determine if a release may require additional investigation. This phase includes testing soil, water, and air to identify hazardous substances and assess risks.</li>
+                            <li><strong>National Priorities List (NPL) Listing:</strong> Based on the PA/SI, sites are scored using the Hazard Ranking System (HRS), which assesses the relative potential of a site to pose a threat. Sites with a high enough score (≥ 28.50) are proposed for the NPL, the list of national priorities for long-term cleanup. The public has an opportunity to comment on proposed listings.</li>
+                            <li><strong>Remedial Investigation/Feasibility Study (RI/FS):</strong> Once on the NPL, a site undergoes a detailed RI to determine the nature and extent of contamination and a baseline risk assessment. An FS is then conducted to develop and evaluate cleanup options against nine criteria, including overall protection, compliance with ARARs, long-term effectiveness, and cost.</li>
+                            <li><strong>Proposed Plan:</strong> EPA presents its preferred cleanup alternative to the public in a Proposed Plan and holds a public comment period.</li>
+                            <li><strong>Record of Decision (ROD):</strong> After considering public comments, EPA documents the chosen cleanup remedy in a ROD. The selected remedy must be protective, comply with regulations (ARARs), be cost-effective, and use permanent solutions to the maximum extent practicable.</li>
+                            <li><strong>Remedial Design/Remedial Action (RD/RA):</strong> The RD phase involves developing the detailed engineering plans for the selected remedy. The RA is the actual construction and implementation of the cleanup plan.</li>
+                            <li><strong>Post-Construction Completion:</strong> This phase ensures the cleanup is functioning as designed and remains protective. It includes long-term monitoring and Five-Year Reviews if waste is left on-site above levels that allow for unlimited use.</li>
+                            <li><strong>NPL Deletion:</strong> A site can be deleted from the NPL once all cleanup goals have been met.</li>
+                        </ol>
+                        <blockquote>
+                            <p><strong>Navy ER Program Note:</strong> The Navy's Environmental Restoration (ER) Program follows the CERCLA process. The Navy is the lead agency for its sites and must comply with all applicable requirements of CERCLA, SARA, and RCRA. (OPNAV M-5090.1, Ch. 42)</p>
+                        </blockquote>
+                    </section>
+
+                    <!-- MARSSIM Section -->
+                    <section id="marssim">
+                        <h2 class="!font-bold !text-slate-900">II. Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM)</h2>
+                        <p>MARSSIM provides a nationally consistent, performance-based approach for planning, conducting, evaluating, and documenting radiological surveys to demonstrate compliance with a dose- or risk-based regulation. Its primary focus is the Final Status Survey (FSS) to support site release.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">A. The Data Life Cycle & The 7-Step DQO Process</h3>
+                        <p>MARSSIM is structured around the Data Life Cycle, a framework for ensuring data quality and defensible decision-making. The Planning Phase is driven by the 7-step Data Quality Objectives (DQO) process:</p>
+                        <ol>
+                            <li><strong>State the Problem:</strong> Clearly define the problem that requires a decision.</li>
+                            <li><strong>Identify the Goal of the Study:</strong> State the primary decision that will be made using the data.</li>
+                            <li><strong>Identify Information Inputs:</strong> Identify the data and information needed to resolve the decision.</li>
+                            <li><strong>Define the Boundaries of the Study:</strong> Specify the spatial and temporal boundaries of the decision.</li>
+                            <li><strong>Develop the Analytic Approach:</strong> Define the parameter of interest and develop a decision rule ("if-then" statement).</li>
+                            <li><strong>Specify Performance or Acceptance Criteria:</strong> Define the decision-maker's tolerable limits on decision errors (Type I and Type II errors).</li>
+                            <li><strong>Develop the Plan for Obtaining Data:</strong> Develop the most resource-effective survey design that meets the performance criteria.</li>
+                        </ol>
+
+                        <h3 class="!font-bold !text-slate-900">B. Key Terminology and Concepts</h3>
+                        <ul>
+                            <li><strong>Derived Concentration Guideline Levels (DCGLs):</strong> These are the primary operational tool in MARSSIM. They are radionuclide-specific concentrations that correspond to the release criterion (e.g., 25 mrem/yr).
+                                <ul>
+                                    <li><strong>DCGLw:</strong> The "wide-area" DCGL, used for statistical tests of the survey unit's average concentration.</li>
+                                    <li><strong>DCGLEMC:</strong> The "elevated measurement comparison" DCGL, an adjusted, higher limit for small areas of elevated activity. It is calculated by multiplying the DCGLw by an Area Factor.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Survey Unit:</strong> A physical area (e.g., a room, a field) of a specified size for which a separate decision will be made. Survey unit sizes are limited based on classification to ensure adequate survey density. For example, Class 1 land areas are typically limited to 2,000 m².</li>
+                            <li><strong>Area Classification (The Graded Approach):</strong> Areas are classified based on their contamination potential to focus resources where they are most needed.
+                                <ul>
+                                    <li><strong>Class 1:</strong> High potential for contamination or known contamination above the DCGLw. Requires the highest survey effort (100% scanning coverage).</li>
+                                    <li><strong>Class 2:</strong> Potential for contamination, but not expected to exceed the DCGLw. Requires moderate survey effort (10-100% scanning).</li>
+                                    <li><strong>Class 3:</strong> Low probability of contamination. Requires the lowest survey effort (judgmental scanning).</li>
+                                </ul>
+                            </li>
+                            <li><strong>Null Hypothesis (H0):</strong> MARSSIM uses a conservative null hypothesis for compliance: <strong>"The residual radioactivity in the survey unit exceeds the release criterion."</strong> This places the burden of proof on the survey to demonstrate that the site is clean.</li>
+                            <li><strong>Statistical Tests:</strong> Nonparametric tests are recommended because they make fewer assumptions about the data distribution.
+                                <ul>
+                                    <li><strong>Wilcoxon Rank Sum (WRS) Test:</strong> A two-sample test used when the radionuclide of concern is present in background. It compares survey unit data to a reference (background) area.</li>
+                                    <li><strong>Sign Test:</strong> A one-sample test used when the radionuclide is not in background. It compares survey unit data directly to the DCGLw.</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">C. The Radiation Survey and Site Investigation (RSSI) Process</h3>
+                        <p>This is the sequence of surveys outlined in MARSSIM:</p>
+                        <ol>
+                            <li><strong>Historical Site Assessment (HSA):</strong> A detailed investigation to collect existing information to identify potential sources, classify areas as impacted/non-impacted, and develop a conceptual site model.</li>
+                            <li><strong>Scoping Surveys:</strong> Limited measurements to provide initial site-specific data, augment the HSA, and help refine classifications.</li>
+                            <li><strong>Characterization Surveys:</strong> A comprehensive survey to determine the nature and extent of contamination, collect data for remedial alternatives, and provide input to the FSS design.</li>
+                            <li><strong>Remedial Action Support Surveys:</strong> Conducted during cleanup to monitor effectiveness and determine when a survey unit is ready for the FSS.</li>
+                            <li><strong>Final Status Survey (FSS):</strong> The final, rigorous survey that provides the data to demonstrate that the site meets the release criterion.</li>
+                        </ol>
+                    </section>
+
+                    <!-- NRC Guidance Section -->
+                    <section id="nrc">
+                        <h2 class="!font-bold !text-slate-900">III. NRC Regulatory Guidance</h2>
+                        <h3 class="!font-bold !text-slate-900">A. 10 CFR Part 20 — Standards for Protection Against Radiation</h3>
+                        <p>This regulation establishes the fundamental requirements for radiation protection in the U.S. for NRC licensees.</p>
+                        <blockquote>
+                            <p><strong>ALARA Principle:</strong> "As Low As is Reasonably Achievable" means making every reasonable effort to maintain exposures to radiation as far below the dose limits as is practical. (10 CFR 20.1003)</p>
+                        </blockquote>
+                        <h4>Key Dose Limits:</h4>
+                        <ul>
+                            <li><strong>Occupational Dose Limits (Adults):</strong> The annual limit is the more limiting of 5 rem (0.05 Sv) Total Effective Dose Equivalent (TEDE) or 50 rem (0.5 Sv) to any individual organ. (10 CFR 20.1201)</li>
+                            <li><strong>Dose Limits for Public:</strong> The annual limit is 0.1 rem (1 mSv) TEDE. The dose in any unrestricted area from external sources must not exceed 0.002 rem (0.02 mSv) in any one hour. (10 CFR 20.1301)</li>
+                            <li><strong>Dose to Embryo/Fetus:</strong> The dose to the embryo/fetus of a declared pregnant woman must not exceed 0.5 rem (5 mSv) over the entire pregnancy. (10 CFR 20.1208)</li>
+                        </ul>
+                        <h4>Radiological Criteria for License Termination (Subpart E):</h4>
+                        <ul>
+                            <li><strong>Unrestricted Use:</strong> A site is acceptable for unrestricted use if the residual radioactivity results in a TEDE to an average member of the critical group that does not exceed <strong>25 mrem (0.25 mSv) per year</strong>, and levels are ALARA. (10 CFR 20.1402)</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">B. NUREG-1757: Consolidated Decommissioning Guidance</h3>
+                        <p>This NUREG provides comprehensive guidance for NRC licensees on meeting the requirements for decommissioning facilities. It covers topics such as decommissioning planning, characterization, remediation, final status surveys (incorporating MARSSIM), and license termination. It is a key reference for any decommissioning project.</p>
+
+                        <h3 class="!font-bold !text-slate-900">C. Regulation Guide 1.86: Termination of Operating Licenses for Nuclear Reactors</h3>
+                        <p>This guide outlines acceptable methods for license termination. Key points include decontamination to prescribed limits (Table I), no covering (e.g., painting over) contamination until levels are below limits, assuming inaccessible areas (like interior pipes) are contaminated if likely, and conducting comprehensive surveys before release.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">D. Regulation Guide 4.15: Quality Assurance for Radiological Monitoring Programs</h3>
+                        <p>Describes acceptable QA methods for radiological monitoring programs. It emphasizes a Quality Management System, a Directed Planning Process (like DQOs), a Quality Assurance Project Plan (QAPP), qualified personnel, written procedures, and thorough records.</p>
+                    </section>
+
+                    <!-- NCRP Report Section -->
+                    <section id="ncrp">
+                        <h2 class="!font-bold !text-slate-900">IV. NCRP Report No. 115: Risk Estimates for Radiation Protection</h2>
+                        <p>This report provides the scientific basis for many radiation protection standards by estimating the risks of health effects from low-LET radiation.</p>
+                        <h3 class="!font-bold !text-slate-900">A. Total Detriment and Risk Coefficients</h3>
+                        <p>Detriment is a measure of the total harm from radiation exposure. It includes fatal cancer, nonfatal cancer (weighted by severity), severe hereditary effects, and years of life lost. The total detriment for the general population is estimated at about <strong>7.3 x 10⁻² per Sv</strong> (or 7.3% per Sv). For radiation workers, the risk is estimated to be lower, around 5.6 x 10⁻² per Sv, due to the absence of children and the generally better health of the worker population.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">B. Cancer Risk Estimates</h3>
+                        <p>Based largely on epidemiological studies of the Japanese atomic-bomb survivors. Key concepts include:</p>
+                        <ul>
+                            <li><strong>Linear, No-Threshold (LNT) Model:</strong> The conservative model used for radiation protection, which assumes that any amount of radiation poses some risk, and the risk increases linearly with dose.</li>
+                            <li><strong>Dose and Dose-Rate Effectiveness Factor (DDREF):</strong> A factor used to reduce risk estimates derived from high-dose, high-dose-rate exposures (like the A-bomb survivors) when applying them to low-dose, low-dose-rate situations typical of occupational and public exposure. NCRP recommends a DDREF of <strong>two</strong>.</li>
+                            <li><strong>Risk Projection Models:</strong> Since most A-bomb survivors are still alive, models are needed to project lifetime risk. The <strong>multiplicative (relative) risk model</strong>, which assumes radiation multiplies the baseline cancer rate, is generally preferred over the additive (absolute) model.</li>
+                        </ul>
+                        
+                        <h3 class="!font-bold !text-slate-900">C. Hereditary (Genetic) Effects</h3>
+                        <p>Discusses the "Doubling Dose" (DD) - the dose that will double the spontaneous mutation rate. Recent human data from A-bomb survivors suggest a DD of about 1.7 to 2.2 Sv for acute exposures, which is 3-4 times higher (meaning humans are less sensitive) than estimates derived from mouse studies.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">D. Radiation Effects on Brain (Embryo/Fetus)</h3>
+                        <p>The period from <strong>8 to 15 weeks gestational age</strong> is the most radiosensitive for the developing brain. Exposure during this time is associated with an increased risk of severe mental retardation. The risk is estimated at 0.4 per Gy. Strict exposure limitation is required during this critical period.</p>
+                    </section>
+                    
+                    <!-- Biological Effects of Radiation Section -->
+                    <section id="bio-effects">
+                        <h2 class="!font-bold !text-slate-900">V. Biological Effects of Radiation</h2>
+                        <p>This provides a simplified overview of radiation exposure and its effects.</p>
+                        <h3 class="!font-bold !text-slate-900">A. Sources of Radiation</h3>
+                        <p>Radiation comes from natural (background) and man-made sources. The average U.S. resident receives about <strong>620 mrem (6.2 mSv) per year</strong>, roughly half from natural sources and half from man-made sources.</p>
+                        <ul>
+                            <li><strong>Natural Sources (~310 mrem/yr):</strong> Dominated by radon and thoron gas (~2/3 of natural dose). Other sources are cosmic, terrestrial, and internal (from food/water).</li>
+                            <li><strong>Man-made Sources (~310 mrem/yr):</strong> Dominated by medical procedures, especially Computed Tomography (CT) scans.</li>
+                        </ul>
+                        
+                        <h3 class="!font-bold !text-slate-900">B. Stochastic vs. Deterministic Effects</h3>
+                        <p>Biological effects are categorized based on how they relate to the dose received.</p>
+                        <ul>
+                            <li><strong>Stochastic Effects:</strong> Effects for which the *probability* of occurrence increases with dose, but the *severity* is independent of the dose. They are assumed to have no threshold. Examples include cancer and hereditary effects.</li>
+                            <li><strong>Deterministic Effects (Non-stochastic):</strong> Effects for which the *severity* increases with dose, and for which a threshold dose exists below which the effect is not observed. Examples include skin reddening (erythema), cataracts, and Acute Radiation Syndrome (ARS).</li>
+                        </ul>
+                    </section>
+
+                    <!-- Common Radionuclides Section -->
+                    <section id="radionuclides">
+                        <h2 class="!font-bold !text-slate-900">VI. Common Radionuclides of Concern</h2>
+                        <p>A thorough understanding of the key radionuclides found at environmental sites is essential for an Environmental Programs Manager. These radionuclides can be broadly categorized by their origin, primarily as fission products or activation products.</p>
+
+                        <h3 class="!font-bold !text-slate-900">A. Fission Products</h3>
+                        <p>Fission products are the fragments left after a heavy nucleus, such as Uranium-235 or Plutonium-239, splits apart. They are a hallmark of nuclear reactor operations and weapons fallout. They are typically beta and gamma emitters.</p>
+
+                        <h4>Cesium-137 (Cs-137)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> A high-yield fission product, meaning it is produced in large quantities during nuclear fission.</li>
+                            <li><strong>Half-Life:</strong> 30.17 years.</li>
+                            <li><strong>Decay Mode:</strong> Undergoes beta decay to a metastable state of Barium-137 (Ba-137m), which then rapidly decays by emitting a prominent, high-energy <strong>662 keV gamma ray</strong>. This gamma is easily detectable by field instruments like NaI scintillators.</li>
+                            <li><strong>Radiological Significance:</strong> Chemically, cesium mimics potassium, an essential element for life. This means it is readily taken up by plants and animals and can become distributed throughout soft tissues in the body, making it both an internal and external hazard. Its high solubility in water makes it mobile in the environment.</li>
+                        </ul>
+
+                        <h4>Strontium-90 (Sr-90)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> Also a high-yield fission product.</li>
+                            <li><strong>Half-Life:</strong> 28.8 years.</li>
+                            <li><strong>Decay Mode:</strong> A <strong>pure beta emitter</strong>. It decays to Yttrium-90 (Y-90), which has a short half-life (64 hours) and is itself a very high-energy beta emitter. No significant gamma rays are emitted in this decay chain.</li>
+                            <li><strong>Radiological Significance:</strong> Chemically, strontium mimics calcium. As a result, if ingested, it is a "bone seeker," concentrating in bone and bone marrow. This makes it a significant long-term internal hazard. Its lack of gamma emission makes it very difficult to detect with standard field scanning instruments; laboratory analysis of samples is required.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">B. Activation Products</h3>
+                        <p>Activation products are created when stable (non-radioactive) materials are bombarded by neutrons, typically inside a nuclear reactor. The stable nucleus absorbs a neutron and becomes a new, radioactive isotope.</p>
+
+                        <h4>Cobalt-60 (Co-60)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> An activation product formed when stable Cobalt-59, a common element in steel and other alloys, is exposed to a neutron flux.</li>
+                            <li><strong>Half-Life:</strong> 5.27 years.</li>
+                            <li><strong>Decay Mode:</strong> Emits a beta particle, followed by two high-energy, penetrating gamma rays (<strong>1173 keV and 1332 keV</strong>).</li>
+                            <li><strong>Radiological Significance:</strong> A common contaminant at nuclear facilities due to the activation of steel components. The powerful gamma rays make it a significant external radiation hazard, requiring heavy shielding. It is less mobile in the environment than cesium.</li>
+                        </ul>
+
+                        <h4>Tritium (H-3)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> Can be produced as a fission product (in a small percentage of fissions) and as an activation product, primarily from neutron interactions with deuterium (in heavy water) or lithium and boron in reactor coolant.</li>
+                            <li><strong>Half-Life:</strong> 12.3 years.</li>
+                            <li><strong>Decay Mode:</strong> Emits a very low-energy <strong>pure beta particle</strong>. No gamma rays are emitted.</li>
+                            <li><strong>Radiological Significance:</strong> As an isotope of hydrogen, tritium readily forms tritiated water (HTO), which is chemically identical to normal water. This makes it extremely mobile in groundwater and easily taken up by all living organisms. Its low-energy beta makes it an internal hazard only and requires specialized laboratory techniques (liquid scintillation counting) for detection.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">C. Actinides</h3>
+                        <p>Actinides are a series of heavy, radioactive metallic elements. Those of most concern at environmental sites are typically associated with nuclear fuel and weapons production.</p>
+
+                        <h4>Plutonium-239 (Pu-239)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> Not a direct fission product, but produced in reactors when Uranium-238 captures a neutron. It is a primary fissile component of nuclear weapons.</li>
+                            <li><strong>Half-Life:</strong> 24,110 years.</li>
+                            <li><strong>Decay Mode:</strong> Primarily an <strong>alpha emitter</strong>, with some low-energy gamma and X-ray emissions.</li>
+                            <li><strong>Radiological Significance:</strong> Extremely long-lived and highly radiotoxic if inhaled, making it a severe internal hazard. Alpha particles are not an external hazard but deliver a concentrated dose to tissue when inside the body. It is relatively immobile in soil.</li>
+                        </ul>
+
+                        <h4>Americium-241 (Am-241)</h4>
+                        <ul>
+                            <li><strong>Origin:</strong> A decay product of Plutonium-241 (Pu-241), which is an isotope produced in reactors. As Pu-241 (half-life ~14 years) decays, the amount of Am-241 in spent fuel or contaminated areas increases over time.</li>
+                            <li><strong>Half-Life:</strong> 432.2 years.</li>
+                            <li><strong>Decay Mode:</strong> Primarily an <strong>alpha emitter</strong>, but it also emits a characteristic low-energy <strong>59.5 keV gamma ray</strong>.</li>
+                            <li><strong>Radiological Significance:</strong> Like plutonium, it is a significant internal hazard. Its key feature is the 59.5 keV gamma ray, which is easily detected by specialized instruments (like HPGe or FIDLER detectors) and often serves as a reliable indicator for the presence of plutonium, which is much harder to detect directly in the field.</li>
+                        </ul>
+                    </section>
+
+                    <!-- DON Specific Guidance Section -->
+                    <section id="navy-guidance">
+                        <h2 class="!font-bold !text-slate-900">VII. Department of the Navy (DON) Specific Guidance</h2>
+                        <p>This section clarifies DON policy, roles, and responsibilities for general radioactive material (G-RAM) matters within the Environmental Restoration (ER) Program, as outlined in OPNAV M-5090.1 and OPNAV Ltr 5090 Ser N453.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">A. Key Definitions and Applicability</h3>
+                        <ul>
+                            <li><strong>G-RAM (General Radioactive Material):</strong> All DON radioactive material that is NOT used by, controlled by, or associated with the Naval Nuclear Propulsion Program (NNPP). This includes byproduct, source, special nuclear materials, NORM, TENORM, and NARM.</li>
+                            <li><strong>N-RAM (Naval Nuclear Propulsion Program Radioactive Material):</strong> Radioactive material under the cognizance of the NNPP (NAVSEA 08). N-RAM is NOT covered by this G-RAM guidance.</li>
+                            <li><strong>Radiologically-Impacted Site:</strong> An area that has a potential of being affected by or is known to be contaminated by G-RAM.</li>
+                            <li><strong>Applicability:</strong> This guidance applies to all ER response actions for G-RAM funded under Environmental Restoration, Navy (ER,N) or Base Realignment and Closure (BRAC) accounts.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">B. Roles and Responsibilities in the DON ER Program for G-RAM</h3>
+                        <h4>CNO N45 (Chief of Naval Operations, Director, Environmental Readiness Division)</h4>
+                        <ul>
+                            <li>Serves as the ER Resource and Assessment Sponsor.</li>
+                            <li>Develops ER G-RAM policy and guidance.</li>
+                            <li>Provides oversight of policy implementation.</li>
+                            <li>Chairs the <strong>Naval Radiation Safety Committee (NRSC)</strong>, which establishes and oversees policies for all G-RAM. The NRSC is the final authority on G-RAM matters.</li>
+                        </ul>
+
+                        <h4>Naval Radiation Safety Committee (NRSC)</h4>
+                        <p>Established by OPNAVINST 6470.3B, the NRSC is the primary body for managing the safe use of all radioactive material within the Department of the Navy, which includes the oversight of LLRW disposal. Its structure and function are critical to ensuring a consistent and safe approach to radiological issues.</p>
+                        <ul>
+                            <li><strong>Charter and Role:</strong> The NRSC's chartered responsibility is to establish and oversee policies for the safe use, handling, storage, and disposal of all G-RAM. It serves as the final authority on these matters.</li>
+                            <li><strong>Membership and Structure:</strong>
+                                <ul>
+                                    <li><strong>Chairman:</strong> OPNAV N4I.</li>
+                                    <li><strong>Executive Secretary:</strong> A Radiation Health Officer (Navy Officer Billet Classification 0845) assigned to OPNAV N4I.</li>
+                                    <li><strong>Voting Members:</strong>
+                                        <ul class="list-['-_'] list-inside ml-4">
+                                            <li>An appointed representative from the Office of the Commandant, U.S. Marine Corps.</li>
+                                            <li>An appointed representative from NAVSEA.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Advisors:</strong> Representatives from organizations like NAVSEADET RASO serve in an advisory, non-voting capacity, providing essential technical expertise.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Responsibilities in ER Program:</strong> Within the context of the Environmental Restoration program, the NRSC provides the ultimate policy guidance. While NAVSEADET RASO handles day-to-day technical oversight, any significant policy decisions, disputes, or requests for alternative disposal methods for LLRW must be elevated to and authorized by the NRSC.</li>
+                        </ul>
+
+                        <h4>NAVSEADET RASO (Naval Sea Systems Command Detachment, Radiological Affairs Support Office)</h4>
+                        <ul>
+                            <li>Acts as the technical support center for CNO N45 and NAVSEA for all G-RAM issues.</li>
+                            <li>Provides technical and policy assistance to NAVFAC RPMs and BRAC PMO on CERCLA response actions for G-RAM.</li>
+                            <li>Performs technical review of contract scopes of work, contractor qualifications, and project documents involving G-RAM.</li>
+                            <li>Conducts on-site evaluations of G-RAM work efforts for technical compliance and safety, with the authority to recommend work stoppages.</li>
+                            <li>Collaborates with NAVFAC/BRAC to engage with regulatory agencies on G-RAM issues and to identify appropriate release criteria (ARARs or risk-based levels).</li>
+                        </ul>
+
+                        <h4>NAVFAC (Naval Facilities Engineering Command) / BRAC PMO</h4>
+                        <ul>
+                            <li>Manages and executes the overall ER Program.</li>
+                            <li>Must contact and consult with NAVSEADET RASO upon discovery of potential G-RAM contamination and for all G-RAM ER investigations and actions.</li>
+                            <li>Ensures that all contract documents and technical reviews involving G-RAM are coordinated with NAVSEADET RASO.</li>
+                            <li>Collaborates with NAVSEADET RASO to identify release criteria and engage with regulators.</li>
+                            <li>Ensures G-RAM waste is disposed of through the DON LLRW Disposal Program.</li>
+                        </ul>
+                        <blockquote>
+                            <p><strong>Key Policy Point:</strong> Issues involving G-RAM are complex and require close coordination. Should a conflict arise between NAVFAC/BRAC and NAVSEADET RASO, the issue is elevated through the chain of command, with final resolution authority resting with CNO N45.</p>
+                        </blockquote>
+
+                        <h3 class="!font-bold !text-slate-900">C. Key Operational Policies and Controls</h3>
+                        <h4>Radiation Protection Plan (RPP)</h4>
+                        <p>For any ER site where G-RAM work is performed, a site-specific <strong>Radiation Protection Plan (RPP)</strong> must be developed. This plan is a critical component of the overall site safety documentation and must be reviewed and approved by NAVSEADET RASO. The RPP details the specific radiological controls necessary to ensure worker and public safety, including:</p>
+                        <ul>
+                            <li>Engineered controls (e.g., ventilation, shielding).</li>
+                            <li>Administrative controls (e.g., access control points, work procedures).</li>
+                            <li>Required personal protective equipment (PPE).</li>
+                            <li>Dosimetry and bioassay requirements.</li>
+                            <li>Action levels and emergency response procedures.</li>
+                        </ul>
+
+                        <h4>Radiological Worker Designations</h4>
+                        <p>Personnel working at radiologically-impacted sites are designated based on their potential for exposure. This is distinct from HAZWOPER training.</p>
+                        <ul>
+                            <li><strong>Radiological Worker I (RW-I):</strong> Personnel whose duties may result in receiving a dose >100 mrem/year. They require specific training on radiation risks, controls, and emergency procedures.</li>
+                            <li><strong>Radiological Worker II (RW-II):</strong> Personnel whose duties are unlikely to result in a dose >100 mrem/year but who require unescorted access to radiologically controlled areas. Training is less intensive than for RW-I.</li>
+                            <li><strong>Radiological Controls Technician (RCT):</strong> A highly trained and qualified individual responsible for providing on-site radiological surveillance and implementing the controls outlined in the RPP. RCTs provide job-site briefings, perform contamination and dose rate surveys, and have stop-work authority for radiological concerns.</li>
+                        </ul>
+                    </section>
+                    
+                    <!-- ARARs Section -->
+                    <section id="arars">
+                        <h2 class="!font-bold !text-slate-900">VIII. ARARs (Applicable or Relevant and Appropriate Requirements)</h2>
+                        <p>Under CERCLA Section 121, remedial actions must meet standards, requirements, or limitations from other environmental laws that are determined to be "Applicable or Relevant and Appropriate Requirements" (ARARs). This ensures that cleanups conducted under Superfund are protective and comply with the substantive requirements of other laws.</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">A. Types of ARARs</h3>
+                        <ul>
+                            <li><strong>Applicable Requirements:</strong> These are cleanup standards, standards of control, and other substantive environmental protection requirements, criteria, or limitations promulgated under federal or state law that specifically address a hazardous substance, pollutant, contaminant, remedial action, location, or other circumstance at a CERCLA site. An example would be RCRA regulations for the treatment of a listed hazardous waste found on site.</li>
+                            <li><strong>Relevant and Appropriate Requirements:</strong> These are requirements that, while not "applicable," address problems or situations sufficiently similar to those encountered at the CERCLA site that their use is well-suited to the particular site. For instance, while NRC decommissioning standards in 10 CFR 20 may not be directly "applicable" to a non-licensed DoD site, they are often considered "relevant and appropriate" for setting cleanup goals for radionuclides.</li>
+                        </ul>
+                        
+                        <h3 class="!font-bold !text-slate-900">B. Categories of ARARs</h3>
+                        <ul>
+                            <li><strong>Chemical-specific ARARs:</strong> These are usually health- or risk-based numerical values or methodologies that, when applied to site-specific conditions, result in the establishment of numerical cleanup levels. Examples include Maximum Contaminant Levels (MCLs) under the Safe Drinking Water Act for groundwater and the NRC's 25 mrem/yr dose limit for site release.</li>
+                            <li><strong>Location-specific ARARs:</strong> These are restrictions placed on the concentration of hazardous substances or the conduct of activities solely because they are in special locations. Examples include requirements for activities in wetlands, floodplains, or historic sites.</li>
+                            <li><strong>Action-specific ARARs:</strong> These are usually technology- or activity-based requirements or limitations on actions taken with respect to hazardous wastes. Examples include RCRA regulations for waste treatment, storage, and disposal, or Clean Air Act standards for an air stripper.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">C. ARARs at NRC-Licensed Sites (EPA/NRC MOU)</h3>
+                        <p>The Memorandum of Understanding (MOU) between the EPA and NRC clarifies the roles for cleanup at NRC-licensed sites, particularly concerning ARARs, to prevent dual regulation.</p>
+                        <ul>
+                            <li><strong>EPA Deferral:</strong> EPA generally defers to the NRC for decommissioning and decontamination of NRC-licensed sites. EPA expects that NRC-led cleanups will be protective and consistent with CERCLA.</li>
+                            <li><strong>Consultation Triggers:</strong> NRC will consult with EPA on sites where:
+                                <ul>
+                                    <li>Radioactive groundwater contamination exceeds EPA's MCLs.</li>
+                                    <li>The licensee proposes a restricted release (10 CFR 20.1403) or use of alternate criteria (10 CFR 20.1404) for license termination.</li>
+                                    <li>Residual soil concentrations exceed the values in the MOU's Table 1.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Finality:</strong> EPA does not expect to take CERCLA actions at a site decommissioned in compliance with NRC standards, even if consultation occurred. This provides a stable and predictable regulatory environment.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">D. Examples of Common ARARs in Radiological Cleanups</h3>
+                        <p>The following are examples of specific requirements often identified as ARARs for radiological cleanup sites, drawn from federal regulations, state laws, and site-specific Records of Decision (RODs).</p>
+                        <ul class="list-disc list-inside">
+                            <li class="mt-2"><strong>Federal Dose and Risk Limits:</strong>
+                                <ul class="list-['-_'] list-inside ml-4">
+                                    <li class="mt-1"><strong>10 CFR Part 20, Subpart E:</strong> The NRC's requirement for license termination, typically leading to a <strong>25 mrem/yr</strong> dose limit for unrestricted release, is a frequently cited ARAR for sites even if they are not NRC-licensed. At the Painesville FUSRAP site, 10 CFR 20, Subpart E was the cited ARAR.</li>
+                                    <li class="mt-1"><strong>40 CFR Part 192:</strong> EPA's health and environmental protection standards for uranium and thorium mill tailings are often used. These include a limit for Radium-226 in soil of <strong>5 pCi/g</strong> in the top 15 cm and 15 pCi/g in subsurface soil. These standards were cited as ARARs for the Linde, SLDS, and North County FUSRAP sites.</li>
+                                    <li class="mt-1"><strong>40 CFR Part 141 (Safe Drinking Water Act):</strong> EPA's Maximum Contaminant Levels (MCLs) for radionuclides in drinking water are key chemical-specific ARARs for groundwater. The EPA/NRC MOU specifically identifies exceeding MCLs as a trigger for interagency consultation.</li>
+                                    <li class="mt-1"><strong>1E-05 Excess Cancer Risk:</strong> For some sites, like Shpack, the cleanup goal is based on a specified risk level rather than a dose limit.</li>
+                                </ul>
+                            </li>
+                            <li class="mt-2"><strong>Site-Specific Soil Concentration Limits (from FUSRAP Site RODs):</strong>
+                                <ul class="list-['-_'] list-inside ml-4">
+                                    <li class="mt-1"><strong>Maywood Site:</strong> Combined Radium-226 & Thorium-232 limit of <strong>5 pCi/g</strong> for residential use and 15 pCi/g for restricted industrial use.</li>
+                                    <li class="mt-1"><strong>Wayne Site:</strong> Combined Radium-226 & Thorium-232 limit of <strong>5 pCi/g</strong> and a U-238 limit of 50 pCi/g for residential use.</li>
+                                    <li class="mt-1"><strong>Linde Site (Commercial/Industrial):</strong> Surface soil limits of 5 pCi/g for Ra-226 and 14 pCi/g for Th-230, and a subsurface limit of 15 pCi/g for Ra-226.</li>
+                                    <li class="mt-1"><strong>MOU Table 1 Consultation Triggers:</strong> While not direct cleanup levels, these soil concentrations trigger NRC consultation with EPA and act as a benchmark. Examples for residential soil include <strong>Cs-137+D at 6 pCi/g</strong> and <strong>Ra-226 at 5 pCi/g</strong>.</li>
+                                </ul>
+                            </li>
+                            <li class="mt-2"><strong>State Requirements:</strong>
+                                <ul class="list-['-_'] list-inside ml-4">
+                                    <li class="mt-1">State regulations can be ARARs if they are more stringent than federal requirements. For example, the <strong>New Jersey Administrative Code (NJAC) 7:28-12.8</strong>, which sets a 15 mrem/yr dose limit, was the ARAR for the Middlesex and Linde sites.</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                        <blockquote>
+                            <p><strong>DoD Responsibility (10 U.S.C. § 2701):</strong> The Secretary of Defense is required to carry out all response actions in accordance with CERCLA. This includes paying fees and charges imposed by State authorities for permit services for the disposal of hazardous substances on DoD lands to the same extent that non-governmental entities are required to pay.</p>
+                        </blockquote>
+                    </section>
+                    
+                    <!-- Waste Management Section -->
+                    <section id="waste-management">
+                        <h2 class="!font-bold !text-slate-900">IX. Radioactive Waste Management and Disposal</h2>
+                        <p>Proper management of radioactive waste is essential for regulatory compliance, protection of human health, and environmental stewardship. The process is governed by NRC and Department of Transportation (DOT) regulations, with specific implementation procedures required by the Department of the Navy.</p>
+
+                        <h3 class="!font-bold !text-slate-900">A. Waste Classification, Characterization, and Transportation</h3>
+                        <h4>Waste Classification (10 CFR Part 61)</h4>
+                        <p>Low-Level Radioactive Waste (LLRW) is classified based on the concentration of specific radionuclides to ensure safe disposal. The classification determines the handling, packaging, and disposal requirements.</p>
+                        <ul>
+                            <li><strong>Class A:</strong> The least hazardous LLRW, with the lowest concentrations of radionuclides. It requires segregation from other waste but has minimal requirements for waste form and stability. The vast majority of LLRW is Class A.</li>
+                            <li><strong>Class B:</strong> Contains higher concentrations of radionuclides than Class A. To prevent environmental dispersal, it must be stabilized. This means the waste must be in a solid form and structurally stable (e.g., solidified in concrete or within a high-integrity container) for at least 300 years.</li>
+                            <li><strong>Class C:</strong> Contains the highest concentrations of radionuclides permissible for near-surface disposal. It must meet the same stability requirements as Class B waste. Additionally, it requires special measures at the disposal facility, such as an intruder barrier, to protect against inadvertent intrusion for 500 years.</li>
+                            <li><strong>Greater-Than-Class-C (GTCC):</strong> This waste has concentrations that exceed the limits for Class C. It is generally not suitable for near-surface disposal and is the responsibility of the Department of Energy (DOE) for disposal in a geologic repository.</li>
+                        </ul>
+                        
+                        <h4>Waste Characterization and Mixed Waste</h4>
+                        <p>Before any waste can be shipped for disposal, it must be thoroughly characterized. This process involves identifying all radionuclides and their concentrations, determining physical/chemical properties, and screening for hazardous components. When LLRW also contains hazardous waste as defined by RCRA (e.g., heavy metals, solvents), it is termed <strong>Mixed Waste</strong>. Mixed waste is jointly regulated by the NRC (for its radioactive component) and the EPA (for its hazardous component), making its disposal extremely complex and expensive.</p>
+                        <p>The results are compiled into a <strong>Waste Profile Sheet (WPS)</strong>, which is a comprehensive summary of the waste's characteristics. This document is reviewed and approved by the disposal facility before they will accept the waste.</p>
+
+                        <h4>Packaging and Transportation</h4>
+                        <p>All shipments of radioactive waste must strictly adhere to Department of Transportation (DOT) regulations found in <strong>49 CFR Parts 171-180</strong>. Key requirements include:</p>
+                        <ul>
+                            <li><strong>Proper Packaging:</strong> Using DOT-approved containers (e.g., Type A or Type B packages) appropriate for the type and quantity of radioactive material.</li>
+                            <li><strong>Labeling and Marking:</strong> Affixing the correct labels (e.g., Radioactive Yellow-II) and markings (e.g., proper shipping name, UN number) to packages.</li>
+                            <li><strong>Placarding:</strong> Displaying "RADIOACTIVE" placards on vehicles transporting specified quantities of material.</li>
+                            <li><strong>Shipping Papers:</strong> Completing a uniform hazardous waste manifest that describes the material, quantity, and associated hazards.</li>
+                            <li><strong>Training:</strong> Ensuring all personnel involved in the shipment (packagers, handlers, drivers) have received the required hazmat training.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">B. DON Low-Level Radioactive Waste (LLRW) Disposal Program</h3>
+                        <p>The DON has a centralized program to ensure all G-RAM LLRW is managed and disposed of in a technically rigorous, compliant, and cost-effective manner.</p>
+                        <blockquote>
+                            <p><strong>Mandatory Policy:</strong> Per OPNAV M-5090.1, all DON activities and commands that generate LLRW from ER,N or BRAC-funded activities <strong>must</strong> use the DON LLRW Disposal Program. No separate or independent disposal contracts are authorized.</p>
+                        </blockquote>
+                        <h4>Process and Roles:</h4>
+                        <ol>
+                            <li><strong>Initial Contact:</strong> The NAVFAC RPM or BRAC PMO must contact NAVSEADET RASO as soon as LLRW is identified or anticipated at a site.</li>
+                            <li><strong>Characterization and Profiling:</strong> The project team, with its environmental contractor, performs the waste characterization and prepares the Waste Profile Sheet.</li>
+                            <li><strong>RASO Technical Review:</strong> RASO provides technical oversight by reviewing and approving the characterization data and WPS. This ensures the waste is correctly classified and meets all regulatory and disposal site requirements.</li>
+                            <li><strong>Disposal Coordination:</strong> After approving the WPS, RASO coordinates the disposal through the Navy's designated LLRW disposal services contractor. This contractor is responsible for the final packaging, transportation, and ultimate disposal at a licensed commercial facility (e.g., Clive, UT or Barnwell, SC).</li>
+                            <li><strong>Documentation and Closure:</strong> The disposal contractor provides a certificate of disposal back to the generating activity, which serves as the final record that the waste has been properly managed.</li>
+                        </ol>
+                    </section>
+
+                    <!-- Instrumentation Section -->
+                    <section id="instrumentation">
+                        <h2 class="!font-bold !text-slate-900">X. Radiation Detection Instrumentation</h2>
+                        <p>Selecting the appropriate radiation detection instrument is critical for obtaining accurate, defensible data. The choice depends on the type of radiation being measured (alpha, beta, gamma, neutron), the expected energy, and the survey's objective (e.g., general scanning, dose rate measurement, nuclide identification).</p>
+                        
+                        <h3 class="!font-bold !text-slate-900">A. Common Detector Types</h3>
+                        <ul>
+                            <li><strong>Ionization Chambers:</strong> Operate at a low voltage, collecting only the primary ions created by radiation. The output current is directly proportional to the radiation energy deposited. They are excellent for measuring high radiation fields and exposure/dose rates accurately but have low sensitivity for contamination surveys.</li>
+                            <li><strong>Proportional Counters:</strong> Operate at a higher voltage, causing "gas amplification" where the primary ions create secondary ionizations. The resulting pulse is proportional to the initial energy deposited. This allows them to distinguish between different types of radiation (e.g., alpha vs. beta) and are very sensitive, but they are often fragile and sensitive to microphonics.</li>
+                            <li><strong>Geiger-Mueller (GM) Detectors:</strong> Operate at a high voltage, where a single ionization event causes a cascading avalanche that saturates the detector gas. The output pulse is large and independent of the initial energy. This makes them rugged, sensitive detectors for finding contamination (especially for beta/gamma), but they cannot identify nuclides or measure high radiation fields accurately due to significant <strong>dead time</strong>.</li>
+                            <li><strong>Sodium Iodide (NaI) Scintillators:</strong> A crystal that is highly efficient for detecting gamma rays. The amount of light produced is proportional to the gamma energy, making NaI detectors ideal for field gamma spectroscopy (nuclide identification). They are more sensitive than GM detectors for gamma scanning.</li>
+                            <li><strong>High-Purity Germanium (HPGe) Detectors:</strong> The gold standard for laboratory-based gamma spectroscopy. They provide exceptional energy resolution, allowing for the precise identification of multiple radionuclides in a single sample. Their major drawback is that they must be cooled to liquid nitrogen temperatures (-196 °C) to operate.</li>
+                        </ul>
+
+                        <h3 class="!font-bold !text-slate-900">B. Calibration and Quality Control</h3>
+                        <p>To ensure data are valid, instruments must be properly calibrated and checked regularly.</p>
+                        <ul>
+                            <li><strong>Calibration:</strong> The process of adjusting an instrument's response so it reads correctly relative to a known standard. Calibrations must be performed annually (or as recommended by the manufacturer) using NIST-traceable sources.</li>
+                            <li><strong>Source Checks:</strong> A pre-operational check performed each day of use. The instrument's response to a small, dedicated check source is recorded. The reading must fall within established tolerance limits (e.g., ±20%) of the known response. This verifies the instrument is functioning properly.</li>
+                            <li><strong>Background Checks:</strong> A measurement taken in a non-impacted area to determine the ambient radiation level. This background must be subtracted from survey measurements to determine the net activity from site contamination.</li>
+                        </ul>
+
+                        <h4>Instrument Comparison Summary</h4>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Detector Type</th>
+                                    <th>Primary Radiation</th>
+                                    <th>Primary Use</th>
+                                    <th>Advantages</th>
+                                    <th>Disadvantages</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Ion Chamber</td>
+                                    <td>Gamma, X-ray, Beta</td>
+                                    <td>Dose/Exposure Rate</td>
+                                    <td>Accurate, wide range, energy independent</td>
+                                    <td>Low sensitivity, slow response</td>
+                                </tr>
+                                <tr>
+                                    <td>GM Detector</td>
+                                    <td>Beta, Gamma, Alpha</td>
+                                    <td>Contamination Scanning</td>
+                                    <td>Sensitive, rugged, inexpensive</td>
+                                    <td>Energy dependent, long dead time</td>
+                                </tr>
+                                <tr>
+                                    <td>Proportional Counter</td>
+                                    <td>Alpha, Beta</td>
+                                    <td>Contamination Counting</td>
+                                    <td>Can discriminate radiation types, sensitive</td>
+                                    <td>Fragile (window), requires careful operation</td>
+                                </tr>
+                                <tr>
+                                    <td>Sodium Iodide (NaI)</td>
+                                    <td>Gamma</td>
+                                    <td>Scanning, Nuclide ID</td>
+                                    <td>Very high gamma efficiency</td>
+                                    <td>Fragile, poor resolution vs. HPGe</td>
+                                </tr>
+                                <tr>
+                                    <td>Zinc Sulfide (ZnS)</td>
+                                    <td>Alpha</td>
+                                    <td>Alpha Contamination</td>
+                                    <td>High alpha efficiency, gamma insensitive</td>
+                                    <td>Fragile, light sensitive, small area</td>
+                                </tr>
+                                <tr>
+                                    <td>HPGe</td>
+                                    <td>Gamma</td>
+                                    <td>Lab Nuclide ID</td>
+                                    <td>Excellent energy resolution</td>
+                                    <td>Requires cryogenic cooling, expensive</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+
+                     <!-- References Section -->
+                    <section id="references">
+                        <h2 class="!font-bold !text-slate-900">XI. References</h2>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li>Comprehensive Environmental Response, Compensation, and Liability Act (CERCLA) of 1980.</li>
+                            <li>Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM), NUREG-1575, Rev. 1, EPA 402-R-97-016, Rev. 1, DOE/EH-0624, Rev. 1.</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), Title 10, Code of Federal Regulations, Part 20 (10 CFR 20), "Standards for Protection Against Radiation."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), Title 10, Code of Federal Regulations, Part 61 (10 CFR 61), "Licensing Requirements for Land Disposal of Radioactive Waste."</li>
+                            <li>U.S. Department of Transportation (DOT), Title 49, Code of Federal Regulations, Parts 171-180, "Hazardous Materials Regulations."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), NUREG-1757, "Consolidated Decommissioning Guidance."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), Regulatory Guide 1.86, "Termination of Operating Licenses for Nuclear Reactors."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), Regulatory Guide 4.15, "Quality Assurance for Radiological Monitoring Programs."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), NUREG-1507, "Minimum Detectable Concentrations with Typical Radiation Survey Instruments for Various Contaminants and Field Conditions."</li>
+                            <li>National Council on Radiation Protection and Measurements (NCRP), Report No. 115, "Risk Estimates for Radiation Protection."</li>
+                            <li>U.S. Nuclear Regulatory Commission (NRC), "Backgrounder on the Biological Effects of Radiation."</li>
+                            <li>Department of the Navy, OPNAV M-5090.1, "Environmental Readiness Program Manual," Chapter 29 (LLRW) and Chapter 42 (Environmental Restoration).</li>
+                            <li>Department of the Navy, OPNAV Ltr 5090 Ser N453, "DON Policy on Activities Involving General Radioactive Material (G-RAM) at Environmental Restoration Program Sites."</li>
+                        </ul>
+                    </section>
+
+                    <!-- Quiz Section -->
+                    <section id="quiz">
+                        <h2 class="!font-bold !text-slate-900">Knowledge Check</h2>
+                        <form id="quiz-form" class="mt-6 not-prose">
+                            <div id="quiz-container" class="space-y-8">
+                                <!-- Quiz questions will be injected here by JavaScript -->
+                            </div>
+                            <div class="mt-8 flex items-center space-x-4">
+                                <button type="submit" id="submit-quiz-btn" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Submit Answers</button>
+                                <div id="quiz-results" class="text-lg font-bold"></div>
+                            </div>
+                        </form>
+                    </section>
+                    
+                    <!-- Essay Questions Section -->
+                    <section id="essay">
+                        <h2 class="!font-bold !text-slate-900">Essay Format Questions</h2>
+                        <ol class="list-decimal list-inside space-y-4">
+                            <li>Compare and contrast the Superfund program's approach to hazardous waste site cleanup with the MARSSIM guidance for radiological site investigation. Discuss their respective legislative bases, responsible parties, and community involvement strategies.</li>
+                            <li>Explain the graded approach to survey effort in MARSSIM by describing the characteristics and survey requirements for Class 1, Class 2, and Class 3 areas. How do the various survey types (HSA, scoping, characterization, remedial action support, final status) contribute to determining an area's classification and subsequent survey design?</li>
+                            <li>Discuss the critical role of data quality objectives (DQOs) and data quality indicators (DQIs) throughout the MARSSIM Data Life Cycle. Provide specific examples of how these concepts influence planning, implementation, and assessment phases of a radiological survey.</li>
+                            <li>Analyze the challenges and considerations in performing accurate radiological measurements, as outlined in MARSSIM and NRC guidance. Address the importance of instrument selection, calibration, quality control, and the management of measurement uncertainty, particularly in the context of demonstrating compliance with DCGLs.</li>
+                            <li>Evaluate the different models for cancer risk projection (additive vs. multiplicative) and the concept of the Dose and Dose-Rate Effectiveness Factor (DDREF) as discussed in NCRP Report No. 115. How do these epidemiological concepts influence radiation protection standards, and what are the ongoing uncertainties or debates related to their application across different populations?</li>
+                        </ol>
+                    </section>
+
+                    <!-- Glossary Section -->
+                    <section id="glossary">
+                        <h2 class="!font-bold !text-slate-900">Glossary of Key Terms</h2>
+                        
+                        <!-- View Toggle Buttons -->
+                        <div class="my-4 flex space-x-2 not-prose">
+                            <button id="flashcard-view-btn" class="bg-white border border-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Flashcard View</button>
+                            <button id="list-view-btn" class="bg-blue-100 border border-blue-300 text-blue-800 font-semibold py-2 px-4 rounded-lg hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">List View</button>
+                        </div>
+
+                        <!-- Flashcard View -->
+                        <div id="flashcard-view" class="not-prose">
+                            <div class="flashcard-container">
+                                <div id="flashcard" class="flashcard">
+                                    <div id="flashcard-front" class="flashcard-face flashcard-front">Term</div>
+                                    <div id="flashcard-back" class="flashcard-face flashcard-back">Definition</div>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center justify-between">
+                                <button id="prev-card-btn" class="bg-slate-200 text-slate-800 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300">&larr; Previous</button>
+                                <div id="card-counter" class="text-sm text-slate-600"></div>
+                                <button id="next-card-btn" class="bg-slate-200 text-slate-800 font-semibold py-2 px-4 rounded-lg hover:bg-slate-300">Next &rarr;</button>
+                            </div>
+                             <div class="mt-4 text-center">
+                                 <button id="shuffle-btn" class="bg-white border border-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-100">Shuffle Deck</button>
+                             </div>
+                        </div>
+
+                        <!-- List View -->
+                        <div id="list-view">
+                            <div class="mb-4">
+                                <input type="text" id="glossary-search" placeholder="Search glossary..." class="w-full p-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div id="glossary-list" class="space-y-4">
+                                <!-- Glossary terms will be injected here by JavaScript -->
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="bg-white mt-8 py-4">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-500">
+            <p>For Official Use Only // US Navy Environmental Programs</p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const sidebar = document.getElementById('sidebar');
+        
+        mobileMenuButton.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                if (e.target.closest('#sidebar nav a')) {
+                    sidebar.classList.add('-translate-x-full');
+                } else if (!sidebar.contains(e.target) && !mobileMenuButton.contains(e.target)) {
+                    sidebar.classList.add('-translate-x-full');
+                }
+            }
+        });
+
+        // --- INTERACTIVE QUIZ SCRIPT ---
+        const quizData = [
+            { question: "The Superfund program, which empowers the EPA to clean up hazardous waste sites, was established by which federal law?", options: ["The Resource Conservation and Recovery Act (RCRA)", "The Clean Air Act (CAA)", "The Comprehensive Environmental Response, Compensation, and Liability Act (CERCLA)", "The National Environmental Policy Act (NEPA)"], answer: "The Comprehensive Environmental Response, Compensation, and Liability Act (CERCLA)" },
+            { question: "Which instrument is best suited for accurately measuring high gamma dose rates and is relatively energy independent?", options: ["Geiger-Mueller (GM) Detector", "Ionization Chamber", "Sodium Iodide (NaI) Scintillator", "Zinc Sulfide (ZnS) Detector"], answer: "Ionization Chamber" },
+            { question: "A biological effect for which the probability of occurrence increases with dose, but the severity is independent of dose, is known as a:", options: ["Deterministic effect", "Hereditary effect", "Stochastic effect", "Acute effect"], answer: "Stochastic effect" },
+            { question: "According to DON policy for an ER site with G-RAM, a site-specific Radiation Protection Plan (RPP) must be reviewed and approved by which organization?", options: ["The local fire department", "The Environmental Protection Agency (EPA)", "The site's prime contractor", "NAVSEADET RASO"], answer: "NAVSEADET RASO" },
+            { question: "In MARSSIM, an area with a high potential for contamination that requires 100% scanning coverage during a Final Status Survey is designated as:", options: ["Class 1", "Class 2", "Class 3", "Non-Impacted"], answer: "Class 1" },
+            { question: "What is the 5th step of the 7-step DQO process?", options: ["State the Problem", "Define the Boundaries of the Study", "Develop the Analytic Approach", "Specify Performance or Acceptance Criteria"], answer: "Develop the Analytic Approach" },
+            { question: "Which class of Low-Level Radioactive Waste requires an intruder barrier at the disposal site to be effective for 500 years?", options: ["Class A", "Class B", "Class C", "Greater-Than-Class-C (GTCC)"], answer: "Class C" },
+            { question: "A daily pre-operational check of a survey meter against a small radioactive source to verify it is functioning properly is called a:", options: ["Calibration", "Background Check", "Source Check", "Efficiency Check"], answer: "Source Check" },
+            { question: "The annual TEDE limit for a member of the public from licensed activities is:", options: ["5,000 mrem (50 mSv)", "500 mrem (5 mSv)", "100 mrem (1 mSv)", "25 mrem (0.25 mSv)"], answer: "100 mrem (1 mSv)" }
+        ];
+
+        const quizContainer = document.getElementById('quiz-container');
+        const quizForm = document.getElementById('quiz-form');
+        const resultsContainer = document.getElementById('quiz-results');
+
+        function renderQuiz() {
+            quizContainer.innerHTML = '';
+            quizData.forEach((q, index) => {
+                const questionElement = document.createElement('div');
+                questionElement.className = 'quiz-question';
+                let optionsHTML = '';
+                q.options.forEach(option => {
+                    optionsHTML += `<div class="quiz-option mt-2 border border-slate-300 rounded-md hover:bg-slate-100"><label><input type="radio" name="question${index}" value="${option}" class="mr-3"> ${option}</label></div>`;
+                });
+                questionElement.innerHTML = `<p class="font-semibold">${index + 1}. ${q.question}</p><div class="mt-2">${optionsHTML}</div>`;
+                quizContainer.appendChild(questionElement);
+            });
+        }
+
+        quizForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            let score = 0;
+            const quizQuestions = document.querySelectorAll('.quiz-question');
+            quizQuestions.forEach((questionElement, index) => {
+                const selectedOption = questionElement.querySelector(`input[name="question${index}"]:checked`);
+                const options = questionElement.querySelectorAll('.quiz-option');
+                options.forEach(optionElement => {
+                    optionElement.classList.remove('correct', 'incorrect');
+                    optionElement.querySelector('input').disabled = true; 
+                });
+                if (selectedOption) {
+                    const userAnswer = selectedOption.value;
+                    const correctAnswer = quizData[index].answer;
+                    if (userAnswer === correctAnswer) {
+                        score++;
+                        selectedOption.closest('.quiz-option').classList.add('correct');
+                    } else {
+                        selectedOption.closest('.quiz-option').classList.add('incorrect');
+                        options.forEach(opt => { if(opt.querySelector('input').value === correctAnswer) { opt.classList.add('correct'); } });
+                    }
+                }
+            });
+            resultsContainer.textContent = `Your Score: ${score} out of ${quizData.length}`;
+            resultsContainer.className = `text-lg font-bold ${score / quizData.length >= 0.7 ? 'text-green-600' : 'text-red-600'}`;
+        });
+        
+        renderQuiz();
+
+        // --- GLOSSARY & FLASHCARD SCRIPT ---
+        const glossaryTerms = [
+            { term: "Acute Radiation Syndrome (ARS)", definition: "A rapid body response often seen at high radiation doses (greater than 50,000 mrem or 500 mSv), causing immediate tissue and organ damage and potentially leading to death." },
+            { term: "ALARA (As Low As Reasonably Achievable)", definition: "A radiation protection principle stating that exposures should be kept as low as is reasonably achievable, considering technology, economics, public health, and societal factors." },
+            { term: "Area Factor", definition: "The magnitude by which the concentration within a small area of elevated activity can exceed the DCGLw while maintaining compliance with the release criterion." },
+            { term: "Background Radiation (Natural)", definition: "Radiation that is always present in the environment from cosmic, terrestrial (e.g., radon), and internal sources." },
+            { term: "Bias (Measurement)", definition: "The systematic or persistent distortion of a measurement process that causes error in one direction, determined quantitatively by analyzing samples with known concentrations." },
+            { term: "Calibration", definition: "The process of determining and adjusting an instrument's response in a known radiation field to ensure accuracy." },
+            { term: "CERCLA", definition: "Comprehensive Environmental Response, Compensation, and Liability Act. The federal law, enacted in 1980, that established the Superfund program for cleaning up hazardous waste sites. Informally called Superfund." },
+            { term: "Data Quality Objectives (DQOs)", definition: "A systematic planning process for establishing criteria for data quality and developing survey designs to ensure data are sufficient for decision-making." },
+            { term: "Dead Time", definition: "The period after a detector registers an event during which it is unable to record a subsequent event. GM detectors have significant dead time at high count rates." },
+            { term: "DCGL (Derived Concentration Guideline Level)", definition: "A uniform residual radioactivity concentration level within a survey unit that corresponds to the release criterion." },
+            { term: "DCGLEMC", definition: "The DCGL for small areas of elevated activity, derived from the DCGLw using an area factor." },
+            { term: "DCGLw", definition: "The DCGL for average concentrations over a wide area, used with statistical tests." },
+            { term: "Deterministic Effect", definition: "A biological effect for which the severity increases with dose and for which a threshold dose exists. Examples include skin reddening and cataracts." },
+            { term: "Dose and Dose-Rate Effectiveness Factor (DDREF)", definition: "A reduction factor applied to risk estimates for low doses and/or low-dose rates compared to high, acute doses." },
+            { term: "Doubling Dose (DD)", definition: "The dose of radiation (or any mutagen) that will double the spontaneous mutation rate in a biological system." },
+            { term: "Final Status Survey", definition: "The survey conducted in the MARSSIM process to demonstrate compliance with the release criterion, providing data for site release." },
+            { term: "Geiger-Mueller (GM) Detector", definition: "A type of gas-filled detector that is highly sensitive for detecting the presence of radiation but cannot distinguish energies." },
+            { term: "Greater-Than-Class-C (GTCC) Waste", definition: "LLRW that exceeds the concentration limits for Class C waste. It is not generally suitable for near-surface disposal and is managed by the DOE." },
+            { term: "High-Purity Germanium (HPGe) Detector", definition: "A type of semiconductor detector that offers exceptional energy resolution for gamma spectroscopy but requires cryogenic cooling." },
+            { term: "Historical Site Assessment (HSA)", definition: "The initial phase of the RSSI Process, focusing on collecting existing information to identify potential contamination sources and classify areas." },
+            { term: "Impacted Areas", definition: "Areas identified by MARSSIM as having some potential for containing contaminated material, further classified as Class 1, 2, or 3." },
+            { term: "Ionization Chamber", definition: "A type of gas-filled detector that accurately measures exposure or dose rates, especially in high radiation fields." },
+            { term: "Linear, No-Threshold Model", definition: "A conservative model for radiation protection that assumes any amount of radiation may pose some risk, and that risk increases linearly with dose without a safe threshold." },
+            { term: "MARSSIM", definition: "Multi-Agency Radiation Survey and Site Investigation Manual. Detailed guidance for planning, implementing, and evaluating radiological surveys to demonstrate compliance with dose- or risk-based regulations." },
+            { term: "MDC (Minimum Detectable Concentration)", definition: "The smallest true value of an analyte concentration in a sample that can be detected with a specified probability." },
+            { term: "Mixed Waste", definition: "Waste that contains both radioactive components (regulated by NRC/DOE) and hazardous components (regulated by EPA under RCRA)." },
+            { term: "National Priorities List (NPL)", definition: "A published list of hazardous waste sites in the United States that are eligible for federal funding for extensive, long-term cleanup under the Superfund program." },
+            { term: "Naval Radiation Safety Committee (NRSC)", definition: "The committee, chaired by CNO N45, that establishes and oversees all policies for General Radioactive Material (G-RAM) within the Navy and serves as the final authority on such matters." },
+            { term: "Null Hypothesis (H0)", definition: "A statistical statement, for MARSSIM, that the residual radioactivity in the survey unit exceeds the release criterion." },
+            { term: "Potentially Responsible Party (PRP)", definition: "An individual, company, or municipality identified by the EPA as having generated, transported, owned, or operated hazardous waste at a site." },
+            { term: "Proportional Counter", definition: "A type of gas-filled detector where the output pulse is proportional to the initial energy, allowing for discrimination between radiation types like alpha and beta." },
+            { term: "Quality Assurance (QA)", definition: "A management system that describes the elements necessary to plan, implement, and assess the effectiveness of quality control activities to produce results of desired quality." },
+            { term: "Quality Control (QC)", definition: "Activities undertaken to ensure that measurement results have the required precision and are sufficiently free of errors." },
+            { term: "Quenching Gas", definition: "A component of the fill gas in a GM tube that stops the avalanche discharge after each event, allowing the detector to recover." },
+            { term: "Radiation Protection Plan (RPP)", definition: "A site-specific plan detailing the radiological controls required for work at a G-RAM site, which must be reviewed and approved by NAVSEADET RASO." },
+            { term: "Radiological Controls Technician (RCT)", definition: "A qualified individual responsible for on-site radiological surveillance and implementation of the Radiation Protection Plan (RPP)." },
+            { term: "Rem (Roentgen Equivalent Man)", definition: "A common unit for the effective or equivalent dose of radiation received by a living organism, equal to 0.01 Sv." },
+            { term: "Scanning", definition: "A semi-quantitative measurement technique performed by moving a portable radiation detection instrument at a constant speed and distance above a surface to detect elevated areas of radiation." },
+            { term: "Scintillation Detector", definition: "A detector that uses a material that emits light when struck by radiation, which is then converted to an electrical signal. Examples include NaI and ZnS." },
+            { term: "Semiconductor Detector", definition: "A detector that uses a solid-state material (like germanium or silicon) to detect radiation, offering superior energy resolution." },
+            { term: "Shipping Papers (Manifest)", definition: "Documents required by the DOT that travel with a hazardous materials shipment, describing the contents, quantity, and hazards." },
+            { term: "Sievert (Sv)", definition: "The SI unit for the effective dose of radiation received by a living organism, representing the actual dose times a factor for radiation danger. 1 Sv = 100 rem." },
+            { term: "Source Check", definition: "A pre-operational check of a survey instrument against a dedicated radioactive source to verify it is functioning within established tolerance limits." },
+            { term: "Stochastic Effect", definition: "A biological effect for which the probability of occurrence increases with dose, but the severity is independent of the dose. Examples include cancer and hereditary effects." },
+            { term: "Survey Unit", definition: "A physical area (structure or land) for which a separate decision will be made as to whether or not it exceeds the release criterion." },
+            { term: "Unity Rule", definition: "A method used for sites with multiple radionuclides to ensure the combined fractional concentration limit is less than or equal to one." },
+            { term: "Waste Classification (LLRW)", definition: "The categorization of LLRW into Class A, B, or C based on radionuclide concentrations, as defined in 10 CFR 61, to determine disposal requirements." },
+            { term: "Wilcoxon Rank Sum (WRS) Test", definition: "A two-sample nonparametric statistical test in MARSSIM, recommended when the radionuclide of concern is present in background or for non-radionuclide specific (gross) measurements." }
+        ];
+
+        // Glossary List View Elements
+        const glossaryList = document.getElementById('glossary-list');
+        const glossarySearch = document.getElementById('glossary-search');
+        
+        // Flashcard View Elements
+        const flashcardView = document.getElementById('flashcard-view');
+        const listView = document.getElementById('list-view');
+        const flashcardViewBtn = document.getElementById('flashcard-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
+        const flashcard = document.getElementById('flashcard');
+        const cardFront = document.getElementById('flashcard-front');
+        const cardBack = document.getElementById('flashcard-back');
+        const prevCardBtn = document.getElementById('prev-card-btn');
+        const nextCardBtn = document.getElementById('next-card-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const cardCounter = document.getElementById('card-counter');
+
+        let currentCardIndex = 0;
+        let shuffledTerms = [...glossaryTerms];
+
+        // --- List View Logic ---
+        function renderGlossary(terms) {
+            glossaryList.innerHTML = '';
+            if (terms.length === 0) {
+                glossaryList.innerHTML = '<p class="text-slate-500">No terms found.</p>';
+                return;
+            }
+            terms.sort((a, b) => a.term.localeCompare(b.term));
+            terms.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'glossary-item';
+                div.innerHTML = `<p><strong>${item.term}:</strong> ${item.definition}</p>`;
+                glossaryList.appendChild(div);
+            });
+        }
+
+        glossarySearch.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredTerms = glossaryTerms.filter(item => 
+                item.term.toLowerCase().includes(searchTerm) || 
+                item.definition.toLowerCase().includes(searchTerm)
+            );
+            renderGlossary(filteredTerms);
+        });
+        
+        // --- Flashcard Logic ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function showCard(index) {
+            flashcard.classList.remove('is-flipped');
+            const term = shuffledTerms[index];
+            cardFront.innerHTML = `<h3 class="text-2xl font-bold">${term.term}</h3>`;
+            cardBack.innerHTML = `<p>${term.definition}</p>`;
+            cardCounter.textContent = `Card ${index + 1} of ${shuffledTerms.length}`;
+        }
+
+        flashcard.addEventListener('click', () => {
+            flashcard.classList.toggle('is-flipped');
+        });
+
+        prevCardBtn.addEventListener('click', () => {
+            currentCardIndex = (currentCardIndex - 1 + shuffledTerms.length) % shuffledTerms.length;
+            showCard(currentCardIndex);
+        });
+
+        nextCardBtn.addEventListener('click', () => {
+            currentCardIndex = (currentCardIndex + 1) % shuffledTerms.length;
+            showCard(currentCardIndex);
+        });
+        
+        shuffleBtn.addEventListener('click', () => {
+            shuffleArray(shuffledTerms);
+            currentCardIndex = 0;
+            showCard(currentCardIndex);
+        });
+
+        // --- View Toggling Logic ---
+        flashcardViewBtn.addEventListener('click', () => {
+            listView.style.display = 'none';
+            flashcardView.style.display = 'block';
+        });
+
+        listViewBtn.addEventListener('click', () => {
+            flashcardView.style.display = 'none';
+            listView.style.display = 'block';
+        });
+
+        // --- Initial Setup ---
+        function initializeGlossary() {
+            // Initial render for list view
+            renderGlossary(glossaryTerms);
+            
+            // Initial setup for flashcard view
+            shuffleArray(shuffledTerms);
+            showCard(currentCardIndex);
+
+            // Set initial view state (List view is default)
+            flashcardView.style.display = 'none';
+            listView.style.display = 'block';
+        }
+
+        initializeGlossary();
+
+    </script>
+
+</body>
+</html>
