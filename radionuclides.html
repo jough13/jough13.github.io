@@ -784,14 +784,8 @@
                                     labels: {
                                         boxWidth: 20,
                                         font: { size: 10 }
-                                    },
-                                    // This onClick handler makes the legend interactive
-                                    onClick: (e, legendItem, legend) => {
-                                        const index = legendItem.datasetIndex;
-                                        const chart = legend.chart;
-                                        chart.toggleDataVisibility(index);
-                                        chart.update();
                                     }
+                                    // The explicit onClick handler has been removed to allow Chart.js to use its default behavior.
                                 },
                                 title: {
                                     display: true,
@@ -811,7 +805,7 @@
                                     type: 'logarithmic',
                                     title: { display: true, text: 'Activity (Log Scale)' },
                                     beginAtZero: true,
-                                    min: Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0, // Set a small minimum for log scale
+                                    min: Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0,
                                 }
                             }
                         }
