@@ -25,6 +25,19 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        @keyframes toast-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-toast-in {
+            animation: toast-in 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
@@ -38,7 +51,7 @@
         const RADIONUCLIDE_DATA = [
 
 	     { name: 'Actinium-225', symbol: 'Ac-225', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] }, halfLife: '9.92 days', decayConstant: '0.0698 day⁻¹', specificActivity: '7.8 x 10^13 Bq/g', parent: 'Thorium-229 (α)', daughter: 'Francium-221 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
-	     { name: 'Actinium-227', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Ac-227', emissionEnergIES: { beta: ['0.045 MeV (max)'], gamma: [], alpha: ['4.95 MeV'] }, halfLife: '21.77 years', decayConstant: '0.0318 year⁻¹', specificActivity: '9.7 x 10^11 Bq/g', parent: 'Protactinium-231', daughter: 'Thorium-227 (β) or Francium-223 (α)', commonUses: ['Actinium-225 generator (medical)', 'Research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
+             { name: 'Actinium-227', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Ac-227', emissionEnergies: { beta: ['0.045 MeV (max)'], gamma: [], alpha: ['4.95 MeV'] }, halfLife: '21.77 years', decayConstant: '0.0318 year⁻¹', specificActivity: '9.7 x 10^11 Bq/g', parent: 'Protactinium-231', daughter: 'Thorium-227 (β) or Francium-223 (α)', commonUses: ['Actinium-225 generator (medical)', 'Research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Actinium-228', symbol: 'Ac-228', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.14 MeV (max)'], gamma: ['0.911 MeV', '0.969 MeV'], alpha: [] }, halfLife: '6.15 hours', decayConstant: '0.113 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Radium-228', daughter: 'Thorium-228 (β-)', commonUses: ['Intermediate in Thorium-232 decay chain'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Americium-241', symbol: 'Am-241', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] }, halfLife: '432.2 years', decayConstant: '0.00160 year⁻¹', specificActivity: '1.27 x 10^11 Bq/g', parent: 'Plutonium-241 (β-)', daughter: 'Neptunium-237', commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Antimony-124', symbol: 'Sb-124', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.35 MeV (max)'], gamma: ['0.603 MeV', '1.691 MeV'], alpha: [] }, halfLife: '60.2 days', decayConstant: '0.0115 day⁻¹', specificActivity: '7.8 x 10^14 Bq/g', parent: 'Tin-124', daughter: 'Tellurium-124 (stable)', commonUses: ['Tracer in hydrology', 'Industrial applications', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
@@ -196,7 +209,7 @@
 	     { name: 'Tritium', symbol: 'H-3', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.0186 MeV (max)'], gamma: [], alpha: [] }, halfLife: '12.32 years', decayConstant: '0.0563 year⁻¹', specificActivity: '3.59 x 10^14 Bq/g', parent: 'Lithium-6 (n,α)', daughter: 'Helium-3 (stable)', commonUses: ['Self-powered lighting (e.g., exit signs, watches)', 'Medical and biological tracer', 'Nuclear weapons component'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Tungsten-188', symbol: 'W-188', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.349 MeV (max)'], gamma: ['0.227 MeV'], alpha: [] }, halfLife: '69.4 days', decayConstant: '0.00999 day⁻¹', specificActivity: '3.6 x 10^14 Bq/g', parent: 'Tantalum-186', daughter: 'Rhenium-188', commonUses: ['Generator for Rhenium-188, used in therapeutic applications.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
      	     { name: 'Uranium-230', symbol: 'U-230', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.888 MeV'], beta: [], gamma: ['0.053 MeV'] }, halfLife: '20.8 days', decayConstant: '0.0333 day⁻¹', specificActivity: '1.87 x 10^15 Bq/g', parent: 'Plutonium-234 (α)', daughter: 'Thorium-226', commonUses: ['Medical isotope production (e.g., Ra-223 from Th-226 generator)', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
-	     { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Protactinium-231', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
+	     { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Neptunium-231 (EC)', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Uranium-232', symbol: 'U-232', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.320 MeV'], beta: [], gamma: ['0.058 MeV'] }, halfLife: '68.9 years', decayConstant: '0.0101 year⁻¹', specificActivity: '8.1 x 10^11 Bq/g', parent: 'Plutonium-236 (α)', daughter: 'Thorium-228 (α)', commonUses: ['Contaminant in U-233 from thorium fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Uranium-233', symbol: 'U-233', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.824 MeV'], beta: [], gamma: ['0.042 MeV', '0.312 MeV'] }, halfLife: '159,200 years', decayConstant: '4.35 x 10⁻⁶ year⁻¹', specificActivity: '3.56 x 10^8 Bq/g', parent: 'Protactinium-233', daughter: 'Thorium-229 (α)', commonUses: ['Thorium fuel cycle (fissile material)', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Uranium-234', symbol: 'U-234', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.776 MeV'], beta: [], gamma: ['0.053 MeV'] }, halfLife: '245,500 years', decayConstant: '2.82 x 10⁻⁶ year⁻¹', specificActivity: '2.3 x 10^8 Bq/g', parent: 'Protactinium-234m (β-)', daughter: 'Thorium-230', commonUses: ['Component of natural uranium', 'Geological dating (uranium-thorium dating)'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' } },
@@ -223,7 +236,8 @@
         const decaySeriesData = [
             { id: 'U-238-series', name: 'Uranium-238 Decay Series (Uranium Series)', startNuclide: 'Uranium-238', chain: [ { nuclide: 'Uranium-238', decayType: 'Alpha', halfLife: '4.468 billion years', daughter: 'Thorium-234' }, { nuclide: 'Thorium-234', decayType: 'Beta-minus', halfLife: '24.10 days', daughter: 'Protactinium-234m' }, { nuclide: 'Protactinium-234m', decayType: 'Beta-minus', halfLife: '1.17 minutes', daughter: 'Uranium-234' }, { nuclide: 'Uranium-234', decayType: 'Alpha', halfLife: '245,500 years', daughter: 'Thorium-230' }, { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75,380 years', daughter: 'Radium-226' }, { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' }, { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' }, { nuclide: 'Polonium-218', decayType: 'Alpha', halfLife: '3.1 minutes', daughter: 'Lead-214' }, { nuclide: 'Lead-214', decayType: 'Beta-minus', halfLife: '26.8 minutes', daughter: 'Bismuth-214' }, { nuclide: 'Bismuth-214', decayType: 'Beta-minus', halfLife: '19.9 minutes', daughter: 'Polonium-214' }, { nuclide: 'Polonium-214', decayType: 'Alpha', halfLife: '164.3 microseconds', daughter: 'Lead-210' }, { nuclide: 'Lead-210', decayType: 'Beta-minus', halfLife: '22.2 years', daughter: 'Bismuth-210' }, { nuclide: 'Bismuth-210', decayType: 'Beta-minus', halfLife: '5.012 days', daughter: 'Polonium-210' }, { nuclide: 'Polonium-210', decayType: 'Alpha', halfLife: '138.376 days', daughter: 'Lead-206' }, { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' } ] },
             { id: 'Th-232-series', name: 'Thorium-232 Decay Series (Thorium Series)', startNuclide: 'Thorium-232', chain: [ { nuclide: 'Thorium-232', decayType: 'Alpha', halfLife: '14.05 billion years', daughter: 'Radium-228' }, { nuclide: 'Radium-228', decayType: 'Beta-minus', halfLife: '5.75 years', daughter: 'Actinium-228' }, { nuclide: 'Actinium-228', decayType: 'Beta-minus', halfLife: '6.15 hours', daughter: 'Thorium-228' }, { nuclide: 'Thorium-228', decayType: 'Alpha', halfLife: '1.913 years', daughter: 'Radium-224' }, { nuclide: 'Radium-224', decayType: 'Alpha', halfLife: '3.63 days', daughter: 'Radon-220' }, { nuclide: 'Radon-220', decayType: 'Alpha', halfLife: '55.6 seconds', daughter: 'Polonium-216' }, { nuclide: 'Polonium-216', decayType: 'Alpha', halfLife: '0.145 seconds', daughter: 'Lead-212' }, { nuclide: 'Lead-212', decayType: 'Beta-minus', halfLife: '10.64 hours', daughter: 'Bismuth-212' }, { nuclide: 'Bismuth-212', decayType: 'Beta-minus', halfLife: '60.55 minutes', daughter: 'Polonium-212' }, { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' }, { nuclide: 'Lead-208', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' } ] },
-            { id: 'U-235-series', name: 'Uranium-235 Decay Series (Actinium Series)', startNuclide: 'Uranium-235', chain: [ { nuclide: 'Uranium-235', decayType: 'Alpha', halfLife: '703.8 million years', daughter: 'Thorium-231' }, { nuclide: 'Thorium-231', decayType: 'Beta-minus', halfLife: '25.5 hours', daughter: 'Protactinium-231' }, { nuclide: 'Protactinium-231', decayType: 'Alpha', halfLife: '32,760 years', daughter: 'Actinium-227' }, { nuclide: 'Actinium-227', decayType: 'Beta-minus', halfLife: '21.77 years', daughter: 'Thorium-227' }, { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' }, { nuclide: 'Radium-223', decayType: 'Alpha', halfLife: '11.43 days', daughter: 'Radon-219' }, { nuclide: 'Radon-219', decayType: 'Alpha', halfLife: '3.96 seconds', daughter: 'Polonium-215' }, { nuclide: 'Polonium-215', decayType: 'Alpha', halfLife: '1.78 milliseconds', daughter: 'Lead-211' }, { nuclide: 'Lead-211', decayType: 'Beta-minus', halfLife: '36.1 minutes', daughter: 'Bismuth-211' }, { nuclide: 'Bismuth-211', decayType: 'Alpha', halfLife: '2.14 minutes', daughter: 'Thallium-207' }, { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' }, { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' } ] }
+            { id: 'U-235-series', name: 'Uranium-235 Decay Series (Actinium Series)', startNuclide: 'Uranium-235', chain: [ { nuclide: 'Uranium-235', decayType: 'Alpha', halfLife: '703.8 million years', daughter: 'Thorium-231' }, { nuclide: 'Thorium-231', decayType: 'Beta-minus', halfLife: '25.5 hours', daughter: 'Protactinium-231' }, { nuclide: 'Protactinium-231', decayType: 'Alpha', halfLife: '32,760 years', daughter: 'Actinium-227' }, { nuclide: 'Actinium-227', decayType: 'Beta-minus', halfLife: '21.77 years', daughter: 'Thorium-227' }, { nuclide: 'Thorium-227', decayType: 'Alpha', halfLife: '18.72 days', daughter: 'Radium-223' }, { nuclide: 'Radium-223', decayType: 'Alpha', halfLife: '11.43 days', daughter: 'Radon-219' }, { nuclide: 'Radon-219', decayType: 'Alpha', halfLife: '3.96 seconds', daughter: 'Polonium-215' }, { nuclide: 'Polonium-215', decayType: 'Alpha', halfLife: '1.78 milliseconds', daughter: 'Lead-211' }, { nuclide: 'Lead-211', decayType: 'Beta-minus', halfLife: '36.1 minutes', daughter: 'Bismuth-211' }, { nuclide: 'Bismuth-211', decayType: 'Alpha (99.7%) / Beta-minus (0.3%)', halfLife: '2.14 minutes', daughter: 'Thallium-207 / Polonium-211' },
+{ nuclide: 'Polonium-211', decayType: 'Alpha', halfLife: '0.516 seconds', daughter: 'Lead-207'}, { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' }, { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' } ] }
         ];
         const radionuclides = RADIONUCLIDE_DATA;
         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
@@ -289,11 +303,80 @@
         };
 
         const Icon = ({ path, className = "w-5 h-5" }) => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}> <path d={path} /> </svg> );
-        const ICONS = { search: "M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A8 8 0 1 0 10 18zm0-14a6 6 0 1 1-6 6 6 6 0 0 1 6-6z", database: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z", converter: "M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z", calculator: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-2-.9-2-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm4 8H10v-2h2v2zm0-4H10v-2h2v2zm0-4H10V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z", home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z", hourglass: "M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z", radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z", help: "M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z", clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z", filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z", sun: "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zm-9-8c.55 0 1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm0 16c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zM5.64 6.36c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.64 3.54c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41L5.64 6.36zm12.72 12.72c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l1.41 1.41zM4.22 18.36c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.41-1.41c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.41 1.41zM18.36 4.22c-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0z", moon: "M10 2c-1.1 0-2.11.24-3.05.67A7.99 7.99 0 0010 20c4.41 0 8-3.59 8-8 0-4.04-2.98-7.39-6.95-7.95A7.98 7.98 0 0010 2z", compare: "M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-12H22v2h-7.01v3L11 3l3.99 4V4z", activity: "M12 6.5c2.49 0 4.5 2.01 4.5 4.5s-2.01 4.5-4.5 4.5S7.5 13.49 7.5 11 9.51 6.5 12 6.5M12 5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0-2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8z", doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z", mass: "M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z", series: "M21 8H3V6h18v2zm0 4H3v2h18v-2zm0 6H3v2h18v-2z" };
+      
+        const ICONS = { copy: "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-2-.9-2-2-2zm0 16H8V7h11v14z", check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z", specificActivity: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 12.5l-4-4 1.41-1.41L10 12.67l4.59-4.59L16 9.5l-6 6z", search: "M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A8 8 0 1 0 10 18zm0-14a6 6 0 1 1-6 6 6 6 0 0 1 6-6z", database: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z", converter: "M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z", calculator: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-2-.9-2-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm4 8H10v-2h2v2zm0-4H10v-2h2v2zm0-4H10V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z", home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z", hourglass: "M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z", radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z", help: "M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z", clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z", filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z", sun: "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zm-9-8c.55 0 1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm0 16c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zM5.64 6.36c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.64 3.54c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41L5.64 6.36zm12.72 12.72c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l1.41 1.41zM4.22 18.36c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.41-1.41c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.41 1.41zM18.36 4.22c-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0z", moon: "M10 2c-1.1 0-2.11.24-3.05.67A7.99 7.99 0 0010 20c4.41 0 8-3.59 8-8 0-4.04-2.98-7.39-6.95-7.95A7.98 7.98 0 0010 2z", compare: "M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-12H22v2h-7.01v3L11 3l3.99 4V4z", activity: "M12 6.5c2.49 0 4.5 2.01 4.5 4.5s-2.01 4.5-4.5 4.5S7.5 13.49 7.5 11 9.51 6.5 12 6.5M12 5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0-2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8z", doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z", mass: "M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z", series: "M21 8H3V6h18v2zm0 4H3v2h18v-2zm0 6H3v2h18v-2z" };
+
+        // --- Toast Notification System ---
+        const ToastContext = React.createContext();
+
+        const ToastProvider = ({ children }) => {
+            const [toasts, setToasts] = React.useState([]);
+
+            const addToast = (message) => {
+                const id = Date.now();
+                setToasts(prevToasts => [...prevToasts, { id, message }]);
+                setTimeout(() => {
+                    removeToast(id);
+                }, 3000); // Toast disappears after 3 seconds
+            };
+
+            const removeToast = (id) => {
+                setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+            };
+
+            return (
+                <ToastContext.Provider value={{ addToast }}>
+                    {children}
+                    <div className="fixed bottom-4 right-4 z-50 space-y-2">
+                        {toasts.map(toast => (
+                            <div key={toast.id} className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center">
+                                <Icon path={ICONS.check} className="w-5 h-5 mr-3 text-green-400" />
+                                <span>{toast.message}</span>
+                            </div>
+                        ))}
+                    </div>
+                </ToastContext.Provider>
+            );
+        };
+
+        const useToast = () => React.useContext(ToastContext);
+        // --- End Toast Notification System ---
+
+        const CopyButton = ({ textToCopy }) => {
+            const [copied, setCopied] = React.useState(false);
+            const { addToast } = useToast();
+
+            const handleCopy = () => {
+                if (textToCopy) {
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        addToast('Copied to clipboard!');
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000); // Keep the checkmark for 2s
+                    });
+                }
+            };
+            return (
+                <button onClick={handleCopy} className="p-2 text-slate-400 hover:text-sky-500 transition-colors" title="Copy to clipboard">
+                    <Icon path={copied ? ICONS.check : ICONS.copy} className="w-5 h-5" />
+                </button>
+            );
+        };
+
         const Header = ({ onHelpClick, theme, toggleTheme }) => ( <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700"> <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white"> Radionuclide Lookup Tool </h1> <p className="text-sm text-slate-500 dark:text-slate-400 mt-2"> Version: {VERSION} | Last Updated: {LAST_UPDATED} </p> <div className="absolute top-4 right-4 flex items-center gap-2"> <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode"> <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" /> </button> <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual"> <Icon path={ICONS.help} className="w-6 h-6" /> </button> </div> </header> );
         const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection }) => ( <div className="relative p-4"> <div className="relative"> <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"> <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" /> </div> <input ref={inputRef} type="text" value={nuclideName} onChange={handleNuclideNameChange} onKeyDown={handleKeyDown} placeholder="Search by name or symbol (e.g., U-238)" className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition" /> {nuclideName && ( <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500"> <Icon path={ICONS.clear} className="w-5 h-5" /> </button> )} </div> {suggestions.length > 0 && ( <ul ref={suggestionsRef} className="absolute z-20 w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg mt-2 max-h-60 overflow-y-auto"> {suggestions.map((s, i) => ( <li key={s.symbol} className={`p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900' : ''}`} onClick={() => handleNuclideSelection(s)}> {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span> </li> ))} </ul> )} </div> );
         const MainNav = ({ activeView, onNavClick }) => {
-            const navItems = [ { id: 'home', label: 'Home', icon: ICONS.home }, { id: 'database', label: 'Database', icon: ICONS.database }, { id: 'compare', label: 'Compare', icon: ICONS.compare }, { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, { id: 'converter', label: 'Converter', icon: ICONS.converter } ];
+           
+        const navItems = [ 
+            { id: 'home', label: 'Home', icon: ICONS.home }, 
+            { id: 'database', label: 'Database', icon: ICONS.database }, 
+            { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
+            { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
+            { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
+            { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
+            { id: 'specificActivity', label: 'Specific Activity', icon: ICONS.specificActivity },
+            { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, 
+            { id: 'converter', label: 'Converter', icon: ICONS.converter } 
+        ];
             const NavButton = ({ item }) => ( <button onClick={() => onNavClick(item.id)} className={`flex-shrink-0 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${ activeView === item.id ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50' }`} > <Icon path={item.icon} className="w-4 h-4" /> <span className="truncate">{item.label}</span> </button> );
             return ( <div className="px-4 pb-2"> {/* Mobile: Horizontally Scrolling Row */} <div className="md:hidden"> <div className="flex overflow-x-auto pb-2 -mx-4 px-4 gap-2"> {navItems.map(item => <NavButton key={item.id} item={item} />)} </div> </div> {/* Desktop: Grid */} <div className="hidden md:grid grid-cols-4 gap-2"> {navItems.map(item => <NavButton key={item.id} item={item} />)} </div> </div> );
         };
@@ -305,8 +388,9 @@
                 const shouldAppendUnit = unit && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
                 return ( <div className="flex items-start"> {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />} {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>} <div> <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p> <p className="text-base font-semibold text-slate-800 dark:text-slate-100"> {displayValue} {shouldAppendUnit ? ` ${unit}` : ''} {sourceKey && <sup> {getSourceLink(sourceKey)}</sup>} </p> </div> </div> );
             };
+
             if(isCompact) { return ( <div onClick={() => onNuclideClick(nuclide)} className="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200"> <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3> <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div> <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div> </div> ); }
-            return ( <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in"> <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2> <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div> <div className="grid md:grid-cols-2 gap-6 mt-4"> <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} /> <DataPoint label="Specific Activity" value={nuclide.specificActivity} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} /> <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} /> <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} /> <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} /> {nuclide.gammaConstant && ( <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} /> )} </div> <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700"> <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Emission Energies</h3> <div className="grid md:grid-cols-3 gap-4"> <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV" iconSymbol="α"/> <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV" iconSymbol="β"/> <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV" iconSymbol="γ"/> </div> </div> <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700"> <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3> <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1"> {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)} </ul> </div> {nuclide.decaySeriesId && ( <div className="mt-6 text-center"> <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">View Full Decay Series</button> </div> )} </div> );
+            return ( <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in"> <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2> <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div> <div className="grid md:grid-cols-2 gap-6 mt-4"> <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} /> <DataPoint label="Decay Constant (λ)" value={nuclide.decayConstant} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" /> <DataPoint label="Specific Activity" value={nuclide.specificActivity} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} /> <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} /> <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} /> <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} /> {nuclide.gammaConstant && ( <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} /> )} </div> <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700"> <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Emission Energies</h3> <div className="grid md:grid-cols-3 gap-4"> <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ')} unit="MeV" iconSymbol="α"/> <DataPoint label="Beta" value={(nuclide.emissionEnergies?.beta || []).join(', ')} unit="MeV" iconSymbol="β"/> <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ')} unit="MeV" iconSymbol="γ"/> </div> </div> <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700"> <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3> <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1"> {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)} </ul> </div> {nuclide.decaySeriesId && ( <div className="mt-6 text-center"> <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">View Full Decay Series</button> </div> )} </div> );
         };
         const DecaySeriesViewer = ({ seriesId, onBack, onNuclideClick }) => {
             const series = decaySeriesData.find(s => s.id === seriesId);
@@ -324,45 +408,60 @@
         };
 
 const UnitConverter = () => {
-            const [value, setValue] = React.useState(''); 
-            const [fromUnit, setFromUnit] = React.useState('Gy'); 
-            const [toUnit, setToUnit] = React.useState('rad'); 
-            const [result, setResult] = React.useState(''); 
+            const [value, setValue] = React.useState('');
+            const [fromUnit, setFromUnit] = React.useState('Gy');
+            const [toUnit, setToUnit] = React.useState('rad');
+            const [result, setResult] = React.useState('');
             const [error, setError] = React.useState('');
 
-            const units = { 
+            const units = {
                 'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'Ci', 'mCi', 'µCi', 'dps', 'dpm'],
-                'Radiation Dose': ['Gy', 'rad', 'Sv', 'rem', 'R', 'cGy', 'mrem'], 
+                'Radiation Dose': ['Gy', 'rad', 'Sv', 'rem', 'R', 'cGy', 'mrem'],
                 'Dose Rate': ['µSv/hr', 'mrem/hr', 'mGy/hr', 'mrad/hr'],
-                'Energy': ['J', 'eV', 'keV', 'MeV'], 
+                'Energy': ['J', 'eV', 'keV', 'MeV'],
             };
 
-            const factors = { 
-                'Gy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 0.01 }, 'Sv': { base: 'dose', factor: 1 }, 'rem': { base: 'dose', factor: 0.01 }, 'R': { base: 'dose', factor: 0.00877 }, 'cGy': { base: 'dose', factor: 0.01 }, 'mrem': { base: 'dose', factor: 1e-5 }, 
-                'Bq': { base: 'activity', factor: 1 }, 'kBq': { base: 'activity', factor: 1e3 }, 'MBq': { base: 'activity', factor: 1e6 }, 'GBq': { base: 'activity', factor: 1e9 }, 'Ci': { base: 'activity', factor: 3.7e10 }, 'mCi': { base: 'activity', factor: 3.7e7 }, 'µCi': { base: 'activity', factor: 3.7e4 }, 'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1/60 }, 
+            const factors = {
+                'Gy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 0.01 }, 'Sv': { base: 'dose', factor: 1 }, 'rem': { base: 'dose', factor: 0.01 }, 'R': { base: 'dose', factor: 0.00877 }, 'cGy': { base: 'dose', factor: 0.01 }, 'mrem': { base: 'dose', factor: 1e-5 },
+                'Bq': { base: 'activity', factor: 1 }, 'kBq': { base: 'activity', factor: 1e3 }, 'MBq': { base: 'activity', factor: 1e6 }, 'GBq': { base: 'activity', factor: 1e9 }, 'Ci': { base: 'activity', factor: 3.7e10 }, 'mCi': { base: 'activity', factor: 3.7e7 }, 'µCi': { base: 'activity', factor: 3.7e4 }, 'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1 / 60 },
                 'µSv/hr': { base: 'doseRate', factor: 1e-6 }, 'mrem/hr': { base: 'doseRate', factor: 1e-5 }, 'mGy/hr': { base: 'doseRate', factor: 1e-3 }, 'mrad/hr': { base: 'doseRate', factor: 1e-5 },
-                'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.60218e-19 }, 'keV': { base: 'energy', factor: 1.60218e-16 }, 'MeV': { base: 'energy', factor: 1.60218e-13 }, 
+                'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.60218e-19 }, 'keV': { base: 'energy', factor: 1.60218e-16 }, 'MeV': { base: 'energy', factor: 1.60218e-13 },
             };
+
+            // This effect handles the dynamic unit filtering
+            React.useEffect(() => {
+                const fromBase = factors[fromUnit]?.base;
+                const toBase = factors[toUnit]?.base;
+
+                if (fromBase && fromBase !== toBase) {
+                    // Find the first compatible unit in the same category
+                    const compatibleUnit = Object.keys(factors).find(u => factors[u].base === fromBase);
+                    if (compatibleUnit) {
+                        setToUnit(compatibleUnit);
+                    }
+                }
+            }, [fromUnit]);
+
 
             const handleConvert = React.useCallback(() => {
-                const val = parseFloat(value); 
-                if (isNaN(val)) { 
+                const val = parseFloat(value);
+                if (isNaN(val)) {
                     if (value) setError("Invalid input value.");
-                    setResult(''); 
-                    return; 
+                    setResult('');
+                    return;
                 }
-                const from = factors[fromUnit]; 
+                const from = factors[fromUnit];
                 const to = factors[toUnit];
-                if (!from || !to || from.base !== to.base) { 
-                    setError("Cannot convert between these units."); 
-                    setResult(''); 
-                    return; 
+                if (!from || !to || from.base !== to.base) {
+                    setError("Cannot convert between these units.");
+                    setResult('');
+                    return;
                 }
                 const convertedVal = val * from.factor / to.factor;
-                setError(''); 
+                setError('');
                 setResult(convertedVal.toPrecision(4));
             }, [value, fromUnit, toUnit]);
-            
+
             React.useEffect(() => {
                 handleConvert();
             }, [value, fromUnit, toUnit, handleConvert]);
@@ -378,35 +477,48 @@ const UnitConverter = () => {
                 }
             };
 
-            return ( 
-                <div className="p-4 animate-fade-in"> 
-                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"> 
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2> 
-                        <div className="space-y-4"> 
+            const currentBase = factors[fromUnit]?.base;
+            const compatibleUnits = Object.fromEntries(
+                Object.entries(units).map(([group, unitList]) => {
+                    const filteredList = unitList.filter(u => factors[u]?.base === currentBase);
+                    return [group, filteredList];
+                }).filter(([group, unitList]) => unitList.length > 0)
+            );
+
+            return (
+                <div className="p-4 animate-fade-in">
+                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2>
+                        <div className="space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Value</label>
-                                <input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter a value" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                            </div> 
-                            <div className="flex flex-col sm:flex-row gap-4 items-end"> 
-                                <div className="w-full sm:flex-1"> 
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From</label> 
-                                    <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">{Object.entries(units).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select> 
-                                </div> 
+                                <input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter a value" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-4 items-end">
+                                <div className="w-full sm:flex-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From</label>
+                                    <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">{Object.entries(units).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select>
+                                </div>
                                 <div className="flex-shrink-0 pb-1">
                                     <button onClick={handleSwap} className="p-2 rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-sky-200 dark:hover:bg-sky-700 transition" aria-label="Swap units">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                                     </button>
                                 </div>
-                                <div className="w-full sm:flex-1"> 
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label> 
-                                    <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">{Object.entries(units).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select> 
-                                </div> 
-                            </div> 
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>} 
-                            {result && !error && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">{value} {fromUnit} = {result} {toUnit}</p>} 
-                        </div> 
-                    </div> 
-                </div> 
+                                <div className="w-full sm:flex-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
+                                    <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">{Object.entries(compatibleUnits).map(([group, list]) => (<optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>))}</select>
+                                </div>
+                            </div>
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {result && !error && (
+    <div className="flex items-center justify-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+        <p className="text-lg font-bold text-center flex-grow">{value} {fromUnit} = {result} {toUnit}</p>
+        <CopyButton textToCopy={result} />
+    </div>
+)}
+                        </div>
+                    </div>
+                </div>
             );
         };
 
@@ -610,27 +722,38 @@ const UnitConverter = () => {
                             <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                             
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            
                             {result && (
-                                <div className="text-lg font-bold text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
                                     {result.label ? (
-                                        <>
-                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
-                                            <span>{result.value} {result.unit}</span>
-                                        </>
+                                        <div className="flex items-center justify-center">
+                                            <div className="text-lg font-bold text-center flex-grow">
+                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
+                                                <span>{result.value} {result.unit}</span>
+                                            </div>
+                                            <CopyButton textToCopy={result.value} />
+                                        </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <div>
-                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
-                                                <span>{result.parent.value}</span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-lg font-bold text-left">
+                                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
+                                                    <span>{result.parent.value}</span>
+                                                </div>
+                                                <CopyButton textToCopy={result.parent.value} />
                                             </div>
-                                            <div>
-                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
-                                                <span>{result.daughter.value}</span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-lg font-bold text-left">
+                                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
+                                                    <span>{result.daughter.value}</span>
+                                                </div>
+                                                <CopyButton textToCopy={result.daughter.value} />
                                             </div>
                                         </div>
                                     )}
                                 </div>
                             )}
+
                             {chartData && <DecayChart chartData={chartData} />}
                         </div>
                     </div>
@@ -841,6 +964,10 @@ const UnitConverter = () => {
                 </div>
             );
         };
+
+
+
+
         const SeriesDecayChart = ({ chartData }) => {
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null);
@@ -898,6 +1025,74 @@ const UnitConverter = () => {
             }, [chartData]);
 
             return <div className="relative h-full"><canvas ref={chartRef}></canvas></div>;
+        };
+
+const SpecificActivityCalculator = () => {
+            const [atomicWeight, setAtomicWeight] = React.useState('');
+            const [halfLifeValue, setHalfLifeValue] = React.useState('');
+            const [halfLifeUnit, setHalfLifeUnit] = React.useState('years');
+            const [result, setResult] = React.useState(null);
+            const [error, setError] = React.useState('');
+
+            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+            const unitMultipliers = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+
+            const handleCalculate = () => {
+                const A = parseFloat(atomicWeight);
+                const T_val = parseFloat(halfLifeValue);
+
+                if (isNaN(A) || A <= 0 || isNaN(T_val) || T_val <= 0) {
+                    setError('Atomic weight and half-life must be positive numbers.');
+                    setResult(null);
+                    return;
+                }
+
+                setError('');
+                const T_seconds = T_val * unitMultipliers[halfLifeUnit];
+                const lambda = Math.log(2) / T_seconds;
+                const Na = 6.02214076e23; // Avogadro's number
+
+                // SA (Bq/g) = (λ * Na) / Molar Mass (A)
+                const sa_bq_per_g = (lambda * Na) / A;
+                const sa_ci_per_g = sa_bq_per_g / 3.7e10;
+
+                setResult({
+                    bq: sa_bq_per_g.toPrecision(4),
+                    ci: sa_ci_per_g.toPrecision(4)
+                });
+            };
+
+            return (
+                <div className="p-4 animate-fade-in">
+                    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Specific Activity Calculator</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Atomic Weight (g/mol)</label>
+                                <input type="number" value={atomicWeight} onChange={e => setAtomicWeight(e.target.value)} placeholder="e.g., 60 for Co-60" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Half-life</label>
+                                <div className="flex gap-2 mt-1">
+                                    <input type="number" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} placeholder="e.g., 5.27" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                                    <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                        {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {result && (
+                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Specific Activity</p>
+                                    <p className="text-lg font-bold">{result.bq} Bq/g</p>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.ci} Ci/g)</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
         };
 
         const MassActivityCalculator = ({ radionuclides }) => {
@@ -1032,6 +1227,7 @@ const UnitConverter = () => {
             const renderActiveView = () => {
                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy };
                 switch (activeView) {
+                    case 'specificActivity': return <SpecificActivityCalculator />;
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
@@ -1045,7 +1241,21 @@ const UnitConverter = () => {
                         return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} />;
                 }
             }
-            return ( <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200"> <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800"> <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} /> <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} /> <MainNav activeView={activeView} onNavClick={(view) => { setActiveView(view); setCurrentDecaySeriesId(null); setIsFiltersVisible(false); }} /> <main className="min-h-[400px]"> {renderActiveView()} </main> <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} /> </div> </div> );
+            return (
+                <ToastProvider>
+                    <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
+                        <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
+                            <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
+                            <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} />
+                            <MainNav activeView={activeView} onNavClick={(view) => { setActiveView(view); setCurrentDecaySeriesId(null); setIsFiltersVisible(false); }} />
+                            <main className="min-h-[400px]">
+                                {renderActiveView()}
+                            </main>
+                            <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+                        </div>
+                    </div>
+                </ToastProvider>
+            );
         };
         const ComparisonView = ({ radionuclides, onNuclideClick, onDecaySeriesClick }) => {
             const [searchLeft, setSearchLeft] = React.useState(''); const [searchRight, setSearchRight] = React.useState('');
@@ -1083,7 +1293,16 @@ const UnitConverter = () => {
                 const calculatedDoseRate = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
                 setError(''); setDoseRate(calculatedDoseRate.toPrecision(3));
             };
-            return ( <div className="p-4 animate-fade-in"> <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"> <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2> <div className="space-y-4"> <div> <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide (Gamma Emitters)</label> <select onChange={(e) => setSelectedNuclide(radionuclides.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"> <option>Select a nuclide...</option> {gammaEmitters.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)} </select> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-sm font-medium">Activity</label><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div><label className="text-sm font-medium">Unit</label><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="Ci">Curies (Ci)</option><option value="Bq">Becquerels (Bq)</option></select></div> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-sm font-medium">Distance</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div><label className="text-sm font-medium">Unit</label><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="meters">Meters</option><option value="feet">Feet</option></select></div> </div> <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button> {error && <p className="text-red-500 text-sm text-center">{error}</p>} {doseRate !== null && <p className="text-lg font-bold text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">Dose Rate: {doseRate} R/hr</p>} </div> </div> </div> );
+            return ( <div className="p-4 animate-fade-in"> <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"> <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2> <div className="space-y-4"> <div> <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide (Gamma Emitters)</label> <select onChange={(e) => setSelectedNuclide(radionuclides.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"> <option>Select a nuclide...</option> {gammaEmitters.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)} </select> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-sm font-medium">Activity</label><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div><label className="text-sm font-medium">Unit</label><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="Ci">Curies (Ci)</option><option value="Bq">Becquerels (Bq)</option></select></div> </div> <div className="grid grid-cols-2 gap-4"> <div><label className="text-sm font-medium">Distance</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> <div><label className="text-sm font-medium">Unit</label><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="meters">Meters</option><option value="feet">Feet</option></select></div> </div> <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button> {error && <p className="text-red-500 text-sm text-center">{error}</p>} 
+
+{doseRate !== null && (
+    <div className="flex items-center justify-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg">
+        <p className="text-lg font-bold text-center flex-grow">Dose Rate: {doseRate} R/hr</p>
+        <CopyButton textToCopy={doseRate} />
+    </div>
+)}
+
+ </div> </div> </div> );
         };
         const DecayChart = ({ chartData }) => {
             const chartRef = React.useRef(null);
