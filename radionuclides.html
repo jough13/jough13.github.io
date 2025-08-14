@@ -1178,7 +1178,9 @@
          */
 
         const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) => {
+
             // Destructure all filter-related state and handlers from the filterProps object.
+
             const {
                 sortBy, setSortBy, sortOrder, setSortOrder,
                 selectedCategory, setSelectedCategory, allCategories,
@@ -1186,18 +1188,23 @@
                 selectedCommonality, setSelectedCommonality, allCommonalityCategories,
                 minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy,
                 minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
-                minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy
+                minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
+                minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
+
             } = filterProps;
 
             return (
                 <>
+
                     {/* Backdrop for mobile view when the sidebar is open */}
+
                     <div className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                         onClick={() => setIsFiltersVisible(false)}
                         aria-hidden="true">
                     </div>
 
                     {/* The actual sidebar panel */}
+
                     <aside
                         className={`fixed top-0 left-0 w-80 h-full bg-slate-50 dark:bg-slate-900 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:w-auto lg:h-auto lg:transform-none lg:col-span-1 lg:bg-transparent lg:dark:bg-transparent ${
                             isFiltersVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -1212,6 +1219,7 @@
                             </div>
 
                             {/* Sorting controls */}
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sort by</label>
                                 <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
@@ -1228,11 +1236,30 @@
                             </div>
 
                             {/* Filtering controls */}
+
                             <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label><select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emission Type</label><select value={selectedEmissionType} onChange={e => setSelectedEmissionType(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allEmissionTypes.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Commonality</label><select value={selectedCommonality} onChange={e => setSelectedCommonality(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCommonalityCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             
+                            {/* Half-life range filter */}
+
+                            <div>
+                                <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Half-life</h4>
+                            <div className="flex gap-2 mt-2">
+                                <input type="number" placeholder="Min" value={minHalfLife} onChange={e => setMinHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
+                                <input type="number" placeholder="Max" value={maxHalfLife} onChange={e => setMaxHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
+                            </div>
+                                <select value={halfLifeFilterUnit} onChange={e => setHalfLifeFilterUnit(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                                    <option value="seconds">Seconds</option>
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Hours</option>
+                                    <option value="days">Days</option>
+                                    <option value="years">Years</option>
+                                </select>
+                            </div>
+
                             {/* Energy range filters */}
+
                             <div>
                                 <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
                                 <div className="space-y-2 mt-2">
@@ -2625,7 +2652,7 @@
              */
 
             const renderActiveView = () => {
-                const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy };
+                const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit };
                 
                 switch (activeView) {
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
