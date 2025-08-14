@@ -881,6 +881,7 @@
                 { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
                 { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
                 { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
+                { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
                 { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
                 { id: 'specificActivity', label: 'Specific Activity', icon: ICONS.specificActivity },
                 { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, 
@@ -2658,6 +2659,7 @@
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
+                    case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;                    
                     case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
                     case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
                     case 'specificActivity': return <SpecificActivityCalculator />;
@@ -2935,6 +2937,153 @@
                 </div>
             );
         };
+
+        /**
+         * @description A calculator to model and chart parent-daughter equilibrium.
+         * @param {{radionuclides: Array<object>}} props
+         */
+
+        const EquilibriumCalculator = ({ radionuclides }) => {
+            // --- STATE MANAGEMENT ---
+            const [parentNuclide, setParentNuclide] = React.useState(null);
+            const [daughterNuclide, setDaughterNuclide] = React.useState(null);
+            const [initialActivity, setInitialActivity] = React.useState('100');
+            const [timeElapsed, setTimeElapsed] = React.useState('10');
+            const [timeUnit, setTimeUnit] = React.useState('days');
+            const [result, setResult] = React.useState(null);
+            const [chartData, setChartData] = React.useState(null);
+            const [error, setError] = React.useState('');
+
+            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years'];
+
+            // Memoized list of valid parent nuclides (those with a radioactive daughter)
+            const parentNuclides = React.useMemo(() => {
+                return radionuclides.filter(parent => {
+                    if (!parent.daughter || parent.halfLife === 'Stable') return false;
+                    const daughterName = parent.daughter.split('(')[0].trim();
+                    const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                    return daughter && daughter.halfLife !== 'Stable';
+                }).sort((a, b) => a.name.localeCompare(b.name));
+            }, [radionuclides]);
+            
+            // --- CALCULATION LOGIC ---
+            const handleCalculate = () => {
+                if (!parentNuclide || !daughterNuclide) {
+                    setError('Please select a valid parent nuclide.');
+                    return;
+                }
+                
+                setError('');
+                const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+                const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+                const N0_parent = parseFloat(initialActivity);
+                const t_input = parseFloat(timeElapsed);
+                
+                if (isNaN(N0_parent) || N0_parent < 0 || isNaN(t_input) || t_input < 0) {
+                    setError('Initial activity and time must be non-negative numbers.');
+                    return;
+                }
+
+                const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+                const t_seconds = t_input * unitConversions[timeUnit];
+                const lambda1 = Math.log(2) / T1_seconds;
+                const lambda2 = Math.log(2) / T2_seconds;
+
+                // Bateman equation for a 2-nuclide chain
+                let A_daughter;
+                if (Math.abs(lambda1 - lambda2) < 1e-12) { // Handle case where decay constants are equal
+                    A_daughter = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
+                } else {
+                    A_daughter = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
+                }
+                const A_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
+
+                setResult({
+                    parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) },
+                    daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) }
+                });
+
+                // Generate Chart Data
+                const labels = [];
+                const parentData = [];
+                const daughterData = [];
+                const totalTime = t_input; 
+                const steps = 100;
+                for (let i = 0; i <= steps; i++) {
+                    const timePoint = (totalTime / steps) * i;
+                    const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                    labels.push(timePoint.toFixed(2));
+                    parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
+                    
+                    let d_activity;
+                     if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                        d_activity = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds);
+                    } else {
+                        d_activity = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds));
+                    }
+                    daughterData.push(d_activity);
+                }
+                setChartData({ labels, parentData, daughterData, parentName: parentNuclide.name, daughterName: daughterNuclide.name, timeUnit });
+            };
+
+            const handleParentChange = (symbol) => {
+                const parent = parentNuclides.find(p => p.symbol === symbol);
+                if (parent) {
+                    setParentNuclide(parent);
+                    const daughterName = parent.daughter.split('(')[0].trim();
+                    const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                    setDaughterNuclide(daughter);
+                } else {
+                    setParentNuclide(null);
+                    setDaughterNuclide(null);
+                }
+            };
+            
+            // --- JSX RENDERING ---
+
+            return (
+                <div className="p-4 animate-fade-in">
+                    <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Parent-Daughter Equilibrium Calculator</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Parent Nuclide</label>
+                                <select onChange={(e) => handleParentChange(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                    <option value="">Select a parent...</option>
+                                    {parentNuclides.map(r => <option key={r.symbol} value={r.symbol}>{r.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Parent Activity</label>
+                                    <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                        <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                            {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                            {result && (
+                                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg space-y-2">
+                                    <p className="font-semibold text-center text-sm text-slate-500 dark:text-slate-400">Activity at {timeElapsed} {timeUnit}</p>
+                                    <div className="flex justify-between items-center"><p>{result.parent.name}:</p> <p className="font-bold">{result.parent.activity}</p></div>
+                                    <div className="flex justify-between items-center"><p>{result.daughter.name}:</p> <p className="font-bold">{result.daughter.activity}</p></div>
+                                </div>
+                            )}
+                            {chartData && <DecayChart chartData={chartData} />}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
 
      /**
       * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
