@@ -2624,7 +2624,24 @@
                     const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
                     const filtered = radionuclides
                         .filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
-                        .sort((a, b) => (commonalityOrder[b.commonality] || 0) - (commonalityOrder[a.commonality] || 0) || a.name.localeCompare(b.name))
+                        .sort((a, b) => {
+    // 1. Prioritize "starts with" matches
+    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
+    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
+    if (aStartsWith !== bStartsWith) {
+        return aStartsWith ? -1 : 1; // true comes first
+    }
+
+    // 2. Prioritize by commonality (descending)
+    const orderA = commonalityOrder[a.commonality] || 0;
+    const orderB = commonalityOrder[b.commonality] || 0;
+    if (orderB !== orderA) {
+        return orderB - orderA;
+    }
+
+    // 3. Fallback to alphabetical
+    return a.name.localeCompare(b.name);
+})
                         .slice(0, 10);
                     setSuggestions(filtered);
                 } else {
@@ -2740,20 +2757,32 @@
     
 	    return options
 	        .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
-	        .sort((a, b) => {
-	
-	            // Sort by commonality (descending), then by name (ascending)
 
-	            const orderA = commonalityOrder[a.commonality] || 0;
-	            const orderB = commonalityOrder[b.commonality] || 0;
-	            if (orderB !== orderA) return orderB - orderA;
-	            return a.name.localeCompare(b.name);
-	        })
+.sort((a, b) => {
+    // 1. Prioritize "starts with" matches
+    const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
+    const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
+    if (aStartsWith !== bStartsWith) {
+        return aStartsWith ? -1 : 1; // true comes first
+    }
+
+    // 2. Prioritize by commonality (descending)
+    const orderA = commonalityOrder[a.commonality] || 0;
+    const orderB = commonalityOrder[b.commonality] || 0;
+    if (orderB !== orderA) {
+        return orderB - orderA;
+    }
+    
+    // 3. Fallback to alphabetical
+    return a.name.localeCompare(b.name);
+})
+
+
+
+
+
 	        .slice(0, 10); // Limit to top 10 results
 	}, [inputValue, options]);
-
-
-
 	    
 	    // Handle clicks outside to close the dropdown
 
