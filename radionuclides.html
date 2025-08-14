@@ -10,29 +10,39 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+
         // Enables Tailwind's dark mode feature, allowing class-based theme switching (e.g., <body class="dark">)
+
         tailwind.config = { darkMode: 'class' }
     </script>
     
     <!-- React Libraries for building the user interface -->
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
     <!-- Babel to transpile JSX (React's syntax) into plain JavaScript in the browser -->
+
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- Chart.js for creating data visualizations -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Google Fonts for a clean, modern typeface -->
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Custom Application Styles -->
+
     <style>
+
         /* Sets the default font for the entire application */
+
         body { font-family: 'Inter', sans-serif; }
 
         /* Custom scrollbar styling for a consistent look across browsers */
+
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         .dark ::-webkit-scrollbar-track { background: #1e293b; }
@@ -40,6 +50,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
         /* Keyframe animation for new elements fading into view */
+
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(-10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -47,6 +58,7 @@
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
 
         /* Keyframe animation for toast notifications sliding in from the bottom */
+
         @keyframes toast-in {
             from {
                 opacity: 0;
@@ -64,7 +76,9 @@
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
+
     <!-- The root element where the React application will be mounted. -->
+
     <div id="root"></div>
 
     <!-- 
@@ -72,6 +86,7 @@
       Keeping this in a separate script tag makes the main application logic cleaner and easier to manage.
       Each object conforms to a consistent structure for properties like name, symbol, halfLife, etc.
     -->
+
     <script>
         const RADIONUCLIDE_DATA = [
 
@@ -256,6 +271,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
+
         /**
          * Radionuclide Database Tool - Core Data and Utility Functions
          * -----------------------------------------------------------
@@ -263,9 +279,6 @@
          * functions for the radionuclide database application. It includes
          * decay series data, SVG icon paths, and various parsers for handling
          * physical quantities like half-life and energy.
-         *
-         * The main radionuclide data is loaded from a separate file and assigned
-         * to the `radionuclides` constant.
          */
 
         //==============================================================================
@@ -280,6 +293,7 @@
          * Each key is a short identifier, and the value is an object
          * containing the full name and URL of the source.
          */
+
         const sources = {
             nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
             wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
@@ -294,6 +308,7 @@
          * Defines the primary natural decay chains. Each object represents a series
          * and contains an array of steps in its decay chain.
          */
+
         const decaySeriesData = [
             {
                 id: 'U-238-series',
@@ -354,14 +369,65 @@
                     { nuclide: 'Thallium-207', decayType: 'Beta-minus', halfLife: '4.77 minutes', daughter: 'Lead-207' },
                     { nuclide: 'Lead-207', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
                 ]
+            },
+            {
+                id: 'Ra-226-series',
+                name: 'Radium-226 Decay Series',
+                startNuclide: 'Radium-226',
+                chain: [
+                    { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' },
+                    { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' },
+                    { nuclide: 'Polonium-218', decayType: 'Alpha', halfLife: '3.1 minutes', daughter: 'Lead-214' },
+                    { nuclide: 'Lead-214', decayType: 'Beta-minus', halfLife: '26.8 minutes', daughter: 'Bismuth-214' },
+                    { nuclide: 'Bismuth-214', decayType: 'Beta-minus', halfLife: '19.9 minutes', daughter: 'Polonium-214' },
+                    { nuclide: 'Polonium-214', decayType: 'Alpha', halfLife: '164.3 microseconds', daughter: 'Lead-210' },
+                    { nuclide: 'Lead-210', decayType: 'Beta-minus', halfLife: '22.2 years', daughter: 'Bismuth-210' },
+                    { nuclide: 'Bismuth-210', decayType: 'Beta-minus', halfLife: '5.012 days', daughter: 'Polonium-210' },
+                    { nuclide: 'Polonium-210', decayType: 'Alpha', halfLife: '138.376 days', daughter: 'Lead-206' },
+                    { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
+                ]
+            },
+            {
+                id: 'Np-237-series',
+                name: 'Neptunium-237 Decay Series (Artificial)',
+                startNuclide: 'Neptunium-237',
+                chain: [
+                    { nuclide: 'Neptunium-237', decayType: 'Alpha', halfLife: '2.14 million years', daughter: 'Protactinium-233' },
+                    { nuclide: 'Protactinium-233', decayType: 'Beta-minus', halfLife: '27.0 days', daughter: 'Uranium-233' },
+                    { nuclide: 'Uranium-233', decayType: 'Alpha', halfLife: '159,200 years', daughter: 'Thorium-229' },
+                    { nuclide: 'Thorium-229', decayType: 'Alpha', halfLife: '7,340 years', daughter: 'Radium-225' },
+                    { nuclide: 'Radium-225', decayType: 'Beta-minus', halfLife: '14.9 days', daughter: 'Actinium-225' },
+                    { nuclide: 'Actinium-225', decayType: 'Alpha', halfLife: '9.92 days', daughter: 'Francium-221' },
+                    { nuclide: 'Francium-221', decayType: 'Alpha', halfLife: '4.8 minutes', daughter: 'Astatine-217' },
+                    { nuclide: 'Astatine-217', decayType: 'Alpha', halfLife: '32.3 milliseconds', daughter: 'Bismuth-213' },
+                    { nuclide: 'Bismuth-213', decayType: 'Beta-minus', halfLife: '45.6 minutes', daughter: 'Polonium-213' },
+                    { nuclide: 'Polonium-213', decayType: 'Alpha', halfLife: '4.2 microseconds', daughter: 'Lead-209' },
+                    { nuclide: 'Lead-209', decayType: 'Beta-minus', halfLife: '3.25 hours', daughter: 'Bismuth-209' },
+                    { nuclide: 'Bismuth-209', decayType: 'Effectively Stable', halfLife: '2.01 x 10¹⁹ years', daughter: 'Thallium-205' },
+                    { nuclide: 'Thallium-205', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
+                ]
+            },
+            {
+                id: 'Ac-225-series',
+                name: 'Actinium-225 (Medical Alpha Generator)',
+                startNuclide: 'Actinium-225',
+                chain: [
+                    { nuclide: 'Actinium-225', decayType: 'Alpha', halfLife: '9.92 days', daughter: 'Francium-221' },
+                    { nuclide: 'Francium-221', decayType: 'Alpha', halfLife: '4.8 minutes', daughter: 'Astatine-217' },
+                    { nuclide: 'Astatine-217', decayType: 'Alpha', halfLife: '32.3 milliseconds', daughter: 'Bismuth-213' },
+                    { nuclide: 'Bismuth-213', decayType: 'Beta-minus', halfLife: '45.6 minutes', daughter: 'Polonium-213' },
+                    { nuclide: 'Polonium-213', decayType: 'Alpha', halfLife: '4.2 microseconds', daughter: 'Lead-209' },
+                    { nuclide: 'Lead-209', decayType: 'Beta-minus', halfLife: '3.25 hours', daughter: 'Bismuth-209' },
+                    { nuclide: 'Bismuth-209', decayType: 'Effectively Stable', halfLife: '2.01 x 10¹⁹ years', daughter: 'Thallium-205' },
+                    { nuclide: 'Thallium-205', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
+                ]
             }
         ];
 
         /**
-         * A comprehensive list of radionuclides.
-         * Note: The actual data is expected to be in a separate file (e.g., radionuclide-data.js)
-         * and assigned to the RADIONUCLIDE_DATA variable before this script runs.
+         * A comprehensive list of radionuclides pulled from the initial table above.
          */
+
         const radionuclides = RADIONUCLIDE_DATA;
 
         //==============================================================================
@@ -373,6 +439,7 @@
          * @param {string} str - The input string.
          * @returns {string} The normalized string.
          */
+
         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
 
         /**
@@ -381,61 +448,113 @@
          * @param {string} halfLifeStr - The half-life string to parse.
          * @returns {number} The half-life in seconds, or Infinity for "Stable".
          */
-        const parseHalfLifeToSeconds = (halfLifeStr) => {
-            if (!halfLifeStr || halfLifeStr.toLowerCase() === 'stable') return Infinity;
 
-            // Handle scientific notation like "2.01 x 10¹⁹ years" by converting it to a standard number string.
-            const sciNotationMatch = halfLifeStr.match(/([\d.]+) x 10[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+(\d+)/);
-            if (sciNotationMatch) {
-                const mantissa = parseFloat(sciNotationMatch[1]);
-                const exponent = parseInt(sciNotationMatch[2]);
-                const unitStr = halfLifeStr.split(' ').pop();
-                halfLifeStr = `${mantissa * Math.pow(10, exponent)} ${unitStr}`;
-            }
+         const parseHalfLifeToSeconds = (halfLifeStr) => {
+            if (!halfLifeStr || halfLifeStr.toLowerCase() === 'stable') return Infinity;
 
-            const parts = halfLifeStr.replace(/,/g, '').split(' ');
-            let value = parseFloat(parts[0]);
-            const unit = parts[1]?.toLowerCase();
+            // Handle scientific notation like "2.01 x 10¹⁹ years" by converting it to a standard number string.
+            const sciNotationMatch = halfLifeStr.match(/([\d.]+) x 10[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+(\d+)/);
+            if (sciNotationMatch) {
+                const mantissa = parseFloat(sciNotationMatch[1]);
+                const exponent = parseInt(sciNotationMatch[2]);
+                const unitStr = halfLifeStr.split(' ').pop();
+                halfLifeStr = `${mantissa * Math.pow(10, exponent)} ${unitStr}`;
+            }
 
-            if (isNaN(value)) return 0;
+            const parts = halfLifeStr.replace(/,/g, '').split(' ');
+            let value = parseFloat(parts[0]);
+            const unit = parts[1]?.toLowerCase();
 
-            const unitMultipliers = {
-                'billion': 3.15576e16, // 3600 * 24 * 365.25 * 1e9
-                'million': 3.15576e13, // 3600 * 24 * 365.25 * 1e6
-                'kiloyears': 3.15576e10, // 3600 * 24 * 365.25 * 1e3
-                'years': 31557600,     // 3600 * 24 * 365.25
-                'year': 31557600,
-                'days': 86400,         // 3600 * 24
-                'day': 86400,
-                'hours': 3600,
-                'hour': 3600,
-                'minutes': 60,
-                'minute': 60,
-                'seconds': 1,
-                'second': 1,
-                's': 1,
-                'milliseconds': 1e-3,
-                'millisecond': 1e-3,
-                'microseconds': 1e-6,
-                'microsecond': 1e-6,
-            };
+            if (isNaN(value)) return 0;
 
-            // Sort keys by length descending to match longer units first (e.g., "milliseconds" before "s").
-            const sortedKeys = Object.keys(unitMultipliers).sort((a, b) => b.length - a.length);
+            const unitMultipliers = {
+                'billion': 3.15576e16, // 3600 * 24 * 365.25 * 1e9
+                'million': 3.15576e13, // 3600 * 24 * 365.25 * 1e6
+                'kiloyears': 3.15576e10, // 3600 * 24 * 365.25 * 1e3
+                'years': 31557600,     // 3600 * 24 * 365.25
+                'year': 31557600,
+                'days': 86400,          // 3600 * 24
+                'day': 86400,
+                'hours': 3600,
+                'hour': 3600,
+                'minutes': 60,
+                'minute': 60,
+                'seconds': 1,
+                'second': 1,
+                's': 1,
+                'milliseconds': 1e-3,
+                'millisecond': 1e-3,
+                'microseconds': 1e-6,
+                'microsecond': 1e-6,
+            };
 
-            for (const key of sortedKeys) {
-                if (unit?.startsWith(key)) {
-                    return value * unitMultipliers[key];
-                }
-            }
-            return value; // Return raw value if no unit is matched
-        };
+            // Sort keys by length descending to match longer units first (e.g., "milliseconds" before "s").
+            const sortedKeys = Object.keys(unitMultipliers).sort((a, b) => b.length - a.length);
+
+            for (const key of sortedKeys) {
+                if (unit?.startsWith(key)) {
+                    return value * unitMultipliers[key];
+                }
+            }
+            return value; // Return raw value if no unit is matched
+        };
+
+        /**
+         * Parses a string to standardize its numeric part into "e" notation if it's very large or small.
+         * Handles multiple formats: "1.23 x 10^4", "1.23 x 10⁻⁴", "4,059", and "0.0123".
+         * @param {string} str - The input string (e.g., "1.55 x 10⁻¹⁰ year⁻¹").
+         * @returns {string} The formatted string with standardized notation.
+         */
+        const standardizeScientificDisplay = (str) => {
+            if (typeof str !== 'string' || !str) return str;
+
+            // First, check for the "x 10" format, now including unicode superscripts
+            const sciNotationRegex = /([\d.,]+) x 10\^?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*(.*)/;
+            const sciMatch = str.match(sciNotationRegex);
+
+            if (sciMatch) {
+                const mantissa = parseFloat(sciMatch[1].replace(/,/g, ''));
+                const exponentStr = sciMatch[2];
+                const units = sciMatch[3] || '';
+
+                // Helper to convert superscript characters to regular digits
+                const superToRegularMap = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', '−': '-' };
+                const regularExponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
+                const exponent = parseInt(regularExponentStr);
+
+                if (isNaN(mantissa) || isNaN(exponent)) return str;
+                
+                const numericValue = mantissa * Math.pow(10, exponent);
+                return `${numericValue.toExponential(2)} ${units}`.trim();
+            }
+
+            // If not, handle it as a plain number that might have commas and units
+            const plainNumberRegex = /^([-\d.,]+)(.*)/;
+            const plainMatch = str.match(plainNumberRegex);
+            if (plainMatch) {
+                const numberPart = plainMatch[1].replace(/,/g, '');
+                const units = plainMatch[2] || '';
+                const numericValue = parseFloat(numberPart);
+                if (isNaN(numericValue)) return str;
+
+                const absValue = Math.abs(numericValue);
+                if (numericValue === 0) return `0 ${units}`.trim();
+
+                if (absValue > 10000 || absValue < 0.001) {
+                    return `${numericValue.toExponential(2)} ${units}`.trim();
+                }
+                return `${numericValue.toPrecision(3)} ${units}`.trim();
+            }
+
+            return str; // Return original string if no numeric pattern is found
+        };
 
         /**
          * Determines the most appropriate human-readable unit for a given duration in seconds.
          * @param {number} seconds - The duration in seconds.
          * @returns {string} The most fitting unit ('years', 'days', 'hours', 'minutes', or 'seconds').
          */
+
         const getBestHalfLifeUnit = (seconds) => {
             if (seconds === Infinity) return 'years';
 
@@ -457,6 +576,7 @@
          * @param {string} targetUnit - The desired unit for the output (e.g., 'years', 'days').
          * @returns {string} The formatted half-life string (e.g., "1.25e+9 years").
          */
+
         const formatHalfLife = (halfLifeStr, targetUnit) => {
             const seconds = parseHalfLifeToSeconds(halfLifeStr);
 
@@ -476,10 +596,12 @@
 
             const value = seconds / unitConversions[targetUnit];
 
-            // Use scientific notation for very large or very small numbers, otherwise use fixed decimal places.
-            if (value >= 1000 || (value > 0 && value < 0.01)) {
-                return `${value.toPrecision(3)} ${targetUnit}`;
-            }
+            // Use exponential notation for very large or very small numbers for consistency.
+
+            if (value >= 1000 || (value > 0 && value < 0.01)) {
+                return `${value.toExponential(2)} ${targetUnit}`;
+            }
+
             return `${parseFloat(value.toFixed(2))} ${targetUnit}`;
         };
 
@@ -489,6 +611,7 @@
          * @param {string[]} energyArray - An array of energy strings (e.g., ["5.3 MeV", "5.2 MeV"]).
          * @returns {number} The energy value in MeV. Returns 0 if input is invalid.
          */
+
         const parseEnergyToMeV = (energyArray) => {
             if (!energyArray || energyArray.length === 0) return 0;
             const energyStr = energyArray[0];
@@ -507,11 +630,13 @@
          * @param {string} saStr - The specific activity string.
          * @returns {number} The parsed specific activity as a number. Returns 0 if input is invalid.
          */
+
         const parseSpecificActivity = (saStr) => {
             if (!saStr) return 0;
             const parts = saStr.toLowerCase().split(' ');
 
             // Check for the specific "x 10^" format.
+
             if (parts.length < 3 || parts[1] !== 'x' || !parts[2].includes('10^')) {
                 return parseFloat(saStr.replace(/,/g, '')); // Fallback for simple numbers.
             }
@@ -536,6 +661,7 @@
          * @param {string} [props.className="w-5 h-5"] - Optional CSS classes.
          * @returns {JSX.Element} A React component rendering an SVG icon.
          */
+
         const Icon = ({ path, className = "w-5 h-5" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
                 <path d={path} />
@@ -545,6 +671,7 @@
         /**
          * A mapping of icon names to their corresponding SVG path data.
          */
+
         const ICONS = {
             copy: "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-2-.9-2-2-2zm0 16H8V7h11v14z",
             check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
@@ -576,6 +703,7 @@
         /**
          * @description React Context to provide toast notification functions to any component.
          */
+
         const ToastContext = React.createContext();
 
         /**
@@ -583,6 +711,7 @@
          * It renders the toasts and provides a function to add new ones.
          * @param {{children: React.ReactNode}} props - The child components that will have access to the context.
          */
+
         const ToastProvider = ({ children }) => {
             const [toasts, setToasts] = React.useState([]);
 
@@ -590,6 +719,7 @@
              * Adds a new toast message to the list.
              * @param {string} message - The message to display in the toast.
              */
+
             const addToast = (message) => {
                 const id = Date.now();
                 setToasts(prevToasts => [...prevToasts, { id, message }]);
@@ -603,6 +733,7 @@
              * Removes a toast from the list by its ID.
              * @param {number} id - The unique ID of the toast to remove.
              */
+
             const removeToast = (id) => {
                 setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
             };
@@ -610,7 +741,9 @@
             return (
                 <ToastContext.Provider value={{ addToast }}>
                     {children}
+
                     {/* Container for all visible toast notifications */}
+
                     <div className="fixed bottom-4 right-4 z-50 space-y-2">
                         {toasts.map(toast => (
                             <div key={toast.id} className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center">
@@ -627,8 +760,8 @@
          * @description Custom hook to easily access the toast context's `addToast` function.
          * @returns {{addToast: (message: string) => void}}
          */
-        const useToast = () => React.useContext(ToastContext);
 
+        const useToast = () => React.useContext(ToastContext);
 
         //==============================================================================
         // --- REUSABLE UI COMPONENTS
@@ -638,6 +771,7 @@
          * @description A button that copies a given text string to the clipboard and shows a confirmation.
          * @param {{textToCopy: string}} props - The text to be copied.
          */
+
         const CopyButton = ({ textToCopy }) => {
             const [copied, setCopied] = React.useState(false);
             const { addToast } = useToast();
@@ -664,6 +798,7 @@
          * @description The main header for the application.
          * @param {{onHelpClick: () => void, theme: string, toggleTheme: () => void}} props - Handlers and state for help and theme toggling.
          */
+
         const Header = ({ onHelpClick, theme, toggleTheme }) => (
             <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
@@ -696,6 +831,7 @@
          * @param {React.RefObject} props.suggestionsRef - Ref for the suggestions list container.
          * @param {(nuclide: object) => void} props.handleNuclideSelection - Handler for when a nuclide is selected.
          */
+
         const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection }) => (
             <div className="relative p-4">
                 <div className="relative">
@@ -737,6 +873,7 @@
          * @description The main navigation bar, which is responsive for mobile and desktop.
          * @param {{activeView: string, onNavClick: (view: string) => void}} props - The currently active view and the click handler.
          */
+
         const MainNav = ({ activeView, onNavClick }) => {
             const navItems = [ 
                 { id: 'home', label: 'Home', icon: ICONS.home }, 
@@ -751,6 +888,7 @@
             ];
 
             // Internal component for a single navigation button.
+
             const NavButton = ({ item }) => (
                 <button
                     onClick={() => onNavClick(item.id)}
@@ -796,6 +934,7 @@
          * @param {(nuclide: object) => void} props.handleNuclideSelection - Handler for selecting a nuclide.
          * @param {() => void} props.handleClearHistory - Handler for clearing the search history.
          */
+
         const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory }) => (
             <div className="p-4">
                 {errorMessage && (
@@ -846,14 +985,18 @@
          * @param {(seriesId: string) => void} [props.onDecaySeriesClick] - Click handler for the 'View Decay Series' button.
          * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
          */
+
         const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit }) => {
+
             // Helper to generate a link to a data source.
+
             const getSourceLink = (sourceKey) => {
                 const source = sources[sourceKey];
                 return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
             };
 
             // Internal component for displaying a single piece of data (e.g., Half-life).
+
             const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                 const displayValue = value && String(value).trim() ? String(value).trim() : 'N/A';
                 const shouldAppendUnit = unit && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
@@ -875,6 +1018,7 @@
             };
 
             // Compact view for database lists.
+
             if(isCompact) {
                 return (
                     <div onClick={() => onNuclideClick(nuclide)} className="p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200">
@@ -886,6 +1030,7 @@
             }
 
             // Full detailed view.
+
             return (
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2>
@@ -893,8 +1038,8 @@
                     
                     <div className="grid md:grid-cols-2 gap-6 mt-4">
                         <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
-                        <DataPoint label="Decay Constant (λ)" value={nuclide.decayConstant} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
-                        <DataPoint label="Specific Activity" value={nuclide.specificActivity} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
+                        <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
+                        <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
                         <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
                         <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} />
                         <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} />
@@ -932,11 +1077,13 @@
          * @description Displays a full decay series chain.
          * @param {{seriesId: string, onBack: () => void, onNuclideClick: (nuclide: object) => void}} props - The series ID and navigation handlers.
          */
+
         const DecaySeriesViewer = ({ seriesId, onBack, onNuclideClick }) => {
             const series = decaySeriesData.find(s => s.id === seriesId);
             if (!series) return <p>Decay series not found.</p>;
 
             // Internal component for a single nuclide in the chain.
+
             const NuclideNode = ({ step }) => (
                 <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-center shadow">
                     <span
@@ -953,6 +1100,7 @@
             );
 
             // Internal component for the arrow showing the decay type between nuclides.
+
             const DecayArrow = ({ decayType }) => (
                 <div className="flex-grow flex items-center justify-center relative mx-2">
                     <div className="absolute left-0 top-1/2 w-full h-0.5 bg-slate-300 dark:bg-slate-600"></div>
@@ -975,6 +1123,7 @@
                                 }
 
                                 // Special handling for branched decays (e.g., Alpha / Beta).
+
                                 const hasBranch = step.decayType.includes('/');
                                 if (hasBranch) {
                                     const decayTypes = step.decayType.split(' / ');
@@ -1001,6 +1150,7 @@
                                 }
 
                                 // Standard linear decay step.
+
                                 return (
                                     <div key={index} className="flex flex-col items-center">
                                         <NuclideNode step={step} />
@@ -1018,6 +1168,7 @@
          * @description A sidebar for filtering and sorting the nuclide database. It is responsive.
          * @param {{filterProps: object, isFiltersVisible: boolean, setIsFiltersVisible: (isVisible: boolean) => void}} props
          */
+
         const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) => {
             // Destructure all filter-related state and handlers from the filterProps object.
             const {
@@ -1033,11 +1184,10 @@
             return (
                 <>
                     {/* Backdrop for mobile view when the sidebar is open */}
-                    <div
-                        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    <div className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                         onClick={() => setIsFiltersVisible(false)}
-                        aria-hidden="true"
-                    ></div>
+                        aria-hidden="true">
+                    </div>
 
                     {/* The actual sidebar panel */}
                     <aside
@@ -1098,6 +1248,7 @@
          * @param {boolean} props.isFiltersVisible - State for mobile filter visibility.
          * @param {(isVisible: boolean) => void} props.setIsFiltersVisible - Handler to toggle mobile filter visibility.
          */
+
         const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible }) => {
             return (
                 <div className="relative">
@@ -1105,8 +1256,7 @@
                     <div className="px-4 pt-4 lg:hidden">
                         <button
                             onClick={() => setIsFiltersVisible(true)}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition"
-                        >
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition">
                             <Icon path={ICONS.filter} className="w-5 h-5" /> Filters & Sorting
                         </button>
                     </div>
@@ -1115,8 +1265,7 @@
                         <FilterSidebar
                             filterProps={filterProps}
                             isFiltersVisible={isFiltersVisible}
-                            setIsFiltersVisible={setIsFiltersVisible}
-                        />
+                            setIsFiltersVisible={setIsFiltersVisible}/>
                         <div className="lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Showing {filteredList.length} of {radionuclides.length} nuclides.</p>
                             <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1133,8 +1282,11 @@
          * @description A component that provides a user interface for converting between
          * various radiological and physical units, such as activity, dose, and energy.
          */
+
         const UnitConverter = () => {
+
             // --- STATE MANAGEMENT ---
+
             const [value, setValue] = React.useState(''); // The input value to be converted
             const [fromUnit, setFromUnit] = React.useState('Gy'); // The unit to convert from
             const [toUnit, setToUnit] = React.useState('rad'); // The unit to convert to
@@ -1157,6 +1309,7 @@
              * Defines the conversion factors for each unit relative to a base unit for its category.
              * The `base` property ensures that only units of the same type can be converted (e.g., activity to activity).
              */
+
             const factors = {
                 // Radiation Dose (Base: Gray)
                 'Gy':   { base: 'dose',     factor: 1 },
@@ -1197,15 +1350,21 @@
              * This effect ensures that if a user changes the 'From' unit to a different
              * category, the 'To' unit automatically updates to a compatible unit.
              */
+
             React.useEffect(() => {
                 const fromBase = factors[fromUnit]?.base;
                 const toBase = factors[toUnit]?.base;
 
                 // If 'from' and 'to' units are from different categories...
+
                 if (fromBase && fromBase !== toBase) {
+
                     // ...find the first unit that is compatible with the new 'from' category...
+
                     const compatibleUnit = Object.keys(factors).find(u => factors[u].base === fromBase);
+
                     // ...and set it as the new 'to' unit.
+
                     if (compatibleUnit) {
                         setToUnit(compatibleUnit);
                     }
@@ -1215,6 +1374,7 @@
             /**
              * Performs the unit conversion. Wrapped in `useCallback` for optimization.
              */
+
             const handleConvert = React.useCallback(() => {
                 const val = parseFloat(value);
                 if (isNaN(val)) {
@@ -1227,6 +1387,7 @@
                 const to = factors[toUnit];
 
                 // Check for incompatible unit types (e.g., converting Gy to Bq)
+
                 if (!from || !to || from.base !== to.base) {
                     setError("Cannot convert between these units.");
                     setResult('');
@@ -1234,6 +1395,7 @@
                 }
 
                 // Core conversion formula: (value * from_factor) / to_factor
+
                 const convertedVal = val * from.factor / to.factor;
                 setError('');
                 setResult(convertedVal.toPrecision(4));
@@ -1243,6 +1405,7 @@
              * This effect automatically triggers the conversion whenever any of the
              * input values or units change.
              */
+
             React.useEffect(() => {
                 handleConvert();
             }, [value, fromUnit, toUnit, handleConvert]);
@@ -1250,6 +1413,7 @@
             /**
              * Swaps the 'from' and 'to' units if they are compatible.
              */
+
             const handleSwap = () => {
                 const from = factors[fromUnit];
                 const to = factors[toUnit];
@@ -1263,6 +1427,7 @@
 
             // Dynamically create a list of units compatible with the current 'From' unit.
             // This is used to populate the 'To' unit dropdown.
+
             const currentBase = factors[fromUnit]?.base;
             const compatibleUnits = Object.fromEntries(
                 Object.entries(units)
@@ -1274,6 +1439,7 @@
             );
 
             // --- JSX RENDERING ---
+
             return (
                 <div className="p-4 animate-fade-in">
                     <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -1318,6 +1484,7 @@
                             </div>
                             
                             {/* Error and Result Display */}
+
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                             {result && !error && (
                                 <div className="flex items-center justify-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
@@ -1337,7 +1504,9 @@
          * It also generates data for a visual decay chart.
          * @param {{radionuclides: Array<object>}} props - The full list of radionuclide data.
          */
+
         const DecayCalculator = ({ radionuclides }) => {
+
             // --- STATE & CONSTANTS ---
 
             // State for UI controls and inputs
@@ -1349,6 +1518,7 @@
             const [timeUnit, setTimeUnit] = React.useState('days');
             
             // State for calculation outputs
+
             const [result, setResult] = React.useState(null);
             const [chartData, setChartData] = React.useState(null);
             const [error, setError] = React.useState('');
@@ -1360,6 +1530,7 @@
              * Sorting is done first by commonality (Common > Moderate > Rare), then alphabetically by name.
              * `useMemo` prevents re-sorting on every render.
              */
+
             const sortedRadionuclides = React.useMemo(() => {
                 const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
                 return [...radionuclides]
@@ -1380,6 +1551,7 @@
             /**
              * Main handler that performs the decay calculation based on the current mode and inputs.
              */
+
             const handleCalculate = () => {
                 // Initial validation
                 if (!selectedNuclide) {
@@ -1397,6 +1569,7 @@
                 }
                 
                 // Reset state before calculation
+
                 const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
                 setError('');
                 setResult(null);
@@ -1412,6 +1585,7 @@
                      * Helper function to generate chart data for a simple parent->daughter decay.
                      * @param {number} N0 - The initial activity (or number of atoms) of the parent.
                      */
+
                     const generateSingleNuclideChart = (N0) => {
                         const labels = [];
                         const parentData = [];
@@ -1427,11 +1601,14 @@
                     };
 
                     // Switch based on the selected calculation mode
+
                     switch (calculationMode) {
                         case 'findRemaining': {
                             const N0 = parseFloat(initialActivity);
                             if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
+
                             // Using standard decay formula: N(t) = N₀ * (0.5)^(t / T½)
+
                             const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
                             setResult({ value: Nt.toPrecision(4), unit: '', label: 'Remaining Activity' });
                             generateSingleNuclideChart(N0);
@@ -1446,7 +1623,9 @@
                                 setResult({ value: 'Infinite', unit: '', label: 'Time Elapsed' });
                                 break;
                             }
+
                             // Using rearranged decay formula: t = -T½ * log₂(N(t) / N₀)
+
                             const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
                             const t_final = t_seconds_calc / unitConversions[timeUnit];
                             setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
@@ -1455,7 +1634,9 @@
                         case 'findInitial': {
                             const Nt = parseFloat(remainingActivity);
                             if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
+
                             // Using rearranged decay formula: N₀ = N(t) / (0.5)^(t / T½)
+
                             const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
                             setResult({ value: N0.toPrecision(4), unit: '', label: 'Initial Activity' });
                             generateSingleNuclideChart(N0);
@@ -1471,6 +1652,7 @@
                             }
 
                             // Find the daughter nuclide in the database
+
                             const daughterName = selectedNuclide.daughter.split('(')[0].trim();
                             const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
                             if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
@@ -1479,14 +1661,17 @@
                             let A_daughter, Nt_parent_activity;
                             
                             // Remaining parent activity is always calculated the same way
+
                             Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
 
                             if (T2_seconds === Infinity) { // Daughter is stable
                                 A_daughter = 0; // The activity of a stable nuclide is zero.
                             } else {
                                 const lambda2 = Math.log(2) / T2_seconds;
+
                                 // This section implements the Bateman equation for a 2-nuclide chain.
                                 // Special case for when decay constants are equal (λ₁ ≈ λ₂)
+
                                 if (Math.abs(lambda1 - lambda2) < 1e-12) {
                                     A_daughter = N0_parent * lambda2 * t_seconds * Math.exp(-lambda1 * t_seconds);
                                 } else { // Standard Bateman equation case (λ₁ ≠ λ₂)
@@ -1500,6 +1685,7 @@
                             });
                             
                             // Generate chart data for parent and daughter activities
+
                             const labels = [];
                             const parentData = [];
                             const daughterData = [];
@@ -1548,6 +1734,7 @@
              * @param {(val: string) => void} [unitSetter] - The state setter for the unit dropdown.
              * @param {Array<string>} [unitOptions] - The options for the unit dropdown.
              */
+
             const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
                 <div>
                     <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
@@ -1567,7 +1754,9 @@
                     <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
                         <div className="space-y-4">
+
                             {/* Radionuclide Selector */}
+
                             <div>
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                                 <select 
@@ -1580,6 +1769,7 @@
                             </div>
                             
                             {/* Calculation Mode Selector */}
+
                             <div>
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
@@ -1595,6 +1785,7 @@
                             </div>
 
                             {/* Input Fields Container */}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                                 {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
                                 {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
@@ -1604,11 +1795,14 @@
                             <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                             
                             {/* Result and Error Display */}
+
                             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                             
                             {result && (
                                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+
                                     {/* Renders a simple result (for findRemaining, findTime, findInitial) */}
+
                                     {result.label ? (
                                         <div className="flex items-center justify-center">
                                             <div className="text-lg font-bold text-center flex-grow">
@@ -1617,7 +1811,9 @@
                                             </div>
                                             <CopyButton textToCopy={result.value} />
                                         </div>
+
                                     /* Renders the parent/daughter result (for findDaughterActivity) */
+
                                     ) : (
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
@@ -1640,6 +1836,7 @@
                             )}
 
                             {/* Chart Display Area */}
+
                             {chartData && <DecayChart chartData={chartData} />}
                         </div>
                     </div>
@@ -1647,20 +1844,16 @@
             );
         };
 
-
-
-
-
-
-
-
         /**
          * @description A calculator that uses the Bateman equations to model the activity of every
          * nuclide in a full decay series over time.
          * @param {{radionuclides: Array<object>, decaySeriesData: Array<object>}} props
          */
+
         const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
+
             // --- STATE & CONFIGURATION ---
+
             const [selectedSeriesId, setSelectedSeriesId] = React.useState(decaySeriesData[0].id);
             const [initialActivity, setInitialActivity] = React.useState('100');
             const [timeElapsed, setTimeElapsed] = React.useState('1000');
@@ -1673,7 +1866,6 @@
             const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
             const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
 
-
             // --- CORE CALCULATION ENGINE ---
 
             /**
@@ -1684,6 +1876,7 @@
              * @param {number} t_seconds - The elapsed time in seconds.
              * @returns {Array<number>} An array of activities for each nuclide in the chain at time t.
              */
+
             const runBatemanCalculation = (chain, A1_0, t_seconds) => {
                 // 1. Get decay constants (λ) for each nuclide in the chain. λ = ln(2) / T½.
                 const lambdas = chain.map(step => {
@@ -1694,18 +1887,22 @@
                 if (lambdas[0] === 0) return Array(chain.length).fill(0); // Parent is stable, no decay.
 
                 // 2. Calculate the initial number of atoms of the parent from its activity (N = A/λ).
+
                 const N1_0 = A1_0 / lambdas[0];
                 const activities = [];
 
                 // 3. Loop through each nuclide in the chain (i) to calculate its number of atoms, N_i(t).
                 for (let i = 0; i < chain.length; i++) {
+
                     // For stable nuclides (λ=0), activity is always 0.
+
                     if (lambdas[i] === 0) {
                         activities.push(0);
                         continue;
                     }
 
                     // For the parent nuclide (i=0), use simple exponential decay: N(t) = N₀ * e^(-λt).
+
                     if (i === 0) {
                         const N1_t = N1_0 * Math.exp(-lambdas[0] * t_seconds);
                         activities.push(N1_t * lambdas[0]); // A = Nλ
@@ -1716,20 +1913,26 @@
                     // Nᵢ(t) = N₁(0) * (Π_{k=1}^{i-1} λₖ) * (Σ_{j=1}^{i} (e^{-λⱼt} / Π_{k=1, k≠j}^{i} (λₖ - λⱼ)))
                     
                     // First part: Product of parent decay constants: Π_{k=1}^{i-1} λₖ
+
                     let lambda_product = 1;
                     for (let k = 0; k < i; k++) {
                         lambda_product *= lambdas[k];
                     }
 
                     // Second part: The summation term: Σ_{j=1}^{i} (...)
+
                     let sum_term = 0;
                     for (let j = 0; j <= i; j++) {
+
                         // The denominator inside the sum: Π_{k=1, k≠j}^{i} (λₖ - λⱼ)
+
                         let denominator_product = 1;
                         for (let k = 0; k <= i; k++) {
                             if (j !== k) {
                                 let diff = lambdas[k] - lambdas[j];
+
                                 // Handle the very rare case of identical lambdas to avoid division by zero.
+
                                 denominator_product *= (Math.abs(diff) < 1e-30) ? 1e-30 : diff;
                             }
                         }
@@ -1737,14 +1940,16 @@
                     }
 
                     // Combine all parts to get the number of atoms for nuclide i at time t.
+
                     const Ni_t = N1_0 * lambda_product * sum_term;
+
                     // Convert number of atoms back to activity (A = Nλ).
+
                     const Ai_t = Ni_t * lambdas[i];
                     activities.push(Ai_t);
                 }
                 return activities;
             };
-
 
             // --- UI HANDLERS & ORCHESTRATION ---
 
@@ -1752,6 +1957,7 @@
              * Main handler to orchestrate the calculation process, including validation,
              * calling the Bateman engine, and generating data for the UI.
              */
+
             const handleCalculate = () => {
                 const series = decaySeriesData.find(s => s.id === selectedSeriesId);
                 if (!series) {
@@ -1760,6 +1966,7 @@
                 }
                 
                 // Validate all numerical inputs
+
                 const A0 = parseFloat(initialActivity);
                 const t_input = parseFloat(timeElapsed);
                 if (isNaN(A0) || A0 < 0 || isNaN(t_input) || t_input < 0) {
@@ -1774,11 +1981,13 @@
 
                 // Use a short timeout to allow the UI to update to the 'loading' state
                 // before starting the potentially blocking, intensive calculation.
+
                 setTimeout(() => {
                     try {
                         const t_seconds = t_input * unitConversions[timeUnit];
                         
                         // 1. Run the calculation once for the final time point for the results table.
+
                         const calculatedActivities = runBatemanCalculation(series.chain, A0, t_seconds);
                         const finalResults = series.chain.map((step, i) => ({
                             name: step.nuclide,
@@ -1787,6 +1996,7 @@
                         setResults(finalResults);
 
                         // 2. Generate data for the activity-vs-time chart.
+
                         const chartLabels = [];
                         const datasets = series.chain.map((step, i) => ({
                             label: step.nuclide,
@@ -1805,6 +2015,7 @@
                             const timePoint_seconds = timePoint * unitConversions[timeUnit];
 
                             // This is computationally intensive: must run the full Bateman calculation for each point.
+
                             const activitiesAtTimePoint = runBatemanCalculation(series.chain, A0, timePoint_seconds);
                             activitiesAtTimePoint.forEach((act, j) => {
                                 datasets[j].data.push(act);
@@ -1821,12 +2032,14 @@
             };
 
             // --- JSX RENDERING ---
+
             return (
                 <div className="p-4 animate-fade-in">
                     <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Decay Series Calculator (Bateman)</h2>
                         
                         {/* Input Controls */}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Decay Series</label>
@@ -1855,6 +2068,7 @@
                         {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
                         
                         {/* Results Display Area */}
+
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Results Table */}
                             <div className="max-h-[400px] overflow-y-auto pr-2">
@@ -1878,7 +2092,9 @@
                                     </table>
                                 ) : <p className="text-slate-500 text-center py-4">No results to display.</p>}
                             </div>
+
                             {/* Chart Area */}
+
                             <div className="min-h-[300px]">
                                 {chartData ? <SeriesDecayChart chartData={chartData} /> : <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg"><p className="text-slate-500">Chart will be displayed here.</p></div>}
                             </div>
@@ -1888,20 +2104,20 @@
             );
         };
 
-
-
-
-/**
+        /**
          * @description A React component that renders a line chart for a decay series using Chart.js.
          * It's designed to display the activity of all nuclides in a chain over time.
          * @param {{chartData: object}} props - The data object for the chart, including labels and datasets.
          */
+
         const SeriesDecayChart = ({ chartData }) => {
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null);
 
             React.useEffect(() => {
+
                 // Destroy the previous chart instance before creating a new one to prevent memory leaks.
+
                 if (chartInstance.current) {
                     chartInstance.current.destroy();
                 }
@@ -1937,7 +2153,9 @@
                                     type: 'logarithmic', // Log scale is essential for viewing wide ranges of activity.
                                     title: { display: true, text: 'Activity (Log Scale)' },
                                     beginAtZero: true,
+
                                     // Set a very small minimum to prevent log(0) errors, but only if data exists.
+
                                     min: Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0,
                                 }
                             }
@@ -1946,6 +2164,7 @@
                 }
 
                 // Cleanup function to destroy the chart when the component unmounts.
+
                 return () => {
                     if (chartInstance.current) {
                         chartInstance.current.destroy();
@@ -1959,6 +2178,7 @@
         /**
          * @description A calculator for finding the specific activity of a nuclide from its atomic weight and half-life.
          */
+
         const SpecificActivityCalculator = () => {
             const [atomicWeight, setAtomicWeight] = React.useState('');
             const [halfLifeValue, setHalfLifeValue] = React.useState('');
@@ -1981,11 +2201,13 @@
                 setError('');
                 
                 // Convert half-life to seconds to get the decay constant (λ).
+
                 const T_seconds = T_val * unitMultipliers[halfLifeUnit];
                 const lambda = Math.log(2) / T_seconds;
                 const Na = 6.02214076e23; // Avogadro's number
 
                 // Formula: Specific Activity (Bq/g) = (λ * Nₐ) / Molar Mass (A)
+
                 const sa_bq_per_g = (lambda * Na) / A;
                 const sa_ci_per_g = sa_bq_per_g / 3.7e10; // Convert Bq/g to Ci/g
 
@@ -2032,6 +2254,7 @@
          * @description A calculator to convert between the mass of a radionuclide and its total activity.
          * @param {{radionuclides: Array<object>}} props
          */
+
         const MassActivityCalculator = ({ radionuclides }) => {
             const [selectedNuclide, setSelectedNuclide] = React.useState(null);
             const [mass, setMass] = React.useState(''); const [massUnit, setMassUnit] = React.useState('g');
@@ -2042,12 +2265,14 @@
             const activityUnits = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
 
             // Memoized list of nuclides that have specific activity data.
+
             const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
             
             /**
              * Handles the calculation in either direction (mass to activity, or activity to mass).
              * @param {'toActivity' | 'toMass'} direction - The direction of the conversion.
              */
+
             const handleCalculation = (direction) => {
                 if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
                 
@@ -2086,6 +2311,7 @@
                             </div>
 
                             {/* Mass to Activity Section */}
+
                             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                                 <label className="text-md font-semibold">Mass</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -2100,6 +2326,7 @@
                             </div>
                             
                             {/* Activity to Mass Section */}
+
                             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                                 <label className="text-md font-semibold">Activity</label>
                                 <div className="text-center mt-4">
@@ -2123,10 +2350,12 @@
          * @description A modal dialog that displays the user manual and FAQ content.
          * @param {{isOpen: boolean, onClose: () => void}} props - Controls the visibility of the modal.
          */
+
         const ManualModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
 
             // Internal component for the static content of the manual to keep JSX clean.
+
             const ManualContent = () => (
                 <div className="prose prose-slate dark:prose-invert max-w-none p-6">
                     <h1 className="text-3xl font-bold mb-4">Radionuclide Lookup Tool: Comprehensive User Manual & FAQ</h1>
@@ -2135,9 +2364,13 @@
             );
 
             return (
+
                 // The modal backdrop, which closes the modal when clicked.
+
                 <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+
                     {/* The modal panel itself. e.stopPropagation() prevents a click inside from closing it. */}
+
                     <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <h2 className="text-xl font-bold">User Manual & FAQ</h2>
@@ -2157,32 +2390,40 @@
          * @description The root component of the entire application.
          * It manages all primary state, handles routing between views, and orchestrates all user interactions.
          */
+
         const App = () => {
+
             // --- STATE MANAGEMENT ---
             // Core App State
+
             const [activeView, setActiveView] = React.useState('home');
             const [result, setResult] = React.useState(null); // The currently selected nuclide for display
             const [errorMessage, setErrorMessage] = React.useState('');
             
             // Search & Suggestions State
+
             const [nuclideName, setNuclideName] = React.useState('');
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
             
             // UI State
+
             const [isManualOpen, setIsManualOpen] = React.useState(false);
             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
             const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
             
             // Persistent State (localStorage)
+
             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
             
             // Derived/Generated State
+
             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
             
             // Filter State
+
             const [sortBy, setSortBy] = React.useState('name');
             const [sortOrder, setSortOrder] = React.useState('asc');
             const [selectedCategory, setSelectedCategory] = React.useState('All');
@@ -2193,11 +2434,13 @@
             const [minGammaEnergy, setMinGammaEnergy] = React.useState(''); const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
 
             // Refs for DOM elements
+
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
 
             // --- SIDE EFFECTS ---
             // Effect to apply the dark/light theme to the HTML element.
+
             React.useEffect(() => {
                 const root = window.document.documentElement;
                 root.classList.toggle('dark', theme === 'dark');
@@ -2205,6 +2448,7 @@
             }, [theme]);
 
             // Effect to handle clicks outside the suggestions box to close it.
+
             React.useEffect(() => {
                 const handleClickOutside = (e) => {
                     if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
@@ -2216,18 +2460,22 @@
             }, []);
 
             // Effect to generate a set of random suggestions on initial load.
+
             React.useEffect(() => {
                 const common = radionuclides.filter(n => n.commonality === 'Common');
                 setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
             }, []);
 
             // --- DATA DERIVATION & FILTERING ---
+
             // Memoized selectors to get unique categories for filter dropdowns.
+
             const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
             const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
             const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
 
             // A callback that returns the full list of nuclides after applying all active filters and sorting.
+
             const getFilteredAndSortedRadionuclides = React.useCallback(() => {
                 let filtered = [...radionuclides];
                 // Apply filters
@@ -2236,6 +2484,7 @@
                 if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
                 
                 // Helper for energy range filtering
+
                 const filterByEnergyRange = (nuclide, type, min, max) => {
                     const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
                     if (energy === 0 && (min || max)) return false; // Exclude if it has no energy of this type
@@ -2251,6 +2500,7 @@
                 if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
 
                 // Apply sorting
+
                 filtered.sort((a, b) => {
                     let compare = 0;
                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
@@ -2266,6 +2516,7 @@
             const filteredList = getFilteredAndSortedRadionuclides();
 
             // --- EVENT HANDLERS ---
+
             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
@@ -2286,7 +2537,9 @@
                 setErrorMessage('');
                 setActiveView('home');
                 setCurrentDecaySeriesId(null);
+
                 // Automatically choose the best unit for half-life display
+
                 setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
                 updateSearchHistory(nuclide);
             };
@@ -2343,6 +2596,7 @@
              * The main view router for the application. It selects which component to display
              * based on the `activeView` state.
              */
+
             const renderActiveView = () => {
                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy };
                 
@@ -2350,9 +2604,7 @@
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
-
-case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
-
+                    case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
                     case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
                     case 'specificActivity': return <SpecificActivityCalculator />;
                     case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} />;
@@ -2384,20 +2636,29 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
             );
         };
         
-/**
-         * @description A fully functional component for comparing multiple radionuclides side-by-side.
-         * @param {{radionuclides: Array<object>, onNuclideClick: (nuclide: object) => void}} props
-         */
+	/**
+ 	 * @description A view for comparing multiple radionuclides side-by-side in a table.
+ 	 * Users can add or remove nuclides from the comparison.
+ 	 * @param {{
+ 	 * radionuclides: Array<object>,
+ 	 * onNuclideClick: (nuclide: object) => void
+ 	 * }} props - Component props.
+ 	 * @param {Array<object>} props.radionuclides - The full list of available radionuclides for the selector.
+ 	 * @param {(nuclide: object) => void} props.onNuclideClick - Handler to navigate to the main detail view for a nuclide when its name is clicked in the table header.
+ 	 */
+
         const ComparisonView = ({ radionuclides, onNuclideClick }) => {
             const [comparisonList, setComparisonList] = React.useState([]);
 
             // Memoize the sorted list of nuclides for the dropdown menu
+
             const sortedNuclides = React.useMemo(() => 
                 [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
                 [radionuclides]
             );
 
             // Adds a selected nuclide to the comparison table
+
             const handleAddNuclide = (symbol) => {
                 if (symbol && !comparisonList.find(n => n.symbol === symbol)) {
                     const nuclideToAdd = radionuclides.find(n => n.symbol === symbol);
@@ -2408,11 +2669,13 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
             };
             
             // Removes a nuclide from the comparison table by its symbol
+
             const handleRemoveNuclide = (symbol) => {
                 setComparisonList(prevList => prevList.filter(n => n.symbol !== symbol));
             };
 
             // Defines the properties to display as rows in the table
+
             const propertiesToCompare = [
                 { label: 'Half-life', key: 'halfLife' },
                 { label: 'Emission Type(s)', key: 'emissionType', format: (val) => val?.join(', ') || 'N/A' },
@@ -2431,19 +2694,20 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Compare Radionuclides</h2>
                         
                         {/* --- Nuclide Selection Controls --- */}
+
                         <div className="flex items-center gap-2 mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
                             <select 
                                 id="nuclide-select"
                                 className="w-full p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600"
                                 onChange={(e) => handleAddNuclide(e.target.value)}
-                                value=""
-                            >
+                                value="">
                                 <option value="" disabled>Select a nuclide to add...</option>
                                 {sortedNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name} ({n.symbol})</option>)}
                             </select>
                         </div>
 
                         {/* --- Comparison Table --- */}
+
                         {comparisonList.length === 0 ? (
                             <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
                                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">The Comparison Table is Empty</h3>
@@ -2490,10 +2754,13 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
             );
         };
 
-/**
-         * @description A calculator for external dose rate from a gamma-emitting point source.
-         * @param {{radionuclides: Array<object>}} props
-         */
+         /**
+          * @description A calculator for determining the external dose rate from a gamma-emitting point source.
+          * It uses the gamma constant (Γ) and the inverse square law.
+          * @param {{radionuclides: Array<object>}} props - Component props.
+          * @param {Array<object>} props.radionuclides - The full list of radionuclides, used to populate the selector with only those that have a gammaConstant.
+          */
+
         const DoseRateCalculator = ({ radionuclides }) => {
             const [nuclideSymbol, setNuclideSymbol] = React.useState('');
             const [activity, setActivity] = React.useState('1');
@@ -2504,12 +2771,14 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
             const [error, setError] = React.useState('');
 
             // Filter for nuclides that have a gamma constant, as it's required for this calculation
+
             const gammaNuclides = React.useMemo(() => 
                 radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
                 [radionuclides]
             );
 
             // Define conversion factors for units
+
             const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
             const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
 
@@ -2522,6 +2791,7 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                 }
                 
                 // Parse the gamma constant value from the string (e.g., "1.32 R·m²/hr·Ci")
+
                 const gammaConstant = parseFloat(nuclide.gammaConstant);
                 const activityValue = parseFloat(activity);
                 const distanceValue = parseFloat(distance);
@@ -2535,13 +2805,16 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                 setError('');
 
                 // Convert all inputs to base units used in the gamma constant (Ci and m)
+
                 const activityInCi = activityValue * activityFactors[activityUnit];
                 const distanceInM = distanceValue * distanceFactors[distanceUnit];
 
                 // Dose Rate = (Gamma Constant * Activity) / distance^2
+
                 const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
 
                 // Convert result to more common units
+
                 setResult({
                     r_hr: doseRateR_hr.toPrecision(3),
                     mrem_hr: (doseRateR_hr * 1000).toPrecision(3), // 1 R ≈ 1 rem; 1 rem = 1000 mrem
@@ -2556,7 +2829,9 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For unshielded gamma point sources.</p>
 
                         <div className="space-y-4">
+
                             {/* Nuclide Selector */}
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                                 <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
@@ -2566,6 +2841,7 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                             </div>
                             
                             {/* Activity Input */}
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (A)</label>
                                 <div className="flex gap-2 mt-1">
@@ -2577,6 +2853,7 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
                             </div>
 
                             {/* Distance Input */}
+
                              <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance from Source (d)</label>
                                 <div className="flex gap-2 mt-1">
@@ -2605,10 +2882,12 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
             );
         };
 
-        /**
-         * @description A React component that renders a simple line chart for radioactive decay using Chart.js.
-         * @param {{chartData: object}} props - The data object for the chart.
-         */
+     /**
+      * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
+      * It can display the decay of a parent nuclide and the in-growth and decay of a single daughter nuclide.
+      * @param {{chartData: object}} props - The data object for the chart, including labels and datasets for parent and optional daughter.
+      */
+
         const DecayChart = ({ chartData }) => {
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null);
@@ -2665,6 +2944,7 @@ case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideCl
         };
 
         // Final step: Render the main App component into the DOM.
+
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
