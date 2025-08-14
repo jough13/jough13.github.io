@@ -2303,101 +2303,140 @@
             );
         };
 
+
+
+
         /**
          * @description A calculator to convert between the mass of a radionuclide and its total activity.
          * @param {{radionuclides: Array<object>}} props
          */
 
-        const MassActivityCalculator = ({ radionuclides }) => {
-            const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-            const [mass, setMass] = React.useState(''); const [massUnit, setMassUnit] = React.useState('g');
-            const [activity, setActivity] = React.useState(''); const [activityUnit, setActivityUnit] = React.useState('Ci');
-            const [error, setError] = React.useState('');
-            
-            const massUnits = { 'g': 1, 'mg': 1e-3, 'µg': 1e-6 };
-            const activityUnits = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
+const MassActivityCalculator = ({ radionuclides }) => {
+    const [selectedNuclide, setSelectedNuclide] = React.useState(null);
+    const [mass, setMass] = React.useState(''); const [massUnit, setMassUnit] = React.useState('g');
+    const [activity, setActivity] = React.useState(''); const [activityUnit, setActivityUnit] = React.useState('Ci');
+    const [error, setError] = React.useState('');
+    
+    const massUnits = { 'g': 1, 'mg': 1e-3, 'µg': 1e-6 };
+    const activityUnits = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
 
-            // Memoized list of nuclides that have specific activity data.
+    // Memoized list of nuclides that have specific activity data.
+    const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+    
+    // A stable handler function for selecting a nuclide.
+    const handleNuclideSelect = React.useCallback((symbol) => {
+        const nuclideToSet = nuclidesWithSA.find(n => n.symbol === symbol);
+        setSelectedNuclide(nuclideToSet);
+    }, [nuclidesWithSA]); // This dependency array ensures the function is stable.
 
-            const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-            
-            /**
-             * Handles the calculation in either direction (mass to activity, or activity to mass).
-             * @param {'toActivity' | 'toMass'} direction - The direction of the conversion.
-             */
+    /**
+     * Handles the calculation in either direction (mass to activity, or activity to mass).
+     * @param {'toActivity' | 'toMass'} direction - The direction of the conversion.
+     */
+    const handleCalculation = (direction) => {
+        if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
+        
+        const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
+        if (saBqPerG === 0) { setError('Specific activity data is missing or invalid for this nuclide.'); return; }
+        
+        if (direction === 'toActivity') {
+            const massValue = parseFloat(mass);
+            if(isNaN(massValue) || massValue < 0) { setError('Invalid mass value.'); return; }
+            const massInG = massValue * massUnits[massUnit];
+            const activityInBq = massInG * saBqPerG;
+            const finalActivity = activityInBq / activityUnits[activityUnit];
+            setActivity(finalActivity.toPrecision(4));
+        } else { // 'toMass'
+            const activityValue = parseFloat(activity);
+            if(isNaN(activityValue) || activityValue < 0) { setError('Invalid activity value.'); return; }
+            const activityInBq = activityValue * activityUnits[activityUnit];
+            const massInG = activityInBq / saBqPerG;
+            const finalMass = massInG / massUnits[massUnit];
+            setMass(finalMass.toPrecision(4));
+        }
+        setError('');
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Mass ↔ Activity Calculator</h2>
+                <div className="space-y-4">
+                    
 
-            const handleCalculation = (direction) => {
-                if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
-                
-                const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
-                if (saBqPerG === 0) { setError('Specific activity data is missing or invalid for this nuclide.'); return; }
-                
-                if (direction === 'toActivity') {
-                    const massValue = parseFloat(mass);
-                    if(isNaN(massValue) || massValue < 0) { setError('Invalid mass value.'); return; }
-                    const massInG = massValue * massUnits[massUnit];
-                    const activityInBq = massInG * saBqPerG;
-                    const finalActivity = activityInBq / activityUnits[activityUnit];
-                    setActivity(finalActivity.toPrecision(4));
-                } else { // 'toMass'
-                    const activityValue = parseFloat(activity);
-                    if(isNaN(activityValue) || activityValue < 0) { setError('Invalid activity value.'); return; }
-                    const activityInBq = activityValue * activityUnits[activityUnit];
-                    const massInG = activityInBq / saBqPerG;
-                    const finalMass = massInG / massUnits[massUnit];
-                    setMass(finalMass.toPrecision(4));
-                }
-                setError('');
-            };
-            
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Mass ↔ Activity Calculator</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                                <select onChange={(e) => setSelectedNuclide(nuclidesWithSA.find(r => r.symbol === e.target.value))} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                    <option>Select a nuclide...</option>
-                                    {nuclidesWithSA.map(r => <option key={r.symbol} value={r.symbol}>{r.name} ({r.symbol})</option>)}
-                                </select>
-                            </div>
 
-                            {/* Mass to Activity Section */}
+<div>
+    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+    <div className="mt-1 min-h-[42px]">
+        {selectedNuclide ? (
+            <div className="flex items-center justify-between p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 animate-fade-in">
+                <span className="font-bold">{selectedNuclide.name}</span>
+                <button 
+                    onClick={() => {
+                        setSelectedNuclide(null);
+                        // Also clear the results from the previous selection
+                        setMass('');
+                        setActivity('');
+                        setError('');
+                    }} 
+                    className="ml-2 p-1 rounded-full text-sky-600 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800"
+                    title="Change nuclide"
+                >
+                    <Icon path={ICONS.clear} className="w-4 h-4" />
+                </button>
+            </div>
+        ) : (
+            <SearchableSelect
+                options={nuclidesWithSA}
+                onSelect={handleNuclideSelect}
+                placeholder="Search for a nuclide..."
+            />
+        )}
+    </div>
+</div>
 
-                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <label className="text-md font-semibold">Mass</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                                    <input type="number" placeholder="Enter Mass" value={mass} onChange={e => setMass(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                    <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                        {Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                </div>
-                                <div className="text-center mt-4">
-                                    <button onClick={() => handleCalculation('toActivity')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↓ Calculate Activity ↓</button>
-                                </div>
-                            </div>
-                            
-                            {/* Activity to Mass Section */}
 
-                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <label className="text-md font-semibold">Activity</label>
-                                <div className="text-center mt-4">
-                                    <button onClick={() => handleCalculation('toMass')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↑ Calculate Mass ↑</button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                    <input type="number" placeholder="Enter Activity" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                    <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                        {Object.keys(activityUnits).map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+
+
+
+                    {/* Mass to Activity Section */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <label className="text-md font-semibold">Mass</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                            <input type="number" placeholder="Enter Mass" value={mass} onChange={e => setMass(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                        <div className="text-center mt-4">
+                            <button onClick={() => handleCalculation('toActivity')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↓ Calculate Activity ↓</button>
                         </div>
                     </div>
+                    
+                    {/* Activity to Mass Section */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <label className="text-md font-semibold">Activity</label>
+                        <div className="text-center mt-4">
+                            <button onClick={() => handleCalculation('toMass')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↑ Calculate Mass ↑</button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                            <input type="number" placeholder="Enter Activity" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {Object.keys(activityUnits).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
+
+
+
+
+
 
         /**
          * @description A modal dialog that displays the user manual and FAQ content.
@@ -2625,23 +2664,28 @@
                     const filtered = radionuclides
                         .filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
                         .sort((a, b) => {
-    // 1. Prioritize "starts with" matches
-    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
-    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
-    if (aStartsWith !== bStartsWith) {
-        return aStartsWith ? -1 : 1; // true comes first
-    }
+		
+		    // 1. Prioritize "starts with" matches
+		
+		    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
+		    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
+		    if (aStartsWith !== bStartsWith) {
+		        return aStartsWith ? -1 : 1; // true comes first
+		    }
 
-    // 2. Prioritize by commonality (descending)
-    const orderA = commonalityOrder[a.commonality] || 0;
-    const orderB = commonalityOrder[b.commonality] || 0;
-    if (orderB !== orderA) {
-        return orderB - orderA;
-    }
+		    // 2. Prioritize by commonality (descending)
 
-    // 3. Fallback to alphabetical
-    return a.name.localeCompare(b.name);
-})
+		    const orderA = commonalityOrder[a.commonality] || 0;
+		    const orderB = commonalityOrder[b.commonality] || 0;
+		    if (orderB !== orderA) {
+		        return orderB - orderA;
+		    }
+
+		    // 3. Fallback to alphabetical
+
+		    return a.name.localeCompare(b.name);
+		})
+
                         .slice(0, 10);
                     setSuggestions(filtered);
                 } else {
@@ -2728,8 +2772,6 @@
             );
         };
         
-
-
 	/**
 	 * @description A searchable dropdown component for selecting items from a large list.
 	 * @param {{
@@ -2758,28 +2800,28 @@
 	    return options
 	        .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
 
-.sort((a, b) => {
-    // 1. Prioritize "starts with" matches
-    const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
-    const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
-    if (aStartsWith !== bStartsWith) {
-        return aStartsWith ? -1 : 1; // true comes first
-    }
+		.sort((a, b) => {
 
-    // 2. Prioritize by commonality (descending)
-    const orderA = commonalityOrder[a.commonality] || 0;
-    const orderB = commonalityOrder[b.commonality] || 0;
-    if (orderB !== orderA) {
-        return orderB - orderA;
-    }
+		    // 1. Prioritize "starts with" matches
+
+		    const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
+		    const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
+		    if (aStartsWith !== bStartsWith) {
+		        return aStartsWith ? -1 : 1; // true comes first
+		    }
+
+		    // 2. Prioritize by commonality (descending)
+
+		    const orderA = commonalityOrder[a.commonality] || 0;
+		    const orderB = commonalityOrder[b.commonality] || 0;
+		    if (orderB !== orderA) {
+		        return orderB - orderA;
+		    }
     
-    // 3. Fallback to alphabetical
-    return a.name.localeCompare(b.name);
-})
+		    // 3. Fallback to alphabetical
 
-
-
-
+		    return a.name.localeCompare(b.name);
+		})
 
 	        .slice(0, 10); // Limit to top 10 results
 	}, [inputValue, options]);
