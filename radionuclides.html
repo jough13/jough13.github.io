@@ -1032,8 +1032,16 @@
             // Full detailed view.
 
             return (
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">{nuclide.name} ({nuclide.symbol})</h2>
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
+                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
+                            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:text-sky-500 hover:underline transition-colors">
+                            {nuclide.name}
+                            </a> 
+                           ({nuclide.symbol})
+                        </h2>
                     <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div>
                     
                     <div className="grid md:grid-cols-2 gap-6 mt-4">
@@ -2432,6 +2440,9 @@
             const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(''); const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState('');
             const [minBetaEnergy, setMinBetaEnergy] = React.useState(''); const [maxBetaEnergy, setMaxBetaEnergy] = React.useState('');
             const [minGammaEnergy, setMinGammaEnergy] = React.useState(''); const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
+            const [minHalfLife, setMinHalfLife] = React.useState('');
+            const [maxHalfLife, setMaxHalfLife] = React.useState('');
+            const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState('years');
 
             // Refs for DOM elements
 
@@ -2499,6 +2510,22 @@
                 if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
                 if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
 
+                // Apply half-life range filter
+
+                if (minHalfLife || maxHalfLife) {
+                    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+                    const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+                    const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+
+                        filtered = filtered.filter(n => {
+                    const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
+                if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false; // Exclude stable nuclides from range filters
+                    const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
+                    const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
+                return checkMin && checkMax;
+            });
+        }
+
                 // Apply sorting
 
                 filtered.sort((a, b) => {
@@ -2511,7 +2538,7 @@
                     return sortOrder === 'asc' ? compare : -compare;
                 });
                 return filtered;
-            }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy]);
+            }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
 
             const filteredList = getFilteredAndSortedRadionuclides();
 
@@ -2651,14 +2678,12 @@
             const [comparisonList, setComparisonList] = React.useState([]);
 
             // Memoize the sorted list of nuclides for the dropdown menu
-
-            const sortedNuclides = React.useMemo(() => 
+            const sortedNuclides = React.useMemo(() =>
                 [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
                 [radionuclides]
             );
 
             // Adds a selected nuclide to the comparison table
-
             const handleAddNuclide = (symbol) => {
                 if (symbol && !comparisonList.find(n => n.symbol === symbol)) {
                     const nuclideToAdd = radionuclides.find(n => n.symbol === symbol);
@@ -2669,13 +2694,11 @@
             };
             
             // Removes a nuclide from the comparison table by its symbol
-
             const handleRemoveNuclide = (symbol) => {
                 setComparisonList(prevList => prevList.filter(n => n.symbol !== symbol));
             };
 
             // Defines the properties to display as rows in the table
-
             const propertiesToCompare = [
                 { label: 'Half-life', key: 'halfLife' },
                 { label: 'Emission Type(s)', key: 'emissionType', format: (val) => val?.join(', ') || 'N/A' },
@@ -2694,9 +2717,8 @@
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Compare Radionuclides</h2>
                         
                         {/* --- Nuclide Selection Controls --- */}
-
                         <div className="flex items-center gap-2 mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                            <select 
+                            <select
                                 id="nuclide-select"
                                 className="w-full p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600"
                                 onChange={(e) => handleAddNuclide(e.target.value)}
@@ -2707,7 +2729,6 @@
                         </div>
 
                         {/* --- Comparison Table --- */}
-
                         {comparisonList.length === 0 ? (
                             <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
                                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">The Comparison Table is Empty</h3>
@@ -2725,7 +2746,13 @@
                                                         <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>
                                                             {nuclide.name}
                                                         </span>
-                                                        <button onClick={() => handleRemoveNuclide(nuclide.symbol)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                                                        <div className="flex items-center">
+                                                            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" title="View on Wikipedia" className="ml-2 text-slate-400 hover:text-sky-500">
+                                                                {/* Link Icon SVG */}
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                            </a>
+                                                            <button onClick={() => handleRemoveNuclide(nuclide.symbol)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
+                                                        </div>
                                                     </div>
                                                 </th>
                                             ))}
