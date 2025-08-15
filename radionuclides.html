@@ -958,11 +958,11 @@
         // These components represent the main content areas of the application.
         //==============================================================================
 
- /**
+/**
  * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
  * @param {object} props - Contains data and handlers for the home page.
  */
-const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides }) => {
+const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
     
     // Find the full nuclide objects for our favorite symbols
     const favoriteNuclides = React.useMemo(() => 
@@ -970,64 +970,90 @@ const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, hand
         [favorites, radionuclides]
     );
 
+    // Find the full nuclide objects for our search history symbols
+    const searchHistoryNuclides = React.useMemo(() => 
+        searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [searchHistory, radionuclides]
+    );
+
+    // If a search result exists, display the detailed card immediately.
+    if (result) {
+        return (
+            <div className="p-4">
+                <NuclideCard nuclide={result} />
+            </div>
+        );
+    }
+
     return (
-        <div className="p-4">
+        <div className="p-4 sm:p-6 space-y-6">
             {errorMessage && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-4" role="alert">
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                     <p className="font-bold">Error</p><p>{errorMessage}</p>
                 </div>
             )}
-            {result ? (
-                // This part is unchanged: if there's a search result, we don't show the home page content
-                <NuclideCard nuclide={result} />
-            ) : (
-                <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome to the Radionuclide Database</h3>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide, browse the database, or use the calculators.</p>
-                    
-                    <div className="mt-6">
-                        <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
-                        <div className="flex flex-wrap justify-center gap-2 mt-2">
-                            {randomSuggestions.map(n => (
-                                <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">{n.name}</button>
-                            ))}
-                        </div>
+
+            {/* --- Suggestions Card --- */}
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
+                <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
+                <div className="flex flex-wrap justify-center gap-3">
+                    {randomSuggestions.map(n => (
+                        <button 
+                            key={n.symbol} 
+                            onClick={() => handleNuclideSelection(n)} 
+                            className="px-4 py-2 bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-sm font-semibold rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
+                            {n.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* --- Favorites Card --- */}
+            {favoriteNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
+                        <button onClick={handleClearFavorites} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear Favorites
+                        </button>
                     </div>
-
-                    {/* --- THIS IS THE NEW FAVORITES SECTION --- */}
-                    {favoriteNuclides.length > 0 && (
-                        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
-                             <h4 className="font-semibold text-slate-600 dark:text-slate-300">Your Favorites:</h4>
-                             <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                {favoriteNuclides.map(n => (
-                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 text-sm rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-800 transition">{n.name}</button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {/* --- END OF NEW SECTION --- */}
-
-                    {searchHistory.length > 0 && (
-                        <div className="mt-6">
-                            <div className="flex justify-center items-center gap-4 mb-2">
-                                <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
-                                <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">Clear History</button>
-                            </div>
-                            <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                {searchHistory.map(n => (
-                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">{n.name}</button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <div className="flex flex-wrap justify-center gap-3">
+                        {favoriteNuclides.map(n => (
+                            <button 
+                                key={n.symbol} 
+                                onClick={() => handleNuclideSelection(n)} 
+                                className="px-4 py-2 bg-yellow-100 dark:bg-yellow-400/20 text-yellow-800 dark:text-yellow-200 text-sm font-semibold rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-400/30 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
+                                {n.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        
+            {/* --- Recent Searches Card --- */}
+            {searchHistoryNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
+                        <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear History
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        {searchHistoryNuclides.map(n => (
+                            <button 
+                                key={n.symbol} 
+                                onClick={() => handleNuclideSelection(n)} 
+                                className="px-4 py-2 bg-white dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-full hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
+                                {n.name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
     );
 };
-
-
-
 
 
 
@@ -2605,6 +2631,7 @@ const MassActivityCalculator = ({ radionuclides }) => {
         });
 
         // Function to add or remove a nuclide from favorites
+
         const toggleFavorite = (symbol) => {
             const newFavorites = favorites.includes(symbol)
                 ? favorites.filter(s => s !== symbol) // If it exists, remove it
@@ -2612,6 +2639,11 @@ const MassActivityCalculator = ({ radionuclides }) => {
 
             setFavorites(newFavorites);
             localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
+        };
+
+        const handleClearFavorites = () => {
+            setFavorites([]); // Clear the favorites from the component's state
+            localStorage.removeItem('favoriteNuclides'); // Remove them from browser storage
         };
             
             // Derived/Generated State
@@ -2736,14 +2768,15 @@ const MassActivityCalculator = ({ radionuclides }) => {
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
             
-            const updateSearchHistory = (nuclide) => {
-                setSearchHistory(prev => {
-                    const newHistory = [nuclide, ...prev.filter(item => item.symbol !== nuclide.symbol)];
-                    const limitedHistory = newHistory.slice(0, 5); // Keep only the last 5
-                    localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory));
-                    return limitedHistory;
-                });
-            }
+const updateSearchHistory = (nuclide) => {
+    setSearchHistory(prev => {
+        // Now we only store the symbol string
+        const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)];
+        const limitedHistory = newHistory.slice(0, 5);
+        localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory));
+        return limitedHistory;
+    });
+}
 
             const handleNuclideSelection = (nuclide) => {
                 setNuclideName(nuclide.name);
@@ -2851,12 +2884,12 @@ const MassActivityCalculator = ({ radionuclides }) => {
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
             
-case 'home':
-default:
-    if (result) {
-        return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} /></div>;
-    }
-    return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} />;
+	case 'home':
+	default:
+	    if (result) {
+	        return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} /></div>;
+	    }
+	    return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
 
 
 
