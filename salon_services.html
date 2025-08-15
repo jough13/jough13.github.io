@@ -85,15 +85,23 @@
             box-shadow: 1px 1px 3px rgba(0,0,0,0.2); cursor: pointer; display: flex;
             align-items: center; justify-content: center; box-sizing: border-box;
         }
-        .sticky-note::after { content: '🗒️'; font-size: 10px; }
         .modal-popup {
             display: none; position: fixed; z-index: 100; left: 50%; top: 50%;
             transform: translate(-50%, -50%); padding: 2rem; background: white;
             border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: left;
             width: 90%; max-width: 600px;
         }
+        #note-popup {
+            border-top: 10px solid transparent;
+            padding-top: 1.5rem;
+        }
         .modal-popup h2 { margin-top: 0; color: var(--accent-color); }
-        .modal-popup-content { white-space: pre-wrap; padding: 1rem; border-radius: 8px; min-width: 300px; max-width: 400px; }
+        #note-popup-content {
+            white-space: pre-wrap;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: var(--secondary-bg);
+        }
         .modal-popup .delete-note { display: inline-block; margin-top: 1rem; color: var(--danger-hover); cursor: pointer; text-decoration: underline; }
         .modal-popup .close-popup {
             position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; line-height: 1;
@@ -142,20 +150,20 @@
     
     <div id="note-popup" class="modal-popup">
         <button class="close-popup">&times;</button><h2>Sticky Note</h2>
-        <div id="note-popup-content" class="modal-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span>
+        <div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span>
     </div>
 
     <div id="manual-popup" class="modal-popup">
         <button class="close-popup">&times;</button>
         <div class="manual-content">
-            <h2>Posh Salon: User Manual ✂️</h2>
+            <h2>Posh Salon: User Manual</h2>
             <p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p>
             <h3>The Basics: Viewing the Matrix</h3>
             <ul>
                 <li><strong>Rows &amp; Columns</strong>: Each <strong>row</strong> is a <strong>stylist</strong>, and each <strong>column</strong> is a <strong>service</strong>.</li>
                 <li><strong>Checkboxes (✅)</strong>: A checked box means the stylist in that row performs the service in that column.</li>
                 <li><strong>Prices</strong>: The price shown is what that specific stylist charges for that service.</li>
-                <li><strong>Note Icons (🗒️)</strong>: A small note icon in the corner of a cell means there's a special note attached. Just click the icon to read it.</li>
+                <li><strong>Note Icons</strong>: A small colored square in the corner of a cell means there's a special note attached. Just click the square to read it.</li>
             </ul>
             <h3>Adding &amp; Removing</h3>
             <p>All the main controls are located in the button panel at the top of the page.</p>
@@ -174,7 +182,7 @@
             <h3>Using Sticky Notes</h3>
             <ul>
                 <li><strong>To Add a Note</strong>: (1) Click the <strong>Add Note</strong> button. (2) <strong>Click a color</strong> from the palette that appears. (3) Your cursor becomes a `➕`. <strong>Click on any square</strong> in the table. (4) Type your message and click OK.</li>
-                <li><strong>To View a Note</strong>: Click the note icon (🗒️) in the corner of any cell.</li>
+                <li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li>
                 <li><strong>To Close the Note Popup</strong>: Click the '✖' in the top-right corner of the popup window.</li>
                 <li><strong>To Delete a Note</strong>: Open the note, then click the "<strong>Delete this note</strong>" text link at the bottom.</li>
             </ul>
@@ -189,7 +197,7 @@
     
     <footer>
         <p>
-            Posh Salon Service Matrix v1.0 | Last Updated: August 14, 2025 | 
+            Posh Salon Service Matrix v1.3 | Last Updated: August 15, 2025 | 
             <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
         </p>
     </footer>
@@ -292,20 +300,32 @@
                 const target = event.target;
                 const cell = target.closest('td, th');
                 if (!cell) return;
-                const col = parseInt(cell.dataset.col);
-                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
 
-                if (isPlacingNote && selectedNoteColor) {
+                if (isPlacingNote) {
+                    if (!selectedNoteColor) {
+                        alert("Please select a color from the palette first!");
+                        return;
+                    }
                     const noteText = prompt("Enter your note:");
-                    if (noteText) {
+                    if (noteText || noteText === "") { // Allow empty notes
                         const newNote = { text: noteText, ...selectedNoteColor };
+                        const col = parseInt(cell.dataset.col);
+                        const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
+                        
                         if (row === -1) salonState.services[col - 1].note = newNote;
                         else if (col === 0) salonState.stylists[row].note = newNote;
                         else salonState.stylists[row].services[col - 1].note = newNote;
+                        
                         renderTableFromData();
                     }
                     togglePlacingNote(false);
-                } else if (target.matches('.remove-btn')) {
+                    return;
+                }
+
+                const col = parseInt(cell.dataset.col);
+                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
+
+                if (target.matches('.remove-btn')) {
                     if (target.dataset.type === 'stylist' && confirm('Remove this stylist?')) salonState.stylists.splice(row, 1);
                     else if (target.dataset.type === 'service' && confirm('Remove this service?')) {
                         salonState.services.splice(col - 1, 1);
@@ -371,9 +391,8 @@
                 else note = salonState.stylists[row].services[col - 1].note;
                 if (!note) return;
                 
+                notePopup.style.borderTopColor = (note.border !== 'none' && note.color === '#ffffff') ? '#333' : note.color;
                 notePopup.querySelector('#note-popup-content').textContent = note.text;
-                notePopup.querySelector('#note-popup-content').style.backgroundColor = note.color;
-                notePopup.querySelector('#note-popup-content').style.border = note.border || 'none';
                 notePopup.style.display = 'block';
                 
                 document.getElementById('delete-note-popup').onclick = () => {
