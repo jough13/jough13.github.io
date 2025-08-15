@@ -911,6 +911,8 @@
                 { id: 'database', label: 'Database', icon: ICONS.database }, 
                 { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
                 { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
+                { id: 'mda', label: 'MDA', icon: ICONS.search },
+		{ id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
                 { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
                 { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
                 { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
@@ -2892,6 +2894,8 @@ const updateSearchHistory = (nuclide) => {
                 switch (activeView) {
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
+                    case 'mda': return <MDACalculator />;
+	 	    case 'marssim': return <MARSSIM_SampleCalculator />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
                     case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;                    
                     case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
@@ -3859,6 +3863,295 @@ const EquilibriumCalculator = ({ radionuclides }) => {
                 </div>
             );
         };
+
+/**
+ * @description A calculator for determining Critical Level (Lc), Detection Limit (Ld), and 
+ * Minimum Detectable Activity (MDA) for a static sample.
+ */
+const MDACalculator = () => {
+    // --- STATE MANAGEMENT FOR INPUTS ---
+    const [backgroundRate, setBackgroundRate] = React.useState('60');
+    const [backgroundRateUnit, setBackgroundRateUnit] = React.useState('cpm');
+    const [countTime, setCountTime] = React.useState('1');
+    const [countTimeUnit, setCountTimeUnit] = React.useState('minutes');
+    const [efficiency, setEfficiency] = React.useState('25');
+    
+    // --- STATE MANAGEMENT FOR OUTPUTS ---
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const handleCalculate = () => {
+        // 1. --- Input Validation ---
+        const Rb_val = parseFloat(backgroundRate);
+        const t_val = parseFloat(countTime);
+        const eff_val = parseFloat(efficiency);
+
+        if (isNaN(Rb_val) || isNaN(t_val) || isNaN(eff_val) || Rb_val < 0 || t_val <= 0 || eff_val <= 0 || eff_val > 100) {
+            setError('Please enter valid, positive numbers for all fields. Efficiency must be between 0 and 100.');
+            setResult(null);
+            return;
+        }
+        setError('');
+
+        // 2. --- Unit Conversion to Base Units (cps and seconds) ---
+        const t_seconds = t_val * (countTimeUnit === 'minutes' ? 60 : 1);
+        const Rb_cps = Rb_val / (backgroundRateUnit === 'cpm' ? 60 : 1);
+        const eff_decimal = eff_val / 100;
+
+        // 3. --- Perform Calculations ---
+        const B_total_counts = Rb_cps * t_seconds;
+        
+        // Critical Level (Lc) in counts
+        const Lc = 1.645 * Math.sqrt(B_total_counts);
+        
+        // Detection Limit (Ld) in counts (Currie approximation)
+        const Ld = 2.71 + 4.65 * Math.sqrt(B_total_counts);
+        
+        // Minimum Detectable Activity (MDA) in Becquerels (Bq)
+        const mda_bq = Ld / (eff_decimal * t_seconds);
+
+        // Convert MDA to other common units
+        const mda_dpm = mda_bq * 60; // 1 Bq = 1 dps = 60 dpm
+        const mda_uCi = mda_bq / 37000; // 1 µCi = 37,000 Bq
+
+        setResult({
+            Lc: Lc.toPrecision(3),
+            Ld: Ld.toPrecision(3),
+            mda_bq: mda_bq.toPrecision(3),
+            mda_dpm: mda_dpm.toPrecision(3),
+            mda_uCi: mda_uCi.toExponential(2)
+        });
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">MDA & Critical Level Calculator</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For static sample counting.</p>
+                
+                <div className="space-y-4">
+                    {/* --- Input Fields --- */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Background Count Rate (R&darr;b)</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={backgroundRate} onChange={e => setBackgroundRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                            <select value={backgroundRateUnit} onChange={e => setBackgroundRateUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                <option value="cpm">CPM</option>
+                                <option value="cps">CPS</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (t)</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                            <select value={countTimeUnit} onChange={e => setCountTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                <option value="minutes">Minutes</option>
+                                <option value="seconds">Seconds</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Detector Efficiency (&epsilon;)</label>
+                        <div className="relative mt-1">
+                             <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">%</div>
+                        </div>
+                    </div>
+                    
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                            <div>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Critical Level (L&darr;c)</p>
+                                <p className="text-lg font-bold">{result.Lc} counts</p>
+                            </div>
+                            <div>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Detection Limit (L&darr;d)</p>
+                                <p className="text-lg font-bold">{result.Ld} counts</p>
+                            </div>
+                            <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Minimum Detectable Activity (MDA)</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mda_bq} Bq</p>
+                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.mda_dpm} dpm / {result.mda_uCi} µCi</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * @description A calculator to determine the required number of statistical samples for a
+ * survey unit based on the more precise MARSSIM Equation 5-2.
+ */
+const MARSSIM_SampleCalculator = () => {
+    // --- STATE MANAGEMENT ---
+    const [alpha, setAlpha] = React.useState('0.05'); // Type I Error Rate (False Positive)
+    const [beta, setBeta] = React.useState('0.05');  // Type II Error Rate (False Negative)
+    const [sigma, setSigma] = React.useState('15');  // Estimated Standard Deviation
+    const [dcgl, setDcgl] = React.useState('100');   // Derived Concentration Guideline Level
+    const [lbgr, setLbgr] = React.useState('50');    // Lower Bound of the Gray Region
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    // Z-scores for common one-sided confidence levels (from MARSSIM Table 5.2 notes)
+    const zScores = {
+        '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
+        '0.10': 1.282, '0.20': 0.841,
+    };
+
+    // Data from MARSSIM Table 5.2: Pr vs. Relative Shift
+    const prValues = {
+        0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
+        0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
+        1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
+        1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
+        2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
+        4: 0.997658
+    };
+
+    const handleCalculate = () => {
+        // --- Input Parsing and Validation ---
+        const sigma_val = parseFloat(sigma);
+        const dcgl_val = parseFloat(dcgl);
+        const lbgr_val = parseFloat(lbgr);
+        
+        if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
+            setError('Please enter valid, positive numbers for all fields.');
+            setResult(null); return;
+        }
+        if (dcgl_val <= lbgr_val) {
+            setError('DCGL must be greater than the LBGR.');
+            setResult(null); return;
+        }
+        setError('');
+
+        // --- Perform Calculations ---
+        const z1_alpha = zScores[alpha];
+        const z1_beta = zScores[beta];
+        const delta = dcgl_val - lbgr_val;
+        const relativeShift = delta / sigma_val;
+
+        // --- Linear Interpolation for Pr ---
+        const shiftKeys = Object.keys(prValues).map(parseFloat);
+        let Pr;
+        if (relativeShift >= 4) {
+            Pr = 1; // Per MARSSIM guidance for large relative shifts
+        } else {
+            const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
+            const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
+            
+            if (isFinite(lowerKey) && isFinite(upperKey)) {
+                const lowerP = prValues[lowerKey];
+                const upperP = prValues[upperKey];
+                const slope = (upperP - lowerP) / (upperKey - lowerKey);
+                Pr = lowerP + slope * (relativeShift - lowerKey);
+            } else {
+                 setError(`Relative shift (${relativeShift.toFixed(2)}) is outside the table's range.`);
+                 setResult(null); return;
+            }
+        }
+        
+        // --- MARSSIM Equation 5-2 ---
+        const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
+        const N_base = Math.ceil(N_base_raw); 
+
+        const N_with_overage = N_base * 1.2;
+        const final_N = Math.ceil(N_with_overage);
+        
+        const samplesPerGroup = Math.ceil(final_N / 2);
+
+        setResult({
+            totalShift: delta,
+            relativeShift: relativeShift.toFixed(2),
+            Pr: Pr.toFixed(5),
+            zAlpha: z1_alpha,
+            zBeta: z1_beta,
+            N_base: N_base,
+            samplesPerGroup: samplesPerGroup,
+            final_N: final_N
+        });
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">MARSSIM Number of Samples Calculator</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Using the WRS Test and Table 5.2 Interpolation.</p>
+                
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Type I Error (&alpha;)</label>
+                            <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Type II Error (&beta;)</label>
+                            <select value={beta} onChange={e => setBeta(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                               {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                         <div>
+                            <label className="block text-sm font-medium">Estimated Standard Deviation (&sigma;)</label>
+                            <input type="number" value={sigma} onChange={e => setSigma(e.target.value)} placeholder="in units of DCGL" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">DCGL</label>
+                            <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} placeholder="Cleanup limit" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium">Lower Bound of Gray Region (LBGR)</label>
+                            <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                        </div>
+                    </div>
+                    
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Number of Samples</button>
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                             <div className="grid grid-cols-2 gap-2 text-sm">
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">Total Shift (&Delta;):</p><p className="font-mono">{result.totalShift}</p>
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">Relative Shift (&Delta;/&sigma;):</p><p className="font-mono">{result.relativeShift}</p>
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">Probability (P&darr;r):</p><p className="font-mono">{result.Pr}</p>
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">Z&darr;1-&alpha;:</p><p className="font-mono">{result.zAlpha}</p>
+                                <p className="font-semibold text-slate-500 dark:text-slate-400">Z&darr;1-&beta;:</p><p className="font-mono">{result.zBeta}</p>
+                             </div>
+                             <div>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Samples per Group (N/2)</p>
+                                <p className="text-lg font-bold">{result.samplesPerGroup}</p>
+                            </div>
+                            <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Recommended Samples</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final_N}</p>
+                                <p className="text-xs font-medium text-slate-600 dark:text-slate-300">({result.N_base} base samples + 20% overage)</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+
+
 
      /**
       * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
