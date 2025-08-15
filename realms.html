@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -292,6 +293,21 @@
             font-family: 'VT323', monospace;
             width: 70%;
         }
+        /* DEV TOGGLE STYLES - NEW */
+        #dev-controls {
+            border: 1px dashed #ffd700;
+            background-color: #222;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-radius: 4px;
+        }
+        #dev-controls label {
+            color: #ffd700;
+        }
+        #dev-speed-slider {
+            vertical-align: middle;
+            width: 200px;
+        }
     </style>
 </head>
 <body>
@@ -337,10 +353,16 @@
             <button id="transcend-button" style="display:none;">Transcend & Begin Anew</button> 
         </div>
 
-        <div id="controls-area" class="controls-area">
+        <div id="controls-area" class="controls-area text-center">
             <button id="pause-resume-button">Pause</button>
             <button id="upgrade-speed-button" disabled>Upgrade Speed (Cost: 50<span class="resource-icon">.</span>)</button>
             <button id="mute-button">Mute Sounds</button> 
+        </div>
+
+        <div id="dev-controls" style="display:none;">
+             <label for="dev-speed-slider">Developer Speed Multiplier:</label>
+             <input type="range" id="dev-speed-slider" min="1" max="50" value="1" step="1">
+             <span id="dev-speed-display">1</span>x
         </div>
     </div>
 
@@ -426,6 +448,8 @@
 
         // --- Sound Synthesizers (Tone.js) --- 
         let soundSynth, noiseSynth, metalSynth; 
+        let devSpeedMultiplier = 1; // NEW: For developer speed controls
+
         function initializeSounds() {
             if (typeof Tone !== 'undefined') {
                 if (Tone.context.state !== 'running') {
@@ -528,8 +552,6 @@
                 // console.error(`Error playing sound (${type}):`, e); 
             }
         }
-
-
         // --- Game State ---
         let gameState = {
             playerName: "Wanderer", 
@@ -558,6 +580,35 @@
         };
 
         // --- Lore & Content Definitions ---
+
+        // NEW: Defined the enemies to make combat functional
+        const ENEMY_TYPES = {
+            ASH_GNAWER: {
+                name: "Ash Gnawer",
+                description: "A small, four-legged creature made of cinders and spite.",
+                hp: 8, attack: 3, defense: 1, xp: 10,
+                loot: () => seededRandomInt(2, 5)
+            },
+            VOID_TENDRIL: {
+                name: "Void Tendril",
+                description: "A lashing ribbon of pure darkness, dripping with anti-reality.",
+                hp: 12, attack: 5, defense: 2, xp: 20,
+                loot: () => {
+                    if (seededRandom() < 0.2) gameState.resources.voidEssence++;
+                    return seededRandomInt(5, 10);
+                }
+            },
+            RUSTED_CONSTRUCT: {
+                name: "Rusted Construct",
+                description: "A Lumina guardian, its directives corrupted by centuries of decay.",
+                hp: 20, attack: 4, defense: 4, xp: 25,
+                loot: () => {
+                    if (seededRandom() < 0.5) gameState.resources.ancientScraps++;
+                    return seededRandomInt(8, 15);
+                }
+            }
+        };
+
         const ZONE_LORE = { 
             "ASHEN_WOODS_INTRO": "The Ashen Woods. Charred skeletons of trees claw at a sky perpetually choked with soot. The taste of ancient grief lingers in the air.",
             "ASHEN_SHRINE_1": "This soot-stained shrine feels strangely warm. Carvings depict a colossal, blazing tree – 'The First Spark' – its branches birthing stars, its roots anchoring reality. Then, a scene of it consumed by an even greater fire – 'The Great Ember.'",
@@ -589,7 +640,11 @@
             "RUNIC_ETCHINGS_SUCCESS": "Your keen intellect deciphers the ancient etchings! They speak of [a short, unique seeded lore snippet about the zone's deeper history or a nearby secret - TBD].",
             "RUNIC_ETCHINGS_FAIL": "The runic markings are complex and weathered, their meaning lost to you.",
             "WHISPERING_TOTEM_SUCCESS": "Your spirit attunes to the totem's whispers. You feel a fleeting surge of insight and hear: 'The echoes remember...'",
-            "WHISPERING_TOTEM_FAIL": "A faint murmur emanates from the totem, but its words are indistinct, like wind through dead leaves."
+            "WHISPERING_TOTEM_FAIL": "A faint murmur emanates from the totem, but its words are indistinct, like wind through dead leaves.",
+            "SWORD_STONE_SUCCESS": "With a great heave, you wrench the ancient blade from the stone! It hums with a thirsty power.",
+            "SWORD_STONE_FAIL": "You pull with all your might, but the blade remains locked in the stone. You feel drained from the effort.",
+            "DYING_CREATURE_SUCCESS": "You offer a small bit of glimmering dust. The creature licks your hand gratefully before its light fades, leaving behind a warm, smooth stone.",
+            "DYING_CREATURE_FAIL": "You lack the resources or the will to help. You move on as the creature's breathing grows shallow."
         };
         const NARRATIVE_SNIPPETS = [ 
             "A cold draft chills you to the bone, carrying the scent of ozone and despair.",
@@ -647,7 +702,7 @@
             { key: "WL_HOPE_COMPANION", text: "The bond with a loyal companion... perhaps this, too, is a fragment of the First Song, a note of harmony in a discordant world." },
             { key: "WL_HOPE_MEMORY", text: "Even in ruin, memory endures. Each fragment of lore, each Rune, is a seed of what was, and what could be again." },
             { key: "WL_HOPE_SKY_TEMPLES_LEGACY", text: "The Sky-Temples, even in ruin, hold echoes of Lumina wisdom. Perhaps a way to mend the Weave, or at least understand its breaking, lies hidden within their aeries." },
-            { key: "WL_HOPE_FINAL_SANCTUARY", text: "The 'Final Sanctuary' spoken of in visions... if it exists, it would require more than just Runes to find. It would need a heart attuned to the remnants of the First Song." },
+            { key: "WL_HOPE_FINAL_SANCTuary", text: "The 'Final Sanctuary' spoken of in visions... if it exists, it would require more than just Runes to find. It would need a heart attuned to the remnants of the First Song." },
             { key: "WL_HOPE_REBIRTH_CYCLE", text: "Some ancient texts hint that The Fall was not an end, but a violent transformation, part of a cosmic cycle of creation and unmaking. Could this rust and ruin be the prelude to a new dawn?" },
             { key: "WL_VOID_ECHOES", text: "The silence of the Starfall Crater is a lie. Listen closely, and you hear it: the faint, chilling laughter of something ancient and utterly alien, from beyond the veil of stars." },
             { key: "WL_GUARDIANS_LEGEND", text: "The Lumina, before their fall, were said to have created 'Echo-Guardians,' sentient constructs bound to protect the sacred sites and the deepest secrets of the First Song." }
@@ -806,7 +861,9 @@
             { key: "ART_STAR_METAL_INGOT", name: "Star-Metal Ingot", description: "Impossibly dense and cool to the touch, this ingot seems to have fallen from the heavens. It resonates with a strange, silent power." },
             { key: "ART_LUMINA_MOURNING_VEIL", name: "Lumina Mourning Veil", description: "A delicate, almost translucent fabric, embroidered with patterns of weeping stars. It carries an almost unbearable weight of sorrow." },
             { key: "ART_SEED_OF_THE_FIRST_TREE", name: "Seed of the First Tree", description: "A perfectly smooth, obsidian-black seed, warm to the touch. It feels ancient, potent, and full of a quiet, resilient life." },
-            { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." }
+            { key: "ART_VOID_SHACKLE_FRAGMENT", name: "Void-Shackle Fragment", description: "A piece of blackened, twisted metal that feels unnaturally cold. It emanates a sense of profound wrongness, a remnant of something designed to bind or corrupt." },
+            { key: "ART_ANCIENT_BLADE", name: "Ancient Blade", description: "A weapon humming with a thirsty energy. It promises power, at a cost to your vitality. (+2 MGT, -5 Max HP)" },
+            { key: "ART_HEARTSTONE", name: "Heartstone", description: "A smooth, warm stone left behind by a grateful creature. It feels... peaceful. (Spirit +1)" }
         ];
         const DECISIONS = {
             "END_OF_ASHEN_WOODS": {
@@ -848,20 +905,20 @@
                 foregroundElements: { 
                     10: [ { lane: 2, char: 'T' } ], 15: [ { lane: 0, char: '~' },{ lane: 1, char: '~' } ],
                     20: [ { lane: 1, char: '+' }, { lane: 0, char: '~' } ], 25: [ { lane: 3, char: 'c' } ], 
-                    30: [ { lane: 2, char: 'w' }, { lane: 4, char: 'M'} ], 35: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
+                    30: [ { lane: 2, char: 'B' }, { lane: 4, char: 'M'} ], 35: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
                     40: [ { lane: 2, char: '§' }, { lane: 4, char: 'M'} ], 
                     45: [ { lane: 4, char: 'T' } ], 50: [ { lane: 1, char: 'A' } ], 55: [ { lane: 2, char: 'F'} ],
                     60: [ { lane: 3, char: 'P' } ], 
-                    65: [ { lane: 4, char: '~' } ], 70: [ { lane: 2, char: 'm' },{ lane: 4, char: '~' }, { lane: 0, char: 'F' } ], 
+                    65: [ { lane: 4, char: '!' } ], 70: [ { lane: 2, char: 'E', enemyKey: "ASH_GNAWER" },{ lane: 4, char: '~' }, { lane: 0, char: 'F' } ], 
                     75: [ { lane: 4, char: 'L' } ], 80: [ { lane: 0, char: 'T' } ], 
                     85: [ { lane: 0, char: '~' },{ lane: 1, char: '=' },{ lane: 2, char: '~' } ], 
-                    90: [ { lane: 2, char: '#' } ], 95: [ { lane: 3, char: '+' } ], 100: [ { lane: 1, char: 'Y' }, { lane: 4, char: 'F'} ], 
+                    90: [ { lane: 2, char: '#' } ], 95: [ { lane: 3, char: '+' } ], 100: [ { lane: 1, char: 'd' }, { lane: 4, char: 'F'} ], 
                     105: [ { lane: 0, char: '0'} ], 
                     110: [ { lane: 2, char: 'H' } ], 120: [ { lane: 0, char: 'L' }, { lane: 4, char: 'M'} ], 
                     125: [ { lane: 4, char: 'M'} ], 130: [ { lane: 4, char: 'A' } ], 
                     140: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 145: [ { lane: 3, char: 'T' } ], 150: [ { lane: 1, char: '.' }, { lane: 0, char: 'F'} ], 
-                    160: [ { lane: 0, char: 'L' }, {lane: 4, char: '.'} ], 170: [ { lane: 2, char: 'm' } ], 175: [ { lane: 1, char: '+' } ], 
-                    180: [ { lane: 3, char: 'T' } ], 190: [ { lane: 4, char: 'P' } ], 195: [ { lane: 2, char: 'Y' } ], 
+                    160: [ { lane: 0, char: 'L' }, {lane: 4, char: '?' } ], 170: [ { lane: 2, char: 'E', enemyKey: "ASH_GNAWER" } ], 175: [ { lane: 1, char: '+' } ], 
+                    180: [ { lane: 3, char: 'T' } ], 190: [ { lane: 4, char: 'P' } ], 195: [ { lane: 2, char: '¥' } ], 
                     200: [ { lane: 0, char: 'A' } ], 205: [ { lane: 1, char: '0'} ],
                     210: [ { lane: 3, char: 'c' } ], 220: [ { lane: 1, char: 'N', npcType: "LOST_SOUL" } ],
                     230: [ { lane: 4, char: 'L'} ]
@@ -874,14 +931,14 @@
                     15: [ { lane: 2, char: '♦' } ], 25: [ { lane: 0, char: '+' } ], 30: [ { lane: 4, char: '◊' } ], 
                     35: [ { lane: 0, char: 'M' }, { lane: 1, char: 'M' } ], 
                     40: [ { lane: 1, char: 'L' }, { lane: 0, char: 'M' } ], 50: [ { lane: 3, char: 'A' } ], 60: [ { lane: 2, char: '#' } ], 
-                    70: [ { lane: 0, char: 'f' } ], 80: [ { lane: 4, char: 'N', npcType: "HERMIT_RUNESMITH" } ], 90: [ { lane: 2, char: 'Φ' } ],
+                    70: [ { lane: 0, char: 'E', enemyKey: "ASH_GNAWER" } ], 80: [ { lane: 4, char: 'N', npcType: "HERMIT_RUNESMITH" } ], 90: [ { lane: 2, char: 'Φ' } ],
                     100: [ { lane: 3, char: 'L' } ], 110: [ { lane: 1, char: '+' } ], 115: [ { lane: 4, char: '0'} ],
                     120: [ { lane: 2, char: '.' } ], 
                     130: [ { lane: 0, char: '✧' } ], 140: [ { lane: 4, char: 'A' } ], 150: [ { lane: 2, char: 'P' } ], 
                     160: [ { lane: 1, char: 'L' } ], 170: [ { lane: 3, char: '#' } ], 180: [ { lane: 0, char: '◊' } ], 
-                    190: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 200: [ { lane: 4, char: '✧' } ], 210: [ { lane: 1, char: 'f' } ], 
+                    190: [ { lane: 2, char: 'N', npcType: "LOST_SOUL" } ], 200: [ { lane: 4, char: '✧' } ], 210: [ { lane: 1, char: 'E', enemyKey: "RUSTED_CONSTRUCT" } ], 
                     220: [ { lane: 2, char: 'Δ' } ], 230: [ { lane: 3, char: 'H' } ], 240: [ { lane: 0, char: 'A' } ], 
-                    250: [ { lane: 4, char: 'L' } ], 260: [ { lane: 2, char: 'f' } ], 270: [ { lane: 1, char: 'L' } ],
+                    250: [ { lane: 4, char: 'L' } ], 260: [ { lane: 2, char: 'B' } ], 270: [ { lane: 1, char: 'L' } ],
                     280: [ { lane: 3, char: 'P' } ]
                 },
                 color: "#ff007f", bgColor: "#3b003b", entryLoreKey: "CRIMSON_DEPTHS_INTRO", shrineLoreKey: "CRIMSON_SHRINE_1"
@@ -909,18 +966,18 @@
                 name: "The Starfall Crater", width: 370, backgroundChar: "'", midgroundChar: "%", 
                 foregroundElements: { 
                     10: [ { lane: 2, char: 'X' } ], 15: [ { lane: 0, char: 'M'}, { lane: 4, char: 'M'} ],
-                    20: [ { lane: 0, char: 'E' }, { lane: 4, char: 'M'} ], 25: [ { lane: 2, char: '0'} ],
+                    20: [ { lane: 0, char: 'E', enemyKey: "VOID_TENDRIL" }, { lane: 4, char: 'M'} ], 25: [ { lane: 2, char: '0'} ],
                     30: [ { lane: 4, char: 'V' } ], 
                     40: [ { lane: 1, char: 'A' } ], 50: [ { lane: 3, char: '+' } ], 60: [ { lane: 2, char: '.' } ], 
-                    70: [ { lane: 0, char: 'E' } ], 80: [ { lane: 4, char: '#' } ], 90: [ { lane: 1, char: 'V' } ],
+                    70: [ { lane: 0, char: 'E', enemyKey: "VOID_TENDRIL" } ], 80: [ { lane: 4, char: '#' } ], 90: [ { lane: 1, char: 'V' } ],
                     100: [ { lane: 3, char: 'N', npcType: "ECHO_LUMINA" } ], 110: [ { lane: 2, char: 'X' } ], 120: [ { lane: 0, char: 'P' } ], 
-                    130: [ { lane: 4, char: 'E' } ], 140: [ { lane: 1, char: 'A' } ], 150: [ { lane: 2, char: 'L' } ], 
+                    130: [ { lane: 4, char: 'E', enemyKey: "VOID_TENDRIL" } ], 140: [ { lane: 1, char: 'A' } ], 150: [ { lane: 2, char: 'L' } ], 
                     160: [ { lane: 3, char: 'X' } ], 170: [ { lane: 2, char: 'H' } ], 180: [ { lane: 0, char: '+' } ], 
-                    190: [ { lane: 4, char: 'E' } ], 200: [ { lane: 1, char: 'V' } ], 210: [ { lane: 3, char: 'L' } ], 
-                    220: [ { lane: 2, char: 'A' } ], 230: [ { lane: 0, char: '#' } ], 240: [ { lane: 4, char: 'E' } ], 
+                    190: [ { lane: 4, char: 'E', enemyKey: "VOID_TENDRIL" } ], 200: [ { lane: 1, char: 'V' } ], 210: [ { lane: 3, char: 'L' } ], 
+                    220: [ { lane: 2, char: 'A' } ], 230: [ { lane: 0, char: '#' } ], 240: [ { lane: 4, char: 'E', enemyKey: "VOID_TENDRIL" } ], 
                     250: [ { lane: 1, char: 'N', npcType: "ECHO_LUMINA" } ], 260: [ { lane: 2, char: 'L' } ], 270: [ { lane: 3, char: 'X' } ], 
                     280: [ { lane: 0, char: '+' } ], 290: [ { lane: 4, char: 'A' } ], 300: [ { lane: 1, char: 'V' } ], 
-                    310: [ { lane: 2, char: 'L' } ], 320: [ { lane: 3, char: 'X' } ], 330: [ { lane: 0, char: 'E' } ], 
+                    310: [ { lane: 2, char: 'L' } ], 320: [ { lane: 3, char: 'X' } ], 330: [ { lane: 0, char: 'E', enemyKey: "VOID_TENDRIL" } ], 
                     340: [ { lane: 4, char: 'V' } ], 350: [ { lane: 1, char: 'P' } ], 360: [ { lane: 2, char: 'L' } ]
                 },
                 color: "#9370db", bgColor: "#100020", entryLoreKey: "STARFALL_CRATER_INTRO", shrineLoreKey: "STARFALL_SHRINE_1"
@@ -994,7 +1051,7 @@
         const statWitsDisplay = document.getElementById('stat-wits');   
         const statSpiritDisplay = document.getElementById('stat-spirit'); 
         const playerLevelDisplay = document.getElementById('player-level'); 
-        const playerXpDisplay = document.getElementById('player-xp');       
+        const playerXpDisplay = document.getElementById('player-xp');      
         const xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
         const playerHpDisplay = document.getElementById('player-hp'); 
         const playerMaxHpDisplay = document.getElementById('player-max-hp'); 
@@ -1019,12 +1076,20 @@
         // --- Game Logic Functions ---
         function getCurrentZone() { return ZONES[gameState.currentZoneIndex]; }
         
+        function getEffectiveStats() {
+            const effectiveStats = { ...gameState.stats };
+            if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
+                effectiveStats.might += 2;
+            }
+            return effectiveStats;
+        }
+
         function calculateMaxHp() {
             let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
             if (gameState.playerClass === "Stalwart") hp += 5;
             // Apply penalty for Ancient Blade if equipped
             if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
-                hp -= 2;
+                hp -= 5;
             }
             return Math.max(1, hp); // Ensure HP doesn't drop below 1
         }
@@ -1128,6 +1193,7 @@
         }
         function renderStats() { 
             const zone = getCurrentZone();
+            
             if (!zone && gameState.currentZoneIndex !== -1) return; 
             if (gameState.currentZoneIndex === -1) { 
                 statsZoneName.textContent = "Journey Ended";
@@ -1137,6 +1203,8 @@
                 const exploredPercentage = Math.min(100, Math.floor((gameState.playerZoneX / zone.width) * 100));
                 statsExploredPercentage.textContent = exploredPercentage;
             }
+
+            const effectiveStats = getEffectiveStats();
 
             playerNameDisplay.textContent = gameState.playerName; 
             playerHpDisplay.textContent = gameState.currentHp;
@@ -1162,9 +1230,16 @@
             }
             artifactsCollectedDisplay.textContent = `${gameState.collectedArtifacts.length}/${ARTIFACTS.length}`;
 
-            statMightDisplay.textContent = gameState.stats.might;
-            statWitsDisplay.textContent = gameState.stats.wits;
-            statSpiritDisplay.textContent = gameState.stats.spirit;
+            statMightDisplay.textContent = `${effectiveStats.might}`;
+            if (effectiveStats.might !== gameState.stats.might) {
+                statMightDisplay.textContent += ` (${gameState.stats.might}+${effectiveStats.might - gameState.stats.might})`;
+                statMightDisplay.style.color = '#90ee90'; // Light green for buffed stat
+            } else {
+                statMightDisplay.style.color = ''; // Reset color
+            }
+
+            statWitsDisplay.textContent = effectiveStats.wits;
+            statSpiritDisplay.textContent = effectiveStats.spirit;
             playerLevelDisplay.textContent = gameState.level;
             playerXpDisplay.textContent = gameState.xp;
             xpToNextLevelDisplay.textContent = gameState.xpToNextLevel;
@@ -1250,22 +1325,22 @@
                         if (element.lane >= 0 && element.lane < NUM_LANES) {
                             if (!(element.lane === gameState.playerLane && screenX === PLAYER_VISUAL_POSITION)) {
                                 let displayChar = element.char;
-                                if (element.char === '~') displayChar = `<span style="${WATER_COLOR_STYLE}">~</span>`;
-                                else if (element.char === '=') displayChar = `<span style="${BRIDGE_COLOR_STYLE}">=</span>`;
-                                else if (element.char === 'M') displayChar = `<span style="${MOUNTAIN_COLOR_STYLE}">M</span>`;
-                                else if (element.char === 'F') displayChar = `<span style="${FOREST_COLOR_STYLE}">F</span>`;
-                                else if (element.char === '0') displayChar = `<span style="${DARK_FEATURE_COLOR_STYLE}">0</span>`;
-                                else if (element.char === 'C') displayChar = `<span style="${CLOUD_COLOR_STYLE}">C</span>`;
-                                else if (element.char === 'R') displayChar = `<span style="${RUIN_COLOR_STYLE}">R</span>`;
-                                else if (element.char === 'w' && zone.name === "The Sky-Temple Aerie") displayChar = `<span style="${WINDCHIME_COLOR_STYLE}">w</span>`; 
-                                else if (element.char === 'G') displayChar = `<span style="${GUARDIAN_COLOR_STYLE}">G</span>`;
-                                else if (element.char === 'O') displayChar = `<span style="${ORACLE_DAIS_COLOR_STYLE}">O</span>`;
-                                else if (element.char === 'E' && element.enemyKey) displayChar = `<span style="${ENEMY_COLOR_STYLE}">${element.char}</span>`; 
-                                else if (element.char === 'B') displayChar = `<span style="${BLOCKED_PATH_COLOR_STYLE}">B</span>`;
-                                else if (element.char === '?') displayChar = `<span style="${RUNIC_ETCHING_COLOR_STYLE}">?</span>`;
-                                else if (element.char === '!') displayChar = `<span style="${WHISPERING_TOTEM_COLOR_STYLE}">!</span>`;
-                                else if (element.char === '¥') displayChar = `<span style="${SWORD_STONE_TILE_STYLE}">¥</span>`;
-                                else if (element.char === 'd') displayChar = `<span style="${DYING_CREATURE_TILE_STYLE}">d</span>`;
+                                if (element.char === '~') displayChar = `<span class="water-tile">~</span>`;
+                                else if (element.char === '=') displayChar = `<span class="bridge-tile">=</span>`;
+                                else if (element.char === 'M') displayChar = `<span class="mountain-tile">M</span>`;
+                                else if (element.char === 'F') displayChar = `<span class="forest-tile">F</span>`;
+                                else if (element.char === '0') displayChar = `<span class="dark-feature-tile">0</span>`;
+                                else if (element.char === 'C') displayChar = `<span class="cloud-tile">C</span>`;
+                                else if (element.char === 'R') displayChar = `<span class="ruin-tile">R</span>`;
+                                else if (element.char === 'w' && zone.name === "The Sky-Temple Aerie") displayChar = `<span class="windchime-tile">w</span>`; 
+                                else if (element.char === 'G') displayChar = `<span class="guardian-tile">G</span>`;
+                                else if (element.char === 'O') displayChar = `<span class="oracle-dais-tile">O</span>`;
+                                else if (element.enemyKey) displayChar = `<span class="enemy-tile">${element.char}</span>`; 
+                                else if (element.char === 'B') displayChar = `<span class="blocked-path-tile">B</span>`;
+                                else if (element.char === '?') displayChar = `<span class="runic-etching-tile">?</span>`;
+                                else if (element.char === '!') displayChar = `<span class="whispering-totem-tile">!</span>`;
+                                else if (element.char === '¥') displayChar = `<span class="sword-stone-tile">¥</span>`;
+                                else if (element.char === 'd') displayChar = `<span class="dying-creature-tile">d</span>`;
                                 screenLines[element.lane][screenX] = displayChar;
                             }
                         }
@@ -1273,11 +1348,11 @@
                 }
             }
 
-            screenLines[gameState.playerLane][PLAYER_VISUAL_POSITION] = `<span style="${PLAYER_COLOR_STYLE}">@</span>`;
+            screenLines[gameState.playerLane][PLAYER_VISUAL_POSITION] = `<span class="player-char">@</span>`;
 
             gameScreenContent.innerHTML = screenLines.map(line => line.join('')).join('\n');
         }
-        function lightenDarkenColor(col, amt) { /* ... (same) ... */ 
+        function lightenDarkenColor(col, amt) {
             let usePound = false;
             if (col[0] === "#") {
                 col = col.slice(1);
@@ -1329,15 +1404,15 @@
                 } else { 
                      const undiscoveredTomes = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && art.key.startsWith("ART_TOME"));
                      if (undiscoveredTomes.length > 0 && seededRandom() < 0.3) {
-                        const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
-                        gameState.collectedArtifacts.push(foundTome.key);
-                        gameState.narrativeFlags[foundTome.key] = true;
-                        addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
-                         if (foundTome.key === "ART_TOME_MIGHT") { gameState.stats.might++; gameState.maxHp = calculateMaxHp(); gameState.currentHp = gameState.maxHp;}
-                         else if (foundTome.key === "ART_TOME_WITS") { gameState.stats.wits++; }
-                         else if (foundTome.key === "ART_TOME_RESOLVE") { gameState.stats.spirit++; gameState.maxHp = calculateMaxHp(); gameState.currentHp = gameState.maxHp;}
-                         addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
-                        awardXP(20);
+                         const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
+                         gameState.collectedArtifacts.push(foundTome.key);
+                         gameState.narrativeFlags[foundTome.key] = true;
+                         addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
+                          if (foundTome.key === "ART_TOME_MIGHT") { gameState.stats.might++; gameState.maxHp = calculateMaxHp(); gameState.currentHp = gameState.maxHp;}
+                          else if (foundTome.key === "ART_TOME_WITS") { gameState.stats.wits++; }
+                          else if (foundTome.key === "ART_TOME_RESOLVE") { gameState.stats.spirit++; gameState.maxHp = calculateMaxHp(); gameState.currentHp = gameState.maxHp;}
+                          addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
+                         awardXP(20);
                      }
                 }
 
@@ -1361,10 +1436,11 @@
                 combatRound++;
                 combatLogMessages.push(`--- Round ${combatRound} ---`);
 
-                let playerAttackPower = gameState.stats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
+                const effectiveStats = getEffectiveStats();
+                let playerAttackPower = effectiveStats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
                 let attackType = "melee";
-                if (gameState.stats.spirit > gameState.stats.might + 2) {
-                    playerAttackPower = gameState.stats.spirit + seededRandomInt(0, Math.floor(gameState.level/2));
+                if (effectiveStats.spirit > effectiveStats.might + 2) {
+                    playerAttackPower = effectiveStats.spirit + seededRandomInt(0, Math.floor(gameState.level/2));
                     attackType = "spiritual energy";
                 }
                 const enemyDefenseSoak = Math.floor(enemy.defense / 2);
@@ -1379,7 +1455,7 @@
                 }
 
                 const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1); 
-                const playerDefenseSoak = Math.floor(gameState.stats.might / 3) + Math.floor(gameState.stats.spirit / 4); 
+                const playerDefenseSoak = Math.floor(effectiveStats.might / 3) + Math.floor(effectiveStats.spirit / 4); 
                 const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak); 
                 gameState.currentHp -= damageToPlayer;
                 combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage. Your HP: ${Math.max(0, gameState.currentHp)}`);
@@ -1423,6 +1499,47 @@
 
             processCombatRound(); 
         }
+        // NEW: This function was missing, causing stat challenges to fail.
+        function presentStatChallengeDecision(flagKey, promptText, ignoreText, successCondition, failureCallback) {
+            pauseGameForDecision(true);
+            gameState.narrativeFlags[flagKey] = true; // Mark as encountered so it doesn't trigger again
+
+            const decisionData = {
+                prompt: promptText,
+                options: [
+                    { text: "Attempt the challenge", isChallenge: true },
+                    { text: "Ignore and move on", isIgnore: true }
+                ]
+            };
+            gameState.activeDecision = decisionData;
+
+            decisionPromptText.textContent = decisionData.prompt;
+            decisionButtonsContainer.innerHTML = '';
+
+            decisionData.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option.text;
+                button.onclick = () => {
+                    decisionArea.style.display = 'none';
+                    gameState.activeDecision = null;
+
+                    if (option.isChallenge) {
+                        if (!successCondition()) { // successCondition returns true/false now
+                            failureCallback();
+                        }
+                        // Success messages are handled within the successCondition lambda now
+                    } else { // Ignored
+                        addLogMessage(ignoreText, "decision");
+                    }
+                    pauseGameForDecision(false);
+                    renderAll();
+                };
+                decisionButtonsContainer.appendChild(button);
+            });
+
+            decisionArea.style.display = 'block';
+            updateUIAccentColors();
+        }
 
 
         function handleEncounter() { 
@@ -1431,29 +1548,36 @@
             
             const elementsAtCurrentX = zone.foregroundElements[gameState.playerZoneX] || [];
             const encounterKeyBase = `${gameState.currentZoneIndex}_${gameState.playerZoneX}`;
+            const effectiveStats = getEffectiveStats();
 
             elementsAtCurrentX.forEach(element => {
                 const currentElementChar = element.char;
                 const specificEncounterKey = `${encounterKeyBase}_${element.lane}_${currentElementChar}`; 
 
-                if (element.lane === gameState.playerLane && (currentElementChar === '~' || currentElementChar === 'M')) {
+                // Skip encounters if not in the player's lane
+                if (element.lane !== gameState.playerLane) {
+                    return;
+                }
+                
+                // If player moves into a blocking tile, stop. Movement logic will handle this.
+                if (currentElementChar === '~' || currentElementChar === 'M') {
                     return; 
                 }
 
                 switch (currentElementChar) {
                     case 'E': 
-                        if (element.lane === gameState.playerLane && !gameState.inCombat && element.enemyKey) {
+                        if (!gameState.inCombat && element.enemyKey) {
                            resolveCombat(element.enemyKey);
                         }
                         break;
                     case 'B': 
-                        if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                        if (!gameState.narrativeFlags[specificEncounterKey]) {
                             presentStatChallengeDecision(
                                 specificEncounterKey,
                                 "A jumble of heavy boulders blocks the path. Attempt to clear it with Might?",
                                 "You decide to leave the boulders undisturbed.",
                                 () => { // Success condition
-                                    if (gameState.stats.might >= MGT_BLOCKED_PATH_THRESHOLD) {
+                                    if (effectiveStats.might >= MGT_BLOCKED_PATH_THRESHOLD) {
                                         addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_SUCCESS, "puzzle-success");
                                         const bonusDust = seededRandomInt(5, 10);
                                         gameState.resources.glimmeringDust += bonusDust;
@@ -1467,18 +1591,16 @@
                                     addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_FAIL, "puzzle-fail");
                                 }
                             );
-                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
-                            addLogMessage("This path has already been cleared or left undisturbed.", "lore");
                         }
                         break;
                     case '?': 
-                         if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                         if (!gameState.narrativeFlags[specificEncounterKey]) {
                             presentStatChallengeDecision(
                                 specificEncounterKey,
                                 "Faded etchings cover this ancient stone. Try to decipher them with Wits?",
                                 "You leave the etchings to their mystery.",
                                 () => { // Success condition
-                                    if (gameState.stats.wits >= WIT_ETCHINGS_THRESHOLD) {
+                                    if (effectiveStats.wits >= WIT_ETCHINGS_THRESHOLD) {
                                         const zoneSpecificHints = {
                                             "The Ashen Woods": "a forgotten ember still glowing faintly.",
                                             "The Crimson Depths": "a hidden vein of purest crystal.",
@@ -1498,18 +1620,16 @@
                                     addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_FAIL, "puzzle-fail");
                                 }
                             );
-                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
-                             addLogMessage("You've already gleaned all you can from these etchings, or chosen to ignore them.", "lore");
                         }
                         break;
                     case '!': 
-                        if (element.lane === gameState.playerLane && !gameState.narrativeFlags[specificEncounterKey]) {
+                        if (!gameState.narrativeFlags[specificEncounterKey]) {
                             presentStatChallengeDecision(
                                 specificEncounterKey,
                                 "A strange totem hums with faint whispers. Attempt to attune to it with Spirit?",
                                 "You step away from the unsettling totem.",
                                 () => { // Success condition
-                                    if (gameState.stats.spirit >= SPR_TOTEM_THRESHOLD) {
+                                    if (effectiveStats.spirit >= SPR_TOTEM_THRESHOLD) {
                                         addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_SUCCESS, "puzzle-success");
                                         awardXP(10); 
                                         const bonusScraps = seededRandomInt(1, 3);
@@ -1523,27 +1643,80 @@
                                     addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_FAIL, "puzzle-fail");
                                 }
                             );
-                        } else if (element.lane === gameState.playerLane && gameState.narrativeFlags[specificEncounterKey]) {
-                            addLogMessage("The totem's whispers are silent now, having shared their secrets or been left alone.", "lore");
+                        }
+                        break;
+                    case '¥': // NEW ENCOUNTER: Sword in the Stone
+                        if (!gameState.narrativeFlags[specificEncounterKey]) {
+                             presentStatChallengeDecision(
+                                specificEncounterKey,
+                                "An ancient blade is embedded in a stone, humming faintly. Try to pull it free with Might?",
+                                "You leave the blade to its slumber.",
+                                () => { // Success
+                                    if (effectiveStats.might >= SWORD_PULL_MIGHT_REQ) {
+                                        addLogMessage(STAT_CHALLENGE_LORE.SWORD_STONE_SUCCESS, "puzzle-success");
+                                        const blade = ARTIFACTS.find(a => a.key === "ART_ANCIENT_BLADE");
+                                        if (blade && !gameState.collectedArtifacts.includes(blade.key)) {
+                                            gameState.collectedArtifacts.push(blade.key);
+                                            addLogMessage(`<strong>${blade.name}</strong>: ${blade.description}`, "artifact");
+                                            gameState.maxHp = calculateMaxHp(); // Recalculate HP due to artifact effect
+                                            gameState.currentHp = Math.min(gameState.currentHp, gameState.maxHp);
+                                        }
+                                        awardXP(30);
+                                        return true;
+                                    }
+                                    return false;
+                                },
+                                () => { // Failure
+                                    addLogMessage(STAT_CHallenge_LORE.SWORD_STONE_FAIL, "puzzle-fail");
+                                    gameState.currentHp = Math.max(1, gameState.currentHp - SWORD_PULL_HP_COST);
+                                    if(gameState.currentHp <= 0) handleGameEnd("Your final effort was too much...");
+                                }
+                            );
+                        }
+                        break;
+                    case 'd': // NEW ENCOUNTER: Dying Creature
+                        if (!gameState.narrativeFlags[specificEncounterKey]) {
+                            presentStatChallengeDecision(
+                                specificEncounterKey,
+                                `A small, glowing creature lies dying. It looks at you with pleading eyes. Soothe it? (Cost: ${CREATURE_DUST_COST} Dust)`,
+                                "You harden your heart and walk away.",
+                                () => { // Success
+                                    if (gameState.resources.glimmeringDust >= CREATURE_DUST_COST) {
+                                        gameState.resources.glimmeringDust -= CREATURE_DUST_COST;
+                                        addLogMessage(STAT_CHALLENGE_LORE.DYING_CREATURE_SUCCESS, "puzzle-success");
+                                        const heartstone = ARTIFACTS.find(a => a.key === "ART_HEARTSTONE");
+                                        if (heartstone && !gameState.collectedArtifacts.includes(heartstone.key)) {
+                                            gameState.collectedArtifacts.push(heartstone.key);
+                                            gameState.stats.spirit++;
+                                            addLogMessage(`<strong>${heartstone.name}</strong>: ${heartstone.description}`, "artifact");
+                                            addLogMessage("Your Spirit increases by 1!", "synergy");
+                                        }
+                                        awardXP(20);
+                                        return true;
+                                    }
+                                    return false;
+                                },
+                                () => { // Failure
+                                    addLogMessage(STAT_CHALLENGE_LORE.DYING_CREATURE_FAIL, "puzzle-fail");
+                                }
+                            );
                         }
                         break;
                     case 'O': 
-                        if (element.lane === gameState.playerLane) { 
-                            const daisKey = `DAIS_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
-                            if (!gameState.narrativeFlags[daisKey]) { 
-                                if (gameState.collectedArtifacts.includes("ART_LUMINA_LENS")) {
-                                    addLogMessage(ARTIFACT_SYNERGY_LORE["ORACLE_DAIS_LUMINA_LENS_SYNERGY"], "artifact_synergy");
-                                    awardXP(25); 
-                                    gameState.narrativeFlags[daisKey] = true; 
-                                    const bonusScraps = seededRandomInt(3, 7);
-                                    gameState.resources.ancientScraps += bonusScraps;
-                                    addLogMessage(`The focused vision grants you ${bonusScraps} Ancient Scraps!`, "artifact_synergy");
-                                } else {
-                                    addLogMessage("You stand before an Oracle's Dais. Its surface is clouded, its visions obscured. Perhaps something could clear the view...", "lore");
-                                }
+                        const daisKey = `DAIS_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
+                        if (!gameState.narrativeFlags[daisKey]) { 
+                            if (gameState.collectedArtifacts.includes("ART_LUMINA_LENS")) {
+                                addLogMessage(ARTIFACT_SYNERGY_LORE["ORACLE_DAIS_LUMINA_LENS_SYNERGY"], "artifact_synergy");
+                                awardXP(25); 
+                                gameState.narrativeFlags[daisKey] = true; 
+                                const bonusScraps = seededRandomInt(3, 7);
+                                gameState.resources.ancientScraps += bonusScraps;
+                                addLogMessage(`The focused vision grants you ${bonusScraps} Ancient Scraps!`, "artifact_synergy");
                             } else {
-                                 addLogMessage("This Oracle's Dais has already revealed its secrets to you.", "lore");
+                                addLogMessage("You stand before an Oracle's Dais. Its surface is clouded, its visions obscured. Perhaps something could clear the view...", "lore");
                             }
+                        } else {
+                               addLogMessage("This Oracle's Dais has already revealed its secrets to you.", "lore");
                         }
                         break;
                     case 'H': 
@@ -1552,10 +1725,10 @@
                             addLogMessage(ZONE_LORE[zone.shrineLoreKey], "lore");
                             awardXP(5); 
                             gameState.narrativeFlags[shrineNarrativeKey] = true;
-                            if (gameState.stats.spirit >= SPIRIT_SHRINE_THRESHOLD) {
+                            if (effectiveStats.spirit >= SPIRIT_SHRINE_THRESHOLD) {
                                 addLogMessage("Your spirit resonates with the shrine, granting a deeper understanding of its purpose.", "synergy");
                             }
-                             if (seededRandom() < 0.2 + (gameState.stats.spirit - BASE_STAT_VALUE) * 0.05) { 
+                             if (seededRandom() < 0.2 + (effectiveStats.spirit - BASE_STAT_VALUE) * 0.05) { 
                                 const healAmount = Math.floor(gameState.maxHp * (seededRandomInt(15, 30) / 100)); 
                                 gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + healAmount);
                                 addLogMessage(`The shrine's aura mends some of your weariness. (+${healAmount} HP)`, "synergy");
@@ -1563,8 +1736,6 @@
                             }
                         } else if (zone.shrineLoreKey && gameState.narrativeFlags[shrineNarrativeKey]) {
                              addLogMessage("This shrine's power feels familiar, its story already known to you.", "lore");
-                        } else {
-                            addLogMessage("An ancient shrine hums with faint energy nearby.", "lore");
                         }
                         if (gameState.runes.includes('Φ') && gameState.runes.includes('Δ')) {
                             const synergyKey = zone.shrineLoreKey + "_SYNERGY_" + gameState.playerZoneX + "_" + element.lane;
@@ -1579,29 +1750,25 @@
                         }
                         break;
                     case 'F': 
-                        if (element.lane === gameState.playerLane) { 
-                            let dustForaged = seededRandomInt(1, 2);
-                            if (seededRandom() < ( (gameState.stats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT) ) {
-                                dustForaged +=1;
-                                addLogMessage("Your might allows for a more bountiful forage!", "synergy");
-                            }
-                            gameState.resources.glimmeringDust += dustForaged;
-                            addLogMessage(`You forage in the forest and find ${dustForaged} Glimmering Dust.`, "lore");
+                        let dustForaged = seededRandomInt(1, 2);
+                        if (seededRandom() < ( (effectiveStats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT) ) {
+                            dustForaged +=1;
+                            addLogMessage("Your might allows for a more bountiful forage!", "synergy");
                         }
+                        gameState.resources.glimmeringDust += dustForaged;
+                        addLogMessage(`You forage in the forest and find ${dustForaged} Glimmering Dust.`, "lore");
                         break;
                     case '0': 
-                        if (element.lane === gameState.playerLane) {
-                            const darkFeatureMessages = [
-                                "You pass over a shadowed depression in the earth.",
-                                "The ground here feels unnaturally cold, like a forgotten wound.",
-                                "Faint, unsettling whispers seem to emanate from this dark patch of land.",
-                                "These could be the ruins of something ancient, or perhaps a shallow crater."
-                            ];
-                            addLogMessage(darkFeatureMessages[seededRandomInt(0, darkFeatureMessages.length - 1)], "lore");
-                        }
+                        const darkFeatureMessages = [
+                            "You pass over a shadowed depression in the earth.",
+                            "The ground here feels unnaturally cold, like a forgotten wound.",
+                            "Faint, unsettling whispers seem to emanate from this dark patch of land.",
+                            "These could be the ruins of something ancient, or perhaps a shallow crater."
+                        ];
+                        addLogMessage(darkFeatureMessages[seededRandomInt(0, darkFeatureMessages.length - 1)], "lore");
                         break;
                     case 'w': 
-                        if (zone.name === "The Sky-Temple Aerie" && element.lane === gameState.playerLane) {
+                        if (zone.name === "The Sky-Temple Aerie") {
                             if (seededRandom() < 0.5) {
                                 addLogMessage("A gust of wind makes the ancient chimes sing a faint, ethereal note... a fragment of the First Song?", "world_lore");
                                 awardXP(5); 
@@ -1610,22 +1777,20 @@
                                 gameState.resources.ancientScraps += scrapsFound;
                                 addLogMessage(`The wind chime jingles, shaking loose ${scrapsFound} Ancient Scraps.`, "lore");
                             }
-                        } else if (element.lane === gameState.playerLane) { 
+                        } else { 
                              addLogMessage(`Passed by a ${getElementDescription(currentElementChar)}.`);
                         }
                         break;
                     case 'G': 
-                         if (element.lane === gameState.playerLane) {
-                            addLogMessage("You encounter the remains of an ancient Lumina Guardian. Its optical sensors flicker faintly.", "world_lore");
-                            awardXP(10); 
-                            if (seededRandom() < 0.3) { 
-                                const skyShardArtifact = ARTIFACTS.find(art => art.key === "ART_LUMINA_SKY_SHARD");
-                                if (skyShardArtifact && !gameState.collectedArtifacts.includes(skyShardArtifact.key)) {
-                                    gameState.collectedArtifacts.push(skyShardArtifact.key);
-                                    gameState.narrativeFlags[skyShardArtifact.key] = true; 
-                                    addLogMessage(`<strong>${skyShardArtifact.name}</strong>: ${skyShardArtifact.description}`, "artifact");
-                                    awardXP(15); 
-                                }
+                        addLogMessage("You encounter the remains of an ancient Lumina Guardian. Its optical sensors flicker faintly.", "world_lore");
+                        awardXP(10); 
+                        if (seededRandom() < 0.3) { 
+                            const skyShardArtifact = ARTIFACTS.find(art => art.key === "ART_LUMINA_SKY_SHARD");
+                            if (skyShardArtifact && !gameState.collectedArtifacts.includes(skyShardArtifact.key)) {
+                                gameState.collectedArtifacts.push(skyShardArtifact.key);
+                                gameState.narrativeFlags[skyShardArtifact.key] = true; 
+                                addLogMessage(`<strong>${skyShardArtifact.name}</strong>: ${skyShardArtifact.description}`, "artifact");
+                                awardXP(15); 
                             }
                         }
                         break;
@@ -1657,7 +1822,7 @@
                                     gameState.currentHp = gameState.maxHp; 
                                     addLogMessage("Your Spirit increases by 1! Your resolve hardens.", "synergy");
                                     artifactXp = 20;
-                                } else if (gameState.stats.wits >= WIT_INSIGHT_THRESHOLD) {
+                                } else if (effectiveStats.wits >= WIT_INSIGHT_THRESHOLD) {
                                     addLogMessage("Your keen wits discern a subtle detail about its craftsmanship or origin.", "synergy");
                                 }
                                 awardXP(artifactXp);
@@ -1667,6 +1832,8 @@
                         }
                         break;
                     case 'N': 
+                        // FIX: Was using an undefined variable for the key.
+                        const npcSpecificKey = `${encounterKeyBase}_${element.lane}_${element.npcType}`;
                         if (!gameState.encounteredNPCs[npcSpecificKey] && element.npcType) { 
                             const npcData = NPCS[element.npcType];
                             if (npcData) {
@@ -1682,7 +1849,7 @@
                             }
                         }
                         break;
-                    case 'D': 
+                        case 'D': 
                         addLogMessage("You found a Data Crystal, shimmering with lost Lumina knowledge!", "world_lore");
                         awardXP(10); 
                         if (seededRandom() < 0.3) { 
@@ -1695,7 +1862,7 @@
                             const foundLore = undiscoveredDataLore[0]; 
                             addLogMessage(foundLore.text, "world_lore");
                             gameState.narrativeFlags[foundLore.key] = true;
-                        }
+                         }
                         break;
                     case 'L': 
                         const loreFlagKey = `LORE_${gameState.playerZoneX}_${element.lane}`;
@@ -1708,7 +1875,7 @@
                                 awardXP(10); 
                                 gameState.narrativeFlags[foundLore.key] = true; 
                                 gameState.narrativeFlags[loreFlagKey] = true; 
-                                 if (gameState.stats.wits >= WIT_INSIGHT_THRESHOLD) {
+                                 if (effectiveStats.wits >= WIT_INSIGHT_THRESHOLD) {
                                     addLogMessage("Your sharp mind gleans a deeper meaning from the ancient text.", "synergy");
                                 }
                             } else {
@@ -1722,8 +1889,9 @@
                             const randomCompanion = COMPANIONS[companionIndex];
                             gameState.companion = { ...randomCompanion }; 
                             addLogMessage(`A shimmering presence solidifies. You've found a companion: ${gameState.companion.name} the ${gameState.companion.type}!`, "companion");
+                            playSound('companionFind');
                             awardXP(15); 
-                            if (gameState.stats.spirit >= SPIRIT_COMPANION_THRESHOLD) {
+                            if (effectiveStats.spirit >= SPIRIT_COMPANION_THRESHOLD) {
                                 addLogMessage(`${gameState.companion.name} seems to bond with your spirit instantly.`, "synergy");
                             } else {
                                 addLogMessage(`${gameState.companion.name} lets out a soft ${gameState.companion.call}.`, "companion");
@@ -1737,8 +1905,8 @@
                         const epitaph = EPITAPHS[epitaphIndex];
                         addLogMessage(epitaph, "grave");
                         let dustFromGraveChance = 0.15;
-                        if (gameState.stats.might > BASE_STAT_VALUE) { 
-                            dustFromGraveChance += (gameState.stats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT;
+                        if (effectiveStats.might > BASE_STAT_VALUE) { 
+                            dustFromGraveChance += (effectiveStats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT;
                         }
                         if (seededRandom() < dustFromGraveChance) { 
                             const dustFoundGrave = seededRandomInt(1, 3);
@@ -1760,53 +1928,52 @@
                         break;
                     case 'X': addLogMessage("A patch of warped, alien growth twitches nearby. It feels wrong.", "lore"); break;
                     case '.':
-                         if (element.lane === gameState.playerLane) {
-                            let dustFound = seededRandomInt(1, 5);
-                             if (seededRandom() < ( (gameState.stats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT) ) {
-                                dustFound +=1;
-                            }
-                            gameState.resources.glimmeringDust += dustFound;
-                            addLogMessage(`Found ${dustFound} Glimmering Dust (.)`);
-                            if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
-                                gameState.resources.glimmeringDust += 1;
-                                addLogMessage(`${gameState.companion.name} sniffs out an extra Glimmering Dust!`, "companion");
-                            }
+                        let dustFound = seededRandomInt(1, 5);
+                         if (seededRandom() < ( (effectiveStats.might - BASE_STAT_VALUE) * MIGHT_BONUS_DUST_CHANCE_PER_POINT) ) {
+                            dustFound +=1;
+                        }
+                        gameState.resources.glimmeringDust += dustFound;
+                        addLogMessage(`Found ${dustFound} Glimmering Dust (.)`);
+                        playSound('dust');
+                        if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
+                            gameState.resources.glimmeringDust += 1;
+                            addLogMessage(`${gameState.companion.name} sniffs out an extra Glimmering Dust!`, "companion");
                         }
                         break;
                     case 'm': 
-                        if (element.lane === gameState.playerLane) {
-                            addLogMessage(`Passed by a ${getElementDescription(currentElementChar)}.`);
-                            if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
-                                gameState.resources.glimmeringDust += 1;
-                                addLogMessage(`${gameState.companion.name} paws at the moss, uncovering 1 Glimmering Dust!`, "companion");
-                            }
+                        addLogMessage(`Passed by a ${getElementDescription(currentElementChar)}.`);
+                        if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
+                            gameState.resources.glimmeringDust += 1;
+                            addLogMessage(`${gameState.companion.name} paws at the moss, uncovering 1 Glimmering Dust!`, "companion");
                         }
                         break;
                     case '#':
-                        if (element.lane === gameState.playerLane) {
-                            const scrapsFound = seededRandomInt(1, 2);
-                            gameState.resources.ancientScraps += scrapsFound;
-                            addLogMessage(`Found ${scrapsFound} Ancient Scraps (#)!`);
-                        }
+                        const scrapsFound = seededRandomInt(1, 2);
+                        gameState.resources.ancientScraps += scrapsFound;
+                        addLogMessage(`Found ${scrapsFound} Ancient Scraps (#)!`);
+                        playSound('scrap');
                         break;
                     case '§': 
-                        if (element.lane === gameState.playerLane && !gameState.runes.includes('§')) {
+                        if (!gameState.runes.includes('§')) {
                             gameState.runes.push('§'); awardXP(20); 
                             gameState.explorationSpeedMultiplier += 0.2; updateGameTickSpeed();
-                            addLogMessage("Discovered Rune of Swiftness (§)! Speed increased.");
-                        } else if (element.lane === gameState.playerLane) { addLogMessage("Passed an already attuned Swiftness Rune.");}
+                            addLogMessage("Discovered Rune of Swiftness (§)! Speed increased.", "synergy");
+                            playSound('rune');
+                        } else { addLogMessage("Passed an already attuned Swiftness Rune.", "lore");}
                         break;
                     case 'Φ': 
-                         if (element.lane === gameState.playerLane && !gameState.runes.includes('Φ')) {
+                         if (!gameState.runes.includes('Φ')) {
                             gameState.runes.push('Φ'); awardXP(20); 
-                            addLogMessage("Discovered Rune of Perception (Φ)! Senses sharpened.");
-                        } else if (element.lane === gameState.playerLane) { addLogMessage("Passed an already attuned Perception Rune.");}
+                            addLogMessage("Discovered Rune of Perception (Φ)! Senses sharpened.", "synergy");
+                            playSound('rune');
+                        } else { addLogMessage("Passed an already attuned Perception Rune.", "lore");}
                         break;
                     case 'Δ': 
-                        if (element.lane === gameState.playerLane && !gameState.runes.includes('Δ')) {
+                        if (!gameState.runes.includes('Δ')) {
                             gameState.runes.push('Δ'); awardXP(20); 
-                            addLogMessage("Discovered Rune of Resilience (Δ)! Fortitude increased.");
-                        } else if (element.lane === gameState.playerLane) { addLogMessage("Passed an already attuned Resilience Rune.");}
+                            addLogMessage("Discovered Rune of Resilience (Δ)! Fortitude increased.", "synergy");
+                            playSound('rune');
+                        } else { addLogMessage("Passed an already attuned Resilience Rune.", "lore");}
                         break;
                     case 'T': case 't': case 'Y': case 'o': 
                     case 'S': case 'b': case 'R': case 'C': 
@@ -1814,7 +1981,7 @@
                         break;
                     case '♦': case '◊': case '✧':
                         addLogMessage(`Passed by a glistening ${getElementDescription(currentElementChar)}.`);
-                         const crystalDust = seededRandomInt(1, 2);
+                        const crystalDust = seededRandomInt(1, 2);
                         gameState.resources.glimmeringDust += crystalDust;
                         addLogMessage(`A nearby crystal sheds ${crystalDust} Glimmering Dust.`);
                         // Pristine Crystal Shard logic
@@ -1828,11 +1995,11 @@
                         }
                         break;
                     case '[': case ']': case '¦': case '^':
-                        addLogMessage(`Navigated near ancient ${getElementDescription(currentElementChar)}.`);
+                        addLogMessage(`Mapsd near ancient ${getElementDescription(currentElementChar)}.`);
                         break;
-                    case '~': /* Water - No direct encounter, handled by movement */ break;
-                    case '=': /* Bridge - No direct encounter, handled by movement */ break;
-                    case 'M': /* Mountain - No direct encounter, handled by movement */ break;
+                    // These are handled by movement logic, not direct encounters
+                    case '~': case '=': case 'M': 
+                        break;
                 }
             });
         }
@@ -1848,6 +2015,7 @@
                 '=': 'sturdy bridge', 'M': 'towering mountain', 'F': 'dense forest patch', '0': 'darkened earth/ruin',
                 'C': 'drifting cloud', 'R': 'temple ruin', 'G': 'Guardian fragment', 'O': "Oracle's Dais",
                 'B': 'blocked path', '?': 'faded runic etching', '!': 'whispering totem',
+                '¥': 'blade in stone', 'd': 'dying creature',
                 'L': 'repository of fragmented lore', 'H': 'sacred, time-worn shrine', 'A': 'forgotten artifact',
                 'P': 'shimmering presence', '+': 'weathered grave marker', 'N': 'lone figure',
                 'D': 'Data Crystal',
@@ -1855,8 +2023,8 @@
             };
             return descriptions[elementChar] || 'mysterious object';
         }
-        function updateGameTickSpeed() { /* ... (same) ... */ 
-            gameState.gameTickMs = INITIAL_GAME_TICK_MS / gameState.explorationSpeedMultiplier;
+        function updateGameTickSpeed() { 
+            gameState.gameTickMs = INITIAL_GAME_TICK_MS / (gameState.explorationSpeedMultiplier * devSpeedMultiplier);
             if (gameInterval) { 
                 clearInterval(gameInterval);
                 if (!gameState.isPaused && !gameState.activeDecision && gameState.currentZoneIndex !== -1) { 
@@ -1864,7 +2032,7 @@
                 }
             }
         }
-        function presentDecision(decisionKey) { /* ... (same) ... */ 
+        function presentDecision(decisionKey) { 
             const decisionData = DECISIONS[decisionKey];
             if (!decisionData) return;
             gameState.activeDecision = decisionData;
@@ -1914,24 +2082,24 @@
             } else {
                  const newZone = getCurrentZone();
                  if (newZone) { 
-                    const newZoneFlag = `ENTERED_ZONE_${newZone.name.replace(/\s+/g, '_')}`;
-                    if (newZone.entryLoreKey && ZONE_LORE[newZone.entryLoreKey] && !gameState.narrativeFlags[newZone.entryLoreKey]) {
-                        addLogMessage(ZONE_LORE[newZone.entryLoreKey], "lore");
-                        gameState.narrativeFlags[newZone.entryLoreKey] = true; 
-                    }
-                    if(!gameState.narrativeFlags[newZoneFlag]){ 
-                        awardXP(50); 
-                        gameState.narrativeFlags[newZoneFlag] = true;
-                    }
-                    if (gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name]) {
-                        addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name], "companion");
-                    }
-                    addLogMessage(`Venturing into ${newZone.name}...`);
-                    updateUIAccentColors(); 
-                    renderAll(); // Render after UI colors are set for the new zone
-                    pauseGameForDecision(false); 
+                     const newZoneFlag = `ENTERED_ZONE_${newZone.name.replace(/\s+/g, '_')}`;
+                     if (newZone.entryLoreKey && ZONE_LORE[newZone.entryLoreKey] && !gameState.narrativeFlags[newZone.entryLoreKey]) {
+                         addLogMessage(ZONE_LORE[newZone.entryLoreKey], "lore");
+                         gameState.narrativeFlags[newZone.entryLoreKey] = true; 
+                     }
+                     if(!gameState.narrativeFlags[newZoneFlag]){ 
+                         awardXP(50); 
+                         gameState.narrativeFlags[newZoneFlag] = true;
+                     }
+                     if (gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name]) {
+                         addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name], "companion");
+                     }
+                     addLogMessage(`Venturing into ${newZone.name}...`);
+                     updateUIAccentColors(); 
+                     renderAll(); // Render after UI colors are set for the new zone
+                     pauseGameForDecision(false); 
                  } else { 
-                    handleGameEnd("An unknown path was chosen. The journey ends abruptly.");
+                     handleGameEnd("An unknown path was chosen. The journey ends abruptly.");
                  }
             }
         }
@@ -2001,7 +2169,6 @@
             summary += `\nMay your next path be illuminated.`;
             return summary;
         }
-
         function handleGameEnd(message = "You have explored all realms. The echoes of this journey will linger. What path will you walk next?") { 
             addLogMessage(message, "decision");
             if (gameInterval) clearInterval(gameInterval);
@@ -2084,8 +2251,10 @@
                 if (newLane >= 0 && newLane < NUM_LANES) {
                     const zoneForCheck = getCurrentZone(); 
                     let isTargetLaneBlocked = false;
-                    if (zoneForCheck && zoneForCheck.foregroundElements[gameState.playerZoneX]) {
-                        const elementsInTargetColumn = zoneForCheck.foregroundElements[gameState.playerZoneX];
+                    // Check one step ahead for blocking terrain
+                    const checkX = gameState.playerZoneX;
+                    if (zoneForCheck && zoneForCheck.foregroundElements[checkX]) {
+                        const elementsInTargetColumn = zoneForCheck.foregroundElements[checkX];
                         for (const el of elementsInTargetColumn) {
                             if (el.lane === newLane && (el.char === '~' || el.char === 'M')) { 
                                 isTargetLaneBlocked = true;
@@ -2303,12 +2472,11 @@
             pauseResumeButton.textContent = "Pause";
             pauseResumeButton.disabled = false;
             upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < (50 * gameState.explorationSpeedMultiplier);
-
             const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
             const selectedStartupMessage = STARTUP_MESSAGES[startupMessageIndex];
              document.getElementById('game-screen-content').innerHTML = Array(NUM_LANES).fill('').map((_, i) => {
-                if (i === PLAYER_INITIAL_LANE) return ' '.repeat(Math.max(0,PLAYER_VISUAL_POSITION - Math.floor(selectedStartupMessage.length / 2))) + selectedStartupMessage;
-                return ' '.repeat(SCREEN_WIDTH);
+                 if (i === PLAYER_INITIAL_LANE) return ' '.repeat(Math.max(0,PLAYER_VISUAL_POSITION - Math.floor(selectedStartupMessage.length / 2))) + selectedStartupMessage;
+                 return ' '.repeat(SCREEN_WIDTH);
             }).join('\n');
             addLogMessage(selectedStartupMessage, "startup"); 
             addLogMessage(`New World Seed: ${gameState.initialGameSeed}`, "seed"); 
@@ -2368,6 +2536,29 @@
 
         document.addEventListener('DOMContentLoaded', () => { 
             initializeSounds(); 
+            
+            // --- NEW: DEV TOGGLE ---
+            const devControls = document.getElementById('dev-controls');
+            const devSpeedSlider = document.getElementById('dev-speed-slider');
+            const devSpeedDisplay = document.getElementById('dev-speed-display');
+
+            document.addEventListener('keydown', (e) => {
+                // Ctrl + Alt + D to show/hide the dev controls
+                if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+                    e.preventDefault();
+                    devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+
+            devSpeedSlider.addEventListener('input', (e) => {
+                devSpeedMultiplier = parseInt(e.target.value, 10);
+                devSpeedDisplay.textContent = devSpeedMultiplier;
+                if (!gameState.isPaused) {
+                    updateGameTickSpeed();
+                }
+            });
+            // --- END DEV TOGGLE ---
+
             
             gameState.initialGameSeed = Date.now() % 2147483647; 
             initializeSeed(gameState.initialGameSeed);
