@@ -913,6 +913,8 @@
                 { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
                 { id: 'mda', label: 'MDA', icon: ICONS.search },
 		{ id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
+                { id: 'wrs', label: 'WRS Test', icon: ICONS.database },
+                { id: 'emc', label: 'EMC Sign Test', icon: ICONS.search },
                 { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
                 { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
                 { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
@@ -2896,6 +2898,8 @@ const updateSearchHistory = (nuclide) => {
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
                     case 'mda': return <MDACalculator />;
 	 	    case 'marssim': return <MARSSIM_SampleCalculator />;
+		    case 'wrs': return <WRS_Calculator />;
+                    case 'emc': return <EMC_Calculator />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
                     case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;                    
                     case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
@@ -4152,6 +4156,315 @@ const MARSSIM_SampleCalculator = () => {
 
 
 
+
+
+/**
+ * @description A calculator that performs the MARSSIM Wilcoxon Rank Sum (WRS) test
+ * to compare a survey unit to a reference area, with large sample approximation and EMC logic.
+ */
+const WRS_Calculator = () => {
+    // --- STATE MANAGEMENT ---
+    const [dcgl, setDcgl] = React.useState('5');
+    const [referenceData, setReferenceData] = React.useState('1.6\n1.2\n1.4\n1.2\n0.5\n1.5\n0.8\n1.1\n1.9\n1.7\n1.8\n1.8\n1.7\n1.9\n2.1\n1.8\n2.1\n2.4\n2.2\n2.9\n2\n1.7\n2.3\n1.1\n2.3\n0.6\n1.1\n1.1\n1.4\n2.1');
+    const [surveyData, setSurveyData] = React.useState('2.928\n3.458\n3.31\n3.198\n2.218\n6.827\n2.269\n4.96\n2.766\n3.29\n10.833\n1.606\n1.856\n3.135\n1.808\n1.873\n3.373\n1.887\n1.457\n5.5\n1.973\n1.915\n2.205\n1.814\n3.7\n2.327\n1.919\n2.677\n3.253\n1.776\n5.201\n4.737\n2.585');
+    const [alpha, setAlpha] = React.useState('0.05');
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    // A subset of MARSSIM Table I.4: Critical Values for WRS Test (for α = 0.05)
+    // Keyed as [n][m] where n=reference size, m=survey size
+    const criticalValueTable = {
+        '0.05': {
+            '5': { '5': 28, '6': 32, '7': 36, '8': 41, '9': 45, '10': 50 },
+            '6': { '5': 33, '6': 38, '7': 43, '8': 48, '9': 53, '10': 59 },
+            '7': { '5': 37, '6': 43, '7': 49, '8': 54, '9': 60, '10': 66 },
+            '8': { '5': 42, '6': 49, '7': 55, '8': 61, '9': 67, '10': 74 },
+            '9': { '5': 46, '6': 54, '7': 61, '8': 68, '9': 75, '10': 82 },
+            '10': { '5': 51, '6': 59, '7': 67, '8': 75, '9': 83, '10': 91 },
+            '11': { '11': 111, '12': 119, '13': 127, '14': 135, '15': 143 },
+            '12': { '12': 131, '13': 139, '14': 148, '15': 156, '16': 165 },
+            '13': { '13': 151, '14': 160, '15': 169, '16': 178, '17': 187 },
+            '14': { '14': 171, '15': 181, '16': 190, '17': 200, '18': 210 },
+            '15': { '15': 192, '16': 202, '17': 212, '18': 223, '19': 233 },
+        }
+    };
+    
+    // Z-scores for common one-sided confidence levels
+    const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
+    
+    const parseData = (dataString) => {
+        return dataString
+            .split(/[\s,;\n]+/)
+            .filter(d => d.trim() !== '' && !isNaN(d))
+            .map(Number);
+    };
+
+    const handleCalculate = () => {
+        setResult(null);
+        setError('');
+        const refData = parseData(referenceData);
+        const suData = parseData(surveyData);
+        const dcgl_val = parseFloat(dcgl);
+        
+        if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
+        if (refData.length < 5 || suData.length < 5) { setError('At least 5 data points are required for each area.'); return; }
+        
+        const dcglExceeded = suData.some(val => val > dcgl_val);
+        
+        let combined = [
+            ...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })),
+            ...suData.map(v => ({ value: v, group: 'su' }))
+        ].sort((a, b) => a.value - b.value);
+
+        for (let i = 0; i < combined.length; i++) {
+            let ties = [i];
+            const epsilon = 1e-9;
+            while (i + 1 < combined.length && Math.abs(combined[i].value - combined[i+1].value) < epsilon) { 
+                i++; 
+                ties.push(i); 
+            }
+            if (ties.length > 1) {
+                const avgRank = (ties[0] + 1 + ties[ties.length-1] + 1) / 2;
+                ties.forEach(index => { combined[index].rank = avgRank; });
+            } else {
+                combined[i].rank = i + 1;
+            }
+        }
+        
+        const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
+        
+        const n = refData.length;
+        const m = suData.length;
+        let C_w;
+
+        const tableVal = criticalValueTable[alpha]?.[n]?.[m] || criticalValueTable[alpha]?.[m]?.[n];
+
+        if (tableVal) {
+            C_w = tableVal;
+        } else {
+            const zAlpha = zScores[alpha];
+            const N = n + m;
+            const mean_W = (n * (N + 1)) / 2;
+            const stdDev_W = Math.sqrt((n * m * (N + 1)) / 12);
+            C_w = Math.round(mean_W + (zAlpha * stdDev_W) + 0.5);
+        }
+
+        const wrsTestPassed = W_rs >= C_w;
+        
+        // --- NEW LOGIC: Determine a three-tiered conclusion ---
+        let finalConclusion = 'FAIL'; // Default to FAIL
+        let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
+
+        if (wrsTestPassed) {
+            if (dcglExceeded) {
+                finalConclusion = 'PASS_EMC'; // Pass, but with a condition
+                finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`;
+            } else {
+                finalConclusion = 'PASS'; // A clear pass
+                finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`;
+            }
+        }
+        
+        setResult({
+            conclusion: finalConclusion,
+            reason: finalReason,
+            n, m, W_rs, C_w
+        });
+    };
+
+    // Helper object for styling the results box based on the conclusion
+    const resultStyles = {
+        PASS: {
+            container: 'bg-green-100 dark:bg-green-900/50',
+            title: 'text-green-600 dark:text-green-400',
+            text: 'text-green-800 dark:text-green-200',
+            display: 'SURVEY UNIT PASSES'
+        },
+        PASS_EMC: {
+            container: 'bg-yellow-100 dark:bg-yellow-900/50',
+            title: 'text-yellow-600 dark:text-yellow-400',
+            text: 'text-yellow-800 dark:text-yellow-200',
+            display: 'PASS (EMC Required)'
+        },
+        FAIL: {
+            container: 'bg-red-100 dark:bg-red-900/50',
+            title: 'text-red-600 dark:text-red-400',
+            text: 'text-red-800 dark:text-red-200',
+            display: 'SURVEY UNIT FAILS'
+        }
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM WRS Test Calculator</h2>
+                <div className="space-y-4">
+                    {/* ... (Input fields are unchanged) ... */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Reference Area Data</label>
+                            <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Survey Unit Data</label>
+                            <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">DCGL</label>
+                            <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Significance Level (&alpha;)</label>
+                            <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                <option value="0.05">0.05</option>
+                                <option value="0.025">0.025</option>
+                                <option value="0.01">0.01</option>
+                                <option value="0.10">0.10</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Perform WRS Test</button>
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {/* --- UPDATED Results Display with 3-Color Logic --- */}
+                    {result && (
+                        <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
+                            <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>
+                                {resultStyles[result.conclusion].display}
+                            </p>
+                            <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>{result.reason}</p>
+                            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                                <p>Reference Samples (n): <span className="font-bold">{result.n}</span></p>
+                                <p>Survey Samples (m): <span className="font-bold">{result.m}</span></p>
+                                <p>Rank Sum (W&darr;rs): <span className="font-bold">{result.W_rs}</span></p>
+                                <p>Critical Value (C&darr;w): <span className="font-bold">{result.C_w}</span></p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+/**
+ * @description A calculator that performs the MARSSIM Sign Test for an
+ * Elevated Measurement Comparison (EMC) area.
+ */
+const EMC_Calculator = () => {
+    // --- STATE MANAGEMENT ---
+    const [dcglw, setDcglw] = React.useState('100');
+    const [areaFactor, setAreaFactor] = React.useState('3');
+    const [emcData, setEmcData] = React.useState('120, 150, 95, 250, 180, 210, 190, 280');
+    const [alpha, setAlpha] = React.useState('0.05');
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    // MARSSIM Table I.3: Critical Values for the Sign Test
+    // Keyed by sample size N
+    const signTestCriticalValues = {
+        '0.05': {
+            5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12,
+            16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17,
+            25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21
+        }
+    };
+    
+    const parseData = (dataString) => {
+        return dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+    };
+
+    const handleCalculate = () => {
+        setResult(null);
+        setError('');
+        const data = parseData(emcData);
+        const dcglw_val = parseFloat(dcglw);
+        const af_val = parseFloat(areaFactor);
+
+        // --- Validation ---
+        if (isNaN(dcglw_val) || isNaN(af_val) || dcglw_val <= 0 || af_val <= 1) {
+            setError('DCGL and Area Factor must be valid numbers (AF > 1).'); return;
+        }
+        if (data.length === 0) { setError('Please enter measurement data.'); return; }
+        
+        // --- MARSSIM EMC Calculations ---
+        const n = data.length;
+        const dcgl_emc = dcglw_val * af_val;
+        
+        // Count the number of positive differences (DCGLEMC - measurement > 0)
+        const S_plus = data.filter(val => (dcgl_emc - val) > 0).length;
+        
+        // Look up the critical value from the table
+        const Cs = signTestCriticalValues[alpha]?.[n];
+        
+        if (Cs === undefined) {
+            setError(`A critical value is not available for a sample size of ${n}. Please use a sample size between 5 and 30.`);
+            return;
+        }
+        
+        // --- Make a decision ---
+        const testPassed = S_plus >= Cs;
+        
+        setResult({
+            conclusion: testPassed ? 'PASS' : 'FAIL',
+            reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`,
+            n,
+            dcgl_emc: dcgl_emc.toPrecision(4),
+            S_plus,
+            Cs
+        });
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM EMC Sign Test Calculator</h2>
+                <div className="space-y-4">
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium">Widespread DCGL (DCGLw)</label>
+                                <input type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium">Area Factor (AF)</label>
+                                <input type="number" value={areaFactor} onChange={e => setAreaFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                            </div>
+                        </div>
+                        <div>
+                           <label className="block text-sm font-medium">Elevated Area Measurements</label>
+                           <textarea value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Sign Test</button>
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {result && (
+                        <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                            <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                EMC AREA {result.conclusion}ES
+                            </p>
+                            <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
+                            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                                <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p>
+                                <p>Samples (N): <span className="font-bold">{result.n}</span></p>
+                                <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p>
+                                <p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
      /**
       * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
