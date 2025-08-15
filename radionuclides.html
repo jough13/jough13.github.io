@@ -2669,6 +2669,25 @@ const MassActivityCalculator = ({ radionuclides }) => {
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
 
+		const handleNavClick = (view) => {
+                	
+			// Always set the view and reset other UI states
+	
+	                setActiveView(view);
+        	        setCurrentDecaySeriesId(null);
+	                setIsFiltersVisible(false);
+
+                // If the user is clicking the 'home' button, also reset the search state.
+
+	                if (view === 'home') {
+        	            setResult(null);
+                	    setNuclideName('');
+	                    setSuggestions([]);
+        	            setErrorMessage('');
+	                }
+	            };
+
+
             // --- SIDE EFFECTS ---
             // Effect to apply the dark/light theme to the HTML element.
 
@@ -2902,7 +2921,7 @@ const updateSearchHistory = (nuclide) => {
                         <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
                             <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
                             <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} />
-                            <MainNav activeView={activeView} onNavClick={(view) => { setActiveView(view); setCurrentDecaySeriesId(null); setIsFiltersVisible(false); }} />
+                            <MainNav activeView={activeView} onNavClick={handleNavClick} />
                             <main className="min-h-[400px]">
                                 {renderActiveView()}
                             </main>
