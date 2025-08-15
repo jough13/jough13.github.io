@@ -259,7 +259,7 @@
 	     { name: 'Uranium-234', symbol: 'U-234', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.776 MeV'], beta: [], gamma: ['0.053 MeV'] }, halfLife: '245,500 years', decayConstant: '2.82 x 10⁻⁶ year⁻¹', specificActivity: '2.3 x 10^8 Bq/g', parent: 'Protactinium-234m (β-)', daughter: 'Thorium-230', commonUses: ['Component of natural uranium', 'Geological dating (uranium-thorium dating)'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Uranium-235', symbol: 'U-235', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.398 MeV'], beta: [], gamma: ['0.186 MeV', '0.144 MeV'] }, halfLife: '703.8 million years', decayConstant: '9.85 x 10⁻¹⁰ year⁻¹', specificActivity: '8.0 x 10^4 Bq/g', parent: 'Primordial', daughter: 'Thorium-231 (α)', commonUses: ['Nuclear fuel for reactors', 'Nuclear weapons'], category: 'Natural', decaySeriesId: 'U-235-series', commonality: 'Common', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Uranium-238', symbol: 'U-238', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.197 MeV'], beta: [], gamma: ['0.0496 MeV'] }, halfLife: '4.468 billion years', decayConstant: '1.55 x 10⁻¹⁰ year⁻¹', specificActivity: '1.24 x 10^4 Bq/g', parent: 'Primordial', daughter: 'Thorium-234 (α)', commonUses: ['Geological dating', 'Nuclear fuel cycle (raw material)', 'Shielding (depleted uranium)'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', sourceRef: { halfLife: 'nndc' } },
-	     { name: 'Xenon-131 (stable)', symbol: 'Xe-131', halfLife: 'Stable', daughter: 'Stable'},
+	     { name: 'Xenon-131', symbol: 'Xe-131', emissionType: ['Stable'], emissionEnergies: { alpha: [], beta: [], gamma: [] }, halfLife: 'Stable', decayConstant: '0', specificActivity: '0 Bq/g', parent: 'Iodine-131 (β-)', daughter: 'Stable', commonUses: ['Stable end-product of Iodine-131 decay.', 'Stable isotope analysis.'], category: 'Stable/Reference', commonality: 'Common', sourceRef: {} },
 	     { name: 'Xenon-133', symbol: 'Xe-133', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.346 MeV (max)'], gamma: ['0.081 MeV'], alpha: [] }, halfLife: '5.24 days', decayConstant: '0.132 day⁻¹', specificActivity: '6.4 x 10^15 Bq/g', parent: 'Uranium Fission', daughter: 'Cesium-133 (stable)', commonUses: ['Lung ventilation studies (medical imaging)', 'Blood flow measurements'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' } },
 	     { name: 'Ytterbium-169', symbol: 'Yb-169', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.198 MeV', '0.261 MeV', '0.308 MeV'], alpha: [] }, halfLife: '32.02 days', decayConstant: '0.0216 day⁻¹', gammaConstant: '0.18 R·m²/hr·Ci', specificActivity: '1.9 x 10^14 Bq/g', parent: 'Lutetium-169', daughter: 'Thulium-169 (stable)', commonUses: ['Medical imaging (historical)', 'Brain and CSF studies', 'Industrial radiography'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' } },
 	     { name: 'Yttrium-90', symbol: 'Y-90', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['2.28 MeV (max)'], gamma: [], alpha: [] }, halfLife: '64.0 hours', decayConstant: '0.0108 hour⁻¹', specificActivity: '1.21 x 10^16 Bq/g', parent: 'Strontium-90', daughter: 'Zirconium-90 (stable)', commonUses: ['Radioembolization (liver cancer therapy)', 'Radioimmunotherapy', 'Brachytherapy'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' } },
@@ -269,7 +269,6 @@
         ];
     </script>
 
-    <div id="root"></div>
 
     <script type="text/babel">
 
@@ -959,57 +958,78 @@
         // These components represent the main content areas of the application.
         //==============================================================================
 
-        /**
-         * @description The landing page view, showing suggestions, search history, or the main search result.
-         * @param {object} props - Contains data and handlers for the home page.
-         * @param {string | null} props.errorMessage - An error message to display, if any.
-         * @param {object | null} props.result - The currently selected nuclide to display.
-         * @param {Array<object>} props.randomSuggestions - A list of nuclides for quick selection.
-         * @param {Array<object>} props.searchHistory - A list of recently viewed nuclides.
-         * @param {(nuclide: object) => void} props.handleNuclideSelection - Handler for selecting a nuclide.
-         * @param {() => void} props.handleClearHistory - Handler for clearing the search history.
-         */
+ /**
+ * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
+ * @param {object} props - Contains data and handlers for the home page.
+ */
+const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides }) => {
+    
+    // Find the full nuclide objects for our favorite symbols
+    const favoriteNuclides = React.useMemo(() => 
+        favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [favorites, radionuclides]
+    );
 
-        const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory }) => (
-            <div className="p-4">
-                {errorMessage && (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-4" role="alert">
-                        <p className="font-bold">Error</p><p>{errorMessage}</p>
+    return (
+        <div className="p-4">
+            {errorMessage && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-4" role="alert">
+                    <p className="font-bold">Error</p><p>{errorMessage}</p>
+                </div>
+            )}
+            {result ? (
+                // This part is unchanged: if there's a search result, we don't show the home page content
+                <NuclideCard nuclide={result} />
+            ) : (
+                <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome to the Radionuclide Database</h3>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide, browse the database, or use the calculators.</p>
+                    
+                    <div className="mt-6">
+                        <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
+                        <div className="flex flex-wrap justify-center gap-2 mt-2">
+                            {randomSuggestions.map(n => (
+                                <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">{n.name}</button>
+                            ))}
+                        </div>
                     </div>
-                )}
-                {result ? (
-                    <NuclideCard nuclide={result} />
-                ) : (
-                    <div className="text-center p-8 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Welcome to the Radionuclide Database</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">Search for a nuclide, browse the database, or use the calculators.</p>
-                        
-                        <div className="mt-6">
-                            <h4 className="font-semibold text-slate-600 dark:text-slate-300">Quick Suggestions:</h4>
-                            <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                {randomSuggestions.map(n => (
-                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 text-sm rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition">{n.name}</button>
+
+                    {/* --- THIS IS THE NEW FAVORITES SECTION --- */}
+                    {favoriteNuclides.length > 0 && (
+                        <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h4 className="font-semibold text-slate-600 dark:text-slate-300">Your Favorites:</h4>
+                             <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                {favoriteNuclides.map(n => (
+                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 text-sm rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-800 transition">{n.name}</button>
                                 ))}
                             </div>
                         </div>
+                    )}
+                    {/* --- END OF NEW SECTION --- */}
 
-                        {searchHistory.length > 0 && (
-                            <div className="mt-6">
-                                <div className="flex justify-center items-center gap-4 mb-2">
-                                    <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
-                                    <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">Clear History</button>
-                                </div>
-                                <div className="flex flex-wrap justify-center gap-2 mt-2">
-                                    {searchHistory.map(n => (
-                                        <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">{n.name}</button>
-                                    ))}
-                                </div>
+                    {searchHistory.length > 0 && (
+                        <div className="mt-6">
+                            <div className="flex justify-center items-center gap-4 mb-2">
+                                <h4 className="font-semibold text-slate-600 dark:text-slate-300">Recent Searches:</h4>
+                                <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">Clear History</button>
                             </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        );
+                            <div className="flex flex-wrap justify-center gap-2 mt-2">
+                                {searchHistory.map(n => (
+                                    <button key={n.symbol} onClick={() => handleNuclideSelection(n)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition">{n.name}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+
+
+
 
         /**
          * @description Displays information about a single radionuclide. Can be a full detailed card or a compact version for lists.
@@ -1021,7 +1041,7 @@
          * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
          */
 
-        const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit }) => {
+	    const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite }) => {
 
             // Helper to generate a link to a data source.
 
@@ -1064,21 +1084,43 @@
                 );
             }
 
+	    const isFavorite = favorites?.includes(nuclide.symbol);
+
             // Full detailed view.
 
             return (
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
-                        <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
-                            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:text-sky-500 hover:underline transition-colors">
-                            {nuclide.name}
-                            </a> 
-                           ({nuclide.symbol})
-                        </h2>
-                    <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div>
-                    
+                       
+
+
+
+
+<div className="flex justify-between items-start">
+    <div>
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-1">
+            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                {nuclide.name}
+            </a>
+            ({nuclide.symbol})
+        </h2>
+        <div className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded-full inline-block mb-4">{nuclide.category} - {nuclide.commonality}</div>
+    </div>
+
+    {/* The new "Favorite" button */}
+
+    {toggleFavorite && (
+         <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+            </svg>
+        </button>
+    )}
+</div>
+
+
+
+
+
                     <div className="grid md:grid-cols-2 gap-6 mt-4">
                         <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
                         <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
@@ -2551,6 +2593,26 @@ const MassActivityCalculator = ({ radionuclides }) => {
 
             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
+           
+            // State for managing favorite nuclides, loaded from localStorage
+           
+            const [favorites, setFavorites] = React.useState(() => {
+            try {
+                return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]');
+            } catch (e) {
+                return []; // Return empty array on error
+            }
+        });
+
+        // Function to add or remove a nuclide from favorites
+        const toggleFavorite = (symbol) => {
+            const newFavorites = favorites.includes(symbol)
+                ? favorites.filter(s => s !== symbol) // If it exists, remove it
+                : [...favorites, symbol];              // If it doesn't exist, add it
+
+            setFavorites(newFavorites);
+            localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
+        };
             
             // Derived/Generated State
 
@@ -2788,12 +2850,16 @@ const MassActivityCalculator = ({ radionuclides }) => {
                     case 'stayTime': return <StayTimeCalculator radionuclides={radionuclides} />;
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
-                    case 'home':
-                    default: 
-                        if (result) {
-                            return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} /></div>;
-                        }
-                        return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} />;
+            
+case 'home':
+default:
+    if (result) {
+        return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} /></div>;
+    }
+    return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} />;
+
+
+
                 }
             };
             
@@ -2967,128 +3033,148 @@ const MassActivityCalculator = ({ radionuclides }) => {
 	    );
 	};
 
+/**
+ * @description An advanced view for comparing multiple radionuclides side-by-side.
+ * Features dynamic highlighting of min/max values and in-cell data bars for quick analysis.
+ * @param {{
+ * radionuclides: Array<object>,
+ * onNuclideClick: (nuclide: object) => void
+ * }} props
+ */
+const ComparisonView = ({ radionuclides, onNuclideClick }) => {
+    const [comparisonList, setComparisonList] = React.useState([]);
 
+    const sortedNuclides = React.useMemo(() =>
+        [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
 
-	/**
- 	 * @description A view for comparing multiple radionuclides side-by-side in a table.
- 	 * Users can add or remove nuclides from the comparison.
- 	 * @param {{
- 	 * radionuclides: Array<object>,
- 	 * onNuclideClick: (nuclide: object) => void
- 	 * }} props - Component props.
- 	 * @param {Array<object>} props.radionuclides - The full list of available radionuclides for the selector.
- 	 * @param {(nuclide: object) => void} props.onNuclideClick - Handler to navigate to the main detail view for a nuclide when its name is clicked in the table header.
- 	 */
+    const handleAddNuclide = (symbol) => {
+        if (symbol && !comparisonList.find(n => n.symbol === symbol)) {
+            const nuclideToAdd = radionuclides.find(n => n.symbol === symbol);
+            if (nuclideToAdd) {
+                setComparisonList(prevList => [...prevList, nuclideToAdd]);
+            }
+        }
+    };
+    
+    const handleRemoveNuclide = (symbol) => {
+        setComparisonList(prevList => prevList.filter(n => n.symbol !== symbol));
+    };
 
-        const ComparisonView = ({ radionuclides, onNuclideClick }) => {
-            const [comparisonList, setComparisonList] = React.useState([]);
+    const propertiesToCompare = [
+        // Using a 'type' key to identify which rows should have highlighting/bars
+        { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
+        { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
+        { label: 'Alpha Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.alpha) },
+        { label: 'Beta Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.beta) },
+        { label: 'Gamma Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.gamma) },
+        { label: 'Specific Activity (Bq/g)', key: 'specificActivity', type: 'numeric', format: (val) => parseSpecificActivity(val) },
+        { label: 'Gamma Constant', key: 'gammaConstant', type: 'numeric', format: (val) => parseFloat(val) },
+        { label: 'Parent', key: 'parent', type: 'categorical' },
+        { label: 'Daughter', key: 'daughter', type: 'categorical' },
+    ];
 
-            // Memoize the sorted list of nuclides for the dropdown menu
-            const sortedNuclides = React.useMemo(() =>
-                [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
-                [radionuclides]
-            );
-
-            // Adds a selected nuclide to the comparison table
-
-            const handleAddNuclide = (symbol) => {
-                if (symbol && !comparisonList.find(n => n.symbol === symbol)) {
-                    const nuclideToAdd = radionuclides.find(n => n.symbol === symbol);
-                    if (nuclideToAdd) {
-                        setComparisonList(prevList => [...prevList, nuclideToAdd]);
-                    }
-                }
-            };
-            
-            // Removes a nuclide from the comparison table by its symbol
-
-            const handleRemoveNuclide = (symbol) => {
-                setComparisonList(prevList => prevList.filter(n => n.symbol !== symbol));
-            };
-
-            // Defines the properties to display as rows in the table
-
-            const propertiesToCompare = [
-                { label: 'Half-life', key: 'halfLife' },
-                { label: 'Emission Type(s)', key: 'emissionType', format: (val) => val?.join(', ') || 'N/A' },
-                { label: 'Alpha Energy (MeV)', key: 'emissionEnergies', format: (val) => val?.alpha?.[0]?.split(' ')[0] || 'N/A' },
-                { label: 'Beta Energy (MeV)', key: 'emissionEnergies', format: (val) => val?.beta?.[0]?.split(' ')[0] || 'N/A' },
-                { label: 'Gamma Energy (MeV)', key: 'emissionEnergies', format: (val) => val?.gamma?.[0]?.split(' ')[0] || 'N/A' },
-                { label: 'Specific Activity', key: 'specificActivity' },
-                { label: 'Gamma Constant', key: 'gammaConstant' },
-                { label: 'Parent', key: 'parent' },
-                { label: 'Daughter', key: 'daughter' },
-            ];
-
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Compare Radionuclides</h2>
-                        
-                        {/* --- Nuclide Selection Controls --- */}
-
-
-
-	<div className="flex items-center gap-2 mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-	    <SearchableSelect
-	        options={sortedNuclides.filter(n => !comparisonList.find(c => c.symbol === n.symbol))}
-	        onSelect={handleAddNuclide}
-	        placeholder="Search to add a nuclide..."/>
-	</div>
-
-                        {/* --- Comparison Table --- */}
-
-                        {comparisonList.length === 0 ? (
-                            <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
-                                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">The Comparison Table is Empty</h3>
-                                <p className="text-slate-500 dark:text-slate-400 mt-2">Use the dropdown above to add radionuclides to compare.</p>
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[600px] text-left border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className="sticky left-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-600">Property</th>
-                                            {comparisonList.map(nuclide => (
-                                                <th key={nuclide.symbol} className="p-3 text-sm font-semibold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-600">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>
-                                                            {nuclide.name}
-                                                        </span>
-                                                        <div className="flex items-center">
-                                                            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" title="View on Wikipedia" className="ml-2 text-slate-400 hover:text-sky-500">
-                                                                {/* Link Icon SVG */}
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                                            </a>
-                                                            <button onClick={() => handleRemoveNuclide(nuclide.symbol)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">✕</button>
-                                                        </div>
-                                                    </div>
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {propertiesToCompare.map(prop => (
-                                            <tr key={prop.key} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                                <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 p-3 font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-600">{prop.label}</td>
-                                                {comparisonList.map(nuclide => {
-                                                    const value = prop.format ? prop.format(nuclide[prop.key]) : (nuclide[prop.key] || 'N/A');
-                                                    return (
-                                                        <td key={nuclide.symbol} className="p-3 text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-600">
-                                                            {value}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Compare Radionuclides</h2>
+                
+                <div className="flex items-center gap-2 mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                    <SearchableSelect
+                        options={sortedNuclides.filter(n => !comparisonList.find(c => c.symbol === n.symbol))}
+                        onSelect={handleAddNuclide}
+                        placeholder="Search to add a nuclide..."/>
                 </div>
-            );
-        };
+
+                {comparisonList.length === 0 ? (
+                    <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                        <h3 className="text-lg font-semibold">The Comparison Table is Empty</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box to add radionuclides to compare.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[600px] text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    {/* --- Sticky Header for Property Column --- */}
+                                    <th className="sticky left-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold z-10 border-b border-r border-slate-200 dark:border-slate-600">Property</th>
+                                    {comparisonList.map(nuclide => (
+                                        <th key={nuclide.symbol} className="p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
+                                            <div className="flex justify-between items-center">
+                                                <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>{nuclide.name}</span>
+                                                <button onClick={() => handleRemoveNuclide(nuclide.symbol)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
+                                            </div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {propertiesToCompare.map(prop => {
+                                    // --- LOGIC FOR HIGHLIGHTING AND BARS ---
+                                    let values = [], maxVal = -Infinity, minVal = Infinity;
+                                    if (prop.type === 'numeric') {
+                                        values = comparisonList.map(nuclide => {
+                                            const rawValue = prop.key === 'emissionEnergies' ? nuclide[prop.key] : nuclide[prop.key];
+                                            const formattedVal = prop.format(rawValue);
+                                            return isNaN(formattedVal) || formattedVal === Infinity ? null : formattedVal;
+                                        }).filter(v => v !== null);
+                                        
+                                        if (values.length > 1) {
+                                            maxVal = Math.max(...values);
+                                            minVal = Math.min(...values);
+                                        }
+                                    }
+
+                                    return (
+                                        <tr key={prop.label} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                            {/* --- Sticky Body Cell for Property Column --- */}
+                                            <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 p-3 font-medium text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-slate-600 z-10">{prop.label}</td>
+                                            
+                                            {comparisonList.map(nuclide => {
+                                                const rawValue = nuclide[prop.key];
+                                                const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+                                                
+                                                let cellClass = 'border-b border-slate-200 dark:border-slate-600';
+                                                let displayValue = formattedValue;
+                                                
+                                                if(prop.type === 'numeric') {
+                                                    const numericVal = parseFloat(formattedValue);
+                                                    displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toExponential(2);
+                                                    if (numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
+                                                    if (numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
+                                                }
+
+                                                const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
+
+                                                return (
+                                                    <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
+                                                        {/* In-cell data bar */}
+                                                        {prop.type === 'numeric' && barWidth > 0 &&
+                                                            <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>
+                                                        }
+                                                        {/* Cell value, positioned above the bar */}
+                                                        <span className="relative">{displayValue}</span>
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+
+
+
+
 
          /**
           * @description A calculator for determining the external dose rate from a gamma-emitting point source.
