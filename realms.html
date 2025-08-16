@@ -181,7 +181,7 @@ body.loading .game-container {
 
 .title-header,
 .game-container {
-    transition: opacity 0.4s ease-in-out;
+    transition: opacity 0.2s ease-in-out;
 }
     /* --- YOUR CUSTOM GAME STYLES START HERE --- */
     body {
@@ -268,6 +268,16 @@ body.loading .game-container {
         display: flex;
         flex-direction: column-reverse;
     }
+      width: 8px;
+}
+.log-area::-webkit-scrollbar-track {
+  background: #221122;
+}
+.log-area::-webkit-scrollbar-thumb {
+  background-color: #993399;
+  border-radius: 4px;
+  border: 1px solid #cc66cc;
+}
     .log-area p {
         margin: 0 0 0.25rem 0;
         font-size: 14px;
@@ -467,19 +477,29 @@ body.loading .game-container {
     <h1 class="title-header">Realms of Rune & Rust</h1>
 
     <div class="game-container">
-        <div id="stats-bar" class="stats-bar">
-            Name: <span id="player-name-display">Wanderer</span> | Zone: <span id="zone-name">Loading...</span> | Explored: <span id="explored-percentage">0</span>%
-            <br>
-            HP: <span id="player-hp">0</span>/<span id="player-max-hp">0</span> | Level: <span id="player-level">1</span> | XP: <span id="player-xp">0</span>/<span id="xp-to-next-level">100</span>
-            <br>
-            Class: <span id="player-class">None</span> | Stats: MGT <span id="stat-might">0</span> | WIT <span id="stat-wits">0</span> | SPR <span id="stat-spirit">0</span>
-            <br>
-            Resources: <span class="resource-icon">.</span> <span id="glimmering-dust">0</span> | <span class="resource-icon">#</span> <span id="ancient-scraps">0</span>
-            | <span id="void-essence-display" style="display:none;">VE: <span id="void-essence">0</span> | </span>Runes: <span id="runes-collected">None</span>
-            <br>
-            <span id="companion-display" style="display:none;">Companion: <span id="companion-info"></span></span>
-            | Artifacts: <span id="artifacts-collected">0/0</span> | Speed: <span id="exploration-speed">1</span>x
-        </div>
+<div id="stats-bar" class="stats-bar">
+    Name: <span id="player-name-display">Wanderer</span> | 
+    Zone: <span id="zone-name">Loading...</span> | 
+    Explored: <span id="explored-percentage">0</span>%
+    <br>
+    <span id="player-hp-wrapper">HP: <span id="player-hp">0</span>/<span id="player-max-hp">0</span></span> | 
+    <span id="player-level-wrapper">Level: <span id="player-level">1</span></span> | 
+    <span id="player-xp-wrapper">XP: <span id="player-xp">0</span>/<span id="xp-to-next-level">100</span></span>
+    <br>
+    <span id="player-class-wrapper">Class: <span id="player-class">None</span></span> | 
+    Stats: <span id="stat-might-wrapper">MGT <span id="stat-might">0</span></span> | 
+    <span id="stat-wits-wrapper">WIT <span id="stat-wits">0</span></span> | 
+    <span id="stat-spirit-wrapper">SPR <span id="stat-spirit">0</span></span>
+    <br>
+    Resources: <span id="glimmering-dust-wrapper"><span class="resource-icon">.</span> <span id="glimmering-dust">0</span></span> | 
+    <span id="ancient-scraps-wrapper"><span class="resource-icon">#</span> <span id="ancient-scraps">0</span></span> | 
+    <span id="void-essence-display" style="display:none;">VE: <span id="void-essence">0</span> | </span>
+    <span id="runes-collected-wrapper">Runes: <span id="runes-collected">None</span></span>
+    <br>
+    <span id="companion-display" style="display:none;">Companion: <span id="companion-info"></span></span> | 
+    <span id="artifacts-collected-wrapper">Artifacts: <span id="artifacts-collected">0/0</span></span> | 
+    <span id="exploration-speed-wrapper">Speed: <span id="exploration-speed">1</span>x</span>
+</div>
 
         <div id="game-screen" class="game-screen">
             <div id="game-screen-content"></div> 
@@ -1223,6 +1243,18 @@ const ZONE_LORE = {
         const statMightDisplay = document.getElementById('stat-might'); 
         const statWitsDisplay = document.getElementById('stat-wits');   
         const statSpiritDisplay = document.getElementById('stat-spirit'); 
+        const playerHpWrapper = document.getElementById('player-hp-wrapper');
+const playerLevelWrapper = document.getElementById('player-level-wrapper');
+const playerXpWrapper = document.getElementById('player-xp-wrapper');
+const playerClassWrapper = document.getElementById('player-class-wrapper');
+const statMightWrapper = document.getElementById('stat-might-wrapper');
+const statWitsWrapper = document.getElementById('stat-wits-wrapper');
+const statSpiritWrapper = document.getElementById('stat-spirit-wrapper');
+const glimmeringDustWrapper = document.getElementById('glimmering-dust-wrapper');
+const ancientScrapsWrapper = document.getElementById('ancient-scraps-wrapper');
+const runesCollectedWrapper = document.getElementById('runes-collected-wrapper');
+const artifactsCollectedWrapper = document.getElementById('artifacts-collected-wrapper');
+const explorationSpeedWrapper = document.getElementById('exploration-speed-wrapper');
         const playerLevelDisplay = document.getElementById('player-level'); 
         const playerXpDisplay = document.getElementById('player-xp');      
         const xpToNextLevelDisplay = document.getElementById('xp-to-next-level'); 
@@ -1364,64 +1396,86 @@ const ZONE_LORE = {
                 if(zone) firstLogEntry.style.color = lightenDarkenColor(zone.color, 60); 
             }
         }
-        function renderStats() { 
-            const zone = getCurrentZone();
-            
-            if (!zone && gameState.currentZoneIndex !== -1) return; 
-            if (gameState.currentZoneIndex === -1) { 
-                statsZoneName.textContent = "Journey Ended";
-                statsExploredPercentage.textContent = "---";
-            } else {
-                statsZoneName.textContent = zone.name;
-                const exploredPercentage = Math.min(100, Math.floor((gameState.playerZoneX / zone.width) * 100));
-                statsExploredPercentage.textContent = exploredPercentage;
-            }
+function renderStats() {
+    const zone = getCurrentZone();
 
-            const effectiveStats = getEffectiveStats();
+    if (!zone && gameState.currentZoneIndex !== -1) return;
+    if (gameState.currentZoneIndex === -1) {
+        statsZoneName.textContent = "Journey Ended";
+        statsExploredPercentage.textContent = "---";
+    } else {
+        statsZoneName.textContent = zone.name;
+        const exploredPercentage = Math.min(100, Math.floor((gameState.playerZoneX / zone.width) * 100));
+        statsExploredPercentage.textContent = exploredPercentage;
+    }
 
-            playerNameDisplay.textContent = gameState.playerName; 
-            playerHpDisplay.textContent = Math.max(0, gameState.currentHp);
-            playerMaxHpDisplay.textContent = gameState.maxHp;
-            playerClassDisplay.textContent = gameState.playerClass || "None"; 
-            statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
-            statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
-            statsAncientScraps.textContent = gameState.resources.ancientScraps;
-            statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
-            
-            if (gameState.resources.voidEssence > 0) {
-                voidEssenceDisplay.style.display = 'inline';
-                statsVoidEssence.textContent = gameState.resources.voidEssence;
-            } else {
-                voidEssenceDisplay.style.display = 'none';
-            }
+    const effectiveStats = getEffectiveStats();
 
-            if (gameState.companion) {
-                companionDisplay.style.display = 'inline'; 
-                companionInfo.textContent = `${gameState.companion.name} the ${gameState.companion.type}`;
-            } else {
-                companionDisplay.style.display = 'none';
-            }
-            artifactsCollectedDisplay.textContent = `${gameState.collectedArtifacts.length}/${ARTIFACTS.length}`;
+    playerNameDisplay.textContent = gameState.playerName;
+    playerHpDisplay.textContent = Math.max(0, gameState.currentHp);
+    document.getElementById('player-hp-wrapper').title = "Health Points (HP): Your vitality. If this reaches 0, your journey ends.";
+    playerMaxHpDisplay.textContent = gameState.maxHp;
 
-            statMightDisplay.textContent = `${effectiveStats.might}`;
-            if (effectiveStats.might !== gameState.stats.might) {
-                statMightDisplay.textContent += ` (${gameState.stats.might}+${effectiveStats.might - gameState.stats.might})`;
-                statMightDisplay.style.color = '#90ee90'; // Light green for buffed stat
-            } else {
-                statMightDisplay.style.color = ''; // Reset color
-            }
+    playerClassDisplay.textContent = gameState.playerClass || "None";
+    document.getElementById('player-class-wrapper').title = "Class: Your chosen specialization, granting unique bonuses.";
 
-            statWitsDisplay.textContent = effectiveStats.wits;
-            statSpiritDisplay.textContent = effectiveStats.spirit;
-            playerLevelDisplay.textContent = gameState.level;
-            playerXpDisplay.textContent = gameState.xp;
-            xpToNextLevelDisplay.textContent = gameState.xpToNextLevel;
+    statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
+    document.getElementById('exploration-speed-wrapper').title = "Exploration Speed: How quickly you travel. Can be upgraded with Glimmering Dust.";
+
+    statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
+    document.getElementById('glimmering-dust-wrapper').title = "Glimmering Dust: A common resource used for basic upgrades and actions.";
+
+    statsAncientScraps.textContent = gameState.resources.ancientScraps;
+    document.getElementById('ancient-scraps-wrapper').title = "Ancient Scraps: Remnants of a bygone era, hinting at lost technology.";
+
+    statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
+    document.getElementById('runes-collected-wrapper').title = "Runes: Powerful, permanent symbols you have attuned to.";
+
+    if (gameState.resources.voidEssence > 0) {
+        voidEssenceDisplay.style.display = 'inline';
+        statsVoidEssence.textContent = gameState.resources.voidEssence;
+        voidEssenceDisplay.title = "Void Essence: A rare and unsettling resource drawn from the Starfall Crater's influence.";
+    } else {
+        voidEssenceDisplay.style.display = 'none';
+    }
+
+    if (gameState.companion) {
+        companionDisplay.style.display = 'inline';
+        companionInfo.textContent = `${gameState.companion.name} the ${gameState.companion.type}`;
+        companionDisplay.title = "Companion: A loyal creature who travels with you.";
+    } else {
+        companionDisplay.style.display = 'none';
+    }
+    artifactsCollectedDisplay.textContent = `${gameState.collectedArtifacts.length}/${ARTIFACTS.length}`;
+    document.getElementById('artifacts-collected-wrapper').title = "Artifacts: Unique relics from the past, each with its own story or effect.";
+
+    statMightDisplay.textContent = effectiveStats.might;
+    document.getElementById('stat-might-wrapper').title = "Might (MGT): Increases max HP, physical power in combat, and success in strength-based challenges.";
+    if (effectiveStats.might !== gameState.stats.might) {
+        statMightDisplay.textContent = `${effectiveStats.might} (${gameState.stats.might}+${effectiveStats.might - gameState.stats.might})`;
+        statMightDisplay.style.color = '#90ee90';
+    } else {
+        statMightDisplay.style.color = '';
+    }
+
+    statWitsDisplay.textContent = effectiveStats.wits;
+    document.getElementById('stat-wits-wrapper').title = "Wits (WIT): Increases success in deciphering runes, understanding lore, and discovering secrets.";
+
+    statSpiritDisplay.textContent = effectiveStats.spirit;
+    document.getElementById('stat-spirit-wrapper').title = "Spirit (SPR): Enhances spiritual power in combat and improves outcomes with companions, shrines, and other mystical events.";
+
+    playerLevelDisplay.textContent = gameState.level;
+    document.getElementById('player-level-wrapper').title = "Level: Your overall character level. Increases with experience (XP).";
+
+    playerXpDisplay.textContent = gameState.xp;
+    document.getElementById('player-xp-wrapper').title = "Experience (XP): Gained from discoveries and combat. Earn enough to level up.";
+    xpToNextLevelDisplay.textContent = gameState.xpToNextLevel;
 
 
-            const upgradeCost = 50 * gameState.explorationSpeedMultiplier;
-            upgradeSpeedButton.textContent = `Upgrade Speed (Cost: ${Math.round(upgradeCost)} .)`;
-            upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < upgradeCost || gameState.currentZoneIndex === -1;
-        }
+    const upgradeCost = 50 * gameState.explorationSpeedMultiplier;
+    upgradeSpeedButton.textContent = `Upgrade Speed (Cost: ${Math.round(upgradeCost)} .)`;
+    upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < upgradeCost || gameState.currentZoneIndex === -1;
+}
         
         function updateUIAccentColors() { 
             const zone = getCurrentZone();
@@ -2114,11 +2168,20 @@ const ZONE_LORE = {
                         gameState.resources.glimmeringDust += dustFound;
                         addLogMessage(`Found ${dustFound} Glimmering Dust (.)`);
                         playSound('dust');
-                        if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
-                            gameState.resources.glimmeringDust += 1;
-                            addLogMessage(`${gameState.companion.name} sniffs out an extra Glimmering Dust!`, "companion");
-                        }
-                        break;
+if (gameState.companion) {
+    // If the companion is a Fox, it has a 33% chance to find a good amount of bonus dust.
+    if (gameState.companion.type === "Fox" && seededRandom() < 0.33) { 
+        const bonusDust = seededRandomInt(2, 4);
+        gameState.resources.glimmeringDust += bonusDust;
+        addLogMessage(`${gameState.companion.name}'s keen senses uncover an extra ${bonusDust} Glimmering Dust!`, "companion");
+    } 
+    // Any other companion has a smaller 10% chance to find just one extra dust.
+    else if (seededRandom() < 0.10) { 
+        gameState.resources.glimmeringDust += 1;
+        addLogMessage(`${gameState.companion.name} helps you find an extra piece of dust!`, "companion");
+    }
+}
+break;
                     case 'm': 
                         addLogMessage(`Passed by a ${getElementDescription(currentElementChar)}.`);
                         if (gameState.companion && seededRandom() < COMPANION_FIND_CHANCE) {
