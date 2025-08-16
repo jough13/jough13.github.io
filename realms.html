@@ -537,28 +537,6 @@ body.loading .game-container {
         const NUM_LANES = 5;
         const PLAYER_INITIAL_LANE = Math.floor(NUM_LANES / 2); 
         const VERTICAL_MOVE_CHANCE = 0.15; 
-        const PLAYER_COLOR_STYLE = "color: #ffff00;"; 
-        const WATER_COLOR_STYLE = "color: #6495ed;"; 
-        const BRIDGE_COLOR_STYLE = "color: #8b4513;"; 
-        const MOUNTAIN_COLOR_STYLE = "color: #a9a9a9;"; 
-        const FOREST_COLOR_STYLE = "color: #228b22;"; 
-        const DARK_FEATURE_COLOR_STYLE = "color: #363636;"; 
-        const CLOUD_COLOR_STYLE = "color: #f0f8ff;";
-        const RUIN_COLOR_STYLE = "color: #deb887;";
-        const WINDCHIME_COLOR_STYLE = "color: #ffd700;";
-        const GUARDIAN_COLOR_STYLE = "color: #b0e0e6;";
-        const ORACLE_DAIS_COLOR_STYLE = "color: #7b68ee;"; 
-        const ENEMY_COLOR_STYLE = "color: #ff4136; font-weight: bold;";
-        const BLOCKED_PATH_COLOR_STYLE = "color: #708090;"; 
-        const RUNIC_ETCHING_COLOR_STYLE = "color: #afeeee;"; 
-        const WHISPERING_TOTEM_COLOR_STYLE = "color: #dda0dd;"; 
-        const WHISPERING_ECHO_COLOR_STYLE = "color: #e0ffff;"; 
-        const CHEST_TILE_STYLE = "color: #daa520;"; 
-        const WEAVER_TILE_STYLE = "color: #ba55d3;"; 
-        const SWORD_STONE_TILE_STYLE = "color: #c0c0c0; font-weight: bold;";
-        const DYING_CREATURE_TILE_STYLE = "color: #cd853f;";
-
-
         const COMPANION_FIND_CHANCE = 0.1; 
         const BASE_STAT_VALUE = 3; 
         const MIGHT_BONUS_DUST_CHANCE_PER_POINT = 0.05; 
@@ -1655,7 +1633,12 @@ const ZONE_LORE = {
                 const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak); 
                 gameState.currentHp -= damageToPlayer;
                 combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage. Your HP: ${Math.max(0, gameState.currentHp)}`);
-                if (damageToPlayer > 0) playSound('combatMiss'); 
+                
+                if (damageToPlayer > 0) {
+    // You could add a "player takes damage" sound here if you have one
+                } else {
+                    playSound('combatMiss'); // Plays "miss" sound on a miss (0 damage)
+                }       
 
                 if (gameState.currentHp <= 0) {
                     resolveCombatOutcome();
