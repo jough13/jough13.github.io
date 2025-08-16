@@ -5,55 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Posh Salon Service Matrix</title>
     <style>
-        /* --- MODIFIED: Added Dark Mode variables and new modal styles --- */
         :root {
-            --primary-bg: #fdfdfd;
-            --secondary-bg: #f1f3f6;
-            --header-bg: #e8eaf0;
-            --accent-color: #6a7de1;
+            --primary-bg: #ffffff;
+            --secondary-bg: #f7f7f7;
+            --header-bg: #f0f0f0;
+            --accent-color: #203459;
             --danger-hover: #ef5350;
             --danger-color: #f44336;
-            --text-color: #333;
-            --border-color: #d1d9e6;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
             --success-color: #5db983;
-            --shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             --modal-bg: white;
+            --page-bg: #ebf4ff;
         }
-
-        /* --- NEW: Dark Mode color palette --- */
         body.dark-mode {
-            --primary-bg: #1a1a2e;
-            --secondary-bg: #16213e;
-            --header-bg: #0f3460;
-            --accent-color: #90a4f4;
+            --primary-bg: #252525;
+            --secondary-bg: #2c2c2c;
+            --header-bg: #3a3a3a;
+            --accent-color: #6c7a99;
             --text-color: #e0e0e0;
-            --border-color: #3a476a;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            --modal-bg: #1e294b;
+            --border-color: #444444;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            --modal-bg: #2c2c2c;
+            --page-bg: #1e1e1e;
         }
-
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--primary-bg);
+            background-color: var(--page-bg);
             color: var(--text-color);
             margin: 0;
-            padding: 2rem;
+            padding: 2rem 1rem;
             transition: background-color 0.3s, color 0.3s;
         }
         body.placing-note { cursor: crosshair; }
-        .container { width: 100%; max-width: 1200px; margin: 0 auto; }
-        h1 { color: var(--accent-color); text-align: center; margin-bottom: 2rem; font-weight: 600; }
-        .controls { display: flex; justify-content: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-        .control-group { display: flex; align-items: center; gap: 0.5rem; }
-        #note-controls {
-            width: 100%;
-            justify-content: center;
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: var(--primary-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: background-color 0.3s;
+        }
+        
+        /* --- MODIFIED: Styles for the new three-column control panel --- */
+        .main-controls {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
             padding-bottom: 2rem;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
         }
-        .color-palette { display: flex; gap: 8px; margin-left: 1rem; }
+        .controls-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .controls-column.middle {
+            text-align: center;
+        }
+        .controls-column.right {
+            align-items: flex-end;
+        }
+        .main-controls h1 {
+            margin: 0;
+            font-size: 1.75rem; /* Adjusted size to fit well */
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+        .control-group { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .controls-column.right .control-group {
+             justify-content: flex-end;
+        }
+        /* --- End of new styles --- */
+        
+        .color-palette { display: flex; gap: 8px; }
         .color-box {
             width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
             box-sizing: border-box; transition: transform 0.2s;
@@ -62,18 +99,17 @@
         .color-box.selected { border-color: var(--accent-color) !important; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
         input[type="text"] {
             border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px;
-            background-color: var(--primary-bg); color: var(--text-color); /* Modified for dark mode */
+            background-color: var(--primary-bg); color: var(--text-color);
             transition: box-shadow 0.2s, background-color 0.3s; min-width: 200px;
         }
-        input[type="text"]:focus { outline: none; box-shadow: 0 0 0 3px rgba(106, 125, 225, 0.3); }
+        input[type="text"]:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         button {
             background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem;
-            border-radius: 8px; cursor: pointer; font-weight: 500; transition: background-color 0.2s;
+            border-radius: 8px; cursor: pointer; font-weight: 500; transition: background-color 0.2s, opacity 0.2s; white-space: nowrap;
         }
+        button:hover { opacity: 0.85; }
+        button.danger-btn { background-color: var(--danger-color); }
         button.save-btn { background-color: var(--success-color); }
-        button.save-btn:hover { background-color: #4cae72; }
-        button:hover { background-color: #586ac7; }
-        /* --- NEW: Theme toggle button style --- */
         #theme-toggle-btn {
             background-color: var(--secondary-bg);
             color: var(--text-color);
@@ -96,16 +132,16 @@
         .name-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .stylist-info { display: flex; flex-direction: column; gap: 4px; }
         .level-select { border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 6px; font-size: 0.9em; background-color: var(--primary-bg); color: var(--text-color); cursor: pointer; }
-        .editable { cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s; font-weight: 600; }
-        .editable:hover { background-color: rgba(106, 125, 225, 0.1); }
+        .editable { cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; font-weight: 600; }
+        .editable:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
         .remove-btn { background: none; border: none; cursor: pointer; color: #aaa; font-size: 1.1em; padding: 4px; border-radius: 50%; width: 28px; height: 28px; line-height: 1; }
         .remove-btn:hover { color: white; background-color: var(--danger-hover); }
         td { text-align: center; }
         td:first-child { text-align: left; white-space: nowrap; }
         .cell-content { display: flex; flex-direction: column; align-items: center; gap: 8px; }
         input[type="checkbox"] { transform: scale(1.5); cursor: pointer; accent-color: var(--accent-color); }
-        .price-text { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s; min-width: 70px; display: inline-block; }
-        .price-text:hover { background-color: rgba(106, 125, 225, 0.1); }
+        .price-text { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; min-width: 70px; display: inline-block; }
+        .price-text:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
         .price-text.placeholder { color: #888; font-style: italic; font-size: 0.9em; }
         .price-input, .name-input { width: 70px; padding: 4px; border: 1px solid var(--accent-color); border-radius: 4px; text-align: center; font-family: inherit; font-size: 1em; }
         .name-input { width: 150px; text-align: left; }
@@ -114,7 +150,6 @@
             box-shadow: 1px 1px 3px rgba(0,0,0,0.2); cursor: pointer; display: flex;
             align-items: center; justify-content: center; box-sizing: border-box;
         }
-        /* --- NEW: Modal backdrop style --- */
         .modal-backdrop {
             display: none; position: fixed; z-index: 999; top: 0; left: 0;
             width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
@@ -133,12 +168,13 @@
             position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; line-height: 1;
             cursor: pointer; border: none; background: none; color: #aaa; transition: color 0.2s;
         }
-        .modal-popup .close-popup:hover { color: #333; }
+        .modal-popup .close-popup:hover { color: var(--text-color); }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
-        .manual-content p, .manual-content li { line-height: 1.6; color: #bbb; }
-        .dark-mode .manual-content p, .dark-mode .manual-content li { color: #ccc; } /* Better dark mode manual text */
+        .manual-content p, .manual-content li { line-height: 1.6; }
+        .dark-mode .manual-content p, .dark-mode .manual-content li { color: #ccc; }
         .manual-content strong { color: var(--text-color); }
-        footer { text-align: center; margin-top: 3rem; padding: 1rem; font-size: 0.9em; color: #888; }
+        footer { text-align: center; margin-top: 2rem; padding: 1rem 0 0 0; font-size: 0.9em; color: #888; }
+        .dark-mode footer { color: #aaa; }
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -146,17 +182,16 @@
         #note-entry-textarea {
             width: 100%; height: 120px; padding: 1rem; border: 1px solid var(--border-color);
             border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 1em;
-            background-color: var(--primary-bg); color: var(--text-color); /* Modified for dark mode */
+            background-color: var(--primary-bg); color: var(--text-color);
         }
-        #note-entry-textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(106, 125, 225, 0.3); }
+        #note-entry-textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
-        .modal-actions button.secondary:hover { background-color: #5a6268; }
-        /* --- NEW: Danger button style for confirm modal --- */
         .modal-actions button.danger-btn { background-color: var(--danger-color); }
-        .modal-actions button.danger-btn:hover { background-color: var(--danger-hover); }
+        
+        .dev-mode-only { display: none !important; }
+        body.developer-mode-active .dev-mode-only { display: flex !important; }
 
-        /* --- RESTORED TOAST STYLES --- */
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
         .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease-out forwards; }
         .toast.success { background-color: var(--success-color); }
@@ -165,60 +200,110 @@
         .toast.fade-out { animation: fadeOut 0.5s ease-in forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
-        /* --- END RESTORED STYLES --- */
     </style>
 </head>
 <body>
     <div id="modal-backdrop" class="modal-backdrop"></div>
-
     <div class="container">
-        <h1>Posh Salon Service Matrix ✂️</h1>
         
-        <div class="controls">
-            <div class="control-group"><input type="text" id="new-stylist-name" placeholder="New Stylist Name..."><button id="add-stylist-btn">Add Stylist</button></div>
-            <div class="control-group"><input type="text" id="new-service-name" placeholder="New Service Name..."><button id="add-service-btn">Add Service</button></div>
-            <div class="control-group">
-                <button id="save-btn" class="save-btn">Save</button><button id="export-btn">Export</button><button id="import-btn">Import</button>
-                <input type="file" id="import-file-input" accept=".json" style="display: none;">
+        <div class="main-controls">
+            <div class="controls-column left">
+                <div class="control-group">
+                    <input type="text" id="new-stylist-name" placeholder="New Stylist Name...">
+                    <button id="add-stylist-btn">Add Stylist</button>
+                </div>
+                <div class="control-group">
+                    <input type="text" id="new-service-name" placeholder="New Service Name...">
+                    <button id="add-service-btn">Add Service</button>
+                </div>
+            </div>
+
+            <div class="controls-column middle">
+                <h1>Posh Salon Service Matrix</h1>
+            </div>
+
+            <div class="controls-column right">
+                <div class="control-group">
+                    <button id="save-btn" class="save-btn">Save</button>
+                    <button id="export-btn">Export</button>
+                    <button id="import-btn">Import</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                </div>
+                <div class="control-group">
+                    <button id="add-note-btn">Add Note</button>
+                    <div id="color-palette" class="color-palette" style="display: none;"></div>
+                    <button id="manual-btn">User Manual</button>
+                    <button id="theme-toggle-btn">🌓</button>
+                </div>
+                 <div class="control-group dev-mode-only">
+                    <button id="reset-all-btn" class="danger-btn">Reset All Data</button>
+                </div>
             </div>
         </div>
-        <div id="note-controls" class="control-group">
-            <button id="add-note-btn">Add Note</button><div id="color-palette" class="color-palette" style="display: none;"></div>
-            <button id="manual-btn" style="margin-left: 2rem;">User Manual</button>
-            <button id="theme-toggle-btn" style="margin-left: 1rem;">🌙</button>
-        </div>
-
         <div class="table-container"><table id="services-table"><thead></thead><tbody></tbody></table></div>
+        <footer>
+            <p>
+                Posh Salon Service Matrix v2.5 | Last Updated: August 16, 2025 | 
+                <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
+            </p>
+        </footer>
     </div>
-    
     <div id="note-popup" class="modal-popup">
         <button class="close-popup">&times;</button><h2>Sticky Note</h2>
         <div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span>
     </div>
-
     <div id="manual-popup" class="modal-popup">
         <button class="close-popup">&times;</button>
         <div class="manual-content">
             <h2>Posh Salon: User Manual ✂️</h2>
             <p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p>
             <h3>The Basics: Viewing the Matrix</h3>
-            <ul><li><strong>Rows &amp; Columns</strong>: Each <strong>row</strong> is a <strong>stylist</strong>, and each <strong>column</strong> is a <strong>service</strong>.</li><li><strong>Checkboxes (✅)</strong>: A checked box means the stylist in that row performs the service in that column.</li><li><strong>Prices</strong>: The price shown is what that specific stylist charges for that service.</li><li><strong>Note Icons</strong>: A small colored square in the corner of a cell means there's a special note attached. Just click the square to read it.</li></ul>
-            <h3>Adding &amp; Removing</h3><p>All the main controls are located in the button panel at the top of the page.</p><ul><li><strong>To Add a New Stylist</strong>: Type a name into the "New Stylist Name..." box and click the <strong>Add Stylist</strong> button.</li><li><strong>To Add a New Service</strong>: Type a name into the "New Service Name..." box and click the <strong>Add Service</strong> button.</li><li><strong>To Remove a Stylist or Service</strong>: Click the trash can icon (<strong>🗑️</strong>) next to its name and confirm your choice.</li></ul>
-            <h3>Editing Information</h3><p>You can edit almost everything directly in the table!</p><ul><li><strong>To Edit a Name</strong>: Simply <strong>click on any stylist or service name</strong>. It will turn into an input box. Type the new name and press <strong>Enter</strong> or click away to save.</li><li><strong>To Change a Stylist's Level</strong>: Click the <strong>dropdown menu</strong> located directly under the stylist's name.</li><li><strong>To Change a Price</strong>: Click on any price (or on the "Add Price" text). It will turn into an input box.</li></ul>
-            <h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click the <strong>Add Note</strong> button. (2) <strong>Click a color</strong> from the palette that appears. (3) Your cursor becomes a `➕`. <strong>Click on any square</strong> in the table. (4) A custom popup will appear to type your message. Click **Save Note**.</li><li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li><li><strong>To Close the Note Popup</strong>: Click the '✖' in the top-right corner of the popup window.</li><li><strong>To Delete a Note</strong>: Open the note, then click the "<strong>Delete this note</strong>" text link at the bottom.</li></ul>
-            <h3>Saving &amp; Managing Your Data</h3><ul><li><strong>Save</strong>: Click this to save your work to the current browser. It will be here when you return on the same computer.</li><li><strong>Export</strong>: Click this to save a backup file (`salon-data.json`) to your computer. Use this for permanent backups or sharing.</li><li><strong>Import</strong>: Click this to load data from an exported file. This will <strong>completely replace</strong> the current matrix.</li></ul>
+            <ul>
+                <li><strong>Rows &amp; Columns</strong>: Each <strong>row</strong> is a <strong>stylist</strong>, and each <strong>column</strong> is a <strong>service</strong>.</li>
+                <li><strong>Checkboxes (✅)</strong>: A checked box means the stylist in that row performs the service in that column.</li>
+                <li><strong>Prices</strong>: The price shown is what that specific stylist charges for that service.</li>
+                <li><strong>Note Icons</strong>: A small colored square in the corner of a cell means there's a special note attached. Just click the square to read it.</li>
+            </ul>
+            <h3>Adding &amp; Removing</h3>
+            <p>All the main controls are located in the button panel at the top of the page.</p>
+            <ul>
+                <li><strong>To Add a New Stylist</strong>: Type a name into the "New Stylist Name..." box and click the <strong>Add Stylist</strong> button.</li>
+                <li><strong>To Add a New Service</strong>: Type a name into the "New Service Name..." box and click the <strong>Add Service</strong> button.</li>
+                <li><strong>To Remove a Stylist or Service</strong>: Click the trash can icon (<strong>🗑️</strong>) next to its name and confirm your choice.</li>
+            </ul>
+            <h3>Editing Information</h3>
+            <p>You can edit almost everything directly in the table!</p>
+            <ul>
+                <li><strong>To Edit a Name</strong>: Simply <strong>click on any stylist or service name</strong>. It will turn into an input box. Type the new name and press <strong>Enter</strong> or click away to save.</li>
+                <li><strong>To Change a Stylist's Level</strong>: Click the <strong>dropdown menu</strong> located directly under the stylist's name.</li>
+                <li><strong>To Change a Price</strong>: Click on any price (or on the "Add Price" text). It will turn into an input box.</li>
+            </ul>
+            <h3>Using Sticky Notes</h3>
+            <ul>
+                <li><strong>To Add a Note</strong>: (1) Click the <strong>Add Note</strong> button. (2) <strong>Click a color</strong> from the palette that appears. (3) Your cursor becomes a `➕`. <strong>Click on any square</strong> in the table. (4) A custom popup will appear to type your message. Click **Save Note**.</li>
+                <li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li>
+                <li><strong>To Close the Note Popup</strong>: Click the '✖' in the top-right corner of the popup window.</li>
+                <li><strong>To Delete a Note</strong>: Open the note, then click the "<strong>Delete this note</strong>" text link at the bottom.</li>
+            </ul>
+            <h3>Saving &amp; Managing Your Data</h3>
+            <ul>
+                <li><strong>Save</strong>: Click this to save your work to the current browser. It will be here when you return on the same computer.</li>
+                <li><strong>Export</strong>: Click this to save a backup file (`salon-data.json`) to your computer. Use this for permanent backups or sharing.</li>
+                <li><strong>Import</strong>: Click this to load data from an exported file. This will <strong>completely replace</strong> the current matrix.</li>
+            </ul>
         </div>
     </div>
-    
     <div id="note-entry-popup" class="modal-popup">
-        <div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div>
+        <div class="modal-header">
+            <h2>Add Sticky Note</h2>
+            <div id="note-entry-color-swatch"></div>
+        </div>
         <textarea id="note-entry-textarea" placeholder="Enter your note text here..." rows="4"></textarea>
         <div class="modal-actions">
             <button id="note-entry-cancel" class="secondary">Cancel</button>
             <button id="note-entry-save">Save Note</button>
         </div>
     </div>
-
     <div id="confirm-popup" class="modal-popup">
         <h2 id="confirm-title">Confirm Action</h2>
         <p id="confirm-message">Are you sure you want to proceed?</p>
@@ -227,11 +312,7 @@
             <button id="confirm-confirm-btn" class="danger-btn">Confirm</button>
         </div>
     </div>
-
     <div id="toast-container"></div>
-    
-    <footer><p>Posh Salon Service Matrix v1.7 | Last Updated: August 16, 2025 | <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a></p></footer>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             let salonState;
@@ -243,22 +324,80 @@
             const newServiceInput = document.getElementById('new-service-name');
             const addNoteBtn = document.getElementById('add-note-btn');
             const colorPalette = document.getElementById('color-palette');
-            const modalBackdrop = document.getElementById('modal-backdrop'); // NEW
+            const modalBackdrop = document.getElementById('modal-backdrop');
             
             const LOCAL_STORAGE_KEY = 'salonMatrixData';
-            const THEME_KEY = 'salonMatrixTheme'; // NEW
-            const NOTE_COLORS = [ /* (unchanged) */ { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' }, { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }];
+            const THEME_KEY = 'salonMatrixTheme';
+            const NOTE_COLORS = [
+                { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' },
+                { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }
+            ];
             const STYLIST_LEVELS = ["Apprentice", "Level One", "Level Two", "Level Three", "Level Four", "Level Five", "Level Six", "Level Seven", "Level Eight", "Level Nine", "Elite"];
-
-            const defaultData = { /* (unchanged) */ services: [{ name: "Haircut & Style", note: null }, { name: "Full Color", note: null }, { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }], stylists: [{ name: "Alex Chen", level: "Level Five", note: null, services: [{ checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null }, { checked: true, price: "275.00", note: { text: "Expert level.", color: "#adcffa", border: "none" } }, { checked: false, price: "", note: null }] }, { name: "Brianna R.", level: "Level Seven", note: { text: "Specializes in curly hair.", color: "#ffe880", border: "none" }, services: [{ checked: true, price: "95.00", note: null }, { checked: false, price: "", note: null }, { checked: true, price: "315.00", note: null }, { checked: true, price: "350.00", note: null }] }] };
-
-            const showToast = (message, type = 'info', duration = 3000) => { /* (unchanged) */ const container = document.getElementById('toast-container'); const toast = document.createElement('div'); toast.className = `toast ${type}`; toast.textContent = message; container.appendChild(toast); setTimeout(() => { toast.classList.add('fade-out'); toast.addEventListener('animationend', () => toast.remove()); }, duration); };
-
-            const renderTableFromData = () => { /* (unchanged, but now inherits dark mode styles) */ const thead = servicesTable.querySelector('thead'); const tbody = servicesTable.querySelector('tbody'); thead.innerHTML = ''; tbody.innerHTML = ''; const headerRow = document.createElement('tr'); headerRow.innerHTML = `<th><div class="cell-wrapper">Stylist</div></th>`; salonState.services.forEach((service, colIndex) => { const th = document.createElement('th'); th.dataset.col = colIndex + 1; let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : ''; th.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><span class="editable">${service.name}</span><button class="remove-btn" data-type="service">🗑️</button></div>${noteHTML}</div>`; headerRow.appendChild(th); }); thead.appendChild(headerRow); salonState.stylists.forEach((stylist, rowIndex) => { const row = document.createElement('tr'); row.dataset.row = rowIndex; const nameCell = document.createElement('td'); nameCell.dataset.col = 0; const levelOptions = STYLIST_LEVELS.map(l => `<option value="${l}" ${stylist.level === l ? 'selected' : ''}>${l}</option>`).join(''); let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : ''; nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><select class="level-select">${levelOptions}</select></div><button class="remove-btn" data-type="stylist">🗑️</button></div>${stylistNoteHTML}</div>`; row.appendChild(nameCell); stylist.services.forEach((service, colIndex) => { const cell = document.createElement('td'); cell.dataset.col = colIndex + 1; const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price'; const priceClass = service.price ? 'price-text' : 'price-text placeholder'; let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : ''; cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`; row.appendChild(cell); }); tbody.appendChild(row); }); };
-
-            servicesTable.addEventListener('input', (event) => { /* (unchanged) */ const target = event.target; const cell = target.closest('td'); if (!cell) return; const row = parseInt(cell.parentElement.dataset.row); if (target.matches('.level-select')) salonState.stylists[row].level = target.value; else if (target.matches('input[type="checkbox"]')) { const col = parseInt(cell.dataset.col); salonState.stylists[row].services[col - 1].checked = target.checked; } });
-
-            /* --- MODIFIED: Show modal backdrop when opening popups --- */
+            const defaultData = {
+                services: [
+                    { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
+                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }
+                ],
+                stylists: [{
+                    name: "Alex Chen", level: "Level Five", note: null, services: [
+                        { checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null },
+                        { checked: true, price: "275.00", note: { text: "Expert level.", color: "#adcffa", border: "none" } },
+                        { checked: false, price: "", note: null }
+                    ]
+                }, {
+                    name: "Brianna R.", level: "Level Seven", note: { text: "Specializes in curly hair.", color: "#ffe880", border: "none" }, services: [
+                        { checked: true, price: "95.00", note: null }, { checked: false, price: "", note: null },
+                        { checked: true, price: "315.00", note: null }, { checked: true, price: "350.00", note: null }
+                    ]
+                }]
+            };
+            const showToast = (message, type = 'info', duration = 3000) => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('fade-out');
+                    toast.addEventListener('animationend', () => toast.remove());
+                }, duration);
+            };
+            const renderTableFromData = () => {
+                const thead = servicesTable.querySelector('thead');
+                const tbody = servicesTable.querySelector('tbody');
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = `<th><div class="cell-wrapper">Stylist</div></th>`;
+                salonState.services.forEach((service, colIndex) => {
+                    const th = document.createElement('th');
+                    th.dataset.col = colIndex + 1;
+                    let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                    th.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><span class="editable">${service.name}</span><button class="remove-btn" data-type="service">🗑️</button></div>${noteHTML}</div>`;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                salonState.stylists.forEach((stylist, rowIndex) => {
+                    const row = document.createElement('tr');
+                    row.dataset.row = rowIndex;
+                    const nameCell = document.createElement('td');
+                    nameCell.dataset.col = 0;
+                    const levelOptions = STYLIST_LEVELS.map(l => `<option value="${l}" ${stylist.level === l ? 'selected' : ''}>${l}</option>`).join('');
+                    let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
+                    nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><select class="level-select">${levelOptions}</select></div><button class="remove-btn" data-type="stylist">🗑️</button></div>${stylistNoteHTML}</div>`;
+                    row.appendChild(nameCell);
+                    stylist.services.forEach((service, colIndex) => {
+                        const cell = document.createElement('td');
+                        cell.dataset.col = colIndex + 1;
+                        const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
+                        const priceClass = service.price ? 'price-text' : 'price-text placeholder';
+                        let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                        cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
+                        row.appendChild(cell);
+                    });
+                    tbody.appendChild(row);
+                });
+            };
             const showNoteEntryPopup = (row, col) => {
                 const noteEntryPopup = document.getElementById('note-entry-popup');
                 modalBackdrop.style.display = 'block';
@@ -267,27 +406,41 @@
                 const textarea = document.getElementById('note-entry-textarea');
                 const saveBtn = document.getElementById('note-entry-save');
                 const cancelBtn = document.getElementById('note-entry-cancel');
-                textarea.value = ''; textarea.focus();
+                textarea.value = '';
+                textarea.focus();
                 swatch.style.backgroundColor = selectedNoteColor.color;
                 swatch.style.border = selectedNoteColor.border || 'none';
-                const handleSave = () => { const noteText = textarea.value; const newNote = { text: noteText, ...selectedNoteColor }; if (row === -1) salonState.services[col - 1].note = newNote; else if (col === 0) salonState.stylists[row].note = newNote; else salonState.stylists[row].services[col - 1].note = newNote; renderTableFromData(); showToast("Note added.", "success"); cleanup(); };
-                const handleCancel = () => { cleanup(); };
-                const cleanup = () => { noteEntryPopup.style.display = 'none'; modalBackdrop.style.display = 'none'; togglePlacingNote(false); saveBtn.removeEventListener('click', handleSave); cancelBtn.removeEventListener('click', handleCancel); };
+                const handleSave = () => {
+                    const noteText = textarea.value;
+                    const newNote = { text: noteText, ...selectedNoteColor };
+                    if (row === -1) salonState.services[col - 1].note = newNote;
+                    else if (col === 0) salonState.stylists[row].note = newNote;
+                    else salonState.stylists[row].services[col - 1].note = newNote;
+                    renderTableFromData();
+                    showToast("Note added.", "success");
+                    cleanup();
+                };
+                const handleCancel = () => {
+                    cleanup();
+                };
+                const cleanup = () => {
+                    noteEntryPopup.style.display = 'none';
+                    modalBackdrop.style.display = 'none';
+                    togglePlacingNote(false);
+                    saveBtn.removeEventListener('click', handleSave);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                };
                 saveBtn.addEventListener('click', handleSave, { once: true });
                 cancelBtn.addEventListener('click', handleCancel, { once: true });
             };
-            
-            /* --- NEW: Custom confirmation modal logic --- */
             const showConfirmModal = (message, onConfirm) => {
                 const confirmPopup = document.getElementById('confirm-popup');
                 const confirmMsg = document.getElementById('confirm-message');
                 const confirmBtn = document.getElementById('confirm-confirm-btn');
                 const cancelBtn = document.getElementById('confirm-cancel-btn');
-
                 confirmMsg.textContent = message;
                 modalBackdrop.style.display = 'block';
                 confirmPopup.style.display = 'block';
-
                 const handleConfirm = () => {
                     onConfirm();
                     cleanup();
@@ -301,24 +454,96 @@
                     confirmBtn.removeEventListener('click', handleConfirm);
                     cancelBtn.removeEventListener('click', handleCancel);
                 };
-
                 confirmBtn.addEventListener('click', handleConfirm, { once: true });
                 cancelBtn.addEventListener('click', handleCancel, { once: true });
             };
-
+            const togglePlacingNote = (placing) => {
+                isPlacingNote = placing;
+                selectedNoteColor = null;
+                document.body.classList.toggle('placing-note', placing);
+                colorPalette.style.display = placing ? 'flex' : 'none';
+                if (!placing) colorPalette.querySelector('.selected')?.classList.remove('selected');
+            };
+            const showNotePopup = (row, col) => {
+                const notePopup = document.getElementById('note-popup');
+                let note;
+                if (row === -1) note = salonState.services[col - 1].note;
+                else if (col === 0) note = salonState.stylists[row].note;
+                else note = salonState.stylists[row].services[col - 1].note;
+                if (!note) return;
+                notePopup.style.borderTopColor = (note.border !== 'none' && note.color === '#ffffff') ? '#333' : note.color;
+                notePopup.querySelector('#note-popup-content').textContent = note.text;
+                modalBackdrop.style.display = 'block';
+                notePopup.style.display = 'block';
+                document.getElementById('delete-note-popup').onclick = () => {
+                    showConfirmModal("Are you sure you want to delete this note?", () => {
+                        if (row === -1) salonState.services[col - 1].note = null;
+                        else if (col === 0) salonState.stylists[row].note = null;
+                        else salonState.stylists[row].services[col - 1].note = null;
+                        notePopup.style.display = 'none';
+                        modalBackdrop.style.display = 'none';
+                        renderTableFromData();
+                        showToast("Note deleted.", "info");
+                    });
+                };
+            };
+            const loadInitialData = () => {
+                const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+                let savedData = savedJSON ? JSON.parse(savedJSON) : null;
+                if (savedData && savedData.services && savedData.services.length > 0 && typeof savedData.services[0] === 'string') {
+                    savedData.services = savedData.services.map(serviceName => ({ name: serviceName, note: null }));
+                    savedData.stylists.forEach(stylist => {
+                        stylist.note = stylist.note || null;
+                        stylist.level = stylist.level || "Apprentice";
+                        stylist.services.forEach(serviceCell => {
+                            serviceCell.note = serviceCell.note || null;
+                        });
+                    });
+                }
+                salonState = savedData || JSON.parse(JSON.stringify(defaultData));
+                renderTableFromData();
+            };
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    document.body.classList.add('dark-mode');
+                    themeToggleBtn.textContent = '☀️';
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    themeToggleBtn.textContent = '🌓';
+                }
+            };
+            
+            // --- Event Listeners ---
+            servicesTable.addEventListener('input', (event) => {
+                const target = event.target;
+                const cell = target.closest('td');
+                if (!cell) return;
+                const row = parseInt(cell.parentElement.dataset.row);
+                if (target.matches('.level-select')) salonState.stylists[row].level = target.value;
+                else if (target.matches('input[type="checkbox"]')) {
+                    const col = parseInt(cell.dataset.col);
+                    salonState.stylists[row].services[col - 1].checked = target.checked;
+                }
+            });
             servicesTable.addEventListener('click', (event) => {
                 const target = event.target;
                 const cell = target.closest('td, th');
                 if (!cell) return;
-                if (isPlacingNote) { if (!selectedNoteColor) { showToast("Please select a color from the palette first!", 'error'); return; } const col = parseInt(cell.dataset.col); const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1; showNoteEntryPopup(row, col); return; }
+                if (isPlacingNote) {
+                    if (!selectedNoteColor) {
+                        showToast("Please select a color from the palette first!", 'error');
+                        return;
+                    }
+                    const col = parseInt(cell.dataset.col);
+                    const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
+                    showNoteEntryPopup(row, col);
+                    return;
+                }
                 const col = parseInt(cell.dataset.col);
                 const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
-                
-                /* --- MODIFIED: Replaced confirm() with new custom modal --- */
                 if (target.matches('.remove-btn')) {
                     const stylistName = target.closest('tr').querySelector('.editable')?.textContent;
                     const serviceName = servicesTable.querySelector(`th[data-col="${col}"] .editable`)?.textContent;
-
                     if (target.dataset.type === 'stylist') {
                         showConfirmModal(`Are you sure you want to remove stylist "${stylistName}"?`, () => {
                             salonState.stylists.splice(row, 1);
@@ -333,68 +558,124 @@
                             renderTableFromData();
                         });
                     }
-                } else if (target.matches('.editable')) { /* (unchanged) */ const originalText = target.textContent; const input = document.createElement('input'); input.type = 'text'; input.className = 'name-input'; input.value = originalText; target.replaceWith(input); input.focus(); const saveName = () => { const newText = input.value.trim() || originalText; if (row === -1) salonState.services[col - 1].name = newText; else salonState.stylists[row].name = newText; renderTableFromData(); }; input.addEventListener('blur', saveName); input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
-                } else if (target.matches('.price-text')) { /* (unchanged) */ const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim(); const input = document.createElement('input'); input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01'; target.innerHTML = ''; target.appendChild(input); input.focus(); const savePrice = () => { const newPrice = input.value.trim(); salonState.stylists[row].services[col - 1].price = (newPrice && !isNaN(newPrice)) ? parseFloat(newPrice).toFixed(2) : ''; renderTableFromData(); }; input.addEventListener('blur', savePrice); input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
-                } else if (target.matches('.sticky-note')) { showNotePopup(row, col); }
+                } else if (target.matches('.editable')) {
+                    const originalText = target.textContent;
+                    const input = document.createElement('input');
+                    input.type = 'text'; input.className = 'name-input'; input.value = originalText;
+                    target.replaceWith(input); input.focus();
+                    const saveName = () => {
+                        const newText = input.value.trim() || originalText;
+                        if (row === -1) salonState.services[col - 1].name = newText;
+                        else salonState.stylists[row].name = newText;
+                        renderTableFromData();
+                    };
+                    input.addEventListener('blur', saveName);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
+                } else if (target.matches('.price-text')) {
+                    const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
+                    const input = document.createElement('input');
+                    input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
+                    target.innerHTML = ''; target.appendChild(input); input.focus();
+                    const savePrice = () => {
+                        const newPrice = input.value.trim();
+                        salonState.stylists[row].services[col - 1].price = (newPrice && !isNaN(newPrice)) ? parseFloat(newPrice).toFixed(2) : '';
+                        renderTableFromData();
+                    };
+                    input.addEventListener('blur', savePrice);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
+                } else if (target.matches('.sticky-note')) {
+                    showNotePopup(row, col);
+                }
             });
-            
-            const togglePlacingNote = (placing) => { /* (unchanged) */ isPlacingNote = placing; selectedNoteColor = null; document.body.classList.toggle('placing-note', placing); colorPalette.style.display = placing ? 'flex' : 'none'; if (!placing) colorPalette.querySelector('.selected')?.classList.remove('selected'); };
-            
-            NOTE_COLORS.forEach(c => { /* (unchanged) */ const box = document.createElement('div'); box.className = 'color-box'; box.style.backgroundColor = c.color; box.style.border = c.border || '2px solid transparent'; box.addEventListener('click', (e) => { e.stopPropagation(); colorPalette.querySelector('.selected')?.classList.remove('selected'); box.classList.add('selected'); selectedNoteColor = c; }); colorPalette.appendChild(box); });
-
-            /* --- MODIFIED: Show modal backdrop when opening popups --- */
-            const showNotePopup = (row, col) => {
-                const notePopup = document.getElementById('note-popup');
-                let note; if (row === -1) note = salonState.services[col - 1].note; else if (col === 0) note = salonState.stylists[row].note; else note = salonState.stylists[row].services[col - 1].note; if (!note) return;
-                notePopup.style.borderTopColor = (note.border !== 'none' && note.color === '#ffffff') ? '#333' : note.color;
-                notePopup.querySelector('#note-popup-content').textContent = note.text;
-                modalBackdrop.style.display = 'block';
-                notePopup.style.display = 'block';
-                document.getElementById('delete-note-popup').onclick = () => { showConfirmModal("Are you sure you want to delete this note?", () => { if (row === -1) salonState.services[col - 1].note = null; else if (col === 0) salonState.stylists[row].note = null; else salonState.stylists[row].services[col - 1].note = null; notePopup.style.display = 'none'; modalBackdrop.style.display = 'none'; renderTableFromData(); showToast("Note deleted.", "info"); }); };
-            };
-
-            /* --- MODIFIED: Close backdrop along with any popup --- */
+            NOTE_COLORS.forEach(c => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = c.color;
+                box.style.border = c.border || '2px solid transparent';
+                box.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    colorPalette.querySelector('.selected')?.classList.remove('selected');
+                    box.classList.add('selected');
+                    selectedNoteColor = c;
+                });
+                colorPalette.appendChild(box);
+            });
             document.querySelectorAll('.close-popup').forEach(btn => {
                 btn.addEventListener('click', () => {
                     btn.closest('.modal-popup').style.display = 'none';
                     modalBackdrop.style.display = 'none';
                 });
             });
-            
-            document.getElementById('add-stylist-btn').addEventListener('click', () => { /* (unchanged) */ const name = newStylistInput.value.trim(); if (!name) return showToast('Please enter a stylist name.', 'error'); salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) }); renderTableFromData(); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; });
-            document.getElementById('add-service-btn').addEventListener('click', () => { /* (unchanged) */ const name = newServiceInput.value.trim(); if (!name) return showToast('Please enter a service name.', 'error'); salonState.services.push({ name, note: null }); salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); renderTableFromData(); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
-            document.getElementById('save-btn').addEventListener('click', () => { /* (unchanged) */ localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState)); showToast('Data saved successfully!', 'success'); });
-            document.getElementById('export-btn').addEventListener('click', () => { /* (unchanged) */ const jsonString = JSON.stringify(salonState, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported to salon-data.json", "info"); });
+            document.getElementById('add-stylist-btn').addEventListener('click', () => {
+                const name = newStylistInput.value.trim();
+                if (!name) return showToast('Please enter a stylist name.', 'error');
+                salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) });
+                renderTableFromData();
+                showToast(`Stylist "${name}" added.`, 'success');
+                newStylistInput.value = '';
+            });
+            document.getElementById('add-service-btn').addEventListener('click', () => {
+                const name = newServiceInput.value.trim();
+                if (!name) return showToast('Please enter a service name.', 'error');
+                salonState.services.push({ name, note: null });
+                salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
+                renderTableFromData();
+                showToast(`Service "${name}" added.`, 'success');
+                newServiceInput.value = '';
+            });
+            document.getElementById('save-btn').addEventListener('click', () => {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState));
+                showToast('Data saved successfully!', 'success');
+            });
+            document.getElementById('export-btn').addEventListener('click', () => {
+                const jsonString = JSON.stringify(salonState, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href);
+                showToast("Data exported to salon-data.json", "info");
+            });
             document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-            document.getElementById('import-file-input').addEventListener('change', (event) => { /* (unchanged) */ const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data && data.services && data.stylists) { salonState = data; renderTableFromData(); showToast('Data imported successfully!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
-            
-            /* --- MODIFIED: Show modal backdrop for manual popup --- */
+            document.getElementById('import-file-input').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data && data.services && data.stylists) {
+                            salonState = data; renderTableFromData(); showToast('Data imported successfully!', 'success');
+                        } else showToast('Error: Invalid file format.', 'error');
+                    } catch (error) { showToast('Error reading file.', 'error'); }
+                };
+                reader.readAsText(file); event.target.value = '';
+            });
             document.getElementById('manual-btn').addEventListener('click', () => {
                 document.getElementById('manual-popup').style.display = 'block';
                 modalBackdrop.style.display = 'block';
             });
-            
-            const loadInitialData = () => { /* (unchanged logic) */ const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY); let savedData = savedJSON ? JSON.parse(savedJSON) : null; if (savedData && savedData.services && savedData.services.length > 0 && typeof savedData.services[0] === 'string') { savedData.services = savedData.services.map(serviceName => ({ name: serviceName, note: null })); savedData.stylists.forEach(stylist => { stylist.note = stylist.note || null; stylist.level = stylist.level || "Apprentice"; stylist.services.forEach(serviceCell => { serviceCell.note = serviceCell.note || null; }); }); } salonState = savedData || JSON.parse(JSON.stringify(defaultData)); renderTableFromData(); };
-            
-            /* --- NEW: Theme toggling and persistence logic --- */
             const themeToggleBtn = document.getElementById('theme-toggle-btn');
-            const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    document.body.classList.add('dark-mode');
-                    themeToggleBtn.textContent = '☀️';
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    themeToggleBtn.textContent = '🌙';
-                }
-            };
             themeToggleBtn.addEventListener('click', () => {
                 const isDarkMode = document.body.classList.contains('dark-mode');
                 const newTheme = isDarkMode ? 'light' : 'dark';
                 localStorage.setItem(THEME_KEY, newTheme);
                 applyTheme(newTheme);
             });
-            
-            // --- Event Listeners ---
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.altKey && e.key === 'd') {
+                    e.preventDefault();
+                    const isDev = document.body.classList.toggle('developer-mode-active');
+                    showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
+                }
+            });
+            document.getElementById('reset-all-btn').addEventListener('click', () => {
+                const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
+                showConfirmModal(message, () => {
+                    localStorage.removeItem(LOCAL_STORAGE_KEY);
+                    localStorage.removeItem(THEME_KEY);
+                    showToast('Data reset. Reloading...', 'info');
+                    setTimeout(() => location.reload(), 1000);
+                });
+            });
             addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
             
             // --- Initial Load ---
