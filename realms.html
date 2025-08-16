@@ -262,21 +262,23 @@ body.loading .game-container {
         font-size: 16px;
         border-radius: 4px;
     }
-    .log-area {
-        height: 200px; 
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column-reverse;
-    }
-      width: 8px;
+.log-area {
+    height: 200px; 
+    overflow-y: scroll; /* Always shows */
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.log-area::-webkit-scrollbar {
+  width: 5px; 
 }
 .log-area::-webkit-scrollbar-track {
-  background: #221122;
+  /* This slightly lighter background makes the track always subtly visible */
+  background: #332233;
 }
 .log-area::-webkit-scrollbar-thumb {
-  background-color: #993399;
+  background-color: #6a286a; 
   border-radius: 4px;
-  border: 1px solid #cc66cc;
 }
     .log-area p {
         margin: 0 0 0.25rem 0;
@@ -530,6 +532,7 @@ body.loading .game-container {
             <button id="pause-resume-button">Pause</button>
             <button id="upgrade-speed-button" disabled>Upgrade Speed (Cost: 50<span class="resource-icon">.</span>)</button>
             <button id="mute-button">Mute Sounds</button> 
+            <button id="copy-log-button">Copy Log</button> <button id="mute-button">Mute Sounds</button> 
         </div>
 
         <div id="dev-controls" style="display:none;">
@@ -1229,6 +1232,7 @@ const ZONE_LORE = {
         // --- DOM Elements ---
         const gameScreenContent = document.getElementById('game-screen-content'); 
         const gameScreen = document.getElementById('game-screen');
+        const copyLogButton = document.getElementById('copy-log-button');
         const statsZoneName = document.getElementById('zone-name');
         const statsExploredPercentage = document.getElementById('explored-percentage');
         const statsExplorationSpeed = document.getElementById('exploration-speed');
@@ -2635,8 +2639,10 @@ break;
                 addLogMessage("Not enough Glimmering Dust to upgrade speed.");
             }
         }
-
         let gameInterval;
+
+
+
         const muteButton = document.getElementById('mute-button');
 
         muteButton.addEventListener('click', () => {
@@ -2844,7 +2850,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Attach listeners and start the game loop
         pauseResumeButton.addEventListener('click', togglePause);
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+copyLogButton.addEventListener('click', () => {
+    // The 'logArea' constant is already defined, so we can use it here
+    const logText = logArea.innerText; // .innerText gets clean text without HTML tags
 
+    navigator.clipboard.writeText(logText).then(() => {
+        // Let the user know it worked!
+        const originalText = copyLogButton.textContent;
+        copyLogButton.textContent = 'Copied!';
+        copyLogButton.disabled = true;
+
+        setTimeout(() => {
+            copyLogButton.textContent = originalText;
+            copyLogButton.disabled = false;
+        }, 1500); // Change it back after 1.5 seconds
+
+    }).catch(err => {
+        console.error('Failed to copy log: ', err);
+        addLogMessage("Error: Could not copy log to clipboard.", "puzzle-fail");
+    });
+});
         if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
              gameInterval = setInterval(gameLoop, gameState.gameTickMs);
         } else if (gameState.currentZoneIndex === -1) {
