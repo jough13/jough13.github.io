@@ -5,312 +5,465 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realms of Rune & Rust</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #2c1a2b; 
-            color: #f0e8f0; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 1rem;
+  <style>
+    /*! tailwindcss v4.1.12 | MIT License | https://tailwindcss.com */
+    @layer theme, base, components, utilities;
+    @layer theme {
+      :root, :host {
+        --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+        monospace;
+        --default-font-family: var(--font-sans);
+        --default-mono-font-family: var(--font-mono);
+      }
+    }
+    @layer base {
+      *, ::after, ::before, ::backdrop, ::file-selector-button {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        border: 0 solid;
+      }
+      html, :host {
+        line-height: 1.5;
+        -webkit-text-size-adjust: 100%;
+        tab-size: 4;
+        font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
+        font-feature-settings: var(--default-font-feature-settings, normal);
+        font-variation-settings: var(--default-font-variation-settings, normal);
+        -webkit-tap-highlight-color: transparent;
+      }
+      hr {
+        height: 0;
+        color: inherit;
+        border-top-width: 1px;
+      }
+      abbr:where([title]) {
+        -webkit-text-decoration: underline dotted;
+        text-decoration: underline dotted;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-size: inherit;
+        font-weight: inherit;
+      }
+      a {
+        color: inherit;
+        -webkit-text-decoration: inherit;
+        text-decoration: inherit;
+      }
+      b, strong {
+        font-weight: bolder;
+      }
+      code, kbd, samp, pre {
+        font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
+        font-feature-settings: var(--default-mono-font-feature-settings, normal);
+        font-variation-settings: var(--default-mono-font-variation-settings, normal);
+        font-size: 1em;
+      }
+      small {
+        font-size: 80%;
+      }
+      sub, sup {
+        font-size: 75%;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+      }
+      sub {
+        bottom: -0.25em;
+      }
+      sup {
+        top: -0.5em;
+      }
+      table {
+        text-indent: 0;
+        border-color: inherit;
+        border-collapse: collapse;
+      }
+      :-moz-focusring {
+        outline: auto;
+      }
+      progress {
+        vertical-align: baseline;
+      }
+      summary {
+        display: list-item;
+      }
+      ol, ul, menu {
+        list-style: none;
+      }
+      img, svg, video, canvas, audio, iframe, embed, object {
+        display: block;
+        vertical-align: middle;
+      }
+      img, video {
+        max-width: 100%;
+        height: auto;
+      }
+      button, input, select, optgroup, textarea, ::file-selector-button {
+        font: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+        letter-spacing: inherit;
+        color: inherit;
+        border-radius: 0;
+        background-color: transparent;
+        opacity: 1;
+      }
+      :where(select:is([multiple], [size])) optgroup {
+        font-weight: bolder;
+      }
+      :where(select:is([multiple], [size])) optgroup option {
+        padding-inline-start: 20px;
+      }
+      ::file-selector-button {
+        margin-inline-end: 4px;
+      }
+      ::placeholder {
+        opacity: 1;
+      }
+      @supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+        ::placeholder {
+          color: currentcolor;
+          @supports (color: color-mix(in lab, red, red)) {
+            color: color-mix(in oklab, currentcolor 50%, transparent);
+          }
         }
-        .game-container {
-            font-family: 'VT323', monospace;
-            background-color: #1a0f1a;
-            color: #cc99cc;
-            border: 2px solid #800080;
-            box-shadow: 0 0 15px #800080, inset 0 0 10px #80008033;
-            padding: 1rem;
-            width: 90vw;
-            max-width: 850px; 
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .game-screen {
-            white-space: pre;
-            overflow: hidden;
-            border: 1px dashed #660066;
-            padding: 0.5rem;
-            height: 120px; 
-            line-height: 1.2; 
-            font-size: 16px; 
-            border-radius: 4px;
-            background-color: #100510;
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-        }
-        .game-screen-content { 
-            width: 100%;
-            text-align: left; 
-        }
-        .player-char { 
-            color: #ffff00; /* Bright Yellow */
-        }
-        .water-tile {
-            color: #6495ed; /* CornflowerBlue */
-        }
-        .bridge-tile {
-            color: #8b4513; /* SaddleBrown */
-        }
-        .mountain-tile {
-            color: #a9a9a9; /* DarkGray */
-        }
-        .forest-tile {
-            color: #228b22; /* ForestGreen */
-        }
-        .dark-feature-tile {
-            color: #363636; /* Very Dark Grey */
-        }
-        .cloud-tile {
-            color: #f0f8ff; /* AliceBlue - for clouds */
-        }
-        .ruin-tile { 
-            color: #deb887; /* BurlyWood - for aged stone */
-        }
-        .windchime-tile { 
-             color: #ffd700; /* Gold */
-        }
-         .guardian-tile { 
-            color: #b0e0e6; /* PowderBlue - for constructs */
-        }
-        .oracle-dais-tile {
-            color: #483d8b; /* DarkSlateBlue - for Oracle's Dais */
-        }
-        .enemy-tile {
-            color: #ff4136; /* Red for enemies */
-            font-weight: bold;
-        }
-        .blocked-path-tile { color: #708090; } 
-        .runic-etching-tile { color: #afeeee; } 
-        .whispering-totem-tile { color: #dda0dd; } 
-        .whispering-echo-tile { color: #e0ffff; } 
-        .chest-tile { color: #daa520; } 
-        .weaver-tile { color: #ba55d3; } 
-        .sword-stone-tile { color: #c0c0c0; font-weight: bold; } /* Silver */
-        .dying-creature-tile { color: #cd853f; } /* Peruvian Brown */
+      }
+      textarea {
+        resize: vertical;
+      }
+      ::-webkit-search-decoration {
+        -webkit-appearance: none;
+      }
+      ::-webkit-date-and-time-value {
+        min-height: 1lh;
+        text-align: inherit;
+      }
+      ::-webkit-datetime-edit {
+        display: inline-flex;
+      }
+      ::-webkit-datetime-edit-fields-wrapper {
+        padding: 0;
+      }
+      ::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
+        padding-block: 0;
+      }
+      ::-webkit-calendar-picker-indicator {
+        line-height: 1;
+      }
+      :-moz-ui-invalid {
+        box-shadow: none;
+      }
+      button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button {
+        appearance: button;
+      }
+      ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+        height: auto;
+      }
+      [hidden]:where(:not([hidden='until-found'])) {
+        display: none!important;
+      }
+    }
+    @layer utilities {
+      .text-center {
+        text-align: center;
+      }
+    }
+  
+body.loading .title-header,
+body.loading .game-container {
+    opacity: 0;
+}
 
+.title-header,
+.game-container {
+    transition: opacity 0.4s ease-in-out;
+}
+    /* --- YOUR CUSTOM GAME STYLES START HERE --- */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #2c1a2b; 
+        color: #f0e8f0; 
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 1rem;
+    }
+    .game-container {
+        font-family: 'VT323', monospace;
+        background-color: #1a0f1a;
+        color: #cc99cc;
+        border: 2px solid; /* Color is set by JS */
+        box-shadow: inset 0 0 10px #00000033; /* Generic inner shadow */
+        padding: 1rem;
+        width: 90vw;
+        max-width: 850px; 
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .game-screen {
+        white-space: pre;
+        overflow: hidden;
+        border: 1px dashed; /* Color is set by JS */
+        padding: 0.5rem;
+        height: 120px; 
+        line-height: 1.2; 
+        font-size: 16px; 
+        border-radius: 4px;
+        /* background-color is set by JS */
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+    }
+    .game-screen-content { 
+        width: 100%;
+        text-align: left; 
+    }
+    .player-char { 
+        color: #ffff00; /* Bright Yellow */
+    }
+    .water-tile { color: #6495ed; }
+    .bridge-tile { color: #8b4513; }
+    .mountain-tile { color: #a9a9a9; }
+    .forest-tile { color: #228b22; }
+    .dark-feature-tile { color: #363636; }
+    .cloud-tile { color: #f0f8ff; }
+    .ruin-tile {  color: #deb887; }
+    .windchime-tile { color: #ffd700; }
+    .guardian-tile { color: #b0e0e6; }
+    .oracle-dais-tile { color: #483d8b; }
+    .enemy-tile {
+        color: #ff4136;
+        font-weight: bold;
+    }
+    .blocked-path-tile { color: #708090; } 
+    .runic-etching-tile { color: #afeeee; } 
+    .whispering-totem-tile { color: #dda0dd; } 
+    .whispering-echo-tile { color: #e0ffff; } 
+    .chest-tile { color: #daa520; } 
+    .weaver-tile { color: #ba55d3; } 
+    .sword-stone-tile { color: #c0c0c0; font-weight: bold; }
+    .dying-creature-tile { color: #cd853f; }
 
-        .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
-            border: 1px dashed #660066;
-            padding: 0.5rem;
-            font-size: 16px;
-            border-radius: 4px;
-            background-color: #201020;
-        }
-        .log-area {
-            height: 200px; 
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column-reverse;
-        }
-        .log-area p {
-            margin: 0 0 0.25rem 0;
-            font-size: 14px;
-        }
-        .log-area p.lore-message, .log-area p.startup-message, .log-area p.narrative-snippet { 
-            color: #ffdead; 
-            font-style: italic;
-            border-left: 2px solid #ff8c00; 
-            padding-left: 0.5em;
-        }
-        .log-area p.world-lore-message { 
-            color: #f5deb3; 
-            font-style: italic;
-            border-left: 2px solid #daa520; 
-            padding-left: 0.5em;
-        }
-        .log-area p.synergy-message, .log-area p.puzzle-success-message { 
-            color: #da70d6; 
-            font-style: italic;
-            font-weight: bold;
-            border-left: 2px solid #ba55d3; 
-            padding-left: 0.5em;
-        }
-        .log-area p.puzzle-fail-message { 
-             color: #f08080; 
-             font-style: italic;
-        }
-        .log-area p.artifact-synergy-message { 
-            color: #9932cc; 
-            font-style: italic;
-            font-weight: bold;
-            border-left: 2px solid #8a2be2; 
-            padding-left: 0.5em;
-            margin-top: 0.3em;
-            margin-bottom: 0.3em;
-        }
-        .log-area p.artifact-message {
-            color: #e6e6fa; 
-            font-style: italic;
-            border-left: 2px solid #9370db; 
-            padding-left: 0.5em;
-            margin-bottom: 0.4em;
-        }
-        .log-area p.artifact-message strong {
-            color: #dda0dd; 
-            font-weight: bold;
-        }
-        .log-area p.npc-message {
-            color: #afeeee; 
-            border-left: 2px solid #48d1cc; 
-            padding-left: 0.5em;
-            margin-bottom: 0.3em; 
-        }
-        .log-area p.quest-message { 
-            color: #ffb6c1; 
-            font-style: italic;
-            border-left: 2px solid #ff69b4; 
-            padding-left: 0.5em;
-        }
-        .log-area p.combat-message { 
-            color: #ff69b4; 
-            font-style: italic;
-        }
-         .log-area p.combat-victory {
-            color: #32cd32; 
-            font-weight: bold;
-        }
-        .log-area p.combat-defeat {
-            color: #dc143c; 
-            font-weight: bold;
-        }
-        .log-area p.decision-outcome { 
-            color: #dda0dd; 
-            font-weight: bold;
-        }
-        .log-area p.future-self-message {
-            color: #add8e6; 
-            font-style: italic;
-            border: 1px dashed #87cefa;
-            padding: 0.3em;
-            margin-bottom: 0.5em;
-        }
-        .log-area p.companion-message {
-            color: #98fb98; 
-            font-weight: bold;
-            border-left: 2px solid #32cd32; 
-            padding-left: 0.5em;
-        }
-        .log-area p.grave-message {
-            color: #b0c4de; 
-            font-style: italic;
-        }
-        .log-area p.seed-message { 
-            color: #7fffd4; 
-            font-size: 12px;
-        }
-        .log-area p.xp-message { 
-            color: #fafad2; 
-        }
-        .log-area p.level-up-message { 
-            color: #ffeb3b; 
-            font-weight: bold;
-            border: 1px solid #ffc107;
-            padding: 0.2em;
-        }
-        .log-area p.legacy-message { 
-            color: #c0c0c0; 
-            font-style: italic;
-            border-left: 2px solid #a9a9a9; 
-            padding-left: 0.5em;
-        }
-        .log-area p.class-choice-message, .log-area p.name-choice-message { 
-            color: #90ee90; 
-            font-weight: bold;
-            border-left: 2px solid #3cb371; 
-            padding-left: 0.5em;
-        }
-        .controls-area button, .decision-area button, .message-input-area button, .summary-area button { 
-            background-color: #7a2a7a;
-            color: #f0d0f0;
-            border: 1px solid #aa44aa;
-            padding: 0.25rem 0.75rem;
-            margin: 0.2rem;
-            border-radius: 4px;
-            font-family: 'VT323', monospace;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.2s, box-shadow 0.2s;
-        }
-        .controls-area button:hover, .decision-area button:hover, .message-input-area button:hover, .summary-area button:hover { 
-            background-color: #993399;
-            box-shadow: 0 0 8px #cc66cc;
-        }
-        .controls-area button:disabled, .decision-area button:disabled, .message-input-area button:disabled, .summary-area button:disabled { 
-            background-color: #554455;
-            color: #887788;
-            cursor: not-allowed;
-            border-color: #776677;
-        }
-        .title-header {
-            font-family: 'VT323', monospace;
-            font-size: 2.5rem;
-            color: #ff6600;
-            text-shadow: 0 0 5px #cc3300, 0 0 10px #cc3300;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        .resource-icon {
-            display: inline-block;
-            width: 1em;
-            text-align: center;
-        }
-        .decision-area, .message-input-area, .summary-area { 
-            display: none; 
-            text-align: center;
-        }
-        .decision-area p, .message-input-area p, .summary-area p { 
-            margin-bottom: 0.5rem;
-        }
-        .message-input-area textarea, .summary-area textarea { 
-            width: 90%;
-            height: 100px; 
-            background-color: #100510;
-            color: #f0e8f0;
-            border: 1px solid #660066;
-            border-radius: 4px;
-            padding: 0.3em;
-            font-family: 'VT323', monospace;
-            margin-bottom: 0.5rem;
-            white-space: pre-wrap; 
-        }
-        #playerNameInput { 
-            background-color: #100510;
-            color: #f0e8f0;
-            border: 1px solid #660066;
-            padding: 0.25rem;
-            margin-bottom: 0.5rem;
-            font-family: 'VT323', monospace;
-            width: 70%;
-        }
-        /* DEV TOGGLE STYLES - NEW */
-        #dev-controls {
-            border: 1px dashed #ffd700;
-            background-color: #222;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-            border-radius: 4px;
-        }
-        #dev-controls label {
-            color: #ffd700;
-        }
-        #dev-speed-slider {
-            vertical-align: middle;
-            width: 200px;
-        }
-    </style>
+    .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
+        font-family: 'VT323', monospace;
+        border: 1px dashed; /* Color set by JS */
+        background-color: #3b1400; /* <-- ADDED a default background to prevent transparency */
+        padding: 0.5rem;
+        font-size: 16px;
+        border-radius: 4px;
+    }
+    .log-area {
+        height: 200px; 
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column-reverse;
+    }
+    .log-area p {
+        margin: 0 0 0.25rem 0;
+        font-size: 14px;
+    }
+    .log-area p.lore-message, .log-area p.startup-message, .log-area p.narrative-snippet { 
+        color: #ffdead; 
+        font-style: italic;
+        border-left: 2px solid #ff8c00; 
+        padding-left: 0.5em;
+    }
+    .log-area p.world-lore-message { 
+        color: #f5deb3; 
+        font-style: italic;
+        border-left: 2px solid #daa520; 
+        padding-left: 0.5em;
+    }
+    .log-area p.synergy-message, .log-area p.puzzle-success-message { 
+        color: #ffd700;
+        font-style: italic;
+        font-weight: bold;
+        border-left: 2px solid #ffb700; 
+        padding-left: 0.5em;
+    }
+    .log-area p.puzzle-fail-message { 
+        color: #f08080; 
+        font-style: italic;
+    }
+    .log-area p.artifact-synergy-message { 
+        color: #00ffff;
+        font-style: italic;
+        font-weight: bold;
+        border-left: 2px solid #00ced1;
+        padding-left: 0.5em;
+        margin-top: 0.3em;
+        margin-bottom: 0.3em;
+    }
+    .log-area p.artifact-message {
+        color: #f0ffff;
+        font-style: italic;
+        border-left: 2px solid #afeeee;
+        padding-left: 0.5em;
+        margin-bottom: 0.4em;
+    }
+    .log-area p.artifact-message strong {
+        color: #40e0d0;
+        font-weight: bold;
+    }
+    .log-area p.npc-message {
+        color: #afeeee; 
+        border-left: 2px solid #48d1cc; 
+        padding-left: 0.5em;
+        margin-bottom: 0.3em; 
+    }
+    .log-area p.quest-message { 
+        color: #ffb6c1; 
+        font-style: italic;
+        border-left: 2px solid #ff69b4; 
+        padding-left: 0.5em;
+    }
+    .log-area p.combat-message { 
+        color: #ff69b4; 
+        font-style: italic;
+    }
+    .log-area p.combat-victory {
+        color: #32cd32; 
+        font-weight: bold;
+    }
+    .log-area p.combat-defeat {
+        color: #dc143c; 
+        font-weight: bold;
+    }
+    .log-area p.decision-outcome { 
+        color: #dda0dd; 
+        font-weight: bold;
+    }
+    .log-area p.future-self-message {
+        color: #add8e6; 
+        font-style: italic;
+        border: 1px dashed #87cefa;
+        padding: 0.3em;
+        margin-bottom: 0.5em;
+    }
+    .log-area p.companion-message {
+        color: #98fb98; 
+        font-weight: bold;
+        border-left: 2px solid #32cd32; 
+        padding-left: 0.5em;
+    }
+    .log-area p.grave-message {
+        color: #b0c4de; 
+        font-style: italic;
+    }
+    .log-area p.seed-message { 
+        color: #7fffd4; 
+        font-size: 12px;
+    }
+    .log-area p.xp-message { 
+        color: #fafad2; 
+    }
+    .log-area p.level-up-message { 
+        color: #ffeb3b; 
+        font-weight: bold;
+        border: 1px solid #ffc107;
+        padding: 0.2em;
+    }
+    .log-area p.legacy-message { 
+        color: #c0c0c0; 
+        font-style: italic;
+        border-left: 2px solid #a9a9a9; 
+        padding-left: 0.5em;
+    }
+    .log-area p.class-choice-message, .log-area p.name-choice-message { 
+        color: #90ee90; 
+        font-weight: bold;
+        border-left: 2px solid #3cb371; 
+        padding-left: 0.5em;
+    }
+    .controls-area button, .decision-area button, .message-input-area button, .summary-area button { 
+        padding: 0.25rem 0.75rem;
+        margin: 0.2rem;
+        border-radius: 4px;
+        font-family: 'VT323', monospace;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        border: 1px solid; /* Color is set by JS */
+        /* background-color and color are set by JS */
+    }
+    .controls-area button:hover, .decision-area button:hover, .message-input-area button:hover, .summary-area button:hover { 
+        background-color: #993399;
+        box-shadow: 0 0 8px #cc66cc;
+    }
+    .controls-area button:disabled, .decision-area button:disabled, .message-input-area button:disabled, .summary-area button:disabled { 
+        background-color: #554455;
+        color: #887788;
+        cursor: not-allowed;
+        border-color: #776677;
+    }
+    .title-header {
+        font-family: 'VT323', monospace;
+        font-size: 2.5rem;
+        color: #ff6600;
+        text-shadow: 0 0 5px #cc3300, 0 0 10px #cc3300;
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    .resource-icon {
+        display: inline-block;
+        width: 1em;
+        text-align: center;
+    }
+    .decision-area, .message-input-area, .summary-area { 
+        display: none; 
+        text-align: center;
+    }
+    .decision-area p, .message-input-area p, .summary-area p { 
+        margin-bottom: 0.5rem;
+    }
+    .message-input-area textarea, .summary-area textarea { 
+        width: 90%;
+        height: 100px; 
+        background-color: #100510;
+        color: #f0e8f0;
+        border: 1px solid #660066;
+        border-radius: 4px;
+        padding: 0.3em;
+        font-family: 'VT323', monospace;
+        margin-bottom: 0.5rem;
+        white-space: pre-wrap; 
+    }
+    #playerNameInput { 
+        background-color: #100510;
+        color: #f0e8f0;
+        border: 1px solid #660066;
+        padding: 0.25rem;
+        margin-bottom: 0.5rem;
+        font-family: 'VT323', monospace;
+        width: 70%;
+    }
+    #dev-controls {
+        border: 1px dashed #ffd700;
+        background-color: #222;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        border-radius: 4px;
+    }
+    #dev-controls label {
+        color: #ffd700;
+    }
+    #dev-speed-slider {
+        vertical-align: middle;
+        width: 200px;
+    }
+</style>
 </head>
-<body>
+<body class="loading">
     <h1 class="title-header">Realms of Rune & Rust</h1>
 
     <div class="game-container">
@@ -618,7 +771,7 @@
             }
         };
 
-        const ZONE_LORE = { 
+const ZONE_LORE = { 
             "ASHEN_WOODS_INTRO": "The Ashen Woods. Charred skeletons of trees claw at a sky perpetually choked with soot. The taste of ancient grief lingers in the air.",
             "ASHEN_SHRINE_1": "This soot-stained shrine feels strangely warm. Carvings depict a colossal, blazing tree – 'The First Spark' – its branches birthing stars, its roots anchoring reality. Then, a scene of it consumed by an even greater fire – 'The Great Ember.'",
             "CRIMSON_DEPTHS_INTRO": "The Crimson Depths. Bioluminescent crystals pulse with a slow, rhythmic light, casting eerie, dancing shadows. The silence is profound, broken only by the drip of mineral-rich water.",
@@ -630,7 +783,10 @@
             "SUNKEN_ARCHIVES_INTRO": "The Sunken Archives. Waterlogged ruins of a Lumina repository sigh with the weight of lost knowledge. Ghostly lights flicker within submerged data-conduits.",
             "SUNKEN_ARCHIVES_SHRINE_1": "This coral-encrusted shrine depicts Lumina scholars cataloging stars and weaving light into complex data-matrices. It mourns the 'Great Unlearning' when their knowledge was drowned or shattered.",
             "SKY_TEMPLE_AERIE_INTRO": "The Sky-Temple Aerie. Wind howls through broken archways of a once-majestic Lumina temple, clinging to a mountain summit. Clouds drift like ghosts through its crumbling halls.",
-            "SKY_TEMPLE_AERIE_SHRINE_1": "This shrine, carved from cloud-like alabaster, depicts Lumina with feathered wings, communing with celestial energies. It speaks of the 'Upper Weave' and the 'Breath of Stars' that powered their Sky-Citadels."
+            "SKY_TEMPLE_AERIE_SHRINE_1": "This shrine, carved from cloud-like alabaster, depicts Lumina with feathered wings, communing with celestial energies. It speaks of the 'Upper Weave' and the 'Breath of Stars' that powered their Sky-Citadels.",
+            // --- ADD THESE TWO NEW LINES ---
+            "GLIMMERING_DEPTHS_INTRO": "The Glimmering Depths. A cavern of impossible beauty, where light is not just seen, but felt. Crystals of pure turquoise and diamond line every surface, refracting a silent symphony. The air hums with powerful, resonant energy.",
+            "GLIMMERING_SHRINE_1": "This shrine is carved from a single, flawless crystal that pulses with internal light. Runes describe the 'Crystal Lattices,' conduits for the First Song, which focused the world's lifeblood into tangible energy. A warning is etched below: 'The Song's echo can heal, but its crescendo can shatter.'"
         };
         const SHRINE_SYNERGY_LORE = { 
             "ASHEN_SHRINE_1_SYNERGY": "The combined aura of your Runes (Φ+Δ) resonates deeply. The shrine's warmth intensifies, revealing a hidden compartment. Inside, ancient, untouched dust glimmers, and you feel a surge of protective energy.",
@@ -2510,13 +2666,7 @@
             pauseResumeButton.textContent = "Pause";
             pauseResumeButton.disabled = false;
             upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < (50 * gameState.explorationSpeedMultiplier);
-            const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
-            const selectedStartupMessage = STARTUP_MESSAGES[startupMessageIndex];
-             document.getElementById('game-screen-content').innerHTML = Array(NUM_LANES).fill('').map((_, i) => {
-                 if (i === PLAYER_INITIAL_LANE) return ' '.repeat(Math.max(0,PLAYER_VISUAL_POSITION - Math.floor(selectedStartupMessage.length / 2))) + selectedStartupMessage;
-                 return ' '.repeat(SCREEN_WIDTH);
-            }).join('\n');
-            addLogMessage(selectedStartupMessage, "startup"); 
+
             addLogMessage(`New World Seed: ${gameState.initialGameSeed}`, "seed"); 
             if (isTranscendence && (legacyMight > 0 || legacyWits > 0 || legacySpirit > 0)) {
                 addLogMessage(`Legacy Stats: MGT+${legacyMight}, WIT+${legacyWits}, SPR+${legacySpirit}`, "legacy-message");
@@ -2572,95 +2722,90 @@
         }
 
 
-        document.addEventListener('DOMContentLoaded', () => { 
-            initializeSounds(); 
-            
-            // --- NEW: DEV TOGGLE ---
-            const devControls = document.getElementById('dev-controls');
-            const devSpeedSlider = document.getElementById('dev-speed-slider');
-            const devSpeedDisplay = document.getElementById('dev-speed-display');
+document.addEventListener('DOMContentLoaded', () => { 
+    // Initialize sounds early
+    initializeSounds(); 
 
-            document.addEventListener('keydown', (e) => {
-                // Ctrl + Alt + D to show/hide the dev controls
-                if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
-                    e.preventDefault();
-                    devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
-                }
-            });
+    // This waits for external fonts like 'VT323' to be fully loaded
+    document.fonts.ready.then(() => {
+        // --- DEV TOGGLE ---
+        const devControls = document.getElementById('dev-controls');
+        const devSpeedSlider = document.getElementById('dev-speed-slider');
+        const devSpeedDisplay = document.getElementById('dev-speed-display');
 
-            devSpeedSlider.addEventListener('input', (e) => {
-                devSpeedMultiplier = parseInt(e.target.value, 10);
-                devSpeedDisplay.textContent = devSpeedMultiplier;
-                if (!gameState.isPaused) {
-                    updateGameTickSpeed();
-                }
-            });
-            // --- END DEV TOGGLE ---
-
-            
-            gameState.initialGameSeed = Date.now() % 2147483647; 
-            initializeSeed(gameState.initialGameSeed);
-            
-            let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
-            let initialLegacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
-            let initialLegacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
-
-            gameState.stats.might = BASE_STAT_VALUE + initialLegacyMight;
-            gameState.stats.wits = BASE_STAT_VALUE + initialLegacyWits;
-            gameState.stats.spirit = BASE_STAT_VALUE + initialLegacySpirit;
-            
-            gameState.maxHp = calculateMaxHp(); 
-            gameState.currentHp = gameState.maxHp; 
-
-
-            const startupMessageIndex = seededRandomInt(0, STARTUP_MESSAGES.length - 1);
-            const selectedStartupMessage = STARTUP_MESSAGES[startupMessageIndex];
-            document.getElementById('game-screen-content').innerHTML = Array(NUM_LANES).fill('').map((_, i) => {
-                if (i === PLAYER_INITIAL_LANE) return ' '.repeat(Math.max(0,PLAYER_VISUAL_POSITION - Math.floor(selectedStartupMessage.length / 2))) + selectedStartupMessage;
-                return ' '.repeat(SCREEN_WIDTH);
-            }).join('\n');
-            addLogMessage(selectedStartupMessage, "startup"); 
-            addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed"); 
-            if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
-                 addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
-            }
-
-
-            try {
-                const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
-                if (savedMessage) {
-                    addLogMessage("A message from a past journey echoes: \"" + savedMessage + "\"", "future_self");
-                    localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
-                }
-            } catch (e) {
-                console.warn("Could not access localStorage for future self message:", e);
-            }
-            
-            const initialZone = getCurrentZone();
-            if (initialZone && initialZone.entryLoreKey && ZONE_LORE[initialZone.entryLoreKey] && !gameState.narrativeFlags[initialZone.entryLoreKey]) {
-                addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
-                gameState.narrativeFlags[initialZone.entryLoreKey] = true; 
-                awardXP(50); 
-            }
-            if (initialZone && gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][initialZone.name]) {
-                addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][initialZone.name], "companion");
-            }
-
-            updateUIAccentColors(); 
-            renderAll(); 
-            
-            pauseResumeButton.addEventListener('click', togglePause);
-            upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
-
-            if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
-                 gameInterval = setInterval(gameLoop, gameState.gameTickMs);
-            } else if (gameState.currentZoneIndex === -1) {
-                pauseResumeButton.textContent = "Journey Ended";
-                pauseResumeButton.disabled = true;
-                upgradeSpeedButton.disabled = true;
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
             }
         });
 
+        devSpeedSlider.addEventListener('input', (e) => {
+            devSpeedMultiplier = parseInt(e.target.value, 10);
+            devSpeedDisplay.textContent = devSpeedMultiplier;
+            if (!gameState.isPaused) {
+                updateGameTickSpeed();
+            }
+        });
+        // --- END DEV TOGGLE ---
+        
+        gameState.initialGameSeed = Date.now() % 2147483647; 
+        initializeSeed(gameState.initialGameSeed);
+        
+        let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
+        let initialLegacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
+        let initialLegacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
+
+        gameState.stats.might = BASE_STAT_VALUE + initialLegacyMight;
+        gameState.stats.wits = BASE_STAT_VALUE + initialLegacyWits;
+        gameState.stats.spirit = BASE_STAT_VALUE + initialLegacySpirit;
+        
+        gameState.maxHp = calculateMaxHp(); 
+        gameState.currentHp = gameState.maxHp; 
+
+        addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed"); 
+        if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
+             addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
+        }
+
+        try {
+            const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
+            if (savedMessage) {
+                addLogMessage("A message from a past journey echoes: \"" + savedMessage + "\"", "future_self");
+                localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
+            }
+        } catch (e) {
+            console.warn("Could not access localStorage for future self message:", e);
+        }
+        
+        const initialZone = getCurrentZone();
+        if (initialZone && initialZone.entryLoreKey && ZONE_LORE[initialZone.entryLoreKey] && !gameState.narrativeFlags[initialZone.entryLoreKey]) {
+            addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
+            gameState.narrativeFlags[initialZone.entryLoreKey] = true; 
+            awardXP(50); 
+        }
+        if (initialZone && gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][initialZone.name]) {
+            addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][initialZone.name], "companion");
+        }
+
+        // Setup UI and then remove the loading class to trigger the fade-in
+        updateUIAccentColors(); 
+        renderAll(); 
+        document.body.classList.remove('loading');
+
+        // Attach listeners and start the game loop
+        pauseResumeButton.addEventListener('click', togglePause);
+        upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+
+        if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
+             gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        } else if (gameState.currentZoneIndex === -1) {
+            pauseResumeButton.textContent = "Journey Ended";
+            pauseResumeButton.disabled = true;
+            upgradeSpeedButton.disabled = true;
+        }
+    }); // End of document.fonts.ready
+});
     </script>
 </body>
 </html>
