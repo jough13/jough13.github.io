@@ -1380,7 +1380,7 @@ const ZONE_LORE = {
             const effectiveStats = getEffectiveStats();
 
             playerNameDisplay.textContent = gameState.playerName; 
-            playerHpDisplay.textContent = gameState.currentHp;
+            playerHpDisplay.textContent = Math.max(0, gameState.currentHp);
             playerMaxHpDisplay.textContent = gameState.maxHp;
             playerClassDisplay.textContent = gameState.playerClass || "None"; 
             statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
@@ -2174,7 +2174,7 @@ const ZONE_LORE = {
                         }
                         break;
                     case '[': case ']': case '¦': case '^':
-                        addLogMessage(`Mapsd near ancient ${getElementDescription(currentElementChar)}.`);
+                        addLogMessage(`Passed near ancient ${getElementDescription(currentElementChar)}.`);
                         break;
                     // These are handled by movement logic, not direct encounters
                     case '~': case '=': case 'M': 
@@ -2317,7 +2317,7 @@ const ZONE_LORE = {
             summary += `Level: ${gameState.level} (${gameState.xp}/${gameState.xpToNextLevel} XP)\n`;
             const lastZone = ZONES[gameState.lastExploredZoneIndex !== undefined ? gameState.lastExploredZoneIndex : gameState.currentZoneIndex] || {name: "An Unknown Place"};
             summary += `Final Zone Reached: ${lastZone.name}${gameState.currentZoneIndex === -1 ? " (Journey Paused/Ended)" : ""}\n`;
-            summary += `HP: ${gameState.currentHp}/${gameState.maxHp}\n`;
+            summary += `HP: ${Math.max(0, gameState.currentHp)}/${gameState.maxHp}\n`;
             summary += `Class: ${gameState.playerClass || "None"}\n`;
             summary += `\n-- Stats --\n`;
             summary += `Might (MGT): ${gameState.stats.might}\n`;
