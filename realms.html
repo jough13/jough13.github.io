@@ -607,6 +607,15 @@
                     return seededRandomInt(8, 15);
                 }
             }
+            CRYSTAL_LURKER: {
+                name: "Crystal Lurker",
+                description: "A creature of living crystal that moves with a predatory grace, refracting light in dangerous ways.",
+                hp: 25, attack: 6, defense: 3, xp: 30,
+                loot: () => {
+                    if (seededRandom() < 0.1) gameState.resources.ancientScraps++; // 10% chance for a scrap
+                    return seededRandomInt(10, 20); // Drops a lot of dust
+                }
+            }
         };
 
         const ZONE_LORE = { 
@@ -874,6 +883,15 @@
                 ],
                 triggeredByZoneEnd: 0 
             },
+            "END_OF_CRIMSON_DEPTHS": { 
+                prompt: "The Crimson Depths open into a vast cavern. One path leads up towards a volcanic peak. Another descends into a chasm that glitters with an intense, pure light.",
+                options: [
+                    { text: "Ascend to the Volcanic Wastes", outcomeKey: "PATH_TO_VOLCANIC_FROM_CRIMSON", nextZoneIndex: 2 },
+                    { text: "Descend into the Glimmering Depths", outcomeKey: "PATH_TO_GLIMMERING_DEPTHS", nextZoneIndex: 6 }, // <-- This sends the player to our new zone!
+                    { text: "End the journey here", outcomeKey: "JOURNEY_PAUSE_CRIMSON", nextZoneIndex: -1, leaveMessage: true } 
+                ],
+                triggeredByZoneEnd: 1 // This decision happens at the end of Zone 1
+            },
             "END_OF_VOLCANIC_WASTES": { 
                 prompt: "The Volcanic Wastes end at a precipice. Below, a vast, unnatural crater glows with eerie light. Do you dare venture into the Starfall Crater, or is it time to reflect on your journey thus far?",
                 options: [
@@ -1030,6 +1048,26 @@
                 bgColor: "#4682b420", 
                 entryLoreKey: "SKY_TEMPLE_AERIE_INTRO",
                 shrineLoreKey: "SKY_TEMPLE_AERIE_SHRINE_1"
+            },
+            , // <-- Make sure there is a comma after the Sky-Temple Aerie zone!
+            { // Zone 6 (NEW)
+                name: "The Glimmering Depths", width: 300, backgroundChar: "'", midgroundChar: "✧", 
+                foregroundElements: { 
+                    10: [ { lane: 2, char: '♦' } ], 20: [ { lane: 0, char: '◊' } ], 30: [ { lane: 4, char: '♦' } ],
+                    40: [ { lane: 1, char: 'A' } ], 50: [ { lane: 3, char: '#' } ], 60: [ { lane: 2, char: 'E', enemyKey: "CRYSTAL_LURKER" } ], 
+                    70: [ { lane: 0, char: 'N', npcType: "ECHO_LUMINA"} ], 80: [ { lane: 4, char: '♦' } ], 90: [ { lane: 1, char: 'L' } ],
+                    100: [ { lane: 3, char: 'P' } ], 110: [ { lane: 2, char: '◊' } ], 120: [ { lane: 0, char: 'E', enemyKey: "CRYSTAL_LURKER" } ],
+                    130: [ { lane: 4, char: 'A' } ], 140: [ { lane: 1, char: '♦' } ], 150: [ { lane: 3, char: 'L' } ],
+                    160: [ { lane: 2, char: '#' } ], 170: [ { lane: 0, char: '◊' } ], 180: [ { lane: 4, char: 'E', enemyKey: "CRYSTAL_LURKER" } ],
+                    190: [ { lane: 1, char: 'P' } ], 200: [ { lane: 3, char: '♦' } ], 210: [ { lane: 2, char: 'H' } ],
+                    220: [ { lane: 0, char: 'A' } ], 230: [ { lane: 4, char: '◊' } ], 240: [ { lane: 1, char: 'L' } ],
+                    250: [ { lane: 3, char: 'E', enemyKey: "CRYSTAL_LURKER" } ], 260: [ { lane: 2, char: '#' } ], 270: [ { lane: 0, char: 'P' } ],
+                    280: [ { lane: 4, char: '♦' } ], 290: [ { lane: 1, char: 'L' } ]
+                },
+                color: "#40e0d0", // Turquoise
+                bgColor: "#003333", 
+                entryLoreKey: "GLIMMERING_DEPTHS_INTRO", // We will add this lore key next
+                shrineLoreKey: "GLIMMERING_SHRINE_1" // And this one too
             }
         ];
 
