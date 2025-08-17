@@ -408,6 +408,9 @@ body.loading .game-container {
         cursor: not-allowed;
         border-color: #776677;
     }
+    #artifacts-collected-wrapper {
+        cursor: pointer;
+    }
     .title-header {
         font-family: 'VT323', monospace;
         font-size: 2.5rem;
