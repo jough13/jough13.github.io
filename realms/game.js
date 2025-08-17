@@ -3163,16 +3163,77 @@ function renderAll() {
 // │ INITIALIZATION & EVENT LISTENERS                                            │
 // =============================================================================
 
-document.addEventListener("DOMContentLoaded", () => {
-    const startButton = document.getElementById("startButton");
-    if (startButton) {
-        startButton.addEventListener("click", startGame);
-    }
-});
+// =============================================================================
+// │ INITIALIZATION & MENU LOGIC                                               │
+// =============================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize sounds first
+// This function will contain the setup logic that runs AFTER a choice is made
+function initializeAndRunGame() {
     initializeSounds();
+    setupEventListeners(); // Sets up listeners for PAUSE, SAVE, etc.
+    updateUIAccentColors();
+    renderAll();
+    document.body.classList.remove('loading');
+
+    // Start the game loop
+    if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
+        if (gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+    }
+}
+
+// This is our NEW main entry point for the entire game
+document.addEventListener('DOMContentLoaded', () => {
+    // Get references to our new menu and game elements
+    const startScreen = document.getElementById('start-screen');
+    const gameContainer = document.querySelector('.game-container');
+    const continueButton = document.getElementById('continueButton');
+    const newGameButton = document.getElementById('newGameButton');
+
+    // Check if a save file exists in local storage
+    const saveExists = localStorage.getItem('realmsOfRuneAndRust_savegame') !== null;
+
+    if (saveExists) {
+        // If it exists, show the "Continue" button
+        continueButton.style.display = 'inline-block';
+    }
+
+    // --- BUTTON EVENT LISTENERS ---
+
+    continueButton.addEventListener('click', () => {
+        // Hide the menu and show the game
+        startScreen.style.display = 'none';
+        gameContainer.style.display = 'flex'; // Or 'block', depending on your layout
+
+        loadGame(); // This function already exists and loads the gameState
+        initializeAndRunGame(); // Run the common setup and start the game loop
+    });
+
+    newGameButton.addEventListener('click', () => {
+        // Hide the menu and show the game
+        startScreen.style.display = 'none';
+        gameContainer.style.display = 'flex'; // Or 'block'
+
+        // You need to decide if a "New Game" should ask for confirmation
+        // if a save file already exists.
+        if (saveExists) {
+            if (!confirm("Start a new journey? This will overwrite your saved progress.")) {
+                // If user clicks "Cancel", show the start screen again
+                startScreen.style.display = 'flex';
+                gameContainer.style.display = 'none';
+                return; // Stop the function here
+            }
+             // If they confirm, clear the old save and legacy stats
+            localStorage.removeItem('realmsOfRuneAndRust_savegame');
+            localStorage.removeItem(LEGACY_MIGHT_KEY);
+            localStorage.removeItem(LEGACY_WITS_KEY);
+            localStorage.removeItem(LEGACY_SPIRIT_KEY);
+        }
+
+        startGame(); // This function already exists and resets the gameState
+        initializeAndRunGame(); // Run the common setup and start the game loop
+    });
+});
 
     // Wait for fonts to load for proper rendering
     document.fonts.ready.then(() => {
@@ -3353,12 +3414,6 @@ function setupEventListeners() {
                 hideArtifactViewer();
             }
         });
-    }
-
-    // Start button - this is the key fix!
-    const startButton = document.getElementById("startButton");
-    if (startButton) {
-        startButton.addEventListener("click", startGame);
     }
 }
 
