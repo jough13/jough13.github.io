@@ -2815,6 +2815,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAll();
         document.body.classList.remove('loading');
 
+        // Add helpful tooltips to the end-game buttons
+        newJourneyButton.title = 'Start a completely fresh journey. All progress and legacy stats will be erased.';
+        transcendButton.title = 'Start a New Game+. A fraction of your final stats will carry over to give you a head start.';
+
         // Attach main event listeners
         pauseResumeButton.addEventListener('click', togglePause);
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
