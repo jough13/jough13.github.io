@@ -1,4 +1,3 @@
-<style>
     /*! tailwindcss v4.1.12 | MIT License | https://tailwindcss.com */
     @layer theme, base, components, utilities;
     @layer theme {
@@ -464,4 +463,3 @@ body.loading .game-container {
         vertical-align: middle;
         width: 200px;
     }
-</style>
