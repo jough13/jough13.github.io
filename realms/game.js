@@ -3313,10 +3313,10 @@ function setupEventListeners() {
     }
 
     // Utility controls
-    if (copyLogButton) {
+  if (copyLogButton) {
         copyLogButton.addEventListener('click', () => {
             navigator.clipboard.writeText(logArea.innerText).then(() => {
-                const originalText = copyLogButton.textContent;
+                const originalText = "Copy Log"; // More robust than reading text content
                 copyLogButton.textContent = 'Copied!';
                 copyLogButton.disabled = true;
                 setTimeout(() => {
@@ -3333,10 +3333,14 @@ function setupEventListeners() {
         muteButton.addEventListener('click', () => {
             gameState.isMuted = !gameState.isMuted;
             muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
-            if (Tone && Tone.Destination) {
+            
+            // This ensures the sound library's master mute is always in sync
+            if (typeof Tone !== 'undefined' && Tone.Destination) {
                 Tone.Destination.mute = gameState.isMuted;
             }
-            if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
+
+            // If unmuting, ensure the audio context is active
+            if (!gameState.isMuted && typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
                 Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
             }
         });
@@ -3415,6 +3419,7 @@ function startGame() {
         activeDecision: null,
         gameTickMs: INITIAL_GAME_TICK_MS,
         isMuted: false,
+        lastStepSoundTime: 0,
         
         // Tracking
         narrativeFlags: {},
