@@ -3299,3 +3299,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+window.addEventListener("DOMContentLoaded", () => {
+    const startButton = document.getElementById("startButton");
+    if (startButton) {
+        startButton.addEventListener("click", () => startGame());
+    }
+});
