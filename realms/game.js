@@ -3167,6 +3167,35 @@ function renderAll() {
 // │ INITIALIZATION & MENU LOGIC                                               │
 // =============================================================================
 
+function showConfirmationModal(message, onConfirm) {
+    const modal = document.getElementById('confirmationModal');
+    const modalText = document.getElementById('modalText');
+    const confirmBtn = document.getElementById('modalConfirmButton');
+    const cancelBtn = document.getElementById('modalCancelButton');
+
+    modalText.textContent = message;
+
+    // This makes the "Confirm" button's action reusable.
+    const confirmClickHandler = () => {
+        hideConfirmationModal();
+        onConfirm(); // Execute the action we passed in.
+        confirmBtn.removeEventListener('click', confirmClickHandler); // Clean up listener
+    };
+    confirmBtn.addEventListener('click', confirmClickHandler);
+
+    // The cancel button just closes the modal.
+    cancelBtn.addEventListener('click', hideConfirmationModal, { once: true });
+
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('visible'), 10); // Trigger fade-in
+}
+
+function hideConfirmationModal() {
+    const modal = document.getElementById('confirmationModal');
+    modal.classList.remove('visible');
+    setTimeout(() => modal.style.display = 'none', 250); // Hide after fade-out
+}
+
 // This function will contain the setup logic that runs AFTER a choice is made
 function initializeAndRunGame() {
     initializeSounds();
@@ -3209,30 +3238,32 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeAndRunGame(); // Run the common setup and start the game loop
     });
 
-    newGameButton.addEventListener('click', () => {
-        // Hide the menu and show the game
+newGameButton.addEventListener('click', () => {
+    // This function contains the logic to start a new game.
+    const startNew = () => {
+        localStorage.removeItem('realmsOfRuneAndRust_savegame');
+        localStorage.removeItem(LEGACY_MIGHT_KEY);
+        localStorage.removeItem(LEGACY_WITS_KEY);
+        localStorage.removeItem(LEGACY_SPIRIT_KEY);
+
         startScreen.style.display = 'none';
-        gameContainer.style.display = 'flex'; // Or 'block'
+        gameContainer.style.display = 'flex';
 
-        // You need to decide if a "New Game" should ask for confirmation
-        // if a save file already exists.
-        if (saveExists) {
-            if (!confirm("Start a new journey? This will overwrite your saved progress.")) {
-                // If user clicks "Cancel", show the start screen again
-                startScreen.style.display = 'flex';
-                gameContainer.style.display = 'none';
-                return; // Stop the function here
-            }
-             // If they confirm, clear the old save and legacy stats
-            localStorage.removeItem('realmsOfRuneAndRust_savegame');
-            localStorage.removeItem(LEGACY_MIGHT_KEY);
-            localStorage.removeItem(LEGACY_WITS_KEY);
-            localStorage.removeItem(LEGACY_SPIRIT_KEY);
-        }
+        startGame();
+        initializeAndRunGame();
+    };
 
-        startGame(); // This function already exists and resets the gameState
-        initializeAndRunGame(); // Run the common setup and start the game loop
-    });
+    if (saveExists) {
+        // If a save exists, show our new custom modal.
+        showConfirmationModal(
+            "Start a new journey? This will overwrite your saved progress.",
+            startNew // The 'startNew' function will only run if they click "Confirm".
+        );
+    } else {
+        // If no save exists, just start the game immediately.
+        startNew();
+    }
+});
 });
 
     // Wait for fonts to load for proper rendering
