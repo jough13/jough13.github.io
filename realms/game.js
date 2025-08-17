@@ -501,6 +501,15 @@ const WORLD_LORE_FRAGMENTS = [{
     key: "WL_SECRETS_RUNE_SYNERGY",
     text: "Some Runes, when brought together, resonate in unexpected ways, unlocking deeper truths or latent powers. The Runesmiths knew these combinations, but much of that knowledge is lost."
 }, {
+    key: "WL_SECRETS_HEART_FORGE",
+    text: "Scrawled on a cooled piece of slag: 'The greatest Runesmiths did not build their forges over fire, but within the very heart of the mountain, drawing power from the world's core.'"
+}, {
+    key: "WL_SECRETS_QUENCHING",
+    text: "A smith's log, barely legible: '...we tried quenching the blade in Void Essence. The metal screamed. It is now... hungry. Unstable. We have sealed it away.'"
+}, {
+    key: "WL_SECRETS_RESONATORS",
+    text: "An engraving on a broken tool reads: 'The Resonators were not for crafting, but for awakening. They could coax the latent memories from ancient things.'"
+}, {
     key: "WL_HOPE_SAPLING",
     text: "In the deepest char of the Ashen Woods, a single, silver-barked sapling thrives, its leaves shimmering with an inner light. It is a defiant spark against the overwhelming dark."
 }, {
@@ -966,45 +975,53 @@ const ZONES = [{ // Zone 0
     shrineLoreKey: "CRIMSON_SHRINE_1"
 }, { // Zone 2
     name: "The Volcanic Wastes",
-    width: 340,
+    width: 400, // Changed from 340
     backgroundChar: "`",
     midgroundChar: "^",
-    foregroundElements: {
-        20: [{ lane: 2, char: ']' }],
-        30: [{ lane: 0, char: 's' }],
-        40: [{ lane: 4, char: 'A' }],
-        45: [{ lane: 0, char: 'M' }, { lane: 1, char: 'M' }],
-        50: [{ lane: 1, char: 'L' }, { lane: 0, char: 'M' }],
-        55: [{ lane: 3, char: '0' }],
-        60: [{ lane: 3, char: '[' }],
-        70: [{ lane: 2, char: '#' }],
-        80: [{ lane: 0, char: '+' }],
-        90: [{ lane: 4, char: '.' }],
-        100: [{ lane: 2, char: 'N', npcType: "HERMIT_RUNESMITH" }],
-        110: [{ lane: 1, char: 's' }],
-        120: [{ lane: 3, char: '§' }],
-        130: [{ lane: 0, char: 'A' }],
-        140: [{ lane: 2, char: 'P' }],
-        150: [{ lane: 4, char: ']' }],
-        160: [{ lane: 1, char: 'L' }],
-        170: [{ lane: 2, char: 'H' }],
-        180: [{ lane: 0, char: '#' }],
-        190: [{ lane: 3, char: 's' }],
-        200: [{ lane: 4, char: '[' }],
-        210: [{ lane: 1, char: '+' }],
-        220: [{ lane: 2, char: 'A' }],
-        230: [{ lane: 0, char: '¦' }],
-        240: [{ lane: 3, char: 'L' }],
-        250: [{ lane: 2, char: 'Φ' }],
-        260: [{ lane: 4, char: 'L' }],
-        270: [{ lane: 1, char: 'N', npcType: "ECHO_LUMINA" }],
-        280: [{ lane: 0, char: 's' }],
-        290: [{ lane: 2, char: 'L' }],
-        300: [{ lane: 3, char: '+' }],
-        310: [{ lane: 4, char: 'A' }],
-        320: [{ lane: 1, char: 'P' }],
-        330: [{ lane: 2, char: 'L' }]
-    },
+foregroundElements: {
+    20: [{ lane: 2, char: ']' }],
+    30: [{ lane: 0, char: 's' }],
+    40: [{ lane: 4, char: 'A' }],
+    45: [{ lane: 0, char: 'M' }, { lane: 1, char: 'M' }],
+    50: [{ lane: 1, char: 'L' }, { lane: 0, char: 'M' }],
+    55: [{ lane: 3, char: '0' }],
+    60: [{ lane: 3, char: '[' }],
+    70: [{ lane: 2, char: '#' }],
+    80: [{ lane: 0, char: '+' }],
+    90: [{ lane: 4, char: '.' }],
+    100: [{ lane: 2, char: 'N', npcType: "HERMIT_RUNESMITH" }],
+    110: [{ lane: 1, char: 's' }],
+    120: [{ lane: 3, char: '§' }],
+    130: [{ lane: 0, char: 'A' }],
+    140: [{ lane: 2, char: 'P' }],
+    150: [{ lane: 4, char: ']' }],
+    160: [{ lane: 1, char: 'L' }],
+    170: [{ lane: 2, char: 'H' }],
+    180: [{ lane: 0, char: '#' }],
+    190: [{ lane: 3, char: 's' }],
+    200: [{ lane: 4, char: '[' }],
+    210: [{ lane: 1, char: '+' }],
+    220: [{ lane: 2, char: 'A' }],
+    230: [{ lane: 0, char: '¦' }],
+    240: [{ lane: 3, char: 'L' }],
+    250: [{ lane: 2, char: 'Φ' }],
+    260: [{ lane: 4, char: 'L' }],
+    270: [{ lane: 1, char: 'N', npcType: "ECHO_LUMINA" }],
+    280: [{ lane: 0, char: 's' }],
+    290: [{ lane: 2, char: 'L' }],
+    300: [{ lane: 3, char: '+' }],
+    310: [{ lane: 4, char: 'A' }],
+    320: [{ lane: 1, char: 'P' }],
+    330: [{ lane: 2, char: 'L' }],
+    // --- NEW CONTENT START ---
+    340: [{ lane: 1, char: 'E', enemyKey: "RUSTED_CONSTRUCT" }],
+    350: [{ lane: 3, char: 'L' }],
+    360: [{ lane: 2, char: '¤' }], // The Dormant Forge
+    370: [{ lane: 0, char: 'L' }],
+    380: [{ lane: 4, char: 'E', enemyKey: "ASH_GNAWER" }],
+    390: [{ lane: 2, char: 'N', npcType: "HERMIT_RUNESMITH" }]
+    // --- NEW CONTENT END ---
+},
     color: "#ff4500",
     bgColor: "#2b0f0f",
     entryLoreKey: "VOLCANIC_WASTES_INTRO",
@@ -1531,6 +1548,41 @@ function resolveCompanionName(companionData, chosenName) {
     gameState.activeDecision = null;
     pauseGameForDecision(false);
     renderAll(); // Update the UI to show the new companion
+}
+
+/** After awakening the forge, this presents the player with an offering choice. */
+function presentForgeOfferingChoice() {
+    let prompt = "The awakened forge craves a catalyst. What will you offer to its ancient heart?";
+    let options = [{ text: "Offer nothing more", outcome: "NOTHING" }];
+
+    // Check if the player has Void Essence
+    if (gameState.resources.voidEssence > 0) {
+        options.unshift({ text: "Offer 1 Void Essence", outcome: "VOID" });
+    }
+
+    decisionPromptText.textContent = prompt;
+    decisionButtonsContainer.innerHTML = '';
+    options.forEach(option => {
+        const button = document.createElement('button');
+        button.textContent = option.text;
+        button.onclick = () => {
+            decisionArea.style.display = 'none';
+            if (option.outcome === "VOID") {
+                gameState.resources.voidEssence--;
+                addLogMessage("You feed the Void Essence to the forge. It shrieks, consuming the dark energy and channeling it into a single, perfectly cut Obsidian Rune (Ω)!", "artifact_synergy");
+                if (!gameState.runes.includes('Ω')) {
+                     gameState.runes.push('Ω');
+                }
+                awardXP(75);
+            } else {
+                addLogMessage("You decide the forge has taken enough for one day.", "decision");
+            }
+            pauseGameForDecision(false);
+            renderAll();
+        };
+        decisionButtonsContainer.appendChild(button);
+    });
+    decisionArea.style.display = 'block';
 }
 
 /** Placeholder for starting a new game. */
@@ -2148,6 +2200,49 @@ function handleEncounter() {
                 
                 // Mark that the companion event has been triggered so it doesn't happen again.
                 gameState.narrativeFlags.companionFound = true;
+            }
+            break;
+        
+        case '¤': // Dormant Forge
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                pauseGameForDecision(true);
+                gameState.narrativeFlags[specificEncounterKey] = true; // Mark as encountered
+
+                let prompt = "You find a colossal, dormant forge built into the mountainside. Its surface is cold, but ancient runes glow with latent heat. It seems to be waiting for something.";
+                let options = [{ text: "Leave it be", outcome: "LEAVE" }];
+
+                // Check if the player has the Resonator artifact
+                if (gameState.collectedArtifacts.includes("ART_RUNESMITHS_RESONATOR")) {
+                    prompt += " Your Runesmith's Resonator hums, eager to awaken the forge.";
+                    options.unshift({ text: "Use the Resonator (Spirit 5)", outcome: "RESONATE" });
+                }
+
+                // Create a generic decision pop-up
+                decisionPromptText.textContent = prompt;
+                decisionButtonsContainer.innerHTML = '';
+                options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option.text;
+                    button.onclick = () => {
+                        decisionArea.style.display = 'none';
+                        if (option.outcome === "RESONATE") {
+                            if (getEffectiveStats().spirit >= 5) {
+                                addLogMessage("You attune the Resonator to the forge. With a surge of spiritual energy, the runes blaze to life! The forge awakens with a low hum, ready for an offering.", "puzzle-success");
+                                awardXP(40);
+                                // Present a second choice for what to offer
+                                presentForgeOfferingChoice();
+                            } else {
+                                addLogMessage("You try to use the Resonator, but lack the spiritual fortitude (Spirit 5 required). The forge remains dormant.", "puzzle-fail");
+                                pauseGameForDecision(false);
+                            }
+                        } else {
+                            addLogMessage("You step away from the ancient forge.", "decision");
+                            pauseGameForDecision(false);
+                        }
+                    };
+                    decisionButtonsContainer.appendChild(button);
+                });
+                decisionArea.style.display = 'block';
             }
             break;
         }
