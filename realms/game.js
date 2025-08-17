@@ -3205,6 +3205,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 awardXP(50);
             }
         } 
+        
+        // Final UI setup and fade-in
+        updateUIAccentColors();
+
         gameState.initialGameSeed = Date.now() % 2147483647;
         initializeSeed(gameState.initialGameSeed);
 
