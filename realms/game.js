@@ -3493,16 +3493,3 @@ function startGame() {
 
     addLogMessage("Your journey begins...", "startup");
 }
-
-// =============================================================================
-// │ SAFE DOM EVENT BINDING                                                    │
-// =============================================================================
-
-const muteButton = document.getElementById("muteButton");
-    if (muteButton) {
-        muteButton.addEventListener("click", () => {
-            gameState.isMuted = !gameState.isMuted;
-            logMessage(gameState.isMuted ? "🔇 Sound muted." : "🔊 Sound unmuted.");
-        });
-    }
-});
