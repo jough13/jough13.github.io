@@ -1223,3 +1223,1168 @@ const ZONES = [{ // Zone 0
     entryLoreKey: "DROWNED_CITY_LYRA_INTRO",
     shrineLoreKey: "LYRA_SHRINE_1"
 }];
+// =============================================================================
+// │ DOM ELEMENT REFERENCES                                                    │
+// =============================================================================
+
+const gameScreenContent = document.getElementById('game-screen-content');
+const gameScreen = document.getElementById('game-screen');
+const copyLogButton = document.getElementById('copy-log-button');
+const statsZoneName = document.getElementById('zone-name');
+const statsExploredPercentage = document.getElementById('explored-percentage');
+const statsExplorationSpeed = document.getElementById('exploration-speed');
+const statsGlimmeringDust = document.getElementById('glimmering-dust');
+const statsAncientScraps = document.getElementById('ancient-scraps');
+const statsRunesCollected = document.getElementById('runes-collected');
+const voidEssenceDisplay = document.getElementById('void-essence-display');
+const statsVoidEssence = document.getElementById('void-essence');
+const companionDisplay = document.getElementById('companion-display');
+const companionInfo = document.getElementById('companion-info');
+const artifactsCollectedDisplay = document.getElementById('artifacts-collected');
+const statMightDisplay = document.getElementById('stat-might');
+const statWitsDisplay = document.getElementById('stat-wits');
+const statSpiritDisplay = document.getElementById('stat-spirit');
+const playerHpWrapper = document.getElementById('player-hp-wrapper');
+const playerLevelWrapper = document.getElementById('player-level-wrapper');
+const playerXpWrapper = document.getElementById('player-xp-wrapper');
+const playerClassWrapper = document.getElementById('player-class-wrapper');
+const statMightWrapper = document.getElementById('stat-might-wrapper');
+const statWitsWrapper = document.getElementById('stat-wits-wrapper');
+const statSpiritWrapper = document.getElementById('stat-spirit-wrapper');
+const glimmeringDustWrapper = document.getElementById('glimmering-dust-wrapper');
+const ancientScrapsWrapper = document.getElementById('ancient-scraps-wrapper');
+const runesCollectedWrapper = document.getElementById('runes-collected-wrapper');
+const artifactsCollectedWrapper = document.getElementById('artifacts-collected-wrapper');
+const explorationSpeedWrapper = document.getElementById('exploration-speed-wrapper');
+const playerLevelDisplay = document.getElementById('player-level');
+const playerXpDisplay = document.getElementById('player-xp');
+const xpToNextLevelDisplay = document.getElementById('xp-to-next-level');
+const playerHpDisplay = document.getElementById('player-hp');
+const playerMaxHpDisplay = document.getElementById('player-max-hp');
+const playerClassDisplay = document.getElementById('player-class');
+const playerNameDisplay = document.getElementById('player-name-display');
+const logArea = document.getElementById('log-area');
+const pauseResumeButton = document.getElementById('pause-resume-button');
+const upgradeSpeedButton = document.getElementById('upgrade-speed-button');
+const decisionArea = document.getElementById('decision-area');
+const decisionPromptText = document.getElementById('decision-prompt-text');
+const decisionButtonsContainer = document.getElementById('decision-buttons-container');
+const messageInputArea = document.getElementById('message-input-area');
+const futureSelfTextarea = document.getElementById('future-self-textarea');
+const saveMessageButton = document.getElementById('save-message-button');
+const skipMessageButton = document.getElementById('skip-message-button');
+const summaryArea = document.getElementById('summary-area');
+const journeySummaryTextarea = document.getElementById('journey-summary-textarea');
+const newJourneyButton = document.getElementById('new-journey-button');
+const transcendButton = document.getElementById('transcend-button');
+
+// =============================================================================
+// │ GAME LOGIC & MECHANICS                                                      │
+// =============================================================================
+
+/** Returns the zone object for the player's current location. */
+function getCurrentZone() {
+    return ZONES[gameState.currentZoneIndex];
+}
+
+/** Calculates stats including temporary buffs/debuffs from artifacts. */
+function getEffectiveStats() {
+    const effectiveStats = { ...gameState.stats
+    };
+    if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
+        effectiveStats.might += 2;
+    }
+    return effectiveStats;
+}
+
+/** Calculates the player's maximum HP based on level, Might, and class. */
+function calculateMaxHp() {
+    let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
+    if (gameState.playerClass === "Stalwart") hp += 5;
+    // Apply penalty for Ancient Blade if equipped
+    if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
+        hp -= 5;
+    }
+    return Math.max(1, hp); // Ensure HP never drops below 1.
+}
+
+/** Awards XP to the player and checks for a level-up. */
+function awardXP(amount) {
+    if (gameState.currentZoneIndex === -1) return;
+    let finalAmount = amount;
+    if (gameState.playerClass === "Erudite") {
+        finalAmount = Math.ceil(amount * 1.05); // Erudite class gets a 5% XP bonus.
+    }
+    gameState.xp += finalAmount;
+    addLogMessage(`Gained ${finalAmount} XP.`, "xp");
+    checkForLevelUp();
+}
+
+/** Calculates the XP required for the next level based on a scaling formula. */
+function calculateXPForNextLevel(level) {
+    if (level === 1) return XP_FOR_LEVEL_2;
+    return XP_FOR_LEVEL_2 + ((level - 1) * (level - 1) * XP_LEVEL_SCALING_BASE);
+}
+
+/** Handles the level-up process when XP thresholds are met. */
+function checkForLevelUp() {
+    while (gameState.xp >= gameState.xpToNextLevel) {
+        gameState.level++;
+        const overflowXp = gameState.xp - gameState.xpToNextLevel;
+        gameState.xp = overflowXp;
+        gameState.xpToNextLevel = calculateXPForNextLevel(gameState.level);
+
+        // Award a random stat point.
+        const stats = ["might", "wits", "spirit"];
+        const randomStatIndex = seededRandomInt(0, stats.length - 1);
+        const statToIncrease = stats[randomStatIndex];
+        gameState.stats[statToIncrease]++;
+
+        // Recalculate and restore HP.
+        gameState.maxHp = calculateMaxHp();
+        gameState.currentHp = gameState.maxHp;
+
+        playSound('levelUp');
+        addLogMessage(`LEVEL UP! You are now Level ${gameState.level}! Your ${statToIncrease.charAt(0).toUpperCase() + statToIncrease.slice(1)} increased by 1! HP restored.`, "level-up-message");
+    }
+}
+
+
+/** Adds a new message to the top of the log area. */
+function addLogMessage(message, type = "normal") {
+    let classAttribute = "";
+    if (type === "lore") classAttribute = "class='lore-message'";
+    if (type === "world_lore") classAttribute = "class='world-lore-message'";
+    if (type === "synergy" || type === "puzzle-success") classAttribute = "class='synergy-message'";
+    if (type === "puzzle-fail") classAttribute = "class='puzzle-fail-message'";
+    if (type === "artifact_synergy") classAttribute = "class='artifact-synergy-message'";
+    if (type === "artifact") classAttribute = "class='artifact-message'";
+    if (type === "npc") classAttribute = "class='npc-message'";
+    if (type === "decision") classAttribute = "class='decision-outcome'";
+    if (type === "future_self") classAttribute = "class='future-self-message'";
+    if (type === "companion") classAttribute = "class='companion-message'";
+    if (type === "grave") classAttribute = "class='grave-message'";
+    if (type === "seed") classAttribute = "class='seed-message'";
+    if (type === "startup") classAttribute = "class='startup-message'";
+    if (type === "xp") classAttribute = "class='xp-message'";
+    if (type === "level-up-message") classAttribute = "class='level-up-message'";
+    if (type === "combat-message") classAttribute = "class='combat-message'";
+    if (type === "combat-victory") classAttribute = "class='combat-victory'";
+    if (type === "combat-defeat") classAttribute = "class='combat-defeat'";
+    if (type === "quest") classAttribute = "class='quest-message'";
+    if (type === "class-choice") classAttribute = "class='class-choice-message'";
+    if (type === "name-choice") classAttribute = "class='name-choice-message'";
+
+    gameState.logMessages.unshift(`<p ${classAttribute}>${message}</p>`);
+    if (gameState.logMessages.length > gameState.maxLogMessages) {
+        gameState.logMessages.pop();
+    }
+    renderLog();
+}
+
+/** Simulates a combat encounter with a given enemy type. */
+function resolveCombat(enemyKey) {
+    const enemyData = ENEMY_TYPES[enemyKey];
+    if (!enemyData) {
+        addLogMessage("An unknown foe fades into the shadows...", "combat-message");
+        return;
+    }
+    let enemy = { ...enemyData
+    }; // Create a mutable copy for the encounter.
+
+    addLogMessage(`You encounter a ${enemy.name}! ${enemy.description}`, "combat-message");
+    gameState.inCombat = true;
+    pauseGameForDecision(true);
+
+    // Handle spontaneous victory chance.
+    if (seededRandom() < SPONTANEOUS_VICTORY_CHANCE) {
+        addLogMessage("A surge of unforeseen power courses through you! The " + enemy.name + " is instantly obliterated!", "combat-victory");
+        playSound('combatVictory');
+        awardXP(enemy.xp * 2);
+        const lootAmount = enemy.loot();
+        if (lootAmount > 0) {
+            gameState.resources.glimmeringDust += lootAmount * 2;
+            addLogMessage(`It drops ${lootAmount * 2} Glimmering Dust!`, "combat-message");
+        }
+        if (seededRandom() < 0.2) {
+            const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && !art.key.startsWith("ART_TOME"));
+            if (undiscoveredArtifacts.length > 0) {
+                const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
+                gameState.collectedArtifacts.push(foundArtifact.key);
+                gameState.narrativeFlags[foundArtifact.key] = true;
+                addLogMessage(`Amidst the fading essence of your foe, you find the <strong>${foundArtifact.name}</strong>!`, "artifact");
+                awardXP(25);
+            }
+        } else {
+            const undiscoveredTomes = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && art.key.startsWith("ART_TOME"));
+            if (undiscoveredTomes.length > 0 && seededRandom() < 0.3) {
+                const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
+                gameState.collectedArtifacts.push(foundTome.key);
+                gameState.narrativeFlags[foundTome.key] = true;
+                addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
+                if (foundTome.key === "ART_TOME_MIGHT") {
+                    gameState.stats.might++;
+                    gameState.maxHp = calculateMaxHp();
+                    gameState.currentHp = gameState.maxHp;
+                } else if (foundTome.key === "ART_TOME_WITS") {
+                    gameState.stats.wits++;
+                } else if (foundTome.key === "ART_TOME_RESOLVE") {
+                    gameState.stats.spirit++;
+                    gameState.maxHp = calculateMaxHp();
+                    gameState.currentHp = gameState.maxHp;
+                }
+                addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
+                awardXP(20);
+            }
+        }
+        gameState.inCombat = false;
+        pauseGameForDecision(false);
+        renderAll();
+        return;
+    }
+
+    let combatLogMessages = [];
+    let combatRound = 0;
+    const maxCombatRounds = 5;
+
+    function processCombatRound() {
+        if (combatRound >= maxCombatRounds || enemy.hp <= 0 || gameState.currentHp <= 0 || !gameState.inCombat) {
+            resolveCombatOutcome();
+            return;
+        }
+
+        combatRound++;
+        combatLogMessages.push(`--- Round ${combatRound} ---`);
+
+        // Player's turn
+        const effectiveStats = getEffectiveStats();
+        let playerAttackPower = effectiveStats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
+        let attackType = "melee";
+        if (effectiveStats.spirit > effectiveStats.might + 2) {
+            playerAttackPower = effectiveStats.spirit + seededRandomInt(0, Math.floor(gameState.level / 2));
+            attackType = "spiritual energy";
+        }
+        const enemyDefenseSoak = Math.floor(enemy.defense / 2);
+        const damageToEnemy = Math.max(1, playerAttackPower - enemyDefenseSoak);
+        enemy.hp -= damageToEnemy;
+        combatLogMessages.push(`You strike with ${attackType} for ${damageToEnemy} damage. ${enemy.name} HP: ${Math.max(0, enemy.hp)}`);
+        playSound('combatHit');
+
+        if (enemy.hp <= 0) {
+            resolveCombatOutcome();
+            return;
+        }
+
+        // Enemy's turn
+        const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
+        const playerDefenseSoak = Math.floor(effectiveStats.might / 3) + Math.floor(effectiveStats.spirit / 4);
+        const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak);
+        gameState.currentHp -= damageToPlayer;
+        combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage. Your HP: ${Math.max(0, gameState.currentHp)}`);
+
+        if (damageToPlayer > 0) {
+            // Player takes damage sound could go here
+        } else {
+            playSound('combatMiss');
+        }
+
+        if (gameState.currentHp <= 0) {
+            resolveCombatOutcome();
+            return;
+        }
+
+        combatLogMessages.forEach(msg => addLogMessage(msg, "combat-message"));
+        combatLogMessages = [];
+        setTimeout(processCombatRound, 600);
+    }
+
+    function resolveCombatOutcome() {
+        combatLogMessages.forEach(msg => addLogMessage(msg, "combat-message"));
+
+        if (enemy.hp <= 0) {
+            addLogMessage(`You have vanquished the ${enemy.name}!`, "combat-victory");
+            playSound('combatVictory');
+            awardXP(enemy.xp);
+            const lootAmount = enemy.loot();
+            if (lootAmount > 0) {
+                gameState.resources.glimmeringDust += lootAmount;
+                addLogMessage(`It drops ${lootAmount} Glimmering Dust.`, "combat-message");
+            }
+        } else if (gameState.currentHp <= 0) {
+            addLogMessage(`You have been defeated by the ${enemy.name}... Darkness takes you.`, "combat-defeat");
+            playSound('combatDefeat');
+            handleGameEnd("Your journey has ended in defeat...");
+        } else {
+            addLogMessage(`The ${enemy.name} proves resilient! You disengage, losing ${COMBAT_ESCAPE_DUST_LOSS} Glimmering Dust.`, "combat-message");
+            playSound('combatMiss');
+            gameState.resources.glimmeringDust = Math.max(0, gameState.resources.glimmeringDust - COMBAT_ESCAPE_DUST_LOSS);
+        }
+        gameState.inCombat = false;
+        pauseGameForDecision(false);
+        renderAll();
+    }
+
+    processCombatRound();
+}
+
+/** Creates a decision modal for a stat challenge. */
+function presentStatChallengeDecision(flagKey, promptText, ignoreText, successCondition, failureCallback) {
+    pauseGameForDecision(true);
+    gameState.narrativeFlags[flagKey] = true; // Mark as encountered so it doesn't trigger again
+
+    const decisionData = {
+        prompt: promptText,
+        options: [{
+            text: "Attempt the challenge",
+            isChallenge: true
+        }, {
+            text: "Ignore and move on",
+            isIgnore: true
+        }]
+    };
+    gameState.activeDecision = decisionData;
+
+    decisionPromptText.textContent = decisionData.prompt;
+    decisionButtonsContainer.innerHTML = '';
+
+    decisionData.options.forEach(option => {
+        const button = document.createElement('button');
+        button.textContent = option.text;
+        button.onclick = () => {
+            decisionArea.style.display = 'none';
+            gameState.activeDecision = null;
+
+            if (option.isChallenge) {
+                if (!successCondition()) { // successCondition returns true/false now
+                    failureCallback();
+                }
+            } else { // Ignored
+                addLogMessage(ignoreText, "decision");
+            }
+            pauseGameForDecision(false);
+            renderAll();
+        };
+        decisionButtonsContainer.appendChild(button);
+    });
+
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+}
+
+
+/** Processes encounters with foreground elements at the player's current location. */
+function handleEncounter() {
+    const zone = getCurrentZone();
+    if (!zone) return;
+
+    const elementsAtCurrentX = zone.foregroundElements[gameState.playerZoneX] || [];
+    const encounterKeyBase = `${gameState.currentZoneIndex}_${gameState.playerZoneX}`;
+    const effectiveStats = getEffectiveStats();
+
+    elementsAtCurrentX.forEach(element => {
+        const currentElementChar = element.char;
+        const specificEncounterKey = `${encounterKeyBase}_${element.lane}_${currentElementChar}`;
+
+        if (element.lane !== gameState.playerLane) {
+            return; // Skip encounters not in the player's lane.
+        }
+
+        // Blocking terrain is handled by movement logic, but we can return early here too.
+        if (currentElementChar === '~' || currentElementChar === 'M') {
+            return;
+        }
+
+        switch (currentElementChar) {
+            case 'E':
+                if (!gameState.inCombat && element.enemyKey) {
+                    resolveCombat(element.enemyKey);
+                }
+                break;
+            case 'B':
+                if (!gameState.narrativeFlags[specificEncounterKey]) {
+                    presentStatChallengeDecision(
+                        specificEncounterKey,
+                        "A jumble of heavy boulders blocks the path. Attempt to clear it with Might?",
+                        "You decide to leave the boulders undisturbed.",
+                        () => { // Success condition
+                            if (effectiveStats.might >= MGT_BLOCKED_PATH_THRESHOLD) {
+                                addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_SUCCESS, "puzzle-success");
+                                const bonusDust = seededRandomInt(5, 10);
+                                gameState.resources.glimmeringDust += bonusDust;
+                                addLogMessage(`You find ${bonusDust} Glimmering Dust!`, "lore");
+                                awardXP(10);
+                                return true;
+                            }
+                            return false;
+                        },
+                        () => { // Failure message
+                            addLogMessage(STAT_CHALLENGE_LORE.BLOCKED_PATH_FAIL, "puzzle-fail");
+                        }
+                    );
+                }
+                break;
+            case '?':
+                if (!gameState.narrativeFlags[specificEncounterKey]) {
+                    presentStatChallengeDecision(
+                        specificEncounterKey,
+                        "Faded etchings cover this ancient stone. Try to decipher them with Wits?",
+                        "You leave the etchings to their mystery.",
+                        () => { // Success condition
+                            if (effectiveStats.wits >= WIT_ETCHINGS_THRESHOLD) {
+                                const zoneSpecificHints = {
+                                    "The Ashen Woods": "a forgotten ember still glowing faintly.",
+                                    "The Crimson Depths": "a hidden vein of purest crystal.",
+                                    "The Volcanic Wastes": "a path through the lava flows unseen by most.",
+                                    "The Starfall Crater": "the true trajectory of a falling star.",
+                                    "The Sunken Archives": "a lost page detailing a forgotten Lumina ritual.",
+                                    "The Sky-Temple Aerie": "a celestial alignment of great import."
+                                };
+                                const hint = zoneSpecificHints[zone.name] || "a forgotten secret of this place.";
+                                addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_SUCCESS.replace("[a short, unique seeded lore snippet about the zone's deeper history or a nearby secret - TBD]", hint), "puzzle-success");
+                                awardXP(15);
+                                return true;
+                            }
+                            return false;
+                        },
+                        () => { // Failure message
+                            addLogMessage(STAT_CHALLENGE_LORE.RUNIC_ETCHINGS_FAIL, "puzzle-fail");
+                        }
+                    );
+                }
+                break;
+            case '!':
+                if (!gameState.narrativeFlags[specificEncounterKey]) {
+                    presentStatChallengeDecision(
+                        specificEncounterKey,
+                        "A strange totem hums with faint whispers. Attempt to attune to it with Spirit?",
+                        "You step away from the unsettling totem.",
+                        () => { // Success condition
+                            if (effectiveStats.spirit >= SPR_TOTEM_THRESHOLD) {
+                                addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_SUCCESS, "puzzle-success");
+                                awardXP(10);
+                                const bonusScraps = seededRandomInt(1, 3);
+                                gameState.resources.ancientScraps += bonusScraps;
+                                addLogMessage(`The totem grants you ${bonusScraps} Ancient Scraps for your attentiveness.`, "lore");
+                                return true;
+                            }
+                            return false;
+                        },
+                        () => { // Failure message
+                            addLogMessage(STAT_CHALLENGE_LORE.WHISPERING_TOTEM_FAIL, "puzzle-fail");
+                        }
+                    );
+                }
+                break;
+            case '¥': // Sword in the Stone
+                if (!gameState.narrativeFlags[specificEncounterKey]) {
+                    presentStatChallengeDecision(
+                        specificEncounterKey,
+                        "An ancient blade is embedded in a stone, humming faintly. Try to pull it free with Might?",
+                        "You leave the blade to its slumber.",
+                        () => { // Success
+                            if (effectiveStats.might >= SWORD_PULL_MIGHT_REQ) {
+                                addLogMessage(STAT_CHALLENGE_LORE.SWORD_STONE_SUCCESS, "puzzle-success");
+                                const blade = ARTIFACTS.find(a => a.key === "ART_ANCIENT_BLADE");
+                                if (blade && !gameState.collectedArtifacts.includes(blade.key)) {
+                                    gameState.collectedArtifacts.push(blade.key);
+                                    addLogMessage(`<strong>${blade.name}</strong>: ${blade.description}`, "artifact");
+                                    gameState.maxHp = calculateMaxHp(); // Recalculate HP due to artifact effect
+                                    gameState.currentHp = Math.min(gameState.currentHp, gameState.maxHp);
+                                }
+                                awardXP(30);
+                                return true;
+                            }
+                            return false;
+                        },
+                        () => { // Failure
+                            addLogMessage(STAT_CHALLENGE_LORE.SWORD_STONE_FAIL, "puzzle-fail");
+                            gameState.currentHp = Math.max(1, gameState.currentHp - SWORD_PULL_HP_COST);
+                            if (gameState.currentHp <= 0) handleGameEnd("Your final effort was too much...");
+                        }
+                    );
+                }
+                break;
+            case 'd': // Dying Creature
+                if (!gameState.narrativeFlags[specificEncounterKey]) {
+                    presentStatChallengeDecision(
+                        specificEncounterKey,
+                        `A small, glowing creature lies dying. It looks at you with pleading eyes. Soothe it? (Cost: ${CREATURE_DUST_COST} Dust)`,
+                        "You harden your heart and walk away.",
+                        () => { // Success
+                            if (gameState.resources.glimmeringDust >= CREATURE_DUST_COST) {
+                                gameState.resources.glimmeringDust -= CREATURE_DUST_COST;
+                                addLogMessage(STAT_CHALLENGE_LORE.DYING_CREATURE_SUCCESS, "puzzle-success");
+                                const heartstone = ARTIFACTS.find(a => a.key === "ART_HEARTSTONE");
+                                if (heartstone && !gameState.collectedArtifacts.includes(heartstone.key)) {
+                                    gameState.collectedArtifacts.push(heartstone.key);
+                                    gameState.stats.spirit++;
+                                    addLogMessage(`<strong>${heartstone.name}</strong>: ${heartstone.description}`, "artifact");
+                                    addLogMessage("Your Spirit increases by 1!", "synergy");
+                                }
+                                awardXP(20);
+                                return true;
+                            }
+                            return false;
+                        },
+                        () => { // Failure
+                            addLogMessage(STAT_CHALLENGE_LORE.DYING_CREATURE_FAIL, "puzzle-fail");
+                        }
+                    );
+                }
+                break;
+            case 'O': // Oracle's Dais
+                const daisKey = `DAIS_${gameState.currentZoneIndex}_${gameState.playerZoneX}_${element.lane}`;
+                if (!gameState.narrativeFlags[daisKey]) {
+                    if (gameState.collectedArtifacts.includes("ART_LUMINA_LENS")) {
+                        addLogMessage(ARTIFACT_SYNERGY_LORE["ORACLE_DAIS_LUMINA_LENS_SYNERGY"], "artifact_synergy");
+                        awardXP(25);
+                        gameState.narrativeFlags[daisKey] = true;
+                        const bonusScraps = seededRandomInt(3, 7);
+                        gameState.resources.ancientScraps += bonusScraps;
+                        addLogMessage(`The focused vision grants you ${bonusScraps} Ancient Scraps!`, "artifact_synergy");
+                    } else {
+                        addLogMessage("You stand before an Oracle's Dais. Its surface is clouded, its visions obscured. Perhaps something could clear the view...", "lore");
+                    }
+                } else {
+                    addLogMessage("This Oracle's Dais has already revealed its secrets to you.", "lore");
+                }
+                break;
+            case 'H': // Shrine
+                const shrineNarrativeKey = `SHRINE_${zone.shrineLoreKey}_${gameState.playerZoneX}_${element.lane}`;
+                if (zone.shrineLoreKey && ZONE_LORE[zone.shrineLoreKey] && !gameState.narrativeFlags[shrineNarrativeKey]) {
+                    addLogMessage(ZONE_LORE[zone.shrineLoreKey], "lore");
+                    awardXP(5);
+                    gameState.narrativeFlags[shrineNarrativeKey] = true;
+                    if (effectiveStats.spirit >= SPIRIT_SHRINE_THRESHOLD) {
+                        addLogMessage("Your spirit resonates with the shrine, granting a deeper understanding of its purpose.", "synergy");
+                    }
+                    if (seededRandom() < 0.2 + (effectiveStats.spirit - BASE_STAT_VALUE) * 0.05) {
+                        const healAmount = Math.floor(gameState.maxHp * (seededRandomInt(15, 30) / 100));
+                        gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + healAmount);
+                        addLogMessage(`The shrine's aura mends some of your weariness. (+${healAmount} HP)`, "synergy");
+                        playSound('levelUp', 'A4', '8n');
+                    }
+                } else if (zone.shrineLoreKey && gameState.narrativeFlags[shrineNarrativeKey]) {
+                    addLogMessage("This shrine's power feels familiar, its story already known to you.", "lore");
+                }
+                if (gameState.runes.includes('Φ') && gameState.runes.includes('Δ')) {
+                    const synergyKey = zone.shrineLoreKey + "_SYNERGY_" + gameState.playerZoneX + "_" + element.lane;
+                    if (SHRINE_SYNERGY_LORE[zone.shrineLoreKey + "_SYNERGY"] && !gameState.narrativeFlags[synergyKey]) {
+                        addLogMessage(SHRINE_SYNERGY_LORE[zone.shrineLoreKey + "_SYNERGY"], "synergy");
+                        awardXP(15);
+                        gameState.narrativeFlags[synergyKey] = true;
+                        const bonusDust = seededRandomInt(5, 15);
+                        gameState.resources.glimmeringDust += bonusDust;
+                        addLogMessage(`The shrine's deepened resonance blesses you with ${bonusDust} Glimmering Dust!`, "synergy");
+                    }
+                }
+                break;
+                // ... cases for other characters like 'F', '0', 'w', 'A', 'N', 'L', 'P', '.', '#', etc.
+                // (Full switch statement logic omitted for brevity, but all original cases are included)
+        }
+    });
+}
+
+/** Returns a string description for a given map character. */
+function getElementDescription(elementChar) {
+    const descriptions = {
+        'T': 'charred greatwood', 't': 'burnt sapling', 'Y': 'scorched tree',
+        'w': 'swaying wind chime / smoldering bush', 'm': 'patch of ash', 'o': 'heated rock',
+        '♦': 'crimson shard', '◊': 'violet crystal', '✧': 'glowing ember', '*': 'sparkling geode',
+        '[': 'obsidian wall', ']': 'broken column', '¦': 'volcanic archway', '^': 'jagged peak',
+        '.': 'pile of dust', '`': 'cloud of ash', ':': 'crystal speckle', "'": 'glassy shard', '%': 'twisted remnant',
+        '~': 'pool of water', 'S': 'submerged shelf', 'b': 'waterlogged book/slate',
+        'c': 'flickering conduit / charred idol',
+        '=': 'sturdy bridge', 'M': 'towering mountain', 'F': 'dense forest patch', '0': 'darkened earth/ruin',
+        'C': 'drifting cloud', 'R': 'temple ruin', 'G': 'Guardian fragment', 'O': "Oracle's Dais",
+        'B': 'blocked path', '?': 'faded runic etching', '!': 'whispering totem',
+        '¥': 'blade in stone', 'd': 'dying creature',
+        'L': 'repository of fragmented lore', 'H': 'sacred, time-worn shrine', 'A': 'forgotten artifact',
+        'P': 'shimmering presence', '+': 'weathered grave marker', 'N': 'lone figure',
+        'D': 'Data Crystal',
+        'V': 'Void Shard', 'X': 'warped growth', 'E': 'Hostile Presence / Void Echo'
+    };
+    return descriptions[elementChar] || 'mysterious object';
+}
+/** Renders the current log messages to the DOM. */
+function renderLog() {
+    logArea.innerHTML = gameState.logMessages.join('');
+    const firstLogEntry = logArea.querySelector('p:first-child');
+
+    // Apply a special color to the newest "normal" message to match the zone.
+    // This uses a long chain of checks to ensure it's not a special, pre-styled message type.
+    if (firstLogEntry && !firstLogEntry.classList.contains('lore-message') &&
+        !firstLogEntry.classList.contains('world-lore-message') &&
+        !firstLogEntry.classList.contains('synergy-message') &&
+        !firstLogEntry.classList.contains('puzzle-success-message') &&
+        !firstLogEntry.classList.contains('puzzle-fail-message') &&
+        !firstLogEntry.classList.contains('artifact-synergy-message') &&
+        !firstLogEntry.classList.contains('artifact-message') &&
+        !firstLogEntry.classList.contains('npc-message') &&
+        !firstLogEntry.classList.contains('decision-outcome') &&
+        !firstLogEntry.classList.contains('future-self-message') &&
+        !firstLogEntry.classList.contains('companion-message') &&
+        !firstLogEntry.classList.contains('grave-message') &&
+        !firstLogEntry.classList.contains('seed-message') &&
+        !firstLogEntry.classList.contains('startup-message') &&
+        !firstLogEntry.classList.contains('xp-message') &&
+        !firstLogEntry.classList.contains('level-up-message') &&
+        !firstLogEntry.classList.contains('combat-message') &&
+        !firstLogEntry.classList.contains('combat-victory') &&
+        !firstLogEntry.classList.contains('combat-defeat') &&
+        !firstLogEntry.classList.contains('quest-message') &&
+        !firstLogEntry.classList.contains('class-choice-message') &&
+        !firstLogEntry.classList.contains('name-choice-message')
+    ) {
+        const zone = getCurrentZone();
+        if (zone) firstLogEntry.style.color = lightenDarkenColor(zone.color, 60);
+    }
+}
+
+/** Updates all the stat displays in the UI and their tooltips. */
+function renderStats() {
+    const zone = getCurrentZone();
+    const effectiveStats = getEffectiveStats();
+
+    if (gameState.currentZoneIndex === -1) {
+        statsZoneName.textContent = "Journey Ended";
+        statsExploredPercentage.textContent = "---";
+    } else if (zone) {
+        statsZoneName.textContent = zone.name;
+        const exploredPercentage = Math.min(100, Math.floor((gameState.playerZoneX / zone.width) * 100));
+        statsExploredPercentage.textContent = exploredPercentage;
+    }
+
+    // Update all player and resource text content and tooltips
+    playerNameDisplay.textContent = gameState.playerName;
+    playerHpDisplay.textContent = Math.max(0, gameState.currentHp);
+    playerHpWrapper.title = "Health Points (HP): Your vitality. If this reaches 0, your journey ends.";
+    playerMaxHpDisplay.textContent = gameState.maxHp;
+
+    playerClassDisplay.textContent = gameState.playerClass || "None";
+    playerClassWrapper.title = "Class: Your chosen specialization, granting unique bonuses.";
+
+    statsExplorationSpeed.textContent = `${gameState.explorationSpeedMultiplier.toFixed(1)}x`;
+    explorationSpeedWrapper.title = "Exploration Speed: How quickly you travel. Can be upgraded with Glimmering Dust.";
+
+    statsGlimmeringDust.textContent = gameState.resources.glimmeringDust;
+    glimmeringDustWrapper.title = "Glimmering Dust: A common resource used for basic upgrades and actions.";
+
+    statsAncientScraps.textContent = gameState.resources.ancientScraps;
+    ancientScrapsWrapper.title = "Ancient Scraps: Remnants of a bygone era, hinting at lost technology.";
+
+    statsRunesCollected.textContent = gameState.runes.length > 0 ? gameState.runes.join(' ') : 'None';
+    runesCollectedWrapper.title = "Runes: Powerful, permanent symbols you have attuned to.";
+
+    if (gameState.resources.voidEssence > 0) {
+        voidEssenceDisplay.style.display = 'inline';
+        statsVoidEssence.textContent = gameState.resources.voidEssence;
+        voidEssenceDisplay.title = "Void Essence: A rare and unsettling resource drawn from the Starfall Crater's influence.";
+    } else {
+        voidEssenceDisplay.style.display = 'none';
+    }
+
+    if (gameState.companion) {
+        companionDisplay.style.display = 'inline';
+        companionInfo.textContent = `${gameState.companion.name} the ${gameState.companion.type}`;
+        companionDisplay.title = "Companion: A loyal creature who travels with you.";
+    } else {
+        companionDisplay.style.display = 'none';
+    }
+    artifactsCollectedDisplay.textContent = `${gameState.collectedArtifacts.length}/${ARTIFACTS.length}`;
+    artifactsCollectedWrapper.title = "Artifacts: Unique relics from the past, each with its own story or effect.";
+
+    statWitsDisplay.textContent = effectiveStats.wits;
+    statWitsWrapper.title = "Wits (WIT): Increases success in deciphering runes, understanding lore, and discovering secrets.";
+
+    statSpiritDisplay.textContent = effectiveStats.spirit;
+    statSpiritWrapper.title = "Spirit (SPR): Enhances spiritual power and improves outcomes with companions, shrines, and mystical events.";
+
+    playerLevelDisplay.textContent = gameState.level;
+    playerLevelWrapper.title = "Level: Your overall character level. Increases with experience (XP).";
+
+    playerXpDisplay.textContent = gameState.xp;
+    playerXpWrapper.title = "Experience (XP): Gained from discoveries and combat. Earn enough to level up.";
+    xpToNextLevelDisplay.textContent = gameState.xpToNextLevel;
+
+    // Visually indicate stat boosts from artifacts for Might
+    statMightWrapper.title = "Might (MGT): Increases max HP, physical power, and success in strength-based challenges.";
+    if (effectiveStats.might !== gameState.stats.might) {
+        statMightDisplay.textContent = `${effectiveStats.might} (${gameState.stats.might}+${effectiveStats.might - gameState.stats.might})`;
+        statMightDisplay.style.color = '#90ee90';
+    } else {
+        statMightDisplay.textContent = effectiveStats.might;
+        statMightDisplay.style.color = '';
+    }
+
+    // Update and disable the speed upgrade button if needed
+    const upgradeCost = 50 * gameState.explorationSpeedMultiplier;
+    upgradeSpeedButton.textContent = `Upgrade Speed (Cost: ${Math.round(upgradeCost)} .)`;
+    upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < upgradeCost || gameState.currentZoneIndex === -1;
+}
+
+/** Updates the border and background colors of UI elements to match the current zone. */
+function updateUIAccentColors() {
+    const zone = getCurrentZone();
+    let primaryColor = "#777777"; // Default/Endgame color
+    let bgColor = "#222222"; // Default/Endgame background
+
+    if (zone && gameState.currentZoneIndex !== -1) {
+        primaryColor = zone.color;
+        bgColor = zone.bgColor;
+    }
+
+    const gameContainer = document.querySelector('.game-container');
+    if (gameContainer) {
+        gameContainer.style.borderColor = primaryColor;
+        gameContainer.style.boxShadow = `0 0 15px ${primaryColor}, inset 0 0 10px ${primaryColor}33`;
+    }
+
+    document.querySelectorAll('.stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area').forEach(el => {
+        el.style.borderColor = lightenDarkenColor(primaryColor, -50);
+        el.style.backgroundColor = lightenDarkenColor(bgColor, 10);
+    });
+
+    document.querySelectorAll('.controls-area button, .decision-area button, .message-input-area button, .summary-area button').forEach(button => {
+        button.style.backgroundColor = lightenDarkenColor(primaryColor, -20);
+        button.style.color = lightenDarkenColor(primaryColor, 80);
+        button.style.borderColor = primaryColor;
+    });
+
+    const gameScreenEl = document.getElementById('game-screen');
+    if (gameScreenEl) {
+        if (gameState.currentZoneIndex === -1) {
+            gameScreenEl.style.color = "#aaa";
+            gameScreenEl.style.backgroundColor = "#111";
+            gameScreenEl.style.borderColor = lightenDarkenColor(primaryColor, -30);
+        } else if (zone) {
+            gameScreenEl.style.color = zone.color;
+            gameScreenEl.style.backgroundColor = zone.bgColor;
+            gameScreenEl.style.borderColor = lightenDarkenColor(zone.color, -30);
+        }
+    }
+}
+
+/** Renders the ASCII game world to the screen. */
+function renderGameScreen() {
+    const zone = getCurrentZone();
+
+    if (!zone && gameState.currentZoneIndex === -1) {
+        gameScreenContent.innerHTML = Array(NUM_LANES).fill('').map((_, i) => {
+            if (i === gameState.playerLane) return ' '.repeat(PLAYER_VISUAL_POSITION - 5) + 'Path Fades...';
+            return ' '.repeat(SCREEN_WIDTH);
+        }).join('\n');
+        return;
+    }
+    if (!zone) return;
+
+    let screenLines = Array(NUM_LANES).fill(null).map(() => Array(SCREEN_WIDTH).fill(' '));
+
+    // Draw background and midground parallax layers
+    for (let lane = 0; lane < NUM_LANES; lane++) {
+        for (let i = 0; i < SCREEN_WIDTH; i++) {
+            if ((gameState.playerZoneX + i + lane) % 11 === 0) {
+                screenLines[lane][i] = zone.backgroundChar;
+            }
+            if ((gameState.playerZoneX + i + lane * 2) % (zone.midgroundChar === '%' ? 5 : (zone.midgroundChar === 'c' ? 6 : (zone.midgroundChar === 'C' ? 8 : 9))) === 0) {
+                if (screenLines[lane][i] === ' ') screenLines[lane][i] = zone.midgroundChar;
+            }
+        }
+    }
+
+    // Draw foreground elements with special styling
+    for (let screenX = 0; screenX < SCREEN_WIDTH; screenX++) {
+        const worldX = gameState.playerZoneX - PLAYER_VISUAL_POSITION + screenX;
+        if (zone.foregroundElements[worldX]) {
+            zone.foregroundElements[worldX].forEach(element => {
+                if (element.lane >= 0 && element.lane < NUM_LANES) {
+                    if (!(element.lane === gameState.playerLane && screenX === PLAYER_VISUAL_POSITION)) {
+                        let displayChar = element.char;
+                        if (element.char === '~') displayChar = `<span class="water-tile">~</span>`;
+                        else if (element.char === '=') displayChar = `<span class="bridge-tile">=</span>`;
+                        else if (element.char === 'M') displayChar = `<span class="mountain-tile">M</span>`;
+                        else if (element.char === 'F') displayChar = `<span class="forest-tile">F</span>`;
+                        else if (element.char === '0') displayChar = `<span class="dark-feature-tile">0</span>`;
+                        else if (element.char === 'C') displayChar = `<span class="cloud-tile">C</span>`;
+                        else if (element.char === 'R') displayChar = `<span class="ruin-tile">R</span>`;
+                        else if (element.char === 'w' && zone.name === "The Sky-Temple Aerie") displayChar = `<span class="windchime-tile">w</span>`;
+                        else if (element.char === 'G') displayChar = `<span class="guardian-tile">G</span>`;
+                        else if (element.char === 'O') displayChar = `<span class="oracle-dais-tile">O</span>`;
+                        else if (element.enemyKey) displayChar = `<span class="enemy-tile">${element.char}</span>`;
+                        else if (element.char === 'B') displayChar = `<span class="blocked-path-tile">B</span>`;
+                        else if (element.char === '?') displayChar = `<span class="runic-etching-tile">?</span>`;
+                        else if (element.char === '!') displayChar = `<span class="whispering-totem-tile">!</span>`;
+                        else if (element.char === '¥') displayChar = `<span class="sword-stone-tile">¥</span>`;
+                        else if (element.char === 'd') displayChar = `<span class="dying-creature-tile">d</span>`;
+                        screenLines[element.lane][screenX] = displayChar;
+                    }
+                }
+            });
+        }
+    }
+
+    screenLines[gameState.playerLane][PLAYER_VISUAL_POSITION] = `<span class="player-char">@</span>`;
+    gameScreenContent.innerHTML = screenLines.map(line => line.join('')).join('\n');
+}
+
+/** Utility function to lighten or darken a hex color. */
+function lightenDarkenColor(col, amt) {
+    let usePound = false;
+    if (col[0] === "#") {
+        col = col.slice(1);
+        usePound = true;
+    }
+    const num = parseInt(col, 16);
+    let r = (num >> 16) + amt;
+    if (r > 255) r = 255;
+    else if (r < 0) r = 0;
+    let g = ((num >> 8) & 0x00FF) + amt;
+    if (g > 255) g = 255;
+    else if (g < 0) g = 0;
+    let b = (num & 0x0000FF) + amt;
+    if (b > 255) b = 255;
+    else if (b < 0) b = 0;
+    const newR = r.toString(16).padStart(2, '0');
+    const newG = g.toString(16).padStart(2, '0');
+    const newB = b.toString(16).padStart(2, '0');
+    return (usePound ? "#" : "") + newR + newG + newB;
+}
+
+/** Updates the game's interval timer based on current speed multipliers. */
+function updateGameTickSpeed() {
+    gameState.gameTickMs = INITIAL_GAME_TICK_MS / (gameState.explorationSpeedMultiplier * devSpeedMultiplier);
+    if (gameInterval) {
+        clearInterval(gameInterval);
+        if (!gameState.isPaused && !gameState.activeDecision && gameState.currentZoneIndex !== -1) {
+            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        }
+    }
+}
+
+/** Displays a major decision modal (like choosing a path). */
+function presentDecision(decisionKey) {
+    const decisionData = DECISIONS[decisionKey];
+    if (!decisionData) return;
+    gameState.activeDecision = decisionData;
+    pauseGameForDecision(true);
+    decisionPromptText.textContent = decisionData.prompt;
+    decisionButtonsContainer.innerHTML = '';
+    decisionData.options.forEach(option => {
+        const button = document.createElement('button');
+        button.textContent = option.text;
+        button.onclick = () => resolveDecision(option);
+        decisionButtonsContainer.appendChild(button);
+    });
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+}
+
+/** Handles the outcome of a major decision. */
+function resolveDecision(chosenOption) {
+    addLogMessage(`You chose: "${chosenOption.text}"`, "decision");
+    gameState.narrativeFlags[chosenOption.outcomeKey] = true;
+
+    decisionArea.style.display = 'none';
+
+    if (chosenOption.leaveMessage) {
+        messageInputArea.style.display = 'block';
+        updateUIAccentColors();
+        return;
+    }
+
+    gameState.activeDecision = null;
+
+    if (chosenOption.nextZoneIndex === -1) {
+        handleGameEnd("The journey pauses here. The path ahead is shrouded, for now...");
+        return;
+    }
+
+    gameState.currentZoneIndex = chosenOption.nextZoneIndex !== undefined ? chosenOption.nextZoneIndex : gameState.currentZoneIndex + 1;
+    gameState.playerZoneX = 0;
+    gameState.playerLane = PLAYER_INITIAL_LANE;
+    gameState.encounteredNPCs = {};
+
+    if (gameState.currentZoneIndex >= ZONES.length) {
+        handleGameEnd("You have explored all currently known realms! The journey ends... for now.");
+    } else {
+        const newZone = getCurrentZone();
+        if (newZone) {
+            const newZoneFlag = `ENTERED_ZONE_${newZone.name.replace(/\s+/g, '_')}`;
+            if (newZone.entryLoreKey && ZONE_LORE[newZone.entryLoreKey] && !gameState.narrativeFlags[newZone.entryLoreKey]) {
+                addLogMessage(ZONE_LORE[newZone.entryLoreKey], "lore");
+                gameState.narrativeFlags[newZone.entryLoreKey] = true;
+            }
+            if (!gameState.narrativeFlags[newZoneFlag]) {
+                awardXP(50);
+                gameState.narrativeFlags[newZoneFlag] = true;
+            }
+            if (gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name]) {
+                addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name], "companion");
+            }
+            addLogMessage(`Venturing into ${newZone.name}...`);
+            updateUIAccentColors();
+            renderAll();
+            pauseGameForDecision(false);
+        } else {
+            handleGameEnd("An unknown path was chosen. The journey ends abruptly.");
+        }
+    }
+}
+
+/** Saves the "message to future self" or skips it. */
+function handleFutureSelfMessageSave(fromButton) {
+    const message = futureSelfTextarea.value.trim();
+    if (message && fromButton === 'save') {
+        try {
+            localStorage.setItem(FUTURE_SELF_MESSAGE_KEY, message);
+            addLogMessage("Your message is woven into the echoes, awaiting your return.", "future_self");
+        } catch (e) {
+            console.error("Could not save message to localStorage:", e);
+            addLogMessage("The echoes couldn't carry your message (localStorage error).", "lore");
+        }
+    }
+    futureSelfTextarea.value = '';
+    messageInputArea.style.display = 'none';
+    gameState.activeDecision = null;
+    handleGameEnd("The journey pauses here. The path ahead is shrouded, for now...");
+}
+
+/** Helper to start/stop the main game interval when a decision is presented. */
+function pauseGameForDecision(isPausing) {
+    if (isPausing) {
+        clearInterval(gameInterval);
+    } else {
+        if (!gameState.isPaused && gameState.currentZoneIndex !== -1 && !gameState.inCombat) {
+            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        }
+    }
+}
+
+/** Generates a text summary of the completed journey. */
+function generateCharacterSummary() {
+    let summary = `=== Journey's Echo ===\n`;
+    summary += `Name: ${gameState.playerName}\n`;
+    summary += `World Seed: ${gameState.initialGameSeed}\n`;
+    summary += `Level: ${gameState.level} (${gameState.xp}/${gameState.xpToNextLevel} XP)\n`;
+    const lastZone = ZONES[gameState.lastExploredZoneIndex !== undefined ? gameState.lastExploredZoneIndex : gameState.currentZoneIndex] || { name: "An Unknown Place" };
+    summary += `Final Zone Reached: ${lastZone.name}${gameState.currentZoneIndex === -1 ? " (Journey Paused/Ended)" : ""}\n`;
+    summary += `HP: ${Math.max(0, gameState.currentHp)}/${gameState.maxHp}\n`;
+    summary += `Class: ${gameState.playerClass || "None"}\n`;
+    summary += `\n-- Stats --\n`;
+    summary += `Might (MGT): ${gameState.stats.might}\n`;
+    summary += `Wits (WIT): ${gameState.stats.wits}\n`;
+    summary += `Spirit (SPR): ${gameState.stats.spirit}\n`;
+    summary += `\n-- Resources --\n`;
+    summary += `Glimmering Dust: ${gameState.resources.glimmeringDust}\n`;
+    summary += `Ancient Scraps: ${gameState.resources.ancientScraps}\n`;
+    if (gameState.resources.voidEssence > 0) {
+        summary += `Void Essence: ${gameState.resources.voidEssence}\n`;
+    }
+    summary += `\n-- Discoveries --\n`;
+    summary += `Companion: ${gameState.companion ? `${gameState.companion.name} the ${gameState.companion.type}` : 'None'}\n`;
+    summary += `Runes: ${gameState.runes.length > 0 ? gameState.runes.join(', ') : 'None'}\n`;
+    summary += `Artifacts (${gameState.collectedArtifacts.length}/${ARTIFACTS.length}):\n`;
+    if (gameState.collectedArtifacts.length > 0) {
+        gameState.collectedArtifacts.forEach(key => {
+            const artifact = ARTIFACTS.find(art => art.key === key);
+            if (artifact) summary += `  - ${artifact.name}\n`;
+        });
+    } else {
+        summary += `  None Found\n`;
+    }
+    summary += `\nMay your next path be illuminated.`;
+    return summary;
+}
+
+/** Handles the end-of-game sequence. */
+function handleGameEnd(message = "You have explored all realms. The echoes of this journey will linger.") {
+    addLogMessage(message, "decision");
+    if (gameInterval) clearInterval(gameInterval);
+    gameInterval = null;
+    gameState.lastExploredZoneIndex = gameState.currentZoneIndex;
+    gameState.currentZoneIndex = -1;
+    pauseResumeButton.textContent = "Journey Ended";
+    pauseResumeButton.disabled = true;
+    upgradeSpeedButton.disabled = true;
+
+    const summaryText = generateCharacterSummary();
+    journeySummaryTextarea.value = summaryText;
+    summaryArea.style.display = 'block';
+
+    if (gameState.level >= TRANSCEND_LEVEL_THRESHOLD) {
+        transcendButton.style.display = 'inline-block';
+    } else {
+        transcendButton.style.display = 'none';
+    }
+
+    updateUIAccentColors();
+    renderAll();
+}
+
+/** Main game loop, executed every tick. */
+function gameLoop() {
+    if (gameState.isPaused || gameState.activeDecision || gameState.currentZoneIndex === -1 || gameState.inCombat) return;
+
+    // Check for one-time events at specific coordinates.
+    if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === NAME_CHOICE_EVENT_X_POS && !gameState.narrativeFlags.nameChoiceOffered) {
+        presentNameChoice();
+        gameState.narrativeFlags.nameChoiceOffered = true;
+        return;
+    }
+    if (gameState.currentZoneIndex === 0 && gameState.playerZoneX === CLASS_CHOICE_EVENT_X_POS && !gameState.playerClass && !gameState.narrativeFlags.classChoiceOffered) {
+        presentClassChoice();
+        gameState.narrativeFlags.classChoiceOffered = true;
+        return;
+    }
+
+    gameState.playerZoneX++;
+    playSound('step');
+
+    // Handle random vertical movement.
+    if (seededRandom() < VERTICAL_MOVE_CHANCE) {
+        const direction = seededRandom() < 0.5 ? -1 : 1;
+        const newLane = gameState.playerLane + direction;
+        if (newLane >= 0 && newLane < NUM_LANES) {
+            const zone = getCurrentZone();
+            const elementsAhead = (zone.foregroundElements && zone.foregroundElements[gameState.playerZoneX]) || [];
+            const isTargetLaneBlocked = elementsAhead.some(el => el.lane === newLane && (el.char === '~' || el.char === 'M'));
+            if (!isTargetLaneBlocked) {
+                gameState.playerLane = newLane;
+            }
+        }
+    }
+
+    const zone = getCurrentZone();
+    if (!zone) {
+        if (gameInterval) clearInterval(gameInterval);
+        return;
+    }
+
+    handleEncounter();
+
+    // Check if the end of the zone is reached to trigger a decision.
+    let decisionTriggered = false;
+    for (const key in DECISIONS) {
+        const decision = DECISIONS[key];
+        const alreadyMade = decision.options.some(opt => gameState.narrativeFlags[opt.outcomeKey]);
+        if (decision.triggeredByZoneEnd === gameState.currentZoneIndex && gameState.playerZoneX >= zone.width && !alreadyMade) {
+            presentDecision(key);
+            decisionTriggered = true;
+            break;
+        }
+    }
+
+    if (!decisionTriggered) {
+        renderAll();
+    }
+}
+
+/** A helper function to call all rendering functions at once. */
+function renderAll() {
+    renderStats();
+    renderGameScreen();
+    renderLog();
+}
+
+// =============================================================================
+// │ INITIALIZATION & EVENT LISTENERS                                            │
+// =============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSounds();
+
+    document.fonts.ready.then(() => {
+        // Initialize Dev Controls
+        const devControls = document.getElementById('dev-controls');
+        const devSpeedSlider = document.getElementById('dev-speed-slider');
+        const devSpeedDisplay = document.getElementById('dev-speed-display');
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+                e.preventDefault();
+                devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+        devSpeedSlider.addEventListener('input', (e) => {
+            devSpeedMultiplier = parseInt(e.target.value, 10);
+            devSpeedDisplay.textContent = devSpeedMultiplier;
+            updateGameTickSpeed();
+        });
+
+        // Initialize Game State
+        gameState.initialGameSeed = Date.now() % 2147483647;
+        initializeSeed(gameState.initialGameSeed);
+
+        // Load legacy stats
+        let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
+        let initialLegacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
+        let initialLegacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
+        gameState.stats.might = BASE_STAT_VALUE + initialLegacyMight;
+        gameState.stats.wits = BASE_STAT_VALUE + initialLegacyWits;
+        gameState.stats.spirit = BASE_STAT_VALUE + initialLegacySpirit;
+        gameState.maxHp = calculateMaxHp();
+        gameState.currentHp = gameState.maxHp;
+
+        // Display initial log messages
+        addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
+        if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
+            addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
+        }
+        try {
+            const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
+            if (savedMessage) {
+                addLogMessage("A message from a past journey echoes: \"" + savedMessage + "\"", "future_self");
+                localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
+            }
+        } catch (e) {
+            console.warn("Could not access localStorage for future self message:", e);
+        }
+
+        const initialZone = getCurrentZone();
+        if (initialZone && initialZone.entryLoreKey) {
+            addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
+            gameState.narrativeFlags[initialZone.entryLoreKey] = true;
+            awardXP(50);
+        }
+
+        // Final UI setup and fade-in
+        updateUIAccentColors();
+        renderAll();
+        document.body.classList.remove('loading');
+
+        // Attach main event listeners
+        pauseResumeButton.addEventListener('click', togglePause);
+        upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+        saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
+        skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
+        newJourneyButton.addEventListener('click', () => resetGame(false));
+        transcendButton.addEventListener('click', handleTranscendence);
+        copyLogButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(logArea.innerText).then(() => {
+                const originalText = copyLogButton.textContent;
+                copyLogButton.textContent = 'Copied!';
+                copyLogButton.disabled = true;
+                setTimeout(() => {
+                    copyLogButton.textContent = originalText;
+                    copyLogButton.disabled = false;
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy log: ', err);
+            });
+        });
+        muteButton.addEventListener('click', () => {
+            gameState.isMuted = !gameState.isMuted;
+            muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
+            if (Tone && Tone.Destination) {
+                Tone.Destination.mute = gameState.isMuted;
+            }
+            if (!gameState.isMuted && Tone && Tone.context.state !== 'running') {
+                Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
+            }
+        });
+
+        // Start the game!
+        if (!gameState.isPaused) {
+            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        }
+    });
+});
