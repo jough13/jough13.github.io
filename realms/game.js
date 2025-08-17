@@ -3224,44 +3224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 awardXP(50);
             }
         }
-                
-        // Final UI setup and fade-in
-        updateUIAccentColors();
-
-        gameState.initialGameSeed = Date.now() % 2147483647;
-        initializeSeed(gameState.initialGameSeed);
-
-        // Load legacy stats
-        let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
-        let initialLegacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
-        let initialLegacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
-        gameState.stats.might = BASE_STAT_VALUE + initialLegacyMight;
-        gameState.stats.wits = BASE_STAT_VALUE + initialLegacyWits;
-        gameState.stats.spirit = BASE_STAT_VALUE + initialLegacySpirit;
-        gameState.maxHp = calculateMaxHp();
-        gameState.currentHp = gameState.maxHp;
-
-        // Display initial log messages
-        addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
-        if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
-            addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
-        }
-        try {
-            const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
-            if (savedMessage) {
-                addLogMessage("A message from a past journey echoes: \"" + savedMessage + "\"", "future_self");
-                localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
-            }
-        } catch (e) {
-            console.warn("Could not access localStorage for future self message:", e);
-        }
-
-        const initialZone = getCurrentZone();
-        if (initialZone && initialZone.entryLoreKey) {
-            addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
-            gameState.narrativeFlags[initialZone.entryLoreKey] = true;
-            awardXP(50);
-        }
 
         // Final UI setup and fade-in
         updateUIAccentColors();
