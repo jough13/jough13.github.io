@@ -1350,6 +1350,7 @@ const newJourneyButton = document.getElementById('new-journey-button');
 const transcendButton = document.getElementById('transcend-button');
 const meditateButton = document.getElementById('meditate-button');
 const attuneRunesButton = document.getElementById('attune-runes-button');
+const saveGameButton = document.getElementById('save-game-button');
 const artifactModalBackdrop = document.getElementById('artifact-modal-backdrop');
 const artifactModalClose = document.getElementById('artifact-modal-close');
 const artifactList = document.getElementById('artifact-list');
@@ -1879,6 +1880,50 @@ function presentForgeOfferingChoice() {
         decisionButtonsContainer.appendChild(button);
     });
     decisionArea.style.display = 'block';
+}
+
+/**
+ * Saves the entire gameState object to the browser's localStorage.
+ */
+function saveGame() {
+    if (gameState.inCombat) {
+        addLogMessage("Cannot save during combat.", "puzzle-fail");
+        return;
+    }
+    try {
+        // Convert the gameState object into a JSON string
+        const saveState = JSON.stringify(gameState);
+        // Save the string to localStorage under a specific key
+        localStorage.setItem('realmsOfRuneAndRust_savegame', saveState);
+        addLogMessage("Game Saved.", "synergy");
+    } catch (e) {
+        console.error("Error saving game:", e);
+        addLogMessage("Could not save the game. The echoes are weak.", "puzzle-fail");
+    }
+}
+
+/**
+ * Loads the gameState from localStorage if a save file exists.
+ * @returns {boolean} - True if a game was loaded, false otherwise.
+ */
+function loadGame() {
+    try {
+        const savedState = localStorage.getItem('realmsOfRuneAndRust_savegame');
+
+        if (savedState) {
+            // If a save exists, parse the JSON string back into an object
+            const loadedState = JSON.parse(savedState);
+            // Overwrite the current gameState with the loaded one
+            gameState = loadedState;
+            addLogMessage("Saved journey restored.", "synergy");
+            return true;
+        }
+    } catch (e) {
+        console.error("Error loading game:", e);
+        addLogMessage("The saved journey is corrupted and could not be restored.", "puzzle-fail");
+        localStorage.removeItem('realmsOfRuneAndRust_savegame'); // Clear the bad save
+    }
+    return false; // No save file found or an error occurred
 }
 
 /** Placeholder for starting a new game. */
@@ -3139,6 +3184,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Initialize Game State
+        const gameWasLoaded = loadGame();
+
+        if (!gameWasLoaded) { 
+            // If no game was loaded, start a fresh one
+            gameState.initialGameSeed = Date.now() % 2147483647;
+            initializeSeed(gameState.initialGameSeed);
+
+            // Load legacy stats
+            let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
+            // ... (rest of the legacy stat code) ...
+            gameState.currentHp = gameState.maxHp;
+
+            // Display initial log messages
+            addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
+            // ... (rest of the new game messages) ...
+            if (initialZone && initialZone.entryLoreKey) {
+                addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
+                gameState.narrativeFlags[initialZone.entryLoreKey] = true;
+                awardXP(50);
+            }
+        } 
         gameState.initialGameSeed = Date.now() % 2147483647;
         initializeSeed(gameState.initialGameSeed);
 
@@ -3200,6 +3266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
         meditateButton.addEventListener('click', presentUpgradeMenu);
         attuneRunesButton.addEventListener('click', presentRuneMenu);
+        saveGameButton.addEventListener('click', saveGame);
         saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
         skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
         newJourneyButton.addEventListener('click', () => resetGame(false));
