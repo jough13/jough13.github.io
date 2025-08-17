@@ -1328,6 +1328,9 @@ const summaryArea = document.getElementById('summary-area');
 const journeySummaryTextarea = document.getElementById('journey-summary-textarea');
 const newJourneyButton = document.getElementById('new-journey-button');
 const transcendButton = document.getElementById('transcend-button');
+const artifactModalBackdrop = document.getElementById('artifact-modal-backdrop');
+const artifactModalClose = document.getElementById('artifact-modal-close');
+const artifactList = document.getElementById('artifact-list');
 
 // =============================================================================
 // │ GAME LOGIC & MECHANICS                                                      │
@@ -1556,6 +1559,48 @@ function resolveCompanionName(companionData, chosenName) {
     gameState.activeDecision = null;
     pauseGameForDecision(false);
     renderAll(); // Update the UI to show the new companion
+}
+
+/** Populates and displays the artifact viewer modal. */
+function showArtifactViewer() {
+    // Clear any previous list items
+    artifactList.innerHTML = '';
+
+    if (gameState.collectedArtifacts.length === 0) {
+        artifactList.innerHTML = '<p>No artifacts collected yet.</p>';
+    } else {
+        // Loop through the keys of collected artifacts
+        gameState.collectedArtifacts.forEach(key => {
+            // Find the full artifact object from our ARTIFACTS constant
+            const artifact = ARTIFACTS.find(art => art.key === key);
+            if (artifact) {
+                // Create the HTML elements for this entry
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'artifact-entry';
+
+                const nameElement = document.createElement('strong');
+                nameElement.textContent = artifact.name;
+
+                const descElement = document.createElement('p');
+                descElement.textContent = artifact.description;
+
+                // Add the name and description to the entry, then add the entry to the list
+                entryDiv.appendChild(nameElement);
+                entryDiv.appendChild(descElement);
+                artifactList.appendChild(entryDiv);
+            }
+        });
+    }
+
+    // Pause the game and show the modal
+    pauseGameForDecision(true);
+    artifactModalBackdrop.style.display = 'flex';
+}
+
+/** Hides the artifact viewer modal. */
+function hideArtifactViewer() {
+    artifactModalBackdrop.style.display = 'none';
+    pauseGameForDecision(false); // Unpause the game
 }
 
 /** After awakening the forge, this presents the player with an offering choice. */
