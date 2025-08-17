@@ -1212,31 +1212,37 @@ const ZONES = [{ // Zone 0
     foregroundElements: {
         10: [{ lane: 0, char: '~' }, { lane: 1, char: '~' }, { lane: 3, char: '~' }, { lane: 4, char: '~' }],
         20: [{ lane: 2, char: 'S' }],
-        30: [{ lane: 1, char: 'D' }],
+        30: [{ lane: 1, char: 'D' }, { lane: 4, char: '+' }],
         40: [{ lane: 3, char: '#' }],
         50: [{ lane: 4, char: 'E', enemyKey: "RUSTED_SENTINEL" }],
         60: [{ lane: 0, char: 'L' }],
         70: [{ lane: 2, char: 'R' }],
         80: [{ lane: 1, char: 'A' }],
+        90: [{ lane: 3, char: '?' }], // ADDED
         100: [{ lane: 3, char: 'N', npcType: "ARCHIVIST_CONSTRUCT" }],
+        110: [{ lane: 0, char: 'L' }], // ADDED
         120: [{ lane: 0, char: 'E', enemyKey: "RUSTED_SENTINEL" }],
+        130: [{ lane: 2, char: '!' }], // ADDED
         140: [{ lane: 4, char: 'D' }],
+        150: [{ lane: 1, char: 'N', npcType: "ECHO_LUMINA" }], // ADDED
         160: [{ lane: 2, char: 'S' }],
-        180: [{ lane: 1, char: 'L' }],
+        180: [{ lane: 1, char: 'L' }, { lane: 4, char: 'A' }], // ADDED Artifact
         200: [{ lane: 3, char: '#' }],
+        210: [{ lane: 0, char: '+' }], // ADDED
         220: [{ lane: 0, char: 'R' }],
         240: [{ lane: 4, char: 'E', enemyKey: "RUSTED_SENTINEL" }],
         260: [{ lane: 2, char: 'H' }],
         280: [{ lane: 1, char: 'A' }],
-        300: [{ lane: 3, char: 'S' }],
+        300: [{ lane: 3, char: 'S' }, { lane: 0, char: 'B' }], // ADDED
         320: [{ lane: 0, char: 'L' }],
         340: [{ lane: 4, char: 'D' }],
+        350: [{ lane: 1, char: 'L' }], // ADDED
         360: [{ lane: 2, char: 'E', enemyKey: "RUSTED_SENTINEL" }],
         380: [{ lane: 0, char: 'N', npcType: "ECHO_LUMINA" }],
         400: [{ lane: 1, char: 'A' }],
         420: [{ lane: 3, char: 'R' }],
         440: [{ lane: 2, char: 'P' }]
-    },
+},
     color: "#1d7874",
     bgColor: "#0b3937",
     entryLoreKey: "DROWNED_CITY_LYRA_INTRO",
@@ -2072,7 +2078,7 @@ function handleEncounter() {
                 awardXP(30);
             }
             break;
-            
+
                 // ... cases for other characters like 'F', '0', 'w', 'A', 'N', 'L', 'P', '.', '#', etc.
                 // (Full switch statement logic omitted for brevity, but all original cases are included)
         }
