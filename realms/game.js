@@ -3300,6 +3300,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// =============================================================================
+// │ START GAME FUNCTION                                                       │
+// =============================================================================
+
+function startGame() {
+    logMessage("✨ A new journey begins...");
+
+    // Reset or initialize the game state
+    gameState.playerZoneX = 0;
+    gameState.currentZoneIndex = 0;
+    gameState.lastExploredZoneIndex = 0;
+    gameState.isPaused = false;
+    gameState.inCombat = false;
+
+    // Reset stats if needed
+    gameState.currentHp = gameState.maxHp || BASE_HP;
+    gameState.resources.glimmeringDust = 0;
+    gameState.resources.ancientScraps = 0;
+    gameState.resources.voidEssence = 0;
+
+    // Reinitialize RNG with a fresh seed
+    initializeSeed(Date.now());
+
+    // Start the main loop (if you have one)
+    if (typeof gameLoop === "function") {
+        gameLoop();
+    } else {
+        logMessage("⚠️ gameLoop() is not defined yet.");
+    }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     const startButton = document.getElementById("startButton");
     if (startButton) {
