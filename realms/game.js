@@ -3320,7 +3320,6 @@ document.addEventListener('DOMContentLoaded', () => {
             gameInterval = setInterval(gameLoop, gameState.gameTickMs);
         }
     });
-});
 
 // =============================================================================
 // │ CONSOLIDATED EVENT LISTENER SETUP                                         │
