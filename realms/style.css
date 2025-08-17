@@ -440,6 +440,50 @@ body.loading .game-container {
         margin-bottom: 0.5rem;
         white-space: pre-wrap; 
     }
+
+/* --- Name Input Prompt Styling --- */
+
+/* Use Flexbox on the container to align the input and button nicely */
+#decision-buttons-container {
+    display: flex;
+    justify-content: center; /* Center them horizontally */
+    align-items: center;    /* Align them vertically */
+    gap: 10px;              /* Add a small gap between them */
+}
+
+/* Style the text input field itself */
+#playerNameInput {
+    background-color: #1a1a1a;
+    border: 2px solid #555;
+    color: #f0e8f0;
+    padding: 10px;
+    font-size: 1.1em;
+    font-family: 'VT323', monospace;
+    text-align: center;
+    transition: all 0.2s ease-in-out;
+    outline: none; /* Remove default browser outline */
+    border-radius: 4px; /* Match your other elements */
+    width: 60%; /* Adjust width as needed */
+}
+
+/* Style the placeholder text (the "Wanderer" text) */
+#playerNameInput::placeholder {
+    color: #666;
+    opacity: 1;
+}
+
+/* Add a glowing effect when the player clicks on the input */
+#playerNameInput:focus {
+    border-color: #cc99cc; /* Match your game-container color */
+    box-shadow: 0 0 10px #cc99cc88;
+}
+
+/* Style the new confirm button to match */
+.name-confirm-button {
+    padding: 12px 20px;
+    font-size: 1em;
+}
+
     #playerNameInput { 
         background-color: #100510;
         color: #f0e8f0;
