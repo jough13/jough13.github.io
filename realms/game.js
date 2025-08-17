@@ -2166,6 +2166,20 @@ function handleEncounter() {
             }
             break;
             
+        case '.': // Pile of dust
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                const dustAmount = seededRandomInt(1, 5);
+                
+                // This is the corrected line with the capital 'D'
+                gameState.resources.glimmeringDust += dustAmount;
+
+                addLogMessage(`You scoop up a small pile of shimmering dust (+${dustAmount}).`, "lore");
+                gameState.narrativeFlags[specificEncounterKey] = true; // Mark as collected
+                playSound('dust');
+                awardXP(1);
+            }
+            break;    
+
         case 'N': // NPC
             if (element.npcType && NPCS[element.npcType] && !gameState.encounteredNPCs[specificEncounterKey]) {
                 const npc = NPCS[element.npcType];
