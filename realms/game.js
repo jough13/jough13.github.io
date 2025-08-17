@@ -1338,6 +1338,7 @@ function presentNameChoice() {
     // Create the confirm button
     const confirmButton = document.createElement('button');
     confirmButton.textContent = 'Confirm';
+    confirmButton.classList.add('name-confirm-button');
 
     // When the button is clicked, resolve the choice
     confirmButton.onclick = () => {
@@ -2005,6 +2006,73 @@ function handleEncounter() {
                     }
                 }
                 break;
+                case 'A': // Artifact
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key));
+                if (undiscoveredArtifacts.length > 0) {
+                    const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
+                    gameState.collectedArtifacts.push(foundArtifact.key);
+                    gameState.narrativeFlags[specificEncounterKey] = true;
+                    gameState.narrativeFlags[foundArtifact.key] = true; // Also flag the artifact itself as found
+                    addLogMessage(`In a hidden alcove, you discover the <strong>${foundArtifact.name}</strong>!`, "artifact");
+                    addLogMessage(foundArtifact.description, "artifact");
+                    playSound('artifact');
+                    awardXP(25);
+                } else {
+                    addLogMessage("You find signs of a hidden cache, but it's empty.", "lore");
+                }
+            }
+            break;
+
+        case 'L': // Lore Fragment
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                const unreadFragments = WORLD_LORE_FRAGMENTS.filter(frag => !gameState.narrativeFlags[frag.key]);
+                if (unreadFragments.length > 0) {
+                    const fragment = unreadFragments[seededRandomInt(0, unreadFragments.length - 1)];
+                    addLogMessage(fragment.text, "world_lore");
+                    gameState.narrativeFlags[specificEncounterKey] = true;
+                    gameState.narrativeFlags[fragment.key] = true;
+                    playSound('tome');
+                    awardXP(10);
+                }
+            }
+            break;
+            
+        case 'N': // NPC
+            if (element.npcType && NPCS[element.npcType] && !gameState.encounteredNPCs[specificEncounterKey]) {
+                const npc = NPCS[element.npcType];
+                const dialogue = npc.dialogue[seededRandomInt(0, npc.dialogue.length - 1)];
+                addLogMessage(`A ${npc.name} murmurs: "${dialogue}"`, "npc");
+                gameState.encounteredNPCs[specificEncounterKey] = true; // Encounter this specific instance once
+                awardXP(5);
+
+                // Companion reaction
+                if (gameState.companion && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type] && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType]) {
+                    addLogMessage(COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType], "companion");
+                }
+            }
+            break;
+
+        case '+': // Grave Marker
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                const epitaph = EPITAPHS[seededRandomInt(0, EPITAPHS.length - 1)];
+                addLogMessage(`A weathered marker reads: "${epitaph}"`, "grave");
+                gameState.narrativeFlags[specificEncounterKey] = true;
+                awardXP(2);
+            }
+            break;
+            
+        case 'P': // Shimmering Presence (Companion)
+            if (!gameState.companion && !gameState.narrativeFlags.companionFound) {
+                const companionData = COMPANIONS[seededRandomInt(0, COMPANIONS.length - 1)];
+                gameState.companion = { ...companionData };
+                gameState.narrativeFlags.companionFound = true;
+                addLogMessage(`The shimmering presence coalesces! You've found a companion: ${gameState.companion.name} the ${gameState.companion.type}!`, "companion");
+                playSound('companionFind');
+                awardXP(30);
+            }
+            break;
+            
                 // ... cases for other characters like 'F', '0', 'w', 'A', 'N', 'L', 'P', '.', '#', etc.
                 // (Full switch statement logic omitted for brevity, but all original cases are included)
         }
