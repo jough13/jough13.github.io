@@ -1366,15 +1366,15 @@ function getCurrentZone() {
 
 /** Placeholder for upgrading exploration speed. */
 function attemptUpgradeSpeed() {
-    const upgradeCost = 50 * gameState.explorationSpeedMultiplier;
+    const upgradeCost = Math.round(50 * gameState.explorationSpeedMultiplier);
     if (gameState.resources.glimmeringDust >= upgradeCost) {
         gameState.resources.glimmeringDust -= upgradeCost;
         gameState.explorationSpeedMultiplier += 0.1;
         updateGameTickSpeed();
-        addLogMessage(`Exploration speed upgraded to ${gameState.explorationSpeedMultiplier.toFixed(1)}x!`, "synergy");
-        renderStats(); // Update the button cost display
+        addLogMessage(`Movement speed increased! (${gameState.explorationSpeedMultiplier.toFixed(1)}x)`, "synergy");
+        renderStats();
     } else {
-        addLogMessage("Not enough Glimmering Dust to upgrade speed.", "puzzle-fail");
+        addLogMessage("Not enough Glimmering Dust for upgrade.", "puzzle-fail");
     }
 }
 
@@ -3171,106 +3171,145 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize sounds first
     initializeSounds();
 
+    // Wait for fonts to load for proper rendering
     document.fonts.ready.then(() => {
         // Initialize Dev Controls
         const devControls = document.getElementById('dev-controls');
         const devSpeedSlider = document.getElementById('dev-speed-slider');
         const devSpeedDisplay = document.getElementById('dev-speed-display');
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
-                e.preventDefault();
-                devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
-            }
-        });
-        devSpeedSlider.addEventListener('input', (e) => {
-            devSpeedMultiplier = parseInt(e.target.value, 10);
-            devSpeedDisplay.textContent = devSpeedMultiplier;
-            updateGameTickSpeed();
-        });
+        
+        if (devControls && devSpeedSlider && devSpeedDisplay) {
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'd') {
+                    e.preventDefault();
+                    devControls.style.display = devControls.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+            
+            devSpeedSlider.addEventListener('input', (e) => {
+                devSpeedMultiplier = parseInt(e.target.value, 10);
+                devSpeedDisplay.textContent = devSpeedMultiplier;
+                updateGameTickSpeed();
+            });
+        }
 
-        // Initialize Game State
+        // Try to load existing game, or start fresh
+        const gameWasLoaded = loadGame();
 
- const gameWasLoaded = loadGame();
-
-        let initialZone; // DECLARE the variable here, outside the IF block
-
-        if (!gameWasLoaded) { 
-            // If no game was loaded, start a fresh one
+        if (!gameWasLoaded) {
+            // Initialize with default values if no save exists
             gameState.initialGameSeed = Date.now() % 2147483647;
             initializeSeed(gameState.initialGameSeed);
 
             // Load legacy stats
-            let initialLegacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
-            let initialLegacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
-            let initialLegacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
-            gameState.stats.might = BASE_STAT_VALUE + initialLegacyMight;
-            gameState.stats.wits = BASE_STAT_VALUE + initialLegacyWits;
-            gameState.stats.spirit = BASE_STAT_VALUE + initialLegacySpirit;
-            gameState.maxHp = calculateMaxHp();
-            gameState.currentHp = gameState.maxHp;
+            try {
+                const legacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
+                const legacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
+                const legacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
+                
+                gameState.stats.might = BASE_STAT_VALUE + legacyMight;
+                gameState.stats.wits = BASE_STAT_VALUE + legacyWits;
+                gameState.stats.spirit = BASE_STAT_VALUE + legacySpirit;
+                
+                gameState.maxHp = calculateMaxHp();
+                gameState.currentHp = gameState.maxHp;
 
-            // Display initial log messages
-            addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
-            if (initialLegacyMight > 0 || initialLegacyWits > 0 || initialLegacySpirit > 0) {
-                addLogMessage(`Legacy Echoes whisper: MGT+${initialLegacyMight}, WIT+${initialLegacyWits}, SPR+${initialLegacySpirit}`, "legacy-message");
+                // Display initial messages
+                addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
+                if (legacyMight > 0 || legacyWits > 0 || legacySpirit > 0) {
+                    addLogMessage(`Legacy Echoes whisper: MGT+${legacyMight}, WIT+${legacyWits}, SPR+${legacySpirit}`, "synergy");
+                }
+            } catch (e) {
+                console.warn("Could not load legacy stats:", e);
             }
+
+            // Check for future self message
             try {
                 const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
                 if (savedMessage) {
-                    addLogMessage("A message from a past journey echoes: \"" + savedMessage + "\"", "future_self");
+                    addLogMessage(`A message from a past journey echoes: "${savedMessage}"`, "future_self");
                     localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
                 }
             } catch (e) {
                 console.warn("Could not access localStorage for future self message:", e);
             }
 
-            initialZone = getCurrentZone(); // ASSIGN a value to it here
-            if (initialZone && initialZone.entryLoreKey) {
+            // Initialize first zone
+            const initialZone = getCurrentZone();
+            if (initialZone && initialZone.entryLoreKey && ZONE_LORE[initialZone.entryLoreKey]) {
                 addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
                 gameState.narrativeFlags[initialZone.entryLoreKey] = true;
                 awardXP(50);
             }
         }
 
+        // Set up UI event listeners
+        setupEventListeners();
+
         // Final UI setup and fade-in
         updateUIAccentColors();
         renderAll();
         document.body.classList.remove('loading');
 
-        // Add helpful tooltips to the end-game buttons
-        newJourneyButton.title = 'Start a completely fresh journey. All progress and legacy stats will be erased.';
-        transcendButton.title = 'Start a New Game+. A fraction of your final stats will carry over to give you a head start.';
+        // Start the game loop if not paused
+        if (!gameState.isPaused && gameState.currentZoneIndex !== -1) {
+            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        }
+    });
+});
 
-        artifactsCollectedWrapper.addEventListener('click', showArtifactViewer);
-        artifactModalClose.addEventListener('click', hideArtifactViewer);
-        artifactModalBackdrop.addEventListener('click', (event) => {
-            // Only close if the click is on the backdrop itself, not the content box
-            if (event.target === artifactModalBackdrop) {
-                hideArtifactViewer();
-            }
-        });
+// =============================================================================
+// │ CONSOLIDATED EVENT LISTENER SETUP                                         │
+// =============================================================================
 
-        // Attach main event listeners
+function setupEventListeners() {
+    // Main game controls
+    if (pauseResumeButton) {
         pauseResumeButton.addEventListener('click', togglePause);
-
-        // Attach main event listeners
-        pauseResumeButton.addEventListener('click', togglePause);
+    }
+    
+    if (upgradeSpeedButton) {
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+    }
+    
+    if (meditateButton) {
         meditateButton.addEventListener('click', presentUpgradeMenu);
+    }
+    
+    if (attuneRunesButton) {
         attuneRunesButton.addEventListener('click', presentRuneMenu);
-        console.log({
-            pauseResumeButton,
-            upgradeSpeedButton,
-            meditateButton,
-            attuneRunesButton
-            });
+    }
+
+    // Save/Load controls
+    if (saveGameButton) {
         saveGameButton.addEventListener('click', saveGame);
+    }
+
+    // Future self message controls
+    if (saveMessageButton) {
         saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
+    }
+    
+    if (skipMessageButton) {
         skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
+    }
+
+    // End game controls
+    if (newJourneyButton) {
         newJourneyButton.addEventListener('click', () => resetGame(false));
+        newJourneyButton.title = 'Start a completely fresh journey. All progress and legacy stats will be erased.';
+    }
+    
+    if (transcendButton) {
         transcendButton.addEventListener('click', handleTranscendence);
+        transcendButton.title = 'Start a New Game+. A fraction of your final stats will carry over to give you a head start.';
+    }
+
+    // Utility controls
+    if (copyLogButton) {
         copyLogButton.addEventListener('click', () => {
             navigator.clipboard.writeText(logArea.innerText).then(() => {
                 const originalText = copyLogButton.textContent;
@@ -3284,6 +3323,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to copy log: ', err);
             });
         });
+    }
+    
+    if (muteButton) {
         muteButton.addEventListener('click', () => {
             gameState.isMuted = !gameState.isMuted;
             muteButton.textContent = gameState.isMuted ? "Unmute Sounds" : "Mute Sounds";
@@ -3294,58 +3336,169 @@ document.addEventListener('DOMContentLoaded', () => {
                 Tone.start().catch(e => console.warn("Tone.start() failed on mute toggle.", e));
             }
         });
+    }
 
-        // Start the game!
-        if (!gameState.isPaused) {
-            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
-        }
-    });
-});
+    // Artifact viewer controls
+    if (artifactsCollectedWrapper) {
+        artifactsCollectedWrapper.addEventListener('click', showArtifactViewer);
+    }
+    
+    if (artifactModalClose) {
+        artifactModalClose.addEventListener('click', hideArtifactViewer);
+    }
+    
+    if (artifactModalBackdrop) {
+        artifactModalBackdrop.addEventListener('click', (event) => {
+            if (event.target === artifactModalBackdrop) {
+                hideArtifactViewer();
+            }
+        });
+    }
+
+    // Start button - this is the key fix!
+    const startButton = document.getElementById("startButton");
+    if (startButton) {
+        startButton.addEventListener("click", startGame);
+    }
+}
 
 // =============================================================================
 // │ START GAME FUNCTION                                                       │
 // =============================================================================
 
 function startGame() {
-    logMessage("✨ A new journey begins...");
+    // Use addLogMessage instead of undefined logMessage
+    addLogMessage("✨ A new journey begins...", "startup");
 
-    // Reset or initialize the game state
-    gameState.playerZoneX = 0;
-    gameState.currentZoneIndex = 0;
-    gameState.lastExploredZoneIndex = 0;
-    gameState.isPaused = false;
-    gameState.inCombat = false;
+    // Properly reset game state for a fresh start
+    gameState = {
+        // Core progression
+        level: 1,
+        xp: 0,
+        xpToNextLevel: calculateXPForNextLevel(1),
+        
+        // Player identity
+        playerName: "Wanderer",
+        playerClass: null,
+        
+        // Health and stats
+        currentHp: BASE_HP,
+        maxHp: BASE_HP,
+        stats: {
+            might: BASE_STAT_VALUE,
+            wits: BASE_STAT_VALUE,
+            spirit: BASE_STAT_VALUE
+        },
+        
+        // Position and movement
+        currentZoneIndex: 0,
+        lastExploredZoneIndex: 0,
+        playerZoneX: 0,
+        playerLane: PLAYER_INITIAL_LANE,
+        explorationSpeedMultiplier: 1.0,
+        
+        // Resources
+        resources: {
+            glimmeringDust: 0,
+            ancientScraps: 0,
+            voidEssence: 0
+        },
+        
+        // Collections
+        runes: [],
+        activeRunes: [],
+        maxActiveRunes: 2,
+        collectedArtifacts: [],
+        companion: null,
+        
+        // Game state
+        isPaused: false,
+        inCombat: false,
+        activeDecision: null,
+        gameTickMs: INITIAL_GAME_TICK_MS,
+        isMuted: false,
+        
+        // Tracking
+        narrativeFlags: {},
+        encounteredNPCs: {},
+        logMessages: [],
+        maxLogMessages: 50,
+        
+        // Seeding
+        initialGameSeed: Date.now() % 2147483647
+    };
 
-    // Reset stats if needed
-    gameState.currentHp = gameState.maxHp || BASE_HP;
-    gameState.resources.glimmeringDust = 0;
-    gameState.resources.ancientScraps = 0;
-    gameState.resources.voidEssence = 0;
+    // Initialize RNG with the new seed
+    initializeSeed(gameState.initialGameSeed);
 
-    // Reinitialize RNG with a fresh seed
-    initializeSeed(Date.now());
-
-    // Start the main loop (if you have one)
-    if (typeof gameLoop === "function") {
-        gameLoop();
-    } else {
-        logMessage("⚠️ gameLoop() is not defined yet.");
+    // Apply legacy stats if they exist
+    try {
+        const legacyMight = parseInt(localStorage.getItem(LEGACY_MIGHT_KEY) || '0');
+        const legacyWits = parseInt(localStorage.getItem(LEGACY_WITS_KEY) || '0');
+        const legacySpirit = parseInt(localStorage.getItem(LEGACY_SPIRIT_KEY) || '0');
+        
+        gameState.stats.might += legacyMight;
+        gameState.stats.wits += legacyWits;
+        gameState.stats.spirit += legacySpirit;
+        
+        if (legacyMight > 0 || legacyWits > 0 || legacySpirit > 0) {
+            addLogMessage(`Legacy Echoes whisper: MGT+${legacyMight}, WIT+${legacyWits}, SPR+${legacySpirit}`, "synergy");
+        }
+    } catch (e) {
+        console.warn("Could not load legacy stats:", e);
     }
+
+    // Recalculate HP with potentially boosted stats
+    gameState.maxHp = calculateMaxHp();
+    gameState.currentHp = gameState.maxHp;
+
+    // Display initial messages
+    addLogMessage(`World Seed: ${gameState.initialGameSeed}`, "seed");
+
+    // Check for future self message
+    try {
+        const savedMessage = localStorage.getItem(FUTURE_SELF_MESSAGE_KEY);
+        if (savedMessage) {
+            addLogMessage(`A message from a past journey echoes: "${savedMessage}"`, "future_self");
+            localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
+        }
+    } catch (e) {
+        console.warn("Could not access localStorage for future self message:", e);
+    }
+
+    // Initialize the first zone
+    const initialZone = getCurrentZone();
+    if (initialZone && initialZone.entryLoreKey && ZONE_LORE[initialZone.entryLoreKey]) {
+        addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
+        gameState.narrativeFlags[initialZone.entryLoreKey] = true;
+        awardXP(50);
+    }
+
+    // Update UI
+    updateUIAccentColors();
+    renderAll();
+
+    // Start the game loop
+    if (gameInterval) {
+        clearInterval(gameInterval);
+    }
+    gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+
+    // Update button states
+    pauseResumeButton.textContent = "Pause";
+    pauseResumeButton.disabled = false;
+    upgradeSpeedButton.disabled = false;
+    meditateButton.disabled = false;
+    attuneRunesButton.disabled = false;
+
+    addLogMessage("Your journey begins...", "startup");
 }
 
 // =============================================================================
 // │ SAFE DOM EVENT BINDING                                                    │
 // =============================================================================
 
-window.addEventListener("DOMContentLoaded", () => {
-    const startButton = document.getElementById("startButton");
-    if (startButton) {
-        startButton.addEventListener("click", () => {
-            startGame();
-        });
-    }
-
-    const muteButton = document.getElementById("muteButton");
+const muteButton = document.getElementById("muteButton");
     if (muteButton) {
         muteButton.addEventListener("click", () => {
             gameState.isMuted = !gameState.isMuted;
