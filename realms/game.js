@@ -3264,6 +3264,7 @@ newGameButton.addEventListener('click', () => {
         startNew();
     }
 });
+}); 
 
 // =============================================================================
 // │ CONSOLIDATED EVENT LISTENER SETUP                                         │
