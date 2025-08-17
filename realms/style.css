@@ -590,3 +590,48 @@ body.loading .game-container {
   font-size: 0.9em;
   color: #887788; /* A muted color to be unobtrusive */
 }
+
+/* --- START SCREEN STYLES --- */
+
+#start-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(10, 5, 5, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.start-menu {
+    text-align: center;
+    color: #ff8c00;
+}
+
+.start-menu h1 {
+    font-size: 2.5em;
+    text-shadow: 0 0 10px #ff8c00;
+    margin-bottom: 40px;
+}
+
+.start-menu button {
+    font-size: 1.2em;
+    padding: 15px 30px;
+    margin: 10px;
+    cursor: pointer;
+    background-color: #333;
+    color: #ff8c00;
+    border: 2px solid #ff8c00;
+    border-radius: 5px;
+    transition: all 0.2s ease-in-out;
+}
+
+.start-menu button:hover {
+    background-color: #ff8c00;
+    color: #111;
+    box-shadow: 0 0 15px #ff8c00;
+}
