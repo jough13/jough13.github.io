@@ -1241,6 +1241,7 @@ const statsVoidEssence = document.getElementById('void-essence');
 const companionDisplay = document.getElementById('companion-display');
 const companionInfo = document.getElementById('companion-info');
 const artifactsCollectedDisplay = document.getElementById('artifacts-collected');
+const muteButton = document.getElementById('mute-button');
 const statMightDisplay = document.getElementById('stat-might');
 const statWitsDisplay = document.getElementById('stat-wits');
 const statSpiritDisplay = document.getElementById('stat-spirit');
@@ -1285,6 +1286,94 @@ const transcendButton = document.getElementById('transcend-button');
 /** Returns the zone object for the player's current location. */
 function getCurrentZone() {
     return ZONES[gameState.currentZoneIndex];
+}
+
+/** Placeholder for upgrading exploration speed. */
+function attemptUpgradeSpeed() {
+    const upgradeCost = 50 * gameState.explorationSpeedMultiplier;
+    if (gameState.resources.glimmeringDust >= upgradeCost) {
+        gameState.resources.glimmeringDust -= upgradeCost;
+        gameState.explorationSpeedMultiplier += 0.1;
+        updateGameTickSpeed();
+        addLogMessage(`Exploration speed upgraded to ${gameState.explorationSpeedMultiplier.toFixed(1)}x!`, "synergy");
+        renderStats(); // Update the button cost display
+    } else {
+        addLogMessage("Not enough Glimmering Dust to upgrade speed.", "puzzle-fail");
+    }
+}
+
+/** Placeholder for the name choice event. */
+function presentNameChoice() {
+    const newName = prompt("An echo asks for your name...", "Wanderer");
+    if (newName && newName.trim().length > 0) {
+        gameState.playerName = newName.trim().substring(0, MAX_NAME_LENGTH);
+        addLogMessage(`You are now known as ${gameState.playerName}.`, "name-choice");
+    }
+}
+
+/** Placeholder for the class choice event. */
+function presentClassChoice() {
+    addLogMessage("A moment of clarity offers a choice of path...", "class-choice");
+    // In a real implementation, this would show a decision modal.
+    // For now, we'll just log it.
+    console.log("Class choice would be presented here.");
+}
+
+/** Placeholder for starting a new game. */
+function resetGame(isTranscending = false) {
+    if (confirm("Start a new journey? Your current progress will be lost.")) {
+        if (!isTranscending) {
+            // Clear legacy stats if it's a normal reset
+             try {
+                localStorage.removeItem(LEGACY_MIGHT_KEY);
+                localStorage.removeItem(LEGACY_WITS_KEY);
+                localStorage.removeItem(LEGACY_SPIRIT_KEY);
+            } catch(e) { console.error("Could not clear legacy stats from localStorage:", e); }
+        }
+        location.reload();
+    }
+}
+
+/** Placeholder for the transcendence (New Game+) mechanic. */
+function handleTranscendence() {
+     if (confirm("Transcend? Your journey will begin anew, but an echo of your strength will remain.")) {
+        const legacyMight = Math.floor(gameState.stats.might / 4);
+        const legacyWits = Math.floor(gameState.stats.wits / 4);
+        const legacySpirit = Math.floor(gameState.stats.spirit / 4);
+
+         try {
+            localStorage.setItem(LEGACY_MIGHT_KEY, legacyMight);
+            localStorage.setItem(LEGACY_WITS_KEY, legacyWits);
+            localStorage.setItem(LEGACY_SPIRIT_KEY, legacySpirit);
+        } catch(e) { console.error("Could not save legacy stats to localStorage:", e); }
+
+        resetGame(true);
+    }
+}
+
+// You also need to define gameInterval globally
+let gameInterval;
+
+/** Toggles the game's paused state. */
+function togglePause() {
+    // Prevent pausing/resuming if the journey has ended.
+    if (gameState.currentZoneIndex === -1) return;
+
+    gameState.isPaused = !gameState.isPaused; // Invert the paused state
+
+    if (gameState.isPaused) {
+        clearInterval(gameInterval); // Stop the game loop
+        gameInterval = null;
+        pauseResumeButton.textContent = "Resume";
+        addLogMessage("Game paused.", "system");
+    } else {
+        // Restart the game loop if it's not already running
+        if (!gameInterval) {
+            gameInterval = setInterval(gameLoop, gameState.gameTickMs);
+        }
+        pauseResumeButton.textContent = "Pause";
+        addLogMessage("Game resumed.", "system");
+    }
 }
 
 /** Calculates stats including temporary buffs/debuffs from artifacts. */
