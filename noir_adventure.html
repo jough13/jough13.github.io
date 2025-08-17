@@ -314,19 +314,33 @@
         const story = [
             {
                 id: 'start',
-                text: 'The city\'s heartbeat is a dull thud in your skull, a relentless migraine playing percussion on your optic nerves. You\'re slumped over your desk, the wood grain a blurry map of failures. The name on the frosted glass of the door feels like a stranger\'s... J. SLATE. A name as worn and chipped as the paint on the windowsill. Is that you?\n\nYour head is a three-ring circus of bad ideas, and the ringmaster is drunk, swinging from a trapeze of regret. It\'s a loud, chaotic place to be. Right now, three voices are screaming for attention, each trying to drown the others out.',
+                text: 'Consciousness returns like a slow tide coming in over dirty sand. First, the pain—a dull, throbbing bass drum behind your eyes. Then, the smell of stale whiskey and rain-soaked wool. Finally, the sound... a low, resonant hum that seems to vibrate in your teeth. You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures.\n\nThe name on the frosted glass of the door feels like a stranger\'s... J. SLATE. A name as worn and chipped as the paint on the windowsill. Is that you?',
+                choices: [
+                    { text: 'Try to stand.', nextId: 'waking_up' }
+                ]
+            },
+            {
+                id: 'waking_up',
+                text: 'You push yourself up, your chair groaning in protest. The room swims for a moment, a nauseating carousel of shadows and dim light. Your head is a three-ring circus of bad ideas, and the ringmaster is drunk, swinging from a trapeze of regret. It\'s a loud, chaotic place to be. Right now, three voices are screaming for attention, each trying to drown the others out.',
                 choices: [
                     { text: 'A voice from your spine, all gravel and instinct: "Get up. Break something. Feel the splinters. Prove you\'re still here."', nextId: 'grit_start', effect: { grit: 2, smarts: -1 }},
                     { text: 'A colder, calmer thought slices through the fog: "Inventory. One desk, cheap oak. One bottle, mostly empty. One gun, fully loaded. What do you remember?"', nextId: 'smarts_start', effect: { smarts: 2, charm: -1 }},
                     { text: 'A slick, oily whisper slides into your ear: "Rehearse the line. The one that always works. \'Trouble is my business.\' Say it. See if you still believe it."', nextId: 'charm_start', effect: { charm: 2, grit: -1 }}
                 ]
             },
-            { id: 'grit_start', text: 'You obey the primal urge, the animal growl from deep in your gut. Your fist slams down on the cheap wood of the desk. A spiderweb of cracks erupts from the point of impact, and a jolt of beautiful, clean pain shoots up your arm. It\'s a shock to the system, a bolt of lightning that clears the fog for a precious second. You\'re alive. The pain proves it.', choices: [{ text: 'The pain helps you focus...', nextId: 'office_ambience' }] },
-            { id: 'smarts_start', text: 'You fight the internal chaos, wrestling it into submission with sheer force of will. You focus. The gun is a Colt Detective Special, .38 caliber, smelling of oil and neglect. The bottle is Old Grand-Dad, a reliable friend that asks for nothing but your sobriety in return. You try to remember... neon reflecting in a rain-slicked puddle? The bitter taste of cheap gin? It\'s all smoke and broken mirrors. The mental effort is exhausting, but it pushes the headache back into its cage, for now.', choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'office_ambience' }] },
-            { id: 'charm_start', text: 'You part your cracked lips, your tongue thick with the residue of last night\'s mistakes. "Trouble," you rasp, the word tasting of stale whiskey and regret, "...is my business." The words feel hollow, a worn-out record playing a tired old song to an empty room. But saying them feels... right. Like putting on an old, familiar coat, comfortable even with the holes worn in the elbows.', choices: [{ text: 'You settle back into your own skin...', nextId: 'office_ambience' }] },
+            { id: 'grit_start', text: 'You obey the primal urge. Your fist slams down on the desk. A spiderweb of cracks erupts, and a jolt of clean, beautiful pain shoots up your arm, a lightning bolt that clears the fog for a precious second. You remember the feeling of knuckles on concrete, the coppery taste of blood. A fight in an alley. You won. But you can\'t remember why you were there.', choices: [{ text: 'The pain helps you focus...', nextId: 'the_hum' }] },
+            { id: 'smarts_start', text: 'You fight the chaos, wrestling it into submission. The gun is a Colt Detective Special. The bottle is Old Grand-Dad. You remember a face... a man with eyes like chips of ice, chrome fingers tapping on a poker table. He was laughing at you. The memory is smoke, but the feeling of humiliation is sharp and real.', choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'the_hum' }] },
+            { id: 'charm_start', text: 'You part your cracked lips. "Trouble," you rasp, "...is my business." The words feel hollow, a worn-out record. But you remember saying them to a silhouette in a doorway, a woman who smelled of expensive perfume and desperation. She gave you money. You can\'t remember what for.', choices: [{ text: 'You settle back into your own skin...', nextId: 'the_hum' }] },
+            {
+                id: 'the_hum',
+                text: 'The memory fades, leaving you with more questions than answers. The quiet of the office settles in again, but it\'s not empty. Under the sound of the rain, you can still feel it: that low, persistent hum. It\'s not the neon sign, not the building\'s wiring. It\'s something else, something deeper. A sound on the edge of hearing, like a secret the city is whispering to itself.',
+                choices: [
+                    { text: 'Ignore it. Take in your surroundings.', nextId: 'office_ambience'}
+                ]
+            },
             {
                 id: 'office_ambience',
-                text: 'The momentary clarity settles, leaving you in the oppressive quiet of your office. The only sounds are the rain tattooing a relentless rhythm on the windowpane and the low, electric hum of the neon sign outside, painting the room in shades of sick pink. The place is a mess, a testament to long nights, cheap whiskey, and cases that went nowhere. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
+                text: 'You push the hum to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
                 choices: [
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
                     { text: 'The half-empty bottle of bourbon on the desk.', nextId: 'examine_bottle' },
@@ -335,21 +349,21 @@
             },
             {
                 id: 'look_out_window',
-                text: 'You push yourself up and walk to the window, your reflection a pale ghost against the glass. You look out at the city. It\'s a concrete beast, slick with endless rain and bleeding neon light from a thousand wounds. Below, lonely headlights cut through the gloom, each one a story you don\'t want to know, each one a heartbreak waiting to happen. You feel a familiar pang of loneliness, as vast and empty as the night sky. The city doesn\'t care about you. It never has. It just eats people whole.',
+                text: 'You walk to the window. The city is a concrete beast, slick with endless rain and bleeding neon light. Below, lonely headlights cut through the gloom, each one a story you don\'t want to know. That low hum seems to rise from the streets, a vibration you can feel in the glass. The city doesn\'t just have a heartbeat; it has a voice, and it\'s saying something you don\'t understand.',
                 choices: [{ text: 'It\'s time to face the facts.', nextId: 'confirm_name' }]
             },
             {
                 id: 'examine_bottle',
-                text: 'You pick up the bottle of Old Grand-Dad. It\'s warm from the desk lamp, a familiar weight in your hand. You pour a finger into a glass that hasn\'t been clean since the Hoover administration, ignoring the dust motes swimming in the amber liquid. The whiskey burns a trail down your throat, a comforting fire in the cold emptiness of your gut. It\'s not a solution, but in a city with no solutions, it\'s a damn good anesthetic.',
+                text: 'You pick up the bottle of Old Grand-Dad. You pour a finger into a glass that hasn\'t been clean since the Hoover administration. The whiskey burns a trail down your throat, a comforting fire. It almost, but not quite, drowns out the hum in your bones. It\'s not a solution, but in a city with no solutions, it\'s a damn good anesthetic.',
                 choices: [{ text: 'Enough stalling.', nextId: 'confirm_name' }]
             },
             {
                 id: 'examine_file',
-                text: 'You slide the folder across the cluttered desk, leaving a clean trail in the dust. The name inside is Arthur McCoy. A missing person case, six months cold. Details are sparse: a frantic wife, a husband who worked the late shift down at the Sterling Automata docks, vanished without a trace. The cops wrote it off. Another poor soul swallowed by the city\'s indifference. The name Sterling seems to stick in your mind like a splinter.',
+                text: 'You slide the folder open. Arthur McCoy. Missing, six months. Last seen leaving his late shift at the Sterling Automata docks. A note from his wife says he\'d become obsessed with a strange melody he heard at work, a "song from the machines." He couldn\'t sleep, couldn\'t eat. Just sat in the dark, humming. The cops wrote him off as another nut who walked into the sea. The name Sterling sticks in your mind like a splinter.',
                 choices: [{ text: 'That\'s not your problem right now.', nextId: 'confirm_name' }]
             },
             {
-                id: 'confirm_name', text: 'The fog in your head has cleared, just a little. The headache is still there, a dull ache behind the eyes, but you can think. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
+                id: 'confirm_name', text: 'The fog in your head has cleared, just a little. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
                 choices: [
                     { text: 'Yeah. That\'s me. J. Slate.', nextId: 'dame_walks_in' },
                     { text: 'No. That name is a ghost.', nextId: 'dame_walks_in', action: 'changeName' }
@@ -435,7 +449,7 @@
                 ]
             },
             { id: 'mulligan_uncooperative', text: '"You walk in here, flashing that P.I. license like it\'s a get-out-of-jail-free card," Mulligan snarls, his voice low and dangerous. "I\'m not sticking my neck out for you. Not again. Some doors you shouldn\'t open, Slate. This one leads to a long, empty hallway with no exit. The door is that way. Use it before I forget we used to be friends."', choices: [{ text: 'A dead end. This was a waste of time.', nextId: 'precinct_dead_end' }] },
-            { id: 'mulligan_cooperative', text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata. You know, we had another guy vanish from their docks about six months ago. Arthur McCoy. Case went nowhere."', choices: [{ text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }] },
+            { id: 'mulligan_cooperative', text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata. You know, we had another guy vanish from their docks about six months ago. Arthur McCoy. Case went nowhere. My old partner, Finney, was looking into it before he... took early retirement. Haven\'t seen him since."', choices: [{ text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }] },
             { id: 'ask_about_sterling', text: '"The one and only," Mulligan says, rubbing his bloodshot eyes. "They\'re building some kind of high-tech utopia down at the docks, and they don\'t care who they push out of the way to do it. Their security is all ex-military, and their lawyers are sharks in thousand-dollar suits. If Eddie crossed them... he\'s in a world of trouble you can\'t handle. Be careful, Slate. This isn\'t like the old days."', choices: [{ text: 'Time to pay a visit to Sterling Automata.', nextId: 'investigate_sterling' }] },
             {
                 id: 'investigate_sterling', text: 'The Sterling Automata building is a sterile monument of glass and steel that stabs at the perpetually grey sky. It doesn\'t belong in this decaying city; it looks like it landed here from the future. Inside, a cool, quiet hum replaces the chaotic sound of the city. An android receptionist with an unnervingly perfect smile watches you approach.\n\n"Welcome to Sterling Automata," it says, its voice a pleasant, synthesized melody that makes your teeth ache. "How may I direct you?"',
