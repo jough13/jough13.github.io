@@ -885,49 +885,57 @@ const DECISIONS = {
  */
 const ZONES = [{ // Zone 0
     name: "The Ashen Woods",
-    width: 240,
+    width: 300, // Changed from 240
     backgroundChar: ".",
     midgroundChar: "t",
-    foregroundElements: {
-        10: [{ lane: 2, char: 'T' }],
-        15: [{ lane: 0, char: '~' }, { lane: 1, char: '~' }],
-        20: [{ lane: 1, char: '+' }, { lane: 0, char: '~' }],
-        25: [{ lane: 3, char: 'c' }],
-        30: [{ lane: 2, char: 'B' }, { lane: 4, char: 'M' }],
-        35: [{ lane: 0, char: 'L' }, { lane: 4, char: 'M' }],
-        40: [{ lane: 2, char: '§' }, { lane: 4, char: 'M' }],
-        45: [{ lane: 4, char: 'T' }],
-        50: [{ lane: 1, char: 'A' }],
-        55: [{ lane: 2, char: 'F' }],
-        60: [{ lane: 3, char: 'P' }],
-        65: [{ lane: 4, char: '!' }],
-        70: [{ lane: 2, char: 'E', enemyKey: "ASH_GNAWER" }, { lane: 4, char: '~' }, { lane: 0, char: 'F' }],
-        75: [{ lane: 4, char: 'L' }],
-        80: [{ lane: 0, char: 'T' }],
-        85: [{ lane: 0, char: '~' }, { lane: 1, char: '=' }, { lane: 2, char: '~' }],
-        90: [{ lane: 2, char: '#' }],
-        95: [{ lane: 3, char: '+' }],
-        100: [{ lane: 1, char: 'd' }, { lane: 4, char: 'F' }],
-        105: [{ lane: 0, char: '0' }],
-        110: [{ lane: 2, char: 'H' }],
-        120: [{ lane: 0, char: 'L' }, { lane: 4, char: 'M' }],
-        125: [{ lane: 4, char: 'M' }],
-        130: [{ lane: 4, char: 'A' }],
-        140: [{ lane: 2, char: 'N', npcType: "LOST_SOUL" }],
-        145: [{ lane: 3, char: 'T' }],
-        150: [{ lane: 1, char: '.' }, { lane: 0, char: 'F' }],
-        160: [{ lane: 0, char: 'L' }, { lane: 4, char: '?' }],
-        170: [{ lane: 2, char: 'E', enemyKey: "ASH_GNAWER" }],
-        175: [{ lane: 1, char: '+' }],
-        180: [{ lane: 3, char: 'T' }],
-        190: [{ lane: 4, char: 'P' }],
-        195: [{ lane: 2, char: '¥' }],
-        200: [{ lane: 0, char: 'A' }],
-        205: [{ lane: 1, char: '0' }],
-        210: [{ lane: 3, char: 'c' }],
-        220: [{ lane: 1, char: 'N', npcType: "LOST_SOUL" }],
-        230: [{ lane: 4, char: 'L' }]
-    },
+foregroundElements: {
+    10: [{ lane: 2, char: 'T' }],
+    15: [{ lane: 0, char: '~' }, { lane: 1, char: '~' }],
+    20: [{ lane: 1, char: '+' }, { lane: 0, char: '~' }],
+    25: [{ lane: 3, char: 'c' }],
+    30: [{ lane: 2, char: 'B' }, { lane: 4, char: 'M' }],
+    35: [{ lane: 0, char: 'L' }, { lane: 4, char: 'M' }],
+    40: [{ lane: 2, char: '§' }], // Whispering Idol
+    45: [{ lane: 4, char: 'T' }],
+    50: [{ lane: 1, char: 'A' }],
+    55: [{ lane: 2, char: 'F' }],
+    60: [{ lane: 3, char: 'P' }],
+    65: [{ lane: 4, char: '!' }],
+    70: [{ lane: 2, char: 'E', enemyKey: "ASH_GNAWER" }, { lane: 4, char: '~' }, { lane: 0, char: 'F' }],
+    75: [{ lane: 4, char: 'L' }],
+    80: [{ lane: 0, char: 'T' }],
+    85: [{ lane: 0, char: '~' }, { lane: 1, char: '=' }, { lane: 2, char: '~' }],
+    90: [{ lane: 2, char: '#' }],
+    95: [{ lane: 3, char: '+' }],
+    100: [{ lane: 1, char: 'd' }, { lane: 4, char: 'F' }],
+    105: [{ lane: 0, char: '0' }],
+    110: [{ lane: 2, char: 'H' }],
+    120: [{ lane: 0, char: 'L' }, { lane: 4, char: 'M' }],
+    125: [{ lane: 4, char: 'M' }],
+    130: [{ lane: 4, char: 'A' }],
+    140: [{ lane: 2, char: 'N', npcType: "LOST_SOUL" }],
+    145: [{ lane: 3, char: 'T' }],
+    150: [{ lane: 1, char: '.' }, { lane: 0, char: 'F' }],
+    160: [{ lane: 0, char: 'L' }, { lane: 4, char: '?' }],
+    170: [{ lane: 2, char: 'E', enemyKey: "ASH_GNAWER" }],
+    175: [{ lane: 1, char: '+' }],
+    180: [{ lane: 3, char: 'T' }],
+    190: [{ lane: 4, char: 'P' }],
+    195: [{ lane: 2, char: '¥' }],
+    200: [{ lane: 0, char: 'A' }],
+    205: [{ lane: 1, char: '0' }],
+    210: [{ lane: 3, char: 'c' }],
+    220: [{ lane: 1, char: 'N', npcType: "LOST_SOUL" }],
+    230: [{ lane: 4, char: 'L' }],
+    // --- NEW CONTENT START ---
+    240: [{ lane: 2, char: 'B' }],
+    250: [{ lane: 0, char: 'L' }],
+    260: [{ lane: 3, char: '.' }],
+    270: [{ lane: 1, char: 'E', enemyKey: "ASH_GNAWER" }],
+    280: [{ lane: 4, char: '+' }],
+    290: [{ lane: 2, char: 'A' }]
+    // --- NEW CONTENT END ---
+},
     color: "#ff8c00",
     bgColor: "#5c1f00",
     entryLoreKey: "ASHEN_WOODS_INTRO",
@@ -2165,7 +2173,7 @@ function handleEncounter() {
                 }
             }
             break;
-            
+
         case '.': // Pile of dust
             if (!gameState.narrativeFlags[specificEncounterKey]) {
                 const dustAmount = seededRandomInt(1, 5);
@@ -2217,6 +2225,32 @@ function handleEncounter() {
             }
             break;
         
+        case '§': // Whispering Idol
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                gameState.narrativeFlags[specificEncounterKey] = true; // Mark as encountered
+                let message = "You find a strange, soot-covered idol. It seems to hum, and a faint whisper enters your mind, speaking of a long-lost songbird.";
+
+                // Check if the player has the Petrified Songbird artifact
+                if (gameState.collectedArtifacts.includes("ART_PETRIFIED_SONGBIRD")) {
+                    message += " You hold out the Petrified Songbird. The idol's hum intensifies, and a wave of warmth washes over you as the bird's stone form crumbles to dust, releasing a single, pure note of the First Song! Your spirit feels permanently fortified by the echo.";
+                    addLogMessage(message, "artifact_synergy");
+                    
+                    // Grant a permanent Spirit point
+                    gameState.stats.spirit++; 
+                    awardXP(50);
+
+                    // Remove the songbird artifact as it has been consumed
+                    gameState.collectedArtifacts = gameState.collectedArtifacts.filter(key => key !== "ART_PETRIFIED_SONGBIRD");
+
+                } else {
+                    message += " The meaning is unclear, but you feel a sense of longing from the object.";
+                    addLogMessage(message, "lore");
+                    awardXP(5);
+                }
+                renderAll(); // Update the UI with the new stat
+            }
+            break;
+
         case '¤': // Dormant Forge
             if (!gameState.narrativeFlags[specificEncounterKey]) {
                 pauseGameForDecision(true);
