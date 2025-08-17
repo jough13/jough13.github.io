@@ -67,6 +67,14 @@
             transform: translateY(-5px) scale(1.02);
             box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2);
         }
+        .project-link.bg-fuchsia-600:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2);
+        }
+        .project-link.bg-blue-800:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2);
+        }
         .gradient-text {
             /* Animated gradient text for the main title */
             background: linear-gradient(90deg, #4f46e5, #db2777, #f59e0b, #10b981);
@@ -104,7 +112,7 @@
             <!-- Tools Section -->
             <section>
                 <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-700 pb-2 text-gray-300">Tools</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- Digital Cartographer's Desk -->
                     <a href="cartographers_desk.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-amber-600 hover:bg-amber-500 text-white rounded-lg shadow-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg>
@@ -129,13 +137,19 @@
                         <h3 class="font-semibold text-lg">Rad-Waste Disposal Tool</h3>
                         <span class="block text-sm text-lime-200 mt-1 font-normal">Lookup and disposal requests.</span>
                     </a>
+                    <!-- Salon Services App -->
+                    <a href="salon_services.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879" /></svg>
+                        <h3 class="font-semibold text-lg">Salon Services</h3>
+                        <span class="block text-sm text-fuchsia-200 mt-1 font-normal">Organize stylists and services.</span>
+                    </a>
                 </div>
             </section>
 
             <!-- Study Guides Section -->
             <section>
                 <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-700 pb-2 text-gray-300">Study Guides</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- CHP Study Guide -->
                     <a href="chp.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-orange-600 hover:bg-orange-500 text-white rounded-lg shadow-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
@@ -154,7 +168,7 @@
             <!-- Games & Creative Projects Section -->
             <section>
                 <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-700 pb-2 text-gray-300">Games & Creative Projects</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- Wayfinder: Echoes of the Void -->
                     <a href="space_Explorer.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -190,6 +204,12 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg>
                         <h3 class="font-semibold text-lg">Cartographers of Ruin - A Novel</h3>
                         <span class="block text-sm text-stone-200 mt-1 font-normal">A story of maps and memory.</span>
+                    </a>
+                    <!-- Midnight City Blues -->
+                    <a href="noir_adventure.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-blue-800 hover:bg-blue-700 text-white rounded-lg shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7.014A8.003 8.003 0 0117.657 18.657z" /></svg>
+                        <h3 class="font-semibold text-lg">Midnight City Blues</h3>
+                        <span class="block text-sm text-blue-200 mt-1 font-normal">A neo-noir text adventure.</span>
                     </a>
                 </div>
             </section>
