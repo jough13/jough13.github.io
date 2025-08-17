@@ -3305,7 +3305,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // =============================================================================
 
 function startGame() {
-    logMessage("✨ A new journey begins...");
+    logMessages("✨ A new journey begins...");
 
     // Reset or initialize the game state
     gameState.playerZoneX = 0;
