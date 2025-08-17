@@ -582,3 +582,11 @@ body.loading .game-container {
         vertical-align: middle;
         width: 200px;
     }
+
+.page-footer {
+  margin-top: 1rem;
+  text-align: center;
+  font-family: 'VT323', monospace;
+  font-size: 0.9em;
+  color: #887788; /* A muted color to be unobtrusive */
+}
