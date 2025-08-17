@@ -310,7 +310,7 @@
         }
 
 
-        // --- STORY DATA (SYNTAX FIXES APPLIED) ---
+        // --- STORY DATA (FINAL NARRATIVE EXPANSION) ---
         const story = [
             {
                 id: 'start',
@@ -345,7 +345,7 @@
             },
             {
                 id: 'examine_file',
-                text: 'You slide the folder across the cluttered desk, leaving a clean trail in the dust. The name inside is Arthur McCoy. A missing person case. The details are sparse: a frantic wife with tear-smudged mascara, a husband who worked the late shift at the cannery, a last known location near the waterfront where dreams go to die. It\'s a dead end, another sad story in a city full of them. You close it. This case feels as cold and forgotten as a morgue slab.',
+                text: 'You slide the folder across the cluttered desk, leaving a clean trail in the dust. The name inside is Arthur McCoy. A missing person case, six months cold. Details are sparse: a frantic wife, a husband who worked the late shift down at the Sterling Automata docks, vanished without a trace. The cops wrote it off. Another poor soul swallowed by the city\'s indifference. The name Sterling seems to stick in your mind like a splinter.',
                 choices: [{ text: 'That\'s not your problem right now.', nextId: 'confirm_name' }]
             },
             {
@@ -392,15 +392,15 @@
                 ]
             },
             {
-                id: 'alley_rethink',
-                text: 'You wake up in the alley with a new collection of bruises and an empty wallet. The lead is cold, and the taste of pavement is fresh in your mouth. The direct approach isn\'t working. The Rusty Mug is a bust. Time for a new plan, before you run out of functioning organs.',
+                id: 'ghost_run_reflection',
+                text: 'You\'re on the Ghost Run, a forgotten stretch of elevated railway that cuts through the oldest part of the city. Down below, the world is a blur of neon and noise, but up here... it\'s quiet. The rain has stopped, leaving the tracks to glisten under the moon. This is a liminal space, a place between the past and the future where you come to think. The case is hitting a wall, a familiar feeling. Banging your head against brick isn\'t working. You need a new angle.',
                 choices: [
                     { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'police_precinct' },
                     { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'investigate_sterling' }
                 ]
             },
-            { id: 'bouncer_fight', text: 'You try to shoulder past him. It\'s like running into a brick wall that hits back. The world explodes in a flash of bright, white pain. Your first mistake of the night, but probably not your last.', choices: [{ text: 'This isn\'t working...', nextId: 'alley_rethink' }] },
-            { id: 'bouncer_bribe_fail', text: 'You slide a bill into his hand. He looks at it, then at you, and laughs a low, gravelly laugh that sounds like rocks in a blender. "That\'s cute," he says, before effortlessly lifting you by the collar and depositing you in the back alley. Your money, and your dignity, are gone.', choices: [{ text: 'Well, that was dumb...', nextId: 'alley_rethink' }] },
+            { id: 'bouncer_fight', text: 'You try to shoulder past him. It\'s like running into a brick wall that hits back. The world explodes in a flash of bright, white pain. Your first mistake of the night, but probably not your last.', choices: [{ text: 'This isn\'t working...', nextId: 'ghost_run_reflection' }] },
+            { id: 'bouncer_bribe_fail', text: 'You slide a bill into his hand. He looks at it, then at you, and laughs a low, gravelly laugh that sounds like rocks in a blender. "That\'s cute," he says, before effortlessly lifting you by the collar and depositing you in the back alley. Your money, and your dignity, are gone.', choices: [{ text: 'Well, that was dumb...', nextId: 'ghost_run_reflection' }] },
             {
                 id: 'inside_poker_game', text: 'The bouncer\'s eyes narrow at the mention of the chip. He grunts and steps aside, revealing a room thick with cigar smoke and desperation. At a round table sits a man with polished, chrome-plated fingers on his left hand. This must be Fingers. He looks up as you enter, his eyes like chips of ice. The other players look away.\n\n"You\'re not one of my boys," he says, his voice a low hum that cuts through the noise. "Talk fast. My time is expensive."',
                 choices: [
@@ -410,7 +410,7 @@
                     { text: 'Stay silent, waiting for him to make the first move.', nextId: 'fingers_hostile' }
                 ]
             },
-            { id: 'fingers_hostile', text: 'Fingers taps his chrome digits on the table. A discordant melody in the smoky room. "Nerve. I\'ll give you that." He nods to the bouncer, a silent command. "Show our guest out. The hard way." You\'re hauled out and tossed back into the alley, this time with a final, unambiguous warning to stay away from the Mug.', choices: [{ text: 'This lead is dead...', nextId: 'alley_rethink' }] },
+            { id: 'fingers_hostile', text: 'Fingers taps his chrome digits on the table. A discordant melody in the smoky room. "Nerve. I\'ll give you that." He nods to the bouncer, a silent command. "Show our guest out. The hard way." You\'re hauled out and tossed back into the alley, this time with a final, unambiguous warning to stay away from the Mug.', choices: [{ text: 'This lead is dead...', nextId: 'ghost_run_reflection' }] },
             { id: 'fingers_cooperative', text: 'Fingers is intrigued. He pulls a small, milky white object from his vest pocket and tosses it on the table. It looks less like a poker chip and more like a piece of strange technology, with faint circuits glowing under its surface.\n\n"This thing? It\'s why I let the weasel play. He was terrified, said he lifted it from his new job at the Sterling Automata loading docks. Said it was his ticket out of this city. After he lost this, he ran like the hounds of hell were on his heels."', choices: [{ text: 'You\'ve got a new lead. Leave the bar.', nextId: 'poker_game_success' }] },
             {
                 id: 'poker_game_success', text: 'You leave the smoke-filled room with a new piece of the puzzle. Eddie wasn\'t just a deadbeat; he was a thief who stole from the biggest, meanest monster in the city: Sterling Automata. The name hangs in the air like a death sentence. All roads in this town, it seems, eventually lead to the waterfront.',
@@ -434,8 +434,8 @@
                     { text: 'The law is a joke. Time to check out the corporate angle.', nextId: 'investigate_sterling' }
                 ]
             },
-            { id: 'mulligan_uncooperative', text: '"You walk in here, flashing that P.I. license like it\'s a get-out-of-jail-free card," Mulligan snarls, his voice low and dangerous. "I\'m not sticking my neck out for you. Not again. The door is that way. Use it before I forget we used to be friends."', choices: [{ text: 'A dead end. This was a waste of time.', nextId: 'precinct_dead_end' }] },
-            { id: 'mulligan_cooperative', text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata."', choices: [{ text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }] },
+            { id: 'mulligan_uncooperative', text: '"You walk in here, flashing that P.I. license like it\'s a get-out-of-jail-free card," Mulligan snarls, his voice low and dangerous. "I\'m not sticking my neck out for you. Not again. Some doors you shouldn\'t open, Slate. This one leads to a long, empty hallway with no exit. The door is that way. Use it before I forget we used to be friends."', choices: [{ text: 'A dead end. This was a waste of time.', nextId: 'precinct_dead_end' }] },
+            { id: 'mulligan_cooperative', text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata. You know, we had another guy vanish from their docks about six months ago. Arthur McCoy. Case went nowhere."', choices: [{ text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }] },
             { id: 'ask_about_sterling', text: '"The one and only," Mulligan says, rubbing his bloodshot eyes. "They\'re building some kind of high-tech utopia down at the docks, and they don\'t care who they push out of the way to do it. Their security is all ex-military, and their lawyers are sharks in thousand-dollar suits. If Eddie crossed them... he\'s in a world of trouble you can\'t handle. Be careful, Slate. This isn\'t like the old days."', choices: [{ text: 'Time to pay a visit to Sterling Automata.', nextId: 'investigate_sterling' }] },
             {
                 id: 'investigate_sterling', text: 'The Sterling Automata building is a sterile monument of glass and steel that stabs at the perpetually grey sky. It doesn\'t belong in this decaying city; it looks like it landed here from the future. Inside, a cool, quiet hum replaces the chaotic sound of the city. An android receptionist with an unnervingly perfect smile watches you approach.\n\n"Welcome to Sterling Automata," it says, its voice a pleasant, synthesized melody that makes your teeth ache. "How may I direct you?"',
@@ -448,7 +448,8 @@
             { id: 'reception_fail', text: 'The android\'s smile remains, but its eyes seem to grow colder, the light within them hardening. "We have no employee by that name on file. If you do not have an appointment, I must ask you to leave." From a hidden panel in the wall, two silent, imposing security guards emerge. They firmly, and painfully, escort you to the door.', choices: [{ text: 'The front door is a no-go. Time to try the back entrance.', nextId: 'sterling_docks' }] },
             { id: 'reception_success', text: 'The android pauses for a fraction of a second, its internal processors whirring silently. Its pleasant voice returns, unchanged. "Of course. Employee welfare is our top priority. Our Head of Security, Mr. Kane, will address your concerns personally. Please, follow the guide light." A thin, blue line illuminates on the polished white floor, leading you down a stark, sterile corridor.', choices: [{ text: 'Follow the light.', nextId: 'meet_kane' }] },
             {
-                id: 'meet_kane', text: 'You are led to a minimalist office with a panoramic window overlooking the grimy city below. It\'s like looking down from heaven into hell. A man in an immaculate suit, with the cold posture of a predator, stands waiting. This is Kane.\n\n"You\'ve been asking about a non-person," Kane says, his voice dangerously calm, the kind of calm that precedes a storm. "Explain yourself before I have you permanently erased from every database in this city."',
+                id: 'meet_kane',
+                text: 'You are led to a minimalist office with a panoramic window overlooking the grimy city. On a stark white wall hangs a single, ancient painting on a dark wood panel. It depicts a saint, his face a mask of serene agony, his body pierced by arrows. The style is stark, emotional, primitive. It feels ancient, something a thousand years old.\n\nA man in an immaculate suit stands before the window, his back to you. This is Kane.\n\n"A 13th-century German masterwork," Kane says without turning, his voice dangerously calm. "They understood suffering back then. That it should have a purpose. A design. You, on the other hand, have been asking about a non-person. An error. Explain yourself before I am forced to correct you."',
                 choices: [
                     { text: '"The item he stole is making people talk. My disappearance would only make them talk louder."', nextId: 'kane_new_lead', requires: { smarts: 10 } },
                     { text: '"His wife is worried. Making her happy makes me go away. It\'s clean business."', nextId: 'kane_bought_off', requires: { charm: 10 } },
@@ -481,7 +482,8 @@
                 text: 'The main gate is a dead end. The automated threats about lethal force seem entirely credible. You back off into the deep shadows cast by a stack of shipping containers to consider another way into this fortress.',
                 choices: [
                     { text: 'Scan the perimeter for a weak point.', nextId: 'docks_find_weakness', requires: { smarts: 8 } },
-                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift', requires: { grit: 8 } }
+                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift', requires: { grit: 8 } },
+                    { text: 'Forget it. This is a fortress. Find another lead.', nextId: 'ghost_run_reflection' }
                 ]
             },
             { id: 'docks_find_weakness', text: 'You circle the massive complex, sticking to the shadows. The fence is topped with crackling energy coils that hum a deadly tune. But then you see it: an old, rusted sewage outlet that flows out into the industrial canal. It\'s a grimy, forgotten piece of the old city, and a clear blind spot in the otherwise perfect, futuristic security.', choices: [{ text: 'It\'s disgusting, but it\'s a way in. Pry open the grate.', nextId: 'enter_docks_sewer' }] },
@@ -512,7 +514,7 @@
                 ]
             },
             {
-                id: 'docks_security_office', text: 'You slip between stacks of containers, the only sound the low hum of advanced technology. A tinny sound leaks from the security office; a strange, disjointed jazz melody that feels out of place here. Inside, a lone human guard stares at a bank of monitors, his guard down. You need to get him out of there, one way or another.',
+                id: 'docks_security_office', text: 'You slip between stacks of containers, the only sound the low hum of advanced technology. A tinny sound leaks from the security office. It\'s jazz, but it sounds wrong... fragmented, like a computer trying to dream of a saxophone. Inside, a lone human guard stares at a bank of monitors, his guard down. You need to get him out of there, one way or another.',
                 choices: [
                     { text: 'Find a nearby junction box to create a diversion.', nextId: 'office_diversion_success', requires: { smarts: 9 } },
                     { text: 'Find a heavy wrench and handle this the old-fashioned way.', nextId: 'office_knockout', requires: { grit: 9 } },
@@ -521,7 +523,7 @@
             },
             { id: 'office_knockout', text: 'You heft the heavy steel wrench. It feels cold and final in your grip. You slip the door open. The guard is humming along to the strange music, lost in the monitors. You move silently, raise the tool... and the world dissolves into the sound of a dull, sickening impact. He slumps over the console, and you get to work, trying to ignore the moral tinnitus now ringing in your ears.', choices: [ { text: 'Access his security terminal.', nextId: 'access_terminal' } ] },
             { id: 'office_diversion_success', text: 'You find a power conduit and, using a stray piece of rebar, short the connection. The lights in a nearby sector flicker and die, and a low-priority alarm begins to chime. The guard sighs, a sound of pure annoyance, grabs a flashlight, and leaves the office to investigate. You have a few minutes, maybe less.', choices: [ { text: 'Get to the security terminal. Fast.', nextId: 'access_terminal' } ] },
-            { id: 'access_terminal', text: 'The terminal is open. You quickly search for "Malone, E." His employee file is mostly deleted, but a ghost of a data-trail remains: a final security alert from last night, "Unauthorized Access - Bay 7," followed by Malone\'s termination order, effective immediately. You then find an unscheduled cargo manifest for a freighter, the \'Carcosa\'. The cargo is listed only as "Cryo-Stasis Pods - Biological."\n\nYou hear footsteps returning. You slip out just as the guard comes back, grumbling about faulty wiring.', choices: [ {text: 'The docks are too hot. Time to disappear.', nextId: 'docks_information_gathered'} ] },
+            { id: 'access_terminal', text: 'The terminal is open. You quickly search for "Malone, E." His employee file is mostly deleted, but a ghost of a data-trail remains: a final security alert from last night, "Unauthorized Access - Bay 7," followed by Malone\'s termination order. A search for Arthur McCoy turns up a similar, older file. You then find an unscheduled cargo manifest for a freighter, the \'Carcosa\'. The cargo is listed only as "Cryo-Stasis Pods - Biological."\n\nYou hear footsteps returning. You slip out just as the guard comes back, grumbling about faulty wiring.', choices: [ {text: 'The docks are too hot. Time to disappear.', nextId: 'docks_information_gathered'} ] },
             {
                 id: 'docks_charging_bay', text: 'You move towards the charging bays. The silence here is different—a held breath. Dozens of androids stand motionless in their glowing alcoves, like soldiers in a futuristic tomb. One alcove is empty, its power coupling sparking erratically. Tucked inside the maintenance panel, almost hidden from view, is a small, cheap datapad. It looks out of place. It has to be Eddie\'s.',
                 choices: [ { text: 'Access the datapad.', nextId: 'access_datapad' } ]
@@ -532,7 +534,21 @@
                 choices: [ { text: 'Get closer. Try to overhear the supervisors.', nextId: 'overhear_supervisors' } ]
             },
             { id: 'overhear_supervisors', text: 'You creep closer, the noise of the machinery providing perfect cover. Two human supervisors are talking, their voices sharp in the cold air. "...last of the Bay 7 shipment," one says. "Kane wants the Carcosa gone before sunrise. Doesn\'t want another \'Jamison\' incident."\n\nBefore you can process the name, a spider-like security drone descends silently from a gantry above. Its single red lens focuses on you. An alarm blares across the docks, a synthetic shriek in the night.', choices: [ { text: 'Time to go! NOW!', nextId: 'docks_information_gathered' } ] },
-            { id: 'docks_information_gathered', text: 'You melt back into the labyrinth of the docks, your heart hammering against your ribs. You have the pieces now: a worker named Jamison, a mysterious place called Bay 7, a ghost ship named the Carcosa, and its horrifying cargo of human bodies in cold storage. This is far bigger and uglier than a missing husband. You slip back out the way you came, the rain washing away your tracks, but not the grime of what you\'ve learned.', choices: [ {text: 'You need a drink. And a new plan.', nextId: 'plan_next_move'} ] },
+            {
+                id: 'docks_information_gathered',
+                text: 'You melt back into the labyrinth of the docks, your heart hammering against your ribs. You have the pieces now: a worker named Jamison, a mysterious place called Bay 7, a ghost ship named the Carcosa, and its horrifying cargo. This is far bigger and uglier than a missing husband. You slip back out the way you came, the rain washing away your tracks, but not the grime of what you\'ve learned.',
+                choices: [
+                    {text: 'Head back to the office. You need a drink.', nextId: 'plan_next_move'},
+                    {text: 'Head for the Ghost Run. You need to think.', nextId: 'ghost_run_synthesis'}
+                ]
+            },
+            {
+                id: 'ghost_run_synthesis',
+                text: 'You find yourself back on the Ghost Run. The pieces are swirling in your head, a vortex of paranoia and ugly truths. Jamison. McCoy. Eddie. All fed into the Sterling machine. The "song" he mentioned... a digitized mind, trapped in a server, screaming in a language no one can hear. And the Carcosa, a ghost ship ready to carry the evidence to the bottom of the sea. It all leads back to Bay 7. You have all the pieces. Now you have to decide how they fit.',
+                choices: [
+                    {text: 'The picture is clear enough. Time to act.', nextId: 'plan_next_move'}
+                ]
+            },
             {
                 id: 'industrial_canal', text: 'The industrial canal is a scar running through the city\'s forgotten boroughs. The water is a chemical slick of rainbow colors, and the air is thick with the smell of decay and ozone. Dilapidated warehouses line the banks, their windows like empty eye sockets staring into nothing. The only sign of life is a flickering neon sign that reads "The Electric Sheep." Inside, a lone saxophonist plays a mournful, atonal melody that sounds like Albert Ayler\'s "Ghosts." This is where Kane sent you. A trap, or a test?',
                 choices: [ { text: 'Enter the bar.', nextId: 'electric_sheep_bar' } ]
@@ -556,11 +572,11 @@
                 ]
             },
             { id: 'fight_smarts_success', text: 'Your bizarre non-sequitur hangs in the air like a bad smell. The goons exchange a look of profound confusion, their simple programming crashing. In that moment of hesitation, you vault over the bar, grab the wailing saxophonist, and shove him toward the goons. As they stumble into the unexpected jazz missile, you slip out the back fire escape. A clean, if eccentric, getaway.', choices: [{text: 'Get back to the office to regroup.', nextId: 'escape_to_office'}] },
-            { id: 'fight_grit_success', text: 'You smash the bottle on the table, holding the jagged edge out. "I was hoping for a quiet drink," you growl, "but it looks like you two are on the rocks." The first goon lunges. You sidestep, bringing the bottle down on his arm with a sickening crunch. The second one gets a stool to the face. It\'s ugly, brutal, and over in seconds. You leave them groaning on the floor.', choices: [{text: 'Get back to the office before more show up.', nextId: 'escape_to_office'}] },
+            { id: 'fight_grit_success', text: 'You smash the bottle on the table, holding the jagged edge out. "I was hoping for a quiet drink," you growl, "but it looks like you two are on the rocks." The first goon lurches. You sidestep, bringing the bottle down on his arm with a sickening crunch. The second one gets a stool to the face. It\'s ugly, brutal, and over in seconds. You leave them groaning on the floor.', choices: [{text: 'Get back to the office before more show up.', nextId: 'escape_to_office'}] },
             { id: 'escape_to_office', text: 'You move through the rain-slicked back alleys, paranoia a cold coat on your shoulders. Kane\'s reach is long, and his memory is longer. Whether you left his goons confused or unconscious, they know where you\'ve been. For now, the only place that feels remotely safe is your shabby office.', choices: [{text: 'Lock the door and pour a drink.', nextId: 'plan_next_move'}] },
             {
                 id: 'plan_next_move',
-                text: 'You\'re back in your office. You lock the door, pour two fingers of whiskey, and let the silence settle around you like a shroud. You put on a record - John Coltrane\'s "Naima" - letting the melancholy notes fill the room. You have a constellation of ugly facts: Jamison, Bay 7, the Carcosa, and its human cargo. Eddie Malone is a ghost, and you\'re next on the list. What\'s the play, detective?',
+                text: 'You\'re back in your office. You lock the door, pour two fingers of whiskey, and let the silence settle around you like a shroud. You put on a record - John Coltrane\'s "Naima" - letting the melancholy notes fill the room. You have a constellation of ugly facts: Jamison, McCoy, Bay 7, the Carcosa, and its human cargo. Eddie Malone is a ghost, and you\'re next on the list. What\'s the play, detective?',
                 choices: [ 
                     {text: 'Call the client. She needs to know how deep this goes.', nextId: 'call_the_dame'},
                     {text: 'Call Detective Mulligan. This is too big to handle alone.', nextId: 'call_mulligan'},
@@ -627,7 +643,7 @@
             },
             {
                 id: 'the_final_objective',
-                text: 'The rain is relentless, a constant, mournful drumbeat on the city. You stand on a rooftop overlooking the docks, the pieces of the ugly puzzle clicking into place. Your client is Dr. Aris Thorne. Her husband was a scientist who got cold feet and stole the key to the whole operation. Sterling is trafficking human consciousness on a ghost ship, and the ghost of their first victim, Dr. Jamison, is the key to it all. The Carcosa is set to leave at dawn.\n\nKane, Mulligan, the Thornes... they\'re all just players in a much bigger, dirtier game. The real target is Bay 7. You have to get back to the docks. You have to get into Bay 7 and expose the truth before it sails away into the darkness forever.',
+                text: 'The rain is relentless, a constant, mournful drumbeat on the city. You stand on a rooftop overlooking the docks, a liminal space between the grimy streets and the empty, uncaring sky. The pieces of the ugly puzzle click into place. Your client is Dr. Aris Thorne. Her husband was a scientist who got cold feet and stole the key to the whole operation. Sterling is trafficking human consciousness on a ghost ship, and the ghost of their first victim, Dr. Jamison, is the key to it all. The Carcosa is set to leave at dawn.\n\nKane, Mulligan, the Thornes... they\'re all just players in a much bigger, dirtier game. The real target is Bay 7. You have to get back to the docks. You have to get into Bay 7 and expose the truth before it sails away into the darkness forever.',
                 choices: [{ text: 'This is the end of the line. [FINISH STORY]', nextId: 'start', effect: { reset: true } }]
             }
         ];
