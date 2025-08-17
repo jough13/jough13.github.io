@@ -249,6 +249,25 @@ let gameState = {
  * Loot function returns the amount of Glimmering Dust dropped.
  * Some enemies can also award special resources like Void Essence or Ancient Scraps.
  */
+
+const PLAYER_CLASSES = {
+    STALWART: {
+        key: "STALWART",
+        name: "Stalwart",
+        description: "A resilient warrior. Starts with a permanent +5 bonus to Max HP."
+    },
+    ERUDITE: {
+        key: "ERUDITE",
+        name: "Erudite",
+        description: "A keen-minded scholar. Gains 5% more XP from all sources."
+    },
+    WANDERER: {
+        key: "WANDERER",
+        name: "Wanderer",
+        description: "A balanced traveler who walks their own path, defined by the journey itself."
+    }
+};
+
 const ENEMY_TYPES = {
     ASH_GNAWER: {
         name: "Ash Gnawer",
@@ -1311,12 +1330,75 @@ function presentNameChoice() {
     }
 }
 
-/** Placeholder for the class choice event. */
+/** Pauses the game and presents the player with the choice of a class. */
 function presentClassChoice() {
-    addLogMessage("A moment of clarity offers a choice of path...", "class-choice");
-    // In a real implementation, this would show a decision modal.
-    // For now, we'll just log it.
-    console.log("Class choice would be presented here.");
+    pauseGameForDecision(true); // Pause the main game loop
+
+    decisionPromptText.textContent = "A moment of clarity offers a choice of path...";
+    decisionButtonsContainer.innerHTML = ''; // Clear any previous buttons
+
+    // Loop through our defined classes and create a button for each one
+    Object.values(PLAYER_CLASSES).forEach(playerClass => {
+        const button = document.createElement('button');
+        
+        // Use innerHTML to create a nice title and description on the button
+        button.innerHTML = `<strong>${playerClass.name}</strong><br><small>${playerClass.description}</small>`;
+        button.title = playerClass.description; // Add a hover tooltip
+
+        // When a class button is clicked, call our new helper function
+        button.onclick = () => resolveClassChoice(playerClass.key);
+
+        decisionButtonsContainer.appendChild(button);
+    });
+
+    decisionArea.style.display = 'block'; // Show the decision UI
+    updateUIAccentColors(); // Make sure the new buttons match the zone's theme
+}
+
+/**
+ * Applies the chosen class, provides feedback to the player, and resumes the game.
+ * @param {string} classKey - The key of the class chosen (e.g., "STALWART").
+ */
+function resolveClassChoice(classKey) {
+    const chosenClass = PLAYER_CLASSES[classKey];
+    if (!chosenClass) {
+        console.error("Invalid class key chosen:", classKey);
+        pauseGameForDecision(false); // Resume game even if there's an error
+        return;
+    }
+
+    // 1. Update the Game State
+    gameState.playerClass = chosenClass.name;
+    addLogMessage(`You have chosen the path of the ${chosenClass.name}.`, "class-choice");
+
+    // 2. Apply the specific class bonus
+    switch (classKey) {
+        case 'STALWART':
+            addLogMessage("Your body feels more resilient, ready for the hardships ahead.", "synergy");
+            // The +5 HP is already handled in your calculateMaxHp() function.
+            // We just need to recalculate it and heal the player as a reward.
+            gameState.maxHp = calculateMaxHp();
+            gameState.currentHp = gameState.maxHp;
+            break;
+
+        case 'ERUDITE':
+            addLogMessage("Your mind feels sharper, ready to glean secrets from this broken world.", "synergy");
+            // The +5% XP bonus is already handled in your awardXP() function.
+            // No immediate stat change is needed here.
+            break;
+
+        case 'WANDERER':
+            addLogMessage("You feel a quiet confidence, ready to face whatever comes.", "synergy");
+            // The Wanderer receives no special mechanical bonus.
+            break;
+    }
+
+    // 3. Hide the UI and resume the game
+    decisionArea.style.display = 'none';
+    gameState.activeDecision = null;
+    pauseGameForDecision(false); // Unpause and restart the game loop
+
+    renderAll(); // Redraw the UI to reflect changes (like the Stalwart's new HP)
 }
 
 /** Placeholder for starting a new game. */
