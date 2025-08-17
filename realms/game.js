@@ -1349,6 +1349,7 @@ const journeySummaryTextarea = document.getElementById('journey-summary-textarea
 const newJourneyButton = document.getElementById('new-journey-button');
 const transcendButton = document.getElementById('transcend-button');
 const meditateButton = document.getElementById('meditate-button');
+const attuneRunesButton = document.getElementById('attune-runes-button');
 const artifactModalBackdrop = document.getElementById('artifact-modal-backdrop');
 const artifactModalClose = document.getElementById('artifact-modal-close');
 const artifactList = document.getElementById('artifact-list');
@@ -1628,6 +1629,75 @@ function resolveStatUpgrade(statToUpgrade, cost) {
     decisionArea.style.display = 'block';
     updateUIAccentColors();
     nameInput.focus();
+}
+
+/**
+ * Opens the rune attunement menu, showing collected runes and their active status.
+ */
+function presentRuneMenu() {
+    pauseGameForDecision(true);
+
+    const promptText = `Attune up to ${gameState.maxActiveRunes} Runes. Attuned runes are marked with [*].`;
+    decisionPromptText.textContent = promptText;
+    decisionButtonsContainer.innerHTML = '';
+
+    if (gameState.runes.length === 0) {
+        decisionButtonsContainer.innerHTML = '<p>You have not yet found any runes.</p>';
+    } else {
+        // Create a button for each rune the player has collected
+        gameState.runes.forEach(runeSymbol => {
+            const runeDetails = RUNE_DEFINITIONS[runeSymbol];
+            if (!runeDetails) return;
+
+            const button = document.createElement('button');
+            const isActive = gameState.activeRunes.includes(runeSymbol);
+            
+            // Add a star marker if the rune is currently active
+            const activeMarker = isActive ? "[*] " : "";
+
+            button.innerHTML = `${activeMarker}<strong>${runeDetails.name} (${runeSymbol})</strong><br><small>${runeDetails.description}</small>`;
+            button.onclick = () => resolveRuneSelection(runeSymbol);
+            decisionButtonsContainer.appendChild(button);
+        });
+    }
+
+    // Add a button to close the menu
+    const closeButton = document.createElement('button');
+    closeButton.textContent = "Done";
+    closeButton.onclick = () => {
+        decisionArea.style.display = 'none';
+        pauseGameForDecision(false);
+    };
+    decisionButtonsContainer.appendChild(closeButton);
+
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+}
+
+/**
+ * Handles the logic for activating or deactivating a rune.
+ * @param {string} runeSymbol - The symbol of the rune being toggled, e.g., 'Φ'.
+ */
+function resolveRuneSelection(runeSymbol) {
+    const activeIndex = gameState.activeRunes.indexOf(runeSymbol);
+
+    if (activeIndex > -1) {
+        // If the rune is already active, deactivate it (remove it from the array)
+        gameState.activeRunes.splice(activeIndex, 1);
+        addLogMessage(`${RUNE_DEFINITIONS[runeSymbol].name} fades to silence.`, "decision");
+    } else {
+        // If the rune is not active, try to activate it
+        if (gameState.activeRunes.length < gameState.maxActiveRunes) {
+            gameState.activeRunes.push(runeSymbol);
+            addLogMessage(`You feel the power of the ${RUNE_DEFINITIONS[runeSymbol].name}!`, "synergy");
+        } else {
+            addLogMessage(`You can only attune ${gameState.maxActiveRunes} runes at a time.`, "puzzle-fail");
+        }
+    }
+
+    // After making a change, refresh the menu to show the updated status
+    presentRuneMenu();
+    renderAll();
 }
 
 /**
@@ -1952,6 +2022,8 @@ function resolveCombat(enemyKey) {
     let combatRound = 0;
     const maxCombatRounds = 5;
 
+// Inside the resolveCombat function...
+
     function processCombatRound() {
         if (combatRound >= maxCombatRounds || enemy.hp <= 0 || gameState.currentHp <= 0 || !gameState.inCombat) {
             resolveCombatOutcome();
@@ -1965,14 +2037,24 @@ function resolveCombat(enemyKey) {
         const effectiveStats = getEffectiveStats();
         let playerAttackPower = effectiveStats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
         let attackType = "melee";
+
         if (effectiveStats.spirit > effectiveStats.might + 2) {
             playerAttackPower = effectiveStats.spirit + seededRandomInt(0, Math.floor(gameState.level / 2));
             attackType = "spiritual energy";
         }
+        
+        // --- ADD THIS CHECK for the Obsidian Rune (Ω) ---
+        let bonusDamage = 0;
+        let bonusDamageText = "";
+        if (gameState.activeRunes.includes('Ω')) {
+            bonusDamage = 2; // Adds 2 bonus void damage
+            bonusDamageText = " The Obsidian Rune adds a pulse of void energy!";
+        }
+
         const enemyDefenseSoak = Math.floor(enemy.defense / 2);
-        const damageToEnemy = Math.max(1, playerAttackPower - enemyDefenseSoak);
+        const damageToEnemy = Math.max(1, playerAttackPower - enemyDefenseSoak) + bonusDamage;
         enemy.hp -= damageToEnemy;
-        combatLogMessages.push(`You strike with ${attackType} for ${damageToEnemy} damage. ${enemy.name} HP: ${Math.max(0, enemy.hp)}`);
+        combatLogMessages.push(`You strike with ${attackType} for ${damageToEnemy} damage.${bonusDamageText} ${enemy.name} HP: ${Math.max(0, enemy.hp)}`);
         playSound('combatHit');
 
         if (enemy.hp <= 0) {
@@ -1981,11 +2063,20 @@ function resolveCombat(enemyKey) {
         }
 
         // Enemy's turn
+        
+        // --- ADD THIS CHECK for the Resilience Rune (Δ) ---
+        let damageReduction = 0;
+        if (gameState.activeRunes.includes('Δ')) {
+            damageReduction = 1; // Reduces incoming damage by 1
+        }
+        
         const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
         const playerDefenseSoak = Math.floor(effectiveStats.might / 3) + Math.floor(effectiveStats.spirit / 4);
-        const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak);
+        const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
         gameState.currentHp -= damageToPlayer;
-        combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage. Your HP: ${Math.max(0, gameState.currentHp)}`);
+        
+        let reductionText = damageReduction > 0 ? " Your Resilience Rune absorbs some of the blow!" : "";
+        combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage.${reductionText} Your HP: ${Math.max(0, gameState.currentHp)}`);
 
         if (damageToPlayer > 0) {
             // Player takes damage sound could go here
@@ -2318,17 +2409,22 @@ function handleEncounter() {
 
         case '.': // Pile of dust
             if (!gameState.narrativeFlags[specificEncounterKey]) {
-                const dustAmount = seededRandomInt(1, 5);
-                
-                // This is the corrected line with the capital 'D'
-                gameState.resources.glimmeringDust += dustAmount;
+                // CHANGED from const to let so we can modify it
+                let dustAmount = seededRandomInt(1, 5); 
 
+                // --- ADD THIS CHECK ---
+                // If the Perception Rune is active, add 1 bonus dust.
+                if (gameState.activeRunes.includes('Φ')) {
+                    dustAmount++;
+                }
+                
+                gameState.resources.glimmeringDust += dustAmount;
                 addLogMessage(`You scoop up a small pile of shimmering dust (+${dustAmount}).`, "lore");
-                gameState.narrativeFlags[specificEncounterKey] = true; // Mark as collected
+                gameState.narrativeFlags[specificEncounterKey] = true;
                 playSound('dust');
                 awardXP(1);
             }
-            break;    
+            break;   
 
         case 'N': // NPC
             if (element.npcType && NPCS[element.npcType] && !gameState.encounteredNPCs[specificEncounterKey]) {
@@ -2860,6 +2956,8 @@ function handleGameEnd(message = "You have explored all realms. The echoes of th
     pauseResumeButton.textContent = "Journey Ended";
     pauseResumeButton.disabled = true;
     upgradeSpeedButton.disabled = true;
+    meditateButton.disabled = true;
+    attuneRunesButton.disabled = true;
 
     const summaryText = generateCharacterSummary();
     journeySummaryTextarea.value = summaryText;
@@ -3025,6 +3123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseResumeButton.addEventListener('click', togglePause);
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
         meditateButton.addEventListener('click', presentUpgradeMenu);
+        attuneRunesButton.addEventListener('click', presentRuneMenu);
         saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
         skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
         newJourneyButton.addEventListener('click', () => resetGame(false));
