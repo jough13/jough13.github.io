@@ -1463,6 +1463,76 @@ function resolveClassChoice(classKey) {
     renderAll(); // Redraw the UI to reflect changes (like the Stalwart's new HP)
 }
 
+/**
+ * Displays a pop-up for the player to name their newly found companion.
+ * @param {object} companionData - The data object for the found companion.
+ */
+function presentCompanionNaming(companionData) {
+    pauseGameForDecision(true);
+
+    decisionPromptText.textContent = `A shimmering presence coalesces into a friendly ${companionData.type}! It seems to want to follow you. What will you name it?`;
+    decisionButtonsContainer.innerHTML = '';
+
+    // Create the text input field
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = 'companionNameInput'; // Use a unique ID
+    nameInput.placeholder = companionData.name; // Show the default name as a placeholder
+    nameInput.maxLength = MAX_NAME_LENGTH;
+
+    // Create the confirm button
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = 'Confirm';
+    confirmButton.classList.add('name-confirm-button');
+
+    // Helper function to resolve the choice
+    const submitCompanionName = () => {
+        const chosenName = nameInput.value;
+        resolveCompanionName(companionData, chosenName);
+    };
+
+    confirmButton.onclick = submitCompanionName;
+    nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            submitCompanionName();
+        }
+    });
+
+    decisionButtonsContainer.appendChild(nameInput);
+    decisionButtonsContainer.appendChild(confirmButton);
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+    nameInput.focus();
+}
+
+/**
+ * Finalizes the companion acquisition after the player has chosen a name.
+ * @param {object} companionData - The original data for the companion.
+ * @param {string} chosenName - The name entered by the player.
+ */
+function resolveCompanionName(companionData, chosenName) {
+    const finalName = chosenName.trim();
+
+    // Use the player's name, or the default if they left it blank
+    const name = (finalName && finalName.length > 0) ? finalName : companionData.name;
+
+    // Now, officially create the companion object and add it to the game state
+    gameState.companion = {
+        ...companionData, // Copy all original data (type, call, etc.)
+        name: name        // Set the final name
+    };
+
+    addLogMessage(`You have a new companion: ${gameState.companion.name} the ${gameState.companion.type}!`, "companion");
+    playSound('companionFind');
+    awardXP(30);
+
+    // Hide the UI and resume the game
+    decisionArea.style.display = 'none';
+    gameState.activeDecision = null;
+    pauseGameForDecision(false);
+    renderAll(); // Update the UI to show the new companion
+}
+
 /** Placeholder for starting a new game. */
 function resetGame(isTranscending = false) {
     if (confirm("Start a new journey? Your current progress will be lost.")) {
@@ -2067,20 +2137,19 @@ function handleEncounter() {
                 awardXP(2);
             }
             break;
-            
+
         case 'P': // Shimmering Presence (Companion)
             if (!gameState.companion && !gameState.narrativeFlags.companionFound) {
+                // Find a random companion, but DON'T add it to the game state yet.
                 const companionData = COMPANIONS[seededRandomInt(0, COMPANIONS.length - 1)];
-                gameState.companion = { ...companionData };
+                
+                // Instead, call our new function to start the naming process.
+                presentCompanionNaming(companionData);
+                
+                // Mark that the companion event has been triggered so it doesn't happen again.
                 gameState.narrativeFlags.companionFound = true;
-                addLogMessage(`The shimmering presence coalesces! You've found a companion: ${gameState.companion.name} the ${gameState.companion.type}!`, "companion");
-                playSound('companionFind');
-                awardXP(30);
             }
             break;
-
-                // ... cases for other characters like 'F', '0', 'w', 'A', 'N', 'L', 'P', '.', '#', etc.
-                // (Full switch statement logic omitted for brevity, but all original cases are included)
         }
     });
 }
