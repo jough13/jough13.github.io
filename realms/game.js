@@ -1321,13 +1321,68 @@ function attemptUpgradeSpeed() {
     }
 }
 
-/** Placeholder for the name choice event. */
+/** Pauses the game and displays a custom UI for the player to enter their name. */
 function presentNameChoice() {
-    const newName = prompt("An echo asks for your name...", "Wanderer");
-    if (newName && newName.trim().length > 0) {
-        gameState.playerName = newName.trim().substring(0, MAX_NAME_LENGTH);
-        addLogMessage(`You are now known as ${gameState.playerName}.`, "name-choice");
+    pauseGameForDecision(true); // Pause the game loop
+
+    decisionPromptText.textContent = "An echo on the wind seems to ask for your name...";
+    decisionButtonsContainer.innerHTML = ''; // Clear out any old buttons
+
+    // Create the text input field
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = 'playerNameInput'; // Give it an ID so we can easily find it
+    nameInput.placeholder = 'Wanderer';
+    nameInput.maxLength = MAX_NAME_LENGTH;
+
+    // Create the confirm button
+    const confirmButton = document.createElement('button');
+    confirmButton.textContent = 'Confirm';
+
+    // When the button is clicked, resolve the choice
+    confirmButton.onclick = () => {
+        const chosenName = nameInput.value;
+        resolveNameChoice(chosenName);
+    };
+
+    // Also allow the player to press 'Enter' to confirm
+    nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const chosenName = nameInput.value;
+            resolveNameChoice(chosenName);
+        }
+    });
+
+    // Add the new elements to the screen and display them
+    decisionButtonsContainer.appendChild(nameInput);
+    decisionButtonsContainer.appendChild(confirmButton);
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+    nameInput.focus(); // Automatically focus the input field for the player
+}
+
+/**
+ * Processes the name entered by the player, updates the game state, and resumes the game.
+ * @param {string} chosenName - The name retrieved from the input field.
+ */
+function resolveNameChoice(chosenName) {
+    // Sanitize the input by removing any extra whitespace from the ends
+    const finalName = chosenName.trim();
+
+    // Only update the name if the player actually entered something
+    if (finalName && finalName.length > 0) {
+        gameState.playerName = finalName;
+        addLogMessage(`The echoes whisper back your name: ${gameState.playerName}.`, "name-choice");
+    } else {
+        addLogMessage(`You remain the silent Wanderer.`, "name-choice");
     }
+
+    // Hide the UI and resume the game
+    decisionArea.style.display = 'none';
+    gameState.activeDecision = null;
+    pauseGameForDecision(false);
+
+    renderAll(); // Redraw the UI to show the new name in the stats panel
 }
 
 /** Pauses the game and presents the player with the choice of a class. */
@@ -1471,7 +1526,7 @@ function getEffectiveStats() {
 /** Calculates the player's maximum HP based on level, Might, and class. */
 function calculateMaxHp() {
     let hp = BASE_HP + (gameState.level * 5) + (gameState.stats.might * 2);
-    if (gameState.playerClass === "Stalwart") hp += 5;
+    if (gameState.playerClass === PLAYER_CLASSES.STALWART.name) hp += 5;
     // Apply penalty for Ancient Blade if equipped
     if (gameState.collectedArtifacts.includes("ART_ANCIENT_BLADE")) {
         hp -= 5;
