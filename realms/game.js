@@ -3191,7 +3191,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Initialize Game State
+
  const gameWasLoaded = loadGame();
+
         let initialZone; // DECLARE the variable here, outside the IF block
 
         if (!gameWasLoaded) { 
@@ -3305,7 +3307,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // =============================================================================
 
 function startGame() {
-    logMessages("✨ A new journey begins...");
+    logMessage("✨ A new journey begins...");
 
     // Reset or initialize the game state
     gameState.playerZoneX = 0;
@@ -3331,9 +3333,23 @@ function startGame() {
     }
 }
 
+// =============================================================================
+// │ SAFE DOM EVENT BINDING                                                    │
+// =============================================================================
+
 window.addEventListener("DOMContentLoaded", () => {
     const startButton = document.getElementById("startButton");
     if (startButton) {
-        startButton.addEventListener("click", () => startGame());
+        startButton.addEventListener("click", () => {
+            startGame();
+        });
+    }
+
+    const muteButton = document.getElementById("muteButton");
+    if (muteButton) {
+        muteButton.addEventListener("click", () => {
+            gameState.isMuted = !gameState.isMuted;
+            logMessage(gameState.isMuted ? "🔇 Sound muted." : "🔊 Sound unmuted.");
+        });
     }
 });
