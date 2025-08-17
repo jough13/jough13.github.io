@@ -3163,6 +3163,13 @@ function renderAll() {
 // │ INITIALIZATION & EVENT LISTENERS                                            │
 // =============================================================================
 
+document.addEventListener("DOMContentLoaded", () => {
+    const startButton = document.getElementById("startButton");
+    if (startButton) {
+        startButton.addEventListener("click", startGame);
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     initializeSounds();
 
