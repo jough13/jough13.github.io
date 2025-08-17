@@ -2912,6 +2912,18 @@ document.addEventListener('DOMContentLoaded', () => {
         newJourneyButton.title = 'Start a completely fresh journey. All progress and legacy stats will be erased.';
         transcendButton.title = 'Start a New Game+. A fraction of your final stats will carry over to give you a head start.';
 
+        artifactsCollectedWrapper.addEventListener('click', showArtifactViewer);
+        artifactModalClose.addEventListener('click', hideArtifactViewer);
+        artifactModalBackdrop.addEventListener('click', (event) => {
+            // Only close if the click is on the backdrop itself, not the content box
+            if (event.target === artifactModalBackdrop) {
+                hideArtifactViewer();
+            }
+        });
+
+        // Attach main event listeners
+        pauseResumeButton.addEventListener('click', togglePause);
+
         // Attach main event listeners
         pauseResumeButton.addEventListener('click', togglePause);
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
