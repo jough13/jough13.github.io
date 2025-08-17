@@ -52,7 +52,7 @@
             display: flex;
             justify-content: space-around;
             padding: 10px;
-            margin-bottom: 2em;
+            margin-bottom: 1em;
             background-color: #111;
             border-bottom: 1px solid var(--border-color);
             text-transform: uppercase;
@@ -62,6 +62,38 @@
         #stats-container span {
             color: var(--accent-color);
             font-weight: bold;
+        }
+        
+        /* --- Inventory Display --- */
+        #inventory-container {
+            padding: 10px;
+            margin-bottom: 2em;
+            background-color: #111;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        #inventory-container h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+            color: var(--accent-color);
+        }
+        
+        #inventory-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-color);
+        }
+
+        #inventory-list li {
+            display: inline;
+            margin: 0 15px;
         }
 
         /* --- Story Text Output --- */
@@ -175,6 +207,11 @@
             <div>Smarts: <span id="smarts-stat"></span></div>
             <div>Charm: <span id="charm-stat"></span></div>
         </div>
+        <div id="inventory-container">
+            <h3>Inventory</h3>
+            <ul id="inventory-list">
+                </ul>
+        </div>
         <div id="text-output"></div>
         <div id="choices-container"></div>
     </div>
@@ -196,18 +233,29 @@
         const smartsStat = document.getElementById('smarts-stat');
         const charmStat = document.getElementById('charm-stat');
         const playerNameDisplay = document.getElementById('player-name');
+        const inventoryList = document.getElementById('inventory-list');
         
         // Modal elements
         const modalOverlay = document.getElementById('modal-overlay');
         const nameInput = document.getElementById('name-input');
         const confirmNameBtn = document.getElementById('confirm-name-btn');
 
+        // --- MASTER ITEM LIST ---
+        const items = {
+            'cash': { name: 'Envelope of Cash' },
+            'mccoy_file': { name: 'McCoy Cold Case File' },
+            'data_chip': { name: 'Silver Data Chip' },
+            'datapad': { name: 'Eddie\'s Datapad' },
+            'keycard': { name: 'Master Keycard' },
+        };
+
         // --- PLAYER STATE ---
         let player = {
             name: "J. Slate",
             grit: 4,
             smarts: 4,
-            charm: 4
+            charm: 4,
+            inventory: []
         };
         
         // --- MODAL LOGIC ---
@@ -218,7 +266,7 @@
             player.name = newName || "Nameless"; // Fallback if they enter nothing
 
             modalOverlay.classList.add('hidden');
-            updateStatsDisplay();
+            updateDisplays();
 
             if (nextSceneAfterModal) {
                 showScene(nextSceneAfterModal);
@@ -237,7 +285,7 @@
         // --- GAME LOGIC ---
 
         function startGame() {
-            updateStatsDisplay();
+            updateDisplays();
             showScene('start');
         }
 
@@ -260,6 +308,7 @@
                 button.classList.add('choice-btn');
 
                 let disabled = false;
+                // Stat check
                 if (choice.requires) {
                     const [stat, value] = Object.entries(choice.requires)[0];
                     if (player[stat] < value) {
@@ -267,6 +316,12 @@
                         button.innerText += ` [REQUIRES ${value} ${stat.toUpperCase()}]`;
                     }
                 }
+                // Item check
+                if (choice.requiresItem && !hasItem(choice.requiresItem)) {
+                    disabled = true;
+                    button.innerText += ` [REQUIRES ${items[choice.requiresItem].name}]`;
+                }
+
                 button.disabled = disabled;
                 
                 button.addEventListener('click', () => makeChoice(choice));
@@ -278,37 +333,79 @@
             // Apply stat effects
             if (choice.effect) {
                 if (choice.effect.reset) {
-                    player.name = "J. Slate"; // Reset name on restart
+                    player.name = "J. Slate";
                     player.grit = 4;
                     player.smarts = 4;
                     player.charm = 4;
+                    player.inventory = [];
                 } else {
                     for (const stat in choice.effect) {
-                        player[stat] += choice.effect[stat];
+                        if (player.hasOwnProperty(stat)) {
+                           player[stat] += choice.effect[stat];
+                        }
                     }
                 }
             }
             
+            // Add item to inventory
+            if (choice.itemGained) {
+                addItem(choice.itemGained);
+            }
+
+            // Remove item from inventory
+            if (choice.itemLost) {
+                removeItem(choice.itemLost);
+            }
+
             // Check for special action to open the modal
             if (choice.action === 'changeName') {
                 nextSceneAfterModal = choice.nextId;
                 nameInput.value = ''; // Clear old input
                 modalOverlay.classList.remove('hidden');
-                nameInput.focus(); // Automatically focus the input field
+                nameInput.focus();
             } else {
                 // Normal game flow
-                updateStatsDisplay();
+                updateDisplays();
                 showScene(choice.nextId);
             }
         }
 
-        function updateStatsDisplay() {
+        // --- HELPER FUNCTIONS ---
+
+        function updateDisplays() {
+            // Stats
             playerNameDisplay.innerText = player.name;
             gritStat.innerText = player.grit;
             smartsStat.innerText = player.smarts;
             charmStat.innerText = player.charm;
+            // Inventory
+            inventoryList.innerHTML = '';
+            if (player.inventory.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Empty';
+                inventoryList.appendChild(li);
+            } else {
+                player.inventory.forEach(itemId => {
+                    const li = document.createElement('li');
+                    li.textContent = items[itemId].name;
+                    inventoryList.appendChild(li);
+                });
+            }
         }
 
+        function addItem(itemId) {
+            if (!player.inventory.includes(itemId)) {
+                player.inventory.push(itemId);
+            }
+        }
+        
+        function removeItem(itemId) {
+            player.inventory = player.inventory.filter(item => item !== itemId);
+        }
+
+        function hasItem(itemId) {
+            return player.inventory.includes(itemId);
+        }
 
         // --- STORY DATA (FINAL NARRATIVE EXPANSION) ---
         const story = [
@@ -344,7 +441,7 @@
                 choices: [
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
                     { text: 'The half-empty bottle of bourbon on the desk.', nextId: 'examine_bottle' },
-                    { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file' }
+                    { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file_choice' }
                 ]
             },
             {
@@ -358,9 +455,12 @@
                 choices: [{ text: 'Enough stalling.', nextId: 'confirm_name' }]
             },
             {
-                id: 'examine_file',
-                text: 'You slide the folder open. Arthur McCoy. Missing, six months. Last seen leaving his late shift at the Sterling Automata docks. A note from his wife says he\'d become obsessed with a strange melody he heard at work, a "song from the machines." He couldn\'t sleep, couldn\'t eat. Just sat in the dark, humming. The cops wrote him off as another nut who walked into the sea. The name Sterling sticks in your mind like a splinter.',
-                choices: [{ text: 'That\'s not your problem right now.', nextId: 'confirm_name' }]
+                id: 'examine_file_choice',
+                text: 'You slide the folder across the cluttered desk, leaving a clean trail in the dust. The name inside is Arthur McCoy. Missing, six months. Last seen leaving his late shift at the Sterling Automata docks. A note from his wife says he\'d become obsessed with a strange melody he heard at work, a "song from the machines." The cops wrote him off. The name Sterling sticks in your mind like a splinter.',
+                choices: [
+                    { text: 'Leave the file. It\'s not your problem.', nextId: 'confirm_name' },
+                    { text: 'Take the file. Might be useful.', nextId: 'confirm_name', itemGained: 'mccoy_file' }
+                ]
             },
             {
                 id: 'confirm_name', text: 'The fog in your head has cleared, just a little. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
@@ -373,13 +473,13 @@
                 id: 'dame_walks_in', text: 'Just as you settle into your own skin—or what\'s left of it—the door creaks open. A silhouette is framed by the dim hallway light, a figure that seems to soak up the shadows. She looks like she was carved from trouble itself, all sharp angles and dangerous curves. "I need you to find someone," she says, her voice like smoke and cheap whiskey, a sound that promises late nights and bad decisions.',
                 choices: [
                     { text: '"Cases cost money, dollface. Show me the green."', nextId: 'ask_for_money' },
-                    { text: '"Who\'s the unlucky soul?"', requires: { charm: 6 }, nextId: 'charm_her' },
-                    { text: 'Lean back and stay silent. Let her do the talking.', requires: { grit: 6 }, nextId: 'stay_silent' }
+                    { text: '"Who\'s the unlucky soul?"', nextId: 'charm_her' },
+                    { text: 'Lean back and stay silent. Let her do the talking.', nextId: 'stay_silent' }
                 ]
             },
-            { id: 'ask_for_money', text: '"I wouldn\'t be here if I was broke," she says, her voice dropping a note. She slides a thick envelope across your desk. It lands with a soft, promising thud. "Half now, half when you find him." You feel the heft of it through the wood. This could solve a lot of problems... or start a hell of a lot more.', choices: [{ text: 'Take the case.', nextId: 'case_accepted', effect: { smarts: 1 } }, { text: 'Push the envelope back. "Not my kind of trouble."', nextId: 'case_refused' }] },
-            { id: 'charm_her', text: 'A faint, knowing smile plays on her lips, but it doesn\'t reach her eyes. "He\'s not unlucky. He\'s my husband." She slides a thick envelope across the desk. The gesture is smooth, practiced. "And he\'s in over his head. Way over. His name is Eddie \'The Weasel\' Malone." The name fits a man who would marry a woman like this.', choices: [{ text: '"Eddie the Weasel... I know the name. I\'ll find him."', nextId: 'case_accepted', effect: { charm: 1 } }] },
-            { id: 'stay_silent', text: 'Your silence hangs in the air, heavy and thick as cigar smoke. She doesn\'t flinch, just watches you with eyes that have seen too much. "Playing hard to get won\'t work. I need the best, and people say that\'s you, even on your worst days." She slides the envelope forward. "His name is Eddie Malone. Find him. And don\'t disappoint me."', choices: [{ text: 'Nod and take the money.', nextId: 'case_accepted', effect: { grit: 1 } }] },
+            { id: 'ask_for_money', text: '"I wouldn\'t be here if I was broke," she says, her voice dropping a note. She slides a thick envelope across your desk. It lands with a soft, promising thud. "Half now, half when you find him." You feel the heft of it through the wood. This could solve a lot of problems... or start a hell of a lot more.', choices: [{ text: 'Take the case.', nextId: 'case_accepted', effect: { smarts: 1 }, itemGained: 'cash' }, { text: 'Push the envelope back. "Not my kind of trouble."', nextId: 'case_refused' }] },
+            { id: 'charm_her', text: 'A faint, knowing smile plays on her lips, but it doesn\'t reach her eyes. "He\'s not unlucky. He\'s my husband." She slides a thick envelope across the desk. The gesture is smooth, practiced. "And he\'s in over his head. Way over. His name is Eddie \'The Weasel\' Malone." The name fits a man who would marry a woman like this.', choices: [{ text: '"Eddie the Weasel... I know the name. I\'ll find him."', nextId: 'case_accepted', effect: { charm: 1 }, itemGained: 'cash' }] },
+            { id: 'stay_silent', text: 'Your silence hangs in the air, heavy and thick as cigar smoke. She doesn\'t flinch, just watches you with eyes that have seen too much. "Playing hard to get won\'t work. I need the best, and people say that\'s you, even on your worst days." She slides the envelope forward. "His name is Eddie Malone. Find him. And don\'t disappoint me."', choices: [{ text: 'Nod and take the money.', nextId: 'case_accepted', effect: { grit: 1 }, itemGained: 'cash' }] },
             {
                 id: 'case_accepted', text: 'You pocket the envelope. The rain seems to beat a little harder now, like a drummer counting down to a funeral. You have a client, a pocketful of cash that feels both too heavy and not heavy enough, and a name. The city awaits, a concrete maze full of rats and traps. \n\nWhere do you start looking for Eddie the Weasel?',
                 choices: [{ text: 'Head to the grimy downtown bars.', nextId: 'downtown_bars' }, { text: 'Check the police precinct for any recent reports.', nextId: 'police_precinct' }]
@@ -389,8 +489,8 @@
                 id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
                     { text: 'Order a drink and observe.', nextId: 'bartender_observe', effect: { smarts: 1 } },
-                    { text: 'Flash a bill and ask about Eddie.', nextId: 'bartender_charmed', requires: { charm: 6 } },
-                    { text: 'Walk to the bar and lean in close. "Eddie Malone. Where is he?"', nextId: 'bartender_intimidated', requires: { grit: 6 } }
+                    { text: 'Flash a bill and ask about Eddie.', nextId: 'bartender_charmed' },
+                    { text: 'Walk to the bar and lean in close. "Eddie Malone. Where is he?"', nextId: 'bartender_intimidated' }
                 ]
             },
             { id: 'bartender_observe', text: 'You order a whiskey. It tastes like betrayal and varnish. Nursing the drink, you let your eyes adjust to the gloom and you listen. Two lowlifes in a booth are mumbling about Eddie getting cleaned out in the backroom poker game last night, run by a guy named "Fingers." They mention Eddie was flashing a weird, silver-inlaid poker chip before he lost it all, talking big about his new score.', choices: [{ text: 'You\'ve heard enough. Approach the back room.', nextId: 'approach_poker_game' }] },
@@ -401,7 +501,7 @@
                 choices: [
                     { text: '"I\'m not asking again."', nextId: 'bouncer_fight', requires: { grit: 8 } },
                     { text: '"Fingers is expecting me. Business about a silver chip."', nextId: 'inside_poker_game', requires: { smarts: 7 }, effect: { smarts: 1 } },
-                    { text: 'Try to slip him a bribe.', nextId: 'bouncer_bribe_fail', requires: { charm: 8 } },
+                    { text: 'Try to slip him a bribe.', nextId: 'bouncer_bribe_fail', requiresItem: 'cash', itemLost: 'cash' },
                     { text: 'Attempt to shoulder past him without a word.', nextId: 'bouncer_fight' }
                 ]
             },
@@ -418,14 +518,14 @@
             {
                 id: 'inside_poker_game', text: 'The bouncer\'s eyes narrow at the mention of the chip. He grunts and steps aside, revealing a room thick with cigar smoke and desperation. At a round table sits a man with polished, chrome-plated fingers on his left hand. This must be Fingers. He looks up as you enter, his eyes like chips of ice. The other players look away.\n\n"You\'re not one of my boys," he says, his voice a low hum that cuts through the noise. "Talk fast. My time is expensive."',
                 choices: [
-                    { text: '"Eddie Malone was flashing a unique data key. Where did he get it?"', requires: { smarts: 8 }, nextId: 'fingers_cooperative' },
-                    { text: '"A worried woman is looking for Eddie. You seem like a man of business."', requires: { charm: 8 }, nextId: 'fingers_cooperative' },
-                    { text: '"Stop wasting my time. Where is Eddie Malone?"', requires: { grit: 8 }, nextId: 'fingers_hostile' },
+                    { text: '"Eddie Malone was flashing a unique data key. Where did he get it?"', nextId: 'fingers_cooperative' },
+                    { text: '"A worried woman is looking for Eddie. You seem like a man of business."', nextId: 'fingers_cooperative' },
+                    { text: '"Stop wasting my time. Where is Eddie Malone?"', nextId: 'fingers_hostile' },
                     { text: 'Stay silent, waiting for him to make the first move.', nextId: 'fingers_hostile' }
                 ]
             },
             { id: 'fingers_hostile', text: 'Fingers taps his chrome digits on the table. A discordant melody in the smoky room. "Nerve. I\'ll give you that." He nods to the bouncer, a silent command. "Show our guest out. The hard way." You\'re hauled out and tossed back into the alley, this time with a final, unambiguous warning to stay away from the Mug.', choices: [{ text: 'This lead is dead...', nextId: 'ghost_run_reflection' }] },
-            { id: 'fingers_cooperative', text: 'Fingers is intrigued. He pulls a small, milky white object from his vest pocket and tosses it on the table. It looks less like a poker chip and more like a piece of strange technology, with faint circuits glowing under its surface.\n\n"This thing? It\'s why I let the weasel play. He was terrified, said he lifted it from his new job at the Sterling Automata loading docks. Said it was his ticket out of this city. After he lost this, he ran like the hounds of hell were on his heels."', choices: [{ text: 'You\'ve got a new lead. Leave the bar.', nextId: 'poker_game_success' }] },
+            { id: 'fingers_cooperative', text: 'Fingers is intrigued. He pulls a small, milky white object from his vest pocket and tosses it on the table. It looks less like a poker chip and more like a piece of strange technology, with faint circuits glowing under its surface.\n\n"This thing? It\'s why I let the weasel play. He was terrified, said he lifted it from his new job at the Sterling Automata loading docks. Said it was his ticket out of this city. After he lost this, he ran like the hounds of hell were on his heels."', choices: [{ text: 'You\'ve got a new lead. Leave the bar.', nextId: 'poker_game_success', itemGained: 'data_chip' }] },
             {
                 id: 'poker_game_success', text: 'You leave the smoke-filled room with a new piece of the puzzle. Eddie wasn\'t just a deadbeat; he was a thief who stole from the biggest, meanest monster in the city: Sterling Automata. The name hangs in the air like a death sentence. All roads in this town, it seems, eventually lead to the waterfront.',
                 choices: [
@@ -436,8 +536,8 @@
             {
                 id: 'police_precinct', text: 'The precinct smells of bleach, bureaucracy, and bad coffee. It\'s a symphony of ringing phones and clacking typewriters. Your old partner, Detective Mulligan, is drowning in a sea of paperwork under the harsh fluorescent lights. He looks up as you approach, a tired, haunted expression on his face. "For the love of... Slate. Don\'t tell me you\'re here to make my life harder. It\'s already hard enough."',
                 choices: [
-                    { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative', requires: { charm: 7 }, effect: { charm: 1 } },
-                    { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative', requires: { smarts: 7 }, effect: { smarts: 1 } },
+                    { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative'},
+                    { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative'},
                     { text: '"I need the file on Eddie Malone."', nextId: 'mulligan_uncooperative' }
                 ]
             },
@@ -485,8 +585,8 @@
             {
                 id: 'sterling_docks', text: 'The Sterling Automata docks are nothing like the rest of the city\'s crumbling waterfront. It\'s a clean, efficient, and unnervingly quiet place, run by automated cranes and silent android workers moving with eerie precision. The air smells of salt, sterile electronics, and ozone. A tall fence surrounds the perimeter, with only one heavily guarded checkpoint visible under the harsh glare of floodlights.',
                 choices: [
-                    { text: 'Scan the perimeter for a weak point.', nextId: 'docks_find_weakness', requires: { smarts: 8 } },
-                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift', requires: { grit: 8 } },
+                    { text: 'Scan the perimeter for a weak point.', nextId: 'docks_find_weakness' },
+                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift' },
                     { text: 'Try to bluff your way past the main gate.', nextId: 'docks_gate_fail' }
                 ]
             },
@@ -495,8 +595,8 @@
                 id: 'sterling_docks_rethink',
                 text: 'The main gate is a dead end. The automated threats about lethal force seem entirely credible. You back off into the deep shadows cast by a stack of shipping containers to consider another way into this fortress.',
                 choices: [
-                    { text: 'Scan the perimeter for a weak point.', nextId: 'docks_find_weakness', requires: { smarts: 8 } },
-                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift', requires: { grit: 8 } },
+                    { text: 'Scan the perimeter for a weak point.', nextId: 'docks_find_weakness'},
+                    { text: 'Wait for a shift change and try to slip in.', nextId: 'docks_wait_for_shift'},
                     { text: 'Forget it. This is a fortress. Find another lead.', nextId: 'ghost_run_reflection' }
                 ]
             },
@@ -530,8 +630,8 @@
             {
                 id: 'docks_security_office', text: 'You slip between stacks of containers, the only sound the low hum of advanced technology. A tinny sound leaks from the security office. It\'s jazz, but it sounds wrong... fragmented, like a computer trying to dream of a saxophone. Inside, a lone human guard stares at a bank of monitors, his guard down. You need to get him out of there, one way or another.',
                 choices: [
-                    { text: 'Find a nearby junction box to create a diversion.', nextId: 'office_diversion_success', requires: { smarts: 9 } },
-                    { text: 'Find a heavy wrench and handle this the old-fashioned way.', nextId: 'office_knockout', requires: { grit: 9 } },
+                    { text: 'Find a nearby junction box to create a diversion.', nextId: 'office_diversion_success' },
+                    { text: 'Find a heavy wrench and handle this the old-fashioned way.', nextId: 'office_knockout' },
                     { text: 'Try the door. Maybe it\'s unlocked.', nextId: 'office_fail' }
                 ]
             },
@@ -540,7 +640,7 @@
             { id: 'access_terminal', text: 'The terminal is open. You quickly search for "Malone, E." His employee file is mostly deleted, but a ghost of a data-trail remains: a final security alert from last night, "Unauthorized Access - Bay 7," followed by Malone\'s termination order. A search for Arthur McCoy turns up a similar, older file. You then find an unscheduled cargo manifest for a freighter, the \'Carcosa\'. The cargo is listed only as "Cryo-Stasis Pods - Biological."\n\nYou hear footsteps returning. You slip out just as the guard comes back, grumbling about faulty wiring.', choices: [ {text: 'The docks are too hot. Time to disappear.', nextId: 'docks_information_gathered'} ] },
             {
                 id: 'docks_charging_bay', text: 'You move towards the charging bays. The silence here is different—a held breath. Dozens of androids stand motionless in their glowing alcoves, like soldiers in a futuristic tomb. One alcove is empty, its power coupling sparking erratically. Tucked inside the maintenance panel, almost hidden from view, is a small, cheap datapad. It looks out of place. It has to be Eddie\'s.',
-                choices: [ { text: 'Access the datapad.', nextId: 'access_datapad' } ]
+                choices: [ { text: 'Access the datapad.', nextId: 'access_datapad', itemGained: 'datapad' } ]
             },
             { id: 'access_datapad', text: 'The datapad flickers to life. There\'s only one file: a corrupted audio log. Eddie\'s voice, panicked and whispering.\n\n"It\'s not just code... they\'re not just... oh god, Jamison... I saw what they did to Jamison in Bay 7. It\'s not metal, it\'s wetware... It\'s his mind, they... they made him into a song..."\nThe log cuts out with a burst of static. Suddenly, the android in the bay next to you twitches. Its head swivels with an unnatural, silent speed, its optical sensors glowing a blood red, fixed directly on you.', choices: [ { text: 'You\'ve been made. RUN.', nextId: 'docks_information_gathered' } ] },
             {
@@ -615,7 +715,7 @@
             {
                 id: 'meet_at_observatory',
                 text: 'Sentinel Hill is a ghost. The abandoned observatory stands like a tombstone against the bruised purple sky. You find your client inside, rain dripping through the rusted dome. "His name wasn\'t Malone," she says, her voice echoing in the cavernous space. "It was Dr. Alistair Thorne. My husband. We both worked for Sterling."\n\n"They aren\'t building androids," she continues, her voice trembling, "they\'re digitizing minds. Project Carcosa. My colleague, Dr. Jamison, was the first. The transfer fractured his consciousness. They couldn\'t delete the ghost, so they archived the body. The ship is full of their failures."',
-                choices: [{text: 'Ask what Eddie... Alistair... stole.', nextId: 'thorne_reveals_key'}]
+                choices: [{text: 'Ask what Eddie... Alistair... stole.', nextId: 'thorne_reveals_key', itemGained: 'keycard'}]
             },
             {
                 id: 'thorne_reveals_key',
