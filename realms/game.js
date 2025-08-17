@@ -223,6 +223,8 @@ let gameState = {
         voidEssence: 0
     },
     runes: [],
+    activeRunes: [],
+    maxActiveRunes: 2,
     collectedArtifacts: [],
     companion: null,
 
@@ -265,6 +267,24 @@ const PLAYER_CLASSES = {
         key: "WANDERER",
         name: "Wanderer",
         description: "A balanced traveler who walks their own path, defined by the journey itself."
+    }
+};
+
+/**
+ * Defines the properties and effects of each discoverable Rune.
+ */
+const RUNE_DEFINITIONS = {
+    'Φ': {
+        name: "Rune of Perception",
+        description: "Your eyes see more than others. Increases Glimmering Dust found from piles by 1."
+    },
+    'Δ': {
+        name: "Rune of Resilience",
+        description: "Your form hardens against attack. Reduces all incoming combat damage by 1."
+    },
+    'Ω': {
+        name: "Obsidian Rune",
+        description: "A fragment of the Void's power. Adds 2 bonus Void damage to your attacks."
     }
 };
 
@@ -1328,6 +1348,7 @@ const summaryArea = document.getElementById('summary-area');
 const journeySummaryTextarea = document.getElementById('journey-summary-textarea');
 const newJourneyButton = document.getElementById('new-journey-button');
 const transcendButton = document.getElementById('transcend-button');
+const meditateButton = document.getElementById('meditate-button');
 const artifactModalBackdrop = document.getElementById('artifact-modal-backdrop');
 const artifactModalClose = document.getElementById('artifact-modal-close');
 const artifactList = document.getElementById('artifact-list');
@@ -1518,6 +1539,82 @@ function presentCompanionNaming(companionData) {
         const chosenName = nameInput.value;
         resolveCompanionName(companionData, chosenName);
     };
+
+/**
+ * Opens the stat upgrade menu, calculating and displaying the costs.
+ */
+function presentUpgradeMenu() {
+    pauseGameForDecision(true);
+    const effectiveStats = getEffectiveStats();
+
+    decisionPromptText.textContent = "You focus your mind, contemplating the path forward. Ancient Scraps can unlock your potential.";
+    decisionButtonsContainer.innerHTML = '';
+
+    // An array to hold our stat choices
+    const statsToUpgrade = ['might', 'wits', 'spirit'];
+
+    statsToUpgrade.forEach(stat => {
+        // --- COST CALCULATION ---
+        // The cost increases for each point you've already bought.
+        const baseCost = 5;
+        const currentStatPoints = gameState.stats[stat] - BASE_STAT_VALUE;
+        const cost = baseCost * (currentStatPoints + 1);
+
+        const button = document.createElement('button');
+        button.innerHTML = `Improve ${stat.charAt(0).toUpperCase() + stat.slice(1)} (${gameState.stats[stat]}) <br><small>Cost: ${cost} Scraps</small>`;
+
+        // Disable the button if the player can't afford it
+        if (gameState.resources.ancientScraps < cost) {
+            button.disabled = true;
+            button.title = "Not enough Ancient Scraps.";
+        }
+
+        button.onclick = () => resolveStatUpgrade(stat, cost);
+        decisionButtonsContainer.appendChild(button);
+    });
+    
+    // Add a button to close the menu
+    const closeButton = document.createElement('button');
+    closeButton.textContent = "Done";
+    closeButton.onclick = () => {
+        decisionArea.style.display = 'none';
+        pauseGameForDecision(false);
+    };
+    decisionButtonsContainer.appendChild(closeButton);
+
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+}
+
+/**
+ * Handles the logic of purchasing a stat upgrade.
+ * @param {string} statToUpgrade - 'might', 'wits', or 'spirit'.
+ * @param {number} cost - The pre-calculated cost of the upgrade.
+ */
+function resolveStatUpgrade(statToUpgrade, cost) {
+    if (gameState.resources.ancientScraps >= cost) {
+        // Deduct cost and increase the stat
+        gameState.resources.ancientScraps -= cost;
+        gameState.stats[statToUpgrade]++;
+
+        // If we upgraded Might, we need to recalculate our HP
+        if (statToUpgrade === 'might') {
+            const oldMaxHp = gameState.maxHp;
+            gameState.maxHp = calculateMaxHp();
+            const hpGain = gameState.maxHp - oldMaxHp;
+            gameState.currentHp += hpGain; // Also grant the new HP
+        }
+        
+        addLogMessage(`Your ${statToUpgrade} has increased!`, "synergy");
+
+        // Refresh the menu to show new costs and updated stat values
+        presentUpgradeMenu(); 
+        renderAll(); // Update the main stats panel in the background
+
+    } else {
+        addLogMessage("You lack the resources for this.", "puzzle-fail");
+    }
+}
 
     confirmButton.onclick = submitCompanionName;
     nameInput.addEventListener('keydown', (e) => {
@@ -2927,6 +3024,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Attach main event listeners
         pauseResumeButton.addEventListener('click', togglePause);
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
+        meditateButton.addEventListener('click', presentUpgradeMenu);
         saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
         skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
         newJourneyButton.addEventListener('click', () => resetGame(false));
