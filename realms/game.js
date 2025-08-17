@@ -3251,6 +3251,12 @@ document.addEventListener('DOMContentLoaded', () => {
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
         meditateButton.addEventListener('click', presentUpgradeMenu);
         attuneRunesButton.addEventListener('click', presentRuneMenu);
+        console.log({
+            pauseResumeButton,
+            upgradeSpeedButton,
+            meditateButton,
+            attuneRunesButton
+            });
         saveGameButton.addEventListener('click', saveGame);
         saveMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('save'));
         skipMessageButton.addEventListener('click', () => handleFutureSelfMessageSave('skip'));
