@@ -2588,11 +2588,11 @@ const ManualContent = () => (
         <p>
             The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
         </p>
-        <h4 className="italic">Searching</h4>
+        <h4 className="italic mt-4">Searching</h4>
         <p>
             You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
         </p>
-        <h4 className="italic">The Nuclide Card</h4>
+        <h4 className="italic mt-4">The Nuclide Card</h4>
         <p>
             Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
         </p>
@@ -2602,7 +2602,7 @@ const ManualContent = () => (
         <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
         <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
         
-        <h3><strong>Database</strong></h3>
+        <h3 className="mt-6"><strong>Database</strong></h3>
         <p>
             The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
         </p>
@@ -2612,20 +2612,20 @@ const ManualContent = () => (
             <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
         </ul>
 
-        <h3><strong>Compare</strong></h3>
+        <h3 className="mt-6"><strong>Compare</strong></h3>
         <p>
             The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude.
         </p>
 
-        <h3><strong>Calculators</strong></h3>
+        <h3 className="mt-6"><strong>Calculators</strong></h3>
         <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-        <h4 className="italic">Decay Calculators</h4>
+        <h4 className="italic mt-4">Decay Calculators</h4>
         <ul>
             <li><strong>Decay:</strong> Based on the fundamental decay equation, A_t = A₀e⁻ˡᵗ, this tool can solve for any one variable given the others. It's perfect for answering questions like "How much of my 100 mCi source will be left in 3 weeks?" or "How long will it take for this sample to decay to 1 mCi?".</li>
             <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
             <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (e.g., a long-lived parent like Sr-90 feeding a short-lived daughter like Y-90) or <strong>Transient</strong> (e.g., Mo-99 and Tc-99m) and calculate important metrics like the time to maximum daughter activity.</li>
         </ul>
-        <h4 className="italic">Activity & Dose Calculators</h4>
+        <h4 className="italic mt-4">Activity & Dose Calculators</h4>
         <ul>
             <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?" or "How much does 1 Curie of Cobalt-60 weigh?".</li>
             <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity (Bq/g) from its fundamental properties: atomic weight and half-life.</li>
