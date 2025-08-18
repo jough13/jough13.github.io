@@ -596,6 +596,7 @@
             </div>
             <div class="controls-column middle">
                 <h1>Posh Salon Service Matrix</h1>
+                <input type="text" id="search-input" placeholder="Search Stylists...">
             </div>
             <div class="controls-column right">
                 <div class="control-group">
@@ -621,7 +622,7 @@
         
         <footer>
             <p>
-                Posh Salon Service Matrix v2.17 | Last Updated: August 18, 2025 | 
+                Posh Salon Service Matrix v2.18 | Last Updated: August 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -699,6 +700,7 @@
         const addNoteBtn = document.getElementById('add-note-btn');
         const colorPalette = document.getElementById('color-palette');
         const modalBackdrop = document.getElementById('modal-backdrop');
+        const searchInput = document.getElementById('search-input'); // NEW: Get search input
         
         const LOCAL_STORAGE_KEY = 'salonMatrixData';
         const THEME_KEY = 'salonMatrixTheme';
@@ -738,31 +740,17 @@
             }, duration);
         };
 
+        // MODIFIED: This function now just updates the sort state and triggers a re-render.
         const sortData = (key) => {
             const isNumericKey = !isNaN(parseInt(key));
             const currentKey = isNumericKey ? parseInt(key) : key;
             const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
             sortState = { key: currentKey, direction: newDirection };
-
-            if (currentKey === 'stylist') {
-                salonState.stylists.sort((a, b) => {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    if (nameA < nameB) return newDirection === 'asc' ? -1 : 1;
-                    if (nameA > nameB) return newDirection === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            } else {
-                salonState.stylists.sort((a, b) => {
-                    const priceA = parseFloat(a.services[currentKey].price) || 0;
-                    const priceB = parseFloat(b.services[currentKey].price) || 0;
-                    return newDirection === 'asc' ? priceA - priceB : priceB - priceA;
-                });
-            }
-            renderTableFromData();
+            updateDisplay(); // Trigger a re-render with new sort
         };
 
-        const renderTableFromData = () => {
+        // MODIFIED: Renamed and now accepts a list of stylists to render.
+        const renderTable = (stylistsToRender) => {
             const thead = servicesTable.querySelector('thead');
             const tbody = servicesTable.querySelector('tbody');
             thead.innerHTML = '';
@@ -779,9 +767,11 @@
                 headerRow.appendChild(th);
             });
             thead.appendChild(headerRow);
-            salonState.stylists.forEach((stylist, rowIndex) => {
+            stylistsToRender.forEach((stylist) => { // Use the passed-in list
+                // MODIFIED: Find the original index to maintain data integrity on edits
+                const originalRowIndex = salonState.stylists.findIndex(s => s.name === stylist.name);
                 const row = document.createElement('tr');
-                row.dataset.row = rowIndex;
+                row.dataset.row = originalRowIndex;
                 const nameCell = document.createElement('td');
                 nameCell.dataset.col = 0;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
@@ -799,6 +789,39 @@
                 tbody.appendChild(row);
             });
         };
+
+        // NEW: Central function to handle all display updates (search + sort)
+        const updateDisplay = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            let filteredStylists = salonState.stylists;
+
+            // 1. Filter by search term
+            if (searchTerm) {
+                filteredStylists = salonState.stylists.filter(stylist => 
+                    stylist.name.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // 2. Sort the filtered results
+            const { key, direction } = sortState;
+            const sortedAndFilteredStylists = [...filteredStylists].sort((a, b) => {
+                if (key === 'stylist') {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA < nameB) return direction === 'asc' ? -1 : 1;
+                    if (nameA > nameB) return direction === 'asc' ? 1 : -1;
+                    return 0;
+                } else {
+                    const priceA = parseFloat(a.services[key].price) || 0;
+                    const priceB = parseFloat(b.services[key].price) || 0;
+                    return direction === 'asc' ? priceA - priceB : priceB - priceA;
+                }
+            });
+
+            // 3. Render the final list
+            renderTable(sortedAndFilteredStylists);
+        };
+
 
         const showNoteEntryPopup = (row, col) => {
             const noteEntryPopup = document.getElementById('note-entry-popup');
@@ -818,7 +841,7 @@
                 if (row === -1) salonState.services[col - 1].note = newNote;
                 else if (col === 0) salonState.stylists[row].note = newNote;
                 else salonState.stylists[row].services[col - 1].note = newNote;
-                renderTableFromData();
+                updateDisplay(); // MODIFIED
                 showToast("Note added.", "success");
                 cleanup();
             };
@@ -880,7 +903,7 @@
                     else salonState.stylists[row].services[col - 1].note = null;
                     notePopup.style.display = 'none';
                     modalBackdrop.style.display = 'none';
-                    renderTableFromData();
+                    updateDisplay(); // MODIFIED
                     showToast("Note deleted.", "info");
                 });
             };
@@ -898,7 +921,7 @@
                 });
             }
             salonState = savedData || JSON.parse(JSON.stringify(defaultData));
-            sortData(sortState.key);
+            updateDisplay(); // MODIFIED
         };
         
         const applyTheme = (theme) => {
@@ -1054,11 +1077,11 @@ const handlePrint = () => {
                     if (newText === '') {
                         showToast('Level cannot be empty.', 'error');
                         salonState.stylists[row].level = originalText;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                         return;
                     }
                     salonState.stylists[row].level = newText;
-                    renderTableFromData();
+                    updateDisplay(); // MODIFIED
                 };
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -1078,11 +1101,11 @@ const handlePrint = () => {
                     const newPrice = input.value.trim();
                     if (newPrice && (isNaN(parseFloat(newPrice)) || parseFloat(newPrice) < 0)) {
                         showToast('Please enter a valid price.', 'error');
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                         return;
                     }
                     salonState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    renderTableFromData();
+                    updateDisplay(); // MODIFIED
                 };
                 input.addEventListener('blur', savePrice);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -1121,27 +1144,27 @@ const handlePrint = () => {
                         salonState.services.splice(col - 1, 1);
                         salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
                         showToast(`Service "${originalText}" removed.`, "info");
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                     });
                 };
-             deleteBtn.addEventListener('mousedown', handleDelete);
+                deleteBtn.addEventListener('mousedown', handleDelete); // FIX from previous step
                 const handleSave = () => {
                     const newText = editInput.value.trim();
                     if (newText === '') {
                         showToast('Service name cannot be empty.', 'error');
                         salonState.services[col - 1].name = originalText;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                         return;
                     }
                     salonState.services[col - 1].name = newText;
-                    renderTableFromData();
+                    updateDisplay(); // MODIFIED
                 };
                 editInput.addEventListener('blur', handleSave);
                 editInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') e.target.blur();
                     if (e.key === 'Escape') {
                         salonState.services[col - 1].name = originalText;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                     }
                 });
             } else if (isStylistName) {
@@ -1170,28 +1193,28 @@ const handlePrint = () => {
                     showConfirmModal(`Are you sure you want to remove stylist "${originalText}"?`, () => {
                         salonState.stylists.splice(row, 1);
                         showToast(`Stylist "${originalText}" removed.`, "info");
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                     });
                 };
-            deleteBtn.addEventListener('mousedown', handleDelete);
+                deleteBtn.addEventListener('mousedown', handleDelete); // FIX from previous step
 
                 const handleSave = () => {
                     const newText = editInput.value.trim();
                     if (newText === '') {
                         showToast('Stylist name cannot be empty.', 'error');
                         salonState.stylists[row].name = originalText;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                         return;
                     }
                     salonState.stylists[row].name = newText;
-                    renderTableFromData();
+                    updateDisplay(); // MODIFIED
                 };
                 editInput.addEventListener('blur', handleSave);
                 editInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') e.target.blur();
                     if (e.key === 'Escape') {
                         salonState.stylists[row].name = originalText;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                     }
                 });
             }
@@ -1232,7 +1255,7 @@ const handlePrint = () => {
             const name = newStylistInput.value.trim();
             if (!name) return showToast('Please enter a stylist name.', 'error');
             salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) });
-            renderTableFromData();
+            updateDisplay(); // MODIFIED
             showToast(`Stylist "${name}" added.`, 'success');
             newStylistInput.value = '';
         });
@@ -1242,7 +1265,7 @@ const handlePrint = () => {
             if (!name) return showToast('Please enter a service name.', 'error');
             salonState.services.push({ name, note: null });
             salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
-            renderTableFromData();
+            updateDisplay(); // MODIFIED
             showToast(`Service "${name}" added.`, 'success');
             newServiceInput.value = '';
         });
@@ -1274,7 +1297,7 @@ const handlePrint = () => {
                     const data = JSON.parse(e.target.result);
                     if (data && data.services && data.stylists) {
                         salonState = data;
-                        renderTableFromData();
+                        updateDisplay(); // MODIFIED
                         showToast('Data imported successfully!', 'success');
                     } else showToast('Error: Invalid file format.', 'error');
                 } catch (error) {
@@ -1322,6 +1345,9 @@ const handlePrint = () => {
         });
 
         addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
+
+        // NEW: Event listener for the search input
+        searchInput.addEventListener('input', updateDisplay);
         
         // --- Initial Load ---
         const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
