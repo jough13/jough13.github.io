@@ -522,6 +522,61 @@
         .dark-mode footer { color: #aaa; }
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
+
+        @media print {
+            /* --- Hide all non-essential elements --- */
+            .main-controls, footer, #modal-backdrop, .modal-popup {
+                display: none !important;
+            }
+
+            /* --- Reset the main layout for printing --- */
+            body {
+                padding: 1in; /* Add margins for the printed page */
+                background-color: #ffffff; /* Ensure a white background */
+            }
+
+            .container {
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                border-radius: 0;
+                height: auto;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            /* --- Make the table fill the page width --- */
+            .table-container {
+                overflow: visible; /* Show all content, don't scroll */
+                box-shadow: none;
+                height: auto;
+            }
+            
+            table {
+                font-size: 10pt; /* Adjust font size for readability on paper */
+                width: 100%;
+                min-width: 100%;
+            }
+
+            /* --- Ensure all table content is visible and static --- */
+            th, td, th:first-child, td:first-child {
+                position: static; /* Disable sticky headers/columns */
+            }
+            
+            /* --- Improve readability --- */
+            tr {
+                page-break-inside: avoid; /* Try to keep rows on the same page */
+            }
+
+            tr:nth-child(even) {
+                background-color: #ffffff !important; /* Remove alternating row colors */
+            }
+
+            .price-text.placeholder {
+                color: #888; /* Ensure placeholder text is still visible */
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -547,6 +602,7 @@
                     <button id="save-btn" class="save-btn">Save</button>
                     <button id="export-btn">Export</button>
                     <button id="import-btn">Import</button>
+                    <button id="print-btn">Print</button>
                     <input type="file" id="import-file-input" accept=".json" style="display: none;">
                 </div>
                 <div class="control-group">
@@ -565,7 +621,7 @@
         
         <footer>
             <p>
-                Posh Salon Service Matrix v2.14 | Last Updated: August 18, 2025 | 
+                Posh Salon Service Matrix v2.16 | Last Updated: August 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -629,527 +685,649 @@
     </div>
     <div id="toast-container"></div>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            let salonState;
-            let isPlacingNote = false;
-            let selectedNoteColor = null;
-            let clickTimer = null;
-            let sortState = { key: 'stylist', direction: 'asc' };
-            
-            const servicesTable = document.getElementById('services-table');
-            const newStylistInput = document.getElementById('new-stylist-name');
-            const newServiceInput = document.getElementById('new-service-name');
-            const addNoteBtn = document.getElementById('add-note-btn');
-            const colorPalette = document.getElementById('color-palette');
-            const modalBackdrop = document.getElementById('modal-backdrop');
-            
-            const LOCAL_STORAGE_KEY = 'salonMatrixData';
-            const THEME_KEY = 'salonMatrixTheme';
-            const NOTE_COLORS = [
-                { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' },
-                { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }
-            ];
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let salonState;
+        let isPlacingNote = false;
+        let selectedNoteColor = null;
+        let clickTimer = null;
+        let sortState = { key: 'stylist', direction: 'asc' };
+        
+        const servicesTable = document.getElementById('services-table');
+        const newStylistInput = document.getElementById('new-stylist-name');
+        const newServiceInput = document.getElementById('new-service-name');
+        const addNoteBtn = document.getElementById('add-note-btn');
+        const colorPalette = document.getElementById('color-palette');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        
+        const LOCAL_STORAGE_KEY = 'salonMatrixData';
+        const THEME_KEY = 'salonMatrixTheme';
+        const NOTE_COLORS = [
+            { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' },
+            { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }
+        ];
 
-            const defaultData = {
-                services: [
-                    { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
-                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }
-                ],
-                stylists: [{
-                    name: "Alex Chen", level: "Level Five", note: null, services: [
-                        { checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null },
-                        { checked: true, price: "275.00", note: { text: "Expert level.", color: "#adcffa", border: "none" } },
-                        { checked: false, price: "", note: null }
-                    ]
-                }, {
-                    name: "Brianna R.", level: "Level Seven", note: { text: "Specializes in curly hair.", color: "#ffe880", border: "none" }, services: [
-                        { checked: true, price: "95.00", note: null }, { checked: false, price: "", note: null },
-                        { checked: true, price: "315.00", note: null }, { checked: true, price: "350.00", note: null }
-                    ]
-                }]
-            };
-            
-            const showToast = (message, type = 'info', duration = 3000) => {
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                toast.textContent = message;
-                container.appendChild(toast);
-                setTimeout(() => {
-                    toast.classList.add('fade-out');
-                    toast.addEventListener('animationend', () => toast.remove());
-                }, duration);
-            };
+        const defaultData = {
+            services: [
+                { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
+                { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }
+            ],
+            stylists: [{
+                name: "Alex Chen", level: "Level Five", note: null, services: [
+                    { checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null },
+                    { checked: true, price: "275.00", note: { text: "Expert level.", color: "#adcffa", border: "none" } },
+                    { checked: false, price: "", note: null }
+                ]
+            }, {
+                name: "Brianna R.", level: "Level Seven", note: { text: "Specializes in curly hair.", color: "#ffe880", border: "none" }, services: [
+                    { checked: true, price: "95.00", note: null }, { checked: false, price: "", note: null },
+                    { checked: true, price: "315.00", note: null }, { checked: true, price: "350.00", note: null }
+                ]
+            }]
+        };
+        
+        const showToast = (message, type = 'info', duration = 3000) => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, duration);
+        };
 
-            const sortData = (key) => {
-                const isNumericKey = !isNaN(parseInt(key));
-                const currentKey = isNumericKey ? parseInt(key) : key;
-                const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
-                sortState = { key: currentKey, direction: newDirection };
+        const sortData = (key) => {
+            const isNumericKey = !isNaN(parseInt(key));
+            const currentKey = isNumericKey ? parseInt(key) : key;
+            const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
+            sortState = { key: currentKey, direction: newDirection };
 
-                if (currentKey === 'stylist') {
-                    salonState.stylists.sort((a, b) => {
-                        const nameA = a.name.toLowerCase();
-                        const nameB = b.name.toLowerCase();
-                        if (nameA < nameB) return newDirection === 'asc' ? -1 : 1;
-                        if (nameA > nameB) return newDirection === 'asc' ? 1 : -1;
-                        return 0;
-                    });
-                } else {
-                    salonState.stylists.sort((a, b) => {
-                        const priceA = parseFloat(a.services[currentKey].price) || 0;
-                        const priceB = parseFloat(b.services[currentKey].price) || 0;
-                        return newDirection === 'asc' ? priceA - priceB : priceB - priceA;
-                    });
-                }
-                renderTableFromData();
-            };
-
-            const renderTableFromData = () => {
-                const thead = servicesTable.querySelector('thead');
-                const tbody = servicesTable.querySelector('tbody');
-                thead.innerHTML = '';
-                tbody.innerHTML = '';
-                const headerRow = document.createElement('tr');
-                const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-                headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
-                salonState.services.forEach((service, colIndex) => {
-                    const th = document.createElement('th');
-                    th.dataset.col = colIndex + 1;
-                    let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                    const serviceArrow = sortState.key === colIndex ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-                    th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}<span class="sort-arrow">${serviceArrow}</span></div>`;
-                    headerRow.appendChild(th);
+            if (currentKey === 'stylist') {
+                salonState.stylists.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    if (nameA < nameB) return newDirection === 'asc' ? -1 : 1;
+                    if (nameA > nameB) return newDirection === 'asc' ? 1 : -1;
+                    return 0;
                 });
-                thead.appendChild(headerRow);
-                salonState.stylists.forEach((stylist, rowIndex) => {
-                    const row = document.createElement('tr');
-                    row.dataset.row = rowIndex;
-                    const nameCell = document.createElement('td');
-                    nameCell.dataset.col = 0;
-                    let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
-                    nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
-                    row.appendChild(nameCell);
-                    stylist.services.forEach((service, colIndex) => {
-                        const cell = document.createElement('td');
-                        cell.dataset.col = colIndex + 1;
-                        const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
-                        const priceClass = service.price ? 'price-text' : 'price-text placeholder';
-                        let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                        cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
-                        row.appendChild(cell);
-                    });
-                    tbody.appendChild(row);
+            } else {
+                salonState.stylists.sort((a, b) => {
+                    const priceA = parseFloat(a.services[currentKey].price) || 0;
+                    const priceB = parseFloat(b.services[currentKey].price) || 0;
+                    return newDirection === 'asc' ? priceA - priceB : priceB - priceA;
                 });
-            };
+            }
+            renderTableFromData();
+        };
 
-            const showNoteEntryPopup = (row, col) => {
-                const noteEntryPopup = document.getElementById('note-entry-popup');
-                modalBackdrop.style.display = 'block';
-                noteEntryPopup.style.display = 'block';
-                const swatch = document.getElementById('note-entry-color-swatch');
-                const textarea = document.getElementById('note-entry-textarea');
-                const saveBtn = document.getElementById('note-entry-save');
-                const cancelBtn = document.getElementById('note-entry-cancel');
-                textarea.value = '';
-                textarea.focus();
-                swatch.style.backgroundColor = selectedNoteColor.color;
-                swatch.style.border = selectedNoteColor.border || 'none';
-                const handleSave = () => {
-                    const noteText = textarea.value;
-                    const newNote = { text: noteText, ...selectedNoteColor };
-                    if (row === -1) salonState.services[col - 1].note = newNote;
-                    else if (col === 0) salonState.stylists[row].note = newNote;
-                    else salonState.stylists[row].services[col - 1].note = newNote;
-                    renderTableFromData();
-                    showToast("Note added.", "success");
-                    cleanup();
-                };
-                const handleCancel = () => { cleanup(); };
-                const cleanup = () => {
-                    noteEntryPopup.style.display = 'none';
-                    modalBackdrop.style.display = 'none';
-                    togglePlacingNote(false);
-                    saveBtn.removeEventListener('click', handleSave);
-                    cancelBtn.removeEventListener('click', handleCancel);
-                };
-                saveBtn.addEventListener('click', handleSave, { once: true });
-                cancelBtn.addEventListener('click', handleCancel, { once: true });
-            };
-
-            const showConfirmModal = (message, onConfirm) => {
-                const confirmPopup = document.getElementById('confirm-popup');
-                const confirmMsg = document.getElementById('confirm-message');
-                const confirmBtn = document.getElementById('confirm-confirm-btn');
-                const cancelBtn = document.getElementById('confirm-cancel-btn');
-                confirmMsg.textContent = message;
-                modalBackdrop.style.display = 'block';
-                confirmPopup.style.display = 'block';
-                const handleConfirm = () => { onConfirm(); cleanup(); };
-                const handleCancel = () => { cleanup(); };
-                const cleanup = () => {
-                    modalBackdrop.style.display = 'none';
-                    confirmPopup.style.display = 'none';
-                    confirmBtn.removeEventListener('click', handleConfirm);
-                    cancelBtn.removeEventListener('click', handleCancel);
-                };
-                confirmBtn.addEventListener('click', handleConfirm, { once: true });
-                cancelBtn.addEventListener('click', handleCancel, { once: true });
-            };
-
-            const togglePlacingNote = (placing) => {
-                isPlacingNote = placing;
-                selectedNoteColor = null;
-                document.body.classList.toggle('placing-note', placing);
-                colorPalette.style.display = placing ? 'flex' : 'none';
-                if (!placing) colorPalette.querySelector('.selected')?.classList.remove('selected');
-            };
-
-            const showNotePopup = (row, col) => {
-                const notePopup = document.getElementById('note-popup');
-                let note;
-                if (row === -1) note = salonState.services[col - 1].note;
-                else if (col === 0) note = salonState.stylists[row].note;
-                else note = salonState.stylists[row].services[col - 1].note;
-                if (!note) return;
-                notePopup.style.borderTopColor = (note.border !== 'none' && note.color === '#ffffff') ? '#333' : note.color;
-                notePopup.querySelector('#note-popup-content').textContent = note.text;
-                modalBackdrop.style.display = 'block';
-                notePopup.style.display = 'block';
-                document.getElementById('delete-note-popup').onclick = () => {
-                    showConfirmModal("Are you sure you want to delete this note?", () => {
-                        if (row === -1) salonState.services[col - 1].note = null;
-                        else if (col === 0) salonState.stylists[row].note = null;
-                        else salonState.stylists[row].services[col - 1].note = null;
-                        notePopup.style.display = 'none';
-                        modalBackdrop.style.display = 'none';
-                        renderTableFromData();
-                        showToast("Note deleted.", "info");
-                    });
-                };
-            };
-
-            const loadInitialData = () => {
-                const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-                let savedData = savedJSON ? JSON.parse(savedJSON) : null;
-                if (savedData && Array.isArray(savedData.services) && typeof savedData.services[0] === 'string') {
-                    savedData.services = savedData.services.map(name => ({ name, note: null }));
-                    savedData.stylists.forEach(stylist => {
-                        stylist.note = stylist.note || null;
-                        stylist.level = stylist.level || "Apprentice";
-                        stylist.services.forEach(cell => { cell.note = cell.note || null; });
-                    });
-                }
-                salonState = savedData || JSON.parse(JSON.stringify(defaultData));
-                sortData(sortState.key);
-            };
-            
-            const applyTheme = (theme) => {
-                if (theme === 'dark') {
-                    document.body.classList.add('dark-mode');
-                    themeToggleBtn.textContent = '☀️';
-                } else {
-                    document.body.classList.remove('dark-mode');
-                    themeToggleBtn.textContent = '🌓';
-                }
-            };
-            
-            // --- Event Listeners ---
-            servicesTable.addEventListener('input', (event) => {
-                const target = event.target;
-                const cell = target.closest('td');
-                if (!cell) return;
-                const row = parseInt(cell.parentElement.dataset.row);
-                if (target.matches('input[type="checkbox"]')) {
-                    const col = parseInt(cell.dataset.col);
-                    salonState.stylists[row].services[col - 1].checked = target.checked;
-                }
+        const renderTableFromData = () => {
+            const thead = servicesTable.querySelector('thead');
+            const tbody = servicesTable.querySelector('tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
+            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
+            salonState.services.forEach((service, colIndex) => {
+                const th = document.createElement('th');
+                th.dataset.col = colIndex + 1;
+                let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                const serviceArrow = sortState.key === colIndex ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
+                th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}<span class="sort-arrow">${serviceArrow}</span></div>`;
+                headerRow.appendChild(th);
             });
+            thead.appendChild(headerRow);
+            salonState.stylists.forEach((stylist, rowIndex) => {
+                const row = document.createElement('tr');
+                row.dataset.row = rowIndex;
+                const nameCell = document.createElement('td');
+                nameCell.dataset.col = 0;
+                let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
+                nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
+                row.appendChild(nameCell);
+                stylist.services.forEach((service, colIndex) => {
+                    const cell = document.createElement('td');
+                    cell.dataset.col = colIndex + 1;
+                    const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
+                    const priceClass = service.price ? 'price-text' : 'price-text placeholder';
+                    let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                    cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
+                    row.appendChild(cell);
+                });
+                tbody.appendChild(row);
+            });
+        };
 
-            servicesTable.addEventListener('click', (event) => {
-                const target = event.target;
-                const cell = target.closest('td, th');
-                if (!cell) return;
-                if (isPlacingNote) {
-                    if (!selectedNoteColor) {
-                        showToast("Please select a color from the palette first!", 'error');
-                        return;
-                    }
-                    const col = parseInt(cell.dataset.col);
-                    const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
-                    showNoteEntryPopup(row, col);
+        const showNoteEntryPopup = (row, col) => {
+            const noteEntryPopup = document.getElementById('note-entry-popup');
+            modalBackdrop.style.display = 'block';
+            noteEntryPopup.style.display = 'block';
+            const swatch = document.getElementById('note-entry-color-swatch');
+            const textarea = document.getElementById('note-entry-textarea');
+            const saveBtn = document.getElementById('note-entry-save');
+            const cancelBtn = document.getElementById('note-entry-cancel');
+            textarea.value = '';
+            textarea.focus();
+            swatch.style.backgroundColor = selectedNoteColor.color;
+            swatch.style.border = selectedNoteColor.border || 'none';
+            const handleSave = () => {
+                const noteText = textarea.value;
+                const newNote = { text: noteText, ...selectedNoteColor };
+                if (row === -1) salonState.services[col - 1].note = newNote;
+                else if (col === 0) salonState.stylists[row].note = newNote;
+                else salonState.stylists[row].services[col - 1].note = newNote;
+                renderTableFromData();
+                showToast("Note added.", "success");
+                cleanup();
+            };
+            const handleCancel = () => { cleanup(); };
+            const cleanup = () => {
+                noteEntryPopup.style.display = 'none';
+                modalBackdrop.style.display = 'none';
+                togglePlacingNote(false);
+                saveBtn.removeEventListener('click', handleSave);
+                cancelBtn.removeEventListener('click', handleCancel);
+            };
+            saveBtn.addEventListener('click', handleSave, { once: true });
+            cancelBtn.addEventListener('click', handleCancel, { once: true });
+        };
+
+        const showConfirmModal = (message, onConfirm) => {
+            const confirmPopup = document.getElementById('confirm-popup');
+            const confirmMsg = document.getElementById('confirm-message');
+            const confirmBtn = document.getElementById('confirm-confirm-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+            confirmMsg.textContent = message;
+            modalBackdrop.style.display = 'block';
+            confirmPopup.style.display = 'block';
+            const handleConfirm = () => { onConfirm(); cleanup(); };
+            const handleCancel = () => { cleanup(); };
+            const cleanup = () => {
+                modalBackdrop.style.display = 'none';
+                confirmPopup.style.display = 'none';
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+            };
+            confirmBtn.addEventListener('click', handleConfirm, { once: true });
+            cancelBtn.addEventListener('click', handleCancel, { once: true });
+        };
+
+        const togglePlacingNote = (placing) => {
+            isPlacingNote = placing;
+            selectedNoteColor = null;
+            document.body.classList.toggle('placing-note', placing);
+            colorPalette.style.display = placing ? 'flex' : 'none';
+            if (!placing) colorPalette.querySelector('.selected')?.classList.remove('selected');
+        };
+
+        const showNotePopup = (row, col) => {
+            const notePopup = document.getElementById('note-popup');
+            let note;
+            if (row === -1) note = salonState.services[col - 1].note;
+            else if (col === 0) note = salonState.stylists[row].note;
+            else note = salonState.stylists[row].services[col - 1].note;
+            if (!note) return;
+            notePopup.style.borderTopColor = (note.border !== 'none' && note.color === '#ffffff') ? '#333' : note.color;
+            notePopup.querySelector('#note-popup-content').textContent = note.text;
+            modalBackdrop.style.display = 'block';
+            notePopup.style.display = 'block';
+            document.getElementById('delete-note-popup').onclick = () => {
+                showConfirmModal("Are you sure you want to delete this note?", () => {
+                    if (row === -1) salonState.services[col - 1].note = null;
+                    else if (col === 0) salonState.stylists[row].note = null;
+                    else salonState.stylists[row].services[col - 1].note = null;
+                    notePopup.style.display = 'none';
+                    modalBackdrop.style.display = 'none';
+                    renderTableFromData();
+                    showToast("Note deleted.", "info");
+                });
+            };
+        };
+
+        const loadInitialData = () => {
+            const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+            let savedData = savedJSON ? JSON.parse(savedJSON) : null;
+            if (savedData && Array.isArray(savedData.services) && typeof savedData.services[0] === 'string') {
+                savedData.services = savedData.services.map(name => ({ name, note: null }));
+                savedData.stylists.forEach(stylist => {
+                    stylist.note = stylist.note || null;
+                    stylist.level = stylist.level || "Apprentice";
+                    stylist.services.forEach(cell => { cell.note = cell.note || null; });
+                });
+            }
+            salonState = savedData || JSON.parse(JSON.stringify(defaultData));
+            sortData(sortState.key);
+        };
+        
+        const applyTheme = (theme) => {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggleBtn.textContent = '☀️';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggleBtn.textContent = '🌓';
+            }
+        };
+        
+const handlePrint = () => {
+    // 1. Define the CSS for the print-friendly view
+    const printStyles = `
+        <style>
+            @page {
+                size: portrait;
+                margin: 0.75in;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 10pt;
+            }
+            h1 {
+                font-size: 16pt;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            p.timestamp {
+                text-align: center;
+                font-style: italic;
+                font-size: 9pt;
+                color: #555;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            th, td {
+                border: 1px solid #ccc;
+                padding: 6px;
+                text-align: center; /* <-- CHANGE 1: Centered all text */
+            }
+            th {
+                background-color: #f0f0f0;
+                font-weight: bold;
+            }
+            thead {
+                display: table-header-group; 
+            }
+        </style>
+    `;
+
+    // 2. Build the clean HTML for the table
+    let tableHtml = '<table><thead><tr><th>Stylist</th>';
+    salonState.services.forEach(service => {
+        tableHtml += `<th>${service.name}</th>`;
+    });
+    tableHtml += '</tr></thead><tbody>';
+
+    salonState.stylists.forEach(stylist => {
+        tableHtml += `<tr><td><strong>${stylist.name}</strong><br><small>${stylist.level}</small></td>`;
+        stylist.services.forEach(service => {
+            let cellContent = '';
+            if (service.checked) {
+                // CHANGE 2: Removed the '✔' checkmark, now only shows the price
+                cellContent = service.price ? `$${parseFloat(service.price).toFixed(2)}` : '';
+            }
+            tableHtml += `<td>${cellContent}</td>`;
+        });
+        tableHtml += '</tr>';
+    });
+    tableHtml += '</tbody></table>';
+
+    // 3. Combine everything into a full HTML document
+    const today = new Date();
+    const timestamp = `Generated on: ${today.toLocaleDateString()} at ${today.toLocaleTimeString()}`;
+
+    const fullHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Posh Salon Service Matrix</title>
+            ${printStyles}
+        </head>
+        <body>
+            <h1>Posh Salon Service Matrix</h1>
+            <p class="timestamp">${timestamp}</p>
+            ${tableHtml}
+        </body>
+        </html>
+    `;
+
+    // 4. Open a new window, write the content, and trigger the print dialog
+    const printWindow = window.open('', '_blank');
+    printWindow.document.open();
+    printWindow.document.write(fullHtml);
+    printWindow.document.close();
+
+    printWindow.onload = function() {
+        printWindow.print();
+        printWindow.close();
+    };
+};
+
+
+        // --- Event Listeners ---
+        servicesTable.addEventListener('input', (event) => {
+            const target = event.target;
+            const cell = target.closest('td');
+            if (!cell) return;
+            const row = parseInt(cell.parentElement.dataset.row);
+            if (target.matches('input[type="checkbox"]')) {
+                const col = parseInt(cell.dataset.col);
+                salonState.stylists[row].services[col - 1].checked = target.checked;
+            }
+        });
+
+        servicesTable.addEventListener('click', (event) => {
+            const target = event.target;
+            const cell = target.closest('td, th');
+            if (!cell) return;
+            if (isPlacingNote) {
+                if (!selectedNoteColor) {
+                    showToast("Please select a color from the palette first!", 'error');
                     return;
                 }
-                
-                if (target.closest('.sortable')) {
-                    const sortKey = target.closest('.sortable').dataset.sort;
-                    clearTimeout(clickTimer);
-                    clickTimer = setTimeout(() => {
-                        sortData(sortKey);
-                    }, 250);
-                } else if (target.matches('.editable.level-text')) {
-                    const row = parseInt(target.closest('tr').dataset.row);
-                    const originalText = target.textContent === 'Add Level' ? '' : target.textContent;
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText;
-                    target.replaceWith(input);
-                    input.focus();
-                    const save = () => {
-                        const newText = input.value.trim();
-                        salonState.stylists[row].level = newText || 'Add Level';
+                const col = parseInt(cell.dataset.col);
+                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
+                showNoteEntryPopup(row, col);
+                return;
+            }
+            if (target.closest('.sortable')) {
+                const sortKey = target.closest('.sortable').dataset.sort;
+                clearTimeout(clickTimer);
+                clickTimer = setTimeout(() => {
+                    sortData(sortKey);
+                }, 250);
+            } else if (target.matches('.editable.level-text')) {
+                const row = parseInt(target.closest('tr').dataset.row);
+                const originalText = target.textContent;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'name-input';
+                input.value = originalText === 'Add Level' ? '' : originalText;
+                target.replaceWith(input);
+                input.focus();
+                const save = () => {
+                    const newText = input.value.trim();
+                    if (newText === '') {
+                        showToast('Level cannot be empty.', 'error');
+                        salonState.stylists[row].level = originalText;
                         renderTableFromData();
-                    };
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                } else if (target.matches('.price-text')) {
-                    const row = parseInt(target.closest('tr').dataset.row);
-                    const col = parseInt(target.closest('td').dataset.col);
-                    const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.className = 'price-input';
-                    input.value = originalValue;
-                    input.step = '0.01';
-                    target.innerHTML = '';
-                    target.appendChild(input);
-                    input.focus();
-                    const savePrice = () => {
-                        const newPrice = input.value.trim();
-                        salonState.stylists[row].services[col - 1].price = (newPrice && !isNaN(newPrice)) ? parseFloat(newPrice).toFixed(2) : '';
-                        renderTableFromData();
-                    };
-                    input.addEventListener('blur', savePrice);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                } else if (target.matches('.sticky-note')) {
-                    const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
-                    const col = parseInt(cell.dataset.col);
-                    showNotePopup(row, col);
-                }
-            });
-
-            servicesTable.addEventListener('dblclick', (event) => {
-                const target = event.target;
-                const isServiceHeader = target.matches('.editable') && target.closest('th');
-                const isStylistName = target.matches('.editable') && !target.classList.contains('level-text') && target.closest('td');
-
-                if (isServiceHeader) {
-                    clearTimeout(clickTimer);
-                    const originalText = target.textContent;
-                    const nameWrapper = target.closest('.name-wrapper');
-                    const cell = target.closest('th');
-                    const col = parseInt(cell.dataset.col);
-                    const editInput = document.createElement('input');
-                    editInput.type = 'text';
-                    editInput.className = 'name-input';
-                    editInput.value = originalText;
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'remove-btn';
-                    deleteBtn.innerHTML = '🗑️';
-                    deleteBtn.title = 'Delete Service';
-                    nameWrapper.innerHTML = '';
-                    nameWrapper.appendChild(editInput);
-                    nameWrapper.appendChild(deleteBtn);
-                    editInput.focus();
-                    const handleDelete = () => {
-                        showConfirmModal(`Are you sure you want to remove service "${originalText}"?`, () => {
-                            salonState.services.splice(col - 1, 1);
-                            salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
-                            showToast(`Service "${originalText}" removed.`, "info");
-                            renderTableFromData();
-                        });
-                    };
-                    deleteBtn.addEventListener('click', handleDelete);
-                    const handleSave = () => {
-                        const newText = editInput.value.trim() || originalText;
-                        salonState.services[col - 1].name = newText;
-                        renderTableFromData();
-                    };
-                    editInput.addEventListener('blur', handleSave);
-                    editInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') e.target.blur();
-                        if (e.key === 'Escape') {
-                            salonState.services[col - 1].name = originalText;
-                            renderTableFromData();
-                        }
-                    });
-                } else if (isStylistName) {
-                    clearTimeout(clickTimer);
-                    const originalText = target.textContent;
-                    const nameWrapper = target.closest('.name-wrapper');
-                    const row = parseInt(target.closest('tr').dataset.row);
-
-                    const editInput = document.createElement('input');
-                    editInput.type = 'text';
-                    editInput.className = 'name-input';
-                    editInput.value = originalText;
-                    
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'remove-btn';
-                    deleteBtn.innerHTML = '🗑️';
-                    deleteBtn.title = 'Delete Stylist';
-
-                    nameWrapper.innerHTML = '';
-                    nameWrapper.appendChild(editInput);
-                    nameWrapper.appendChild(deleteBtn);
-                    editInput.focus();
-
-                    const handleDelete = () => {
-                        showConfirmModal(`Are you sure you want to remove stylist "${originalText}"?`, () => {
-                            salonState.stylists.splice(row, 1);
-                            showToast(`Stylist "${originalText}" removed.`, "info");
-                            renderTableFromData();
-                        });
-                    };
-                    deleteBtn.addEventListener('click', handleDelete);
-
-                    const handleSave = () => {
-                        const newText = editInput.value.trim() || originalText;
-                        salonState.stylists[row].name = newText;
-                        renderTableFromData();
-                    };
-                    editInput.addEventListener('blur', handleSave);
-                    editInput.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') e.target.blur();
-                        if (e.key === 'Escape') {
-                            salonState.stylists[row].name = originalText;
-                            renderTableFromData();
-                        }
-                    });
-                }
-            });
-            
-            NOTE_COLORS.forEach(c => {
-                const box = document.createElement('div');
-                box.className = 'color-box';
-                box.style.backgroundColor = c.color;
-                box.style.border = c.border || '2px solid transparent';
-                box.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    colorPalette.querySelector('.selected')?.classList.remove('selected');
-                    box.classList.add('selected');
-                    selectedNoteColor = c;
-                });
-                colorPalette.appendChild(box);
-            });
-
-            const cancelBox = document.createElement('div');
-            cancelBox.className = 'color-box cancel-note';
-            cancelBox.innerHTML = '&times;';
-            cancelBox.title = 'Cancel note placement (Esc)';
-            cancelBox.addEventListener('click', (e) => {
-                e.stopPropagation();
-                togglePlacingNote(false);
-            });
-            colorPalette.appendChild(cancelBox);
-
-            document.querySelectorAll('.close-popup').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    btn.closest('.modal-popup').style.display = 'none';
-                    modalBackdrop.style.display = 'none';
-                });
-            });
-
-            document.getElementById('add-stylist-btn').addEventListener('click', () => {
-                const name = newStylistInput.value.trim();
-                if (!name) return showToast('Please enter a stylist name.', 'error');
-                salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) });
-                renderTableFromData();
-                showToast(`Stylist "${name}" added.`, 'success');
-                newStylistInput.value = '';
-            });
-
-            document.getElementById('add-service-btn').addEventListener('click', () => {
-                const name = newServiceInput.value.trim();
-                if (!name) return showToast('Please enter a service name.', 'error');
-                salonState.services.push({ name, note: null });
-                salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
-                renderTableFromData();
-                showToast(`Service "${name}" added.`, 'success');
-                newServiceInput.value = '';
-            });
-
-            document.getElementById('save-btn').addEventListener('click', () => {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState));
-                showToast('Data saved successfully!', 'success');
-            });
-
-            document.getElementById('export-btn').addEventListener('click', () => {
-                const jsonString = JSON.stringify(salonState, null, 2);
-                const blob = new Blob([jsonString], { type: 'application/json' });
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'salon-data.json';
-                a.click();
-                URL.revokeObjectURL(a.href);
-                showToast("Data exported to salon-data.json", "info");
-            });
-
-            document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-            
-            document.getElementById('import-file-input').addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data && data.services && data.stylists) {
-                            salonState = data;
-                            renderTableFromData();
-                            showToast('Data imported successfully!', 'success');
-                        } else showToast('Error: Invalid file format.', 'error');
-                    } catch (error) {
-                        showToast('Error reading file.', 'error');
+                        return;
                     }
+                    salonState.stylists[row].level = newText;
+                    renderTableFromData();
                 };
-                reader.readAsText(file);
-                event.target.value = '';
-            });
-            
-            document.getElementById('manual-btn').addEventListener('click', () => {
-                document.getElementById('manual-popup').style.display = 'block';
-                modalBackdrop.style.display = 'block';
-            });
-
-            const themeToggleBtn = document.getElementById('theme-toggle-btn');
-            themeToggleBtn.addEventListener('click', () => {
-                const isDarkMode = document.body.classList.contains('dark-mode');
-                const newTheme = isDarkMode ? 'light' : 'dark';
-                localStorage.setItem(THEME_KEY, newTheme);
-                applyTheme(newTheme);
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && isPlacingNote) {
-                    togglePlacingNote(false);
-                }
-                if (e.ctrlKey && e.altKey && e.key === 'd') {
-                    e.preventDefault();
-                    const isDev = document.body.classList.toggle('developer-mode-active');
-                    showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
-                }
-            });
-            
-            document.getElementById('reset-all-btn').addEventListener('click', () => {
-                const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
-                showConfirmModal(message, () => {
-                    localStorage.removeItem(LOCAL_STORAGE_KEY);
-                    localStorage.removeItem(THEME_KEY);
-                    showToast('Data reset. Reloading...', 'info');
-                    setTimeout(() => location.reload(), 1000);
-                });
-            });
-
-            addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
-            
-            // --- Initial Load ---
-            const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
-            applyTheme(savedTheme);
-            loadInitialData();
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            } else if (target.matches('.price-text')) {
+                const row = parseInt(target.closest('tr').dataset.row);
+                const col = parseInt(target.closest('td').dataset.col);
+                const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'price-input';
+                input.value = originalValue;
+                input.step = '0.01';
+                target.innerHTML = '';
+                target.appendChild(input);
+                input.focus();
+                const savePrice = () => {
+                    const newPrice = input.value.trim();
+                    if (newPrice && (isNaN(parseFloat(newPrice)) || parseFloat(newPrice) < 0)) {
+                        showToast('Please enter a valid price.', 'error');
+                        renderTableFromData();
+                        return;
+                    }
+                    salonState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
+                    renderTableFromData();
+                };
+                input.addEventListener('blur', savePrice);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            } else if (target.matches('.sticky-note')) {
+                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
+                const col = parseInt(cell.dataset.col);
+                showNotePopup(row, col);
+            }
         });
-    </script>
+
+        servicesTable.addEventListener('dblclick', (event) => {
+            const target = event.target;
+            const isServiceHeader = target.matches('.editable') && target.closest('th');
+            const isStylistName = target.matches('.editable') && !target.classList.contains('level-text') && target.closest('td');
+
+            if (isServiceHeader) {
+                clearTimeout(clickTimer);
+                const originalText = target.textContent;
+                const nameWrapper = target.closest('.name-wrapper');
+                const cell = target.closest('th');
+                const col = parseInt(cell.dataset.col);
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.className = 'name-input';
+                editInput.value = originalText;
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'remove-btn';
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.title = 'Delete Service';
+                nameWrapper.innerHTML = '';
+                nameWrapper.appendChild(editInput);
+                nameWrapper.appendChild(deleteBtn);
+                editInput.focus();
+                const handleDelete = () => {
+                    showConfirmModal(`Are you sure you want to remove service "${originalText}"?`, () => {
+                        salonState.services.splice(col - 1, 1);
+                        salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
+                        showToast(`Service "${originalText}" removed.`, "info");
+                        renderTableFromData();
+                    });
+                };
+                deleteBtn.addEventListener('click', handleDelete);
+                const handleSave = () => {
+                    const newText = editInput.value.trim();
+                    if (newText === '') {
+                        showToast('Service name cannot be empty.', 'error');
+                        salonState.services[col - 1].name = originalText;
+                        renderTableFromData();
+                        return;
+                    }
+                    salonState.services[col - 1].name = newText;
+                    renderTableFromData();
+                };
+                editInput.addEventListener('blur', handleSave);
+                editInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') e.target.blur();
+                    if (e.key === 'Escape') {
+                        salonState.services[col - 1].name = originalText;
+                        renderTableFromData();
+                    }
+                });
+            } else if (isStylistName) {
+                clearTimeout(clickTimer);
+                const originalText = target.textContent;
+                const stylistInfo = target.closest('.stylist-info');
+                const row = parseInt(target.closest('tr').dataset.row);
+
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.className = 'name-input';
+                editInput.value = originalText;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'remove-btn';
+                deleteBtn.innerHTML = '🗑️';
+                deleteBtn.title = 'Delete Stylist';
+
+                const parentWrapper = stylistInfo.parentElement;
+                parentWrapper.innerHTML = ''; // Clear the name wrapper
+                parentWrapper.appendChild(editInput);
+                parentWrapper.appendChild(deleteBtn);
+                editInput.focus();
+
+                const handleDelete = () => {
+                    showConfirmModal(`Are you sure you want to remove stylist "${originalText}"?`, () => {
+                        salonState.stylists.splice(row, 1);
+                        showToast(`Stylist "${originalText}" removed.`, "info");
+                        renderTableFromData();
+                    });
+                };
+                deleteBtn.addEventListener('click', handleDelete);
+
+                const handleSave = () => {
+                    const newText = editInput.value.trim();
+                    if (newText === '') {
+                        showToast('Stylist name cannot be empty.', 'error');
+                        salonState.stylists[row].name = originalText;
+                        renderTableFromData();
+                        return;
+                    }
+                    salonState.stylists[row].name = newText;
+                    renderTableFromData();
+                };
+                editInput.addEventListener('blur', handleSave);
+                editInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') e.target.blur();
+                    if (e.key === 'Escape') {
+                        salonState.stylists[row].name = originalText;
+                        renderTableFromData();
+                    }
+                });
+            }
+        });
+        
+        NOTE_COLORS.forEach(c => {
+            const box = document.createElement('div');
+            box.className = 'color-box';
+            box.style.backgroundColor = c.color;
+            box.style.border = c.border || '2px solid transparent';
+            box.addEventListener('click', (e) => {
+                e.stopPropagation();
+                colorPalette.querySelector('.selected')?.classList.remove('selected');
+                box.classList.add('selected');
+                selectedNoteColor = c;
+            });
+            colorPalette.appendChild(box);
+        });
+
+        const cancelBox = document.createElement('div');
+        cancelBox.className = 'color-box cancel-note';
+        cancelBox.innerHTML = '&times;';
+        cancelBox.title = 'Cancel note placement (Esc)';
+        cancelBox.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePlacingNote(false);
+        });
+        colorPalette.appendChild(cancelBox);
+
+        document.querySelectorAll('.close-popup').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.modal-popup').style.display = 'none';
+                modalBackdrop.style.display = 'none';
+            });
+        });
+
+        document.getElementById('add-stylist-btn').addEventListener('click', () => {
+            const name = newStylistInput.value.trim();
+            if (!name) return showToast('Please enter a stylist name.', 'error');
+            salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) });
+            renderTableFromData();
+            showToast(`Stylist "${name}" added.`, 'success');
+            newStylistInput.value = '';
+        });
+
+        document.getElementById('add-service-btn').addEventListener('click', () => {
+            const name = newServiceInput.value.trim();
+            if (!name) return showToast('Please enter a service name.', 'error');
+            salonState.services.push({ name, note: null });
+            salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
+            renderTableFromData();
+            showToast(`Service "${name}" added.`, 'success');
+            newServiceInput.value = '';
+        });
+
+        document.getElementById('save-btn').addEventListener('click', () => {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState));
+            showToast('Data saved successfully!', 'success');
+        });
+
+        document.getElementById('export-btn').addEventListener('click', () => {
+            const jsonString = JSON.stringify(salonState, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'salon-data.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast("Data exported to salon-data.json", "info");
+        });
+
+        document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
+        
+        document.getElementById('import-file-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data && data.services && data.stylists) {
+                        salonState = data;
+                        renderTableFromData();
+                        showToast('Data imported successfully!', 'success');
+                    } else showToast('Error: Invalid file format.', 'error');
+                } catch (error) {
+                    showToast('Error reading file.', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+
+        document.getElementById('print-btn').addEventListener('click', handlePrint);
+        
+        document.getElementById('manual-btn').addEventListener('click', () => {
+            document.getElementById('manual-popup').style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        });
+
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        themeToggleBtn.addEventListener('click', () => {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const newTheme = isDarkMode ? 'light' : 'dark';
+            localStorage.setItem(THEME_KEY, newTheme);
+            applyTheme(newTheme);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isPlacingNote) {
+                togglePlacingNote(false);
+            }
+            if (e.ctrlKey && e.altKey && e.key === 'd') {
+                e.preventDefault();
+                const isDev = document.body.classList.toggle('developer-mode-active');
+                showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
+            }
+        });
+        
+        document.getElementById('reset-all-btn').addEventListener('click', () => {
+            const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
+            showConfirmModal(message, () => {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                localStorage.removeItem(THEME_KEY);
+                showToast('Data reset. Reloading...', 'info');
+                setTimeout(() => location.reload(), 1000);
+            });
+        });
+
+        addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
+        
+        // --- Initial Load ---
+        const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+        applyTheme(savedTheme);
+        loadInitialData();
+    });
+</script>
 </body>
 </html>
