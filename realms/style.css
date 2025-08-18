@@ -604,7 +604,7 @@ body.loading .game-container {
     justify-content: center;
     align-items: center;
     z-index: 100;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'VT323', monospace;
 }
 
 .start-menu {
