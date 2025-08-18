@@ -488,6 +488,13 @@
             padding-right: 1rem;
         }
 
+        #service-stylists-list p {
+            line-height: 1.6;
+            margin: 0 0 0.5rem 0;
+            padding-left: 1rem;
+            border-left: 3px solid var(--border-color);
+        }
+
         .manual-content p, .manual-content li { line-height: 1.6; }
         .dark-mode .manual-content p, .dark-mode .manual-content li { color: #ccc; }
         .manual-content strong { color: var(--text-color); }
@@ -622,7 +629,7 @@
         
         <footer>
             <p>
-                Posh Salon Service Matrix v2.18 | Last Updated: August 18, 2025 | 
+                Posh Salon Service Matrix v2.19 | Last Updated: August 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -684,6 +691,13 @@
             <button id="confirm-confirm-btn" class="danger-btn">Confirm</button>
         </div>
     </div>
+
+    <div id="service-stylists-popup" class="modal-popup">
+        <button class="close-popup">&times;</button>
+        <h2 id="service-stylists-title"></h2>
+        <div id="service-stylists-list"></div>
+    </div>
+
     <div id="toast-container"></div>
     
 <script>
@@ -747,6 +761,31 @@
             const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
             sortState = { key: currentKey, direction: newDirection };
             updateDisplay(); // Trigger a re-render with new sort
+        };
+
+ // NEW: Function to display the popup with a list of stylists
+        const showServiceStylistsPopup = (serviceName, stylistsList) => {
+            const popup = document.getElementById('service-stylists-popup');
+            const title = document.getElementById('service-stylists-title');
+            const listContainer = document.getElementById('service-stylists-list');
+
+            title.textContent = `Stylists Who Perform "${serviceName}"`;
+            listContainer.innerHTML = ''; // Clear previous content
+
+            if (stylistsList.length === 0) {
+                const p = document.createElement('p');
+                p.textContent = 'No stylists are currently assigned to this service.';
+                listContainer.appendChild(p);
+            } else {
+                stylistsList.forEach(name => {
+                    const p = document.createElement('p');
+                    p.textContent = name;
+                    listContainer.appendChild(p);
+                });
+            }
+
+            modalBackdrop.style.display = 'block';
+            popup.style.display = 'block';
         };
 
         // MODIFIED: Renamed and now accepts a list of stylists to render.
@@ -1057,13 +1096,28 @@ const handlePrint = () => {
                 showNoteEntryPopup(row, col);
                 return;
             }
-            if (target.closest('.sortable')) {
-                const sortKey = target.closest('.sortable').dataset.sort;
-                clearTimeout(clickTimer);
-                clickTimer = setTimeout(() => {
-                    sortData(sortKey);
-                }, 250);
-            } else if (target.matches('.editable.level-text')) {
+
+
+        if (target.matches('.sort-arrow')) {
+            const sortKey = target.closest('.sortable').dataset.sort;
+            sortData(sortKey);
+        } else if (target.matches('.editable') && target.closest('th')) { // NEW: Handle service name clicks
+            clearTimeout(clickTimer); // Prevents this from firing on a double-click
+            clickTimer = setTimeout(() => {
+                const cell = target.closest('th');
+                const colIndex = parseInt(cell.dataset.col) - 1;
+                const service = salonState.services[colIndex];
+
+                // Find all stylists who have the checkbox checked for this service
+                const performingStylists = salonState.stylists
+                    .filter(stylist => stylist.services[colIndex] && stylist.services[colIndex].checked)
+                    .map(stylist => stylist.name);
+                
+                showServiceStylistsPopup(service.name, performingStylists);
+            }, 250); // Delay allows dblclick to cancel it
+        } else if (target.matches('.editable.level-text')) {
+
+
                 const row = parseInt(target.closest('tr').dataset.row);
                 const originalText = target.textContent;
                 const input = document.createElement('input');
