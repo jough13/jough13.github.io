@@ -36,6 +36,7 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             background-color: #222;
             padding: 2em;
+            position: relative; /* For footer positioning */
         }
 
         #player-name {
@@ -109,6 +110,7 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 10px;
+            padding-bottom: 30px; /* Space for the footer */
         }
 
         .choice-btn {
@@ -132,6 +134,17 @@
             color: #666;
             cursor: not-allowed;
             border-color: #333;
+        }
+        
+        /* --- Footer --- */
+        #footer {
+            margin-top: 2em;
+            padding-top: 1em;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            font-size: 0.8em;
+            color: #666;
+            font-style: italic;
         }
 
         /* --- Custom Name Modal Styling --- */
@@ -214,6 +227,9 @@
         </div>
         <div id="text-output"></div>
         <div id="choices-container"></div>
+        <div id="footer">
+            Version 0.2 | Last Updated: August 17, 2025
+        </div>
     </div>
 
     <div id="modal-overlay" class="hidden">
@@ -418,7 +434,7 @@
                 ]
             },
             {
-                id: 'desk_view', // NEW SCENE
+                id: 'desk_view',
                 text: 'You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures. In your immediate view: a half-empty bottle of bourbon, a heavy-looking revolver, and a single, impossibly white seashell sitting incongruously on a stack of yellowed papers.\n\nFrom somewhere deep in the building, or maybe deep in your own skull, you feel a low, resonant hum.',
                 choices: [
                     { text: 'Push yourself to your feet.', nextId: 'waking_up' }
@@ -432,7 +448,7 @@
                 ]
             },
             {
-                id: 'internal_cacophony', // RENAMED from 'waking_up'
+                id: 'internal_cacophony',
                 text: 'Your head is a three-ring circus of bad ideas, and the ringmaster is drunk, swinging from a trapeze of regret. It\'s a loud, chaotic place to be. Right now, three voices are screaming for attention, each trying to drown the others out.',
                 choices: [
                     { text: 'A voice from your spine, all gravel and instinct: "Get up. Break something. Feel the splinters. Prove you\'re still here."', nextId: 'grit_start', effect: { grit: 2, smarts: -1 }},
@@ -444,7 +460,7 @@
             { id: 'smarts_start', text: 'You fight the chaos, wrestling it into submission. The gun is a Colt Detective Special. The bottle is Old Grand-Dad. You remember a face... a man with eyes like chips of ice, chrome fingers tapping on a poker table. He was laughing at you. The memory is smoke, but the feeling of humiliation is sharp and real.', choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'the_hum' }] },
             { id: 'charm_start', text: 'You part your cracked lips. "Trouble," you rasp, "...is my business." The words feel hollow, a worn-out record. But you remember saying them to a silhouette in a doorway, a woman who smelled of expensive perfume and desperation. She gave you money. You can\'t remember what for.', choices: [{ text: 'You settle back into your own skin...', nextId: 'the_hum' }] },
             {
-                id: 'the_hum', // MODIFIED to add a weird choice
+                id: 'the_hum',
                 text: 'The memory fades, leaving you with more questions than answers. The quiet of the office settles in again, but it\'s not empty. Under the sound of the rain, you can still feel it: that low, persistent hum. It\'s not the neon sign, not the building\'s wiring. It\'s something else, something deeper. A sound on the edge of hearing, like a secret the city is whispering to itself.',
                 choices: [
                     { text: 'Focus on the hum. Try to understand it.', nextId: 'hum_focus'},
@@ -452,14 +468,14 @@
                 ]
             },
             {
-                id: 'hum_focus', // NEW SCENE to explore the weirdness
+                id: 'hum_focus',
                 text: 'You close your eyes and listen. The hum isn\'t a sound; it\'s a vibration. It sinks into your teeth, rattles your bones. For a split second, the image of the city behind your eyelids dissolves. You see not streets, but circuits. Not buildings, but monolithic processors. The rain on the glass is the hiss of static between stations.\n\nThe hum is a signal, and buried deep inside it is a single, repeating word, a ghost in the machine: *Sterling... Sterling... Sterling...*',
                 choices: [
                     { text: 'The vision fades. Open your eyes.', nextId: 'office_ambience' }
                 ]
             },
             {
-                id: 'office_ambience', // MODIFIED with more options
+                id: 'office_ambience',
                 text: 'You push the strange vision (or memory?) to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
                 choices: [
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
@@ -470,21 +486,21 @@
                 ]
             },
             {
-                id: 'examine_seashell', // NEW SCENE
+                id: 'examine_seashell',
                 text: 'You pick up the seashell. It\'s smooth, cool, and impossibly perfect, a stark white against the grime of your office. You hold it to your ear. You expect to hear the ocean. Instead, you hear a faint, distorted snippet of music, like a radio playing from very, very far away. A lonely saxophone. The sound vanishes as quickly as it came.',
                 choices: [
                     { text: 'Put the shell down and look around again.', nextId: 'office_ambience' }
                 ]
             },
             {
-                id: 'examine_mirror', // NEW SCENE
+                id: 'examine_mirror',
                 text: 'You stare at the face in the cracked glass. It\'s a stranger\'s face, mostly. The eyes are yours, maybe. Puffy, bloodshot, but familiar. The rest of him looks like he\'s been sleeping in his clothes for a week and gargling with gravel. A fresh cut marks his temple. You don\'t remember getting it.\n\nThe name on the door is J. SLATE. You wonder if this is what a J. Slate is supposed to look like.',
                 choices: [
                     { text: 'Look away from the stranger.', nextId: 'office_ambience' }
                 ]
             },
             {
-                id: 'look_out_window', // MODIFIED to allow returning to the office view
+                id: 'look_out_window',
                 text: 'You walk to the window. The city is a concrete beast, slick with endless rain and bleeding neon light. Below, lonely headlights cut through the gloom, each one a story you don\'t want to know. That low hum seems to rise from the streets, a vibration you can feel in the glass. The city doesn\'t just have a heartbeat; it has a voice, and it\'s saying something you don\'t understand.',
                 choices: [
                     { text: 'Step back from the window.', nextId: 'office_ambience' },
@@ -492,7 +508,7 @@
                 ]
             },
             {
-                id: 'examine_bottle', // MODIFIED to allow returning to the office view
+                id: 'examine_bottle',
                 text: 'You pick up the bottle of Old Grand-Dad. You pour a finger into a glass that hasn\'t been clean since the Hoover administration. The whiskey burns a trail down your throat, a comforting fire. It almost, but not quite, drowns out the hum in your bones. It\'s not a solution, but in a city with no solutions, it\'s a damn good anesthetic.',
                 choices: [
                     { text: 'Put the bottle down.', nextId: 'office_ambience' },
@@ -500,30 +516,69 @@
                 ]
             },
             {
-                id: 'examine_file_choice', // This now serves as the point-of-no-return for the intro
+                id: 'examine_file_choice',
                 text: 'You slide the folder open. Arthur McCoy. Missing, six months. Last seen leaving his late shift at the Sterling Automata docks. A note from his wife says he\'d become obsessed with a strange melody he heard at work, a "song from the machines." He couldn\'t sleep, couldn\'t eat. Just sat in the dark, humming. The cops wrote him off as another nut who walked into the sea. The name Sterling sticks in your mind like a splinter.',
                 choices: [
                     { text: 'Leave the file. It\'s not your problem.', nextId: 'confirm_name' },
                     { text: 'Take the file. Might be useful.', nextId: 'confirm_name', itemGained: 'mccoy_file' }
                 ]
             },
-            // --- END OF NEW OPENING SEQUENCE ---
             {
                 id: 'confirm_name',
                 text: 'The fog in your head has cleared, just a little. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
                 choices: [
-                    { text: 'Yeah. That\'s me. J. Slate.', nextId: 'dame_walks_in' },
-                    { text: 'No. That name is a ghost.', nextId: 'dame_walks_in', action: 'changeName' }
+                    { text: 'Yeah. That\'s me. J. Slate.', nextId: 'office_quiet' },
+                    { text: 'No. That name is a ghost.', nextId: 'office_quiet', action: 'changeName' }
+                ]
+            },
+            // --- NEW DAME ENTRANCE SEQUENCE ---
+            {
+                id: 'office_quiet',
+                text: 'The name feels... adequate. For now. The silence of the office returns, broken only by the drumming of the rain. The city outside breathes, a slow, mechanical rhythm. You\'re a man in a box, waiting for the phone to ring, for a ghost to walk through the door. You\'re waiting for trouble. It\'s the only thing that ever pays a visit.',
+                choices: [
+                    { text: 'And right on cue, you hear a knock.', nextId: 'the_knock' }
                 ]
             },
             {
-                id: 'dame_walks_in', text: 'Just as you settle into your own skin—or what\'s left of it—the door creaks open. A silhouette is framed by the dim hallway light, a figure that seems to soak up the shadows. She looks like she was carved from trouble itself, all sharp angles and dangerous curves. "I need you to find someone," she says, her voice like smoke and cheap whiskey, a sound that promises late nights and bad decisions.',
+                id: 'the_knock',
+                text: 'It\'s not the heavy-fisted thump of a cop or the impatient rap of a landlord. It\'s a light, hesitant sound. Three quick taps against the frosted glass, a sound almost lost in the storm. It could be nothing. It\'s never nothing.',
                 choices: [
-                    { text: '"Cases cost money, dollface. Show me the green."', nextId: 'ask_for_money' },
-                    { text: '"Who\'s the unlucky soul?"', nextId: 'charm_her' },
+                    { text: 'Yell "Come in."', nextId: 'her_entrance' },
+                    { text: 'Stay quiet. See what happens.', nextId: 'knock_again' },
+                    { text: 'Move to the desk, resting a hand on your revolver.', nextId: 'her_entrance_prepared', effect: { grit: 1 } }
+                ]
+            },
+            {
+                id: 'knock_again',
+                text: 'Silence stretches. The only sound is the rain. You hold your breath. Then, the knock comes again, a little more insistent this time. The doorknob begins to turn slowly.',
+                choices: [
+                    { text: '...', nextId: 'her_entrance' }
+                ]
+            },
+            {
+                id: 'her_entrance',
+                text: 'The door creaks open. The silhouette framed by the dim hallway light seems to drink the shadows. She closes a black umbrella, shaking off the city\'s tears, and steps inside. She\'s wearing a dark trench coat that looks too expensive for this part of town, and a hat with a wide brim that hides her eyes. She closes the door behind her, shutting out the world. The only thing you can see clearly is the sharp, determined line of her red lipstick.',
+                choices: [
+                    { text: 'You wait for her to make the first move.', nextId: 'her_plea' }
+                ]
+            },
+            {
+                id: 'her_entrance_prepared',
+                text: 'You move silently to your chair, the worn leather barely making a sound. Your fingers brush against the cool, checkered grip of the Colt. The weight is familiar, comforting. The door creaks open. A dame in a dark trench coat and a wide-brimmed hat steps inside, closing the door behind her. She can\'t see your hand below the desk. It gives you an edge. You might need it.',
+                choices: [
+                    { text: 'You let the silence hang in the air.', nextId: 'her_plea' }
+                ]
+            },
+            {
+                id: 'her_plea',
+                text: 'She doesn\'t move to take off her coat. She stands there, a phantom in your dusty office. When she finally speaks, her voice is like smoke and whiskey, a sound that promises late nights and bad decisions. \n\n"Are you the man they call Slate?" she asks. "I need you to find someone."',
+                choices: [
+                    { text: '"Depends who\'s asking. And who\'s paying."', nextId: 'ask_for_money' },
+                    { text: '"I find a lot of things. People, trouble, the bottom of a bottle. Be specific."', nextId: 'charm_her' },
                     { text: 'Lean back and stay silent. Let her do the talking.', nextId: 'stay_silent' }
                 ]
             },
+            // --- END OF NEW DAME ENTRANCE ---
             { id: 'ask_for_money', text: '"I wouldn\'t be here if I was broke," she says, her voice dropping a note. She slides a thick envelope across your desk. It lands with a soft, promising thud. "Half now, half when you find him." You feel the heft of it through the wood. This could solve a lot of problems... or start a hell of a lot more.', choices: [{ text: 'Take the case.', nextId: 'case_accepted', effect: { smarts: 1 }, itemGained: 'cash' }, { text: 'Push the envelope back. "Not my kind of trouble."', nextId: 'case_refused' }] },
             { id: 'charm_her', text: 'A faint, knowing smile plays on her lips, but it doesn\'t reach her eyes. "He\'s not unlucky. He\'s my husband." She slides a thick envelope across the desk. The gesture is smooth, practiced. "And he\'s in over his head. Way over. His name is Eddie \'The Weasel\' Malone." The name fits a man who would marry a woman like this.', choices: [{ text: '"Eddie the Weasel... I know the name. I\'ll find him."', nextId: 'case_accepted', effect: { charm: 1 }, itemGained: 'cash' }] },
             { id: 'stay_silent', text: 'Your silence hangs in the air, heavy and thick as cigar smoke. She doesn\'t flinch, just watches you with eyes that have seen too much. "Playing hard to get won\'t work. I need the best, and people say that\'s you, even on your worst days." She slides the envelope forward. "His name is Eddie Malone. Find him. And don\'t disappoint me."', choices: [{ text: 'Nod and take the money.', nextId: 'case_accepted', effect: { grit: 1 }, itemGained: 'cash' }] },
