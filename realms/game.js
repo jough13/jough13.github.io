@@ -2428,7 +2428,14 @@ function handleEncounter() {
                 break;
                 case 'A': // Artifact
             if (!gameState.narrativeFlags[specificEncounterKey]) {
-                const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key));
+                const specialArtifactKeys = [
+    "ART_ANCIENT_BLADE", "ART_HEARTSTONE", "ART_TOME_MIGHT",
+    "ART_TOME_WITS", "ART_TOME_RESOLVE"
+];
+const undiscoveredArtifacts = ARTIFACTS.filter(art => 
+    !gameState.collectedArtifacts.includes(art.key) && 
+    !specialArtifactKeys.includes(art.key)
+);
                 if (undiscoveredArtifacts.length > 0) {
                     const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
                     gameState.collectedArtifacts.push(foundArtifact.key);
@@ -3356,7 +3363,7 @@ function startGame() {
         narrativeFlags: {},
         encounteredNPCs: {},
         logMessages: [],
-        maxLogMessages: 50,
+        maxLogMessages: MAX_LOG_MESSAGES,
         
         // Seeding
         initialGameSeed: Date.now() % 2147483647
