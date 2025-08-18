@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 1.0 | Last Updated: August 17, 2025
+            Version 1.1 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -810,10 +810,16 @@
             {
                 id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
+                    { text: 'Ask the bartender what the word on the street is.', nextId: 'sully_rumors', hideIfState: 'heardSullyRumors', setState: 'heardSullyRumors' },
                     { text: 'Order a drink and observe.', nextId: 'bartender_observe', effect: { smarts: 1 } },
                     { text: 'Flash a bill and ask about Eddie.', nextId: 'bartender_charmed' },
                     { text: 'Walk to the bar and lean in close. "Eddie Malone. Where is he?"', nextId: 'bartender_intimidated' }
                 ]
+            },
+            {
+                id: 'sully_rumors',
+                text: 'Sully stops polishing his glass and leans in, his voice a low grumble. "Street\'s got a fever," he rasps. "People hearing things. Music from the storm drains. Whispers on dead data channels. Some say they see men in yellow coats down by the docks when the fog is thick. They leave strange signs, spirals and such." He shrugs, picking up his rag again. "Probably just the new synth-dope doing the rounds. But it\'s got people spooked. Bad for business."',
+                choices: [ { text: 'Good to know.', nextId: 'downtown_bars' } ]
             },
             { id: 'bartender_observe', text: 'You order a whiskey. It tastes like betrayal and varnish. Nursing the drink, you let your eyes adjust to the gloom and you listen. Two lowlifes in a booth are mumbling about Eddie getting cleaned out in the backroom poker game last night, run by a guy named "Fingers." They mention Eddie was flashing a weird, silver-inlaid poker chip before he lost it all, talking big about his new score.', choices: [{ text: 'You\'ve heard enough. Approach the back room.', nextId: 'approach_poker_game' }] },
             { id: 'bartender_charmed', text: 'Sully’s eyes flick to the bill, then to your face, then back to the bill. He pockets it smoothly, a greasy magician. "Eddie? Yeah, he was in. Flashing a real pretty poker chip, silver as a new dime. Lost his shirt in the back to Fingers. A chrome-knuckled gorilla dragged him out after. Bad scene." He nods towards a heavy, scarred door in the back.', choices: [{ text: 'Thank him and head for the door.', nextId: 'approach_poker_game' }] },
@@ -876,10 +882,16 @@
             {
                 id: 'police_precinct', text: 'The precinct smells of bleach, bureaucracy, and bad coffee. It\'s a symphony of ringing phones and clacking typewriters. Your old partner, Detective Mulligan, is drowning in a sea of paperwork under the harsh fluorescent lights. He looks up as you approach, his face a landscape of exhaustion. Every line on it tells a story of a case that went cold or a witness that disappeared. He looks like a man who has been losing a war for a very long time.',
                 choices: [
+                    { text: '"Forget the case for a minute. Let me buy you a drink."', nextId: 'drink_with_mulligan', hideIfState: 'hadDrinkWithMulligan', setState: 'hadDrinkWithMulligan' },
                     { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative'},
                     { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative'},
                     { text: '"I need the file on Eddie Malone."', nextId: 'mulligan_uncooperative' }
                 ]
+            },
+            {
+                id: 'drink_with_mulligan',
+                text: 'Mulligan looks surprised, then a rare, tired smile touches his lips. He pulls a bottle of something cheap and corrosive from his bottom drawer, pouring two fingers into coffee-stained mugs. "To the old days," he says, his voice thick with nostalgia. "Remember that synth-ganger case down in the tubes? You, me, and Finney. He was always the smart one. Said the city had a sickness, right in its bones. I thought he was just being poetic." He downs the drink in one go. "Turns out he was just paying attention." The moment passes, and the weight of the precinct settles back on his shoulders.',
+                choices: [ { text: 'Back to business.', nextId: 'police_precinct' } ]
             },
             {
                 id: 'precinct_dead_end',
