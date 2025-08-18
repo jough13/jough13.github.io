@@ -1631,7 +1631,6 @@ function resolveStatUpgrade(statToUpgrade, cost) {
         addLogMessage("You lack the resources for this.", "puzzle-fail");
     }
 }
-
 /**
  * Opens the stat upgrade menu, calculating and displaying the costs.
  */
@@ -1720,7 +1719,6 @@ function resolveStatUpgrade(statToUpgrade, cost) {
     decisionArea.style.display = 'block';
     updateUIAccentColors();
     nameInput.focus();
-}
 
 /**
  * Opens the rune attunement menu, showing collected runes and their active status.
