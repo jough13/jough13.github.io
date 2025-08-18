@@ -621,7 +621,7 @@
         
         <footer>
             <p>
-                Posh Salon Service Matrix v2.16 | Last Updated: August 18, 2025 | 
+                Posh Salon Service Matrix v2.17 | Last Updated: August 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -1124,7 +1124,7 @@ const handlePrint = () => {
                         renderTableFromData();
                     });
                 };
-                deleteBtn.addEventListener('click', handleDelete);
+             deleteBtn.addEventListener('mousedown', handleDelete);
                 const handleSave = () => {
                     const newText = editInput.value.trim();
                     if (newText === '') {
@@ -1173,7 +1173,7 @@ const handlePrint = () => {
                         renderTableFromData();
                     });
                 };
-                deleteBtn.addEventListener('click', handleDelete);
+            deleteBtn.addEventListener('mousedown', handleDelete);
 
                 const handleSave = () => {
                     const newText = editInput.value.trim();
