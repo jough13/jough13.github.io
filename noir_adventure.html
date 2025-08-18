@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 0.6 | Last Updated: August 17, 2025
+            Version 0.9 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -449,21 +449,21 @@
         const story = [
             {
                 id: 'start',
-                text: 'Consciousness returns like a slow tide coming in over dirty sand. First, the pain—a dull, throbbing bass drum behind your eyes. Then, the smell of stale whiskey and rain-soaked wool.',
+                text: 'The return to the land of the living is never a gentle affair. It’s a hostile takeover. Consciousness crashes back into your skull like a slow tide of battery acid and regret, carrying the flotsam of a forgotten night. First, the pain: a single, predatory bass drum kicking behind your right eye, threatening to split your head like a ripe melon. Then, the smell: stale bourbon, rain-soaked wool, and the faint, coppery tang of your own blood.',
                 choices: [
                     { text: 'Lift your head from the desk.', nextId: 'desk_view' }
                 ]
             },
             {
                 id: 'desk_view',
-                text: 'You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures. In your immediate view: a half-empty bottle of bourbon, a heavy-looking revolver, a single, impossibly white seashell, and a soggy matchbook from a place called \'The Electric Sheep\'.\n\nFrom somewhere deep in the building, or maybe deep in your own skull, you feel a low, resonant hum.',
+                text: 'With a groan that seems to rise up from the city\'s iron foundations, you peel your cheek off the scarred surface of your desk. The wood grain, a permanent fixture in your memory, swims into focus. For a moment, you could swear the swirling lines form a map of a place you’ve never been. Your bleary eyes take inventory of the immediate disaster area: a half-empty bottle of bourbon that looks more like a headstone, a heavy revolver that feels more like an anchor, a single, impossibly white seashell, and a soggy matchbook from a place called \'The Electric Sheep\'.\n\nAnd then there\'s the hum. A low, resonant thrumming that vibrates not in your ears, but in your teeth, in the cheap fillings of a life spent chewing on rocks.',
                 choices: [
                     { text: 'Push yourself to your feet.', nextId: 'waking_up' }
                 ]
             },
             {
                 id: 'waking_up',
-                text: 'You push yourself up, your chair groaning in protest. The room swims for a moment, a nauseating carousel of shadows and dim light. The pain in your head blooms into a full-blown migraine, a cacophony of competing thoughts.',
+                text: 'You shove yourself up from the chair, a maneuver that sends a jolt of agony through your spine and makes the cheap furniture groan in protest. The room performs a slow, nauseating pirouette around you—a carousel of shadows and the dim, accusatory light filtering through the grime on your window. The bass drum in your head has been joined by a full orchestra of pain, and the conductor is a sadist with a grudge.',
                 choices: [
                     { text: 'Try to silence the noise.', nextId: 'internal_cacophony' }
                 ]
@@ -508,7 +508,6 @@
                     { text: 'The vision is gone, but the feeling remains. Try to follow it.', nextId: 'follow_the_hum' }
                 ]
             },
-            // --- NEW "EMBRACE THE WEIRD" SIDE QUEST ---
             {
                 id: 'follow_the_hum',
                 text: 'You open the door to your office and step into the hall. The hum is stronger out here, pulling you like a current. Down the stairs, past the sleeping vagrants, and out into the rain-slicked street. The city\'s noise tries to drown it out, but the hum is underneath everything. It\'s the city\'s true voice. It seems to be leading you toward the old broadcasting district.',
@@ -553,11 +552,10 @@
                 id: 'ghost_run_reflection_return',
                 text: 'You find yourself back on the Ghost Run, the strange experience at the radio tower still buzzing in your mind. The case is hitting a wall, and you still need a new angle.',
                 choices: [
-                    { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'police_precinct' },
-                    { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'investigate_sterling' }
+                    { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'travel_to_precinct' },
+                    { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'travel_to_sterling' }
                 ]
             },
-            // --- END SIDE QUEST ---
             {
                 id: 'office_ambience',
                 text: 'You push the strange vision (or memory?) to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
@@ -587,7 +585,7 @@
             },
             {
                 id: 'examine_seashell',
-                text: 'You pick up the seashell. It\'s smooth, cool, and impossibly perfect, a stark white against the grime of your office. You hold it to your ear. You expect to hear the ocean. Instead, you hear a faint, distorted snippet of music, like a radio playing from very, very far away. A lonely saxophone. The sound vanishes as quickly as it came.',
+                text: 'You pick up the seashell. It\'s smooth, cool, and impossibly perfect, a stark white against the grime of your office. You hold it to your ear. You expect to hear the ocean. Instead, you hear a faint, distorted snippet of music, like a radio playing from very, very far away. A lonely saxophone wailing a melody that seems to have too many notes. It sounds like heartbreak and static. The sound vanishes as quickly as it came, leaving only the memory of its sadness.',
                 choices: [
                     { text: 'Put the shell down and look around again.', nextId: 'office_ambience' }
                 ]
@@ -681,8 +679,13 @@
             { id: 'charm_her', text: 'A faint, knowing smile plays on her lips, but it doesn\'t reach her eyes. "He\'s not unlucky. He\'s my husband." She slides a thick envelope across the desk. The gesture is smooth, practiced. "And he\'s in over his head. Way over. His name is Eddie \'The Weasel\' Malone." The name fits a man who would marry a woman like this.', choices: [{ text: '"Eddie the Weasel... I know the name. I\'ll find him."', nextId: 'case_accepted', effect: { charm: 1 }, itemGained: 'cash' }] },
             { id: 'stay_silent', text: 'Your silence hangs in the air, heavy and thick as cigar smoke. She doesn\'t flinch, just watches you with eyes that have seen too much. "Playing hard to get won\'t work. I need the best, and people say that\'s you, even on your worst days." She slides the envelope forward. "His name is Eddie Malone. Find him. And don\'t disappoint me."', choices: [{ text: 'Nod and take the money.', nextId: 'case_accepted', effect: { grit: 1 }, itemGained: 'cash' }] },
             {
-                id: 'case_accepted', text: 'You pocket the envelope. The rain seems to beat a little harder now, like a drummer counting down to a funeral. You have a client, a pocketful of cash that feels both too heavy and not heavy enough, and a name. The city awaits, a concrete maze full of rats and traps. \n\nWhere do you start looking for Eddie the Weasel?',
-                choices: [{ text: 'Head to the grimy downtown bars.', nextId: 'downtown_bars' }, { text: 'Check the police precinct for any recent reports.', nextId: 'police_precinct' }]
+                id: 'case_accepted',
+                text: 'You pocket the envelope. The rain seems to beat a little harder now, like a drummer counting down to a funeral. You have a client, a pocketful of cash that feels both too heavy and not heavy enough, and a name. The city awaits, a concrete maze full of rats and traps. \n\nWhere do you start looking for Eddie the Weasel?',
+                choices: [
+                    { text: 'His wife must have given you an address. Check out his apartment first.', nextId: 'eddies_apartment_exterior'},
+                    { text: 'Head to the grimy downtown bars.', nextId: 'travel_to_bars' },
+                    { text: 'Check the police precinct for any recent reports.', nextId: 'travel_to_precinct' }
+                ]
             },
             {
                 id: 'case_refused',
@@ -721,6 +724,90 @@
                 ]
             },
             {
+                id: 'travel_to_bars',
+                text: 'You pop the collar on your coat, a pointless gesture against a rain that knows how to find every seam, and step into the neon bleed of the street. The city is a beautiful lie tonight, all shimmering reflections on wet asphalt, hiding the rot underneath. An automated cab, its chassis scarred from a thousand forgotten fares, slides to the curb. Inside, the air is thick with the ghosts of cheap perfume and cheaper cigars. As it rattles through the concrete canyons, you watch the city’s sad parade. A couple kissing under a glitching hoload for a memory-wipe service. An android, a decommissioned labor model, standing perfectly still, its face tilted to the sky as if trying to drown itself one drop at a time. A man on a corner, his eyes too wide, screaming scripture about a King who wears a yellow mask and a city called Carcosa. The usual Tuesday night. The cab shudders to a halt in front of The Rusty Mug. The sign flickers, promising little and delivering less.',
+                choices: [ { text: 'Push open the door to the dive.', nextId: 'downtown_bars' } ]
+            },
+            {
+                id: 'travel_to_precinct',
+                text: 'The journey to the precinct is a descent into the city\'s concrete heart. The buildings press in, taller and more severe, blocking out what little light dares to pierce the smog. The faces you pass are grim, etched with the quiet desperation of life in a city that\'s forgotten their names. You pass a memorial for a recent corporate war, its eternal flame flickering on a datastream, already forgotten. The precinct building looms ahead, a brutalist block of granite that promises cold coffee and colder comfort.',
+                choices: [ { text: 'Go inside. Time to face the ghosts.', nextId: 'police_precinct' } ]
+            },
+            {
+                id: 'travel_to_sterling',
+                text: 'Your cab ascends into the upper levels of the city, leaving the grime and the rain-slicked streets below. Up here, the air is clean, filtered. The architecture is all chrome and glass, sterile and arrogant. Advertising drones whisper promises of a better life in your ear as they float past. You can\'t shake the feeling that you don\'t belong here, that you\'re a virus entering a clean room. The Sterling Automata tower pierces the clouds like a silver needle.',
+                choices: [ { text: 'This is the place.', nextId: 'sterling_lobby_ambience' } ]
+            },
+            {
+                id: 'sterling_lobby_ambience',
+                text: 'Inside, the chaotic noise of the city is replaced by a cool, quiet hum—the same hum from your office, but purer, stronger. Polished white floors reflect the cold, recessed lighting. The only color comes from a massive, slow-moving art installation on the far wall: thousands of iridescent seashells, just like the one on your desk, shifting to form new, impossible patterns.',
+                choices: [ { text: 'Approach the reception desk.', nextId: 'investigate_sterling' } ]
+            },
+            {
+                id: 'eddies_apartment_exterior',
+                text: 'The address Aris Thorne gave you leads to a crumbling tenement in the Lower East Side, a concrete tombstone where dreams come to die. The lobby smells of boiled cabbage and damp decay. Eddie Malone lived on the third floor, Apartment 3B. The superintendent, a greasy man with eyes that have seen too much and said too little, watches you from his doorway as you head for the stairs.',
+                choices: [
+                    { text: 'Head up to Apartment 3B.', nextId: 'eddies_apartment_door' }
+                ]
+            },
+            {
+                id: 'eddies_apartment_door',
+                text: 'The door to 3B is scarred and dented, but the lock is a surprise: a high-tech mag-lock, military grade. It\'s wildly out of place in a dump like this. A small LED on the panel is dark. No power.',
+                choices: [
+                    { text: 'Force the door.', nextId: 'apartment_inside', requires: { grit: 7 } },
+                    { text: 'Try to hotwire the panel.', nextId: 'apartment_inside', requires: { smarts: 7 } },
+                    { text: 'Go talk to the superintendent.', nextId: 'talk_to_super' },
+                    { text: 'This is a dead end for now. Try the bars.', nextId: 'travel_to_bars' }
+                ]
+            },
+            {
+                id: 'talk_to_super',
+                text: 'You go back down and approach the superintendent. He squints at you, wiping his hands on an oily rag. "What do you want? Cops already tossed the place. Said the guy did a runner."',
+                choices: [
+                    { text: 'Slip him some cash. "Maybe they missed something. You have a key?"', nextId: 'apartment_inside', requiresItem: 'cash', itemLost: 'cash', effect: { charm: 1 } },
+                    { text: '"I\'m not a cop. I\'m the guy who finds out who called them."', nextId: 'apartment_inside', requires: { charm: 7 } },
+                    { text: 'Glare at him. "Give me the key."', nextId: 'super_hostile' }
+                ]
+            },
+            {
+                id: 'super_hostile',
+                text: 'He scoffs, revealing a row of yellowed teeth. "Get lost, pal, before you find more trouble than you can handle." He slams his door, the sound echoing in the decrepit hall. That approach is dead.',
+                choices: [ { text: 'Head back upstairs.', nextId: 'eddies_apartment_door' } ]
+            },
+            {
+                id: 'apartment_inside',
+                text: 'You get the door open and step inside. The apartment is the chaos of a paranoid mind. The floor is covered in technical manuals and discarded wiring. The walls are covered in frantic notes and what looks like circuit diagrams, all connected by strings of red yarn. The air hums with the faint scent of ozone and stale coffee.',
+                choices: [
+                    { text: 'Examine the notes on the wall.', nextId: 'apartment_examine_notes' },
+                    { text: 'Check the half-assembled device on the workbench.', nextId: 'apartment_examine_device' },
+                    { text: 'Look through the trash.', nextId: 'apartment_examine_trash' },
+                    { text: 'You\'ve seen enough. Get out of here.', nextId: 'leave_apartment' }
+                ]
+            },
+            {
+                id: 'apartment_examine_notes',
+                text: 'The notes are a mix of engineering schematics and terrified ramblings. Most of it is nonsense, but you see a few phrases circled over and over in red ink: "THE SONG IS A CAGE," "JAMISON IS THE KEY," and "CARCOSA SLEEPS." One diagram shows a device designed to create a localized EMP, with a note: "To block the hum?"',
+                choices: [ { text: 'Step back from the wall.', nextId: 'apartment_inside' } ]
+            },
+            {
+                id: 'apartment_examine_device',
+                text: 'It\'s a jury-rigged mess of capacitors and antennae on a workbench, clearly the EMP device from the diagrams. It looks like it\'s missing a power source. Taped to the side is a crumpled receipt from a back-alley cybernetics shop in the industrial canal district. The name "Finney" is scribbled on the back.',
+                choices: [ { text: 'Step away from the device.', nextId: 'apartment_inside' } ]
+            },
+            {
+                id: 'apartment_examine_trash',
+                text: 'Mostly empty synth-caff containers and nutrient paste wrappers. At the bottom, you find a crumpled, formal-looking letter. It\'s a termination notice from Sterling Automata for Dr. Alistair Thorne, citing "intellectual property theft." So the dame was telling the truth. He wasn\'t just a dockworker.',
+                choices: [ { text: 'Stop digging through the garbage.', nextId: 'apartment_inside' } ]
+            },
+            {
+                id: 'leave_apartment',
+                text: 'You\'ve learned what you can from the ravings of a scared man. You slip back out of the apartment, the superintendent\'s eyes following you all the way to the street. You have more pieces of the puzzle, but the picture they\'re making is getting uglier by the minute.',
+                choices: [
+                    { text: 'Time to hit the bars.', nextId: 'travel_to_bars' },
+                    { text: 'Maybe Mulligan knows more.', nextId: 'travel_to_precinct' }
+                ]
+            },
+            {
                 id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
                     { text: 'Order a drink and observe.', nextId: 'bartender_observe', effect: { smarts: 1 } },
@@ -745,9 +832,15 @@
                 text: 'You\'re on the Ghost Run, a forgotten stretch of elevated railway that cuts through the oldest part of the city. Down below, the world is a blur of neon and noise, but up here... it\'s quiet. The rain has stopped, leaving the tracks to glisten under the moon. This is a liminal space, a place between the past and the future where you come to think. The case is hitting a wall, a familiar feeling. Banging your head against brick isn\'t working. You need a new angle.',
                 choices: [
                     { text: 'Just for a moment, you let yourself remember.', nextId: 'memory_of_finney', hideIfState: 'rememberedFinney', setState: 'rememberedFinney' },
-                    { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'police_precinct' },
-                    { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'investigate_sterling' }
+                    { text: 'Look down at the street below.', nextId: 'ghost_run_observe', hideIfState: 'seenYellowSign', setState: 'seenYellowSign' },
+                    { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'travel_to_precinct' },
+                    { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'travel_to_sterling' }
                 ]
+            },
+            {
+                id: 'ghost_run_observe',
+                text: 'You lean against the cold, wet railing and watch the city move beneath you. The headlights are rivers of light, flowing in predictable patterns. But then you see it. A man standing on a street corner, perfectly still under the downpour, not even flinching as the rain soaks him. He\'s looking up, right at you. You can\'t make out his face, but he raises a hand and makes a slow, deliberate gesture - a spiral with his finger. The Yellow Sign. A cab screeches to a halt, blocking your view. When it moves, the man is gone.',
+                choices: [ { text: 'A chill runs down your spine. Time to move on.', nextId: 'ghost_run_reflection' } ]
             },
             {
                 id: 'memory_of_finney',
@@ -766,16 +859,22 @@
                 ]
             },
             { id: 'fingers_hostile', text: 'Fingers taps his chrome digits on the table. A discordant melody in the smoky room. "Nerve. I\'ll give you that." He nods to the bouncer, a silent command. "Show our guest out. The hard way." You\'re hauled out and tossed back into the alley, this time with a final, unambiguous warning to stay away from the Mug.', choices: [{ text: 'This lead is dead...', nextId: 'ghost_run_reflection' }] },
-            { id: 'fingers_cooperative', text: 'Fingers is intrigued. He pulls a small, milky white object from his vest pocket and tosses it on the table. It looks less like a poker chip and more like a piece of strange technology, with faint circuits glowing under its surface.\n\n"This thing? It\'s why I let the weasel play. He was terrified, said he lifted it from his new job at the Sterling Automata loading docks. Said it was his ticket out of this city. After he lost this, he ran like the hounds of hell were on his heels."', choices: [{ text: 'You\'ve got a new lead. Leave the bar.', nextId: 'poker_game_success', itemGained: 'data_chip' }] },
+            { id: 'fingers_cooperative', text: 'Fingers is intrigued. He pulls a small, milky white object from his vest pocket and tosses it on the table. It looks less like a poker chip and more like a piece of strange technology, with faint circuits glowing under its surface.\n\n"This thing? It\'s why I let the weasel play. He was terrified, said he lifted it from his new job at the Sterling Automata loading docks. Said it was his ticket out of this city. After he lost this, he ran like the hounds of hell were on his heels."', choices: [{ text: 'You\'ve got a new lead.', nextId: 'poker_game_success', itemGained: 'data_chip' }] },
             {
-                id: 'poker_game_success', text: 'You leave the smoke-filled room with a new piece of the puzzle. Eddie wasn\'t just a deadbeat; he was a thief who stole from the biggest, meanest monster in the city: Sterling Automata. The name hangs in the air like a death sentence. All roads in this town, it seems, eventually lead to the waterfront.',
+                id: 'poker_game_success',
+                text: 'You leave the smoke-filled room with a new piece of the puzzle. Eddie wasn\'t just a deadbeat; he was a thief who stole from the biggest, meanest monster in the city: Sterling Automata.',
+                choices: [ { text: 'Time to leave the bar.', nextId: 'leaving_the_mug' } ]
+            },
+            {
+                id: 'leaving_the_mug',
+                text: 'You slip the strange, milky chip into your pocket. It feels warm to the touch. As you leave the back room, Sully the bartender catches your eye. He gives you a slow, almost imperceptible shake of his head, a silent warning. You\'re in deep now, and the sharks can smell the blood in the water. The rain on the street seems colder than it was before.',
                 choices: [
                     { text: 'Head directly to the Sterling Automata docks.', nextId: 'sterling_docks' },
-                    { text: 'I have an address for their corporate HQ. Maybe I\'ll try there first.', nextId: 'investigate_sterling' }
+                    { text: 'I have an address for their corporate HQ. Maybe I\'ll try there first.', nextId: 'travel_to_sterling' }
                 ]
             },
             {
-                id: 'police_precinct', text: 'The precinct smells of bleach, bureaucracy, and bad coffee. It\'s a symphony of ringing phones and clacking typewriters. Your old partner, Detective Mulligan, is drowning in a sea of paperwork under the harsh fluorescent lights. He looks up as you approach, a tired, haunted expression on his face. "For the love of... Slate. Don\'t tell me you\'re here to make my life harder. It\'s already hard enough."',
+                id: 'police_precinct', text: 'The precinct smells of bleach, bureaucracy, and bad coffee. It\'s a symphony of ringing phones and clacking typewriters. Your old partner, Detective Mulligan, is drowning in a sea of paperwork under the harsh fluorescent lights. He looks up as you approach, his face a landscape of exhaustion. Every line on it tells a story of a case that went cold or a witness that disappeared. He looks like a man who has been losing a war for a very long time.',
                 choices: [
                     { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative'},
                     { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative'},
@@ -786,7 +885,7 @@
                 id: 'precinct_dead_end',
                 text: 'Mulligan\'s glare tells you everything you need to know. The cops are a dead end. Whether they\'re scared, bought off, or just plain useless, you won\'t find any help here. You\'re on your own in this mess, and the walls of the city feel like they\'re closing in.',
                 choices: [
-                    { text: 'The law is a joke. Time to check out the corporate angle.', nextId: 'investigate_sterling' }
+                    { text: 'The law is a joke. Time to check out the corporate angle.', nextId: 'travel_to_sterling' }
                 ]
             },
             { id: 'mulligan_uncooperative', text: '"You walk in here, flashing that P.I. license like it\'s a get-out-of-jail-free card," Mulligan snarls, his voice low and dangerous. "I\'m not sticking my neck out for you. Not again. Some doors you shouldn\'t open, Slate. This one leads to a long, empty hallway with no exit. The door is that way. Use it before I forget we used to be friends."', choices: [{ text: 'A dead end. This was a waste of time.', nextId: 'precinct_dead_end' }] },
@@ -803,9 +902,9 @@
                 text: 'Mulligan\'s eyes widen as you slide the file onto his desk. "A song? Gods, that\'s what Finney said about the others. He called it the \'digital ghost.\' Said Sterling wasn\'t just building machines, they were composing with souls. I thought he was cracking up." He looks at you, a new respect in his tired eyes. "This is big, Slate. Bigger than both of us."',
                 choices: [ { text: 'So what is Sterling, exactly?', nextId: 'ask_about_sterling' } ]
             },
-            { id: 'ask_about_sterling', text: '"The one and only," Mulligan says, rubbing his bloodshot eyes. "They\'re building some kind of high-tech utopia down at the docks, and they don\'t care who they push out of the way to do it. Their security is all ex-military, and their lawyers are sharks in thousand-dollar suits. If Eddie crossed them... he\'s in a world of trouble you can\'t handle. Be careful, Slate. This isn\'t like the old days."', choices: [{ text: 'Time to pay a visit to Sterling Automata.', nextId: 'investigate_sterling' }] },
+            { id: 'ask_about_sterling', text: '"The one and only," Mulligan says, rubbing his bloodshot eyes. "They\'re building some kind of high-tech utopia down at the docks, and they don\'t care who they push out of the way to do it. Their security is all ex-military, and their lawyers are sharks in thousand-dollar suits. If Eddie crossed them... he\'s in a world of trouble you can\'t handle. Be careful, Slate. This isn\'t like the old days."', choices: [{ text: 'Time to pay a visit to Sterling Automata.', nextId: 'travel_to_sterling' }] },
             {
-                id: 'investigate_sterling', text: 'The Sterling Automata building is a sterile monument of glass and steel that stabs at the perpetually grey sky. It doesn\'t belong in this decaying city; it looks like it landed here from the future. Inside, a cool, quiet hum replaces the chaotic sound of the city. An android receptionist with an unnervingly perfect smile watches you approach.\n\n"Welcome to Sterling Automata," it says, its voice a pleasant, synthesized melody that makes your teeth ache. "How may I direct you?"',
+                id: 'investigate_sterling', text: 'An android receptionist with an unnervingly perfect smile watches you approach.\n\n"Welcome to Sterling Automata," it says, its voice a pleasant, synthesized melody that makes your teeth ache. "How may I direct you?"',
                 choices: [
                     { text: '"I\'m an insurance investigator here about a... workplace accident involving Eddie Malone."', nextId: 'reception_success', requires: { smarts: 9 } },
                     { text: '"I have a meeting with your head of acquisitions."', nextId: 'reception_success', requires: { charm: 9 } },
