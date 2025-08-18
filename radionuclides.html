@@ -285,7 +285,7 @@
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '2.8.2';
+        const VERSION = '2.8.3';
         const LAST_UPDATED = 'August 18, 2025';
 
         /**
@@ -985,11 +985,16 @@
         // These components represent the main content areas of the application.
         //==============================================================================
 
+
+
+
+
 /**
  * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
  * @param {object} props - Contains data and handlers for the home page.
  */
-const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
+
+const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
     
     // Find the full nuclide objects for our favorite symbols
     const favoriteNuclides = React.useMemo(() => 
@@ -1002,15 +1007,6 @@ const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, hand
         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [searchHistory, radionuclides]
     );
-
-    // If a search result exists, display the detailed card immediately.
-    if (result) {
-        return (
-            <div className="p-4">
-                <NuclideCard nuclide={result} />
-            </div>
-        );
-    }
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -1081,6 +1077,8 @@ const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, hand
         </div>
     );
 };
+
+
 
 
 
@@ -1670,369 +1668,303 @@ const HomePage = ({ errorMessage, result, randomSuggestions, searchHistory, hand
          * @param {{radionuclides: Array<object>}} props - The full list of radionuclide data.
          */
 
-        const DecayCalculator = ({ radionuclides }) => {
 
-            // --- STATE & CONSTANTS ---
 
-            // State for UI controls and inputs
-            const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-            const [calculationMode, setCalculationMode] = React.useState('findRemaining'); // 'findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'
-            const [initialActivity, setInitialActivity] = React.useState('100');
-            const [remainingActivity, setRemainingActivity] = React.useState('');
-            const [timeElapsed, setTimeElapsed] = React.useState('1');
-            const [timeUnit, setTimeUnit] = React.useState('days');
+
+const DecayCalculator = ({ radionuclides }) => {
+
+    // --- STATE & CONSTANTS ---
+    const [selectedNuclide, setSelectedNuclide] = React.useState(null);
+    const [calculationMode, setCalculationMode] = React.useState('findRemaining');
+    const [initialActivity, setInitialActivity] = React.useState('100');
+    const [initialDaughterActivity, setInitialDaughterActivity] = React.useState('0');
+    const [remainingActivity, setRemainingActivity] = React.useState('');
+    const [timeElapsed, setTimeElapsed] = React.useState('1');
+    const [timeUnit, setTimeUnit] = React.useState('days');
+    
+    const [result, setResult] = React.useState(null);
+    const [chartData, setChartData] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years'];
+
+    const sortedRadionuclides = React.useMemo(() => {
+        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
+        return [...radionuclides]
+            .filter(r => r.halfLife !== 'Stable')
+            .sort((a, b) => {
+                const orderA = commonalityOrder[a.commonality] || 0;
+                const orderB = commonalityOrder[b.commonality] || 0;
+                if (orderA !== orderB) {
+                    return orderB - orderA;
+                }
+                return a.name.localeCompare(b.name);
+            });
+    }, [radionuclides]);
+
+    // --- THIS IS THE KEY CHANGE FOR FIX #1 ---
+    // It now automatically sets the time unit and a default elapsed time based on the nuclide's half-life.
+    const handleNuclideSelect = React.useCallback((symbol) => {
+        const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol);
+        if (nuclideToSet) {
+            setSelectedNuclide(nuclideToSet);
             
-            // State for calculation outputs
-
-            const [result, setResult] = React.useState(null);
-            const [chartData, setChartData] = React.useState(null);
-            const [error, setError] = React.useState('');
-
-            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years'];
-
-            /**
-             * Memoized list of radionuclides, filtering out stable ones and sorting them.
-             * Sorting is done first by commonality (Common > Moderate > Rare), then alphabetically by name.
-             * `useMemo` prevents re-sorting on every render.
-             */
-
-            const sortedRadionuclides = React.useMemo(() => {
-                const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
-                return [...radionuclides]
-                    .filter(r => r.halfLife !== 'Stable')
-                    .sort((a, b) => {
-                        const orderA = commonalityOrder[a.commonality] || 0;
-                        const orderB = commonalityOrder[b.commonality] || 0;
-                        if (orderA !== orderB) {
-                            return orderB - orderA; // Sort descending by commonality
-                        }
-                        return a.name.localeCompare(b.name); // Then sort ascending by name
-                    });
-            }, [radionuclides]);
-
-const handleNuclideSelect = React.useCallback((symbol) => {
-    const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol);
-    if (nuclideToSet) {
-        setSelectedNuclide(nuclideToSet);
-    }
-}, [sortedRadionuclides]);
-
-            // --- CALCULATION LOGIC ---
-
-            /**
-             * Main handler that performs the decay calculation based on the current mode and inputs.
-             */
-
-            const handleCalculate = () => {
-                // Initial validation
-                if (!selectedNuclide) {
-                    setError('Please select a radionuclide.');
-                    setResult(null);
-                    setChartData(null);
-                    return;
-                }
-                const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-                if (T1_seconds === Infinity) {
-                    setError('Cannot calculate decay for a stable nuclide.');
-                    setResult(null);
-                    setChartData(null);
-                    return;
-                }
-                
-                // Reset state before calculation
-
+            const hl_seconds = parseHalfLifeToSeconds(nuclideToSet.halfLife);
+            if (hl_seconds !== Infinity) {
+                const bestUnit = getBestHalfLifeUnit(hl_seconds);
                 const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-                setError('');
-                setResult(null);
-                setChartData(null);
+                const hl_in_best_unit = hl_seconds / unitConversions[bestUnit];
+                
+                setTimeUnit(bestUnit);
+                setTimeElapsed(parseFloat(hl_in_best_unit.toPrecision(2)).toString());
+            }
+        }
+    }, [sortedRadionuclides]);
 
-                try {
-                    const t_input = parseFloat(timeElapsed);
-                    if (isNaN(t_input) || t_input < 0) { throw new Error('Time elapsed must be a non-negative number.'); }
-                    const t_seconds = t_input * unitConversions[timeUnit];
-                    const lambda1 = Math.log(2) / T1_seconds;
+    const handleCalculate = () => {
+        if (!selectedNuclide) {
+            setError('Please select a radionuclide.');
+            setResult(null);
+            setChartData(null);
+            return;
+        }
+        const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+        if (T1_seconds === Infinity) {
+            setError('Cannot calculate decay for a stable nuclide.');
+            setResult(null);
+            setChartData(null);
+            return;
+        }
+        
+        const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        setError('');
+        setResult(null);
+        setChartData(null);
 
-                    /**
-                     * Helper function to generate chart data for a simple parent->daughter decay.
-                     * @param {number} N0 - The initial activity (or number of atoms) of the parent.
-                     */
+        try {
+            const t_input = parseFloat(timeElapsed);
+            if (isNaN(t_input) || t_input < 0) { throw new Error('Time elapsed must be a non-negative number.'); }
+            const t_seconds = t_input * unitConversions[timeUnit];
+            const lambda1 = Math.log(2) / T1_seconds;
 
-                    const generateSingleNuclideChart = (N0) => {
-                        const labels = [];
-                        const parentData = [];
-                        const totalTime = t_input * 2; // Chart extends to twice the entered time
-                        const steps = 100;
-                        for (let i = 0; i <= steps; i++) {
-                            const timePoint = (totalTime / steps) * i;
-                            const timePoint_seconds = timePoint * unitConversions[timeUnit];
-                            labels.push(timePoint.toFixed(2));
-                            parentData.push(N0 * Math.exp(-lambda1 * timePoint_seconds));
-                        }
-                        setChartData({ labels, parentData, parentName: selectedNuclide.name, timeUnit });
-                    };
-
-                    // Switch based on the selected calculation mode
-
-                    switch (calculationMode) {
-                        case 'findRemaining': {
-                            const N0 = parseFloat(initialActivity);
-                            if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
-
-                            // Using standard decay formula: N(t) = N₀ * (0.5)^(t / T½)
-
-                            const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
-                            setResult({ value: Nt.toPrecision(4), unit: '', label: 'Remaining Activity' });
-                            generateSingleNuclideChart(N0);
-                            break;
-                        }
-                        case 'findTime': {
-                            const N0 = parseFloat(initialActivity);
-                            const Nt = parseFloat(remainingActivity);
-                            if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
-                            if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
-                            if (Nt === 0) { // Practically infinite time
-                                setResult({ value: 'Infinite', unit: '', label: 'Time Elapsed' });
-                                break;
-                            }
-
-                            // Using rearranged decay formula: t = -T½ * log₂(N(t) / N₀)
-
-                            const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
-                            const t_final = t_seconds_calc / unitConversions[timeUnit];
-                            setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
-                            break;
-                        }
-                        case 'findInitial': {
-                            const Nt = parseFloat(remainingActivity);
-                            if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
-
-                            // Using rearranged decay formula: N₀ = N(t) / (0.5)^(t / T½)
-
-                            const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
-                            setResult({ value: N0.toPrecision(4), unit: '', label: 'Initial Activity' });
-                            generateSingleNuclideChart(N0);
-                            break;
-                        }
-                        case 'findDaughterActivity': {
-                            const N0_parent = parseFloat(initialActivity);
-                            if (isNaN(N0_parent) || N0_parent < 0) { throw new Error('Initial parent activity must be a non-negative number.'); }
-                            
-                            // Check for branching decay, which this simple model doesn't handle.
-                            if (selectedNuclide.daughter.includes('/') || selectedNuclide.daughter.includes(' or ')) {
-                                throw new Error(`Cannot calculate daughter activity for "${selectedNuclide.name}" due to branching decay. Please use the Series Decay calculator for a more detailed analysis.`);
-                            }
-
-                            // Find the daughter nuclide in the database
-
-                            const daughterName = selectedNuclide.daughter.split('(')[0].trim();
-                            const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
-                            if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
-                            
-                            const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
-                            let A_daughter, Nt_parent_activity;
-                            
-                            // Remaining parent activity is always calculated the same way
-
-                            Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
-
-                            if (T2_seconds === Infinity) { // Daughter is stable
-                                A_daughter = 0; // The activity of a stable nuclide is zero.
-                            } else {
-                                const lambda2 = Math.log(2) / T2_seconds;
-
-                                // This section implements the Bateman equation for a 2-nuclide chain.
-                                // Special case for when decay constants are equal (λ₁ ≈ λ₂)
-
-                                if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                                    A_daughter = N0_parent * lambda2 * t_seconds * Math.exp(-lambda1 * t_seconds);
-                                } else { // Standard Bateman equation case (λ₁ ≠ λ₂)
-                                    A_daughter = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
-                                }
-                            }
-                            
-                            setResult({
-                                parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name },
-                                daughter: { value: A_daughter.toPrecision(4), name: daughterNuclide.name, isStable: T2_seconds === Infinity }
-                            });
-                            
-                            // Generate chart data for parent and daughter activities
-
-                            const labels = [];
-                            const parentData = [];
-                            const daughterData = [];
-                            const totalTime = t_input * 2;
-                            const steps = 100;
-                            for (let i = 0; i <= steps; i++) {
-                                const timePoint = (totalTime / steps) * i;
-                                const timePoint_seconds = timePoint * unitConversions[timeUnit];
-                                labels.push(timePoint.toFixed(2));
-                                
-                                parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
-
-                                if (T2_seconds === Infinity) {
-                                    daughterData.push(0);
-                                } else {
-                                    const lambda2 = Math.log(2) / T2_seconds;
-                                    let d_activity;
-                                    if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                                        d_activity = N0_parent * lambda2 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds);
-                                    } else {
-                                        d_activity = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds));
-                                    }
-                                    daughterData.push(d_activity);
-                                }
-                            }
-                            setChartData({ labels, parentData, daughterData, parentName: selectedNuclide.name, daughterName: daughterNuclide.name, timeUnit, daughterIsStable: T2_seconds === Infinity });
-                            break;
-                        }
-                        default:
-                            throw new Error('Invalid calculation mode.');
-                    }
-                } catch (e) {
-                    setError(e.message);
+            const generateSingleNuclideChart = (N0) => {
+                const labels = [], parentData = [];
+                const totalTime = t_input * 2;
+                const steps = 100;
+                for (let i = 0; i <= steps; i++) {
+                    const timePoint = (totalTime / steps) * i;
+                    const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                    labels.push(timePoint.toFixed(2));
+                    parentData.push(N0 * Math.exp(-lambda1 * timePoint_seconds));
                 }
-            };            
-            
-            // --- UI & RENDERING ---
+                setChartData({ labels, parentData, parentName: selectedNuclide.name, timeUnit });
+            };
 
-            /**
-             * A helper function to render a labeled input field, reducing JSX repetition.
-             * @param {string} label - The text label for the field.
-             * @param {string|number} value - The current value of the input.
-             * @param {(val: string) => void} setter - The state setter function for the input.
-             * @param {boolean} isEnabled - Toggles the enabled/disabled state of the field.
-             * @param {string} [unitValue] - The current value of the unit dropdown.
-             * @param {(val: string) => void} [unitSetter] - The state setter for the unit dropdown.
-             * @param {Array<string>} [unitOptions] - The options for the unit dropdown.
-             */
+            switch (calculationMode) {
+                case 'findRemaining': {
+                    const N0 = parseFloat(initialActivity);
+                    if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
+                    const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
+                    setResult({ value: Nt.toPrecision(4), unit: '', label: 'Remaining Activity' });
+                    generateSingleNuclideChart(N0);
+                    break;
+                }
+                case 'findTime': {
+                    const N0 = parseFloat(initialActivity);
+                    const Nt = parseFloat(remainingActivity);
+                    if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
+                    if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
+                    if (Nt === 0) {
+                        setResult({ value: 'Infinite', unit: '', label: 'Time Elapsed' });
+                        break;
+                    }
+                    const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
+                    const t_final = t_seconds_calc / unitConversions[timeUnit];
+                    setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
+                    break;
+                }
+                case 'findInitial': {
+                    const Nt = parseFloat(remainingActivity);
+                    if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
+                    const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
+                    setResult({ value: N0.toPrecision(4), unit: '', label: 'Initial Activity' });
+                    generateSingleNuclideChart(N0);
+                    break;
+                }
+                case 'findDaughterActivity': {
+                    const N0_parent = parseFloat(initialActivity);
+                    const N0_daughter = parseFloat(initialDaughterActivity);
+                    if (isNaN(N0_parent) || N0_parent < 0 || isNaN(N0_daughter) || N0_daughter < 0) {
+                        throw new Error('Initial activities must be non-negative numbers.');
+                    }
+                    
+                    if (selectedNuclide.daughter.includes('/') || selectedNuclide.daughter.includes(' or ')) {
+                        throw new Error(`Cannot calculate daughter activity for "${selectedNuclide.name}" due to branching decay. Please use the Series Decay calculator.`);
+                    }
 
-            const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
-                <div>
-                    <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
-                    <div className="flex gap-2 mt-1">
-                        <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
-                        {unitOptions && (
-                             <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
-                                 {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
-                        )}
-                    </div>
-                </div>
-            );
+                    const daughterName = selectedNuclide.daughter.split('(')[0].trim();
+                    const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                    if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
+                    
+                    const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+                    const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
+                    let A_daughter;
 
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
-                        <div className="space-y-4">
+                    if (T2_seconds === Infinity) {
+                        A_daughter = 0;
+                    } else {
+                        const lambda2 = Math.log(2) / T2_seconds;
+                        const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
+                        let daughterIngrowth;
+                        if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                            daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
+                        } else {
+                            daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
+                        }
+                        A_daughter = initialDaughterDecay + daughterIngrowth;
+                    }
+                    
+                    setResult({
+                        parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name },
+                        daughter: { value: A_daughter.toPrecision(4), name: daughterNuclide.name, isStable: T2_seconds === Infinity }
+                    });
+                    
+                    const labels = [], parentData = [], daughterData = [];
+                    const totalTime = t_input * 2;
+                    const steps = 100;
+                    for (let i = 0; i <= steps; i++) {
+                        const timePoint = (totalTime / steps) * i;
+                        const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                        labels.push(timePoint.toFixed(2));
+                        
+                        parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
 
-                            {/* Radionuclide Selector */}
-
-                            <div>
-    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-    <div className="mt-1 min-h-[42px]">
-        {selectedNuclide ? (
-            <div className="flex items-center justify-between p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 animate-fade-in">
-                <span className="font-bold">{selectedNuclide.name}</span>
-                <button 
-                    onClick={() => {
-                        setSelectedNuclide(null);
-                        // Clear results when changing nuclide
-                        setResult(null);
-                        setChartData(null);
-                        setError('');
-                    }} 
-                    className="ml-2 p-1 rounded-full text-sky-600 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800"
-                    title="Change nuclide"
-                >
-                    <Icon path={ICONS.clear} className="w-4 h-4" />
-                </button>
+                        if (T2_seconds === Infinity) {
+                            daughterData.push(0);
+                        } else {
+                            const lambda2 = Math.log(2) / T2_seconds;
+                            const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
+                            let current_daughterIngrowth;
+                            if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                                current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds);
+                            } else {
+                                current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds));
+                            }
+                            daughterData.push(current_initialDaughterDecay + current_daughterIngrowth);
+                        }
+                    }
+                    setChartData({ labels, parentData, daughterData, parentName: selectedNuclide.name, daughterName: daughterNuclide.name, timeUnit });
+                    break;
+                }
+                default:
+                    throw new Error('Invalid calculation mode.');
+            }
+        } catch (e) {
+            setError(e.message);
+        }
+    };
+    
+    const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
+        <div>
+            <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
+            <div className="flex gap-2 mt-1">
+                <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
+                {unitOptions && (
+                    <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
+                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                )}
             </div>
-        ) : (
-            <SearchableSelect
-                options={sortedRadionuclides}
-                onSelect={handleNuclideSelect}
-                placeholder="Search for a radionuclide..."
-            />
-        )}
-    </div>
-</div>
-                            
-                            {/* Calculation Mode Selector */}
+        </div>
+    );
 
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
-                                    {['findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'].map(mode => (
-                                        <label key={mode} className="flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
-                                            <span className="text-sm">{
-                                                { 'findRemaining': 'Remaining Activity', 'findTime': 'Time Elapsed', 'findInitial': 'Initial Activity', 'findDaughterActivity': 'Daughter Activity' }[mode]
-                                            }</span>
-                                        </label>
-                                    ))}
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {selectedNuclide ? (
+                                <div className="flex items-center justify-between p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 animate-fade-in">
+                                    <span className="font-bold">{selectedNuclide.name}</span>
+                                    <button onClick={() => { setSelectedNuclide(null); setResult(null); setChartData(null); setError(''); }} className="ml-2 p-1 rounded-full text-sky-600 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800" title="Change nuclide">
+                                        <Icon path={ICONS.clear} className="w-4 h-4" />
+                                    </button>
                                 </div>
-                            </div>
-
-                            {/* Input Fields Container */}
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
-                                {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
-                                {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits)}
-                            </div>
-
-                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
-                            
-                            {/* Result and Error Display */}
-
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            
-                            {result && (
-                                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
-
-                                    {/* Renders a simple result (for findRemaining, findTime, findInitial) */}
-
-                                    {result.label ? (
-                                        <div className="flex items-center justify-center">
-                                            <div className="text-lg font-bold text-center flex-grow">
-                                                <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
-                                                <span>{result.value} {result.unit}</span>
-                                            </div>
-                                            <CopyButton textToCopy={result.value} />
-                                        </div>
-
-                                    /* Renders the parent/daughter result (for findDaughterActivity) */
-
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-lg font-bold text-left">
-                                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
-                                                    <span>{result.parent.value}</span>
-                                                </div>
-                                                <CopyButton textToCopy={result.parent.value} />
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-lg font-bold text-left">
-                                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
-                                                    <span>{result.daughter.value}</span>
-                                                </div>
-                                                <CopyButton textToCopy={result.daughter.value} />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                            ) : (
+                                <SearchableSelect options={sortedRadionuclides} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/>
                             )}
-
-                            {/* Chart Display Area */}
-
-                            {chartData && <DecayChart chartData={chartData} />}
                         </div>
                     </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                            {['findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'].map(mode => (
+                                <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
+                                    <span className="text-sm">{
+                                        { 'findRemaining': 'Remaining Activity', 'findTime': 'Time Elapsed', 'findInitial': 'Initial Activity', 'findDaughterActivity': 'Daughter Activity' }[mode]
+                                    }</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
+                        {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
+                        {calculationMode === 'findDaughterActivity' &&
+                            renderInputField("Initial Daughter Activity", initialDaughterActivity, setInitialDaughterActivity, true)
+                        }
+                        {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits)}
+                    </div>
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                            {result.label ? (
+                                <div className="flex items-center justify-center">
+                                    <div className="text-lg font-bold text-center flex-grow">
+                                        <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
+                                        <span>{result.value} {result.unit}</span>
+                                    </div>
+                                    <CopyButton textToCopy={result.value} />
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-left">
+                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
+                                            <span>{result.parent.value}</span>
+                                        </div>
+                                        <CopyButton textToCopy={result.parent.value} />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-left">
+                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
+                                            <span>{result.daughter.value}</span>
+                                        </div>
+                                        <CopyButton textToCopy={result.daughter.value} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {chartData && <DecayChart chartData={chartData} />}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
+
+
+
+
+
+
+
+
 
         /**
          * @description A calculator that uses the Bateman equations to model the activity of every
@@ -3005,14 +2937,13 @@ const updateSearchHistory = (nuclide) => {
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
             
+
 	case 'home':
 	default:
 	    if (result) {
 	        return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} /></div>;
-	    }
-	    return <HomePage errorMessage={errorMessage} result={result} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
-
-
+	 	   }
+	    return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
 
                 }
             };
