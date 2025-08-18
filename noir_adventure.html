@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 0.5 | Last Updated: August 17, 2025
+            Version 0.6 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -504,9 +504,60 @@
                 id: 'hum_focus',
                 text: 'You close your eyes and listen. The hum isn\'t a sound; it\'s a vibration. It sinks into your teeth, rattles your bones. For a split second, the image of the city behind your eyelids dissolves. You see not streets, but circuits. Not buildings, but monolithic processors. The rain on the glass is the hiss of static between stations.\n\nThe hum is a signal, and buried deep inside it is a single, repeating word, a ghost in the machine: *Sterling... Sterling... Sterling...*',
                 choices: [
-                    { text: 'The vision fades. Open your eyes.', nextId: 'office_ambience' }
+                    { text: 'The vision fades. Open your eyes.', nextId: 'office_ambience' },
+                    { text: 'The vision is gone, but the feeling remains. Try to follow it.', nextId: 'follow_the_hum' }
                 ]
             },
+            // --- NEW "EMBRACE THE WEIRD" SIDE QUEST ---
+            {
+                id: 'follow_the_hum',
+                text: 'You open the door to your office and step into the hall. The hum is stronger out here, pulling you like a current. Down the stairs, past the sleeping vagrants, and out into the rain-slicked street. The city\'s noise tries to drown it out, but the hum is underneath everything. It\'s the city\'s true voice. It seems to be leading you toward the old broadcasting district.',
+                choices: [
+                    { text: 'Keep following.', nextId: 'broadcast_district' },
+                    { text: 'This is a bad idea. Go back to the office.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'broadcast_district',
+                text: 'The Broadcasting District is a graveyard of defunct radio stations and pirate holovid transmitters. Most of the towers are dark, skeletal fingers pointing at the bruised sky. But one, the old WQST tower, has a single, pulsing red light at its peak. The hum is a physical force here, making the puddles on the ground tremble. The front door is chained shut, but a side window is boarded up with rotting plywood.',
+                choices: [
+                    { text: 'Pry the boards off the window.', nextId: 'inside_wqst', requires: { grit: 5 } },
+                    { text: 'There must be a service entrance around back.', nextId: 'inside_wqst', requires: { smarts: 5 } },
+                    { text: 'You\'ve seen enough. This is someone else\'s nightmare.', nextId: 'ghost_run_reflection_return' }
+                ]
+            },
+            {
+                id: 'inside_wqst',
+                text: 'You slip inside. The air is thick with the smell of ozone and dust. In the main broadcast room, ancient equipment is alive with an eerie green light. Spools of tape turn on their own, but they aren\'t recording sound—they\'re recording streams of what looks like raw data. On a central console, a waveform monitor pulses in time with the hum. It\'s not broadcasting a signal out; it\'s *receiving* one. A label on the console reads: "PROJECT CARCOSA - NEURAL FEED ARCHIVE (JAMISON, E.)."',
+                choices: [
+                    { text: 'Touch the console.', nextId: 'experience_the_song_fragment' },
+                    { text: 'Smash the equipment.', nextId: 'smash_wqst' },
+                    { text: 'Get out. Now.', nextId: 'ghost_run_reflection_return' }
+                ]
+            },
+            {
+                id: 'experience_the_song_fragment',
+                text: 'The moment your fingers touch the cold glass of the monitor, your vision explodes into static. You are not in the radio station anymore. You are nowhere. Fragments of a life that is not yours flood your mind:\n\nA woman\'s laugh under a paper lantern.\nThe chemical taste of lab-synthesized coffee.\nSolving a complex equation on a glass board, the joy of pure intellect.\nA sharp, cold pain at the base of the skull.\nThe color yellow. An endless, blinding yellow.\n\nThe hum becomes a scream. You rip your hand back, gasping. The memories are gone, but a single, alien thought remains, tattooed on your brain: "He wears no mask."',
+                choices: [
+                    { text: 'You stumble out into the rain, shaken.', nextId: 'ghost_run_reflection_return', effect: { grit: -1, smarts: 1 } }
+                ]
+            },
+            {
+                id: 'smash_wqst',
+                text: 'You grab a heavy fire extinguisher from the wall and bring it down on the console. Glass shatters. The green light dies with a pathetic hiss. The hum in the room cuts out, leaving a ringing, profound silence. You\'ve broken something important, but you don\'t know if you\'ve helped or just erased a ghost.',
+                choices: [
+                    { text: 'Your work here is done.', nextId: 'ghost_run_reflection_return' }
+                ]
+            },
+            {
+                id: 'ghost_run_reflection_return',
+                text: 'You find yourself back on the Ghost Run, the strange experience at the radio tower still buzzing in your mind. The case is hitting a wall, and you still need a new angle.',
+                choices: [
+                    { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'police_precinct' },
+                    { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'investigate_sterling' }
+                ]
+            },
+            // --- END SIDE QUEST ---
             {
                 id: 'office_ambience',
                 text: 'You push the strange vision (or memory?) to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
@@ -846,7 +897,7 @@
             },
             { id: 'access_datapad', text: 'The datapad flickers to life. There\'s only one file: a corrupted audio log. Eddie\'s voice, panicked and whispering.\n\n"It\'s not just code... they\'re not just... oh god, Jamison... I saw what they did to Jamison in Bay 7. It\'s not metal, it\'s wetware... It\'s his mind, they... they made him into a song..."\nThe log cuts out with a burst of static. Suddenly, the android in the bay next to you twitches. Its head swivels with an unnatural, silent speed, its optical sensors glowing a blood red, fixed directly on you.', choices: [ { text: 'You\'ve been made. RUN.', nextId: 'docks_information_gathered' } ] },
             {
-                id: 'docks_loading_bay', text: 'You stay in the shadows, watching the endless, rhythmic dance of the automated loaders. The freighter\'s name is visible on the stern, illuminated by a swinging light: \'Carcosa\'. The containers being loaded bear strange, non-Euclidean symbols that seem to shift when you look at them directly. One of the containers is momentarily left open, and your blood runs cold. Inside are rows of cryo-pods, frosted over, with the faint, unmistakable shapes of human bodies within.',
+                id: 'docks_loading_bay', text: 'You stay in the shadows, watching the endless, rhythmic dance of the automated loaders. The freighter\'s name is visible on the stern, illuminated by a swinging light: \'Carcosa\'. The containers being loaded bear strange, non-Euclidean symbols that seem to shift when you look at them directly. Near the ramp, a dockworker has hastily scrawled a bit of graffiti in yellow chalk: a spiral with a dot in the center. One of the containers is momentarily left open, and your blood runs cold. Inside are rows of cryo-pods, frosted over, with the faint, unmistakable shapes of human bodies within.',
                 choices: [ { text: 'Get closer. Try to overhear the supervisors.', nextId: 'overhear_supervisors' } ]
             },
             { id: 'overhear_supervisors', text: 'You creep closer, the noise of the machinery providing perfect cover. Two human supervisors are talking, their voices sharp in the cold air. "...last of the Bay 7 shipment," one says. "Kane wants the Carcosa gone before sunrise. Doesn\'t want another \'Jamison\' incident."\n\nBefore you can process the name, a spider-like security drone descends silently from a gantry above. Its single red lens focuses on you. An alarm blares across the docks, a synthetic shriek in the night.', choices: [ { text: 'Time to go! NOW!', nextId: 'docks_information_gathered' } ] },
