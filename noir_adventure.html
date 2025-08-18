@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 0.9 | Last Updated: August 17, 2025
+            Version 1.0 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -1120,8 +1120,23 @@
             },
             {
                 id: 'the_final_objective',
-                text: 'The rain is relentless, a constant, mournful drumbeat on the city. You stand on a rooftop overlooking the docks, a liminal space between the grimy streets and the empty, uncaring sky. The pieces of the ugly puzzle click into place. Your client is Dr. Aris Thorne. Her husband was a scientist who got cold feet and stole the key to the whole operation. Sterling is trafficking human consciousness on a ghost ship, and the ghost of their first victim, Dr. Jamison, is the key to it all. The Carcosa is set to leave at dawn.\n\nKane, Mulligan, the Thornes... they\'re all just players in a much bigger, dirtier game. The real target is Bay 7. You have to get back to the docks. You have to get into Bay 7 and expose the truth before it sails away into the darkness forever.',
-                choices: [{ text: 'This is the end of the line. [FINISH STORY]', nextId: 'start', effect: { reset: true } }]
+                text: 'The rain is relentless, a constant, mournful drumbeat on the city. You stand on a rooftop overlooking the docks, a liminal space between the grimy streets and the empty, uncaring sky. The pieces of the ugly puzzle click into place. The dame, the doctor, the ghost, the song. It all leads back to Bay 7. \n\nThis was never about a missing husband. This is about what Sterling found in the dark, and what they\'re trying to bring into the light. The case is a key; Bay 7 is the lock. It\'s time to see what\'s on the other side.',
+                choices: [{ text: 'Head to the docks. One last time.', nextId: 'travel_to_docks_finale' }]
+            },
+            {
+                id: 'travel_to_docks_finale',
+                text: 'This is it. The final ride. The cab cuts through the city like a scalpel, the neon lights smearing across the wet glass like blood. Every shadow seems to hold a threat, every glint of chrome looks like the barrel of a gun. The hum of the city is louder now, a dissonant choir singing a song only you can hear. You\'re not just a detective on a case anymore. You\'re a loose end, a ghost haunting a machine that\'s bigger than you can imagine. The cab pulls up to the service entrance of the Sterling Docks. There\'s no going back.',
+                choices: [{ text: 'Step out into the rain.', nextId: 'bay_7_entrance'}]
+            },
+            {
+                id: 'bay_7_entrance',
+                text: 'The air here is cold, sterile, and heavy with the smell of ozone. The hum is so intense it feels like a physical pressure against your skull. You find the access panel for Bay 7, a seamless plate of black steel. You hold the master keycard Aris Thorne gave you to the reader. For a moment, nothing happens. Then, with a low groan of ancient machinery, a section of the wall begins to retract, revealing a darkness deeper than the night.\n\nFrom within, you hear it. The song. A thousand fragmented voices woven into a single, impossible melody.',
+                choices: [ { text: '[To Be Continued...]', nextId: 'end_of_chapter_one' } ]
+            },
+            {
+                id: 'end_of_chapter_one',
+                text: 'The search for Eddie Malone was over. But as you stared into the humming darkness of Bay 7, you realized you hadn\'t closed a case. You\'d just opened a door.\n\nAnd you were terrified of what was on the other side.',
+                choices: [ { text: '[End of Chapter One]', nextId: 'start', effect: { reset: true } } ]
             }
         ];
 
