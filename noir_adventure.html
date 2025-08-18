@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 0.3 | Last Updated: August 17, 2025
+            Version 0.5 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -274,6 +274,9 @@
             inventory: []
         };
         
+        // --- GAME STATE FOR ONE-TIME EVENTS ---
+        let gameState = {};
+
         // --- MODAL LOGIC ---
         let nextSceneAfterModal = null;
 
@@ -301,6 +304,8 @@
         // --- GAME LOGIC ---
 
         function startGame() {
+            // Reset game state for a new game
+            gameState = {};
             updateDisplays();
             showScene('start');
         }
@@ -319,6 +324,15 @@
             }
 
             scene.choices.forEach(choice => {
+                // --- NEW LOGIC for conditional choices ---
+                if (choice.showIfItem && !hasItem(choice.showIfItem)) {
+                    return; // Don't show this choice if player lacks the item
+                }
+                if (choice.hideIfState && gameState[choice.hideIfState]) {
+                    return; // Don't show this choice if a one-time event has occurred
+                }
+                // --- END NEW LOGIC ---
+
                 const button = document.createElement('button');
                 button.innerText = choice.text;
                 button.classList.add('choice-btn');
@@ -346,14 +360,22 @@
         }
 
         function makeChoice(choice) {
+            // NEW LOGIC: Set a one-time state variable if the choice dictates it
+            if (choice.setState) {
+                gameState[choice.setState] = true;
+            }
+
             // Apply stat effects
             if (choice.effect) {
                 if (choice.effect.reset) {
+                    // Reset everything for a new game
                     player.name = "J. Slate";
                     player.grit = 4;
                     player.smarts = 4;
                     player.charm = 4;
                     player.inventory = [];
+                    startGame(); // Call startGame to reset gameState as well
+                    return;
                 } else {
                     for (const stat in choice.effect) {
                         if (player.hasOwnProperty(stat)) {
@@ -425,7 +447,6 @@
 
         // --- STORY DATA (FINAL NARRATIVE EXPANSION) ---
         const story = [
-            // --- NEW, SLOWER OPENING SEQUENCE ---
             {
                 id: 'start',
                 text: 'Consciousness returns like a slow tide coming in over dirty sand. First, the pain—a dull, throbbing bass drum behind your eyes. Then, the smell of stale whiskey and rain-soaked wool.',
@@ -435,7 +456,7 @@
             },
             {
                 id: 'desk_view',
-                text: 'You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures. In your immediate view: a half-empty bottle of bourbon, a heavy-looking revolver, and a single, impossibly white seashell sitting incongruously on a stack of yellowed papers.\n\nFrom somewhere deep in the building, or maybe deep in your own skull, you feel a low, resonant hum.',
+                text: 'You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures. In your immediate view: a half-empty bottle of bourbon, a heavy-looking revolver, a single, impossibly white seashell, and a soggy matchbook from a place called \'The Electric Sheep\'.\n\nFrom somewhere deep in the building, or maybe deep in your own skull, you feel a low, resonant hum.',
                 choices: [
                     { text: 'Push yourself to your feet.', nextId: 'waking_up' }
                 ]
@@ -456,9 +477,21 @@
                     { text: 'A slick, oily whisper slides into your ear: "Rehearse the line. The one that always works. \'Trouble is my business.\' Say it. See if you still believe it."', nextId: 'charm_start', effect: { charm: 2, grit: -1 }}
                 ]
             },
-            { id: 'grit_start', text: 'You obey the primal urge. Your fist slams down on the desk. A spiderweb of cracks erupts, and a jolt of clean, beautiful pain shoots up your arm, a lightning bolt that clears the fog for a precious second. You remember the feeling of knuckles on concrete, the coppery taste of blood. A fight in an alley. You won. But you can\'t remember why you were there.', choices: [{ text: 'The pain helps you focus...', nextId: 'the_hum' }] },
-            { id: 'smarts_start', text: 'You fight the chaos, wrestling it into submission. The gun is a Colt Detective Special. The bottle is Old Grand-Dad. You remember a face... a man with eyes like chips of ice, chrome fingers tapping on a poker table. He was laughing at you. The memory is smoke, but the feeling of humiliation is sharp and real.', choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'the_hum' }] },
-            { id: 'charm_start', text: 'You part your cracked lips. "Trouble," you rasp, "...is my business." The words feel hollow, a worn-out record. But you remember saying them to a silhouette in a doorway, a woman who smelled of expensive perfume and desperation. She gave you money. You can\'t remember what for.', choices: [{ text: 'You settle back into your own skin...', nextId: 'the_hum' }] },
+            {
+                id: 'grit_start',
+                text: 'You obey the primal urge. Your fist slams down. A jolt of clean, beautiful pain shoots up your arm, clearing the fog. You remember an alley, the reek of garbage and ozone. The man you fought had a spider-like drone tattooed on his wrist. You were behind a bar with a buzzing neon sign of a sheep. You won the fight, but you can\'t remember what it was for.',
+                choices: [{ text: 'The pain helps you focus...', nextId: 'the_hum' }]
+            },
+            {
+                id: 'smarts_start',
+                text: 'You fight the chaos, wrestling it into submission. The gun is a Colt. The bottle is Old Grand-Dad. You remember a face... a man with eyes like chips of ice, chrome fingers tapping on a poker table. He was laughing as he raked in a strange, milky-white chip that glowed with a faint inner light. It was your chip. You don\'t know how you got it, or why you bet it.',
+                choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'the_hum' }]
+            },
+            {
+                id: 'charm_start',
+                text: 'You part your cracked lips. "Trouble... is my business." The words feel hollow. But you remember saying them to a silhouette in a doorway, a woman who smelled of expensive perfume and desperation. She wasn\'t a client. She was a ghost. She pressed a damp manila folder into your hand. "Find out what happened to my Arthur," she\'d pleaded. You don\'t remember agreeing, but the McCoy file on your desk suddenly feels heavy with her tears.',
+                choices: [{ text: 'You settle back into your own skin...', nextId: 'the_hum' }]
+            },
             {
                 id: 'the_hum',
                 text: 'The memory fades, leaving you with more questions than answers. The quiet of the office settles in again, but it\'s not empty. Under the sound of the rain, you can still feel it: that low, persistent hum. It\'s not the neon sign, not the building\'s wiring. It\'s something else, something deeper. A sound on the edge of hearing, like a secret the city is whispering to itself.',
@@ -480,9 +513,25 @@
                 choices: [
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
                     { text: 'The half-empty bottle of bourbon on the desk.', nextId: 'examine_bottle' },
+                    { text: 'The matchbook from \'The Electric Sheep\'.', nextId: 'examine_matchbook'},
+                    { text: 'The ancient rotary phone on the corner of the desk.', nextId: 'examine_phone'},
                     { text: 'The out-of-place seashell.', nextId: 'examine_seashell'},
                     { text: 'The cracked mirror hanging by the door.', nextId: 'examine_mirror' },
                     { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file_choice' }
+                ]
+            },
+            {
+                id: 'examine_matchbook',
+                text: 'A flimsy cardboard matchbook, the logo a stylized sheep made of glitching neon tubes. \'The Electric Sheep,\' it reads. \'For androids and the men who love them.\' The inside is empty, save for a hastily scrawled number and a single, unspent match. The name tickles a memory you can\'t quite catch.',
+                choices: [
+                    { text: 'Put it back on the desk.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'examine_phone',
+                text: 'You pick up the heavy bakelite receiver. There\'s no dial tone. Just a low, crackling static. You hold it to your ear, listening to the sound of a dead world. But wait... beneath the hiss, you can hear something else. A song. A fragmented, atonal jazz melody, like a saxophone being played by a ghost. A synthesized voice whispers a string of numbers—"Bay 7"—and the line cuts to absolute silence.',
+                choices: [
+                    { text: 'You hang up the phone. The silence is worse.', nextId: 'office_ambience' }
                 ]
             },
             {
@@ -584,7 +633,6 @@
                 id: 'case_accepted', text: 'You pocket the envelope. The rain seems to beat a little harder now, like a drummer counting down to a funeral. You have a client, a pocketful of cash that feels both too heavy and not heavy enough, and a name. The city awaits, a concrete maze full of rats and traps. \n\nWhere do you start looking for Eddie the Weasel?',
                 choices: [{ text: 'Head to the grimy downtown bars.', nextId: 'downtown_bars' }, { text: 'Check the police precinct for any recent reports.', nextId: 'police_precinct' }]
             },
-            // --- NEW, EXPANDED "REFUSE CASE" SEQUENCE ---
             {
                 id: 'case_refused',
                 text: 'She picks up the envelope without a word, her eyes as cold as a morgue slab. The hope, if there ever was any, drains from her face. The door clicks shut, a sound of finality. Another ghost leaves your office. The smart money says you made the right call. The smart money is usually wrong. \n\nNow, what to do with the rest of this miserable night?',
@@ -621,7 +669,6 @@
                     { text: '...', nextId: 'start', effect: { reset: true } }
                 ]
             },
-            // --- END OF NEW SEQUENCE ---
             {
                 id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
@@ -646,9 +693,15 @@
                 id: 'ghost_run_reflection',
                 text: 'You\'re on the Ghost Run, a forgotten stretch of elevated railway that cuts through the oldest part of the city. Down below, the world is a blur of neon and noise, but up here... it\'s quiet. The rain has stopped, leaving the tracks to glisten under the moon. This is a liminal space, a place between the past and the future where you come to think. The case is hitting a wall, a familiar feeling. Banging your head against brick isn\'t working. You need a new angle.',
                 choices: [
+                    { text: 'Just for a moment, you let yourself remember.', nextId: 'memory_of_finney', hideIfState: 'rememberedFinney', setState: 'rememberedFinney' },
                     { text: 'Maybe the boys in blue know something. Head to the precinct.', nextId: 'police_precinct' },
                     { text: 'If the muscle won\'t talk, maybe the money will. Head to the Sterling Automata HQ.', nextId: 'investigate_sterling' }
                 ]
+            },
+            {
+                id: 'memory_of_finney',
+                text: 'You close your eyes. The name Finney echoes in your memory, a ghost from your days on the force. You remember him at your desk, looking haunted, talking about strange cargo manifests down at the Sterling docks. "It\'s not right, Slate," he\'d said, his hands shaking. "They\'re not shipping parts, they\'re shipping souls." A week later, he was gone. Cleaned out his desk, pension cashed, vanished. Mulligan called it retirement. You called it a loose end.',
+                choices: [ { text: 'The memory fades. Time to move.', nextId: 'ghost_run_reflection' } ]
             },
             { id: 'bouncer_fight', text: 'You try to shoulder past him. It\'s like running into a brick wall that hits back. The world explodes in a flash of bright, white pain. Your first mistake of the night, but probably not your last.', choices: [{ text: 'This isn\'t working...', nextId: 'ghost_run_reflection' }] },
             { id: 'bouncer_bribe_fail', text: 'You slide a bill into his hand. He looks at it, then at you, and laughs a low, gravelly laugh that sounds like rocks in a blender. "That\'s cute," he says, before effortlessly lifting you by the collar and depositing you in the back alley. Your money, and your dignity, are gone.', choices: [{ text: 'Well, that was dumb...', nextId: 'ghost_run_reflection' }] },
@@ -686,7 +739,19 @@
                 ]
             },
             { id: 'mulligan_uncooperative', text: '"You walk in here, flashing that P.I. license like it\'s a get-out-of-jail-free card," Mulligan snarls, his voice low and dangerous. "I\'m not sticking my neck out for you. Not again. Some doors you shouldn\'t open, Slate. This one leads to a long, empty hallway with no exit. The door is that way. Use it before I forget we used to be friends."', choices: [{ text: 'A dead end. This was a waste of time.', nextId: 'precinct_dead_end' }] },
-            { id: 'mulligan_cooperative', text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata. You know, we had another guy vanish from their docks about six months ago. Arthur McCoy. Case went nowhere. My old partner, Finney, was looking into it before he... took early retirement. Haven\'t seen him since."', choices: [{ text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }] },
+            {
+                id: 'mulligan_cooperative',
+                text: 'Mulligan lets out a long, weary sigh that seems to carry the weight of the whole city. "Fine," he mutters, tapping at his keyboard with two fingers. "Eddie Malone... a two-bit grifter with a rap sheet longer than my alimony payments. But here\'s something. He was a witness in an assault case last week. Got cold feet and recanted. The guy he almost testified against was a known enforcer for Sterling Automata. You know, we had another guy vanish from their docks about six months ago. Arthur McCoy. Case went nowhere. My old partner, Finney, was looking into it before he... took early retirement. Haven\'t seen him since."',
+                choices: [
+                    { text: '"I\'ve got his file right here. His wife mentioned a song."', nextId: 'mulligan_reacts_to_file', showIfItem: 'mccoy_file' },
+                    { text: '"Sterling Automata? The tech giant?"', nextId: 'ask_about_sterling' }
+                ]
+            },
+            {
+                id: 'mulligan_reacts_to_file',
+                text: 'Mulligan\'s eyes widen as you slide the file onto his desk. "A song? Gods, that\'s what Finney said about the others. He called it the \'digital ghost.\' Said Sterling wasn\'t just building machines, they were composing with souls. I thought he was cracking up." He looks at you, a new respect in his tired eyes. "This is big, Slate. Bigger than both of us."',
+                choices: [ { text: 'So what is Sterling, exactly?', nextId: 'ask_about_sterling' } ]
+            },
             { id: 'ask_about_sterling', text: '"The one and only," Mulligan says, rubbing his bloodshot eyes. "They\'re building some kind of high-tech utopia down at the docks, and they don\'t care who they push out of the way to do it. Their security is all ex-military, and their lawyers are sharks in thousand-dollar suits. If Eddie crossed them... he\'s in a world of trouble you can\'t handle. Be careful, Slate. This isn\'t like the old days."', choices: [{ text: 'Time to pay a visit to Sterling Automata.', nextId: 'investigate_sterling' }] },
             {
                 id: 'investigate_sterling', text: 'The Sterling Automata building is a sterile monument of glass and steel that stabs at the perpetually grey sky. It doesn\'t belong in this decaying city; it looks like it landed here from the future. Inside, a cool, quiet hum replaces the chaotic sound of the city. An android receptionist with an unnervingly perfect smile watches you approach.\n\n"Welcome to Sterling Automata," it says, its voice a pleasant, synthesized melody that makes your teeth ache. "How may I direct you?"',
@@ -802,9 +867,14 @@
             },
             {
                 id: 'industrial_canal', text: 'The industrial canal is a scar running through the city\'s forgotten boroughs. The water is a chemical slick of rainbow colors, and the air is thick with the smell of decay and ozone. Dilapidated warehouses line the banks, their windows like empty eye sockets staring into nothing. The only sign of life is a flickering neon sign that reads "The Electric Sheep." Inside, a lone saxophonist plays a mournful, atonal melody that sounds like Albert Ayler\'s "Ghosts." This is where Kane sent you. A trap, or a test?',
-                choices: [ { text: 'Enter the bar.', nextId: 'electric_sheep_bar' } ]
+                choices: [ { text: 'Enter the bar.', nextId: 'electric_sheep_ambience' } ]
             },
-            { id: 'electric_sheep_bar', text: 'The bar is nearly empty, populated only by shadows and regret. The bartender is an old woman with a cybernetic eye that whirs as it focuses on you. "Name your poison," she rasps, her voice like grinding gears.', choices: [{ text: '"Whiskey. And information. I\'m looking for a man named Eddie Malone."', nextId: 'sheep_bartender_info' }] },
+            {
+                id: 'electric_sheep_ambience',
+                text: 'The bar is nearly empty, populated by flickering holoads and androids nursing shots of coolant. A chrome-plated saxophonist on a small stage plays a mournful, atonal melody that sounds like a machine trying to cry. The air smells of ozone and regret. A few human patrons sit hunched over the bar, their faces illuminated by the glow of data-slates. This is a place for ghosts and the people who hunt them.',
+                choices: [ { text: 'Approach the bartender.', nextId: 'electric_sheep_bar' } ]
+            },
+            { id: 'electric_sheep_bar', text: 'The bartender is an old woman with a cybernetic eye that whirs as it focuses on you. "Name your poison," she rasps, her voice like grinding gears.', choices: [{ text: '"Whiskey. And information. I\'m looking for a man named Eddie Malone."', nextId: 'sheep_bartender_info' }] },
             { id: 'sheep_bartender_info', text: 'She pours the drink without a word. Her cybernetic eye scans you, a faint red light tracing your features. "Eddie the Ghost. Yeah, he was in. Sweating bullets, trying to sell a Sterling data key. Kept babbling about \'Bay 7\', a guy named \'Jamison\', and a ship called the \'Carcosa\'. Said they were turning people into songs. Nobody would touch the key."\n\nJust as she finishes, the door swings open. Two large men in long coats step inside, blocking the only exit. They aren\'t here for a drink. Their eyes lock on you. It was a trap after all.', choices: [ { text: 'Nowhere to run. Time to dance.', nextId: 'bar_fight' } ] },
             {
                 id: 'fight_failure',
@@ -829,10 +899,16 @@
                 id: 'plan_next_move',
                 text: 'You\'re back in your office. You lock the door, pour two fingers of whiskey, and let the silence settle around you like a shroud. You put on a record - John Coltrane\'s "Naima" - letting the melancholy notes fill the room. You have a constellation of ugly facts: Jamison, McCoy, Bay 7, the Carcosa, and its human cargo. Eddie Malone is a ghost, and you\'re next on the list. What\'s the play, detective?',
                 choices: [ 
+                    {text: 'Look at your reflection in the whiskey glass.', nextId: 'reflection_vignette', hideIfState: 'seenReflection', setState: 'seenReflection'},
                     {text: 'Call the client. She needs to know how deep this goes.', nextId: 'call_the_dame'},
                     {text: 'Call Detective Mulligan. This is too big to handle alone.', nextId: 'call_mulligan'},
                     {text: 'Trust no one. Find out who Jamison was on your own.', nextId: 'investigate_jamison'}
                 ]
+            },
+            {
+                id: 'reflection_vignette',
+                text: 'You stare into the amber liquid. A distorted face stares back, the same tired stranger you saw in the mirror hours ago. Or was it days? Time feels... fluid. You remember the choice you made when you first woke up - the flash of instinct, cold logic, or cheap words. Was it the right one? The man who made that choice seems like a lifetime ago. The man looking back at you now knows about Sterling, about Carcosa, about the song. He\'s not the same man who woke up. And he\'s in a hell of a lot more trouble.',
+                choices: [ {text: 'The reflection offers no answers. Time to make a call.', nextId: 'plan_next_move'} ]
             },
             {
                 id: 'call_the_dame',
