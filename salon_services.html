@@ -161,7 +161,13 @@ tr {
         .cell-wrapper { padding: 0.5rem 0.75rem; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         .name-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .stylist-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
-        .level-select { border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 6px; font-size: 0.9em; background-color: var(--primary-bg); color: var(--text-color); cursor: pointer; }
+        
+.level-text {
+    font-size: 0.9em;
+    color: #888;
+}
+
+
         .editable { cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; font-weight: 600; }
         .editable:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
         .remove-btn { background: none; border: none; cursor: pointer; color: #aaa; font-size: 1.1em; padding: 4px; border-radius: 50%; width: 28px; height: 28px; line-height: 1; }
@@ -273,7 +279,7 @@ tr {
         <div class="table-container"><table id="services-table"><thead></thead><tbody></tbody></table></div>
         <footer>
             <p>
-                Posh Salon Service Matrix v2.6 | Last Updated: August 16, 2025 | 
+                Posh Salon Service Matrix v2.7 | Last Updated: August 16, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -362,8 +368,10 @@ tr {
                 { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' },
                 { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }
             ];
-            const STYLIST_LEVELS = ["Apprentice", "Level One", "Level Two", "Level Three", "Level Four", "Level Five", "Level Six", "Level Seven", "Level Eight", "Level Nine", "Elite"];
-            const defaultData = {
+
+
+
+const defaultData = {
                 services: [
                     { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
                     { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }
@@ -412,9 +420,20 @@ tr {
                     row.dataset.row = rowIndex;
                     const nameCell = document.createElement('td');
                     nameCell.dataset.col = 0;
-                    const levelOptions = STYLIST_LEVELS.map(l => `<option value="${l}" ${stylist.level === l ? 'selected' : ''}>${l}</option>`).join('');
+                    
                     let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
-                    nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><select class="level-select">${levelOptions}</select></div><button class="remove-btn" data-type="stylist">🗑️</button></div>${stylistNoteHTML}</div>`;
+
+nameCell.innerHTML = `<div class="cell-wrapper">
+                        <div class="name-wrapper">
+                            <div class="stylist-info">
+                                <span class="editable">${stylist.name}</span>
+                                <span class="editable level-text">${stylist.level || 'Add Level'}</span>
+                            </div>
+                            <button class="remove-btn" data-type="stylist">🗑️</button>
+                        </div>
+                        ${stylistNoteHTML}
+                      </div>`;
+
                     row.appendChild(nameCell);
                     stylist.services.forEach((service, colIndex) => {
                         const cell = document.createElement('td');
@@ -544,17 +563,20 @@ tr {
             };
             
             // --- Event Listeners ---
-            servicesTable.addEventListener('input', (event) => {
-                const target = event.target;
-                const cell = target.closest('td');
-                if (!cell) return;
-                const row = parseInt(cell.parentElement.dataset.row);
-                if (target.matches('.level-select')) salonState.stylists[row].level = target.value;
-                else if (target.matches('input[type="checkbox"]')) {
-                    const col = parseInt(cell.dataset.col);
-                    salonState.stylists[row].services[col - 1].checked = target.checked;
-                }
-            });
+
+servicesTable.addEventListener('input', (event) => {
+    const target = event.target;
+    const cell = target.closest('td');
+    if (!cell) return;
+    const row = parseInt(cell.parentElement.dataset.row);
+
+    // This is now the first and only 'if' statement in this block
+    if (target.matches('input[type="checkbox"]')) {
+        const col = parseInt(cell.dataset.col);
+        salonState.stylists[row].services[col - 1].checked = target.checked;
+    }
+});
+
             servicesTable.addEventListener('click', (event) => {
                 const target = event.target;
                 const cell = target.closest('td, th');
@@ -589,19 +611,33 @@ tr {
                         });
                     }
                 } else if (target.matches('.editable')) {
-                    const originalText = target.textContent;
-                    const input = document.createElement('input');
-                    input.type = 'text'; input.className = 'name-input'; input.value = originalText;
-                    target.replaceWith(input); input.focus();
-                    const saveName = () => {
-                        const newText = input.value.trim() || originalText;
-                        if (row === -1) salonState.services[col - 1].name = newText;
-                        else salonState.stylists[row].name = newText;
-                        renderTableFromData();
-                    };
-                    input.addEventListener('blur', saveName);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
-                } else if (target.matches('.price-text')) {
+    const isLevel = target.classList.contains('level-text');
+    const originalText = isLevel && target.textContent === 'Add Level' ? '' : target.textContent;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'name-input';
+    input.value = originalText;
+    target.replaceWith(input);
+    input.focus();
+
+    const save = () => {
+        const newText = input.value.trim();
+        if (isLevel) {
+            salonState.stylists[row].level = newText || 'Add Level';
+        } else if (row === -1) {
+            salonState.services[col - 1].name = newText || originalText;
+        } else {
+            salonState.stylists[row].name = newText || originalText;
+        }
+        renderTableFromData();
+    };
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => e.key === 'Enter' && input.blur());
+}
+
+else if (target.matches('.price-text')) {
                     const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
                     const input = document.createElement('input');
                     input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
@@ -703,33 +739,40 @@ colorPalette.appendChild(cancelBox);
             });
 
 document.addEventListener('keydown', (e) => {
+
+    // Escape key to cancel note placement
+
     if (e.key === 'Escape' && isPlacingNote) {
+
         togglePlacingNote(false);
     }
+
+    // Ctrl+Alt+D to toggle developer mode
+
+    if (e.ctrlKey && e.altKey && e.key === 'd') {
+        e.preventDefault();
+        const isDev = document.body.classList.toggle('developer-mode-active');
+        showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
+    }
 });
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.altKey && e.key === 'd') {
-                    e.preventDefault();
-                    const isDev = document.body.classList.toggle('developer-mode-active');
-                    showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
-                }
+
+document.getElementById('reset-all-btn').addEventListener('click', () => {
+            const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
+            showConfirmModal(message, () => {
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                localStorage.removeItem(THEME_KEY);
+                showToast('Data reset. Reloading...', 'info');
+                setTimeout(() => location.reload(), 1000);
             });
-            document.getElementById('reset-all-btn').addEventListener('click', () => {
-                const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
-                showConfirmModal(message, () => {
-                    localStorage.removeItem(LOCAL_STORAGE_KEY);
-                    localStorage.removeItem(THEME_KEY);
-                    showToast('Data reset. Reloading...', 'info');
-                    setTimeout(() => location.reload(), 1000);
-                });
-            });
-            addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
-            
-            // --- Initial Load ---
-            const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
-            applyTheme(savedTheme);
-            loadInitialData();
         });
+        addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
+        
+        // --- Initial Load ---
+        const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+        applyTheme(savedTheme);
+        loadInitialData();
+    });
+
     </script>
 </body>
 </html>
