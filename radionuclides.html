@@ -2575,88 +2575,88 @@ const MassActivityCalculator = ({ radionuclides }) => {
          * @param {{isOpen: boolean, onClose: () => void}} props - Controls the visibility of the modal.
          */
 
-	const ManualContent = () => (
-	    <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
-	        <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
-	        <p>
-	            Welcome to the Radionuclide Lookup Tool! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
-	        </p>
+const ManualContent = () => (
+    <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
+        <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
+        <p>
+            Welcome to the Radionuclide Lookup Tool! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
+        </p>
         
-	        <hr />
+        <hr />
 
-	        <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
-        	<p>
-	            The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
-	        </p>
-	        <h4>Searching</h4>
-	        <p>
-	            You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
-	        </p>
-	        <h4>The Nuclide Card</h4>
-	        <p>
-	            Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant ($\lambda$), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
-	        </p>
+        <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
+        <p>
+            The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
+        </p>
+        <h4>Searching</h4>
+        <p>
+            You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
+        </p>
+        <h4>The Nuclide Card</h4>
+        <p>
+            Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
+        </p>
         
-	        <hr />
+        <hr />
 
-	        <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
-        	<p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
+        <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
+        <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
         
-	        <h3>Database</h3>
-        	<p>
-	            The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
-        	</p>
-	        <ul>
-        	    <li><strong>Category & Commonality:</strong> Find nuclides based on their typical use (e.g., Medical, Industrial) or how frequently they are encountered.</li>
-	            <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
-        	    <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
-	        </ul>
+        <h3>Database</h3>
+        <p>
+            The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
+        </p>
+        <ul>
+            <li><strong>Category & Commonality:</strong> Find nuclides based on their typical use (e.g., Medical, Industrial) or how frequently they are encountered.</li>
+            <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
+            <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
+        </ul>
 
-	        <h3>Compare</h3>
-	        <p>
-        	    The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude.
-	        </p>
+        <h3>Compare</h3>
+        <p>
+            The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude.
+        </p>
 
-	        <h3>Calculators</h3>
-	        <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-        	<h4>Decay Calculators</h4>
-	        <ul>
-        	    <li><strong>Decay:</strong> Based on the fundamental decay equation, $A_t = A_0 e^{-\lambda t}$, this tool can solve for any one variable given the others. It's perfect for answering questions like "How much of my 100 mCi source will be left in 3 weeks?" or "How long will it take for this sample to decay to 1 mCi?".</li>
-	            <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
-	            <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (e.g., a long-lived parent like Sr-90 feeding a short-lived daughter like Y-90) or <strong>Transient</strong> (e.g., Mo-99 and Tc-99m) and calculate important metrics like the time to maximum daughter activity.</li>
-	        </ul>
-	        <h4>Activity & Dose Calculators</h4>
-	        <ul>
-	            <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?" or "How much does 1 Curie of Cobalt-60 weigh?".</li>
-	            <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity ($Bq/g$) from its fundamental properties: atomic weight and half-life.</li>
-	            <li><strong>Dose Rate:</strong> Calculates the gamma dose rate from an unshielded point source. It uses the nuclide's gamma constant ($\Gamma$) and the inverse square law ($1/d^2$), which states that the intensity of radiation decreases with the square of the distance from the source.</li>
-	            <li><strong>Shielding:</strong> This calculator adds shielding to the Dose Rate calculation. It uses the concept of a Half-Value Layer (HVL)—the thickness of a material required to reduce the radiation intensity by half—to determine the final dose rate after passing through a shield.</li>
-	            <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific, user-defined dose limit (e.g., 2 mrem).</li>
-        	</ul>
+        <h3>Calculators</h3>
+        <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
+        <h4>Decay Calculators</h4>
+        <ul>
+            <li><strong>Decay:</strong> Based on the fundamental decay equation, A_t = A₀e⁻ˡᵗ, this tool can solve for any one variable given the others. It's perfect for answering questions like "How much of my 100 mCi source will be left in 3 weeks?" or "How long will it take for this sample to decay to 1 mCi?".</li>
+            <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
+            <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (e.g., a long-lived parent like Sr-90 feeding a short-lived daughter like Y-90) or <strong>Transient</strong> (e.g., Mo-99 and Tc-99m) and calculate important metrics like the time to maximum daughter activity.</li>
+        </ul>
+        <h4>Activity & Dose Calculators</h4>
+        <ul>
+            <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?" or "How much does 1 Curie of Cobalt-60 weigh?".</li>
+            <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity (Bq/g) from its fundamental properties: atomic weight and half-life.</li>
+            <li><strong>Dose Rate:</strong> Calculates the gamma dose rate from an unshielded point source. It uses the nuclide's gamma constant (Γ) and the inverse square law (1/d²), which states that the intensity of radiation decreases with the square of the distance from the source.</li>
+            <li><strong>Shielding:</strong> This calculator adds shielding to the Dose Rate calculation. It uses the concept of a Half-Value Layer (HVL)—the thickness of a material required to reduce the radiation intensity by half—to determine the final dose rate after passing through a shield.</li>
+            <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific, user-defined dose limit (e.g., 2 mrem).</li>
+        </ul>
         
-	        <h3>MARSSIM Tools</h3>
-	        <p>This suite of calculators assists with the design and data assessment for a final status survey, following the guidance in the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM).</p>
-	        <ul>
-        	    <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (Lc)</strong> is the threshold for deciding if a signal is statistically "real" or just background noise. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify with your system.</li>
-	            <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit based on your desired error rates ($\alpha$ and $\beta$), the cleanup limit (DCGL), the expected background level (LBGR), and the variability of the contamination ($\sigma$).</li>
-	            <li><strong>WRS Test:</strong> Performs the Wilcoxon Rank Sum statistical test, which is the primary method in MARSSIM for comparing a potentially contaminated survey unit to a clean reference area to determine if the survey unit passes.</li>
-	            <li><strong>EMC Sign Test:</strong> Performs the Sign Test, which is used for an Elevated Measurement Comparison (EMC). This test is required when the main WRS test passes, but one or more individual measurements in the survey unit exceed the DCGL.</li>
-	        </ul>
+        <h3>MARSSIM Tools</h3>
+        <p>This suite of calculators assists with the design and data assessment for a final status survey, following the guidance in the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM).</p>
+        <ul>
+            <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (Lc)</strong> is the threshold for deciding if a signal is statistically "real" or just background noise. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify with your system.</li>
+            <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit based on your desired error rates (α and β), the cleanup limit (DCGL), the expected background level (LBGR), and the variability of the contamination (σ).</li>
+            <li><strong>WRS Test:</strong> Performs the Wilcoxon Rank Sum statistical test, which is the primary method in MARSSIM for comparing a potentially contaminated survey unit to a clean reference area to determine if the survey unit passes.</li>
+            <li><strong>EMC Sign Test:</strong> Performs the Sign Test, which is used for an Elevated Measurement Comparison (EMC). This test is required when the main WRS test passes, but one or more individual measurements in the survey unit exceed the DCGL.</li>
+        </ul>
 
-	        <hr />
+        <hr />
 
-	        <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
+        <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
         
-        	<h4>Where does the data come from?</h4>
-	        <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS).</p>
+        <h4>Where does the data come from?</h4>
+        <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS).</p>
 
-	        <h4>Why doesn't a specific nuclide appear in a calculator?</h4>
-        	<p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" ($\Gamma$). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools.</p>
+        <h4>Why doesn't a specific nuclide appear in a calculator?</h4>
+        <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools.</p>
         
-	        <h4>What is the disclaimer?</h4>
-        	<p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently validated for accuracy and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
-	    </div>
-	);
+        <h4>What is the disclaimer?</h4>
+        <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently validated for accuracy and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
+    </div>
+);
 
         const ManualModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
