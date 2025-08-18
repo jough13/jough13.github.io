@@ -2580,17 +2580,78 @@ const MassActivityCalculator = ({ radionuclides }) => {
          * @param {{isOpen: boolean, onClose: () => void}} props - Controls the visibility of the modal.
          */
 
+	const ManualContent = () => (
+	    <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
+	        <h1 className="text-slate-900 dark:text-slate-100">User Manual & FAQ</h1>
+	        <p>Welcome to the Radionuclide Lookup Tool! This guide will walk you through the various features and calculators available to help you find and work with radionuclide data.</p>
+
+	        {/* --- Getting Started --- */}
+        
+		<hr />
+        	<h2 className="text-slate-900 dark:text-slate-100">Getting Started: Finding a Nuclide</h2>
+	        <p>The easiest way to begin is by using the search bar at the top of the page. You can search by either the nuclide's full name (e.g., <code>"Cobalt-60"</code>) or its symbol (e.g., <code>"Co-60"</code> or just <code>"Co60"</code>). As you type, a list of suggestions will appear. You can click on a suggestion or use the arrow keys and 'Enter' to select one.</p>
+	        <p>Once you select a nuclide, its detailed information card will appear on the <strong>Home</strong> screen.</p>
+
+	        {/* --- Core Features --- */}
+
+	        <hr />
+	        <h2 className="text-slate-900 dark:text-slate-100">Core Features</h2>
+	        <p>Use the main navigation bar to switch between different tools and views.</p>
+
+	        <h3>Database</h3>
+	        <p>The <strong>Database</strong> view allows you to browse and sort the entire collection of radionuclides. Use the sidebar on the left to filter the list by:</p>
+	        <ul>
+	            <li><strong>Category:</strong> Medical, Industrial, Natural, etc.</li>
+	            <li><strong>Emission Type:</strong> Find all nuclides that emit Alpha particles, for example.</li>
+	            <li><strong>Half-life Range:</strong> Narrow down the list to nuclides with half-lives within a specific range (e.g., between 1 and 30 days).</li>
+	            <li><strong>Energy Range:</strong> Filter by the primary Alpha, Beta, or Gamma energy in MeV.</li>
+	        </ul>
+
+	        <h3>Compare</h3>
+	        <p>The <strong>Compare</strong> tool lets you view multiple nuclides in a side-by-side table. Use the search bar to add nuclides to the table. This view automatically highlights the minimum and maximum values in each row and displays in-cell data bars for quick visual analysis.</p>
+
+	        <h3>Calculators</h3>
+	        <p>The application includes a suite of powerful health physics calculators:</p>
+	        <ul>
+        	    <li><strong>Decay:</strong> Perform simple decay calculations. You can solve for remaining activity ($A_t$), initial activity ($A_0$), or elapsed time ($t$). It also includes a mode to calculate the activity of a single daughter product.</li>
+	            <li><strong>Series Decay:</strong> Models the activity of every nuclide in a full decay chain (like the U-238 series) over time using the Bateman equations.</li>
+	            <li><strong>Equilibrium:</strong> Analyzes a parent-daughter pair to determine if they will achieve secular or transient equilibrium and calculates key metrics like the equilibrium ratio and time to maximum daughter activity.</li>
+	            <li><strong>Mass ↔ Activity:</strong> Quickly convert between a nuclide's mass (in g, mg, or µg) and its total activity (in Ci, Bq, etc.) using its specific activity.</li>
+	            <li><strong>Specific Activity:</strong> Calculate a nuclide's specific activity in $Bq/g$ from its atomic weight and half-life.</li>
+        	    <li><strong>Dose Rate:</strong> Calculates the unshielded gamma dose rate from a point source at a given distance using the nuclide's gamma constant ($\Gamma$) and the inverse square law.</li>
+	            <li><strong>Shielding:</strong> Extends the Dose Rate calculator by allowing you to add a layer of shielding (Lead, Steel, or Concrete) to see how it reduces the dose rate.</li>
+	            <li><strong>Stay Time:</strong> Determines how long a person can remain in an area with a specific dose rate before reaching a defined dose limit.</li>
+	        </ul>
+
+	        <h3>MARSSIM Tools</h3>
+	        <p>A set of calculators is included for final status survey design and data assessment based on the MARSSIM manual.</p>
+	        <ul>
+        	    <li><strong>MDA & Critical Level:</strong> Calculates the Critical Level ($L_c$), Detection Limit ($L_d$), and Minimum Detectable Activity (MDA) for a static sample count.</li>
+	            <li><strong>MARSSIM Samples:</strong> Determines the required number of samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology from MARSSIM Section 5.</li>
+	            <li><strong>WRS Test:</strong> Performs the WRS statistical test to compare a survey unit's data against a reference area's data to determine if the survey unit passes.</li>
+	            <li><strong>EMC Sign Test:</strong> Performs the Sign Test for an Elevated Measurement Comparison (EMC) to determine if a small area of elevated activity passes release criteria.</li>
+        	</ul>
+        
+        	{/* --- FAQ --- */}
+	        
+		<hr />
+	        <h2 className="text-slate-900 dark:text-slate-100">Frequently Asked Questions (FAQ)</h2>
+
+	        <h4>Where does the data come from?</h4>
+	        <p>Most of the nuclear data (half-life, energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat database. Gamma constants and HVL values are standard, commonly-cited values from health physics texts and societies.</p>
+
+	        <h4>Why doesn't every nuclide work in the Dose Rate calculator?</h4>
+	        <p>The Dose Rate, Shielding, and Stay Time calculators require a "Gamma Constant" ($\Gamma$), which is a specific value that only applies to gamma-emitting nuclides. Therefore, pure beta emitters like Strontium-90 will not appear in that calculator's dropdown list.</p>
+
+	        <h4>What is the disclaimer?</h4>
+	        <p>This tool is for educational and informational purposes only. The data and calculations have not been independently validated for accuracy and may contain errors. Do not use this tool for radiation protection, safety-critical, or regulatory compliance purposes. Use is at your own risk.</p>
+	    </div>
+	);
+
         const ManualModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
 
             // Internal component for the static content of the manual to keep JSX clean.
-
-            const ManualContent = () => (
-                <div className="prose prose-slate dark:prose-invert max-w-none p-6">
-                    <h1 className="text-3xl font-bold mb-4">Radionuclide Lookup Tool: Comprehensive User Manual & FAQ</h1>
-                    {/* ... The rest of your detailed manual content ... */}
-                </div>
-            );
 
             return (
 
