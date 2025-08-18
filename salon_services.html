@@ -30,6 +30,21 @@
     box-shadow: var(--shadow);
     z-index: 10; /* Ensure it's on top of other elements */
 }
+
+.color-box.cancel-note {
+    background-color: var(--secondary-bg);
+    color: var(--danger-color);
+    font-size: 1.5rem;
+    font-weight: bold;
+    line-height: 24px; /* Vertically center the 'X' */
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+.color-box.cancel-note:hover {
+    background-color: var(--danger-color);
+    color: white;
+}
+
         body.dark-mode {
             --primary-bg: #252525;
             --secondary-bg: #2c2c2c;
@@ -615,6 +630,17 @@ tr {
                 });
                 colorPalette.appendChild(box);
             });
+
+const cancelBox = document.createElement('div');
+cancelBox.className = 'color-box cancel-note';
+cancelBox.innerHTML = '&times;'; // An "X" symbol
+cancelBox.title = 'Cancel note placement (Esc)';
+cancelBox.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePlacingNote(false);
+});
+colorPalette.appendChild(cancelBox);
+
             document.querySelectorAll('.close-popup').forEach(btn => {
                 btn.addEventListener('click', () => {
                     btn.closest('.modal-popup').style.display = 'none';
@@ -675,6 +701,12 @@ tr {
                 localStorage.setItem(THEME_KEY, newTheme);
                 applyTheme(newTheme);
             });
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isPlacingNote) {
+        togglePlacingNote(false);
+    }
+});
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.altKey && e.key === 'd') {
                     e.preventDefault();
