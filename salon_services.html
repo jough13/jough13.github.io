@@ -19,6 +19,17 @@
             --modal-bg: white;
             --page-bg: #ebf4ff;
         }
+
+#color-palette {
+    position: absolute;
+    top: 110%; /* Position it just below the buttons */
+    right: 0;  /* Align it to the right side of the button group */
+    background-color: var(--secondary-bg);
+    padding: 0.75rem;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 10; /* Ensure it's on top of other elements */
+}
         body.dark-mode {
             --primary-bg: #252525;
             --secondary-bg: #2c2c2c;
@@ -79,12 +90,13 @@
             color: var(--accent-color);
             font-weight: 600;
         }
-        .control-group { 
-            display: flex; 
-            align-items: center; 
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
+.control-group {
+    position: relative; /* <-- Add this */
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
         .controls-column.right .control-group {
              justify-content: flex-end;
         }
@@ -124,6 +136,9 @@
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
         th, td { padding: 0.5rem; border-bottom: 1px solid var(--border-color); vertical-align: top; position: relative; }
         th { background-color: var(--header-bg); font-weight: 600; white-space: nowrap; }
+tr {
+    background-color: var(--primary-bg);
+}
         tr:nth-child(even) { background-color: var(--secondary-bg); }
         tr:last-child td { border-bottom: none; }
         td:first-child, th:first-child { font-weight: 500; position: sticky; left: 0; background-color: inherit; z-index: 2; }
