@@ -2028,35 +2028,39 @@ function resolveCombat(enemyKey) {
             gameState.resources.glimmeringDust += lootAmount * 2;
             addLogMessage(`It drops ${lootAmount * 2} Glimmering Dust!`, "combat-message");
         }
-        if (seededRandom() < 0.2) {
-            const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && !art.key.startsWith("ART_TOME"));
-            if (undiscoveredArtifacts.length > 0) {
-                const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
-                gameState.collectedArtifacts.push(foundArtifact.key);
-                gameState.narrativeFlags[foundArtifact.key] = true;
-                addLogMessage(`Amidst the fading essence of your foe, you find the <strong>${foundArtifact.name}</strong>!`, "artifact");
-                awardXP(25);
-            }
-        } else {
-            const undiscoveredTomes = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && art.key.startsWith("ART_TOME"));
-            if (undiscoveredTomes.length > 0 && seededRandom() < 0.3) {
-                const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
-                gameState.collectedArtifacts.push(foundTome.key);
-                gameState.narrativeFlags[foundTome.key] = true;
-                addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
-                if (foundTome.key === "ART_TOME_MIGHT") {
-                    gameState.stats.might++;
-                    gameState.maxHp = calculateMaxHp();
-                    gameState.currentHp = gameState.maxHp;
-                } else if (foundTome.key === "ART_TOME_WITS") {
-                    gameState.stats.wits++;
-                } else if (foundTome.key === "ART_TOME_RESOLVE") {
-                    gameState.stats.spirit++;
-                }
-                addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
-                awardXP(20);
-            }
+// FIND THIS BLOCK TO REPLACE ▼
+if (seededRandom() < 0.2) {
+    const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && !art.key.startsWith("ART_TOME"));
+    if (undiscoveredArtifacts.length > 0) {
+        const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
+        gameState.collectedArtifacts.push(foundArtifact.key);
+        gameState.narrativeFlags[foundArtifact.key] = true;
+        addLogMessage(`Amidst the fading essence of your foe, you find the <strong>${foundArtifact.name}</strong>!`, "artifact");
+        awardXP(25);
+    }
+    
+} else {
+    const undiscoveredTomes = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && art.key.startsWith("ART_TOME"));
+    if (undiscoveredTomes.length > 0 && seededRandom() < 0.3) {
+        const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
+        gameState.collectedArtifacts.push(foundTome.key);
+        gameState.narrativeFlags[foundTome.key] = true;
+        addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
+        if (foundTome.key === "ART_TOME_MIGHT") {
+            gameState.stats.might++;
+            gameState.maxHp = calculateMaxHp();
+            gameState.currentHp = gameState.maxHp;
+        } else if (foundTome.key === "ART_TOME_WITS") {
+            gameState.stats.wits++;
+        } else if (foundTome.key === "ART_TOME_RESOLVE") {
+            gameState.stats.spirit++;
+            gameState.maxHp = calculateMaxHp();
+            gameState.currentHp = gameState.maxHp;
         }
+        addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
+        awardXP(20);
+    }
+}
         gameState.inCombat = false;
         pauseGameForDecision(false);
         renderAll();
