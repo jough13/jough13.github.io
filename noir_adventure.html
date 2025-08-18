@@ -228,7 +228,7 @@
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="footer">
-            Version 0.2 | Last Updated: August 17, 2025
+            Version 0.3 | Last Updated: August 17, 2025
         </div>
     </div>
 
@@ -531,7 +531,6 @@
                     { text: 'No. That name is a ghost.', nextId: 'office_quiet', action: 'changeName' }
                 ]
             },
-            // --- NEW DAME ENTRANCE SEQUENCE ---
             {
                 id: 'office_quiet',
                 text: 'The name feels... adequate. For now. The silence of the office returns, broken only by the drumming of the rain. The city outside breathes, a slow, mechanical rhythm. You\'re a man in a box, waiting for the phone to ring, for a ghost to walk through the door. You\'re waiting for trouble. It\'s the only thing that ever pays a visit.',
@@ -578,7 +577,6 @@
                     { text: 'Lean back and stay silent. Let her do the talking.', nextId: 'stay_silent' }
                 ]
             },
-            // --- END OF NEW DAME ENTRANCE ---
             { id: 'ask_for_money', text: '"I wouldn\'t be here if I was broke," she says, her voice dropping a note. She slides a thick envelope across your desk. It lands with a soft, promising thud. "Half now, half when you find him." You feel the heft of it through the wood. This could solve a lot of problems... or start a hell of a lot more.', choices: [{ text: 'Take the case.', nextId: 'case_accepted', effect: { smarts: 1 }, itemGained: 'cash' }, { text: 'Push the envelope back. "Not my kind of trouble."', nextId: 'case_refused' }] },
             { id: 'charm_her', text: 'A faint, knowing smile plays on her lips, but it doesn\'t reach her eyes. "He\'s not unlucky. He\'s my husband." She slides a thick envelope across the desk. The gesture is smooth, practiced. "And he\'s in over his head. Way over. His name is Eddie \'The Weasel\' Malone." The name fits a man who would marry a woman like this.', choices: [{ text: '"Eddie the Weasel... I know the name. I\'ll find him."', nextId: 'case_accepted', effect: { charm: 1 }, itemGained: 'cash' }] },
             { id: 'stay_silent', text: 'Your silence hangs in the air, heavy and thick as cigar smoke. She doesn\'t flinch, just watches you with eyes that have seen too much. "Playing hard to get won\'t work. I need the best, and people say that\'s you, even on your worst days." She slides the envelope forward. "His name is Eddie Malone. Find him. And don\'t disappoint me."', choices: [{ text: 'Nod and take the money.', nextId: 'case_accepted', effect: { grit: 1 }, itemGained: 'cash' }] },
@@ -586,7 +584,44 @@
                 id: 'case_accepted', text: 'You pocket the envelope. The rain seems to beat a little harder now, like a drummer counting down to a funeral. You have a client, a pocketful of cash that feels both too heavy and not heavy enough, and a name. The city awaits, a concrete maze full of rats and traps. \n\nWhere do you start looking for Eddie the Weasel?',
                 choices: [{ text: 'Head to the grimy downtown bars.', nextId: 'downtown_bars' }, { text: 'Check the police precinct for any recent reports.', nextId: 'police_precinct' }]
             },
-            { id: 'case_refused', text: 'She picks up the envelope without a word, her eyes as cold as a morgue slab. The hope, if there ever was any, drains from her face. The door closes behind her, leaving you alone with the rain, the silence, and your regrets. Maybe you made the right call. Maybe you just signed a dead man\'s walking papers. You\'ll never know.', choices: [{ text: 'Start over.', nextId: 'start', effect: { reset: true } }] },
+            // --- NEW, EXPANDED "REFUSE CASE" SEQUENCE ---
+            {
+                id: 'case_refused',
+                text: 'She picks up the envelope without a word, her eyes as cold as a morgue slab. The hope, if there ever was any, drains from her face. The door clicks shut, a sound of finality. Another ghost leaves your office. The smart money says you made the right call. The smart money is usually wrong. \n\nNow, what to do with the rest of this miserable night?',
+                choices: [
+                    { text: 'Find the bottom of the bottle.', nextId: 'drink_to_forget' },
+                    { text: 'There\'s a vial in your desk drawer. The label is worn off.', nextId: 'pills_to_forget' }
+                ]
+            },
+            {
+                id: 'drink_to_forget',
+                text: 'You pull the Old Grand-Dad from the drawer. The glass is still dirty. Good. The whiskey burns a familiar path down your throat, a controlled demolition of the day\'s regrets. You pour another. The rain on the window sounds like applause from an empty theater. The bottle feels light. Too light. Maybe it needs a friend.',
+                choices: [
+                    { text: 'You remember the vial in the other drawer.', nextId: 'both_to_forget' }
+                ]
+            },
+            {
+                id: 'pills_to_forget',
+                text: 'You find the small glass vial, rattling with a few chalky, white tablets. You can\'t remember what they\'re for, only that they work. They build a wall between you and... everything else. You dry-swallow one, the bitter taste coating your tongue. The edges of the room begin to soften. It\'s not enough.',
+                choices: [
+                    { text: 'You eye the bottle of bourbon on the desk.', nextId: 'both_to_forget' }
+                ]
+            },
+            {
+                id: 'both_to_forget',
+                text: 'You chase the pill with a gulp of whiskey, a terrible cocktail for a terrible night. Why not? It\'s a race to the bottom, and you\'ve always been a winner. The low hum in the back of your skull intensifies, twisting into a strange, discordant melody. The name \'Sterling\' echoes in the sound, a word you feel like you should remember.',
+                choices: [
+                    { text: 'The wood grain of the desk looks so inviting...', nextId: 'loop_consciousness' }
+                ]
+            },
+            {
+                id: 'loop_consciousness',
+                text: 'Your head feels impossibly heavy. The room tilts, a ship in a storm. For a moment, you see the seashell on your desk glow with a faint, pearlescent light. You see the dame\'s face, but her eyes are spinning spirals. You hear a knock on the door, even though you know you\'re alone.\n\nDéjà vu hits you like a fist. Haven\'t you done this before? Your cheek finds the familiar, scarred surface of the desk. The darkness is a welcome relief.',
+                choices: [
+                    { text: '...', nextId: 'start', effect: { reset: true } }
+                ]
+            },
+            // --- END OF NEW SEQUENCE ---
             {
                 id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
