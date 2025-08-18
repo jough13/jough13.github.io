@@ -3412,7 +3412,6 @@ function startGame() {
     if (initialZone && initialZone.entryLoreKey && ZONE_LORE[initialZone.entryLoreKey]) {
         addLogMessage(ZONE_LORE[initialZone.entryLoreKey], "lore");
         gameState.narrativeFlags[initialZone.entryLoreKey] = true;
-        awardXP(50);
     }
 
     // Update UI
