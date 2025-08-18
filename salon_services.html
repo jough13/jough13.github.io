@@ -75,7 +75,10 @@
             border-radius: 16px;
             box-shadow: var(--shadow);
             transition: background-color 0.3s;
-        }
+	    display: flex;
+	    flex-direction: column;
+	    height: calc(100vh - 4rem); /* Fills the screen height, minus body padding */
+	        }
         
         /* --- MODIFIED: Styles for the new three-column control panel --- */
         .main-controls {
@@ -105,18 +108,23 @@
             color: var(--accent-color);
             font-weight: 600;
         }
-.control-group {
-    position: relative; /* <-- Add this */
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
+
+	.main-controls, footer {
+	    flex-shrink: 0;
+	}
+
+	.control-group {
+	    position: relative; /* <-- Add this */
+	    display: flex;
+	    align-items: center;
+	    gap: 0.75rem;
+	    flex-wrap: wrap;
+	}
+
         .controls-column.right .control-group {
              justify-content: flex-end;
         }
-        /* --- End of new styles --- */
-        
+      
         .color-palette { display: flex; gap: 8px; }
         .color-box {
             width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
@@ -147,17 +155,17 @@
             line-height: 44px;
             text-align: center;
         }
-        .table-container { overflow-x: auto; border-radius: 12px; box-shadow: var(--shadow); background-color: var(--modal-bg); }
+        .table-container { flex-grow: 1; overflow-x: auto; overflow-y: auto; border-radius: 12px; box-shadow: var(--shadow); background-color: var(--modal-bg); }
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
         th, td { padding: 0.5rem; border-bottom: 1px solid var(--border-color); vertical-align: top; position: relative; }
-        th { background-color: var(--header-bg); font-weight: 600; white-space: nowrap; }
+        th { position: sticky; top: 0; z-index: 3; background-color: var(--header-bg); font-weight: 600; white-space: nowrap; }
 tr {
     background-color: var(--primary-bg);
 }
         tr:nth-child(even) { background-color: var(--secondary-bg); }
         tr:last-child td { border-bottom: none; }
         td:first-child, th:first-child { font-weight: 500; position: sticky; left: 0; background-color: inherit; z-index: 2; }
-        th:first-child { background-color: var(--header-bg); }
+        th:first-child { background-color: var(--header-bg);     z-index: 4;}
         .cell-wrapper { padding: 0.5rem 0.75rem; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         .name-wrapper { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .stylist-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
@@ -279,7 +287,7 @@ tr {
         <div class="table-container"><table id="services-table"><thead></thead><tbody></tbody></table></div>
         <footer>
             <p>
-                Posh Salon Service Matrix v2.7 | Last Updated: August 16, 2025 | 
+                Posh Salon Service Matrix v2.7 | Last Updated: Auust 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
