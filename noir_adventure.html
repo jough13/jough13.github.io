@@ -409,16 +409,31 @@
 
         // --- STORY DATA (FINAL NARRATIVE EXPANSION) ---
         const story = [
+            // --- NEW, SLOWER OPENING SEQUENCE ---
             {
                 id: 'start',
-                text: 'Consciousness returns like a slow tide coming in over dirty sand. First, the pain—a dull, throbbing bass drum behind your eyes. Then, the smell of stale whiskey and rain-soaked wool. Finally, the sound... a low, resonant hum that seems to vibrate in your teeth. You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures.\n\nThe name on the frosted glass of the door feels like a stranger\'s... J. SLATE. A name as worn and chipped as the paint on the windowsill. Is that you?',
+                text: 'Consciousness returns like a slow tide coming in over dirty sand. First, the pain—a dull, throbbing bass drum behind your eyes. Then, the smell of stale whiskey and rain-soaked wool.',
                 choices: [
-                    { text: 'Try to stand.', nextId: 'waking_up' }
+                    { text: 'Lift your head from the desk.', nextId: 'desk_view' }
+                ]
+            },
+            {
+                id: 'desk_view', // NEW SCENE
+                text: 'You peel your cheek off the scarred surface of your desk. The wood grain is a blurry map of failures. In your immediate view: a half-empty bottle of bourbon, a heavy-looking revolver, and a single, impossibly white seashell sitting incongruously on a stack of yellowed papers.\n\nFrom somewhere deep in the building, or maybe deep in your own skull, you feel a low, resonant hum.',
+                choices: [
+                    { text: 'Push yourself to your feet.', nextId: 'waking_up' }
                 ]
             },
             {
                 id: 'waking_up',
-                text: 'You push yourself up, your chair groaning in protest. The room swims for a moment, a nauseating carousel of shadows and dim light. Your head is a three-ring circus of bad ideas, and the ringmaster is drunk, swinging from a trapeze of regret. It\'s a loud, chaotic place to be. Right now, three voices are screaming for attention, each trying to drown the others out.',
+                text: 'You push yourself up, your chair groaning in protest. The room swims for a moment, a nauseating carousel of shadows and dim light. The pain in your head blooms into a full-blown migraine, a cacophony of competing thoughts.',
+                choices: [
+                    { text: 'Try to silence the noise.', nextId: 'internal_cacophony' }
+                ]
+            },
+            {
+                id: 'internal_cacophony', // RENAMED from 'waking_up'
+                text: 'Your head is a three-ring circus of bad ideas, and the ringmaster is drunk, swinging from a trapeze of regret. It\'s a loud, chaotic place to be. Right now, three voices are screaming for attention, each trying to drown the others out.',
                 choices: [
                     { text: 'A voice from your spine, all gravel and instinct: "Get up. Break something. Feel the splinters. Prove you\'re still here."', nextId: 'grit_start', effect: { grit: 2, smarts: -1 }},
                     { text: 'A colder, calmer thought slices through the fog: "Inventory. One desk, cheap oak. One bottle, mostly empty. One gun, fully loaded. What do you remember?"', nextId: 'smarts_start', effect: { smarts: 2, charm: -1 }},
@@ -429,41 +444,73 @@
             { id: 'smarts_start', text: 'You fight the chaos, wrestling it into submission. The gun is a Colt Detective Special. The bottle is Old Grand-Dad. You remember a face... a man with eyes like chips of ice, chrome fingers tapping on a poker table. He was laughing at you. The memory is smoke, but the feeling of humiliation is sharp and real.', choices: [{ text: 'With the chaos caged, you take stock...', nextId: 'the_hum' }] },
             { id: 'charm_start', text: 'You part your cracked lips. "Trouble," you rasp, "...is my business." The words feel hollow, a worn-out record. But you remember saying them to a silhouette in a doorway, a woman who smelled of expensive perfume and desperation. She gave you money. You can\'t remember what for.', choices: [{ text: 'You settle back into your own skin...', nextId: 'the_hum' }] },
             {
-                id: 'the_hum',
+                id: 'the_hum', // MODIFIED to add a weird choice
                 text: 'The memory fades, leaving you with more questions than answers. The quiet of the office settles in again, but it\'s not empty. Under the sound of the rain, you can still feel it: that low, persistent hum. It\'s not the neon sign, not the building\'s wiring. It\'s something else, something deeper. A sound on the edge of hearing, like a secret the city is whispering to itself.',
                 choices: [
+                    { text: 'Focus on the hum. Try to understand it.', nextId: 'hum_focus'},
                     { text: 'Ignore it. Take in your surroundings.', nextId: 'office_ambience'}
                 ]
             },
             {
-                id: 'office_ambience',
-                text: 'You push the hum to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
+                id: 'hum_focus', // NEW SCENE to explore the weirdness
+                text: 'You close your eyes and listen. The hum isn\'t a sound; it\'s a vibration. It sinks into your teeth, rattles your bones. For a split second, the image of the city behind your eyelids dissolves. You see not streets, but circuits. Not buildings, but monolithic processors. The rain on the glass is the hiss of static between stations.\n\nThe hum is a signal, and buried deep inside it is a single, repeating word, a ghost in the machine: *Sterling... Sterling... Sterling...*',
+                choices: [
+                    { text: 'The vision fades. Open your eyes.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'office_ambience', // MODIFIED with more options
+                text: 'You push the strange vision (or memory?) to the back of your mind. The office is a mess, a testament to long nights and cheap whiskey. The air is thick with the ghosts of forgotten clients. What catches your eye in the gloom?',
                 choices: [
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
                     { text: 'The half-empty bottle of bourbon on the desk.', nextId: 'examine_bottle' },
+                    { text: 'The out-of-place seashell.', nextId: 'examine_seashell'},
+                    { text: 'The cracked mirror hanging by the door.', nextId: 'examine_mirror' },
                     { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file_choice' }
                 ]
             },
             {
-                id: 'look_out_window',
+                id: 'examine_seashell', // NEW SCENE
+                text: 'You pick up the seashell. It\'s smooth, cool, and impossibly perfect, a stark white against the grime of your office. You hold it to your ear. You expect to hear the ocean. Instead, you hear a faint, distorted snippet of music, like a radio playing from very, very far away. A lonely saxophone. The sound vanishes as quickly as it came.',
+                choices: [
+                    { text: 'Put the shell down and look around again.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'examine_mirror', // NEW SCENE
+                text: 'You stare at the face in the cracked glass. It\'s a stranger\'s face, mostly. The eyes are yours, maybe. Puffy, bloodshot, but familiar. The rest of him looks like he\'s been sleeping in his clothes for a week and gargling with gravel. A fresh cut marks his temple. You don\'t remember getting it.\n\nThe name on the door is J. SLATE. You wonder if this is what a J. Slate is supposed to look like.',
+                choices: [
+                    { text: 'Look away from the stranger.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'look_out_window', // MODIFIED to allow returning to the office view
                 text: 'You walk to the window. The city is a concrete beast, slick with endless rain and bleeding neon light. Below, lonely headlights cut through the gloom, each one a story you don\'t want to know. That low hum seems to rise from the streets, a vibration you can feel in the glass. The city doesn\'t just have a heartbeat; it has a voice, and it\'s saying something you don\'t understand.',
-                choices: [{ text: 'It\'s time to face the facts.', nextId: 'confirm_name' }]
+                choices: [
+                    { text: 'Step back from the window.', nextId: 'office_ambience' },
+                    { text: 'Enough stalling. It\'s time to face the facts.', nextId: 'confirm_name' }
+                ]
             },
             {
-                id: 'examine_bottle',
+                id: 'examine_bottle', // MODIFIED to allow returning to the office view
                 text: 'You pick up the bottle of Old Grand-Dad. You pour a finger into a glass that hasn\'t been clean since the Hoover administration. The whiskey burns a trail down your throat, a comforting fire. It almost, but not quite, drowns out the hum in your bones. It\'s not a solution, but in a city with no solutions, it\'s a damn good anesthetic.',
-                choices: [{ text: 'Enough stalling.', nextId: 'confirm_name' }]
+                choices: [
+                    { text: 'Put the bottle down.', nextId: 'office_ambience' },
+                    { text: 'Enough stalling.', nextId: 'confirm_name' }
+                ]
             },
             {
-                id: 'examine_file_choice',
+                id: 'examine_file_choice', // This now serves as the point-of-no-return for the intro
                 text: 'You slide the folder open. Arthur McCoy. Missing, six months. Last seen leaving his late shift at the Sterling Automata docks. A note from his wife says he\'d become obsessed with a strange melody he heard at work, a "song from the machines." He couldn\'t sleep, couldn\'t eat. Just sat in the dark, humming. The cops wrote him off as another nut who walked into the sea. The name Sterling sticks in your mind like a splinter.',
                 choices: [
                     { text: 'Leave the file. It\'s not your problem.', nextId: 'confirm_name' },
                     { text: 'Take the file. Might be useful.', nextId: 'confirm_name', itemGained: 'mccoy_file' }
                 ]
             },
+            // --- END OF NEW OPENING SEQUENCE ---
             {
-                id: 'confirm_name', text: 'The fog in your head has cleared, just a little. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
+                id: 'confirm_name',
+                text: 'The fog in your head has cleared, just a little. You glance at the frosted glass of your office door, at the name painted there in reverse: ƎTA⅃Ƨ .Ⴑ\n\nIt looks like an epitaph. Is that who you are today?',
                 choices: [
                     { text: 'Yeah. That\'s me. J. Slate.', nextId: 'dame_walks_in' },
                     { text: 'No. That name is a ghost.', nextId: 'dame_walks_in', action: 'changeName' }
