@@ -31,6 +31,35 @@
     z-index: 10; /* Ensure it's on top of other elements */
 }
 
+/* --- Custom Scrollbar Styles --- */
+
+/* For Chrome, Safari, Edge, etc. */
+.table-container::-webkit-scrollbar {
+    width: 12px;  /* Width of the vertical scrollbar */
+    height: 12px; /* Height of the horizontal scrollbar */
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: transparent; /* Make the track invisible */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2); /* A semi-transparent dark color */
+    border-radius: 10px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.4); /* Make it darker on hover */
+}
+
+/* For Firefox */
+.table-container {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
 .color-box.cancel-note {
     background-color: var(--secondary-bg);
     color: var(--danger-color);
@@ -287,7 +316,7 @@ tr {
         <div class="table-container"><table id="services-table"><thead></thead><tbody></tbody></table></div>
         <footer>
             <p>
-                Posh Salon Service Matrix v2.7 | Last Updated: Auust 18, 2025 | 
+                Posh Salon Service Matrix v2.8 | Last Updated: August 18, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
