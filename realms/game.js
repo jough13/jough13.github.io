@@ -2052,8 +2052,6 @@ function resolveCombat(enemyKey) {
                     gameState.stats.wits++;
                 } else if (foundTome.key === "ART_TOME_RESOLVE") {
                     gameState.stats.spirit++;
-                    gameState.maxHp = calculateMaxHp();
-                    gameState.currentHp = gameState.maxHp;
                 }
                 addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
                 awardXP(20);
