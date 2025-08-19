@@ -32,17 +32,9 @@
             --page-bg: #1e1e1e;
         }
         
-        body.dark-mode .table-container {
-            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-
-        body.dark-mode .table-container::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        body.dark-mode .table-container::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(255, 255, 255, 0.4);
-        }
+        body.dark-mode .table-container { scrollbar-color: rgba(255, 255, 255, 0.2) transparent; }
+        body.dark-mode .table-container::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); }
+        body.dark-mode .table-container::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.4); }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -69,10 +61,7 @@
             height: calc(100vh - 4rem);
         }
         
-        .main-controls, footer {
-            flex-shrink: 0;
-        }
-
+        .main-controls, footer { flex-shrink: 0; }
         .main-controls {
             display: flex;
             justify-content: space-between;
@@ -84,421 +73,89 @@
             border-bottom: 1px solid var(--border-color);
         }
 
-        .controls-column {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
+        .controls-column { display: flex; flex-direction: column; gap: 1rem; }
         .controls-column.middle { text-align: center; }
         .controls-column.right { align-items: flex-end; }
-
-        .main-controls h1 {
-            margin: 0;
-            font-size: 1.75rem;
-            color: var(--accent-color);
-            font-weight: 600;
-        }
-
-        .control-group {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-        
-        .controls-column.right .control-group {
-            justify-content: flex-end;
-        }
-        
+        .main-controls h1 { margin: 0; font-size: 1.75rem; color: var(--accent-color); font-weight: 600; }
+        .control-group { position: relative; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .controls-column.right .control-group { justify-content: flex-end; }
         input[type="text"] {
-            border: 1px solid var(--border-color);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            background-color: var(--primary-bg);
-            color: var(--text-color);
-            transition: box-shadow 0.2s, background-color 0.3s;
-            min-width: 200px;
+            border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px;
+            background-color: var(--primary-bg); color: var(--text-color);
+            transition: box-shadow 0.2s, background-color 0.3s; min-width: 200px;
         }
-
-        input[type="text"]:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px var(--accent-color);
-            opacity: 0.8;
-        }
-
+        input[type="text"]:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.2s, opacity 0.2s;
-            white-space: nowrap;
+            background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem;
+            border-radius: 8px; cursor: pointer; font-weight: 500;
+            transition: background-color 0.2s, opacity 0.2s; white-space: nowrap;
         }
-
         button:hover { opacity: 0.85; }
         button.danger-btn { background-color: var(--danger-color); }
         button.save-btn { background-color: var(--success-color); }
-
         #theme-toggle-btn {
-            background-color: var(--secondary-bg);
-            color: var(--text-color);
-            padding: 0;
-            width: 44px;
-            height: 44px;
-            font-size: 1.5rem;
-            line-height: 44px;
-            text-align: center;
+            background-color: var(--secondary-bg); color: var(--text-color); padding: 0;
+            width: 44px; height: 44px; font-size: 1.5rem; line-height: 44px; text-align: center;
         }
-        
         .table-container {
-            flex-grow: 1;
-            overflow: auto;
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            background-color: var(--modal-bg);
+            flex-grow: 1; overflow: auto; border-radius: 12px;
+            box-shadow: var(--shadow); background-color: var(--modal-bg);
         }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px;
-        }
-
-        th, td {
-            padding: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: top;
-            position: relative;
-        }
-
-        th {
-            position: sticky;
-            top: 0;
-            z-index: 3;
-            background-color: var(--header-bg);
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        tr {
-            background-color: var(--primary-bg);
-            transition: background-color 0.2s ease-in-out;
-        }
-
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 0.5rem; border-bottom: 1px solid var(--border-color); vertical-align: top; position: relative; }
+        th { position: sticky; top: 0; z-index: 3; background-color: var(--header-bg); font-weight: 600; white-space: nowrap; }
+        tr { background-color: var(--primary-bg); transition: background-color 0.2s ease-in-out; }
         tr:nth-child(even) { background-color: var(--secondary-bg); }
         tr:last-child td { border-bottom: none; }
-
-        tbody tr:hover {
-            background-color: color-mix(in srgb, var(--accent-color) 15%, var(--primary-bg));
-        }
-
-        td:first-child, th:first-child {
-            font-weight: 500;
-            position: sticky;
-            left: 0;
-            background-color: inherit;
-            z-index: 2;
-        }
-
-        th:first-child {
-            background-color: var(--header-bg);
-            z-index: 4;
-        }
-
-        .cell-wrapper {
-            padding: 0.5rem 0.75rem;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .name-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .stylist-info {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex-grow: 1;
-        }
-
-        .level-text {
-            font-size: 0.9em;
-            color: #888;
-        }
-
-        .editable {
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            transition: background-color 0.2s, color 0.2s;
-            font-weight: 600;
-        }
-
-        .editable:hover {
-            background-color: var(--accent-color);
-            color: white;
-            opacity: 0.8;
-        }
-
-        .remove-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #aaa;
-            font-size: 1.1em;
-            padding: 4px;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            line-height: 1;
-        }
-
-        .remove-btn:hover {
-            color: white;
-            background-color: var(--danger-hover);
-        }
-
+        tbody tr:hover { background-color: color-mix(in srgb, var(--accent-color) 15%, var(--primary-bg)); }
+        td:first-child, th:first-child { font-weight: 500; position: sticky; left: 0; background-color: inherit; z-index: 2; }
+        th:first-child { background-color: var(--header-bg); z-index: 4; }
+        .cell-wrapper { padding: 0.5rem 0.75rem; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+        .name-wrapper { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .stylist-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
+        .level-text { font-size: 0.9em; color: #888; }
+        .editable { cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; font-weight: 600; }
+        .editable:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
+        .remove-btn { background: none; border: none; cursor: pointer; color: #aaa; font-size: 1.1em; padding: 4px; border-radius: 50%; width: 28px; height: 28px; line-height: 1; }
+        .remove-btn:hover { color: white; background-color: var(--danger-hover); }
         td { text-align: center; }
         td:first-child { text-align: left; white-space: nowrap; }
-
-        .cell-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        input[type="checkbox"] {
-            transform: scale(1.5);
-            cursor: pointer;
-            accent-color: var(--accent-color);
-        }
-
-        .price-text {
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s, color 0.2s;
-            min-width: 70px;
-            display: inline-block;
-        }
-
-        .price-text:hover {
-            background-color: var(--accent-color);
-            color: white;
-            opacity: 0.8;
-        }
-
-        .price-text.placeholder {
-            color: #888;
-            font-style: italic;
-            font-size: 0.9em;
-        }
-
-        .price-input, .name-input {
-            width: 70px;
-            padding: 4px;
-            border: 1px solid var(--accent-color);
-            border-radius: 4px;
-            text-align: center;
-            font-family: inherit;
-            font-size: 1em;
-        }
-
+        .cell-content { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        input[type="checkbox"] { transform: scale(1.5); cursor: pointer; accent-color: var(--accent-color); }
+        .price-text { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; min-width: 70px; display: inline-block; }
+        .price-text:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
+        .price-text.placeholder { color: #888; font-style: italic; font-size: 0.9em; }
+        .price-input, .name-input { width: 70px; padding: 4px; border: 1px solid var(--accent-color); border-radius: 4px; text-align: center; font-family: inherit; font-size: 1em; }
         .name-input { width: 150px; text-align: left; }
-
-        .sticky-note {
-            position: absolute;
-            bottom: 4px;
-            right: 4px;
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-        }
-
-        #color-palette {
-            position: absolute;
-            top: 110%;
-            right: 0;
-            background-color: var(--secondary-bg);
-            padding: 0.75rem;
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-            z-index: 10;
-        }
-
+        .sticky-note { position: absolute; bottom: 4px; right: 4px; width: 16px; height: 16px; border-radius: 4px; box-shadow: 1px 1px 3px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+        #color-palette { position: absolute; top: 110%; right: 0; background-color: var(--secondary-bg); padding: 0.75rem; border-radius: 8px; box-shadow: var(--shadow); z-index: 10; }
         .color-palette { display: flex; gap: 8px; }
-        
-        .color-box {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            cursor: pointer;
-            box-sizing: border-box;
-            transition: transform 0.2s;
-        }
-
+        .color-box { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; box-sizing: border-box; transition: transform 0.2s; }
         .color-box:hover { transform: scale(1.1); }
         .color-box.selected { border-color: var(--accent-color) !important; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
-
-        .color-box.cancel-note {
-            background-color: var(--secondary-bg);
-            color: var(--danger-color);
-            font-size: 1.5rem;
-            font-weight: bold;
-            line-height: 24px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }
-
-        .color-box.cancel-note:hover {
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .sort-arrow {
-            position: absolute;
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 1em;
-            text-align: center;
-            color: #ccc;
-            transition: color 0.2s ease-in-out;
-        }
-
+        .color-box.cancel-note { background-color: var(--secondary-bg); color: var(--danger-color); font-size: 1.5rem; font-weight: bold; line-height: 24px; text-align: center; border: 1px solid var(--border-color); }
+        .color-box.cancel-note:hover { background-color: var(--danger-color); color: white; }
+        .sortable { cursor: pointer; user-select: none; }
+        .sort-arrow { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 1em; text-align: center; color: #ccc; transition: color 0.2s ease-in-out; }
         .sort-arrow:not(:empty) { color: var(--text-color); }
         .sortable:hover .sort-arrow { color: #999; }
-        
-        .modal-backdrop {
-            display: none;
-            position: fixed;
-            z-index: 999;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .modal-popup {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            padding: 2rem;
-            background: var(--modal-bg);
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            text-align: left;
-            width: 90%;
-            max-width: 600px;
-        }
-
-        #note-popup {
-            border-top: 10px solid transparent;
-            padding-top: 1.5rem;
-        }
-
+        .modal-backdrop { display: none; position: fixed; z-index: 999; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-popup { display: none; position: fixed; z-index: 1000; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 2rem; background: var(--modal-bg); border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: left; width: 90%; max-width: 600px; }
+        #note-popup { border-top: 10px solid transparent; padding-top: 1.5rem; }
         .modal-popup h2 { margin-top: 0; color: var(--accent-color); }
         #note-popup-content { white-space: pre-wrap; padding: 1rem; border-radius: 8px; background-color: var(--secondary-bg); }
         .modal-popup .delete-note { display: inline-block; margin-top: 1rem; color: var(--danger-hover); cursor: pointer; text-decoration: underline; }
-        
-        .modal-popup .close-popup {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            font-size: 1.5rem;
-            line-height: 1;
-            cursor: pointer;
-            border: none;
-            background: none;
-            color: #aaa;
-            transition: color 0.2s;
-        }
-
+        .modal-popup .close-popup { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; line-height: 1; cursor: pointer; border: none; background: none; color: #aaa; transition: color 0.2s; }
         .modal-popup .close-popup:hover { color: var(--text-color); }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         #note-entry-color-swatch { width: 24px; height: 24px; border-radius: 6px; }
-
-        #note-entry-textarea {
-            width: 100%;
-            height: 120px;
-            padding: 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            resize: vertical;
-            box-sizing: border-box;
-            font-family: inherit;
-            font-size: 1em;
-            background-color: var(--primary-bg);
-            color: var(--text-color);
-        }
-
-        #note-entry-textarea:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px var(--accent-color);
-            opacity: 0.8;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
+        #note-entry-textarea { width: 100%; height: 120px; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 1em; background-color: var(--primary-bg); color: var(--text-color); }
+        #note-entry-textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
-        .modal-actions button.danger-btn { background-color: var(--danger-color); }
-
-        .manual-content {
-            max-height: 70vh;
-            overflow-y: auto;
-            padding-right: 1rem;
-        }
-
-        #service-stylists-list p {
-            line-height: 1.6;
-            margin: 0 0 0.5rem 0;
-            padding-left: 1rem;
-            border-left: 3px solid var(--border-color);
-        }
-
+        .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
+        #service-stylists-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
         .manual-content p, .manual-content li { line-height: 1.6; }
-        .dark-mode .manual-content p, .dark-mode .manual-content li { color: #ccc; }
-        .manual-content strong { color: var(--text-color); }
-        
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
         .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease-out forwards; }
         .toast.success { background-color: var(--success-color); }
@@ -507,83 +164,66 @@
         .toast.fade-out { animation: fadeOut 0.5s ease-in forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
-
         .table-container::-webkit-scrollbar { width: 12px; height: 12px; }
         .table-container::-webkit-scrollbar-track { background: transparent; }
-        .table-container::-webkit-scrollbar-thumb {
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            border: 3px solid transparent;
-            background-clip: content-box;
-        }
+        .table-container::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
         .table-container::-webkit-scrollbar-thumb:hover { background-color: rgba(0, 0, 0, 0.4); }
-        .table-container {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-        }
-        
+        .table-container { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, 0.2) transparent; }
         .dev-mode-only { display: none !important; }
         body.developer-mode-active .dev-mode-only { display: flex !important; }
-
         footer { text-align: center; margin-top: 2rem; padding: 1rem 0 0 0; font-size: 0.9em; color: #888; }
-        .dark-mode footer { color: #aaa; }
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
 
         @media print {
-            /* --- Hide all non-essential elements --- */
-            .main-controls, footer, #modal-backdrop, .modal-popup {
-                display: none !important;
-            }
-
-            /* --- Reset the main layout for printing --- */
-            body {
-                padding: 1in; /* Add margins for the printed page */
-                background-color: #ffffff; /* Ensure a white background */
-            }
-
-            .container {
-                padding: 0;
-                margin: 0;
-                box-shadow: none;
-                border-radius: 0;
-                height: auto;
-                width: 100%;
-                max-width: 100%;
-            }
-
-            /* --- Make the table fill the page width --- */
-            .table-container {
-                overflow: visible; /* Show all content, don't scroll */
-                box-shadow: none;
-                height: auto;
-            }
-            
-            table {
-                font-size: 10pt; /* Adjust font size for readability on paper */
-                width: 100%;
-                min-width: 100%;
-            }
-
-            /* --- Ensure all table content is visible and static --- */
-            th, td, th:first-child, td:first-child {
-                position: static; /* Disable sticky headers/columns */
-            }
-            
-            /* --- Improve readability --- */
-            tr {
-                page-break-inside: avoid; /* Try to keep rows on the same page */
-            }
-
-            tr:nth-child(even) {
-                background-color: #ffffff !important; /* Remove alternating row colors */
-            }
-
-            .price-text.placeholder {
-                color: #888; /* Ensure placeholder text is still visible */
-            }
+            .main-controls, footer, #modal-backdrop, .modal-popup { display: none !important; }
+            body { padding: 1in; background-color: #ffffff; }
+            .container { padding: 0; margin: 0; box-shadow: none; border-radius: 0; height: auto; width: 100%; max-width: 100%; }
+            .table-container { overflow: visible; box-shadow: none; height: auto; }
+            table { font-size: 10pt; width: 100%; min-width: 100%; }
+            th, td, th:first-child, td:first-child { position: static; }
+            tr { page-break-inside: avoid; }
+            tr:nth-child(even) { background-color: #ffffff !important; }
         }
 
+        /* --- MOBILE RESPONSIVE STYLES --- */
+        #mobile-view-container { display: none; flex-grow: 1; overflow-y: auto; padding: 0 0.5rem; }
+        .stylist-card {
+            background-color: var(--secondary-bg); border-radius: 12px; margin-bottom: 1.5rem;
+            padding: 1.25rem; box-shadow: var(--shadow); border-left: 5px solid var(--accent-color);
+        }
+        .stylist-card-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); position: relative;
+        }
+        .stylist-card-header .sticky-note { position: relative; top: 0; right: 0; bottom: 0; align-self: center; }
+        .service-item {
+            display: grid; grid-template-columns: 1fr auto; align-items: center;
+            padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); gap: 1rem;
+        }
+        .service-item:last-child { border-bottom: none; }
+        .service-name { font-weight: 500; }
+        .service-controls { display: flex; align-items: center; gap: 1rem; position: relative; }
+        .service-controls .sticky-note { position: relative; top: 0; right: 0; bottom: 0; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        @media (max-width: 992px) {
+            .main-controls { flex-direction: column; align-items: stretch; gap: 1.5rem; }
+            .controls-column { width: 100%; text-align: center; }
+            .controls-column.right, .controls-column.left { align-items: center; }
+            .controls-column.right .control-group { justify-content: center; }
+        }
+        @media (max-width: 800px) {
+            body { padding: 1rem 0; overflow-y: auto; }
+            .container { border-radius: 0; padding: 1rem; height: auto; min-height: 100vh; }
+            .table-container { display: none; }
+            #mobile-view-container { display: block; }
+        }
     </style>
 </head>
 <body>
@@ -626,103 +266,51 @@
         </div>
 
         <div class="table-container"><table id="services-table"><thead></thead><tbody></tbody></table></div>
-        
+        <div id="mobile-view-container"></div>
+
         <footer>
             <p>
-                Posh Salon Service Matrix v2.20 | Last Updated: August 19, 2025 | 
+                Posh Salon Service Matrix v2.21 | Last Updated: August 19, 2025 | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
-    <div id="note-popup" class="modal-popup">
-        <button class="close-popup">&times;</button><h2>Sticky Note</h2>
-        <div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span>
-    </div>
-    <div id="manual-popup" class="modal-popup">
-        <button class="close-popup">&times;</button>
-        <div class="manual-content">
-            <h2>Posh Salon: User Manual ✂️</h2>
-            <p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p>
-            <h3>Adding & Removing</h3>
-            <ul>
-                <li><strong>To Add a New Stylist</strong>: Type a name in the "New Stylist Name..." box and click the <strong>Add Stylist</strong> button.</li>
-                <li><strong>To Add a New Service</strong>: Type a name in the "New Service Name..." box and click the <strong>Add Service</strong> button.</li>
-                <li><strong>To Remove a Stylist</strong>: Double-click a stylist's name, then click the trash can icon (<strong>🗑️</strong>) that appears.</li>
-                <li><strong>To Remove a Service</strong>: Double-click a service name in the header, then click the trash can icon (<strong>🗑️</strong>) that appears.</li>
-            </ul>
-            <h3>Editing Information</h3>
-            <ul>
-                <li><strong>To Edit a Service Name</strong>: Double-click on any service name in the header.</li>
-                <li><strong>To Edit a Stylist Name</strong>: Double-click on any stylist's name in the table.</li>
-                <li><strong>To Change a Stylist's Level</strong>: Single-click the level text (e.g., "Level Five") under a stylist's name.</li>
-                <li><strong>To Change a Price</strong>: Single-click on any price (or on the "Add Price" text).</li>
-            </ul>
-            <h3>Using Sticky Notes</h3>
-            <ul>
-                <li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li>
-                <li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li>
-                <li><strong>To Delete a Note</strong>: Open the note, then click the "Delete this note" text link.</li>
-            </ul>
-            <h3>Saving & Managing Your Data</h3>
-            <ul>
-                <li><strong>Save</strong>: Click this to save your work to the current browser.</li>
-                <li><strong>Export</strong>: Click this to save a backup file (`salon-data.json`) to your computer.</li>
-                <li><strong>Import</strong>: Click this to load data from a file. This will <strong>completely replace</strong> the current matrix.</li>
-            </ul>
-        </div>
-    </div>
-    <div id="note-entry-popup" class="modal-popup">
-        <div class="modal-header">
-            <h2>Add Sticky Note</h2>
-            <div id="note-entry-color-swatch"></div>
-        </div>
-        <textarea id="note-entry-textarea" placeholder="Enter your note text here..." rows="4"></textarea>
-        <div class="modal-actions">
-            <button id="note-entry-cancel" class="secondary">Cancel</button>
-            <button id="note-entry-save">Save Note</button>
-        </div>
-    </div>
-    <div id="confirm-popup" class="modal-popup">
-        <h2 id="confirm-title">Confirm Action</h2>
-        <p id="confirm-message">Are you sure you want to proceed?</p>
-        <div class="modal-actions">
-            <button id="confirm-cancel-btn" class="secondary">Cancel</button>
-            <button id="confirm-confirm-btn" class="danger-btn">Confirm</button>
-        </div>
-    </div>
-
-    <div id="service-stylists-popup" class="modal-popup">
-        <button class="close-popup">&times;</button>
-        <h2 id="service-stylists-title"></h2>
-        <div id="service-stylists-list"></div>
-    </div>
-
+    <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Adding & Removing</h3><ul><li><strong>To Add a New Stylist</strong>: Type a name in the "New Stylist Name..." box and click the <strong>Add Stylist</strong> button.</li><li><strong>To Add a New Service</strong>: Type a name in the "New Service Name..." box and click the <strong>Add Service</strong> button.</li><li><strong>To Remove a Stylist</strong>: Double-click a stylist's name, then click the trash can icon (<strong>🗑️</strong>) that appears.</li><li><strong>To Remove a Service</strong>: Double-click a service name in the header, then click the trash can icon (<strong>🗑️</strong>) that appears.</li></ul><h3>Editing Information</h3><ul><li><strong>To Edit a Service Name</strong>: Double-click on any service name in the header.</li><li><strong>To Edit a Stylist Name</strong>: Double-click on any stylist's name in the table.</li><li><strong>To Change a Stylist's Level</strong>: Single-click the level text (e.g., "Level Five") under a stylist's name.</li><li><strong>To Change a Price</strong>: Single-click on any price (or on the "Add Price" text).</li></ul><h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li><li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li><li><strong>To Delete a Note</strong>: Open the note, then click the "Delete this note" text link.</li></ul><h3>Saving & Managing Your Data</h3><ul><li><strong>Save</strong>: Click this to save your work to the current browser.</li><li><strong>Export</strong>: Click this to save a backup file (`salon-data.json`) to your computer.</li><li><strong>Import</strong>: Click this to load data from a file. This will <strong>completely replace</strong> the current matrix.</li></ul></div></div>
+    <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..." rows="4"></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
+    <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure you want to proceed?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
+    <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
     <div id="toast-container"></div>
     
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE AND CONSTANTS ---
         let salonState;
         let isPlacingNote = false;
         let selectedNoteColor = null;
         let clickTimer = null;
         let sortState = { key: 'stylist', direction: 'asc' };
         
+        // --- DOM ELEMENT REFERENCES ---
         const servicesTable = document.getElementById('services-table');
+        const mobileViewContainer = document.getElementById('mobile-view-container');
+        const mainContentContainer = document.querySelector('.container');
         const newStylistInput = document.getElementById('new-stylist-name');
         const newServiceInput = document.getElementById('new-service-name');
         const addNoteBtn = document.getElementById('add-note-btn');
         const colorPalette = document.getElementById('color-palette');
         const modalBackdrop = document.getElementById('modal-backdrop');
-        const searchInput = document.getElementById('search-input'); // NEW: Get search input
+        const searchInput = document.getElementById('search-input');
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
         
+        // --- CORE DATA ---
         const LOCAL_STORAGE_KEY = 'salonMatrixData';
         const THEME_KEY = 'salonMatrixTheme';
         const NOTE_COLORS = [
             { color: '#ffe880', border: 'none' }, { color: '#adcffa', border: 'none' }, { color: '#ffbaba', border: 'none' },
             { color: '#a8e6a8', border: 'none' }, { color: '#e0c4ff', border: 'none' }, { color: '#ffffff', border: '1px solid #333' }
         ];
-
         const defaultData = {
             services: [
                 { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
@@ -742,6 +330,9 @@
             }]
         };
         
+        // --- HELPER & UTILITY FUNCTIONS ---
+        const debounce = (func, delay) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func(...args), delay); }; };
+
         const showToast = (message, type = 'info', duration = 3000) => {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -754,28 +345,22 @@
             }, duration);
         };
 
-        // MODIFIED: This function now just updates the sort state and triggers a re-render.
         const sortData = (key) => {
             const isNumericKey = !isNaN(parseInt(key));
             const currentKey = isNumericKey ? parseInt(key) : key;
             const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
             sortState = { key: currentKey, direction: newDirection };
-            updateDisplay(); // Trigger a re-render with new sort
+            updateDisplay();
         };
 
- // NEW: Function to display the popup with a list of stylists
         const showServiceStylistsPopup = (serviceName, stylistsList) => {
             const popup = document.getElementById('service-stylists-popup');
             const title = document.getElementById('service-stylists-title');
             const listContainer = document.getElementById('service-stylists-list');
-
             title.textContent = `Stylists Who Perform "${serviceName}"`;
-            listContainer.innerHTML = ''; // Clear previous content
-
+            listContainer.innerHTML = '';
             if (stylistsList.length === 0) {
-                const p = document.createElement('p');
-                p.textContent = 'No stylists are currently assigned to this service.';
-                listContainer.appendChild(p);
+                listContainer.innerHTML = '<p>No stylists are currently assigned to this service.</p>';
             } else {
                 stylistsList.forEach(name => {
                     const p = document.createElement('p');
@@ -783,84 +368,9 @@
                     listContainer.appendChild(p);
                 });
             }
-
             modalBackdrop.style.display = 'block';
             popup.style.display = 'block';
         };
-
-        // MODIFIED: Renamed and now accepts a list of stylists to render.
-        const renderTable = (stylistsToRender) => {
-            const thead = servicesTable.querySelector('thead');
-            const tbody = servicesTable.querySelector('tbody');
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-            const headerRow = document.createElement('tr');
-            const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
-            salonState.services.forEach((service, colIndex) => {
-                const th = document.createElement('th');
-                th.dataset.col = colIndex + 1;
-                let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                const serviceArrow = sortState.key === colIndex ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-                th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}<span class="sort-arrow">${serviceArrow}</span></div>`;
-                headerRow.appendChild(th);
-            });
-            thead.appendChild(headerRow);
-            stylistsToRender.forEach((stylist) => { // Use the passed-in list
-                // MODIFIED: Find the original index to maintain data integrity on edits
-                const originalRowIndex = salonState.stylists.findIndex(s => s.name === stylist.name);
-                const row = document.createElement('tr');
-                row.dataset.row = originalRowIndex;
-                const nameCell = document.createElement('td');
-                nameCell.dataset.col = 0;
-                let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
-                nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
-                row.appendChild(nameCell);
-                stylist.services.forEach((service, colIndex) => {
-                    const cell = document.createElement('td');
-                    cell.dataset.col = colIndex + 1;
-                    const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
-                    const priceClass = service.price ? 'price-text' : 'price-text placeholder';
-                    let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                    cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
-                    row.appendChild(cell);
-                });
-                tbody.appendChild(row);
-            });
-        };
-
-        // NEW: Central function to handle all display updates (search + sort)
-        const updateDisplay = () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            let filteredStylists = salonState.stylists;
-
-            // 1. Filter by search term
-            if (searchTerm) {
-                filteredStylists = salonState.stylists.filter(stylist => 
-                    stylist.name.toLowerCase().includes(searchTerm)
-                );
-            }
-
-            // 2. Sort the filtered results
-            const { key, direction } = sortState;
-            const sortedAndFilteredStylists = [...filteredStylists].sort((a, b) => {
-                if (key === 'stylist') {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    if (nameA < nameB) return direction === 'asc' ? -1 : 1;
-                    if (nameA > nameB) return direction === 'asc' ? 1 : -1;
-                    return 0;
-                } else {
-                    const priceA = parseFloat(a.services[key].price) || 0;
-                    const priceB = parseFloat(b.services[key].price) || 0;
-                    return direction === 'asc' ? priceA - priceB : priceB - priceA;
-                }
-            });
-
-            // 3. Render the final list
-            renderTable(sortedAndFilteredStylists);
-        };
-
 
         const showNoteEntryPopup = (row, col) => {
             const noteEntryPopup = document.getElementById('note-entry-popup');
@@ -875,16 +385,15 @@
             swatch.style.backgroundColor = selectedNoteColor.color;
             swatch.style.border = selectedNoteColor.border || 'none';
             const handleSave = () => {
-                const noteText = textarea.value;
-                const newNote = { text: noteText, ...selectedNoteColor };
+                const newNote = { text: textarea.value, ...selectedNoteColor };
                 if (row === -1) salonState.services[col - 1].note = newNote;
                 else if (col === 0) salonState.stylists[row].note = newNote;
                 else salonState.stylists[row].services[col - 1].note = newNote;
-                updateDisplay(); // MODIFIED
+                updateDisplay();
                 showToast("Note added.", "success");
                 cleanup();
             };
-            const handleCancel = () => { cleanup(); };
+            const handleCancel = () => cleanup();
             const cleanup = () => {
                 noteEntryPopup.style.display = 'none';
                 modalBackdrop.style.display = 'none';
@@ -905,7 +414,7 @@
             modalBackdrop.style.display = 'block';
             confirmPopup.style.display = 'block';
             const handleConfirm = () => { onConfirm(); cleanup(); };
-            const handleCancel = () => { cleanup(); };
+            const handleCancel = () => cleanup();
             const cleanup = () => {
                 modalBackdrop.style.display = 'none';
                 confirmPopup.style.display = 'none';
@@ -915,7 +424,7 @@
             confirmBtn.addEventListener('click', handleConfirm, { once: true });
             cancelBtn.addEventListener('click', handleCancel, { once: true });
         };
-
+        
         const togglePlacingNote = (placing) => {
             isPlacingNote = placing;
             selectedNoteColor = null;
@@ -942,25 +451,10 @@
                     else salonState.stylists[row].services[col - 1].note = null;
                     notePopup.style.display = 'none';
                     modalBackdrop.style.display = 'none';
-                    updateDisplay(); // MODIFIED
+                    updateDisplay();
                     showToast("Note deleted.", "info");
                 });
             };
-        };
-
-        const loadInitialData = () => {
-            const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-            let savedData = savedJSON ? JSON.parse(savedJSON) : null;
-            if (savedData && Array.isArray(savedData.services) && typeof savedData.services[0] === 'string') {
-                savedData.services = savedData.services.map(name => ({ name, note: null }));
-                savedData.stylists.forEach(stylist => {
-                    stylist.note = stylist.note || null;
-                    stylist.level = stylist.level || "Apprentice";
-                    stylist.services.forEach(cell => { cell.note = cell.note || null; });
-                });
-            }
-            salonState = savedData || JSON.parse(JSON.stringify(defaultData));
-            updateDisplay(); // MODIFIED
         };
         
         const applyTheme = (theme) => {
@@ -973,439 +467,277 @@
             }
         };
         
-const handlePrint = () => {
-    // 1. Define the CSS for the print-friendly view
-    const printStyles = `
-        <style>
-            @page {
-                size: portrait;
-                margin: 0.75in;
-            }
-            body {
-                font-family: Arial, sans-serif;
-                font-size: 10pt;
-            }
-            h1 {
-                font-size: 16pt;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            p.timestamp {
-                text-align: center;
-                font-style: italic;
-                font-size: 9pt;
-                color: #555;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-            }
-            th, td {
-                border: 1px solid #ccc;
-                padding: 6px;
-                text-align: center; /* <-- CHANGE 1: Centered all text */
-            }
-            th {
-                background-color: #f0f0f0;
-                font-weight: bold;
-            }
-            thead {
-                display: table-header-group; 
-            }
-        </style>
-    `;
+        const handlePrint = () => {
+            const printStyles = `<style>@page{size:portrait;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
+            let tableHtml = '<table><thead><tr><th>Stylist</th>';
+            salonState.services.forEach(service => { tableHtml += `<th>${service.name}</th>`; });
+            tableHtml += '</tr></thead><tbody>';
+            salonState.stylists.forEach(stylist => {
+                tableHtml += `<tr><td><strong>${stylist.name}</strong><br><small>${stylist.level}</small></td>`;
+                stylist.services.forEach(service => {
+                    let cellContent = service.checked ? (service.price ? `$${parseFloat(service.price).toFixed(2)}` : '') : '';
+                    tableHtml += `<td>${cellContent}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+            const timestamp = `Generated on: ${new Date().toLocaleString()}`;
+            const fullHtml = `<!DOCTYPE html><html><head><title>Posh Salon Service Matrix</title>${printStyles}</head><body><h1>Posh Salon Service Matrix</h1><p class="timestamp">${timestamp}</p>${tableHtml}</body></html>`;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(fullHtml);
+            printWindow.document.close();
+            printWindow.onload = () => { printWindow.print(); printWindow.close(); };
+        };
 
-    // 2. Build the clean HTML for the table
-    let tableHtml = '<table><thead><tr><th>Stylist</th>';
-    salonState.services.forEach(service => {
-        tableHtml += `<th>${service.name}</th>`;
-    });
-    tableHtml += '</tr></thead><tbody>';
+        // --- RENDER FUNCTIONS ---
+        const renderTable = (stylistsToRender) => {
+            const thead = servicesTable.querySelector('thead');
+            const tbody = servicesTable.querySelector('tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
+            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
+            salonState.services.forEach((service, colIndex) => {
+                const th = document.createElement('th');
+                th.dataset.col = colIndex + 1;
+                let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                const serviceArrow = sortState.key === colIndex ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
+                th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}<span class="sort-arrow">${serviceArrow}</span></div>`;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            stylistsToRender.forEach((stylist) => {
+                const originalRowIndex = salonState.stylists.findIndex(s => s.name === stylist.name);
+                const row = document.createElement('tr');
+                row.dataset.row = originalRowIndex;
+                const nameCell = document.createElement('td');
+                nameCell.dataset.col = 0;
+                let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
+                nameCell.innerHTML = `<div class="cell-wrapper"><div class="name-wrapper"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
+                row.appendChild(nameCell);
+                stylist.services.forEach((service, colIndex) => {
+                    const cell = document.createElement('td');
+                    cell.dataset.col = colIndex + 1;
+                    const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
+                    const priceClass = service.price ? 'price-text' : 'price-text placeholder';
+                    let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                    cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
+                    row.appendChild(cell);
+                });
+                tbody.appendChild(row);
+            });
+        };
 
-    salonState.stylists.forEach(stylist => {
-        tableHtml += `<tr><td><strong>${stylist.name}</strong><br><small>${stylist.level}</small></td>`;
-        stylist.services.forEach(service => {
-            let cellContent = '';
-            if (service.checked) {
-                // CHANGE 2: Removed the '✔' checkmark, now only shows the price
-                cellContent = service.price ? `$${parseFloat(service.price).toFixed(2)}` : '';
+        const renderMobileView = (stylistsToRender) => {
+            mobileViewContainer.innerHTML = '';
+            if (stylistsToRender.length === 0) {
+                mobileViewContainer.innerHTML = '<p style="text-align:center; color:#888;">No stylists match your search.</p>';
+                return;
             }
-            tableHtml += `<td>${cellContent}</td>`;
-        });
-        tableHtml += '</tr>';
-    });
-    tableHtml += '</tbody></table>';
+            stylistsToRender.forEach((stylist) => {
+                const originalRowIndex = salonState.stylists.findIndex(s => s.name === stylist.name);
+                const card = document.createElement('div');
+                card.className = 'stylist-card';
+                card.dataset.row = originalRowIndex;
+                let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};" data-col="0"></div>` : '';
+                card.innerHTML = `<div class="stylist-card-header" data-col="0"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div>${stylistNoteHTML}</div><div class="stylist-card-body"></div>`;
+                const cardBody = card.querySelector('.stylist-card-body');
+                salonState.services.forEach((serviceData, colIndex) => {
+                    const service = stylist.services[colIndex];
+                    const serviceItem = document.createElement('div');
+                    serviceItem.className = 'service-item';
+                    serviceItem.dataset.col = colIndex + 1;
+                    const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
+                    const priceClass = service.price ? 'price-text' : 'price-text placeholder';
+                    let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
+                    serviceItem.innerHTML = `<span class="service-name">${serviceData.name}</span><div class="service-controls"><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span><label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>${cellNoteHTML}</div>`;
+                    cardBody.appendChild(serviceItem);
+                });
+                mobileViewContainer.appendChild(card);
+            });
+        };
 
-    // 3. Combine everything into a full HTML document
-    const today = new Date();
-    const timestamp = `Generated on: ${today.toLocaleDateString()} at ${today.toLocaleTimeString()}`;
+        const updateDisplay = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            let filteredStylists = salonState.stylists;
+            if (searchTerm) {
+                filteredStylists = salonState.stylists.filter(stylist => stylist.name.toLowerCase().includes(searchTerm));
+            }
+            const { key, direction } = sortState;
+            const sortedAndFilteredStylists = [...filteredStylists].sort((a, b) => {
+                if (key === 'stylist') {
+                    return direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+                } else {
+                    const priceA = parseFloat(a.services[key]?.price) || 0;
+                    const priceB = parseFloat(b.services[key]?.price) || 0;
+                    return direction === 'asc' ? priceA - priceB : priceB - priceA;
+                }
+            });
+            if (window.innerWidth <= 800) {
+                renderMobileView(sortedAndFilteredStylists);
+            } else {
+                renderTable(sortedAndFilteredStylists);
+            }
+        };
 
-    const fullHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Posh Salon Service Matrix</title>
-            ${printStyles}
-        </head>
-        <body>
-            <h1>Posh Salon Service Matrix</h1>
-            <p class="timestamp">${timestamp}</p>
-            ${tableHtml}
-        </body>
-        </html>
-    `;
+        // --- DATA INITIALIZATION ---
+        const loadInitialData = () => {
+            const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
+            salonState = savedJSON ? JSON.parse(savedJSON) : JSON.parse(JSON.stringify(defaultData));
+            updateDisplay();
+        };
 
-    // 4. Open a new window, write the content, and trigger the print dialog
-    const printWindow = window.open('', '_blank');
-    printWindow.document.open();
-    printWindow.document.write(fullHtml);
-    printWindow.document.close();
-
-    printWindow.onload = function() {
-        printWindow.print();
-        printWindow.close();
-    };
-};
-
-
-        // --- Event Listeners ---
-        servicesTable.addEventListener('input', (event) => {
+        // --- EVENT LISTENERS ---
+        mainContentContainer.addEventListener('input', (event) => {
             const target = event.target;
-            const cell = target.closest('td');
-            if (!cell) return;
-            const row = parseInt(cell.parentElement.dataset.row);
-            if (target.matches('input[type="checkbox"]')) {
-                const col = parseInt(cell.dataset.col);
+            if (!target.matches('input[type="checkbox"]')) return;
+            const serviceItem = target.closest('.service-item');
+            const td = target.closest('td');
+            if (serviceItem) {
+                const row = parseInt(target.closest('.stylist-card').dataset.row);
+                const col = parseInt(serviceItem.dataset.col);
+                salonState.stylists[row].services[col - 1].checked = target.checked;
+            } else if (td) {
+                const row = parseInt(td.parentElement.dataset.row);
+                const col = parseInt(td.dataset.col);
                 salonState.stylists[row].services[col - 1].checked = target.checked;
             }
         });
 
-        servicesTable.addEventListener('click', (event) => {
+        mainContentContainer.addEventListener('click', (event) => {
             const target = event.target;
-            const cell = target.closest('td, th');
+            const cell = target.closest('td, th, .stylist-card-header, .service-item');
             if (!cell) return;
             if (isPlacingNote) {
-                if (!selectedNoteColor) {
-                    showToast("Please select a color from the palette first!", 'error');
-                    return;
-                }
+                if (!selectedNoteColor) return showToast("Please select a color first!", 'error');
+                const row = cell.closest('[data-row]') ? parseInt(cell.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(cell.dataset.col);
-                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
                 showNoteEntryPopup(row, col);
                 return;
             }
-
-
-        if (target.matches('.sort-arrow')) {
-            const sortKey = target.closest('.sortable').dataset.sort;
-            sortData(sortKey);
-        } else if (target.matches('.editable') && target.closest('th')) { // NEW: Handle service name clicks
-            clearTimeout(clickTimer); // Prevents this from firing on a double-click
-            clickTimer = setTimeout(() => {
-                const cell = target.closest('th');
-                const colIndex = parseInt(cell.dataset.col) - 1;
-                const service = salonState.services[colIndex];
-
-                // Find all stylists who have the checkbox checked for this service
-                const performingStylists = salonState.stylists
-                    .filter(stylist => stylist.services[colIndex] && stylist.services[colIndex].checked)
-                    .map(stylist => stylist.name);
-                
-                showServiceStylistsPopup(service.name, performingStylists);
-            }, 250); // Delay allows dblclick to cancel it
-        } else if (target.matches('.editable.level-text')) {
-
-
-                const row = parseInt(target.closest('tr').dataset.row);
+            if (target.closest('.sortable')) {
+                sortData(target.closest('.sortable').dataset.sort);
+            } else if (target.matches('.editable') && target.closest('th')) {
+                clearTimeout(clickTimer);
+                clickTimer = setTimeout(() => {
+                    const colIndex = parseInt(target.closest('th').dataset.col) - 1;
+                    const performingStylists = salonState.stylists.filter(s => s.services[colIndex]?.checked).map(s => s.name);
+                    showServiceStylistsPopup(salonState.services[colIndex].name, performingStylists);
+                }, 250);
+            } else if (target.matches('.editable.level-text')) {
+                const row = parseInt(target.closest('[data-row]').dataset.row);
                 const originalText = target.textContent;
                 const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.value = originalText === 'Add Level' ? '' : originalText;
+                input.type = 'text'; input.className = 'name-input'; input.value = originalText === 'Add Level' ? '' : originalText;
                 target.replaceWith(input);
                 input.focus();
                 const save = () => {
-                    const newText = input.value.trim();
-                    if (newText === '') {
-                        showToast('Level cannot be empty.', 'error');
-                        salonState.stylists[row].level = originalText;
-                        updateDisplay(); // MODIFIED
-                        return;
-                    }
-                    salonState.stylists[row].level = newText;
-                    updateDisplay(); // MODIFIED
+                    salonState.stylists[row].level = input.value.trim() || originalText;
+                    updateDisplay();
                 };
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.price-text')) {
-                const row = parseInt(target.closest('tr').dataset.row);
-                const col = parseInt(target.closest('td').dataset.col);
+                const row = parseInt(target.closest('[data-row]').dataset.row);
+                const col = parseInt(target.closest('[data-col]').dataset.col);
                 const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
                 const input = document.createElement('input');
-                input.type = 'number';
-                input.className = 'price-input';
-                input.value = originalValue;
-                input.step = '0.01';
-                target.innerHTML = '';
-                target.appendChild(input);
+                input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
+                target.replaceWith(input);
                 input.focus();
-                const savePrice = () => {
+                const save = () => {
                     const newPrice = input.value.trim();
-                    if (newPrice && (isNaN(parseFloat(newPrice)) || parseFloat(newPrice) < 0)) {
-                        showToast('Please enter a valid price.', 'error');
-                        updateDisplay(); // MODIFIED
-                        return;
-                    }
                     salonState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    updateDisplay(); // MODIFIED
+                    updateDisplay();
                 };
-                input.addEventListener('blur', savePrice);
+                input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.sticky-note')) {
-                const row = cell.parentElement.dataset.row ? parseInt(cell.parentElement.dataset.row) : -1;
-                const col = parseInt(cell.dataset.col);
+                const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
+                const col = parseInt(target.closest('[data-col]').dataset.col);
                 showNotePopup(row, col);
             }
         });
 
-        servicesTable.addEventListener('dblclick', (event) => {
+        mainContentContainer.addEventListener('dblclick', (event) => {
+            clearTimeout(clickTimer);
             const target = event.target;
-            const isServiceHeader = target.matches('.editable') && target.closest('th');
-            const isStylistName = target.matches('.editable') && !target.classList.contains('level-text') && target.closest('td');
-
-            if (isServiceHeader) {
-                clearTimeout(clickTimer);
-                const originalText = target.textContent;
-                const nameWrapper = target.closest('.name-wrapper');
+            const handleSave = (input, originalText, updateFn) => {
+                const newText = input.value.trim();
+                if (newText === '') {
+                    showToast('Name cannot be empty.', 'error');
+                    updateFn(originalText);
+                } else {
+                    updateFn(newText);
+                }
+                updateDisplay();
+            };
+            if (target.matches('.editable') && target.closest('th')) {
                 const cell = target.closest('th');
                 const col = parseInt(cell.dataset.col);
-                const editInput = document.createElement('input');
-                editInput.type = 'text';
-                editInput.className = 'name-input';
-                editInput.value = originalText;
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'remove-btn';
-                deleteBtn.innerHTML = '🗑️';
-                deleteBtn.title = 'Delete Service';
-                nameWrapper.innerHTML = '';
-                nameWrapper.appendChild(editInput);
-                nameWrapper.appendChild(deleteBtn);
-                editInput.focus();
-                const handleDelete = () => {
-                    showConfirmModal(`Are you sure you want to remove service "${originalText}"?`, () => {
-                        salonState.services.splice(col - 1, 1);
-                        salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
-                        showToast(`Service "${originalText}" removed.`, "info");
-                        updateDisplay(); // MODIFIED
-                    });
-                };
-                deleteBtn.addEventListener('mousedown', handleDelete); // FIX from previous step
-                const handleSave = () => {
-                    const newText = editInput.value.trim();
-                    if (newText === '') {
-                        showToast('Service name cannot be empty.', 'error');
-                        salonState.services[col - 1].name = originalText;
-                        updateDisplay(); // MODIFIED
-                        return;
-                    }
-                    salonState.services[col - 1].name = newText;
-                    updateDisplay(); // MODIFIED
-                };
-                editInput.addEventListener('blur', handleSave);
-                editInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') e.target.blur();
-                    if (e.key === 'Escape') {
-                        salonState.services[col - 1].name = originalText;
-                        updateDisplay(); // MODIFIED
-                    }
-                });
-            } else if (isStylistName) {
-                clearTimeout(clickTimer);
                 const originalText = target.textContent;
-                const stylistInfo = target.closest('.stylist-info');
-                const row = parseInt(target.closest('tr').dataset.row);
-
-                const editInput = document.createElement('input');
-                editInput.type = 'text';
-                editInput.className = 'name-input';
-                editInput.value = originalText;
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'remove-btn';
-                deleteBtn.innerHTML = '🗑️';
-                deleteBtn.title = 'Delete Stylist';
-
-                const parentWrapper = stylistInfo.parentElement;
-                parentWrapper.innerHTML = ''; // Clear the name wrapper
-                parentWrapper.appendChild(editInput);
-                parentWrapper.appendChild(deleteBtn);
+                const nameWrapper = target.closest('.name-wrapper');
+                const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
+                const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
+                nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
                 editInput.focus();
-
-                const handleDelete = () => {
-                    showConfirmModal(`Are you sure you want to remove stylist "${originalText}"?`, () => {
-                        salonState.stylists.splice(row, 1);
-                        showToast(`Stylist "${originalText}" removed.`, "info");
-                        updateDisplay(); // MODIFIED
-                    });
-                };
-                deleteBtn.addEventListener('mousedown', handleDelete); // FIX from previous step
-
-                const handleSave = () => {
-                    const newText = editInput.value.trim();
-                    if (newText === '') {
-                        showToast('Stylist name cannot be empty.', 'error');
-                        salonState.stylists[row].name = originalText;
-                        updateDisplay(); // MODIFIED
-                        return;
-                    }
-                    salonState.stylists[row].name = newText;
-                    updateDisplay(); // MODIFIED
-                };
-                editInput.addEventListener('blur', handleSave);
-                editInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') e.target.blur();
-                    if (e.key === 'Escape') {
-                        salonState.stylists[row].name = originalText;
-                        updateDisplay(); // MODIFIED
-                    }
-                });
+                deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove service "${originalText}"?`, () => {
+                    salonState.services.splice(col - 1, 1);
+                    salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
+                    showToast(`Service "${originalText}" removed.`, "info");
+                    updateDisplay();
+                }));
+                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (val) => salonState.services[col - 1].name = val));
+                editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+            } else if (target.matches('.editable') && !target.classList.contains('level-text')) {
+                const parentElement = target.closest('[data-row]');
+                if (!parentElement) return;
+                const row = parseInt(parentElement.dataset.row);
+                const originalText = target.textContent;
+                const nameWrapper = target.closest('.stylist-info') || target.closest('.name-wrapper');
+                const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
+                const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
+                nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
+                editInput.focus();
+                deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove stylist "${originalText}"?`, () => {
+                    salonState.stylists.splice(row, 1);
+                    showToast(`Stylist "${originalText}" removed.`, "info");
+                    updateDisplay();
+                }));
+                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (val) => salonState.stylists[row].name = val));
+                editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
             }
         });
         
         NOTE_COLORS.forEach(c => {
             const box = document.createElement('div');
-            box.className = 'color-box';
-            box.style.backgroundColor = c.color;
-            box.style.border = c.border || '2px solid transparent';
-            box.addEventListener('click', (e) => {
-                e.stopPropagation();
-                colorPalette.querySelector('.selected')?.classList.remove('selected');
-                box.classList.add('selected');
-                selectedNoteColor = c;
-            });
+            box.className = 'color-box'; box.style.backgroundColor = c.color; box.style.border = c.border || '2px solid transparent';
+            box.addEventListener('click', (e) => { e.stopPropagation(); colorPalette.querySelector('.selected')?.classList.remove('selected'); box.classList.add('selected'); selectedNoteColor = c; });
             colorPalette.appendChild(box);
         });
-
-        const cancelBox = document.createElement('div');
-        cancelBox.className = 'color-box cancel-note';
-        cancelBox.innerHTML = '&times;';
-        cancelBox.title = 'Cancel note placement (Esc)';
-        cancelBox.addEventListener('click', (e) => {
-            e.stopPropagation();
-            togglePlacingNote(false);
-        });
+        const cancelBox = document.createElement('div'); cancelBox.className = 'color-box cancel-note'; cancelBox.innerHTML = '&times;';
+        cancelBox.addEventListener('click', (e) => { e.stopPropagation(); togglePlacingNote(false); });
         colorPalette.appendChild(cancelBox);
 
-        document.querySelectorAll('.close-popup').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.closest('.modal-popup').style.display = 'none';
-                modalBackdrop.style.display = 'none';
-            });
-        });
-
-        document.getElementById('add-stylist-btn').addEventListener('click', () => {
-            const name = newStylistInput.value.trim();
-            if (!name) return showToast('Please enter a stylist name.', 'error');
-            salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) });
-            updateDisplay(); // MODIFIED
-            showToast(`Stylist "${name}" added.`, 'success');
-            newStylistInput.value = '';
-        });
-
-        document.getElementById('add-service-btn').addEventListener('click', () => {
-            const name = newServiceInput.value.trim();
-            if (!name) return showToast('Please enter a service name.', 'error');
-            salonState.services.push({ name, note: null });
-            salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
-            updateDisplay(); // MODIFIED
-            showToast(`Service "${name}" added.`, 'success');
-            newServiceInput.value = '';
-        });
-
-        document.getElementById('save-btn').addEventListener('click', () => {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState));
-            showToast('Data saved successfully!', 'success');
-        });
-
-        document.getElementById('export-btn').addEventListener('click', () => {
-            const jsonString = JSON.stringify(salonState, null, 2);
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'salon-data.json';
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showToast("Data exported to salon-data.json", "info");
-        });
-
+        document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-popup').style.display = 'none'; modalBackdrop.style.display = 'none'; }));
+        document.getElementById('add-stylist-btn').addEventListener('click', () => { const name = newStylistInput.value.trim(); if (!name) return; salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) }); updateDisplay(); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; });
+        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; salonState.services.push({ name, note: null }); salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); updateDisplay(); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
+        document.getElementById('save-btn').addEventListener('click', () => { localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(salonState)); showToast('Data saved successfully!', 'success'); });
+        document.getElementById('export-btn').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(salonState, null, 2)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-        
-        document.getElementById('import-file-input').addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (data && data.services && data.stylists) {
-                        salonState = data;
-                        updateDisplay(); // MODIFIED
-                        showToast('Data imported successfully!', 'success');
-                    } else showToast('Error: Invalid file format.', 'error');
-                } catch (error) {
-                    showToast('Error reading file.', 'error');
-                }
-            };
-            reader.readAsText(file);
-            event.target.value = '';
-        });
-
+        document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data?.services && data?.stylists) { salonState = data; updateDisplay(); showToast('Data imported!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
         document.getElementById('print-btn').addEventListener('click', handlePrint);
-        
-        document.getElementById('manual-btn').addEventListener('click', () => {
-            document.getElementById('manual-popup').style.display = 'block';
-            modalBackdrop.style.display = 'block';
-        });
-
-        const themeToggleBtn = document.getElementById('theme-toggle-btn');
-        themeToggleBtn.addEventListener('click', () => {
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            const newTheme = isDarkMode ? 'light' : 'dark';
-            localStorage.setItem(THEME_KEY, newTheme);
-            applyTheme(newTheme);
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isPlacingNote) {
-                togglePlacingNote(false);
-            }
-            if (e.ctrlKey && e.altKey && e.key === 'd') {
-                e.preventDefault();
-                const isDev = document.body.classList.toggle('developer-mode-active');
-                showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info');
-            }
-        });
-        
-        document.getElementById('reset-all-btn').addEventListener('click', () => {
-            const message = "Are you sure you want to reset ALL data? This is irreversible and will restore the application to its original default state, including the theme.";
-            showConfirmModal(message, () => {
-                localStorage.removeItem(LOCAL_STORAGE_KEY);
-                localStorage.removeItem(THEME_KEY);
-                showToast('Data reset. Reloading...', 'info');
-                setTimeout(() => location.reload(), 1000);
-            });
-        });
-
+        document.getElementById('manual-btn').addEventListener('click', () => { document.getElementById('manual-popup').style.display = 'block'; modalBackdrop.style.display = 'block'; });
+        themeToggleBtn.addEventListener('click', () => { const newTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark'; localStorage.setItem(THEME_KEY, newTheme); applyTheme(newTheme); });
+        document.getElementById('reset-all-btn').addEventListener('click', () => showConfirmModal("Reset ALL data? This is irreversible.", () => { localStorage.clear(); showToast('Data reset. Reloading...', 'info'); setTimeout(() => location.reload(), 1000); }));
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } });
         addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
-
-        // NEW: Event listener for the search input
         searchInput.addEventListener('input', updateDisplay);
-        
-        // --- Initial Load ---
-        const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
-        applyTheme(savedTheme);
+        window.addEventListener('resize', debounce(updateDisplay, 250));
+
+        // --- KICK-OFF ---
+        applyTheme(localStorage.getItem(THEME_KEY) || 'light');
         loadInitialData();
     });
 </script>
