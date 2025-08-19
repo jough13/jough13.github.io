@@ -2526,20 +2526,66 @@ const undiscoveredArtifacts = ARTIFACTS.filter(art =>
             }
             break;   
 
-        case 'N': // NPC
-            if (element.npcType && NPCS[element.npcType] && !gameState.encounteredNPCs[specificEncounterKey]) {
+// REPLACE IT WITH THIS ▼
+case 'N': // NPC
+    if (element.npcType && NPCS[element.npcType]) {
+        
+        // --- QUEST LOGIC FOR THE HERMIT RUNESMITH ---
+        if (element.npcType === "HERMIT_RUNESMITH") {
+            const questActive = gameState.narrativeFlags['quest_chisel_active'];
+            const chiselFound = gameState.collectedArtifacts.includes("ART_RUNESMITHS_CHISEL");
+            const questComplete = gameState.narrativeFlags['quest_chisel_complete'];
+
+            let hermitDialogue = "";
+
+            if (questComplete) {
+                // 4. After the quest is done
+                hermitDialogue = `The Hermit grunts, "The forge feels warmer, thanks to you."`;
+            } else if (questActive && chiselFound) {
+                // 3. Player has the chisel, so they can turn in the quest
+                hermitDialogue = `The Hermit's eyes widen. "You found it! My chisel! Here, take this for your trouble."`;
+                addLogMessage(hermitDialogue, "npc");
+                
+                gameState.narrativeFlags['quest_chisel_complete'] = true;
+                gameState.resources.ancientScraps += 15;
+                awardXP(100);
+                addLogMessage("You received 15 Ancient Scraps!", "quest");
+            } else if (questActive && !chiselFound) {
+                // 2. Quest is active, but player doesn't have the item yet
+                hermitDialogue = `The Hermit scoffs, "Still wandering around? Find my chisel!"`;
+            } else {
+                // 1. Player's first time talking to him, start the quest
+                hermitDialogue = `The Hermit mutters, "Can't work... lost my finest chisel tip somewhere in these cursed ruins. Find it, and I'll make it worth your while."`;
+                gameState.narrativeFlags['quest_chisel_active'] = true;
+            }
+            
+            // We only add the log message here if it's not the turn-in message (which is handled above)
+            if (!questComplete && !(questActive && chiselFound)) {
+                addLogMessage(hermitDialogue, "npc");
+            }
+
+        } else {
+            // --- This is the original logic for all OTHER NPCs ---
+            if (!gameState.encounteredNPCs[specificEncounterKey]) {
                 const npc = NPCS[element.npcType];
                 const dialogue = npc.dialogue[seededRandomInt(0, npc.dialogue.length - 1)];
                 addLogMessage(`A ${npc.name} murmurs: "${dialogue}"`, "npc");
-                gameState.encounteredNPCs[specificEncounterKey] = true; // Encounter this specific instance once
+                gameState.encounteredNPCs[specificEncounterKey] = true;
                 awardXP(5);
-
-                // Companion reaction
-                if (gameState.companion && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type] && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType]) {
-                    addLogMessage(COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType], "companion");
-                }
             }
-            break;
+        }
+
+        // Companion reaction logic (runs for any NPC interaction)
+        if (gameState.companion && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type] && COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType]) {
+            // We use a flag to prevent the companion from reacting every single time you talk to a quest giver
+            const companionReactFlag = `companion_reacted_${element.npcType}_${specificEncounterKey}`;
+            if (!gameState.narrativeFlags[companionReactFlag]) {
+                 addLogMessage(COMPANION_NPC_REACTION_DIALOGUE[gameState.companion.type][element.npcType], "companion");
+                 gameState.narrativeFlags[companionReactFlag] = true;
+            }
+        }
+    }
+    break;
 
         case '+': // Grave Marker
             if (!gameState.narrativeFlags[specificEncounterKey]) {
