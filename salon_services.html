@@ -301,7 +301,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.24 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.25 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -653,20 +653,27 @@
             if (searchTerm) {
                 filteredStylists = salonState.stylists.filter(stylist => stylist.name.toLowerCase().includes(searchTerm));
             }
-            const { key, direction } = sortState;
-            const sortedAndFilteredStylists = [...filteredStylists].sort((a, b) => {
-                if (key === 'stylist') {
-                    return direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-                } else {
-                    const priceA = parseFloat(a.services[key]?.price) || 0;
-                    const priceB = parseFloat(b.services[key]?.price) || 0;
-                    return direction === 'asc' ? priceA - priceB : priceB - priceA;
-                }
-            });
-            if (window.innerWidth <= 800) {
-                renderMobileView(sortedAndFilteredStylists);
+            
+            let stylistsToRender;
+            if (sortState.key === 'manual') {
+                stylistsToRender = filteredStylists;
             } else {
-                renderTable(sortedAndFilteredStylists);
+                const { key, direction } = sortState;
+                stylistsToRender = [...filteredStylists].sort((a, b) => {
+                    if (key === 'stylist') {
+                        return direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+                    } else {
+                        const priceA = parseFloat(a.services[key]?.price) || 0;
+                        const priceB = parseFloat(b.services[key]?.price) || 0;
+                        return direction === 'asc' ? priceA - priceB : priceB - priceA;
+                    }
+                });
+            }
+
+            if (window.innerWidth <= 800) {
+                renderMobileView(stylistsToRender);
+            } else {
+                renderTable(stylistsToRender);
             }
         };
 
@@ -856,6 +863,7 @@
             const dropTarget = e.target.closest('[draggable="true"]');
             if (dropTarget && draggedElementIndex !== null) {
                 const targetIndex = parseInt(dropTarget.dataset.row);
+                sortState = { key: 'manual', direction: 'asc' };
                 const newState = deepClone(stateHistory[currentStateIndex]);
                 const [draggedItem] = newState.stylists.splice(draggedElementIndex, 1);
                 newState.stylists.splice(targetIndex, 0, draggedItem);
@@ -892,7 +900,7 @@
         document.getElementById('manual-btn').addEventListener('click', () => showModal(document.getElementById('manual-popup')));
         themeToggleBtn.addEventListener('click', () => { const newTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark'; localStorage.setItem(THEME_KEY, newTheme); applyTheme(newTheme); });
         document.getElementById('reset-all-btn').addEventListener('click', () => showConfirmModal("Reset ALL data? This is irreversible.", () => { localStorage.clear(); showToast('Data reset. Reloading...', 'info'); setTimeout(() => location.reload(), 1000); }));
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }});
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { e.preventDefault(); const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }});
         addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
         searchInput.addEventListener('input', updateDisplay);
         undoBtn.addEventListener('click', undo);
