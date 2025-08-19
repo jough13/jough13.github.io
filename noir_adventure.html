@@ -220,7 +220,7 @@
         }
         #confirm-name-btn:hover { background-color: #c95a58; }
 
-        /* --- NEW: Lore Modal Styling --- */
+        /* --- Lore Modal Styling --- */
         #lore-modal-content h2 {
             color: var(--accent-color);
             margin-top: 0;
@@ -240,7 +240,7 @@
             font-family: inherit; font-size: 1em; cursor: pointer;
         }
 
-        /* --- NEW: CSS Tooltip Styling --- */
+        /* --- CSS Tooltip Styling --- */
         [data-tooltip] {
             position: relative;
             cursor: help;
@@ -276,7 +276,7 @@
             border-left: 6px solid transparent;
             border-right: 6px solid transparent;
             border-top: 6px solid var(--border-color);
-            margin-bottom: -1px; /* Sits on top of the box border */
+            margin-bottom: -1px;
             bottom: 110%;
         }
         [data-tooltip]:hover::after, [data-tooltip]:hover::before {
@@ -304,7 +304,7 @@
         <div id="choices-container"></div>
         <div id="context-actions-container"></div>
         <div id="footer">
-            Version 1.5 | Last Updated: August 19, 2025
+            Version 1.7 | Last Updated: August 19, 2025
         </div>
     </div>
 
@@ -383,6 +383,11 @@
                 description: 'A smooth, warm token made of an unknown, bone-like material.',
                 lore: 'A ticket to the show, he called it. Holding it makes the back of your teeth ache. It seems to absorb the light, giving nothing back. You feel like if you put it to your ear, you wouldn\'t hear the ocean, you\'d hear a crowd, whispering in a language you were never meant to understand.'
             },
+            'finneys_badge': {
+                name: 'Finney\'s Badge',
+                description: 'A tarnished detective\'s badge. Badge number 714.',
+                lore: 'This shouldn\'t be here. This is Finney\'s. He was a good cop, one of the few. He wouldn\'t just leave this behind in some deadbeat\'s toolbox. Finding this feels like finding a bone in a place where there shouldn\'t be any bodies. A very, very bad sign.'
+            }
         };
 
         // --- PLAYER STATE ---
@@ -567,7 +572,7 @@
             return player.inventory.includes(itemId);
         }
 
-        // --- STORY DATA (ENHANCED PROSE) ---
+        // --- STORY DATA ---
         const story = [
     {
         "id": "start",
@@ -1130,7 +1135,7 @@
         "choices": [
             {
                 "text": "His wife must have given you an address. Check out his apartment first.",
-                "nextId": "eddies_apartment_exterior"
+                "nextId": "travel_to_apartment"
             },
             {
                 "text": "Head to the grimy downtown bars.",
@@ -1205,7 +1210,49 @@
     },
     {
         "id": "travel_to_bars",
-        "text": "You pop the collar on your coat, a pointless gesture against a rain that knows how to find every seam, and step into the neon bleed of the street. An automated cab, its chassis scarred from a thousand forgotten fares, slides to the curb. As it rattles through the concrete canyons, you watch the city’s sad parade. The cab shudders to a halt in front of The Rusty Mug. The sign flickers, promising little and delivering less.",
+        "text": "You pop the collar on your coat and step into the neon bleed of the street. An automated cab, its chassis scarred from a thousand forgotten fares, slides to the curb. Inside, the air is thick with the ghosts of cheap perfume and cheaper cigars.\n\nThe cab rattles through the concrete canyons, and you watch the city’s sad parade through the rain-streaked glass. What catches your eye?",
+        "choices": [
+            {
+                "text": "Watch the desperate lovers kissing under a glitching hoload.",
+                "nextId": "cab_scene_lovers"
+            },
+            {
+                "text": "Observe the decommissioned android, standing motionless in the rain.",
+                "nextId": "cab_scene_android"
+            },
+            {
+                "text": "Listen to the street preacher screaming on a corner.",
+                "nextId": "cab_scene_preacher"
+            },
+            {
+                "text": "Just get there. Tell the cab to hurry it up.",
+                "nextId": "downtown_bars"
+            }
+        ]
+    },
+    {
+        "id": "cab_scene_lovers",
+        "text": "A couple is locked in a desperate embrace under an advertisement for a memory-wipe service. The hoload glitches, flashing between a smiling family and a stark, clinical white room. The couple doesn't seem to notice. In a city that chews up memories, maybe forgetting is the only happy ending.\n\nThe cab moves on, pulling up to The Rusty Mug.",
+        "choices": [
+            {
+                "text": "Push open the door to the dive.",
+                "nextId": "downtown_bars"
+            }
+        ]
+    },
+    {
+        "id": "cab_scene_android",
+        "text": "A decommissioned labor model stands perfectly still on the sidewalk, its metallic face tilted to the sky as if trying to drown itself one drop at a time. Its eyes are dark. Is there anyone still in there, or is it just waiting for the rust? Sometimes you feel the same way.\n\nThe cab shudders to a halt in front of The Rusty Mug.",
+        "choices": [
+            {
+                "text": "Push open the door to the dive.",
+                "nextId": "downtown_bars"
+            }
+        ]
+    },
+    {
+        "id": "cab_scene_preacher",
+        "text": "A man on a corner, his eyes too wide, screams scripture at the passing traffic. \"He sees you! The King who wears a yellow mask! He will unravel this city of lies and show you the beauty of Carcosa!\" Most people ignore him. You get the feeling you shouldn't.\n\nThe cab arrives at The Rusty Mug.",
         "choices": [
             {
                 "text": "Push open the door to the dive.",
@@ -1225,10 +1272,10 @@
     },
     {
         "id": "travel_to_sterling",
-        "text": "Your cab ascends into the upper levels of the city, leaving the grime and the rain-slicked streets below. Up here, the air is clean, filtered. The architecture is all chrome and glass, sterile and arrogant. The Sterling Automata tower pierces the clouds like a silver needle.",
+        "text": "Your cab ascends into the upper levels of the city, leaving the grime and the rain-slicked streets below. Up here, the air is clean, filtered. The architecture is all chrome and glass, sterile and arrogant. Advertising drones whisper promises of a better life in your ear as they float past. You can't shake the feeling that you're a virus entering a clean room. The Sterling Automata tower pierces the clouds like a silver needle.",
         "choices": [
             {
-                "text": "This is the place.",
+                "text": "This is the place. Take a deep breath.",
                 "nextId": "sterling_lobby_ambience"
             }
         ]
@@ -1264,11 +1311,35 @@
         ]
     },
     {
-        "id": "eddies_apartment_exterior",
-        "text": "The address Aris Thorne gave you leads to a crumbling tenement in the Lower East Side, a concrete tombstone where dreams come to die. The lobby smells of boiled cabbage and damp decay. Eddie Malone lived on the third floor, Apartment 3B. The superintendent, a greasy man with eyes that have seen too much and said too little, watches you from his doorway as you head for the stairs.",
+        "id": "travel_to_apartment",
+        "text": "The address Aris Thorne gave you leads to a crumbling tenement in the Lower East Side, a concrete tombstone where dreams come to die. The lobby smells of boiled cabbage and damp decay. The ancient elevator is busted, its door hanging open like a crooked jaw. Looks like you're taking the stairs.",
         "choices": [
             {
-                "text": "Head up to Apartment 3B.",
+                "text": "Head into the lobby.",
+                "nextId": "eddies_apartment_lobby"
+            }
+        ]
+    },
+    {
+        "id": "eddies_apartment_lobby",
+        "text": "The lobby is even more depressing up close. The tile is cracked, the mailboxes have been pried open, and the only light comes from a single, buzzing fluorescent tube. The superintendent, a greasy man with eyes that have seen too much and said too little, watches you from his open doorway as you pass.",
+        "choices": [
+            {
+                "text": "Head up the stairs to the third floor.",
+                "nextId": "eddies_apartment_stairs"
+            },
+            {
+                "text": "Try to talk to the superintendent.",
+                "nextId": "talk_to_super"
+            }
+        ]
+    },
+    {
+        "id": "eddies_apartment_stairs",
+        "text": "The stairwell is dark, smelling of urine and cheap synth-booze. Every floor looks the same: a grim corridor with peeling paint and flickering lights. On the second floor landing, you notice a small, childish drawing of a yellow stick figure with spirals for eyes, taped to the wall. It seems out of place.\n\nYou reach the third floor. Apartment 3B is at the end of the hall.",
+        "choices": [
+            {
+                "text": "Approach the door.",
                 "nextId": "eddies_apartment_door"
             }
         ]
@@ -1292,7 +1363,7 @@
                 }
             },
             {
-                "text": "Go talk to the superintendent.",
+                "text": "Go back and talk to the superintendent.",
                 "nextId": "talk_to_super"
             },
             {
@@ -1303,7 +1374,7 @@
     },
     {
         "id": "talk_to_super",
-        "text": "You go back down and approach the superintendent. He squints at you, wiping his hands on an oily rag. \"What do you want? Cops already tossed the place. Said the guy did a runner.\"",
+        "text": "You approach the superintendent's apartment. He squints at you from behind a safety chain, wiping his hands on an oily rag. \"What do you want? Cops already tossed the place. Said the guy did a runner.\"",
         "choices": [
             {
                 "text": "Slip him some cash. \"Maybe they missed something. You have a key?\"",
@@ -1324,6 +1395,10 @@
             {
                 "text": "Glare at him. \"Give me the key.\"",
                 "nextId": "super_hostile"
+            },
+            {
+                "text": "Never mind. Head upstairs.",
+                "nextId": "eddies_apartment_stairs"
             }
         ]
     },
@@ -1333,13 +1408,13 @@
         "choices": [
             {
                 "text": "Head back upstairs.",
-                "nextId": "eddies_apartment_door"
+                "nextId": "eddies_apartment_stairs"
             }
         ]
     },
     {
         "id": "apartment_inside",
-        "text": "You get the door open and step inside. The apartment is the chaos of a paranoid mind. The floor is covered in technical manuals and discarded wiring. The walls are covered in frantic notes and what looks like circuit diagrams, all connected by strings of red yarn. The air hums with the faint scent of ozone and stale coffee.",
+        "text": "You get the door open and step inside. The apartment is the chaos of a paranoid mind made real. The floor is covered in technical manuals and discarded wiring. The walls are a spiderweb of frantic notes and what looks like circuit diagrams, all connected by strings of red yarn. The air hums with the faint scent of ozone, stale coffee, and raw fear.",
         "choices": [
             {
                 "text": "Examine the notes on the wall.",
@@ -1354,11 +1429,90 @@
                 "nextId": "apartment_examine_trash"
             },
             {
+                "text": "Examine the small, locked toolbox on the workbench.",
+                "nextId": "examine_toolbox"
+            },
+            {
                 "text": "You've seen enough. Get out of here.",
                 "nextId": "leave_apartment"
             }
         ]
     },
+    {
+        "id": "examine_toolbox",
+        "text": "Tucked under the workbench is a small, heavy-duty toolbox, the kind a serious technician would use. It's locked with a simple but sturdy pin tumbler lock.",
+        "choices": [
+            {
+                "text": "Try Finney's old key.",
+                "nextId": "toolbox_success",
+                "requiresItem": "old_key"
+            },
+            {
+                "text": "Leave it. It's probably just full of tools.",
+                "nextId": "apartment_inside"
+            }
+        ]
+    },
+    {
+        "id": "toolbox_success",
+        "text": "You slide Finney's key into the lock. It catches for a moment, then turns with a satisfying click. You lift the lid. Inside, nestled amongst soldering irons and micro-drivers, is a tarnished detective's shield. Finney's badge. Finding it here, in this place, feels like finding a bone in a place where there shouldn't be any bodies. A very, very bad sign.",
+        "choices": [
+            {
+                "text": "Take the badge. Get out of here.",
+                "nextId": "leave_apartment",
+                "itemGained": "finneys_badge"
+            }
+        ]
+    },
+    {
+        "id": "reception_success",
+        "text": "The android pauses for a fraction of a second, its internal processors whirring silently. Its pleasant voice returns, unchanged. \"Of course. Employee welfare is our top priority. Our Head of Security, Mr. Kane, will address your concerns personally. Please, follow the guide light.\"\n\nA thin, blue line illuminates on the polished white floor. An escort android, identical to the one at the desk, steps forward silently. \"This way, please.\"",
+        "choices": [
+            {
+                "text": "Follow the android.",
+                "nextId": "sterling_corridor"
+            }
+        ]
+    },
+    {
+        "id": "sterling_corridor",
+        "text": "You follow the silent android down a stark, sterile corridor. The walls are seamless white, the air smells of antiseptic and money. There's no art, no decoration, just the oppressive quiet and the soft hum of the building's nervous system. The android moves with a liquid grace that is deeply unsettling.",
+        "choices": [
+            {
+                "text": "Ask the android what this place is.",
+                "nextId": "ask_android_place"
+            },
+            {
+                "text": "\"Do you enjoy your work?\"",
+                "nextId": "ask_android_work"
+            },
+            {
+                "text": "Follow in silence.",
+                "nextId": "meet_kane"
+            }
+        ]
+    },
+    {
+        "id": "ask_android_place",
+        "text": "You ask the android about Sterling Automata. It turns its head, its smile never wavering. \"Sterling is not a place. Sterling is the future. A future of perfect efficiency, where human error is a relic of the past. We provide solutions for permanence.\"\n\nIts words are smooth, rehearsed, and utterly devoid of meaning. Or maybe they have more meaning than you want to think about. It gestures to the door ahead. \"Mr. Kane is waiting.\"",
+        "choices": [
+            {
+                "text": "Enter the office.",
+                "nextId": "meet_kane"
+            }
+        ]
+    },
+    {
+        "id": "ask_android_work",
+        "text": "You ask the android if it enjoys its job. The question seems to cause a micro-second pause in its systems. The perfect smile remains. \"Enjoyment is a variable that has been optimized. My function is to serve Sterling. Service is its own reward.\"\n\nIt says nothing more, its silence more unnerving than its corporate platitudes. It stops at a large, unmarked door. \"Mr. Kane is waiting.\"",
+        "choices": [
+            {
+                "text": "Enter the office.",
+                "nextId": "meet_kane"
+            }
+        ]
+    },
+    // The rest of the story scenes are unchanged and included below
     {
         "id": "apartment_examine_notes",
         "text": "The notes are a mix of engineering schematics and terrified ramblings. Most of it is nonsense, but you see a few phrases circled over and over in red ink: \"THE SONG IS A CAGE,\" \"JAMISON IS THE KEY,\" and \"CARCOSA SLEEPS.\" One diagram shows a device designed to create a localized EMP, with a note: \"To block the hum?\"",
@@ -1593,11 +1747,13 @@
         "choices": [
             {
                 "text": "\"Eddie Malone was flashing a unique data key. Where did he get it?\"",
-                "nextId": "fingers_cooperative"
+                "nextId": "fingers_cooperative",
+                "setState": "metFingers"
             },
             {
                 "text": "\"A worried woman is looking for Eddie. You seem like a man of business.\"",
-                "nextId": "fingers_cooperative"
+                "nextId": "fingers_cooperative",
+                "setState": "metFingers"
             },
             {
                 "text": "\"Stop wasting my time. Where is Eddie Malone?\"",
@@ -1675,8 +1831,42 @@
                 "setState": "talkedToMulligan"
             },
             {
+                "text": "\"I need to know about a poker game run by a man named Fingers.\"",
+                "nextId": "mulligan_reacts_to_fingers",
+                "showIfState": "metFingers"
+            },
+            {
                 "text": "\"I need the file on Eddie Malone.\"",
                 "nextId": "mulligan_uncooperative"
+            }
+        ],
+        "contextualActions": [
+            {
+                "itemIds": [
+                    "cult_token"
+                ],
+                "nextId": "show_token_to_mulligan",
+                "text": "[Use Item] Show the Pale Yellow Token to Mulligan."
+            }
+        ]
+    },
+    {
+        "id": "mulligan_reacts_to_fingers",
+        "text": "Mulligan's head snaps up at the name. \"Fingers? Christ, Slate, what kind of trouble are you stirring up now? The man's practically Sterling property. He runs their off-the-books games. Anyone who crosses him ends up as fish food in the canal. Stay the hell away from him.\"\n\nHis concern seems genuine, but it also tells you that you're getting closer to the heart of the matter.",
+        "choices": [
+            {
+                "text": "Let him worry.",
+                "nextId": "police_precinct"
+            }
+        ]
+    },
+    {
+        "id": "show_token_to_mulligan",
+        "text": "You slide the pale yellow token across the desk. Mulligan flinches as if you'd shown him a snake. His face goes pale under the flickering fluorescent lights.\n\n\"Where... where did you get that?\" he stammers, pushing it back toward you with a pen so he doesn't have to touch it. \"Get that thing out of my sight. That's not part of any case. That's something else. Something you should drop in the nearest incinerator.\"\n\nHe refuses to say another word about it, his eyes darting towards the shadows in the corners of the room.",
+        "choices": [
+            {
+                "text": "Finney was right not to trust him.",
+                "nextId": "police_precinct"
             }
         ]
     },
@@ -1781,10 +1971,48 @@
     },
     {
         "id": "reception_success",
-        "text": "The android pauses for a fraction of a second, its internal processors whirring silently. Its pleasant voice returns, unchanged. \"Of course. Employee welfare is our top priority. Our Head of Security, Mr. Kane, will address your concerns personally. Please, follow the guide light.\" A thin, blue line illuminates on the polished white floor, leading you down a stark, sterile corridor.",
+        "text": "The android pauses for a fraction of a second, its internal processors whirring silently. Its pleasant voice returns, unchanged. \"Of course. Employee welfare is our top priority. Our Head of Security, Mr. Kane, will address your concerns personally. Please, follow the guide light.\"\n\nA thin, blue line illuminates on the polished white floor. An escort android, identical to the one at the desk, steps forward silently. \"This way, please.\"",
         "choices": [
             {
-                "text": "Follow the light.",
+                "text": "Follow the android.",
+                "nextId": "sterling_corridor"
+            }
+        ]
+    },
+    {
+        "id": "sterling_corridor",
+        "text": "You follow the silent android down a stark, sterile corridor. The walls are seamless white, the air smells of antiseptic and money. There's no art, no decoration, just the oppressive quiet and the soft hum of the building's nervous system. The android moves with a liquid grace that is deeply unsettling.",
+        "choices": [
+            {
+                "text": "Ask the android what this place is.",
+                "nextId": "ask_android_place"
+            },
+            {
+                "text": "\"Do you enjoy your work?\"",
+                "nextId": "ask_android_work"
+            },
+            {
+                "text": "Follow in silence.",
+                "nextId": "meet_kane"
+            }
+        ]
+    },
+    {
+        "id": "ask_android_place",
+        "text": "You ask the android about Sterling Automata. It turns its head, its smile never wavering. \"Sterling is not a place. Sterling is the future. A future of perfect efficiency, where human error is a relic of the past. We provide solutions for permanence.\"\n\nIts words are smooth, rehearsed, and utterly devoid of meaning. Or maybe they have more meaning than you want to think about. It gestures to the door ahead. \"Mr. Kane is waiting.\"",
+        "choices": [
+            {
+                "text": "Enter the office.",
+                "nextId": "meet_kane"
+            }
+        ]
+    },
+    {
+        "id": "ask_android_work",
+        "text": "You ask the android if it enjoys its job. The question seems to cause a micro-second pause in its systems. The perfect smile remains. \"Enjoyment is a variable that has been optimized. My function is to serve Sterling. Service is its own reward.\"\n\nIt says nothing more, its silence more unnerving than its corporate platitudes. It stops at a large, unmarked door. \"Mr. Kane is waiting.\"",
+        "choices": [
+            {
+                "text": "Enter the office.",
                 "nextId": "meet_kane"
             }
         ]
@@ -2586,7 +2814,6 @@
         ]
     }
 ];
-
         // --- KICK OFF THE GAME ---
         startGame();
 
