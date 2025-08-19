@@ -777,7 +777,7 @@
         
         const handlePrint = () => {
             const salonState = stateHistory[currentStateIndex];
-            const printStyles = `<style>@page{size:portrait;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
+            const printStyles = `<style>@page{size:landscape;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
             let tableHtml = '<table><thead><tr><th>Stylist</th>';
             salonState.services.forEach(service => { tableHtml += `<th>${service.name}</th>`; });
             tableHtml += '</tr></thead><tbody>';
@@ -791,7 +791,7 @@
             });
             tableHtml += '</tbody></table>';
             const timestamp = `Generated on: ${new Date().toLocaleString()}`;
-            const fullHtml = `<!DOCTYPE html><html><head><title>Posh Salon Service Matrix</title>${printStyles}</head><body><h1>Posh Salon Service Matrix</h1><p class="timestamp">${timestamp}</p>${tableHtml}</body></html>`;
+            const fullHtml = `<!DOCTYPE html><html><head><title>Posh Salon Service Matrix</title>${printStyles}</head><body><h1>Posh Salon Service Matrix</h1>${tableHtml}<p class="timestamp">${timestamp}</p></body></html>`;
             const printWindow = window.open('', '_blank');
             printWindow.document.write(fullHtml);
             printWindow.document.close();
