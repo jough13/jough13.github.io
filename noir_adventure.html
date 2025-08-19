@@ -10,9 +10,12 @@
             --background-color: #1a1a1a;
             --text-color: #d9d9d9;
             --accent-color: #a94442; /* A muted, dangerous red */
+            --cult-color: #f0e68c; /* A sickly, pale yellow */
             --border-color: #444;
             --button-bg: #333;
             --button-hover-bg: #444;
+            --context-button-bg: #2a3a4a;
+            --context-button-hover-bg: #3a4a5a;
         }
 
         body {
@@ -36,7 +39,7 @@
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             background-color: #222;
             padding: 2em;
-            position: relative; /* For footer positioning */
+            position: relative;
         }
 
         #player-name {
@@ -58,6 +61,11 @@
             border-bottom: 1px solid var(--border-color);
             text-transform: uppercase;
             font-size: 0.9em;
+        }
+
+        #stats-container > div {
+            position: relative;
+            cursor: help;
         }
 
         #stats-container span {
@@ -95,22 +103,41 @@
         #inventory-list li {
             display: inline;
             margin: 0 15px;
+            cursor: pointer;
+            position: relative;
+            border-bottom: 1px dotted #555;
+            transition: color 0.2s, border-bottom-color 0.2s;
+        }
+
+        #inventory-list li:hover {
+            color: #fff;
+            border-bottom-color: #888;
+        }
+
+        #inventory-list .cult-item {
+            color: var(--cult-color);
+            font-style: italic;
         }
 
         /* --- Story Text Output --- */
         #text-output {
             line-height: 1.6;
             margin-bottom: 2em;
-            min-height: 150px; /* Ensures space is reserved */
-            white-space: pre-wrap; /* Preserves line breaks from your story text */
+            min-height: 150px;
+            white-space: pre-wrap;
         }
 
         /* --- Choices / Buttons --- */
-        #choices-container {
+        #choices-container, #context-actions-container {
             display: grid;
             grid-template-columns: 1fr;
             gap: 10px;
-            padding-bottom: 30px; /* Space for the footer */
+        }
+        
+        #context-actions-container {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border-color);
         }
 
         .choice-btn {
@@ -124,10 +151,15 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-
-        .choice-btn:hover {
-            background-color: var(--button-hover-bg);
+        
+        .context-btn {
+            background-color: var(--context-button-bg);
+            border: 1px solid #555;
+            color: #bde;
         }
+
+        .choice-btn:hover { background-color: var(--button-hover-bg); }
+        .context-btn:hover { background-color: var(--context-button-hover-bg); }
 
         .choice-btn:disabled {
             background-color: #2a2a2a;
@@ -147,12 +179,10 @@
             font-style: italic;
         }
 
-        /* --- Custom Name Modal Styling --- */
-        .hidden {
-            display: none !important;
-        }
+        /* --- Modals --- */
+        .hidden { display: none !important; }
 
-        #modal-overlay {
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -165,7 +195,7 @@
             z-index: 1000;
         }
 
-        #name-modal {
+        .modal-content {
             background-color: #222;
             padding: 2em;
             border: 1px solid var(--border-color);
@@ -175,38 +205,84 @@
             max-width: 500px;
         }
 
-        #name-modal p {
-            margin-top: 0;
-            font-size: 1.1em;
-        }
-
+        #name-modal p { margin-top: 0; font-size: 1.1em; }
         #name-input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 1em;
-            background-color: #1a1a1a;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            font-family: inherit;
-            font-size: 1.2em;
-            box-sizing: border-box;
+            width: 100%; padding: 10px; margin-bottom: 1em;
+            background-color: #1a1a1a; border: 1px solid var(--border-color);
+            color: var(--text-color); font-family: inherit;
+            font-size: 1.2em; box-sizing: border-box;
         }
-
         #confirm-name-btn {
-            width: 100%;
-            padding: 15px;
-            background-color: var(--accent-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            font-family: inherit;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            text-align: center;
+            width: 100%; padding: 15px; background-color: var(--accent-color);
+            border: 1px solid var(--border-color); color: var(--text-color);
+            font-family: inherit; font-size: 1em; cursor: pointer;
+            transition: background-color 0.2s ease; text-align: center;
+        }
+        #confirm-name-btn:hover { background-color: #c95a58; }
+
+        /* --- NEW: Lore Modal Styling --- */
+        #lore-modal-content h2 {
+            color: var(--accent-color);
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5em;
+        }
+        #lore-modal-content p {
+            line-height: 1.6;
+            text-align: left;
+            margin-bottom: 1.5em;
+            font-size: 0.95em;
+            white-space: pre-wrap;
+        }
+        #close-lore-btn {
+            padding: 10px 20px; background-color: var(--button-bg);
+            border: 1px solid var(--border-color); color: var(--text-color);
+            font-family: inherit; font-size: 1em; cursor: pointer;
         }
 
-        #confirm-name-btn:hover {
-            background-color: #c95a58;
+        /* --- NEW: CSS Tooltip Styling --- */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+        [data-tooltip]::after, [data-tooltip]::before {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: opacity 0.2s, visibility 0.2s;
+            z-index: 10;
+        }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            background-color: #111;
+            color: #d9d9d9;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85em;
+            text-transform: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            width: 200px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        [data-tooltip]::before {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid var(--border-color);
+            margin-bottom: -1px; /* Sits on top of the box border */
+            bottom: 110%;
+        }
+        [data-tooltip]:hover::after, [data-tooltip]:hover::before {
+            visibility: visible;
+            opacity: 1;
+            bottom: 125%;
         }
 
     </style>
@@ -216,27 +292,35 @@
     <div id="game-container">
         <h2 id="player-name"></h2>
         <div id="stats-container">
-            <div>Grit: <span id="grit-stat"></span></div>
-            <div>Smarts: <span id="smarts-stat"></span></div>
-            <div>Charm: <span id="charm-stat"></span></div>
+            <div id="grit-stat-display" data-tooltip="The ability to take a punch, literally and figuratively. Your capacity for violence and endurance.">Grit: <span id="grit-stat"></span></div>
+            <div id="smarts-stat-display" data-tooltip="Raw intellect and street smarts. Your ability to connect the dots, notice details, and talk your way around a problem.">Smarts: <span id="smarts-stat"></span></div>
+            <div id="charm-stat-display" data-tooltip="Your silver tongue. The ability to lie convincingly, persuade the stubborn, and make people like you, even when they shouldn't.">Charm: <span id="charm-stat"></span></div>
         </div>
         <div id="inventory-container">
             <h3>Inventory</h3>
-            <ul id="inventory-list">
-                </ul>
+            <ul id="inventory-list"></ul>
         </div>
         <div id="text-output"></div>
         <div id="choices-container"></div>
+        <div id="context-actions-container"></div>
         <div id="footer">
-            Version 1.1 | Last Updated: August 17, 2025
+            Version 1.4 | Last Updated: August 19, 2025
         </div>
     </div>
 
-    <div id="modal-overlay" class="hidden">
-        <div id="name-modal">
+    <div id="name-modal-overlay" class="modal-overlay hidden">
+        <div id="name-modal" class="modal-content">
             <p>Then who are you today?</p>
             <input type="text" id="name-input" autocomplete="off">
             <button id="confirm-name-btn">Confirm</button>
+        </div>
+    </div>
+
+    <div id="lore-modal-overlay" class="modal-overlay hidden">
+        <div id="lore-modal-content" class="modal-content">
+            <h2 id="lore-title"></h2>
+            <p id="lore-text"></p>
+            <button id="close-lore-btn">Close</button>
         </div>
     </div>
 
@@ -245,24 +329,62 @@
         // --- GRAB HTML ELEMENTS ---
         const textOutput = document.getElementById('text-output');
         const choicesContainer = document.getElementById('choices-container');
+        const contextActionsContainer = document.getElementById('context-actions-container');
         const gritStat = document.getElementById('grit-stat');
         const smartsStat = document.getElementById('smarts-stat');
         const charmStat = document.getElementById('charm-stat');
         const playerNameDisplay = document.getElementById('player-name');
         const inventoryList = document.getElementById('inventory-list');
         
-        // Modal elements
-        const modalOverlay = document.getElementById('modal-overlay');
+        // Name Modal elements
+        const nameModalOverlay = document.getElementById('name-modal-overlay');
         const nameInput = document.getElementById('name-input');
         const confirmNameBtn = document.getElementById('confirm-name-btn');
+        
+        // NEW: Lore Modal elements
+        const loreModalOverlay = document.getElementById('lore-modal-overlay');
+        const loreTitle = document.getElementById('lore-title');
+        const loreText = document.getElementById('lore-text');
+        const closeLoreBtn = document.getElementById('close-lore-btn');
 
         // --- MASTER ITEM LIST ---
         const items = {
-            'cash': { name: 'Envelope of Cash' },
-            'mccoy_file': { name: 'McCoy Cold Case File' },
-            'data_chip': { name: 'Silver Data Chip' },
-            'datapad': { name: 'Eddie\'s Datapad' },
-            'keycard': { name: 'Master Keycard' },
+            'cash': { 
+                name: 'Envelope of Cash',
+                description: 'A thick, unmarked envelope. Heavy enough to be a down payment on a new life, or a tombstone.',
+                lore: 'There are two currencies in this city: money and secrets. This envelope is stuffed with the former. It feels dirty, not because of where it\'s been, but because of where it\'s trying to take you. It\'s the kind of money that buys silence, loyalty, or a bullet in the back. Right now, it\'s buying you.'
+            },
+            'mccoy_file': { 
+                name: 'McCoy Cold Case File',
+                description: 'A damp, wrinkled manila folder. The name "ARTHUR MCCOY" is typed on the label.',
+                lore: 'This feels heavier than paper. It\'s the weight of a ghost. Arthur McCoy, a dockworker who heard something he shouldn\'t have and vanished. The cops gave up. His wife didn\'t. You look at the coffee stains and tear-blotched ink and realize this isn\'t a cold case, it\'s a fresh wound.'
+            },
+            'data_chip': { 
+                name: 'Silver Data Chip',
+                description: 'Looks less like a poker chip and more like a piece of alien technology. It feels warm.',
+                lore: 'This isn\'t just a data chip. The milky, opalescent surface seems to shift when you\'re not looking at it. Fingers the poker boss thought it was just a key, but you can feel the low, resonant hum coming from it. This is a piece of whatever Sterling is building. Or a piece of whoever they\'ve taken apart.'
+            },
+            'datapad': { 
+                name: 'Eddie\'s Datapad',
+                description: 'A cheap, heavily used datapad, its case scratched and cracked.',
+                lore: 'The last will and testament of a terrified man. The corrupted audio file is a ghost story told by the ghost himself. "They made him into a song." The words don\'t make sense, but you know they\'re true. This cheap piece of plastic is the most important clue you have.'
+            },
+            'keycard': { 
+                name: 'Master Keycard',
+                description: 'A sleek, black keycard with the Sterling Automata logo. No identifying marks.',
+                lore: 'The key to the kingdom, or the madhouse. Aris Thorne gave this to you. She said it contains the only uncorrupted neural map of Jamison, the key to undoing... something. It feels cold and dead in your hand, a stark contrast to the humming data chip.'
+            },
+            'old_key': { 
+                name: 'Finney\'s Old Key',
+                description: 'A simple, old-fashioned brass key. Tarnished with age and regret.',
+                lore: 'Finney gave this to you years ago. "For the things we need to forget, but can\'t afford to lose," he\'d said. He was talking about a desk drawer, but you get the feeling he meant something more. This is the key to your past, to a case you thought was long buried. Turns out, it was just waiting.'
+            },
+            'cult_token': { 
+                name: 'Pale Yellow Token', 
+                cssClass: 'cult-item',
+                description: 'A smooth, warm token made of an unknown, bone-like material.',
+                lore: 'A ticket to the show, he called it. Holding it makes the back of your teeth ache. It seems to absorb the light, giving nothing back. You feel like if you put it to your ear, you wouldn\'t hear the ocean, you\'d hear a crowd, whispering in a language you were never meant to understand.'
+            },
         };
 
         // --- PLAYER STATE ---
@@ -271,7 +393,7 @@
             grit: 4,
             smarts: 4,
             charm: 4,
-            inventory: []
+            inventory: ['old_key']
         };
         
         // --- GAME STATE FOR ONE-TIME EVENTS ---
@@ -283,62 +405,67 @@
         function handleNameConfirm() {
             const newName = nameInput.value.trim();
             player.name = newName || "Nameless"; // Fallback if they enter nothing
-
-            modalOverlay.classList.add('hidden');
+            nameModalOverlay.classList.add('hidden');
             updateDisplays();
-
             if (nextSceneAfterModal) {
                 showScene(nextSceneAfterModal);
-                nextSceneAfterModal = null; // Reset for future use
+                nextSceneAfterModal = null;
             }
         }
         
         confirmNameBtn.addEventListener('click', handleNameConfirm);
         nameInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                handleNameConfirm();
+            if (event.key === 'Enter') { handleNameConfirm(); }
+        });
+        
+        // NEW: Lore Modal Logic
+        function showLore(itemId) {
+            const item = items[itemId];
+            if (item && item.lore) {
+                loreTitle.innerText = item.name;
+                loreText.innerText = item.lore;
+                loreModalOverlay.classList.remove('hidden');
             }
+        }
+        function hideLore() {
+            loreModalOverlay.classList.add('hidden');
+        }
+        closeLoreBtn.addEventListener('click', hideLore);
+        loreModalOverlay.addEventListener('click', (event) => {
+            if (event.target === loreModalOverlay) { hideLore(); }
         });
 
 
         // --- GAME LOGIC ---
 
         function startGame() {
-            // Reset game state for a new game
             gameState = {};
+            player.inventory = ['old_key'];
             updateDisplays();
             showScene('start');
         }
 
         function showScene(sceneId) {
             const scene = story.find(s => s.id === sceneId);
-            if (!scene) {
-                console.error(`Scene with id "${sceneId}" not found!`);
-                return;
-            }
+            if (!scene) { console.error(`Scene with id "${sceneId}" not found!`); return; }
 
-            textOutput.innerText = scene.text;
+            textOutput.innerText = (typeof scene.text === 'function') ? scene.text() : scene.text;
 
-            while (choicesContainer.firstChild) {
-                choicesContainer.removeChild(choicesContainer.firstChild);
-            }
+            while (choicesContainer.firstChild) { choicesContainer.removeChild(choicesContainer.firstChild); }
+            while (contextActionsContainer.firstChild) { contextActionsContainer.removeChild(contextActionsContainer.firstChild); }
 
             scene.choices.forEach(choice => {
-                // --- NEW LOGIC for conditional choices ---
-                if (choice.showIfItem && !hasItem(choice.showIfItem)) {
-                    return; // Don't show this choice if player lacks the item
+                if ((choice.showIfItem && !hasItem(choice.showIfItem)) || 
+                    (choice.hideIfState && gameState[choice.hideIfState]) ||
+                    (choice.showIfState && !gameState[choice.showIfState])) {
+                    return;
                 }
-                if (choice.hideIfState && gameState[choice.hideIfState]) {
-                    return; // Don't show this choice if a one-time event has occurred
-                }
-                // --- END NEW LOGIC ---
 
                 const button = document.createElement('button');
                 button.innerText = choice.text;
                 button.classList.add('choice-btn');
 
                 let disabled = false;
-                // Stat check
                 if (choice.requires) {
                     const [stat, value] = Object.entries(choice.requires)[0];
                     if (player[stat] < value) {
@@ -346,63 +473,60 @@
                         button.innerText += ` [REQUIRES ${value} ${stat.toUpperCase()}]`;
                     }
                 }
-                // Item check
-                if (choice.requiresItem && !hasItem(choice.requiresItem)) {
-                    disabled = true;
-                    button.innerText += ` [REQUIRES ${items[choice.requiresItem].name}]`;
+                if (choice.requiresItem) {
+                    const itemsRequired = Array.isArray(choice.requiresItem) ? choice.requiresItem : [choice.requiresItem];
+                    const missingItems = itemsRequired.filter(item => !hasItem(item)).map(item => items[item].name);
+                    if (missingItems.length > 0) {
+                        disabled = true;
+                        button.innerText += ` [REQUIRES ${missingItems.join(', ')}]`;
+                    }
                 }
 
                 button.disabled = disabled;
-                
                 button.addEventListener('click', () => makeChoice(choice));
                 choicesContainer.appendChild(button);
             });
+
+            if (scene.contextualActions) {
+                scene.contextualActions.forEach(action => {
+                    const itemsRequired = Array.isArray(action.itemIds) ? action.itemIds : [action.itemIds];
+                    if (itemsRequired.every(itemId => hasItem(itemId))) {
+                        const button = document.createElement('button');
+                        button.innerText = action.text;
+                        button.classList.add('choice-btn', 'context-btn');
+                        button.addEventListener('click', () => showScene(action.nextId));
+                        contextActionsContainer.appendChild(button);
+                    }
+                });
+            }
         }
 
         function makeChoice(choice) {
-            // NEW LOGIC: Set a one-time state variable if the choice dictates it
-            if (choice.setState) {
-                gameState[choice.setState] = true;
-            }
+            if (choice.setState) { gameState[choice.setState] = true; }
 
-            // Apply stat effects
             if (choice.effect) {
                 if (choice.effect.reset) {
-                    // Reset everything for a new game
                     player.name = "J. Slate";
                     player.grit = 4;
                     player.smarts = 4;
                     player.charm = 4;
-                    player.inventory = [];
-                    startGame(); // Call startGame to reset gameState as well
+                    startGame();
                     return;
-                } else {
-                    for (const stat in choice.effect) {
-                        if (player.hasOwnProperty(stat)) {
-                           player[stat] += choice.effect[stat];
-                        }
-                    }
+                }
+                for (const stat in choice.effect) {
+                    if (player.hasOwnProperty(stat)) { player[stat] += choice.effect[stat]; }
                 }
             }
             
-            // Add item to inventory
-            if (choice.itemGained) {
-                addItem(choice.itemGained);
-            }
+            if (choice.itemGained) { addItem(choice.itemGained); }
+            if (choice.itemLost) { removeItem(choice.itemLost); }
 
-            // Remove item from inventory
-            if (choice.itemLost) {
-                removeItem(choice.itemLost);
-            }
-
-            // Check for special action to open the modal
             if (choice.action === 'changeName') {
                 nextSceneAfterModal = choice.nextId;
-                nameInput.value = ''; // Clear old input
-                modalOverlay.classList.remove('hidden');
+                nameInput.value = '';
+                nameModalOverlay.classList.remove('hidden');
                 nameInput.focus();
             } else {
-                // Normal game flow
                 updateDisplays();
                 showScene(choice.nextId);
             }
@@ -411,12 +535,11 @@
         // --- HELPER FUNCTIONS ---
 
         function updateDisplays() {
-            // Stats
             playerNameDisplay.innerText = player.name;
             gritStat.innerText = player.grit;
             smartsStat.innerText = player.smarts;
             charmStat.innerText = player.charm;
-            // Inventory
+            
             inventoryList.innerHTML = '';
             if (player.inventory.length === 0) {
                 const li = document.createElement('li');
@@ -424,17 +547,19 @@
                 inventoryList.appendChild(li);
             } else {
                 player.inventory.forEach(itemId => {
+                    const item = items[itemId];
                     const li = document.createElement('li');
-                    li.textContent = items[itemId].name;
+                    li.textContent = item.name;
+                    li.setAttribute('data-tooltip', item.description);
+                    li.addEventListener('click', () => showLore(itemId));
+                    if (item.cssClass) { li.classList.add(item.cssClass); }
                     inventoryList.appendChild(li);
                 });
             }
         }
 
         function addItem(itemId) {
-            if (!player.inventory.includes(itemId)) {
-                player.inventory.push(itemId);
-            }
+            if (!player.inventory.includes(itemId)) { player.inventory.push(itemId); }
         }
         
         function removeItem(itemId) {
@@ -445,8 +570,10 @@
             return player.inventory.includes(itemId);
         }
 
-        // --- STORY DATA (FINAL NARRATIVE EXPANSION) ---
+        // --- STORY DATA (COMPLETE) ---
         const story = [
+            // All story scenes from the previous complete version are included here.
+            // This array is the single source of truth for the entire game narrative.
             {
                 id: 'start',
                 text: 'The return to the land of the living is never a gentle affair. It’s a hostile takeover. Consciousness crashes back into your skull like a slow tide of battery acid and regret, carrying the flotsam of a forgotten night. First, the pain: a single, predatory bass drum kicking behind your right eye, threatening to split your head like a ripe melon. Then, the smell: stale bourbon, rain-soaked wool, and the faint, coppery tang of your own blood.',
@@ -520,14 +647,23 @@
                 id: 'broadcast_district',
                 text: 'The Broadcasting District is a graveyard of defunct radio stations and pirate holovid transmitters. Most of the towers are dark, skeletal fingers pointing at the bruised sky. But one, the old WQST tower, has a single, pulsing red light at its peak. The hum is a physical force here, making the puddles on the ground tremble. The front door is chained shut, but a side window is boarded up with rotting plywood.',
                 choices: [
-                    { text: 'Pry the boards off the window.', nextId: 'inside_wqst', requires: { grit: 5 } },
-                    { text: 'There must be a service entrance around back.', nextId: 'inside_wqst', requires: { smarts: 5 } },
+                    { text: 'Pry the boards off the window.', nextId: 'inside_wqst_grit', requires: { grit: 5 } },
+                    { text: 'There must be a service entrance around back.', nextId: 'inside_wqst_smarts', requires: { smarts: 5 } },
                     { text: 'You\'ve seen enough. This is someone else\'s nightmare.', nextId: 'ghost_run_reflection_return' }
                 ]
             },
             {
-                id: 'inside_wqst',
-                text: 'You slip inside. The air is thick with the smell of ozone and dust. In the main broadcast room, ancient equipment is alive with an eerie green light. Spools of tape turn on their own, but they aren\'t recording sound—they\'re recording streams of what looks like raw data. On a central console, a waveform monitor pulses in time with the hum. It\'s not broadcasting a signal out; it\'s *receiving* one. A label on the console reads: "PROJECT CARCOSA - NEURAL FEED ARCHIVE (JAMISON, E.)."',
+                id: 'inside_wqst_grit',
+                text: 'Your shoulder connects with the plywood with a satisfying crack of splintering wood. A little brute force goes a long way in this town. You slip inside, ignoring the fresh ache in your arm. The air is thick with the smell of ozone and dust. In the main broadcast room, ancient equipment is alive with an eerie green light.',
+                choices: [
+                    { text: 'Touch the console.', nextId: 'experience_the_song_fragment' },
+                    { text: 'Smash the equipment.', nextId: 'smash_wqst' },
+                    { text: 'Get out. Now.', nextId: 'ghost_run_reflection_return' }
+                ]
+            },
+            {
+                id: 'inside_wqst_smarts',
+                text: 'Your detective\'s eye tells you a building this old has to have a service entrance. A quick walk around the back reveals a rusted metal door, the lock long since busted. You slip inside unnoticed. The air is thick with the smell of ozone and dust. In the main broadcast room, ancient equipment is alive with an eerie green light.',
                 choices: [
                     { text: 'Touch the console.', nextId: 'experience_the_song_fragment' },
                     { text: 'Smash the equipment.', nextId: 'smash_wqst' },
@@ -563,10 +699,34 @@
                     { text: 'The rain-streaked window overlooking the city.', nextId: 'look_out_window' },
                     { text: 'The half-empty bottle of bourbon on the desk.', nextId: 'examine_bottle' },
                     { text: 'The matchbook from \'The Electric Sheep\'.', nextId: 'examine_matchbook'},
-                    { text: 'The ancient rotary phone on the corner of the desk.', nextId: 'examine_phone'},
                     { text: 'The out-of-place seashell.', nextId: 'examine_seashell'},
                     { text: 'The cracked mirror hanging by the door.', nextId: 'examine_mirror' },
-                    { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file_choice' }
+                    { text: 'A single, slightly-damp manila folder sitting in the center of the desk.', nextId: 'examine_file_choice' },
+                    { text: 'The locked bottom drawer of your desk.', nextId: 'examine_locked_drawer' }
+                ]
+            },
+            {
+                id: 'examine_locked_drawer',
+                text: 'The bottom drawer of your old oak desk is locked. It\'s always been locked. You remember your old partner, Finney, jamming it shut years ago after a particularly bad case, saying some things were better left buried. You haven\'t tried to open it since.',
+                choices: [
+                    { text: 'Use Finney\'s old key to open it.', nextId: 'finneys_note', requiresItem: 'old_key' },
+                    { text: 'Pry the drawer open.', nextId: 'pry_drawer_open', requires: { grit: 6 } },
+                    { text: 'Leave it. Some things are better left buried.', nextId: 'office_ambience' }
+                ]
+            },
+            {
+                id: 'pry_drawer_open',
+                text: 'You find a tire iron in your closet. With a grunt and the shriek of tortured wood, the lock splinters. Inside, there\'s only a single, yellowed envelope.',
+                choices: [
+                    { text: 'Read the note.', nextId: 'finneys_note' }
+                ]
+            },
+            {
+                id: 'finneys_note',
+                text: 'You open the envelope. The note inside is in Finney\'s familiar scrawl, but the letters are shaky, panicked.\n\n"Slate,\nIf you\'re reading this, I\'m gone. Or worse. It\'s the song. It gets in your head. They\'re not just shipping parts from the docks... they\'re shipping echoes. Ghosts.\nI dug deep. Too deep. Found something in the old City Archives, a corporate charter from the roaring 20s. Sterling Automata wasn\'t their first name. It was a shell company, a front.\nLook for the Hastur Foundation. Find out who they really are. Don\'t trust Mulligan. Don\'t trust anyone.\n\n-F"\n\nThe note feels cold in your hand, a message from a dead man.',
+                choices: [
+                    { text: 'This changes things. You need to go to the City Archives.', nextId: 'travel_to_archives' },
+                    { text: 'Put the note away. It\'s a ghost story.', nextId: 'office_ambience' }
                 ]
             },
             {
@@ -592,7 +752,7 @@
             },
             {
                 id: 'examine_mirror',
-                text: 'You stare at the face in the cracked glass. It\'s a stranger\'s face, mostly. The eyes are yours, maybe. Puffy, bloodshot, but familiar. The rest of him looks like he\'s been sleeping in his clothes for a week and gargling with gravel. A fresh cut marks his temple. You don\'t remember getting it.\n\nThe name on the door is J. SLATE. You wonder if this is what a J. Slate is supposed to look like.',
+                text: () => `You stare at the face in the cracked glass. It's a stranger's face, mostly. The eyes are yours, maybe. Puffy, bloodshot, but familiar. The rest of him looks like he's been sleeping in his clothes for a week and gargling with gravel. A fresh cut marks his temple. You don't remember getting it.\n\nThe name on the door is ${player.name}. You wonder if this is what a ${player.name} is supposed to look like.`,
                 choices: [
                     { text: 'Look away from the stranger.', nextId: 'office_ambience' }
                 ]
@@ -668,7 +828,7 @@
             },
             {
                 id: 'her_plea',
-                text: 'She doesn\'t move to take off her coat. She stands there, a phantom in your dusty office. When she finally speaks, her voice is like smoke and whiskey, a sound that promises late nights and bad decisions. \n\n"Are you the man they call Slate?" she asks. "I need you to find someone."',
+                text: () => `She doesn't move to take off her coat. She stands there, a phantom in your dusty office. When she finally speaks, her voice is like smoke and whiskey, a sound that promises late nights and bad decisions. \n\n"Are you the man they call ${player.name}?" she asks. "I need you to find someone."`,
                 choices: [
                     { text: '"Depends who\'s asking. And who\'s paying."', nextId: 'ask_for_money' },
                     { text: '"I find a lot of things. People, trouble, the bottom of a bottle. Be specific."', nextId: 'charm_her' },
@@ -684,7 +844,8 @@
                 choices: [
                     { text: 'His wife must have given you an address. Check out his apartment first.', nextId: 'eddies_apartment_exterior'},
                     { text: 'Head to the grimy downtown bars.', nextId: 'travel_to_bars' },
-                    { text: 'Check the police precinct for any recent reports.', nextId: 'travel_to_precinct' }
+                    { text: 'Check the police precinct for any recent reports.', nextId: 'travel_to_precinct' },
+                    { text: 'Follow a lead into the twisting streets of the Narrows.', nextId: 'travel_to_narrows' }
                 ]
             },
             {
@@ -725,18 +886,28 @@
             },
             {
                 id: 'travel_to_bars',
-                text: 'You pop the collar on your coat, a pointless gesture against a rain that knows how to find every seam, and step into the neon bleed of the street. The city is a beautiful lie tonight, all shimmering reflections on wet asphalt, hiding the rot underneath. An automated cab, its chassis scarred from a thousand forgotten fares, slides to the curb. Inside, the air is thick with the ghosts of cheap perfume and cheaper cigars. As it rattles through the concrete canyons, you watch the city’s sad parade. A couple kissing under a glitching hoload for a memory-wipe service. An android, a decommissioned labor model, standing perfectly still, its face tilted to the sky as if trying to drown itself one drop at a time. A man on a corner, his eyes too wide, screaming scripture about a King who wears a yellow mask and a city called Carcosa. The usual Tuesday night. The cab shudders to a halt in front of The Rusty Mug. The sign flickers, promising little and delivering less.',
+                text: 'You pop the collar on your coat, a pointless gesture against a rain that knows how to find every seam, and step into the neon bleed of the street. An automated cab, its chassis scarred from a thousand forgotten fares, slides to the curb. As it rattles through the concrete canyons, you watch the city’s sad parade. The cab shudders to a halt in front of The Rusty Mug. The sign flickers, promising little and delivering less.',
                 choices: [ { text: 'Push open the door to the dive.', nextId: 'downtown_bars' } ]
             },
             {
                 id: 'travel_to_precinct',
-                text: 'The journey to the precinct is a descent into the city\'s concrete heart. The buildings press in, taller and more severe, blocking out what little light dares to pierce the smog. The faces you pass are grim, etched with the quiet desperation of life in a city that\'s forgotten their names. You pass a memorial for a recent corporate war, its eternal flame flickering on a datastream, already forgotten. The precinct building looms ahead, a brutalist block of granite that promises cold coffee and colder comfort.',
+                text: 'The journey to the precinct is a descent into the city\'s concrete heart. The buildings press in, taller and more severe. The precinct building looms ahead, a brutalist block of granite that promises cold coffee and colder comfort.',
                 choices: [ { text: 'Go inside. Time to face the ghosts.', nextId: 'police_precinct' } ]
             },
             {
                 id: 'travel_to_sterling',
-                text: 'Your cab ascends into the upper levels of the city, leaving the grime and the rain-slicked streets below. Up here, the air is clean, filtered. The architecture is all chrome and glass, sterile and arrogant. Advertising drones whisper promises of a better life in your ear as they float past. You can\'t shake the feeling that you don\'t belong here, that you\'re a virus entering a clean room. The Sterling Automata tower pierces the clouds like a silver needle.',
+                text: 'Your cab ascends into the upper levels of the city, leaving the grime and the rain-slicked streets below. Up here, the air is clean, filtered. The architecture is all chrome and glass, sterile and arrogant. The Sterling Automata tower pierces the clouds like a silver needle.',
                 choices: [ { text: 'This is the place.', nextId: 'sterling_lobby_ambience' } ]
+            },
+            {
+                id: 'travel_to_archives',
+                text: 'The City Archives are a cold, humming cavern of data, smelling of old paper and electricity. You think of Finney\'s last message as you descend into the climate-controlled silence. You\'re not just looking for a missing person anymore. You\'re digging up a grave.',
+                choices: [ { text: 'Find a terminal and get to work.', nextId: 'city_archives' } ]
+            },
+            {
+                id: 'travel_to_narrows',
+                text: 'The cab refuses to go deeper than the edge of the Narrows. Down here, the streets are a tangled mess of decaying infrastructure and flickering, unauthorized holoads. The air is thick with the smell of strange spices, ozone, and something else... something sweet and rotten, like dying flowers. This is a place the city has forgotten, and where forgotten things fester.',
+                choices: [ { text: 'Step into the shadows.', nextId: 'narrows_ambience' } ]
             },
             {
                 id: 'sterling_lobby_ambience',
@@ -807,18 +978,25 @@
                     { text: 'Maybe Mulligan knows more.', nextId: 'travel_to_precinct' }
                 ]
             },
-            {
-                id: 'downtown_bars', text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
+            { 
+                id: 'downtown_bars', 
+                text: 'You push open the door to "The Rusty Mug," a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.',
                 choices: [
-                    { text: 'Ask the bartender what the word on the street is.', nextId: 'sully_rumors', hideIfState: 'heardSullyRumors', setState: 'heardSullyRumors' },
+                    { text: 'Ask the bartender about street rumors.', nextId: 'sully_rumors', hideIfState: 'heardSullyRumors', setState: 'heardSullyRumors', hideIfState: 'talkedToMulligan' },
+                    { text: 'Ask the bartender about the rumors (you mention talking to a cop).', nextId: 'sully_rumors_post_mulligan', showIfState: 'talkedToMulligan', hideIfState: 'heardSullyRumors', setState: 'heardSullyRumors' },
                     { text: 'Order a drink and observe.', nextId: 'bartender_observe', effect: { smarts: 1 } },
                     { text: 'Flash a bill and ask about Eddie.', nextId: 'bartender_charmed' },
                     { text: 'Walk to the bar and lean in close. "Eddie Malone. Where is he?"', nextId: 'bartender_intimidated' }
-                ]
+                ] 
             },
             {
                 id: 'sully_rumors',
                 text: 'Sully stops polishing his glass and leans in, his voice a low grumble. "Street\'s got a fever," he rasps. "People hearing things. Music from the storm drains. Whispers on dead data channels. Some say they see men in yellow coats down by the docks when the fog is thick. They leave strange signs, spirals and such." He shrugs, picking up his rag again. "Probably just the new synth-dope doing the rounds. But it\'s got people spooked. Bad for business."',
+                choices: [ { text: 'Good to know.', nextId: 'downtown_bars' } ]
+            },
+            {
+                id: 'sully_rumors_post_mulligan',
+                text: 'You mention you were just chatting with the boys in blue. Sully\'s eyes narrow, sizing you up. He leans in closer, his voice dropping to a conspiratorial whisper. "The cops are scared of it too, whatever *it* is. They call it the \'digital ghost\'. People hearing things, seeing things... All connected to Sterling\'s new waterfront project. They say men in yellow coats patrol the area, leaving strange spiral signs." He straightens up, his face a mask again. "That\'s the word, anyway. Make of it what you will."',
                 choices: [ { text: 'Good to know.', nextId: 'downtown_bars' } ]
             },
             { id: 'bartender_observe', text: 'You order a whiskey. It tastes like betrayal and varnish. Nursing the drink, you let your eyes adjust to the gloom and you listen. Two lowlifes in a booth are mumbling about Eddie getting cleaned out in the backroom poker game last night, run by a guy named "Fingers." They mention Eddie was flashing a weird, silver-inlaid poker chip before he lost it all, talking big about his new score.', choices: [{ text: 'You\'ve heard enough. Approach the back room.', nextId: 'approach_poker_game' }] },
@@ -883,8 +1061,8 @@
                 id: 'police_precinct', text: 'The precinct smells of bleach, bureaucracy, and bad coffee. It\'s a symphony of ringing phones and clacking typewriters. Your old partner, Detective Mulligan, is drowning in a sea of paperwork under the harsh fluorescent lights. He looks up as you approach, his face a landscape of exhaustion. Every line on it tells a story of a case that went cold or a witness that disappeared. He looks like a man who has been losing a war for a very long time.',
                 choices: [
                     { text: '"Forget the case for a minute. Let me buy you a drink."', nextId: 'drink_with_mulligan', hideIfState: 'hadDrinkWithMulligan', setState: 'hadDrinkWithMulligan' },
-                    { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative'},
-                    { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative'},
+                    { text: '"Just looking for a friendly face, Frank."', nextId: 'mulligan_cooperative', setState: 'talkedToMulligan'},
+                    { text: '"I\'m on a case. Missing person. Could be connected to something bigger."', nextId: 'mulligan_cooperative', setState: 'talkedToMulligan'},
                     { text: '"I need the file on Eddie Malone."', nextId: 'mulligan_uncooperative' }
                 ]
             },
@@ -1064,8 +1242,69 @@
                     {text: 'Look at your reflection in the whiskey glass.', nextId: 'reflection_vignette', hideIfState: 'seenReflection', setState: 'seenReflection'},
                     {text: 'Call the client. She needs to know how deep this goes.', nextId: 'call_the_dame'},
                     {text: 'Call Detective Mulligan. This is too big to handle alone.', nextId: 'call_mulligan'},
-                    {text: 'Trust no one. Find out who Jamison was on your own.', nextId: 'investigate_jamison'}
+                    {text: 'Trust no one. It\'s time to go to the City Archives.', nextId: 'travel_to_archives'}
+                ],
+                contextualActions: [
+                    { itemIds: ['datapad'], nextId: 'examine_datapad_in_office', text: "[Use Item] Examine Eddie's Datapad again." },
+                    { itemIds: ['datapad', 'seashell'], nextId: 'seashell_datapad_resonance', text: "[Use Item] Hold the seashell to the datapad." }
                 ]
+            },
+            {
+                id: 'examine_datapad_in_office',
+                text: 'You power on the cheap datapad, the screen flickering to life with a low hum. You play the corrupted audio file again. Eddie\'s panicked voice fills the silent room.\n\n"...they made him into a song..."\n\nYou listen to the static that follows. It\'s not just noise. Hidden beneath the hiss, you can just make out a fragment of that same, atonal jazz melody from the docks, from the phone. The song is everywhere. The thought chills you more than the rain outside.',
+                choices: [
+                    { text: 'Put the datapad down.', nextId: 'plan_next_move'}
+                ]
+            },
+            {
+                id: 'seashell_datapad_resonance',
+                text: 'On a hunch, you power on the datapad and play the corrupted audio file. As the static hisses, you hold the impossibly white seashell up to the device\'s speaker. A strange resonance occurs. The distorted melody from the shell sharpens, clarifies, locking in with a hidden frequency in the static.\n\nThe datapad screen flickers, and a new file decrypts itself: `jamison_failsafe.log`.\n\nIt\'s a text file, a final message from the ghost in the machine. "If the transfer fails... if I\'m not me... the failsafe is in the melody. The first eight notes of my daughter\'s lullaby. It\'s the master key. It won\'t delete the archive, but it will broadcast the raw, unredacted neural data on every open channel in the city. They can\'t hide what I\'ve become."',
+                choices: [
+                    { text: 'You now have a weapon.', nextId: 'plan_next_move', setState: 'knowsFailsafeMelody' }
+                ]
+            },
+            {
+                id: 'narrows_ambience',
+                text: 'The Narrows are a labyrinth. Every corner turned reveals another alley choked with overflowing dumpsters and strange, unreadable graffiti. The low hum of the city is different here, threaded with whispers you can\'t quite make out. You see a flicker of movement in the shadows, but when you look, there\'s nothing there.',
+                choices: [
+                    { text: 'Examine the strange graffiti covering the walls.', nextId: 'narrows_graffiti' },
+                    { text: 'Keep moving, try to find a landmark.', nextId: 'narrows_dead_end' },
+                    { text: 'Get out. This place is a dead end.', nextId: 'case_accepted' }
+                ]
+            },
+            {
+                id: 'narrows_graffiti',
+                text: 'Most of the graffiti is gang tags and gibberish, but one symbol stands out, repeated over and over in a sickly pale yellow chalk. It\'s a spiral with a dot in the center. The Yellow Sign. As you run your fingers over the chalk, a figure detaches itself from the deeper shadows of the alley.',
+                choices: [ { text: '...', nextId: 'cultist_encounter' } ]
+            },
+            {
+                id: 'cultist_encounter',
+                text: 'He\'s thin, wrapped in a dirty yellow trench coat despite the heat of the alley. His eyes are wide, pupils dilated to black pools, but they seem to look right through you. He smiles, a serene, empty expression.\n\n"Have you seen the Yellow Sign?" he whispers, his voice raspy. "He wears no mask! The city is a stage, and we are but actors in his play. Soon the last act will begin, and all the world will see the beauty of Carcosa."\n\nHe holds out a small, smooth token made of a pale yellow material. "A ticket to the show. For a fellow actor."',
+                choices: [
+                    { text: 'Take the token.', nextId: 'cultist_accept', itemGained: 'cult_token' },
+                    { text: 'Refuse. "I\'m not interested in your play."', nextId: 'cultist_refuse' },
+                    { text: 'Shove him out of the way.', nextId: 'cultist_shove' }
+                ]
+            },
+            {
+                id: 'cultist_accept',
+                text: 'You take the token. It feels strangely warm. The man\'s smile widens. "You will see," he says, before melting back into the shadows as if he were never there. You\'re left alone in the alley, the whispers seeming a little closer now.',
+                choices: [ { text: 'Leave the Narrows. For now.', nextId: 'case_accepted' } ]
+            },
+            {
+                id: 'cultist_refuse',
+                text: 'The man\'s smile doesn\'t falter, but his eyes seem to harden. "A pity," he whispers. "The audience will be so lonely without you." He turns and vanishes back into the oppressive darkness, leaving you with a chill that has nothing to do with the damp air.',
+                choices: [ { text: 'Leave the Narrows.', nextId: 'case_accepted' } ]
+            },
+            {
+                id: 'cultist_shove',
+                text: 'You push past him. It\'s like shoving a scarecrow; he stumbles back with an unnatural lightness. He doesn\'t get angry. He just smiles that same, empty smile. "The stage is set, whether you choose to play your part or not," he calls after you as you walk away. The encounter leaves a foul taste in your mouth.',
+                choices: [ { text: 'Get out of this maze.', nextId: 'case_accepted' } ]
+            },
+            {
+                id: 'narrows_dead_end',
+                text: 'You wander the twisting alleys for what feels like an hour, but you just end up back where you started. The whispers seem to be laughing at you. This isn\'t a place you can navigate by normal means.',
+                choices: [ { text: 'Get out of here.', nextId: 'narrows_ambience' } ]
             },
             {
                 id: 'reflection_vignette',
@@ -1081,11 +1320,6 @@
                 id: 'call_mulligan',
                 text: 'You call Mulligan\'s private line. "Don\'t talk," he says before you can even speak. "Heard chatter about a PI stirring up a Sterling hornet\'s nest." You mention the Carcosa. The line is silent for a long moment. "Are you clean?... Don\'t move. I\'m coming to you. We are not talking about this over the phone. And for God\'s sake, don\'t let anyone in."',
                 choices: [ { text: 'Wait for Mulligan.', nextId: 'mulligan_arrives' } ]
-            },
-            {
-                id: 'investigate_jamison',
-                text: 'The client could be involved. Mulligan could be dirty. In this city, you can\'t trust anyone but yourself. The name is Jamison. That\'s the thread. Finding out who he was is the next logical step. The city\'s municipal data archives are a good place to start digging for ghosts. It\'s time to go to the library.',
-                choices: [ { text: 'Go to the City Archives.', nextId: 'city_archives' } ]
             },
             {
                 id: 'meet_at_observatory',
@@ -1109,10 +1343,34 @@
             },
             {
                 id: 'city_archives',
-                text: 'The Municipal Archives are a cold, humming cavern of data, smelling of old paper and electricity. You find a terminal in a dark corner and start digging. Jamison, Elias. Most records are scrubbed clean, but you find a ghost in the machine: a link to his old, password-protected academic blog. The password hint is a question: "Who is the ghost in the machine?"',
+                text: 'The Municipal Archives are a cold, humming cavern of data, smelling of old paper and electricity. You find a terminal in a dark corner and start digging.',
+                choices: [
+                    { text: 'Search for records on Elias Jamison.', nextId: 'investigate_jamison_records' },
+                    { text: 'Search for Sterling Automata\'s original corporate charter.', nextId: 'archive_search_charter', hideIfState: 'foundHasturFoundation' },
+                ]
+            },
+            {
+                id: 'investigate_jamison_records',
+                text: 'You start digging for Jamison, Elias. Most records are scrubbed clean, but you find a ghost in the machine: a link to his old, password-protected academic blog. The password hint is a question: "Who is the ghost in the machine?"',
                 choices: [
                     {text: 'Try password: NAIMA', nextId: 'jamison_blog_success', requires: {smarts:10}},
-                    {text: 'Try to brute force the password.', nextId: 'jamison_blog_fail'}
+                    {text: 'Try to brute force the password.', nextId: 'jamison_blog_fail'},
+                    {text: 'Back to the main search.', nextId: 'city_archives'}
+                ]
+            },
+            {
+                id: 'archive_search_charter',
+                text: 'Following Finney\'s lead, you bypass the modern corporate records and dive into the deep archives, searching for shell companies from the early 20th century. It\'s a needle in a haystack made of rotting data.',
+                choices: [
+                    {text: 'Use your keen intellect to cross-reference addresses and board members.', nextId: 'archive_charter_success', requires: {smarts: 8}},
+                    {text: 'This is getting nowhere.', nextId: 'city_archives' }
+                ]
+            },
+            {
+                id: 'archive_charter_success',
+                text: 'Hours bleed together, but then you find it. A shell corporation that bought the waterfront property where the docks now stand. The name on the dusty digital charter sends a chill down your spine: "The Hastur Foundation," established 1928. The list of founding members is redacted, but its stated purpose is "the study of transcendental resonance and liminal consciousness."\n\nThis isn\'t a tech company. It\'s something much, much older.',
+                choices: [
+                    {text: 'You\'ve found the root of the rot.', nextId: 'city_archives', setState: 'foundHasturFoundation', effect: { smarts: 1 } }
                 ]
             },
             {
@@ -1151,7 +1409,6 @@
                 choices: [ { text: '[End of Chapter One]', nextId: 'start', effect: { reset: true } } ]
             }
         ];
-
 
         // --- KICK OFF THE GAME ---
         startGame();
