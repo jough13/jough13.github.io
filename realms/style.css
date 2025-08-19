@@ -605,6 +605,12 @@ body.loading .game-container {
     align-items: center;
     z-index: 100;
     font-family: 'VT323', monospace;
+    opacity: 0; /* Make it invisible by default */
+    transition: opacity 0.5s ease-in-out; /* Add a smooth fade effect */
+}
+
+body.loading #start-screen {
+    opacity: 1; /* Fade it in when the body has the 'loading' class */
 }
 
 .start-menu {
