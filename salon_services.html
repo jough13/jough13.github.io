@@ -91,6 +91,8 @@
             transition: background-color 0.2s, opacity 0.2s; white-space: nowrap;
         }
         button:hover { opacity: 0.85; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; opacity: 0.7; }
+        body.dark-mode button:disabled { background-color: #555; }
         button.danger-btn { background-color: var(--danger-color); }
         button.save-btn { background-color: var(--success-color); }
         #theme-toggle-btn {
@@ -194,6 +196,13 @@
         footer { text-align: center; margin-top: 2rem; padding: 1rem 0 0 0; font-size: 0.9em; color: #888; }
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
+        
+        /* Drag and Drop Styles */
+        [draggable="true"] { cursor: grab; }
+        [draggable="true"]:active { cursor: grabbing; }
+        .dragging { opacity: 0.5; background: var(--accent-color) !important; color: white; }
+        .drag-over { border-top: 3px solid var(--accent-color); }
+        .mobile-drag-over { border-top: 3px solid var(--accent-color); }
 
         @media print {
             .main-controls, footer, #modal-backdrop, .modal-popup { display: none !important; }
@@ -280,6 +289,8 @@
                     <button id="theme-toggle-btn">🌓</button>
                 </div>
                  <div class="control-group dev-mode-only">
+                    <button id="undo-btn">Undo</button>
+                    <button id="redo-btn">Redo</button>
                     <button id="reset-all-btn" class="danger-btn">Reset All Data</button>
                 </div>
             </div>
@@ -290,14 +301,14 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.22 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.24 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Adding & Removing</h3><ul><li><strong>To Add a New Stylist</strong>: Type a name in the "New Stylist Name..." box and click the <strong>Add Stylist</strong> button.</li><li><strong>To Add a New Service</strong>: Type a name in the "New Service Name..." box and click the <strong>Add Service</strong> button.</li><li><strong>To Remove a Stylist</strong>: Double-click a stylist's name, then click the trash can icon (<strong>🗑️</strong>) that appears.</li><li><strong>To Remove a Service</strong>: Double-click a service name in the header, then click the trash can icon (<strong>🗑️</strong>) that appears.</li></ul><h3>Editing Information</h3><ul><li><strong>To Edit a Service Name</strong>: Double-click on any service name in the header.</li><li><strong>To Edit a Stylist Name</strong>: Double-click on any stylist's name in the table.</li><li><strong>To Change a Stylist's Level</strong>: Single-click the level text (e.g., "Level Five") under a stylist's name.</li><li><strong>To Change a Price</strong>: Single-click on any price (or on the "Add Price" text).</li></ul><h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li><li><strong>To View a Note</strong>: Click the colored square in the corner of any cell.</li><li><strong>To Delete a Note</strong>: Open the note, then click the "Delete this note" text link.</li></ul><h3>Saving & Managing Your Data</h3><ul><li><strong>Save</strong>: Click this to save your work to the current browser. Your work also autosaves.</li><li><strong>Export</strong>: Click this to save a backup file (`salon-data.json`) to your computer.</li><li><strong>Import</strong>: Click this to load data from a file. This will <strong>completely replace</strong> the current matrix.</li></ul></div></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Key Features</h3><ul><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card, drag it to a new position, and release.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser a few seconds after you stop making changes. The "Last Updated" time in the footer will confirm the last save.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Pressing `Ctrl+Alt+D` will reveal advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Adding & Removing</h3><ul><li><strong>To Add a New Stylist/Service</strong>: Use the input boxes at the top left.</li><li><strong>To Remove a Stylist/Service</strong>: Double-click its name, then click the trash can icon (<strong>🗑️</strong>).</li></ul><h3>Editing Information</h3><ul><li><strong>To Edit a Name</strong>: Double-click on it.</li><li><strong>To Change a Level or Price</strong>: Single-click the text to edit.</li></ul><h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li><li><strong>To View/Delete a Note</strong>: Click on a colored note square to open it.</li></ul></div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..." rows="4"></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure you want to proceed?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
@@ -306,7 +317,8 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- STATE AND CONSTANTS ---
-        let salonState;
+        let stateHistory = [];
+        let currentStateIndex = -1;
         let isPlacingNote = false;
         let selectedNoteColor = null;
         let clickTimer = null;
@@ -324,6 +336,8 @@
         const searchInput = document.getElementById('search-input');
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
         const lastUpdatedSpan = document.getElementById('last-updated-span');
+        const undoBtn = document.getElementById('undo-btn');
+        const redoBtn = document.getElementById('redo-btn');
         
         // --- CORE DATA ---
         const LOCAL_STORAGE_KEY = 'salonMatrixData';
@@ -355,6 +369,7 @@
         };
         
         // --- HELPER & UTILITY FUNCTIONS ---
+        const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
         const debounce = (func, delay) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func(...args), delay); }; };
 
         const showModal = (popup) => {
@@ -417,12 +432,14 @@
             swatch.style.backgroundColor = selectedNoteColor.color;
             swatch.style.border = selectedNoteColor.border || 'none';
             const handleSave = () => {
+                const newState = deepClone(stateHistory[currentStateIndex]);
                 const newNote = { text: textarea.value, ...selectedNoteColor };
-                if (row === -1) salonState.services[col - 1].note = newNote;
-                else if (col === 0) salonState.stylists[row].note = newNote;
-                else salonState.stylists[row].services[col - 1].note = newNote;
-                updateDisplay(); showToast("Note added.", "success");
-                cleanup(); debouncedSave();
+                if (row === -1) newState.services[col - 1].note = newNote;
+                else if (col === 0) newState.stylists[row].note = newNote;
+                else newState.stylists[row].services[col - 1].note = newNote;
+                recordChange(newState);
+                showToast("Note added.", "success");
+                cleanup();
             };
             const handleCancel = () => cleanup();
             const cleanup = () => {
@@ -465,6 +482,7 @@
 
         const showNotePopup = (row, col) => {
             const popup = document.getElementById('note-popup');
+            const salonState = stateHistory[currentStateIndex];
             let note;
             if (row === -1) note = salonState.services[col - 1].note;
             else if (col === 0) note = salonState.stylists[row].note;
@@ -474,13 +492,13 @@
             popup.querySelector('#note-popup-content').textContent = note.text;
             document.getElementById('delete-note-popup').onclick = () => {
                 showConfirmModal("Are you sure you want to delete this note?", () => {
-                    if (row === -1) salonState.services[col - 1].note = null;
-                    else if (col === 0) salonState.stylists[row].note = null;
-                    else salonState.stylists[row].services[col - 1].note = null;
+                    const newState = deepClone(salonState);
+                    if (row === -1) newState.services[col - 1].note = null;
+                    else if (col === 0) newState.stylists[row].note = null;
+                    else newState.stylists[row].services[col - 1].note = null;
                     hideModal(popup);
-                    updateDisplay();
+                    recordChange(newState);
                     showToast("Note deleted.", "info");
-                    debouncedSave();
                 });
             };
             showModal(popup);
@@ -497,6 +515,7 @@
         };
         
         const handlePrint = () => {
+            const salonState = stateHistory[currentStateIndex];
             const printStyles = `<style>@page{size:portrait;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
             let tableHtml = '<table><thead><tr><th>Stylist</th>';
             salonState.services.forEach(service => { tableHtml += `<th>${service.name}</th>`; });
@@ -518,12 +537,48 @@
             printWindow.onload = () => { printWindow.print(); printWindow.close(); };
         };
 
+        // --- STATE MANAGEMENT (UNDO/REDO) ---
+        const updateUndoRedoButtons = () => {
+            undoBtn.disabled = currentStateIndex <= 0;
+            redoBtn.disabled = currentStateIndex >= stateHistory.length - 1;
+        };
+
+        const recordChange = (newState) => {
+            if (currentStateIndex < stateHistory.length - 1) {
+                stateHistory = stateHistory.slice(0, currentStateIndex + 1);
+            }
+            stateHistory.push(newState);
+            currentStateIndex++;
+            updateDisplay();
+            updateUndoRedoButtons();
+            debouncedSave();
+        };
+
+        const undo = () => {
+            if (currentStateIndex > 0) {
+                currentStateIndex--;
+                updateDisplay();
+                updateUndoRedoButtons();
+                debouncedSave();
+            }
+        };
+
+        const redo = () => {
+            if (currentStateIndex < stateHistory.length - 1) {
+                currentStateIndex++;
+                updateDisplay();
+                updateUndoRedoButtons();
+                debouncedSave();
+            }
+        };
+
         // --- RENDER FUNCTIONS ---
         const renderTable = (stylistsToRender) => {
             const thead = servicesTable.querySelector('thead');
             const tbody = servicesTable.querySelector('tbody');
             thead.innerHTML = '';
             tbody.innerHTML = '';
+            const salonState = stateHistory[currentStateIndex];
             const headerRow = document.createElement('tr');
             const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
             headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
@@ -540,6 +595,7 @@
                 const originalRowIndex = salonState.stylists.findIndex(s => s.name === stylist.name);
                 const row = document.createElement('tr');
                 row.dataset.row = originalRowIndex;
+                row.draggable = true;
                 const nameCell = document.createElement('td');
                 nameCell.dataset.col = 0;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
@@ -560,6 +616,7 @@
 
         const renderMobileView = (stylistsToRender) => {
             mobileViewContainer.innerHTML = '';
+            const salonState = stateHistory[currentStateIndex];
             if (stylistsToRender.length === 0) {
                 mobileViewContainer.innerHTML = '<p style="text-align:center; color:#888;">No stylists match your search.</p>';
                 return;
@@ -569,6 +626,7 @@
                 const card = document.createElement('div');
                 card.className = 'stylist-card';
                 card.dataset.row = originalRowIndex;
+                card.draggable = true;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};" data-col="0"></div>` : '';
                 card.innerHTML = `<div class="stylist-card-header" data-col="0"><div class="stylist-info"><span class="editable">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div>${stylistNoteHTML}</div><div class="stylist-card-body"></div>`;
                 const cardBody = card.querySelector('.stylist-card-body');
@@ -588,6 +646,8 @@
         };
 
         const updateDisplay = () => {
+            const salonState = stateHistory[currentStateIndex];
+            if (!salonState) return;
             const searchTerm = searchInput.value.toLowerCase();
             let filteredStylists = salonState.stylists;
             if (searchTerm) {
@@ -612,40 +672,42 @@
 
         // --- DATA & SAVE FUNCTIONS ---
         const saveData = (showFeedback = false) => {
+            if (currentStateIndex < 0) return;
             const timestamp = new Date().toLocaleString();
-            const dataToSave = { salonState, timestamp };
+            const dataToSave = { salonState: stateHistory[currentStateIndex], timestamp };
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
             lastUpdatedSpan.textContent = timestamp;
-            if (showFeedback) {
-                showToast('Data saved successfully!', 'success');
-            }
+            if (showFeedback) showToast('Data saved successfully!', 'success');
         };
         const debouncedSave = debounce(saveData, 1500);
 
         const loadInitialData = () => {
             const savedJSON = localStorage.getItem(LOCAL_STORAGE_KEY);
-            const savedData = savedJSON ? JSON.parse(savedJSON) : JSON.parse(JSON.stringify(defaultData));
-            salonState = savedData.salonState;
+            const savedData = savedJSON ? JSON.parse(savedJSON) : deepClone(defaultData);
+            stateHistory = [savedData.salonState];
+            currentStateIndex = 0;
             lastUpdatedSpan.textContent = savedData.timestamp || 'Never';
             updateDisplay();
+            updateUndoRedoButtons();
         };
 
         // --- EVENT LISTENERS ---
         mainContentContainer.addEventListener('input', (event) => {
             const target = event.target;
             if (!target.matches('input[type="checkbox"]')) return;
+            const newState = deepClone(stateHistory[currentStateIndex]);
             const serviceItem = target.closest('.service-item');
             const td = target.closest('td');
             if (serviceItem) {
                 const row = parseInt(target.closest('.stylist-card').dataset.row);
                 const col = parseInt(serviceItem.dataset.col);
-                salonState.stylists[row].services[col - 1].checked = target.checked;
+                newState.stylists[row].services[col - 1].checked = target.checked;
             } else if (td) {
                 const row = parseInt(td.parentElement.dataset.row);
                 const col = parseInt(td.dataset.col);
-                salonState.stylists[row].services[col - 1].checked = target.checked;
+                newState.stylists[row].services[col - 1].checked = target.checked;
             }
-            debouncedSave();
+            recordChange(newState);
         });
 
         mainContentContainer.addEventListener('click', (event) => {
@@ -665,8 +727,8 @@
                 clearTimeout(clickTimer);
                 clickTimer = setTimeout(() => {
                     const colIndex = parseInt(target.closest('th').dataset.col) - 1;
-                    const performingStylists = salonState.stylists.filter(s => s.services[colIndex]?.checked).map(s => s.name);
-                    showServiceStylistsPopup(salonState.services[colIndex].name, performingStylists);
+                    const performingStylists = stateHistory[currentStateIndex].stylists.filter(s => s.services[colIndex]?.checked).map(s => s.name);
+                    showServiceStylistsPopup(stateHistory[currentStateIndex].services[colIndex].name, performingStylists);
                 }, 250);
             } else if (target.matches('.editable.level-text')) {
                 const row = parseInt(target.closest('[data-row]').dataset.row);
@@ -676,9 +738,9 @@
                 target.replaceWith(input);
                 input.focus();
                 const save = () => {
-                    salonState.stylists[row].level = input.value.trim() || originalText;
-                    updateDisplay();
-                    debouncedSave();
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists[row].level = input.value.trim() || originalText;
+                    recordChange(newState);
                 };
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -691,10 +753,10 @@
                 target.replaceWith(input);
                 input.focus();
                 const save = () => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
                     const newPrice = input.value.trim();
-                    salonState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    updateDisplay();
-                    debouncedSave();
+                    newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
+                    recordChange(newState);
                 };
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -709,15 +771,15 @@
             clearTimeout(clickTimer);
             const target = event.target;
             const handleSave = (input, originalText, updateFn) => {
+                const newState = deepClone(stateHistory[currentStateIndex]);
                 const newText = input.value.trim();
                 if (newText === '') {
                     showToast('Name cannot be empty.', 'error');
-                    updateFn(originalText);
+                    updateFn(newState, originalText);
                 } else {
-                    updateFn(newText);
+                    updateFn(newState, newText);
                 }
-                updateDisplay();
-                debouncedSave();
+                recordChange(newState);
             };
             if (target.matches('.editable') && target.closest('th')) {
                 const cell = target.closest('th');
@@ -729,13 +791,13 @@
                 nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
                 editInput.focus();
                 deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove service "${originalText}"?`, () => {
-                    salonState.services.splice(col - 1, 1);
-                    salonState.stylists.forEach(s => s.services.splice(col - 1, 1));
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.services.splice(col - 1, 1);
+                    newState.stylists.forEach(s => s.services.splice(col - 1, 1));
                     showToast(`Service "${originalText}" removed.`, "info");
-                    updateDisplay();
-                    debouncedSave();
+                    recordChange(newState);
                 }));
-                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (val) => salonState.services[col - 1].name = val));
+                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (state, val) => state.services[col - 1].name = val));
                 editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
             } else if (target.matches('.editable') && !target.classList.contains('level-text')) {
                 const parentElement = target.closest('[data-row]');
@@ -748,14 +810,65 @@
                 nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
                 editInput.focus();
                 deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove stylist "${originalText}"?`, () => {
-                    salonState.stylists.splice(row, 1);
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists.splice(row, 1);
                     showToast(`Stylist "${originalText}" removed.`, "info");
-                    updateDisplay();
-                    debouncedSave();
+                    recordChange(newState);
                 }));
-                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (val) => salonState.stylists[row].name = val));
+                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (state, val) => state.stylists[row].name = val));
                 editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
             }
+        });
+        
+        // Drag and Drop Listeners
+        let draggedElementIndex = null;
+        mainContentContainer.addEventListener('dragstart', (e) => {
+            const draggable = e.target.closest('[draggable="true"]');
+            if (draggable) {
+                draggedElementIndex = parseInt(draggable.dataset.row);
+                setTimeout(() => draggable.classList.add('dragging'), 0);
+            }
+        });
+
+        mainContentContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[draggable="true"]');
+            if (target && parseInt(target.dataset.row) !== draggedElementIndex) {
+                const rect = target.getBoundingClientRect();
+                const isMobile = target.classList.contains('stylist-card');
+                if (e.clientY < rect.top + rect.height / 2) {
+                    target.classList.add(isMobile ? 'mobile-drag-over' : 'drag-over');
+                } else {
+                    target.classList.remove(isMobile ? 'mobile-drag-over' : 'drag-over');
+                }
+            }
+        });
+
+        mainContentContainer.addEventListener('dragleave', (e) => {
+            const target = e.target.closest('[draggable="true"]');
+            if (target) {
+                target.classList.remove('drag-over', 'mobile-drag-over');
+            }
+        });
+
+        mainContentContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dropTarget = e.target.closest('[draggable="true"]');
+            if (dropTarget && draggedElementIndex !== null) {
+                const targetIndex = parseInt(dropTarget.dataset.row);
+                const newState = deepClone(stateHistory[currentStateIndex]);
+                const [draggedItem] = newState.stylists.splice(draggedElementIndex, 1);
+                newState.stylists.splice(targetIndex, 0, draggedItem);
+                recordChange(newState);
+            }
+            draggedElementIndex = null;
+        });
+
+        mainContentContainer.addEventListener('dragend', () => {
+            document.querySelectorAll('.dragging, .drag-over, .mobile-drag-over').forEach(el => {
+                el.classList.remove('dragging', 'drag-over', 'mobile-drag-over');
+            });
+            draggedElementIndex = null;
         });
         
         NOTE_COLORS.forEach(c => {
@@ -769,19 +882,21 @@
         colorPalette.appendChild(cancelBox);
 
         document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => hideModal(btn.closest('.modal-popup'))));
-        document.getElementById('add-stylist-btn').addEventListener('click', () => { const name = newStylistInput.value.trim(); if (!name) return; salonState.stylists.push({ name, level: "Apprentice", note: null, services: salonState.services.map(() => ({ checked: false, price: '', note: null })) }); updateDisplay(); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; debouncedSave(); });
-        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; salonState.services.push({ name, note: null }); salonState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); updateDisplay(); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; debouncedSave(); });
+        document.getElementById('add-stylist-btn').addEventListener('click', () => { const name = newStylistInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.stylists.push({ name, level: "Apprentice", note: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) }); recordChange(newState); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; });
+        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.services.push({ name, note: null }); newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); recordChange(newState); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
         document.getElementById('save-btn').addEventListener('click', () => saveData(true));
         document.getElementById('export-btn').addEventListener('click', () => { saveData(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([localStorage.getItem(LOCAL_STORAGE_KEY)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-        document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data?.salonState && data?.timestamp) { salonState = data.salonState; lastUpdatedSpan.textContent = data.timestamp; saveData(); updateDisplay(); showToast('Data imported!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
+        document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data?.salonState && data?.timestamp) { stateHistory = [data.salonState]; currentStateIndex = 0; lastUpdatedSpan.textContent = data.timestamp; updateDisplay(); updateUndoRedoButtons(); saveData(); showToast('Data imported!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
         document.getElementById('print-btn').addEventListener('click', handlePrint);
         document.getElementById('manual-btn').addEventListener('click', () => showModal(document.getElementById('manual-popup')));
         themeToggleBtn.addEventListener('click', () => { const newTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark'; localStorage.setItem(THEME_KEY, newTheme); applyTheme(newTheme); });
         document.getElementById('reset-all-btn').addEventListener('click', () => showConfirmModal("Reset ALL data? This is irreversible.", () => { localStorage.clear(); showToast('Data reset. Reloading...', 'info'); setTimeout(() => location.reload(), 1000); }));
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }});
         addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
         searchInput.addEventListener('input', updateDisplay);
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
         
         // --- KICK-OFF ---
         applyTheme(localStorage.getItem(THEME_KEY) || 'light');
