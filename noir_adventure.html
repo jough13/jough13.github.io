@@ -304,7 +304,7 @@
         <div id="choices-container"></div>
         <div id="context-actions-container"></div>
         <div id="footer">
-            Version 1.7 | Last Updated: August 19, 2025
+            Version 1.8 | Last Updated: August 19, 2025
         </div>
     </div>
 
@@ -387,6 +387,16 @@
                 name: 'Finney\'s Badge',
                 description: 'A tarnished detective\'s badge. Badge number 714.',
                 lore: 'This shouldn\'t be here. This is Finney\'s. He was a good cop, one of the few. He wouldn\'t just leave this behind in some deadbeat\'s toolbox. Finding this feels like finding a bone in a place where there shouldn\'t be any bodies. A very, very bad sign.'
+            },
+            'depot_keycard': {
+                name: 'Depot Keycard',
+                description: 'A greasy keycard for "Scrap\'s Electronics Depot".',
+                lore: 'The malfunctioning android gave you this. A key to a kingdom of junk and discarded technology. It feels cheap and disposable, just like the android that handed it over. Maybe that\'s why they get along.'
+            },
+            'emp_grenade': {
+                name: 'EMP Grenade (Unstable)',
+                description: 'A jury-rigged EMP device. Looks powerful, and dangerously unstable.',
+                lore: 'You cobbled this together from the parts in Scrap\'s depot. It\'s a one-shot deal. It should knock out any electronic systems in a small radius, but the unstable power cell makes you nervous. Using it will be a gamble, but in this city, what isn\'t?'
             }
         };
 
@@ -1148,6 +1158,11 @@
             {
                 "text": "Follow a lead into the twisting streets of the Narrows.",
                 "nextId": "travel_to_narrows"
+            },
+            {
+                "text": "That matchbook... maybe I'll check out 'The Electric Sheep'.",
+                "nextId": "travel_to_electric_sheep",
+                "hideIfState": "visitedElectricSheep"
             }
         ]
     },
@@ -1297,6 +1312,136 @@
             {
                 "text": "Step into the shadows.",
                 "nextId": "narrows_ambience"
+            }
+        ]
+    },
+    {
+        "id": "travel_to_electric_sheep",
+        "text": "You tell the cab to head for the address on the matchbook. It takes you to a district of chrome and flickering neon, where androids off the clock go to oil their joints and forget their programming. The air here doesn't smell like desperation, it smells like ozone and hot metal, the scent of machines dreaming.",
+        "choices": [
+            {
+                "text": "Go inside 'The Electric Sheep'.",
+                "nextId": "electric_sheep_interior",
+                "setState": "visitedElectricSheep"
+            }
+        ]
+    },
+    {
+        "id": "electric_sheep_interior",
+        "text": "Inside, the bar is clean, quiet, and cool. The patrons are almost all androids, from sleek companion models to blocky, decommissioned laborers. They sip from glasses of iridescent coolant, their quiet conversations a series of soft clicks and whirs. The bartender is a polished chrome model with a single, calm, blue optic.",
+        "choices": [
+            {
+                "text": "Show the bartender the matchbook.",
+                "nextId": "sheep_bartender"
+            },
+            {
+                "text": "Scan the patrons.",
+                "nextId": "observe_sheep_patrons",
+                "requires": {
+                    "smarts": 6
+                }
+            },
+            {
+                "text": "This place isn't for you. Leave.",
+                "nextId": "case_accepted"
+            }
+        ]
+    },
+    {
+        "id": "sheep_bartender",
+        "text": "The bartender's optic focuses on the matchbook. \"A relic,\" it states, its voice a pleasant, synthesized baritone. \"The previous owner was fond of such things. He was a human who appreciated the synthetic. A rare quality. He has not been here in some time.\"\n\nIt gestures with a chrome finger to a dark corner booth. \"However, you may wish to speak with Unit 734. It exhibits... anomalous behaviors that might be of interest to an investigator.\"",
+        "choices": [
+            {
+                "text": "Approach the corner booth.",
+                "nextId": "approach_glitch"
+            }
+        ]
+    },
+    {
+        "id": "observe_sheep_patrons",
+        "text": "You scan the room. Most of the androids are in their low-power-consumption state, enjoying the quiet. But your eyes are drawn to a booth in the corner. An older model, its chassis scarred and dented, is twitching. Its head is cocked as if listening to a sound no one else can hear. It seems distressed.",
+        "choices": [
+            {
+                "text": "Approach the twitching android.",
+                "nextId": "approach_glitch"
+            }
+        ]
+    },
+    {
+        "id": "approach_glitch",
+        "text": "You slide into the booth opposite the twitching android. Its optic flickers, struggling to focus on you. \"The song...\" it whispers, its voice a distorted mess of static. \"Too loud. The ghost in the static. Makes my head... wrong.\"\n\nIt gestures with a trembling hand. \"I get parts. To fix my head. From Scrap's Depot. He gets strange parts... humming parts. From the tall silver needle building... Sterling...\"",
+        "choices": [
+            {
+                "text": "\"Where is this depot?\"",
+                "nextId": "glitch_gives_lead"
+            }
+        ]
+    },
+    {
+        "id": "glitch_gives_lead",
+        "text": "The android fumbles in a pouch and produces a greasy keycard. \"Scrap is a good man, but paranoid. This gets you in the back. See the parts. Hear the song.\"\n\nIts optic dims and it slumps into a low-power state, the twitching finally stopping.",
+        "choices": [
+            {
+                "text": "Take the keycard and head to the depot.",
+                "nextId": "electronics_depot",
+                "itemGained": "depot_keycard"
+            },
+            {
+                "text": "You have what you need. Leave the bar.",
+                "nextId": "case_accepted"
+            }
+        ]
+    },
+    {
+        "id": "electronics_depot",
+        "text": "The depot is a cluttered warehouse overflowing with discarded tech and scavenged parts. A grizzled old man with a cybernetic arm, presumably Scrap, watches you from behind a counter. The back room is protected by a heavy mag-locked door.",
+        "choices": [
+            {
+                "text": "Use the keycard to slip into the back room.",
+                "nextId": "depot_backroom",
+                "requiresItem": "depot_keycard"
+            },
+            {
+                "text": "Try to talk your way past Scrap.",
+                "nextId": "talk_to_scrap",
+                "requires": {
+                    "charm": 8
+                }
+            },
+            {
+                "text": "This seems like a dead end. Go back to your main leads.",
+                "nextId": "case_accepted"
+            }
+        ]
+    },
+    {
+        "id": "talk_to_scrap",
+        "text": "You put on your best smile and feed Scrap a line about looking for a rare power converter. He squints at you, then shrugs. \"Fine, fine, look all you want. Just don't break nothin'.\"\n\nHe buzzes you into the back room.",
+        "choices": [
+            {
+                "text": "Look for the Sterling parts.",
+                "nextId": "depot_backroom"
+            }
+        ]
+    },
+    {
+        "id": "depot_backroom",
+        "text": "The back room is a chaotic treasure trove of high-end electronics. Tucked in a corner, you find it: a crate stamped with the Sterling Automata logo. You pry it open. Inside are a dozen complex-looking components, and each one is emitting that same, familiar, unsettling hum.\n\nLying on top of the components is a half-assembled device. It looks like a jury-rigged grenade, designed to emit a powerful electromagnetic pulse.",
+        "choices": [
+            {
+                "text": "Take the EMP device. It might be useful.",
+                "nextId": "leave_electric_sheep_quest",
+                "itemGained": "emp_grenade"
+            }
+        ]
+    },
+    {
+        "id": "leave_electric_sheep_quest",
+        "text": "You slip out of the depot with the unstable grenade in your pocket. This side trip has confirmed it: Sterling's infection isn't just affecting people. It's seeping into the very technology the city is built on. You head back into the neon-drenched streets with a new weapon and a deeper sense of dread.",
+        "choices": [
+            {
+                "text": "Continue the investigation.",
+                "nextId": "case_accepted"
             }
         ]
     },
@@ -1464,55 +1609,6 @@
             }
         ]
     },
-    {
-        "id": "reception_success",
-        "text": "The android pauses for a fraction of a second, its internal processors whirring silently. Its pleasant voice returns, unchanged. \"Of course. Employee welfare is our top priority. Our Head of Security, Mr. Kane, will address your concerns personally. Please, follow the guide light.\"\n\nA thin, blue line illuminates on the polished white floor. An escort android, identical to the one at the desk, steps forward silently. \"This way, please.\"",
-        "choices": [
-            {
-                "text": "Follow the android.",
-                "nextId": "sterling_corridor"
-            }
-        ]
-    },
-    {
-        "id": "sterling_corridor",
-        "text": "You follow the silent android down a stark, sterile corridor. The walls are seamless white, the air smells of antiseptic and money. There's no art, no decoration, just the oppressive quiet and the soft hum of the building's nervous system. The android moves with a liquid grace that is deeply unsettling.",
-        "choices": [
-            {
-                "text": "Ask the android what this place is.",
-                "nextId": "ask_android_place"
-            },
-            {
-                "text": "\"Do you enjoy your work?\"",
-                "nextId": "ask_android_work"
-            },
-            {
-                "text": "Follow in silence.",
-                "nextId": "meet_kane"
-            }
-        ]
-    },
-    {
-        "id": "ask_android_place",
-        "text": "You ask the android about Sterling Automata. It turns its head, its smile never wavering. \"Sterling is not a place. Sterling is the future. A future of perfect efficiency, where human error is a relic of the past. We provide solutions for permanence.\"\n\nIts words are smooth, rehearsed, and utterly devoid of meaning. Or maybe they have more meaning than you want to think about. It gestures to the door ahead. \"Mr. Kane is waiting.\"",
-        "choices": [
-            {
-                "text": "Enter the office.",
-                "nextId": "meet_kane"
-            }
-        ]
-    },
-    {
-        "id": "ask_android_work",
-        "text": "You ask the android if it enjoys its job. The question seems to cause a micro-second pause in its systems. The perfect smile remains. \"Enjoyment is a variable that has been optimized. My function is to serve Sterling. Service is its own reward.\"\n\nIt says nothing more, its silence more unnerving than its corporate platitudes. It stops at a large, unmarked door. \"Mr. Kane is waiting.\"",
-        "choices": [
-            {
-                "text": "Enter the office.",
-                "nextId": "meet_kane"
-            }
-        ]
-    },
-    // The rest of the story scenes are unchanged and included below
     {
         "id": "apartment_examine_notes",
         "text": "The notes are a mix of engineering schematics and terrified ramblings. Most of it is nonsense, but you see a few phrases circled over and over in red ink: \"THE SONG IS A CAGE,\" \"JAMISON IS THE KEY,\" and \"CARCOSA SLEEPS.\" One diagram shows a device designed to create a localized EMP, with a note: \"To block the hum?\"",
