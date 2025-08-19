@@ -79,12 +79,17 @@
         .main-controls h1 { margin: 0; font-size: 1.75rem; color: var(--accent-color); font-weight: 600; }
         .control-group { position: relative; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
         .controls-column.right .control-group { justify-content: flex-end; }
-        input[type="text"] {
+        input[type="text"], select {
             border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px;
             background-color: var(--primary-bg); color: var(--text-color);
-            transition: box-shadow 0.2s, background-color 0.3s; min-width: 200px;
+            transition: box-shadow 0.2s, background-color 0.3s;
+            font-family: inherit; font-size: 1em;
         }
-        input[type="text"]:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
+        input[type="text"] { min-width: 200px; }
+        select {-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1em; padding-right: 2.5rem; }
+        body.dark-mode select { background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); }
+
+        input[type="text"]:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         button {
             background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem;
             border-radius: 8px; cursor: pointer; font-weight: 500;
@@ -272,7 +277,10 @@
             </div>
             <div class="controls-column middle">
                 <h1>Posh Salon Service Matrix</h1>
-                <input type="text" id="search-input" placeholder="Search Stylists...">
+                <div class="control-group" style="justify-content: center;">
+                    <select id="level-filter"><option value="all">All Levels</option></select>
+                    <input type="text" id="search-input" placeholder="Search Stylists...">
+                </div>
             </div>
             <div class="controls-column right">
                 <div class="control-group">
@@ -301,14 +309,14 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.25 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.26 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Key Features</h3><ul><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card, drag it to a new position, and release.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser a few seconds after you stop making changes. The "Last Updated" time in the footer will confirm the last save.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Pressing `Ctrl+Alt+D` will reveal advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Adding & Removing</h3><ul><li><strong>To Add a New Stylist/Service</strong>: Use the input boxes at the top left.</li><li><strong>To Remove a Stylist/Service</strong>: Double-click its name, then click the trash can icon (<strong>🗑️</strong>).</li></ul><h3>Editing Information</h3><ul><li><strong>To Edit a Name</strong>: Double-click on it.</li><li><strong>To Change a Level or Price</strong>: Single-click the text to edit.</li></ul><h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li><li><strong>To View/Delete a Note</strong>: Click on a colored note square to open it.</li></ul></div></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Key Features</h3><ul><li><strong>Advanced Filtering</strong>: Use the new dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card, drag it to a new position, and release.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser a few seconds after you stop making changes.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Pressing `Ctrl+Alt+D` will reveal advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Adding & Removing</h3><ul><li><strong>To Add a New Stylist/Service</strong>: Use the input boxes at the top left.</li><li><strong>To Remove a Stylist/Service</strong>: Double-click its name, then click the trash can icon (<strong>🗑️</strong>).</li></ul><h3>Editing Information</h3><ul><li><strong>To Edit a Name</strong>: Double-click on it.</li><li><strong>To Change a Level or Price</strong>: Single-click the text to edit.</li></ul><h3>Using Sticky Notes</h3><ul><li><strong>To Add a Note</strong>: (1) Click <strong>Add Note</strong>. (2) Click a color. (3) Your cursor becomes a `➕`. Click any square in the table. (4) Type your message and click <strong>Save Note</strong>.</li><li><strong>To View/Delete a Note</strong>: Click on a colored note square to open it.</li></ul></div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..." rows="4"></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure you want to proceed?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
@@ -338,6 +346,7 @@
         const lastUpdatedSpan = document.getElementById('last-updated-span');
         const undoBtn = document.getElementById('undo-btn');
         const redoBtn = document.getElementById('redo-btn');
+        const levelFilter = document.getElementById('level-filter');
         
         // --- CORE DATA ---
         const LOCAL_STORAGE_KEY = 'salonMatrixData';
@@ -537,6 +546,26 @@
             printWindow.onload = () => { printWindow.print(); printWindow.close(); };
         };
 
+        const populateLevelFilter = () => {
+            const salonState = stateHistory[currentStateIndex];
+            if (!salonState) return;
+            const currentFilterValue = levelFilter.value;
+            const levels = new Set(salonState.stylists.map(s => s.level));
+            // Clear existing options except the first "All Levels" one
+            while(levelFilter.options.length > 1) {
+                levelFilter.remove(1);
+            }
+            levels.forEach(level => {
+                if (level) {
+                    const option = document.createElement('option');
+                    option.value = level;
+                    option.textContent = level;
+                    levelFilter.appendChild(option);
+                }
+            });
+            levelFilter.value = currentFilterValue;
+        };
+
         // --- STATE MANAGEMENT (UNDO/REDO) ---
         const updateUndoRedoButtons = () => {
             undoBtn.disabled = currentStateIndex <= 0;
@@ -648,10 +677,19 @@
         const updateDisplay = () => {
             const salonState = stateHistory[currentStateIndex];
             if (!salonState) return;
+            
+            populateLevelFilter();
+
             const searchTerm = searchInput.value.toLowerCase();
+            const selectedLevel = levelFilter.value;
+
             let filteredStylists = salonState.stylists;
+
             if (searchTerm) {
-                filteredStylists = salonState.stylists.filter(stylist => stylist.name.toLowerCase().includes(searchTerm));
+                filteredStylists = filteredStylists.filter(stylist => stylist.name.toLowerCase().includes(searchTerm));
+            }
+            if (selectedLevel !== 'all') {
+                filteredStylists = filteredStylists.filter(stylist => stylist.level === selectedLevel);
             }
             
             let stylistsToRender;
@@ -827,7 +865,6 @@
             }
         });
         
-        // Drag and Drop Listeners
         let draggedElementIndex = null;
         mainContentContainer.addEventListener('dragstart', (e) => {
             const draggable = e.target.closest('[draggable="true"]');
@@ -903,6 +940,7 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isPlacingNote) { togglePlacingNote(false); } if (e.ctrlKey && e.altKey && e.key === 'd') { e.preventDefault(); const isDev = document.body.classList.toggle('developer-mode-active'); showToast(`Developer Mode ${isDev ? 'Enabled' : 'Disabled'}.`, 'info'); } if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }});
         addNoteBtn.addEventListener('click', () => togglePlacingNote(!isPlacingNote));
         searchInput.addEventListener('input', updateDisplay);
+        levelFilter.addEventListener('change', updateDisplay);
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
         
