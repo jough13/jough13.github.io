@@ -3283,29 +3283,32 @@ if (devSpeedSlider && devSpeedDisplay) {
 
     // --- BUTTON EVENT LISTENERS ---
 
-    continueButton.addEventListener('click', () => {
-        // Hide the menu and show the game
+continueButton.addEventListener('click', () => {
+    startScreen.style.opacity = '0'; // Start the fade-out
+    setTimeout(() => {
         startScreen.style.display = 'none';
-        gameContainer.style.display = 'flex'; // Or 'block', depending on your layout
-
-        loadGame(); // This function already exists and loads the gameState
-        initializeAndRunGame(); // Run the common setup and start the game loop
-    });
+        gameContainer.style.display = 'flex';
+        loadGame();
+        initializeAndRunGame();
+    }, 500); // Wait for the CSS transition to finish (500ms)
+});
 
 newGameButton.addEventListener('click', () => {
     // This function contains the logic to start a new game.
-    const startNew = () => {
-        localStorage.removeItem('realmsOfRuneAndRust_savegame');
-        localStorage.removeItem(LEGACY_MIGHT_KEY);
-        localStorage.removeItem(LEGACY_WITS_KEY);
-        localStorage.removeItem(LEGACY_SPIRIT_KEY);
+const startNew = () => {
+    localStorage.removeItem('realmsOfRuneAndRust_savegame');
+    localStorage.removeItem(LEGACY_MIGHT_KEY);
+    localStorage.removeItem(LEGACY_WITS_KEY);
+    localStorage.removeItem(LEGACY_SPIRIT_KEY);
 
+    startScreen.style.opacity = '0'; // Start the fade-out
+    setTimeout(() => {
         startScreen.style.display = 'none';
         gameContainer.style.display = 'flex';
-
         startGame();
         initializeAndRunGame();
-    };
+    }, 500); // Wait for the CSS transition to finish (500ms)
+};
 
     if (saveExists) {
         // If a save exists, show our new custom modal.
