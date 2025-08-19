@@ -3206,6 +3206,18 @@ document.addEventListener('DOMContentLoaded', () => {
         continueButton.style.display = 'inline-block';
     }
 
+// --- Secret Developer Controls Shortcut ---
+document.addEventListener('keydown', (event) => {
+    // Check if the key combination is Control + Alt + D
+    if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'd') {
+        // Prevent the browser's default action (e.g., bookmarking)
+        event.preventDefault();
+        
+        // Call the function we already created!
+        toggleDevControls();
+    }
+});
+
 // --- Developer Controls ---
 const devSpeedSlider = document.getElementById('dev-speed-slider');
 const devSpeedDisplay = document.getElementById('dev-speed-display');
