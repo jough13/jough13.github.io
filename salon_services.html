@@ -187,6 +187,7 @@
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
+        .manual-content h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
         #service-stylists-list p, #service-performers-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
         .manual-content p, .manual-content li { line-height: 1.6; }
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
@@ -338,7 +339,43 @@
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
+    
+    <div id="manual-popup" class="modal-popup">
+        <button class="close-popup">&times;</button>
+        <div class="manual-content">
+            <h2>Posh Salon: User Manual ✂️</h2>
+            <p>Welcome! This tool helps you quickly manage which stylists perform which services and at what price.</p>
+            
+            <h3>Core Actions</h3>
+            <ul>
+                <li><strong>Add Stylist/Service:</strong> Use the input fields and buttons in the top-left corner.</li>
+                <li><strong>Search & Filter:</strong> Use the central search bar to find a stylist by name or use the dropdown to filter by their assigned level.</li>
+                <li><strong>Toggle Service:</strong> Simply check or uncheck the box in any cell to mark whether a stylist performs that service.</li>
+                <li><strong>Add/View Notes:</strong> Use the "Add Note" button to place colored sticky notes on stylist rows, service columns, or individual cells. Click an existing note to view or delete it.</li>
+                <li><strong>Save & Sync:</strong> Your work is autosaved to your browser every few seconds. You can also manually save, export your data to a JSON file, or import a file to load data.</li>
+            </ul>
+
+            <h3>Editing Information</h3>
+            <ul>
+                <li><strong>Edit Names:</strong> Double-click on a stylist's name or a service name to edit or delete it. A trash can icon will appear, allowing you to remove the entry entirely.</li>
+                <li><strong>Edit Prices & Levels:</strong> Single-click on a price or a stylist's level to edit the value directly in the table.</li>
+                <li><strong>Edit Stylist Profile:</strong> Single-click a stylist's name to open their profile. Here you can change their avatar photo, assign a color, and write a bio.</li>
+                <li><strong>Edit Service Details:</strong> Single-click a service name in the table header to open its details panel. You can add a description, duration, and see a list of all stylists who perform it.</li>
+            </ul>
+
+            <h3>Organizing Data</h3>
+            <ul>
+                <li><strong>Reorder Stylists:</strong> To change the manual order of stylists, simply click and hold on a stylist's row (or card on mobile) and drag it to a new position.</li>
+                <li><strong>Sort Columns:</strong> Click the small arrow icon in any column header to sort the table. You can sort by stylist name (alphabetically) or by price (numerically). Clicking the same header again will reverse the sort direction.</li>
+            </ul>
+            
+            <h3>Advanced Features</h3>
+            <ul>
+                 <li><strong>Developer Mode (Ctrl+Alt+D):</strong> Pressing this key combination reveals advanced tools like **Undo**, **Redo**, and a button to **Reset All Data**. Use with caution!</li>
+            </ul>
+        </div>
+    </div>
+    
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
@@ -830,7 +867,6 @@
                 th.dataset.col = colIndex + 1;
                 let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
                 const serviceArrow = `<span class="sort-arrow ${sortState.key === colIndex ? 'active' : ''}">${getSortIcon(colIndex)}</span>`;
-                // --- FIX #1: Added data-sort attribute to the service header div ---
                 th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}${serviceArrow}</div>`;
                 headerRow.appendChild(th);
             });
@@ -1068,7 +1104,6 @@
                 const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
                 const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
                 
-                // --- FIX #2: Replaced destructive innerHTML clear with precise DOM manipulation ---
                 const stylistInfoWrapper = target.closest('.stylist-info-wrapper');
                 target.replaceWith(editInput); // Replace only the name span with the input
                 stylistInfoWrapper.appendChild(deleteBtn); // Add the delete button without clearing anything else
