@@ -1912,6 +1912,16 @@ function handleTranscendence() {
 // You also need to define gameInterval globally
 let gameInterval;
 
+/** Toggles the visibility of the developer controls panel. */
+function toggleDevControls() {
+    const devControls = document.getElementById('dev-controls');
+    if (devControls) {
+        const isHidden = devControls.style.display === 'none';
+        devControls.style.display = isHidden ? 'block' : 'none';
+        console.log(`Developer controls are now ${isHidden ? 'VISIBLE' : 'HIDDEN'}.`);
+    }
+}
+
 /** Toggles the game's paused state. */
 function togglePause() {
     // Prevent pausing/resuming if the journey has ended.
@@ -3195,6 +3205,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // If it exists, show the "Continue" button
         continueButton.style.display = 'inline-block';
     }
+
+// --- Developer Controls ---
+const devSpeedSlider = document.getElementById('dev-speed-slider');
+const devSpeedDisplay = document.getElementById('dev-speed-display');
+
+if (devSpeedSlider && devSpeedDisplay) {
+    devSpeedSlider.addEventListener('input', (e) => {
+        // 1. Update the global multiplier variable
+        devSpeedMultiplier = parseInt(e.target.value);
+        
+        // 2. Update the text display next to the slider
+        devSpeedDisplay.textContent = devSpeedMultiplier;
+        
+        // 3. Apply the new speed to the game
+        updateGameTickSpeed();
+    });
+}
 
     // --- BUTTON EVENT LISTENERS ---
 
