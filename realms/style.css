@@ -634,6 +634,7 @@ body.loading #start-screen {
     border: 2px solid #ff8c00;
     border-radius: 5px;
     transition: all 0.2s ease-in-out;
+    width: 250px; /* Add this line to set a fixed width */
 }
 
 .start-menu button:hover {
