@@ -227,6 +227,8 @@ let gameState = {
     maxActiveRunes: 2,
     collectedArtifacts: [],
     companion: null,
+    
+    inventory: {},  
 
     // Game Control & State Flags
     isPaused: false,
@@ -271,6 +273,29 @@ const PLAYER_CLASSES = {
 };
 
 /**
+ * Defines all consumable items in the game.
+ * The 'effect' function is called when an item is used.
+ */
+const CONSUMABLES = {
+    'healing_dust': {
+        name: "Pouch of Healing Dust",
+        description: "A pinch of this shimmering dust restores 10 HP.",
+        effect: () => {
+            gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + 10);
+            addLogMessage("You use a Pouch of Healing Dust. (+10 HP)", "synergy");
+        }
+    },
+    'rune_etched_bauble': {
+        name: "Rune-Etched Bauble",
+        description: "Crushing this bauble releases its stored knowledge, granting you 5 Ancient Scraps.",
+        effect: () => {
+            gameState.resources.ancientScraps += 5;
+            addLogMessage("The bauble shatters, revealing ancient knowledge. (+5 Scraps)", "synergy");
+        }
+    }
+};
+
+/**
  * Defines the properties and effects of each discoverable Rune.
  */
 const RUNE_DEFINITIONS = {
@@ -285,6 +310,29 @@ const RUNE_DEFINITIONS = {
     'Ω': {
         name: "Obsidian Rune",
         description: "A fragment of the Void's power. Adds 2 bonus Void damage to your attacks."
+    }
+};
+
+/**
+ * Defines all consumable items in the game.
+ * The 'effect' function is called when an item is used.
+ */
+const CONSUMABLES = {
+    'healing_dust': {
+        name: "Pouch of Healing Dust",
+        description: "A pinch of this shimmering dust restores 10 HP.",
+        effect: () => {
+            gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + 10);
+            addLogMessage("You use a Pouch of Healing Dust. (+10 HP)", "synergy");
+        }
+    },
+    'rune_etched_bauble': {
+        name: "Rune-Etched Bauble",
+        description: "Crushing this bauble releases its stored knowledge, granting you 5 Ancient Scraps.",
+        effect: () => {
+            gameState.resources.ancientScraps += 5;
+            addLogMessage("The bauble shatters, revealing ancient knowledge. (+5 Scraps)", "synergy");
+        }
     }
 };
 
@@ -2004,174 +2052,181 @@ function addLogMessage(message, type = "normal") {
     renderLog();
 }
 
-/** Simulates a combat encounter with a given enemy type. */
 function resolveCombat(enemyKey) {
     const enemyData = ENEMY_TYPES[enemyKey];
     if (!enemyData) {
         addLogMessage("An unknown foe fades into the shadows...", "combat-message");
         return;
     }
-    let enemy = { ...enemyData
-    }; // Create a mutable copy for the encounter.
+    let enemy = { ...enemyData }; // Create a mutable copy for the encounter.
 
     addLogMessage(`You encounter a ${enemy.name}! ${enemy.description}`, "combat-message");
     gameState.inCombat = true;
     pauseGameForDecision(true);
 
-    // Handle spontaneous victory chance.
-    if (seededRandom() < SPONTANEOUS_VICTORY_CHANCE) {
-        addLogMessage("A surge of unforeseen power courses through you! The " + enemy.name + " is instantly obliterated!", "combat-victory");
+    // Instead of an automatic loop, we now present the player with choices.
+    presentCombatOptions(enemy);
+}
+
+/**
+ * Displays the main combat menu: Attack, Items, Flee.
+ */
+function presentCombatOptions(enemy) {
+    decisionPromptText.textContent = `HP: ${gameState.currentHp}/${gameState.maxHp} | ${enemy.name} HP: ${enemy.hp}`;
+    decisionButtonsContainer.innerHTML = '';
+
+    // 1. Attack Button
+    const attackButton = document.createElement('button');
+    attackButton.textContent = 'Attack';
+    attackButton.onclick = () => {
+        executePlayerTurn(enemy);
+    };
+    decisionButtonsContainer.appendChild(attackButton);
+
+    // 2. Items Button
+    const itemsButton = document.createElement('button');
+    itemsButton.textContent = 'Items';
+    itemsButton.onclick = () => {
+        presentItemSelection(enemy);
+    };
+    // Disable button if inventory is empty
+    const hasItems = Object.values(gameState.inventory).some(count => count > 0);
+    if (!hasItems) {
+        itemsButton.disabled = true;
+        itemsButton.title = "You have no items to use.";
+    }
+    decisionButtonsContainer.appendChild(itemsButton);
+
+    // 3. Flee Button
+    const fleeButton = document.createElement('button');
+    fleeButton.textContent = 'Flee';
+    fleeButton.onclick = () => {
+        addLogMessage(`You disengage, losing ${COMBAT_ESCAPE_DUST_LOSS} Glimmering Dust in your haste.`, "combat-message");
+        playSound('combatMiss');
+        gameState.resources.glimmeringDust = Math.max(0, gameState.resources.glimmeringDust - COMBAT_ESCAPE_DUST_LOSS);
+        endCombat();
+    };
+    decisionButtonsContainer.appendChild(fleeButton);
+
+    decisionArea.style.display = 'block';
+    updateUIAccentColors();
+}
+
+/**
+ * Displays the inventory menu during combat.
+ */
+function presentItemSelection(enemy) {
+    decisionPromptText.textContent = 'Choose an item to use.';
+    decisionButtonsContainer.innerHTML = '';
+
+    // Create buttons for each item the player has
+    for (const itemId in gameState.inventory) {
+        const count = gameState.inventory[itemId];
+        if (count > 0 && CONSUMABLES[itemId]) {
+            const item = CONSUMABLES[itemId];
+            const itemButton = document.createElement('button');
+            itemButton.innerHTML = `${item.name} (x${count})<br><small>${item.description}</small>`;
+            itemButton.onclick = () => {
+                // Use the item
+                item.effect();
+                gameState.inventory[itemId]--; // Decrement item count
+                renderAll(); // Update stats immediately
+
+                // Using an item costs a turn, so proceed to the enemy's turn
+                setTimeout(() => executeEnemyTurn(enemy), 500);
+            };
+            decisionButtonsContainer.appendChild(itemButton);
+        }
+    }
+
+    // Add a "Back" button to return to the main combat menu
+    const backButton = document.createElement('button');
+    backButton.textContent = 'Back';
+    backButton.onclick = () => {
+        presentCombatOptions(enemy); // Return to options without using a turn
+    };
+    decisionButtonsContainer.appendChild(backButton);
+}
+
+/**
+ * Executes the player's attack and checks for victory.
+ */
+function executePlayerTurn(enemy) {
+    decisionArea.style.display = 'none'; // Hide menu while turn resolves
+
+    const effectiveStats = getEffectiveStats();
+    let playerAttackPower = effectiveStats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
+    let bonusDamage = 0;
+    
+    if (gameState.activeRunes.includes('Ω')) {
+        bonusDamage = 2; // Obsidian Rune bonus damage
+    }
+
+    const damageToEnemy = Math.max(1, playerAttackPower - Math.floor(enemy.defense / 2)) + bonusDamage;
+    enemy.hp -= damageToEnemy;
+
+    addLogMessage(`You strike for ${damageToEnemy} damage! ${enemy.name} HP: ${Math.max(0, enemy.hp)}`, "combat-message");
+    playSound('combatHit');
+
+    if (enemy.hp <= 0) {
+        // VICTORY
+        addLogMessage(`You have vanquished the ${enemy.name}!`, "combat-victory");
         playSound('combatVictory');
-        awardXP(enemy.xp * 2);
+        awardXP(enemy.xp);
         const lootAmount = enemy.loot();
         if (lootAmount > 0) {
-            gameState.resources.glimmeringDust += lootAmount * 2;
-            addLogMessage(`It drops ${lootAmount * 2} Glimmering Dust!`, "combat-message");
+            gameState.resources.glimmeringDust += lootAmount;
+            addLogMessage(`It drops ${lootAmount} Glimmering Dust.`, "combat-message");
         }
-
-// First, check for a standard artifact (20% chance).
-
-if (seededRandom() < 0.2) {
-    const undiscoveredArtifacts = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && !art.key.startsWith("ART_TOME"));
-    if (undiscoveredArtifacts.length > 0) {
-        const foundArtifact = undiscoveredArtifacts[seededRandomInt(0, undiscoveredArtifacts.length - 1)];
-        gameState.collectedArtifacts.push(foundArtifact.key);
-        gameState.narrativeFlags[foundArtifact.key] = true;
-        addLogMessage(`Amidst the fading essence of your foe, you find the <strong>${foundArtifact.name}</strong>!`, "artifact");
-        awardXP(25);
+        endCombat();
+    } else {
+        // If enemy survived, it's their turn
+        setTimeout(() => executeEnemyTurn(enemy), 800); // Small delay for readability
     }
 }
 
-// Next, perform a SEPARATE check for a rare tome (5% chance).
+/**
+ * Executes the enemy's attack and checks for player defeat.
+ */
+function executeEnemyTurn(enemy) {
+    decisionArea.style.display = 'none';
 
-const undiscoveredTomes = ARTIFACTS.filter(art => !gameState.collectedArtifacts.includes(art.key) && art.key.startsWith("ART_TOME"));
-if (undiscoveredTomes.length > 0 && seededRandom() < 0.05) {
-    const foundTome = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
-    gameState.collectedArtifacts.push(foundTome.key);
-    gameState.narrativeFlags[foundTome.key] = true;
-    addLogMessage(`A forgotten <strong>${foundTome.name}</strong> materializes from the dissipating foe!`, "artifact");
-    if (foundTome.key === "ART_TOME_MIGHT") {
-        gameState.stats.might++;
-        gameState.maxHp = calculateMaxHp();
-        gameState.currentHp = gameState.maxHp;
-    } else if (foundTome.key === "ART_TOME_WITS") {
-        gameState.stats.wits++;
-    } else if (foundTome.key === "ART_TOME_RESOLVE") {
-        gameState.stats.spirit++;
-        // This is where the heal bug was! The incorrect lines have been removed.
+    let damageReduction = gameState.activeRunes.includes('Δ') ? 1 : 0;
+    const effectiveStats = getEffectiveStats();
+    
+    const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
+    const playerDefenseSoak = Math.floor(effectiveStats.might / 3);
+    const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
+    
+    gameState.currentHp -= damageToPlayer;
+
+    if (damageToPlayer > 0) {
+        addLogMessage(`${enemy.name} attacks for ${damageToPlayer} damage! Your HP: ${Math.max(0, gameState.currentHp)}`, "combat-message");
+    } else {
+        addLogMessage(`${enemy.name} attacks, but you deftly block it!`, "combat-message");
+        playSound('combatMiss');
     }
-    addLogMessage(`Your ${foundTome.name.split(' ')[2]} increases by 1!`, "synergy");
-    awardXP(20);
+
+    if (gameState.currentHp <= 0) {
+        // DEFEAT
+        addLogMessage(`You have been defeated by the ${enemy.name}... Darkness takes you.`, "combat-defeat");
+        playSound('combatDefeat');
+        handleGameEnd("Your journey has ended in defeat...");
+    } else {
+        // If player survived, it's their turn again
+        setTimeout(() => presentCombatOptions(enemy), 800);
+    }
+    renderAll();
 }
-        gameState.inCombat = false;
-        pauseGameForDecision(false);
-        renderAll();
-        return;
-    }
 
-    let combatLogMessages = [];
-    let combatRound = 0;
-    const maxCombatRounds = 5;
-
-// Inside the resolveCombat function...
-
-    function processCombatRound() {
-        if (combatRound >= maxCombatRounds || enemy.hp <= 0 || gameState.currentHp <= 0 || !gameState.inCombat) {
-            resolveCombatOutcome();
-            return;
-        }
-
-        combatRound++;
-        combatLogMessages.push(`--- Round ${combatRound} ---`);
-
-        // Player's turn
-        const effectiveStats = getEffectiveStats();
-        let playerAttackPower = effectiveStats.might + seededRandomInt(0, Math.floor(gameState.level / 2));
-        let attackType = "melee";
-
-        if (effectiveStats.spirit > effectiveStats.might + 2) {
-            playerAttackPower = effectiveStats.spirit + seededRandomInt(0, Math.floor(gameState.level / 2));
-            attackType = "spiritual energy";
-        }
-        
-        // --- ADD THIS CHECK for the Obsidian Rune (Ω) ---
-        let bonusDamage = 0;
-        let bonusDamageText = "";
-        if (gameState.activeRunes.includes('Ω')) {
-            bonusDamage = 2; // Adds 2 bonus void damage
-            bonusDamageText = " The Obsidian Rune adds a pulse of void energy!";
-        }
-
-        const enemyDefenseSoak = Math.floor(enemy.defense / 2);
-        const damageToEnemy = Math.max(1, playerAttackPower - enemyDefenseSoak) + bonusDamage;
-        enemy.hp -= damageToEnemy;
-        combatLogMessages.push(`You strike with ${attackType} for ${damageToEnemy} damage.${bonusDamageText} ${enemy.name} HP: ${Math.max(0, enemy.hp)}`);
-        playSound('combatHit');
-
-        if (enemy.hp <= 0) {
-            resolveCombatOutcome();
-            return;
-        }
-
-        // Enemy's turn
-        
-        // --- ADD THIS CHECK for the Resilience Rune (Δ) ---
-        let damageReduction = 0;
-        if (gameState.activeRunes.includes('Δ')) {
-            damageReduction = 1; // Reduces incoming damage by 1
-        }
-        
-        const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
-        const playerDefenseSoak = Math.floor(effectiveStats.might / 3) + Math.floor(effectiveStats.spirit / 4);
-        const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
-        gameState.currentHp -= damageToPlayer;
-        
-        let reductionText = damageReduction > 0 ? " Your Resilience Rune absorbs some of the blow!" : "";
-        combatLogMessages.push(`${enemy.name} attacks for ${damageToPlayer} damage.${reductionText} Your HP: ${Math.max(0, gameState.currentHp)}`);
-
-        if (damageToPlayer > 0) {
-            // Player takes damage sound could go here
-        } else {
-            playSound('combatMiss');
-        }
-
-        if (gameState.currentHp <= 0) {
-            resolveCombatOutcome();
-            return;
-        }
-
-        combatLogMessages.forEach(msg => addLogMessage(msg, "combat-message"));
-        combatLogMessages = [];
-        setTimeout(processCombatRound, 600);
-    }
-
-    function resolveCombatOutcome() {
-        combatLogMessages.forEach(msg => addLogMessage(msg, "combat-message"));
-
-        if (enemy.hp <= 0) {
-            addLogMessage(`You have vanquished the ${enemy.name}!`, "combat-victory");
-            playSound('combatVictory');
-            awardXP(enemy.xp);
-            const lootAmount = enemy.loot();
-            if (lootAmount > 0) {
-                gameState.resources.glimmeringDust += lootAmount;
-                addLogMessage(`It drops ${lootAmount} Glimmering Dust.`, "combat-message");
-            }
-        } else if (gameState.currentHp <= 0) {
-            addLogMessage(`You have been defeated by the ${enemy.name}... Darkness takes you.`, "combat-defeat");
-            playSound('combatDefeat');
-            handleGameEnd("Your journey has ended in defeat...");
-        } else {
-            addLogMessage(`The ${enemy.name} proves resilient! You disengage, losing ${COMBAT_ESCAPE_DUST_LOSS} Glimmering Dust.`, "combat-message");
-            playSound('combatMiss');
-            gameState.resources.glimmeringDust = Math.max(0, gameState.resources.glimmeringDust - COMBAT_ESCAPE_DUST_LOSS);
-        }
-        gameState.inCombat = false;
-        pauseGameForDecision(false);
-        renderAll();
-    }
-
-    processCombatRound();
+/**
+ * A helper function to clean up after combat ends.
+ */
+function endCombat() {
+    decisionArea.style.display = 'none';
+    gameState.inCombat = false;
+    pauseGameForDecision(false);
+    renderAll();
 }
 
 /** Creates a decision modal for a stat challenge. */
@@ -3350,6 +3405,7 @@ function startGame() {
         maxActiveRunes: 2,
         collectedArtifacts: [],
         companion: null,
+        inventory: { 'healing_dust': 2 },
         
         // Game state
         isPaused: false,
