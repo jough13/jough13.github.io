@@ -313,29 +313,6 @@ const RUNE_DEFINITIONS = {
     }
 };
 
-/**
- * Defines all consumable items in the game.
- * The 'effect' function is called when an item is used.
- */
-const CONSUMABLES = {
-    'healing_dust': {
-        name: "Pouch of Healing Dust",
-        description: "A pinch of this shimmering dust restores 10 HP.",
-        effect: () => {
-            gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + 10);
-            addLogMessage("You use a Pouch of Healing Dust. (+10 HP)", "synergy");
-        }
-    },
-    'rune_etched_bauble': {
-        name: "Rune-Etched Bauble",
-        description: "Crushing this bauble releases its stored knowledge, granting you 5 Ancient Scraps.",
-        effect: () => {
-            gameState.resources.ancientScraps += 5;
-            addLogMessage("The bauble shatters, revealing ancient knowledge. (+5 Scraps)", "synergy");
-        }
-    }
-};
-
 const ENEMY_TYPES = {
     ASH_GNAWER: {
         name: "Ash Gnawer",
