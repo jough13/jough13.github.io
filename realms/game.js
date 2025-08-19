@@ -2284,6 +2284,32 @@ function handleEncounter() {
         }
 
         switch (currentElementChar) {
+            case '¶': // This is the new case for Tomes
+            if (!gameState.narrativeFlags[specificEncounterKey]) {
+                const tomeKeys = ["ART_TOME_MIGHT", "ART_TOME_WITS", "ART_TOME_RESOLVE"];
+                const undiscoveredTomes = tomeKeys.filter(key => !gameState.collectedArtifacts.includes(key));
+
+            if (undiscoveredTomes.length > 0) {
+                const tomeKeyToAward = undiscoveredTomes[seededRandomInt(0, undiscoveredTomes.length - 1)];
+                const foundTome = ARTIFACTS.find(art => art.key === tomeKeyToAward);
+
+            if (foundTome) {
+                gameState.collectedArtifacts.push(foundTome.key);
+                gameState.narrativeFlags[specificEncounterKey] = true;
+                
+                // Grant the stat bonus!
+                if (foundTome.key === "ART_TOME_MIGHT") gameState.stats.might++;
+                if (foundTome.key === "ART_TOME_WITS") gameState.stats.wits++;
+                if (foundTome.key === "ART_TOME_RESOLVE") gameState.stats.spirit++;
+
+                    addLogMessage(`You found the <strong>${foundTome.name}</strong>! Your ${foundTome.key.split('_')[2].toLowerCase()} has permanently increased!`, "artifact");
+                    playSound('tome');
+                    awardXP(40);
+                    renderAll(); // Re-render to show the new stat
+                    }
+                    }
+                }
+                break;
             case 'E':
                 if (!gameState.inCombat && element.enemyKey) {
                     resolveCombat(element.enemyKey);
@@ -2684,6 +2710,7 @@ case 'N': // NPC
 /** Returns a string description for a given map character. */
 function getElementDescription(elementChar) {
     const descriptions = {
+        '¶': 'Tome of forgotten knowledge',
         'T': 'charred greatwood', 't': 'burnt sapling', 'Y': 'scorched tree',
         'w': 'swaying wind chime / smoldering bush', 'm': 'patch of ash', 'o': 'heated rock',
         '♦': 'crimson shard', '◊': 'violet crystal', '✧': 'glowing ember', '*': 'sparkling geode',
@@ -2822,42 +2849,17 @@ function renderStats() {
 /** Updates the border and background colors of UI elements to match the current zone. */
 function updateUIAccentColors() {
     const zone = getCurrentZone();
-    let primaryColor = "#777777"; // Default/Endgame color
-    let bgColor = "#222222"; // Default/Endgame background
+    const root = document.documentElement; // Get the root element (<html>)
 
     if (zone && gameState.currentZoneIndex !== -1) {
-        primaryColor = zone.color;
-        bgColor = zone.bgColor;
-    }
-
-    const gameContainer = document.querySelector('.game-container');
-    if (gameContainer) {
-        gameContainer.style.borderColor = primaryColor;
-        gameContainer.style.boxShadow = `0 0 15px ${primaryColor}, inset 0 0 10px ${primaryColor}33`;
-    }
-
-    document.querySelectorAll('.stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area').forEach(el => {
-        el.style.borderColor = lightenDarkenColor(primaryColor, -50);
-        el.style.backgroundColor = lightenDarkenColor(bgColor, 10);
-    });
-
-    document.querySelectorAll('.controls-area button, .decision-area button, .message-input-area button, .summary-area button').forEach(button => {
-        button.style.backgroundColor = lightenDarkenColor(primaryColor, -20);
-        button.style.color = lightenDarkenColor(primaryColor, 80);
-        button.style.borderColor = primaryColor;
-    });
-
-    const gameScreenEl = document.getElementById('game-screen');
-    if (gameScreenEl) {
-        if (gameState.currentZoneIndex === -1) {
-            gameScreenEl.style.color = "#aaa";
-            gameScreenEl.style.backgroundColor = "#111";
-            gameScreenEl.style.borderColor = lightenDarkenColor(primaryColor, -30);
-        } else if (zone) {
-            gameScreenEl.style.color = zone.color;
-            gameScreenEl.style.backgroundColor = zone.bgColor;
-            gameScreenEl.style.borderColor = lightenDarkenColor(zone.color, -30);
-        }
+        root.style.setProperty('--zone-color', zone.color);
+        root.style.setProperty('--zone-bg-color', zone.bgColor);
+        root.style.setProperty('--zone-color-dark', lightenDarkenColor(zone.color, -50));
+    } else {
+        // Set default colors for when the game ends
+        root.style.setProperty('--zone-color', '#777777');
+        root.style.setProperty('--zone-bg-color', '#222222');
+        root.style.setProperty('--zone-color-dark', '#555555');
     }
 }
 
