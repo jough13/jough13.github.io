@@ -79,7 +79,7 @@
         .main-controls h1 { margin: 0; font-size: 1.75rem; color: var(--accent-color); font-weight: 600; }
         .control-group { position: relative; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
         .controls-column.right .control-group { justify-content: flex-end; }
-        input[type="text"], select {
+        input[type="text"], select, textarea {
             border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px;
             background-color: var(--primary-bg); color: var(--text-color);
             transition: box-shadow 0.2s, background-color 0.3s;
@@ -89,7 +89,7 @@
         select {-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1em; padding-right: 2.5rem; }
         body.dark-mode select { background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); }
 
-        input[type="text"]:focus, select:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
+        input[type="text"]:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         button {
             background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem;
             border-radius: 8px; cursor: pointer; font-weight: 500;
@@ -111,6 +111,7 @@
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
         th, td { padding: 0.5rem; border-bottom: 1px solid var(--border-color); vertical-align: top; position: relative; }
         th { position: sticky; top: 0; z-index: 3; background-color: var(--header-bg); font-weight: 600; white-space: nowrap; }
+        th .editable { cursor: pointer; }
         tr { background-color: var(--primary-bg); transition: background-color 0.2s ease-in-out; }
         tr:nth-child(even) { background-color: var(--secondary-bg); }
         tr:last-child td { border-bottom: none; }
@@ -123,7 +124,8 @@
         .stylist-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: var(--border-color); border: 2px solid var(--primary-bg); }
         .stylist-info { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; text-align: left; }
         .level-text { font-size: 0.9em; color: #888; }
-        .editable { cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; font-weight: 600; }
+        .editable { padding: 4px; border-radius: 4px; transition: background-color 0.2s, color 0.2s; font-weight: 600; }
+        .editable.profile-link, .editable.level-text { cursor: pointer; }
         .editable.profile-link { font-weight: 600; }
         .editable:hover { background-color: var(--accent-color); color: white; opacity: 0.8; }
         .remove-btn { background: none; border: none; cursor: pointer; color: #aaa; font-size: 1.1em; padding: 4px; border-radius: 50%; width: 28px; height: 28px; line-height: 1; }
@@ -145,10 +147,9 @@
         .color-box.selected { border-color: var(--accent-color) !important; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
         .color-box.cancel-note { background-color: var(--secondary-bg); color: var(--danger-color); font-size: 1.5rem; font-weight: bold; line-height: 24px; text-align: center; border: 1px solid var(--border-color); }
         .color-box.cancel-note:hover { background-color: var(--danger-color); color: white; }
-        .sortable { cursor: pointer; user-select: none; }
-        .sort-arrow { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 1em; text-align: center; color: #ccc; transition: color 0.2s ease-in-out; }
-        .sort-arrow:not(:empty) { color: var(--text-color); }
-        .sortable:hover .sort-arrow { color: #999; }
+        .sort-arrow { cursor: pointer; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 1em; height: 1em; display: flex; align-items: center; justify-content: center; color: #ccc; transition: color 0.2s ease-in-out; }
+        .sort-arrow svg { width: 100%; height: 100%; }
+        .sort-arrow.active { color: var(--text-color); }
         
         .modal-backdrop {
             display: none; position: fixed; z-index: 999; top: 0; left: 0; width: 100%; height: 100%; 
@@ -179,14 +180,14 @@
         .modal-popup .close-popup:hover { color: var(--text-color); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         #note-entry-color-swatch { width: 24px; height: 24px; border-radius: 6px; }
-        #note-entry-textarea, #profile-bio-textarea { width: 100%; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 1em; background-color: var(--primary-bg); color: var(--text-color); }
-        #note-entry-textarea:focus, #profile-bio-textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
+        #note-entry-textarea, #profile-bio-textarea, #service-description-textarea { width: 100%; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 1em; background-color: var(--primary-bg); color: var(--text-color); }
+        #note-entry-textarea:focus, #profile-bio-textarea:focus, #service-description-textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         #note-entry-textarea { height: 120px; }
-        #profile-bio-textarea { height: 100px; margin-top: 1rem; }
+        #profile-bio-textarea, #service-description-textarea { height: 100px; margin-top: 1rem; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
-        #service-stylists-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
+        #service-stylists-list p, #service-performers-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
         .manual-content p, .manual-content li { line-height: 1.6; }
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
         .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: fadeIn 0.3s ease-out forwards; }
@@ -209,12 +210,17 @@
         
         /* Profile Modal Styles */
         #profile-popup .profile-content { display: flex; gap: 1.5rem; align-items: flex-start; }
-        #profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        #profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; flex-shrink: 0; }
         #profile-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 3px solid var(--border-color); }
         #profile-details { flex-grow: 1; }
         #profile-name { font-size: 1.5rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; }
         #profile-level { font-size: 1.1rem; color: #888; margin: 0; }
-        #profile-color-palette { margin-top: 0.5rem; display: none; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        #profile-color-palette { margin-top: 0.5rem; display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 120px; }
+        
+        /* Service Details Modal Styles */
+        #service-details-popup .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        #service-details-popup h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        #service-details-popup .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
         
         /* Drag and Drop Styles */
         [draggable="true"] { cursor: grab; }
@@ -272,6 +278,7 @@
             .container { border-radius: 0; padding: 1rem; height: auto; min-height: 100vh; }
             .table-container { display: none; }
             #mobile-view-container { display: block; }
+            #service-details-popup .details-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -324,37 +331,47 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.29 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.31 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services, their prices, and any special notes.</p><h3>Key Features</h3><ul><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card, drag it to a new position, and release.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser a few seconds after you stop making changes.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Pressing `Ctrl+Alt+D` will reveal advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
     
-    <div id="profile-popup" class="modal-popup">
+    <div id="profile-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="profile-content"><div class="profile-photo-area"><img id="profile-photo" src="" alt="Stylist Photo"><button id="profile-change-photo-btn">Change Photo</button><button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button><button id="profile-change-color-btn">Change Color</button><div id="profile-color-palette" class="color-palette"></div></div><div class="profile-details"><h2 id="profile-name"></h2><p id="profile-level"></p><label for="profile-bio-textarea">Bio / Notes:</label><textarea id="profile-bio-textarea" rows="4"></textarea><div class="modal-actions"><button id="profile-save-bio-btn" class="save-btn">Save Bio</button></div></div></div></div>
+
+    <div id="service-details-popup" class="modal-popup">
         <button class="close-popup">&times;</button>
-        <div class="profile-content">
-            <div class="profile-photo-area">
-                <img id="profile-photo" src="" alt="Stylist Photo">
-                <button id="profile-change-photo-btn">Change Photo</button>
-                <button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button>
-                <button id="profile-change-color-btn">Change Color</button>
-                <div id="profile-color-palette" class="color-palette"></div>
-            </div>
-            <div class="profile-details">
-                <h2 id="profile-name"></h2>
-                <p id="profile-level"></p>
-                <label for="profile-bio-textarea">Bio / Notes:</label>
-                <textarea id="profile-bio-textarea" rows="4"></textarea>
-                <div class="modal-actions">
-                    <button id="profile-save-bio-btn" class="save-btn">Save Bio</button>
+        <h2 id="service-details-title">Service Details</h2>
+        <div class="details-grid">
+            <div>
+                <div class="input-group">
+                    <label for="service-duration-input">Standard Duration:</label>
+                    <input type="text" id="service-duration-input" placeholder="e.g., 2.5 hours">
                 </div>
             </div>
+            <div>
+                <div class="input-group">
+                    <label for="service-pricerange-input">Base Price Range:</label>
+                    <input type="text" id="service-pricerange-input" placeholder="e.g., $150 - $250">
+                </div>
+            </div>
+        </div>
+        <div class="input-group" style="margin-top: 1rem;">
+            <label for="service-description-textarea">Description:</label>
+            <textarea id="service-description-textarea" rows="3"></textarea>
+        </div>
+        
+        <h3>Performed By:</h3>
+        <div id="service-performers-list"></div>
+
+        <div class="modal-actions">
+            <button id="service-details-save-btn" class="save-btn">Save Details</button>
         </div>
     </div>
 
@@ -398,8 +415,10 @@
         const defaultData = {
             salonState: {
                 services: [
-                    { name: "Haircut & Style", note: null }, { name: "Full Color", note: null },
-                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" } }, { name: "Keratin Treatment", note: null }
+                    { name: "Haircut & Style", note: null, duration: "1 hour", priceRange: "$85+", description: "" }, 
+                    { name: "Full Color", note: null, duration: "2-3 hours", priceRange: "", description: "" },
+                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" }, duration: "3-5 hours", priceRange: "$275+", description: "A freehand painting technique for natural, sun-kissed highlights." }, 
+                    { name: "Keratin Treatment", note: null, duration: "", priceRange: "", description: "" }
                 ],
                 stylists: [{
                     name: "Alex Chen", level: "Level Five", note: null, photo: null, bio: "", avatarColor: null, services: [
@@ -422,32 +441,36 @@
         const debounce = (func, delay) => { let timeout; return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => func(...args), delay); }; };
 
         const generateAvatar = (stylist) => {
-            if (stylist.photo) {
-                return stylist.photo;
-            }
+            if (stylist.photo) { return stylist.photo; }
             const name = stylist.name || '?';
             const initial = name.charAt(0).toUpperCase();
-            
             let bgColorHex;
             if (stylist.avatarColor) {
                 bgColorHex = stylist.avatarColor;
             } else {
                 let hash = 0;
-                for (let i = 0; i < name.length; i++) {
-                    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-                }
+                for (let i = 0; i < name.length; i++) { hash = name.charCodeAt(i) + ((hash << 5) - hash); }
                 const colorIndex = Math.abs(hash % NOTE_COLORS.length);
                 bgColorHex = NOTE_COLORS[colorIndex].color;
             }
-
             const r = parseInt(bgColorHex.slice(1, 3), 16);
             const g = parseInt(bgColorHex.slice(3, 5), 16);
             const b = parseInt(bgColorHex.slice(5, 7), 16);
             const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
             const textColor = luminance > 150 ? '#333333' : '#FFFFFF';
-
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${bgColorHex}" /><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="50" font-weight="bold" fill="${textColor}" font-family="-apple-system, sans-serif">${initial}</text></svg>`;
             return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        };
+
+        const getSortIcon = (key) => {
+            const upArrow = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em"><path d="M7 14l5-5 5 5z"/></svg>`;
+            const downArrow = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em"><path d="M7 10l5 5 5-5z"/></svg>`;
+            const defaultArrows = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em"><path d="M7 15l5-5 5 5zm0-6l5 5 5-5z"/></svg>`;
+
+            if (sortState.key === key) {
+                return sortState.direction === 'asc' ? upArrow : downArrow;
+            }
+            return defaultArrows;
         };
 
         const showModal = (popup) => {
@@ -482,9 +505,13 @@
         };
 
         const sortData = (key) => {
-            const isNumericKey = !isNaN(parseInt(key));
-            const currentKey = isNumericKey ? parseInt(key) : key;
-            const newDirection = sortState.key === currentKey && sortState.direction === 'asc' ? 'desc' : 'asc';
+            const currentKey = !isNaN(parseInt(key)) ? parseInt(key) : key;
+            let newDirection;
+            if (sortState.key === currentKey) {
+                newDirection = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                newDirection = 'asc';
+            }
             sortState = { key: currentKey, direction: newDirection };
             updateDisplay();
         };
@@ -661,6 +688,46 @@
             showModal(popup);
         };
         
+        const showServiceDetailsModal = (serviceIndex) => {
+            const popup = document.getElementById('service-details-popup');
+            const salonState = stateHistory[currentStateIndex];
+            const service = salonState.services[serviceIndex];
+            if (!service) return;
+
+            const title = document.getElementById('service-details-title');
+            const durationInput = document.getElementById('service-duration-input');
+            const priceRangeInput = document.getElementById('service-pricerange-input');
+            const descriptionTextarea = document.getElementById('service-description-textarea');
+            const performersList = document.getElementById('service-performers-list');
+            const saveBtn = document.getElementById('service-details-save-btn');
+            
+            title.textContent = `${service.name} Details`;
+            durationInput.value = service.duration || '';
+            priceRangeInput.value = service.priceRange || '';
+            descriptionTextarea.value = service.description || '';
+
+            const performers = salonState.stylists
+                .filter(stylist => stylist.services[serviceIndex]?.checked)
+                .map(stylist => stylist.name);
+            
+            performersList.innerHTML = performers.length > 0
+                ? performers.map(name => `<p>${name}</p>`).join('')
+                : '<p>No stylists currently perform this service.</p>';
+
+            saveBtn.onclick = () => {
+                const newState = deepClone(salonState);
+                const serviceToUpdate = newState.services[serviceIndex];
+                serviceToUpdate.duration = durationInput.value;
+                serviceToUpdate.priceRange = priceRangeInput.value;
+                serviceToUpdate.description = descriptionTextarea.value;
+                recordChange(newState);
+                showToast("Service details saved.", "success");
+                hideModal(popup);
+            };
+
+            showModal(popup);
+        };
+        
         const applyTheme = (theme) => {
             if (theme === 'dark') {
                 document.body.classList.add('dark-mode');
@@ -756,14 +823,15 @@
             tbody.innerHTML = '';
             const salonState = stateHistory[currentStateIndex];
             const headerRow = document.createElement('tr');
-            const stylistArrow = sortState.key === 'stylist' ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist <span class="sort-arrow">${stylistArrow}</span></div></th>`;
+            const stylistArrow = `<span class="sort-arrow ${sortState.key === 'stylist' ? 'active' : ''}">${getSortIcon('stylist')}</span>`;
+            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist ${stylistArrow}</div></th>`;
             salonState.services.forEach((service, colIndex) => {
                 const th = document.createElement('th');
                 th.dataset.col = colIndex + 1;
                 let noteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                const serviceArrow = sortState.key === colIndex ? (sortState.direction === 'asc' ? '▲' : '▼') : '↕';
-                th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}<span class="sort-arrow">${serviceArrow}</span></div>`;
+                const serviceArrow = `<span class="sort-arrow ${sortState.key === colIndex ? 'active' : ''}">${getSortIcon(colIndex)}</span>`;
+                // --- FIX #1: Added data-sort attribute to the service header div ---
+                th.innerHTML = `<div class="cell-wrapper sortable" data-sort="${colIndex}"><div class="name-wrapper"><span class="editable">${service.name}</span></div>${noteHTML}${serviceArrow}</div>`;
                 headerRow.appendChild(th);
             });
             thead.appendChild(headerRow);
@@ -913,14 +981,13 @@
                 showNoteEntryPopup(row, col);
                 return;
             }
-            if (target.closest('.sortable')) {
+            if (target.closest('.sort-arrow')) {
                 sortData(target.closest('.sortable').dataset.sort);
             } else if (target.matches('.editable') && target.closest('th')) {
                 clearTimeout(clickTimer);
                 clickTimer = setTimeout(() => {
                     const colIndex = parseInt(target.closest('th').dataset.col) - 1;
-                    const performingStylists = stateHistory[currentStateIndex].stylists.filter(s => s.services[colIndex]?.checked).map(s => s.name);
-                    showServiceStylistsPopup(stateHistory[currentStateIndex].services[colIndex].name, performingStylists);
+                    showServiceDetailsModal(colIndex);
                 }, 250);
             } else if (target.matches('.editable.level-text')) {
                 const row = parseInt(target.closest('[data-row]').dataset.row);
@@ -1000,10 +1067,12 @@
                 const nameWrapper = target.closest('.stylist-info');
                 const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
                 const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
-                const parentDiv = nameWrapper.parentNode;
-                parentDiv.innerHTML = '';
-                parentDiv.appendChild(editInput);
-                parentDiv.appendChild(deleteBtn);
+                
+                // --- FIX #2: Replaced destructive innerHTML clear with precise DOM manipulation ---
+                const stylistInfoWrapper = target.closest('.stylist-info-wrapper');
+                target.replaceWith(editInput); // Replace only the name span with the input
+                stylistInfoWrapper.appendChild(deleteBtn); // Add the delete button without clearing anything else
+                
                 editInput.focus();
                 deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove stylist "${originalText}"?`, () => {
                     const newState = deepClone(stateHistory[currentStateIndex]);
@@ -1079,7 +1148,7 @@
 
         document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => hideModal(btn.closest('.modal-popup'))));
         document.getElementById('add-stylist-btn').addEventListener('click', () => { const name = newStylistInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) }); recordChange(newState); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; });
-        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.services.push({ name, note: null }); newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); recordChange(newState); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
+        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" }); newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); recordChange(newState); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
         document.getElementById('save-btn').addEventListener('click', () => saveData(true));
         document.getElementById('export-btn').addEventListener('click', () => { saveData(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([localStorage.getItem(LOCAL_STORAGE_KEY)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
