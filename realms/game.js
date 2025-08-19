@@ -3288,9 +3288,24 @@ function setupEventListeners() {
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
     }
     
-    if (meditateButton) {
-        meditateButton.addEventListener('click', presentUpgradeMenu);
-    }
+if (meditateButton) {
+    meditateButton.addEventListener('click', () => {
+        // You can easily change this cost to balance your game
+        const MEDITATE_DUST_COST = 25;
+
+        // First, check if the player can afford to meditate
+        if (gameState.resources.glimmeringDust >= MEDITATE_DUST_COST) {
+            // If they can, subtract the cost and open the upgrade menu
+            gameState.resources.glimmeringDust -= MEDITATE_DUST_COST;
+            addLogMessage(`You focus your mind, spending ${MEDITATE_DUST_COST} dust to meditate.`, "decision");
+            presentUpgradeMenu();
+            renderStats(); // This immediately updates the UI to show the new dust total
+        } else {
+            // If they can't, just show a message in the log
+            addLogMessage(`You lack the spiritual focus to meditate. (Requires ${MEDITATE_DUST_COST} Dust)`, "puzzle-fail");
+        }
+    });
+}
     
     if (attuneRunesButton) {
         attuneRunesButton.addEventListener('click', presentRuneMenu);
