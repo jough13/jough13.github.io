@@ -187,7 +187,6 @@
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
-        .manual-content h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
         #service-stylists-list p, #service-performers-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
         .manual-content p, .manual-content li { line-height: 1.6; }
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
@@ -214,10 +213,12 @@
         #profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; flex-shrink: 0; }
         #profile-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 3px solid var(--border-color); }
         #profile-details { flex-grow: 1; }
+        #profile-name-wrapper { display: flex; align-items: center; gap: 0.5rem; }
         #profile-name { font-size: 1.5rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; }
         #profile-level { font-size: 1.1rem; color: #888; margin: 0; }
         #profile-color-palette { margin-top: 0.5rem; display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 120px; }
-        
+        #profile-edit-name-btn { padding: 0; width: 28px; height: 28px; font-size: 1rem; line-height: 28px; background: var(--secondary-bg); color: var(--text-color);}
+
         /* Service Details Modal Styles */
         #service-details-popup .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
         #service-details-popup h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
@@ -332,55 +333,42 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.32.0 | Last Updated: 8/19/2025 | Last Saved: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.32 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    
-    <div id="manual-popup" class="modal-popup">
-        <button class="close-popup">&times;</button>
-        <div class="manual-content">
-            <h2>Posh Salon: User Manual ✂️</h2>
-            <p>Welcome! This tool helps you quickly manage which stylists perform which services and at what price.</p>
-            
-            <h3>Core Actions</h3>
-            <ul>
-                <li><strong>Add Stylist/Service:</strong> Use the input fields and buttons in the top-left corner.</li>
-                <li><strong>Search & Filter:</strong> Use the central search bar to find a stylist by name or use the dropdown to filter by their assigned level.</li>
-                <li><strong>Toggle Service:</strong> Simply check or uncheck the box in any cell to mark whether a stylist performs that service.</li>
-                <li><strong>Add/View Notes:</strong> Use the "Add Note" button to place colored sticky notes on stylist rows, service columns, or individual cells. Click an existing note to view or delete it.</li>
-                <li><strong>Save & Sync:</strong> Your work is autosaved to your browser every few seconds. You can also manually save, export your data to a JSON file, or import a file to load data.</li>
-            </ul>
-
-            <h3>Editing Information</h3>
-            <ul>
-                <li><strong>Edit Names:</strong> Double-click on a stylist's name or a service name to edit or delete it. A trash can icon will appear, allowing you to remove the entry entirely.</li>
-                <li><strong>Edit Prices & Levels:</strong> Single-click on a price or a stylist's level to edit the value directly in the table.</li>
-                <li><strong>Edit Stylist Profile:</strong> Single-click a stylist's name to open their profile. Here you can change their avatar photo, assign a color, and write a bio.</li>
-                <li><strong>Edit Service Details:</strong> Single-click a service name in the table header to open its details panel. You can add a description, duration, and see a list of all stylists who perform it.</li>
-            </ul>
-
-            <h3>Organizing Data</h3>
-            <ul>
-                <li><strong>Reorder Stylists:</strong> To change the manual order of stylists, simply click and hold on a stylist's row (or card on mobile) and drag it to a new position.</li>
-                <li><strong>Sort Columns:</strong> Click the small arrow icon in any column header to sort the table. You can sort by stylist name (alphabetically) or by price (numerically). Clicking the same header again will reverse the sort direction.</li>
-            </ul>
-            
-            <h3>Advanced Features</h3>
-            <ul>
-                 <li><strong>Developer Mode (Ctrl+Alt+D):</strong> Pressing this key combination reveals advanced tools like **Undo**, **Redo**, and a button to **Reset All Data**. Use with caution!</li>
-            </ul>
-        </div>
-    </div>
-    
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio. Use the edit button in the profile to change their name.</li><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a service name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
     
-    <div id="profile-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="profile-content"><div class="profile-photo-area"><img id="profile-photo" src="" alt="Stylist Photo"><button id="profile-change-photo-btn">Change Photo</button><button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button><button id="profile-change-color-btn">Change Color</button><div id="profile-color-palette" class="color-palette"></div></div><div class="profile-details"><h2 id="profile-name"></h2><p id="profile-level"></p><label for="profile-bio-textarea">Bio / Notes:</label><textarea id="profile-bio-textarea" rows="4"></textarea><div class="modal-actions"><button id="profile-save-bio-btn" class="save-btn">Save Bio</button></div></div></div></div>
+    <div id="profile-popup" class="modal-popup">
+        <button class="close-popup">&times;</button>
+        <div class="profile-content">
+            <div class="profile-photo-area">
+                <img id="profile-photo" src="" alt="Stylist Photo">
+                <button id="profile-change-photo-btn">Change Photo</button>
+                <button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button>
+                <button id="profile-change-color-btn">Change Color</button>
+                <div id="profile-color-palette" class="color-palette"></div>
+            </div>
+            <div class="profile-details">
+                <div id="profile-name-wrapper">
+                    <h2 id="profile-name"></h2>
+                    <button id="profile-edit-name-btn">✏️</button>
+                </div>
+                <p id="profile-level"></p>
+                <label for="profile-bio-textarea">Bio / Notes:</label>
+                <textarea id="profile-bio-textarea" rows="4"></textarea>
+                <div class="modal-actions">
+                    <button id="profile-save-bio-btn" class="save-btn">Save Bio</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="service-details-popup" class="modal-popup">
         <button class="close-popup">&times;</button>
@@ -653,7 +641,9 @@
             if (!stylist) return;
 
             const photoEl = document.getElementById('profile-photo');
+            const nameWrapper = document.getElementById('profile-name-wrapper');
             const nameEl = document.getElementById('profile-name');
+            const editNameBtn = document.getElementById('profile-edit-name-btn');
             const levelEl = document.getElementById('profile-level');
             const bioTextarea = document.getElementById('profile-bio-textarea');
             const changePhotoBtn = document.getElementById('profile-change-photo-btn');
@@ -662,11 +652,35 @@
             const changeColorBtn = document.getElementById('profile-change-color-btn');
             const profilePalette = document.getElementById('profile-color-palette');
             
-            photoEl.src = generateAvatar(stylist);
             nameEl.textContent = stylist.name;
             levelEl.textContent = stylist.level;
+            photoEl.src = generateAvatar(stylist);
             bioTextarea.value = stylist.bio || '';
             profilePalette.style.display = 'none';
+
+            editNameBtn.onclick = () => {
+                const originalText = nameEl.textContent;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'name-input';
+                input.value = originalText;
+                nameWrapper.replaceWith(input);
+                input.focus();
+                
+                const saveName = () => {
+                    const newText = input.value.trim();
+                    if (newText && newText !== originalText) {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.stylists[stylistIndex].name = newText;
+                        recordChange(newState);
+                        showToast("Name updated.", "success");
+                        nameEl.textContent = newText;
+                    }
+                    input.replaceWith(nameWrapper);
+                };
+                input.addEventListener('blur', saveName);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            };
             
             changePhotoBtn.onclick = () => photoUploadInput.click();
             
@@ -713,7 +727,6 @@
                 };
                 profilePalette.appendChild(box);
             });
-
 
             saveBioBtn.onclick = () => {
                 const newState = deepClone(stateHistory[currentStateIndex]);
@@ -777,7 +790,7 @@
         
         const handlePrint = () => {
             const salonState = stateHistory[currentStateIndex];
-            const printStyles = `<style>@page{size:landscape;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
+            const printStyles = `<style>@page{size:portrait;margin:0.75in}body{font-family:Arial,sans-serif;font-size:10pt}h1{font-size:16pt;text-align:center;margin-bottom:20px}p.timestamp{text-align:center;font-style:italic;font-size:9pt;color:#555}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background-color:#f0f0f0;font-weight:bold}thead{display:table-header-group}</style>`;
             let tableHtml = '<table><thead><tr><th>Stylist</th>';
             salonState.services.forEach(service => { tableHtml += `<th>${service.name}</th>`; });
             tableHtml += '</tr></thead><tbody>';
@@ -791,7 +804,7 @@
             });
             tableHtml += '</tbody></table>';
             const timestamp = `Generated on: ${new Date().toLocaleString()}`;
-            const fullHtml = `<!DOCTYPE html><html><head><title>Posh Salon Service Matrix</title>${printStyles}</head><body><h1>Posh Salon Service Matrix</h1>${tableHtml}<p class="timestamp">${timestamp}</p></body></html>`;
+            const fullHtml = `<!DOCTYPE html><html><head><title>Posh Salon Service Matrix</title>${printStyles}</head><body><h1>Posh Salon Service Matrix</h1><p class="timestamp">${timestamp}</p>${tableHtml}</body></html>`;
             const printWindow = window.open('', '_blank');
             printWindow.document.write(fullHtml);
             printWindow.document.close();
@@ -861,7 +874,7 @@
             const salonState = stateHistory[currentStateIndex];
             const headerRow = document.createElement('tr');
             const stylistArrow = `<span class="sort-arrow ${sortState.key === 'stylist' ? 'active' : ''}">${getSortIcon('stylist')}</span>`;
-            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist ${stylistArrow}</div></th>`;
+            headerRow.innerHTML = `<th><div class="cell-wrapper sortable">Stylist ${stylistArrow}</div></th>`;
             salonState.services.forEach((service, colIndex) => {
                 const th = document.createElement('th');
                 th.dataset.col = colIndex + 1;
@@ -1064,19 +1077,8 @@
 
         mainContentContainer.addEventListener('dblclick', (event) => {
             const target = event.target;
-            if (target.matches('.profile-link')) return; 
+            if (target.closest('.profile-link')) return; 
             clearTimeout(clickTimer);
-            const handleSave = (input, originalText, updateFn) => {
-                const newState = deepClone(stateHistory[currentStateIndex]);
-                const newText = input.value.trim();
-                if (newText === '') {
-                    showToast('Name cannot be empty.', 'error');
-                    updateFn(newState, originalText);
-                } else {
-                    updateFn(newState, newText);
-                }
-                recordChange(newState);
-            };
             if (target.matches('.editable') && target.closest('th')) {
                 const cell = target.closest('th');
                 const col = parseInt(cell.dataset.col);
@@ -1086,6 +1088,12 @@
                 const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
                 nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
                 editInput.focus();
+                const handleSave = (input, originalText, updateFn) => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    const newText = input.value.trim();
+                    updateFn(newState, newText || originalText);
+                    recordChange(newState);
+                };
                 deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove service "${originalText}"?`, () => {
                     const newState = deepClone(stateHistory[currentStateIndex]);
                     newState.services.splice(col - 1, 1);
@@ -1094,28 +1102,6 @@
                     recordChange(newState);
                 }));
                 editInput.addEventListener('blur', () => handleSave(editInput, originalText, (state, val) => state.services[col - 1].name = val));
-                editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
-            } else if (target.matches('.editable') && !target.classList.contains('level-text')) {
-                const parentElement = target.closest('[data-row]');
-                if (!parentElement) return;
-                const row = parseInt(parentElement.dataset.row);
-                const originalText = target.textContent;
-                const nameWrapper = target.closest('.stylist-info');
-                const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
-                const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
-                
-                const stylistInfoWrapper = target.closest('.stylist-info-wrapper');
-                target.replaceWith(editInput); // Replace only the name span with the input
-                stylistInfoWrapper.appendChild(deleteBtn); // Add the delete button without clearing anything else
-                
-                editInput.focus();
-                deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove stylist "${originalText}"?`, () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists.splice(row, 1);
-                    showToast(`Stylist "${originalText}" removed.`, "info");
-                    recordChange(newState);
-                }));
-                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (state, val) => state.stylists[row].name = val));
                 editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
             }
         });
