@@ -2846,6 +2846,55 @@ function renderStats() {
     upgradeSpeedButton.disabled = gameState.resources.glimmeringDust < upgradeCost || gameState.currentZoneIndex === -1;
 }
 
+/**
+ * Handles all logic for moving the player to a new zone.
+ * @param {number} newZoneIndex - The index of the zone to transition to from the ZONES array.
+ */
+function transitionToZone(newZoneIndex) {
+    // --- 1. Check if the game should end ---
+    if (newZoneIndex >= ZONES.length) {
+        handleGameEnd("You have explored all currently known realms! The journey ends... for now.");
+        return;
+    }
+
+    // --- 2. Update player state for the new zone ---
+    gameState.currentZoneIndex = newZoneIndex;
+    gameState.playerZoneX = 0;
+    gameState.playerLane = PLAYER_INITIAL_LANE;
+    gameState.encounteredNPCs = {}; // Reset per-zone NPC encounters
+
+    const newZone = getCurrentZone();
+    if (!newZone) {
+        handleGameend("An unknown path was chosen. The journey ends abruptly.");
+        return;
+    }
+
+    // --- 3. Trigger initial zone-entry events ---
+    // Display the introductory lore for the zone if it's the first time
+    if (newZone.entryLoreKey && ZONE_LORE[newZone.entryLoreKey] && !gameState.narrativeFlags[newZone.entryLoreKey]) {
+        addLogMessage(ZONE_LORE[newZone.entryLoreKey], "lore");
+        gameState.narrativeFlags[newZone.entryLoreKey] = true;
+    }
+
+    // Award a one-time XP bonus for discovering a new zone
+    const newZoneFlag = `ENTERED_ZONE_${newZone.name.replace(/\s+/g, '_')}`;
+    if (!gameState.narrativeFlags[newZoneFlag]) {
+        awardXP(50);
+        gameState.narrativeFlags[newZoneFlag] = true;
+    }
+
+    // Let the companion react to the new environment
+    if (gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name]) {
+        addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name], "companion");
+    }
+
+    // --- 4. Finalize the transition ---
+    addLogMessage(`Venturing into ${newZone.name}...`);
+    updateUIAccentColors(); // Update the UI theme
+    renderAll(); // Redraw the screen and stats
+    pauseGameForDecision(false); // Resume the game loop
+}
+
 /** Updates the border and background colors of UI elements to match the current zone. */
 function updateUIAccentColors() {
     const zone = getCurrentZone();
@@ -2983,6 +3032,7 @@ function resolveDecision(chosenOption) {
     gameState.narrativeFlags[chosenOption.outcomeKey] = true;
 
     decisionArea.style.display = 'none';
+    gameState.activeDecision = null;
 
     if (chosenOption.leaveMessage) {
         messageInputArea.style.display = 'block';
@@ -2990,43 +3040,13 @@ function resolveDecision(chosenOption) {
         return;
     }
 
-    gameState.activeDecision = null;
-
     if (chosenOption.nextZoneIndex === -1) {
         handleGameEnd("The journey pauses here. The path ahead is shrouded, for now...");
         return;
     }
 
-    gameState.currentZoneIndex = chosenOption.nextZoneIndex !== undefined ? chosenOption.nextZoneIndex : gameState.currentZoneIndex + 1;
-    gameState.playerZoneX = 0;
-    gameState.playerLane = PLAYER_INITIAL_LANE;
-    gameState.encounteredNPCs = {};
-
-    if (gameState.currentZoneIndex >= ZONES.length) {
-        handleGameEnd("You have explored all currently known realms! The journey ends... for now.");
-    } else {
-        const newZone = getCurrentZone();
-        if (newZone) {
-            const newZoneFlag = `ENTERED_ZONE_${newZone.name.replace(/\s+/g, '_')}`;
-            if (newZone.entryLoreKey && ZONE_LORE[newZone.entryLoreKey] && !gameState.narrativeFlags[newZone.entryLoreKey]) {
-                addLogMessage(ZONE_LORE[newZone.entryLoreKey], "lore");
-                gameState.narrativeFlags[newZone.entryLoreKey] = true;
-            }
-            if (!gameState.narrativeFlags[newZoneFlag]) {
-                awardXP(50);
-                gameState.narrativeFlags[newZoneFlag] = true;
-            }
-            if (gameState.companion && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type] && COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name]) {
-                addLogMessage(COMPANION_ZONE_ENTRY_DIALOGUE[gameState.companion.type][newZone.name], "companion");
-            }
-            addLogMessage(`Venturing into ${newZone.name}...`);
-            updateUIAccentColors();
-            renderAll();
-            pauseGameForDecision(false);
-        } else {
-            handleGameEnd("An unknown path was chosen. The journey ends abruptly.");
-        }
-    }
+    // All the old logic is now replaced by this single, clean function call
+    transitionToZone(chosenOption.nextZoneIndex);
 }
 
 /** Saves the "message to future self" or skips it. */
