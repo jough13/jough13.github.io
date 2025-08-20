@@ -790,17 +790,28 @@
         
         const showServiceDetailsModal = (serviceIndex) => {
             const popup = document.getElementById('service-details-popup');
-            const salonState = stateHistory[currentStateIndex];
-            const service = salonState.services[serviceIndex];
-            if (!service) return;
-
             const title = document.getElementById('service-details-title');
             const durationInput = document.getElementById('service-duration-input');
             const priceRangeInput = document.getElementById('service-pricerange-input');
             const descriptionTextarea = document.getElementById('service-description-textarea');
             const performersList = document.getElementById('service-performers-list');
             const saveBtn = document.getElementById('service-details-save-btn');
-            
+            const salonState = stateHistory[currentStateIndex];
+            const service = salonState.services[serviceIndex];
+
+            // --- FIX START ---
+            // First, clear any old data from the modal's fields.
+            // This prevents a "flash" of old content when the modal appears.
+            title.textContent = 'Service Details';
+            durationInput.value = '';
+            priceRangeInput.value = '';
+            descriptionTextarea.value = '';
+            performersList.innerHTML = '';
+            // --- FIX END ---
+
+            if (!service) return;
+
+            // Now, populate with the correct data for the selected service.
             title.textContent = `${service.name} Details`;
             durationInput.value = service.duration || '';
             priceRangeInput.value = service.priceRange || '';
