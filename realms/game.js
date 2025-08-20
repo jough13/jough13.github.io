@@ -228,6 +228,8 @@ let gameState = {
     collectedArtifacts: [],
     companion: null,
     
+    playerStatusEffects: {},
+
     inventory: {},  
 
     // Game Control & State Flags
@@ -369,6 +371,20 @@ const ENEMY_TYPES = {
         loot: () => {
             if (seededRandom() < 0.8) gameState.resources.ancientScraps++; // High chance for scraps
             return seededRandomInt(15, 25);
+        }
+    },
+     VOID_SCARRED_SENTINEL: {
+        name: "Void-Scarred Sentinel",
+        description: "A hulking Lumina automaton, its chassis is cracked with glowing purple fissures. It moves with a corrupted purpose, its targeting lens burning with void-light.",
+        hp: 85,          // Very durable
+        attack: 10,        // Hits hard
+        defense: 7,        // Heavily armored
+        xp: 150,         // High reward
+        loot: () => {
+            // High chance for scraps and a good chance for void essence
+            if (seededRandom() < 0.9) gameState.resources.ancientScrap++;
+            if (seededRandom() < 0.4) gameState.resources.voidEssence++;
+            return seededRandomInt(25, 40); // Generous dust payout
         }
     }
 };
@@ -1173,6 +1189,7 @@ foregroundElements: {
         340: [{ lane: 1, char: 'S' }],
         350: [{ lane: 3, char: 'b' }],
         360: [{ lane: 2, char: 'L' }],
+        365: [{ lane: 2, char: 'S', enemyKey: "VOID_SCARRED_SENTINEL" }],
         370: [{ lane: 0, char: 'L' }],
         380: [{ lane: 4, char: 'A' }],
         390: [{ lane: 2, char: 'N', npcType: "ECHO_LUMINA" }]
@@ -2174,28 +2191,78 @@ function executePlayerTurn(enemy) {
 
 /**
  * Executes the enemy's attack and checks for player defeat.
+ * This new version includes logic for status effects and special moves.
  */
 function executeEnemyTurn(enemy) {
     decisionArea.style.display = 'none';
 
-    let damageReduction = gameState.activeRunes.includes('Δ') ? 1 : 0;
-    const effectiveStats = getEffectiveStats();
-    
-    const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
-    const playerDefenseSoak = Math.floor(effectiveStats.might / 3);
-    const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
-    
-    gameState.currentHp -= damageToPlayer;
+    // --- 1. APPLY STATUS EFFECTS ---
+    // At the start of the enemy's turn, check if the player is affected by anything.
+    if (gameState.playerStatusEffects.Corruption && gameState.playerStatusEffects.Corruption.turnsRemaining > 0) {
+        const corruptionDamage = gameState.playerStatusEffects.Corruption.damage;
+        gameState.currentHp -= corruptionDamage;
+        addLogMessage(`You suffer ${corruptionDamage} damage from Void Corruption!`, "combat-defeat");
+        gameState.playerStatusEffects.Corruption.turnsRemaining--;
 
-    if (damageToPlayer > 0) {
-        addLogMessage(`${enemy.name} attacks for ${damageToPlayer} damage! Your HP: ${Math.max(0, gameState.currentHp)}`, "combat-message");
-    } else {
-        addLogMessage(`${enemy.name} attacks, but you deftly block it!`, "combat-message");
-        playSound('combatMiss');
+        if (gameState.playerStatusEffects.Corruption.turnsRemaining <= 0) {
+            addLogMessage("The feeling of corruption fades.", "synergy");
+            delete gameState.playerStatusEffects.Corruption;
+        }
     }
 
+    // Check if player was defeated by the status effect
     if (gameState.currentHp <= 0) {
-        // DEFEAT
+        addLogMessage(`You have succumbed to the lingering corruption... Darkness takes you.`, "combat-defeat");
+        playSound('combatDefeat');
+        handleGameEnd("Your journey has ended in defeat...");
+        return; // Stop the function here
+    }
+
+    // --- 2. EXECUTE ENEMY ACTION ---
+    // A. If the enemy is charging its special move, unleash it!
+    if (enemy.isCharging) {
+        addLogMessage(`${enemy.name} unleashes its Corruption Cannon!`, "combat-message");
+        playSound('combatHit');
+        
+        const specialDamage = 20; // A big, high-damage hit
+        gameState.currentHp -= specialDamage;
+        addLogMessage(`The blast hits you for ${specialDamage} damage and leaves you feeling corrupted!`, "combat-defeat");
+
+        // Apply the "Corruption" status effect for 3 turns
+        gameState.playerStatusEffects.Corruption = {
+            damage: 3, // Damage per turn
+            turnsRemaining: 3
+        };
+
+        enemy.isCharging = false; // Reset the charging state
+
+    // B. If it's a Void-Scarred Sentinel, it has a chance to start charging
+    } else if (enemy.name === "Void-Scarred Sentinel" && seededRandom() < 0.40) { // 40% chance
+        enemy.isCharging = true;
+        addLogMessage(`${enemy.name}'s void fissures glow intensely as it charges its cannon! It will fire next turn!`, "combat-message");
+        // The enemy does NOT do a regular attack on the turn it charges
+
+    // C. Otherwise, perform a standard attack
+    } else {
+        let damageReduction = gameState.activeRunes.includes('Δ') ? 1 : 0;
+        const effectiveStats = getEffectiveStats();
+        
+        const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
+        const playerDefenseSoak = Math.floor(effectiveStats.might / 3);
+        const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
+        
+        gameState.currentHp -= damageToPlayer;
+
+        if (damageToPlayer > 0) {
+            addLogMessage(`${enemy.name} attacks for ${damageToPlayer} damage! Your HP: ${Math.max(0, gameState.currentHp)}`, "combat-message");
+        } else {
+            addLogMessage(`${enemy.name} attacks, but you deftly block it!`, "combat-message");
+            playSound('combatMiss');
+        }
+    }
+
+    // --- 3. CHECK FOR PLAYER DEFEAT ---
+    if (gameState.currentHp <= 0) {
         addLogMessage(`You have been defeated by the ${enemy.name}... Darkness takes you.`, "combat-defeat");
         playSound('combatDefeat');
         handleGameEnd("Your journey has ended in defeat...");
@@ -2212,6 +2279,7 @@ function executeEnemyTurn(enemy) {
 function endCombat() {
     decisionArea.style.display = 'none';
     gameState.inCombat = false;
+    gameState.playerStatusEffects = {};
     pauseGameForDecision(false);
     renderAll();
 }
