@@ -282,9 +282,11 @@ const CONSUMABLES = {
     'healing_dust': {
         name: "Pouch of Healing Dust",
         description: "A pinch of this shimmering dust restores 10 HP.",
-        effect: () => {
-            gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + 10);
-            addLogMessage("You use a Pouch of Healing Dust. (+10 HP)", "synergy");
+           effect: () => {
+        const spiritBonus = gameState.stats.spirit; // Get the player's Spirit stat
+        const totalHeal = 10 + spiritBonus; // Add Spirit to the base healing
+        gameState.currentHp = Math.min(gameState.maxHp, gameState.currentHp + totalHeal);
+        addLogMessage(`You use a Pouch of Healing Dust, your spirit amplifying its effect. (+${totalHeal} HP)`, "synergy");
         }
     },
     'rune_etched_bauble': {
