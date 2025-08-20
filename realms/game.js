@@ -2207,7 +2207,7 @@ function executeEnemyTurn(enemy) {
 
     // --- 1. APPLY STATUS EFFECTS ---
     // At the start of the enemy's turn, check if the player is affected by anything.
-    if (gameState.playerStatusEffects.Corruption && gameState.playerStatusEffects.Corruption.turnsRemaining > 0) {
+    if (gameState.playerStatusEffects && gameState.playerStatusEffects.Corruption && gameState.playerStatusEffects.Corruption.turnsRemaining > 0) {
         const corruptionDamage = gameState.playerStatusEffects.Corruption.damage;
         gameState.currentHp -= corruptionDamage;
         addLogMessage(`You suffer ${corruptionDamage} damage from Void Corruption!`, "combat-defeat");
@@ -3544,6 +3544,40 @@ if (meditateButton) {
         artifactModalBackdrop.addEventListener('click', (event) => {
             if (event.target === artifactModalBackdrop) {
                 hideArtifactViewer();
+            }
+        });
+    }
+
+    const devHardRefreshButton = document.getElementById('dev-hard-refresh');
+    if (devHardRefreshButton) {
+        devHardRefreshButton.addEventListener('click', () => {
+            console.log("Developer: Performing a hard refresh to clear cache...");
+            // The 'true' is important! It forces a reload from the server.
+            location.reload(true);
+
+        });
+    }
+
+    const devWipeDataButton = document.getElementById('dev-wipe-data');
+    if (devWipeDataButton) {
+        devWipeDataButton.addEventListener('click', () => {
+            // This is a destructive action, so we MUST ask for confirmation.
+            const isConfirmed = confirm("DEVELOPER: Are you sure you want to WIPE ALL GAME DATA?\n\nThis includes your save file, legacy stats, and future-self messages. This cannot be undone.");
+
+            if (isConfirmed) {
+                console.log("Developer: Wiping all localStorage data for this game...");
+                
+                // Be specific to avoid deleting other things in localStorage
+                localStorage.removeItem('realmsOfRuneAndRust_savegame');
+                localStorage.removeItem(LEGACY_MIGHT_KEY);
+                localStorage.removeItem(LEGACY_WITS_KEY);
+                localStorage.removeItem(LEGACY_SPIRIT_KEY);
+                localStorage.removeItem(FUTURE_SELF_MESSAGE_KEY);
+
+                alert("All game data has been wiped. The page will now reload.");
+                location.reload();
+            } else {
+                console.log("Developer: Data wipe cancelled.");
             }
         });
     }
