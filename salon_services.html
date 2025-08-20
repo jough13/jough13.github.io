@@ -984,7 +984,9 @@ const showServiceDetailsModal = (serviceIndex) => {
                     const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
                     const priceClass = service.price ? 'price-text' : 'price-text placeholder';
                     let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                    serviceItem.innerHTML = `<span class="service-name">${serviceData.name}</span><div class="service-controls"><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span><label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>${cellNoteHTML}</div>`;
+                    
+                    serviceItem.innerHTML = `<span class="service-name editable">${serviceData.name}</span><div class="service-controls"><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span><label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>${cellNoteHTML}</div>`;
+
                     cardBody.appendChild(serviceItem);
                 });
                 mobileViewContainer.appendChild(card);
@@ -1092,19 +1094,46 @@ const showServiceDetailsModal = (serviceIndex) => {
                     showServiceDetailsModal(colIndex);
                 }, 250);
             } else if (target.matches('.editable.level-text')) {
-                const row = parseInt(target.closest('[data-row]').dataset.row);
-                const originalText = target.textContent;
-                const input = document.createElement('input');
-                input.type = 'text'; input.className = 'name-input'; input.value = originalText === 'Add Level' ? '' : originalText;
-                target.replaceWith(input);
-                input.focus();
-                const save = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[row].level = input.value.trim() || originalText;
-                    recordChange(newState);
-                };
-                input.addEventListener('blur', save);
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+                const row = parseInt(target.closest('[data-row]').dataset.row);
+                const originalText = target.textContent;
+                const input = document.createElement('input');
+                input.type = 'text'; input.className = 'name-input'; input.value = originalText === 'Add Level' ? '' : originalText;
+                target.replaceWith(input);
+                setTimeout(() => input.focus(), 100); // FIX: Delay focus to prevent keyboard flicker on mobile
+                const save = () => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists[row].level = input.value.trim() || originalText;
+                    recordChange(newState);
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+} else if (target.matches('.service-name.editable')) {
+                if (target.closest('.stylist-card-body')) { // Ensure we are on mobile view
+                    const serviceItem = target.closest('.service-item');
+                    const col = parseInt(serviceItem.dataset.col);
+                    const originalText = target.textContent;
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'name-input';
+                    input.value = originalText;
+                    target.replaceWith(input);
+
+                    setTimeout(() => input.focus(), 100); // Apply same mobile focus fix
+
+                    const save = () => {
+                        const newText = input.value.trim();
+                        if (newText && newText !== originalText) {
+                            const newState = deepClone(stateHistory[currentStateIndex]);
+                            newState.services[col - 1].name = newText;
+                            recordChange(newState);
+                        } else {
+                            updateDisplay(); // Just redraw to cancel the edit
+                        }
+                    };
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+                }
             } else if (target.matches('.price-text')) {
                 const row = parseInt(target.closest('[data-row]').dataset.row);
                 const col = parseInt(target.closest('[data-col]').dataset.col);
