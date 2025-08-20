@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.37 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.38 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -711,7 +711,6 @@
                 input.style.fontSize = '1.5rem';
                 input.value = originalText;
                 nameWrapper.replaceWith(input);
-                setTimeout(() => input.focus(), 100);
                 
                 const saveName = () => {
                     const newText = input.value.trim();
@@ -726,7 +725,12 @@
                     }
                     input.replaceWith(nameWrapper);
                 };
-                input.addEventListener('blur', saveName, { once: true });
+
+                setTimeout(() => {
+                    input.focus();
+                    input.addEventListener('blur', saveName, { once: true });
+                }, 150);
+                
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') e.target.blur();
                     if (e.key === 'Escape') {
@@ -1098,12 +1102,12 @@
                 let stylistIndex;
                 const rowEl = target.closest('[data-row]');
                 
-                if (rowEl) { // Click was in the main table or mobile card view
+                if (rowEl) {
                     stylistIndex = parseInt(rowEl.dataset.row);
-                } else if (target.dataset.stylistIndex) { // Click was in the profile modal
+                } else if (target.dataset.stylistIndex) {
                     stylistIndex = parseInt(target.dataset.stylistIndex);
                 } else {
-                    return; // Could not determine which stylist to edit
+                    return;
                 }
 
                 const originalText = target.textContent;
@@ -1113,17 +1117,20 @@
                 input.value = originalText === 'Add Level' ? '' : originalText;
                 target.replaceWith(input);
 
-                setTimeout(() => input.focus(), 100);
-
                 const save = () => {
                     const newState = deepClone(stateHistory[currentStateIndex]);
                     newState.stylists[stylistIndex].level = input.value.trim() || originalText;
                     recordChange(newState);
                 };
-                input.addEventListener('blur', save);
+
+                setTimeout(() => {
+                    input.focus();
+                    input.addEventListener('blur', save);
+                }, 150);
+
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.service-name.editable')) {
-                if (target.closest('.stylist-card-body')) { // Ensure we are on mobile view
+                if (target.closest('.stylist-card-body')) {
                     const serviceItem = target.closest('.service-item');
                     const col = parseInt(serviceItem.dataset.col);
                     const originalText = target.textContent;
@@ -1133,8 +1140,6 @@
                     input.className = 'name-input';
                     input.value = originalText;
                     target.replaceWith(input);
-
-                    setTimeout(() => input.focus(), 100);
 
                     const save = () => {
                         const newText = input.value.trim();
@@ -1146,7 +1151,12 @@
                             updateDisplay();
                         }
                     };
-                    input.addEventListener('blur', save);
+                    
+                    setTimeout(() => {
+                        input.focus();
+                        input.addEventListener('blur', save);
+                    }, 150);
+                    
                     input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
                 }
             } else if (target.matches('.price-text')) {
@@ -1156,14 +1166,19 @@
                 const input = document.createElement('input');
                 input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
                 target.replaceWith(input);
-                setTimeout(() => input.focus(), 100);
+                
                 const save = () => {
                     const newState = deepClone(stateHistory[currentStateIndex]);
                     const newPrice = input.value.trim();
                     newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
                     recordChange(newState);
                 };
-                input.addEventListener('blur', save);
+
+                setTimeout(() => {
+                    input.focus();
+                    input.addEventListener('blur', save);
+                }, 150);
+
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
