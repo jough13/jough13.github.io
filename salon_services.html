@@ -7,7 +7,7 @@
     <style>
         :root {
             --primary-bg: #ffffff;
-            --secondary-bg: #f7f7f7;
+            --secondary-bg: #f7f7ff;
             --header-bg: #f0f0f0;
             --accent-color: #203459;
             --danger-hover: #ef5350;
@@ -187,6 +187,7 @@
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
+        .manual-content h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
         #service-stylists-list p, #service-performers-list p { line-height: 1.6; margin: 0 0 0.5rem 0; padding-left: 1rem; border-left: 3px solid var(--border-color); }
         .manual-content p, .manual-content li { line-height: 1.6; }
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column-reverse; gap: 10px; }
@@ -333,14 +334,14 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.32 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.33 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly see which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio. Use the edit button in the profile to change their name.</li><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a service name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly manage which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio. Use the edit button in the profile to change their name.</li><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a service name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
@@ -1077,7 +1078,7 @@
 
         mainContentContainer.addEventListener('dblclick', (event) => {
             const target = event.target;
-            if (target.closest('.profile-link')) return; 
+            if (target.matches('.profile-link')) return; 
             clearTimeout(clickTimer);
             if (target.matches('.editable') && target.closest('th')) {
                 const cell = target.closest('th');
