@@ -348,6 +348,13 @@ const ENEMY_TYPES = {
         xp: 25,
         loot: () => {
             if (seededRandom() < 0.5) gameState.resources.ancientScraps++;
+         
+            // Add a chance for a bonus scrap based on Might
+    
+            if (seededRandom() < gameState.stats.might * 0.05) { // 5% chance per point of Might
+                addLogMessage("Your strength allows you to tear an extra scrap from the wreckage!", "synergy");
+                gameState.resources.ancientScraps++;
+                }
             return seededRandomInt(8, 15);
         }
     },
@@ -2249,6 +2256,19 @@ function executeEnemyTurn(enemy) {
         let damageReduction = gameState.activeRunes.includes('Δ') ? 1 : 0;
         const effectiveStats = getEffectiveStats();
         
+   const dodgeChance = effectiveStats.wits * 0.015; 
+    if (seededRandom() < dodgeChance) {
+        addLogMessage(`Your quick wits allow you to anticipate the attack and dodge it entirely!`, "synergy");
+        playSound('combatMiss');
+        
+        if (!enemy.isCharging) {
+             setTimeout(() => presentCombatOptions(enemy), 800);
+             return; 
+        }
+        
+        enemy.isCharging = false; 
+    }
+
         const enemyAttackPower = enemy.attack + seededRandomInt(-1, 1);
         const playerDefenseSoak = Math.floor(effectiveStats.might / 3);
         const damageToPlayer = Math.max(0, enemyAttackPower - playerDefenseSoak - damageReduction);
