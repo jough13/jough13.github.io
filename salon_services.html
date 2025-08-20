@@ -436,7 +436,7 @@
         </div>
         <div class="input-group" style="margin-top: 1rem;">
             <label for="service-description-textarea">Description:</label>
-            <textarea id="service-description-textarea" rows="3"></textarea>
+            <textarea id="service-description-textarea" rows="3" placeholder="e.g., A detailed description of the service, including the process, products used, and expected results."></textarea>
         </div>
         
         <h3>Performed By:</h3>
@@ -486,12 +486,12 @@
         ];
         const defaultData = {
             salonState: {
-                services: [
-                    { name: "Haircut & Style", note: null, duration: "1 hour", priceRange: "$85+", description: "" }, 
-                    { name: "Full Color", note: null, duration: "2-3 hours", priceRange: "", description: "" },
-                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" }, duration: "3-5 hours", priceRange: "$275+", description: "A freehand painting technique for natural, sun-kissed highlights." }, 
-                    { name: "Keratin Treatment", note: null, duration: "", priceRange: "", description: "" }
-                ],
+		services: [
+                    { name: "Haircut & Style", note: null, duration: "", priceRange: "", description: "" },
+                    { name: "Full Color", note: null, duration: "", priceRange: "", description: "" },
+                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" }, duration: "", priceRange: "", description: "" },
+                    { name: "Keratin Treatment", note: null, duration: "", priceRange: "", description: "" }
+                ],
                 stylists: [{
                     name: "Alex Chen", level: "Level Five", note: null, photo: null, bio: "", avatarColor: null, services: [
                         { checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null },
@@ -1221,9 +1221,35 @@ const showServiceDetailsModal = (serviceIndex) => {
         colorPalette.appendChild(cancelBox);
 
         document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => hideModal(btn.closest('.modal-popup'))));
-        document.getElementById('add-stylist-btn').addEventListener('click', () => { const name = newStylistInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) }); recordChange(newState); showToast(`Stylist "${name}" added.`, 'success'); newStylistInput.value = ''; });
-        document.getElementById('add-service-btn').addEventListener('click', () => { const name = newServiceInput.value.trim(); if (!name) return; const newState = deepClone(stateHistory[currentStateIndex]); newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" }); newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null })); recordChange(newState); showToast(`Service "${name}" added.`, 'success'); newServiceInput.value = ''; });
-        document.getElementById('save-btn').addEventListener('click', () => saveData(true));
+
+        document.getElementById('add-stylist-btn').addEventListener('click', () => {
+            const name = newStylistInput.value.trim();
+            if (!name) {
+                showToast("Please enter a stylist name first.", "error");
+                return;
+            }
+            const newState = deepClone(stateHistory[currentStateIndex]);
+            newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) });
+            recordChange(newState);
+            showToast(`Stylist "${name}" added.`, 'success');
+            newStylistInput.value = '';
+        });
+
+        document.getElementById('add-service-btn').addEventListener('click', () => {
+            const name = newServiceInput.value.trim();
+            if (!name) {
+                showToast("Please enter a service name first.", "error");
+                return;
+            }
+            const newState = deepClone(stateHistory[currentStateIndex]);
+            newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" });
+            newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
+            recordChange(newState);
+            showToast(`Service "${name}" added.`, 'success');
+            newServiceInput.value = '';
+        });
+
+	document.getElementById('save-btn').addEventListener('click', () => saveData(true));
         document.getElementById('export-btn').addEventListener('click', () => { saveData(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([localStorage.getItem(LOCAL_STORAGE_KEY)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
         document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data?.salonState && data?.timestamp) { stateHistory = [data.salonState]; currentStateIndex = 0; lastUpdatedSpan.textContent = data.timestamp; updateDisplay(); updateUndoRedoButtons(); saveData(); showToast('Data imported!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
