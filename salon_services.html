@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.36 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.37 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -486,12 +486,12 @@
         ];
         const defaultData = {
             salonState: {
-		services: [
-                    { name: "Haircut & Style", note: null, duration: "", priceRange: "", description: "" },
-                    { name: "Full Color", note: null, duration: "", priceRange: "", description: "" },
-                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" }, duration: "", priceRange: "", description: "" },
-                    { name: "Keratin Treatment", note: null, duration: "", priceRange: "", description: "" }
-                ],
+                services: [
+                    { name: "Haircut & Style", note: null, duration: "", priceRange: "", description: "" },
+                    { name: "Full Color", note: null, duration: "", priceRange: "", description: "" },
+                    { name: "Balayage", note: { text: "Requires consultation.", color: "#e0c4ff", border: "none" }, duration: "", priceRange: "", description: "" },
+                    { name: "Keratin Treatment", note: null, duration: "", priceRange: "", description: "" }
+                ],
                 stylists: [{
                     name: "Alex Chen", level: "Level Five", note: null, photo: null, bio: "", avatarColor: null, services: [
                         { checked: true, price: "85.00", note: null }, { checked: true, price: "150.00", note: null },
@@ -549,8 +549,6 @@
             modalBackdrop.style.display = 'block';
             popup.style.display = 'block';
             
-            // Use requestAnimationFrame to ensure the browser has processed the display change
-            // and new content before adding the 'visible' class to start the animation.
             requestAnimationFrame(() => {
                 modalBackdrop.classList.add('visible');
                 popup.classList.add('visible');
@@ -673,131 +671,128 @@
             showModal(popup);
         };
 
-const showProfileModal = (stylistIndex) => {
-            const popup = document.getElementById('profile-popup');
-            const salonState = stateHistory[currentStateIndex];
-            const stylist = salonState.stylists[stylistIndex];
-            if (!stylist) return;
+        const showProfileModal = (stylistIndex) => {
+            const popup = document.getElementById('profile-popup');
+            const salonState = stateHistory[currentStateIndex];
+            const stylist = salonState.stylists[stylistIndex];
+            if (!stylist) return;
 
-            const photoEl = document.getElementById('profile-photo');
-            const nameWrapper = document.getElementById('profile-name-wrapper');
-            const nameEl = document.getElementById('profile-name');
-            const editNameBtn = document.getElementById('profile-edit-name-btn');
-            const levelEl = document.getElementById('profile-level');
-            const bioTextarea = document.getElementById('profile-bio-textarea');
-            const changePhotoBtn = document.getElementById('profile-change-photo-btn');
-            const deletePhotoBtn = document.getElementById('profile-delete-photo-btn');
-            const saveBioBtn = document.getElementById('profile-save-bio-btn');
-            const changeColorBtn = document.getElementById('profile-change-color-btn');
-            const profilePalette = document.getElementById('profile-color-palette');
-            
-            const existingInput = popup.querySelector('.profile-details > .name-input');
-            if (existingInput) {
-                existingInput.replaceWith(nameWrapper);
-            }
-            nameEl.textContent = stylist.name;
-            
-            // --- CHANGE START ---
-            // Make the level text editable by adding the correct classes and data
-            levelEl.textContent = stylist.level || 'Add Level';
-            levelEl.className = 'editable level-text';
-            levelEl.dataset.stylistIndex = stylistIndex;
-            // --- CHANGE END ---
-            
-            photoEl.src = generateAvatar(stylist);
-            bioTextarea.value = stylist.bio || '';
-            profilePalette.style.display = 'none';
+            const photoEl = document.getElementById('profile-photo');
+            const nameWrapper = document.getElementById('profile-name-wrapper');
+            const nameEl = document.getElementById('profile-name');
+            const editNameBtn = document.getElementById('profile-edit-name-btn');
+            const levelEl = document.getElementById('profile-level');
+            const bioTextarea = document.getElementById('profile-bio-textarea');
+            const changePhotoBtn = document.getElementById('profile-change-photo-btn');
+            const deletePhotoBtn = document.getElementById('profile-delete-photo-btn');
+            const saveBioBtn = document.getElementById('profile-save-bio-btn');
+            const changeColorBtn = document.getElementById('profile-change-color-btn');
+            const profilePalette = document.getElementById('profile-color-palette');
+            
+            const existingInput = popup.querySelector('.profile-details > .name-input');
+            if (existingInput) {
+                existingInput.replaceWith(nameWrapper);
+            }
+            nameEl.textContent = stylist.name;
+            
+            levelEl.textContent = stylist.level || 'Add Level';
+            levelEl.className = 'editable level-text';
+            levelEl.dataset.stylistIndex = stylistIndex;
+            
+            photoEl.src = generateAvatar(stylist);
+            bioTextarea.value = stylist.bio || '';
+            profilePalette.style.display = 'none';
 
-            editNameBtn.onclick = () => {
-                const originalText = nameEl.textContent;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.style.fontSize = '1.5rem';
-                input.value = originalText;
-                nameWrapper.replaceWith(input);
-                setTimeout(() => input.focus(), 100); // Also apply mobile fix here!
-                
-                const saveName = () => {
-                    const newText = input.value.trim();
-                    if (newText && newText !== originalText) {
-                        const newState = deepClone(stateHistory[currentStateIndex]);
-                        newState.stylists[stylistIndex].name = newText;
-                        recordChange(newState);
-                        showToast("Name updated.", "success");
-                        nameEl.textContent = newText;
-                    } else {
-                        nameEl.textContent = originalText;
-                    }
-                    input.replaceWith(nameWrapper);
-                };
-                input.addEventListener('blur', saveName, { once: true });
-                input.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') e.target.blur();
-                    if (e.key === 'Escape') {
-                        input.value = originalText;
-                        e.target.blur();
-                    }
-                });
-            };
-            
-            changePhotoBtn.onclick = () => photoUploadInput.click();
-            
-            photoUploadInput.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (readEvent) => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].photo = readEvent.target.result;
-                    photoEl.src = readEvent.target.result;
-                    recordChange(newState);
-                    showToast("Photo updated.", "success");
-                };
-                reader.readAsDataURL(file);
-                e.target.value = '';
-            };
+            editNameBtn.onclick = () => {
+                const originalText = nameEl.textContent;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'name-input';
+                input.style.fontSize = '1.5rem';
+                input.value = originalText;
+                nameWrapper.replaceWith(input);
+                setTimeout(() => input.focus(), 100);
+                
+                const saveName = () => {
+                    const newText = input.value.trim();
+                    if (newText && newText !== originalText) {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.stylists[stylistIndex].name = newText;
+                        recordChange(newState);
+                        showToast("Name updated.", "success");
+                        nameEl.textContent = newText;
+                    } else {
+                        nameEl.textContent = originalText;
+                    }
+                    input.replaceWith(nameWrapper);
+                };
+                input.addEventListener('blur', saveName, { once: true });
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') e.target.blur();
+                    if (e.key === 'Escape') {
+                        input.value = originalText;
+                        e.target.blur();
+                    }
+                });
+            };
+            
+            changePhotoBtn.onclick = () => photoUploadInput.click();
+            
+            photoUploadInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (readEvent) => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists[stylistIndex].photo = readEvent.target.result;
+                    photoEl.src = readEvent.target.result;
+                    recordChange(newState);
+                    showToast("Photo updated.", "success");
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            };
 
-            deletePhotoBtn.onclick = () => {
-                const newState = deepClone(stateHistory[currentStateIndex]);
-                newState.stylists[stylistIndex].photo = null;
-                photoEl.src = generateAvatar(newState.stylists[stylistIndex]);
-                recordChange(newState);
-                showToast("Photo removed.", "info");
-            };
-            
-            changeColorBtn.onclick = () => {
-                profilePalette.style.display = profilePalette.style.display === 'flex' ? 'none' : 'flex';
-            };
-            
-            profilePalette.innerHTML = '';
-            NOTE_COLORS.forEach(c => {
-                const box = document.createElement('div');
-                box.className = 'color-box';
-                box.style.backgroundColor = c.color;
-                box.style.border = c.border || '2px solid transparent';
-                box.onclick = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].avatarColor = c.color;
-                    photoEl.src = generateAvatar(newState.stylists[stylistIndex]);
-                    recordChange(newState);
-                    showToast("Avatar color changed.", "success");
-                    profilePalette.style.display = 'none';
-                };
-                profilePalette.appendChild(box);
-            });
+            deletePhotoBtn.onclick = () => {
+                const newState = deepClone(stateHistory[currentStateIndex]);
+                newState.stylists[stylistIndex].photo = null;
+                photoEl.src = generateAvatar(newState.stylists[stylistIndex]);
+                recordChange(newState);
+                showToast("Photo removed.", "info");
+            };
+            
+            changeColorBtn.onclick = () => {
+                profilePalette.style.display = profilePalette.style.display === 'flex' ? 'none' : 'flex';
+            };
+            
+            profilePalette.innerHTML = '';
+            NOTE_COLORS.forEach(c => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = c.color;
+                box.style.border = c.border || '2px solid transparent';
+                box.onclick = () => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists[stylistIndex].avatarColor = c.color;
+                    photoEl.src = generateAvatar(newState.stylists[stylistIndex]);
+                    recordChange(newState);
+                    showToast("Avatar color changed.", "success");
+                    profilePalette.style.display = 'none';
+                };
+                profilePalette.appendChild(box);
+            });
 
-            saveBioBtn.onclick = () => {
-                const newState = deepClone(stateHistory[currentStateIndex]);
-                newState.stylists[stylistIndex].bio = bioTextarea.value;
-                recordChange(newState);
-                showToast("Bio saved.", "success");
-            };
-            
-            showModal(popup);
-        };
+            saveBioBtn.onclick = () => {
+                const newState = deepClone(stateHistory[currentStateIndex]);
+                newState.stylists[stylistIndex].bio = bioTextarea.value;
+                recordChange(newState);
+                showToast("Bio saved.", "success");
+            };
+            
+            showModal(popup);
+        };
         
-const showServiceDetailsModal = (serviceIndex) => {
+        const showServiceDetailsModal = (serviceIndex) => {
             const popup = document.getElementById('service-details-popup');
             const salonState = stateHistory[currentStateIndex];
             const service = salonState.services[serviceIndex];
@@ -1074,109 +1069,108 @@ const showServiceDetailsModal = (serviceIndex) => {
             recordChange(newState);
         });
 
-mainContentContainer.addEventListener('click', (event) => {
-            const target = event.target;
-            if (target.matches('.profile-link')) {
-                clearTimeout(clickTimer);
-                const row = parseInt(target.closest('[data-row]').dataset.row);
-                showProfileModal(row);
-                return;
-            }
-            const cell = target.closest('td, th, .stylist-card-header, .service-item');
-            if (!cell) return;
-            if (isPlacingNote) {
-                if (!selectedNoteColor) return showToast("Please select a color first!", 'error');
-                const row = cell.closest('[data-row]') ? parseInt(cell.closest('[data-row]').dataset.row) : -1;
-                const col = parseInt(cell.dataset.col);
-                showNoteEntryPopup(row, col);
-                return;
-            }
-            if (target.closest('.sort-arrow')) {
-                sortData(target.closest('.sortable').dataset.sort);
-            } else if (target.matches('.editable') && target.closest('th')) {
-                clearTimeout(clickTimer);
-                clickTimer = setTimeout(() => {
-                    const colIndex = parseInt(target.closest('th').dataset.col) - 1;
-                    showServiceDetailsModal(colIndex);
-                }, 250);
-            } else if (target.matches('.editable.level-text')) {
-                let stylistIndex;
-                const rowEl = target.closest('[data-row]');
-                
-                if (rowEl) { // Click was in the main table or mobile card view
-                    stylistIndex = parseInt(rowEl.dataset.row);
-                } else if (target.dataset.stylistIndex) { // Click was in the profile modal
-                    stylistIndex = parseInt(target.dataset.stylistIndex);
-                } else {
-                    return; // Could not determine which stylist to edit
-                }
+        mainContentContainer.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target.matches('.profile-link')) {
+                clearTimeout(clickTimer);
+                const row = parseInt(target.closest('[data-row]').dataset.row);
+                showProfileModal(row);
+                return;
+            }
+            const cell = target.closest('td, th, .stylist-card-header, .service-item');
+            if (!cell) return;
+            if (isPlacingNote) {
+                if (!selectedNoteColor) return showToast("Please select a color first!", 'error');
+                const row = cell.closest('[data-row]') ? parseInt(cell.closest('[data-row]').dataset.row) : -1;
+                const col = parseInt(cell.dataset.col);
+                showNoteEntryPopup(row, col);
+                return;
+            }
+            if (target.closest('.sort-arrow')) {
+                sortData(target.closest('.sortable').dataset.sort);
+            } else if (target.matches('.editable') && target.closest('th')) {
+                clearTimeout(clickTimer);
+                clickTimer = setTimeout(() => {
+                    const colIndex = parseInt(target.closest('th').dataset.col) - 1;
+                    showServiceDetailsModal(colIndex);
+                }, 250);
+            } else if (target.matches('.editable.level-text')) {
+                let stylistIndex;
+                const rowEl = target.closest('[data-row]');
+                
+                if (rowEl) { // Click was in the main table or mobile card view
+                    stylistIndex = parseInt(rowEl.dataset.row);
+                } else if (target.dataset.stylistIndex) { // Click was in the profile modal
+                    stylistIndex = parseInt(target.dataset.stylistIndex);
+                } else {
+                    return; // Could not determine which stylist to edit
+                }
 
-                const originalText = target.textContent;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.value = originalText === 'Add Level' ? '' : originalText;
-                target.replaceWith(input);
+                const originalText = target.textContent;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'name-input';
+                input.value = originalText === 'Add Level' ? '' : originalText;
+                target.replaceWith(input);
 
-                setTimeout(() => input.focus(), 100);
+                setTimeout(() => input.focus(), 100);
 
-                const save = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].level = input.value.trim() || originalText;
-                    recordChange(newState);
-                };
-                input.addEventListener('blur', save);
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-            } else if (target.matches('.service-name.editable')) {
-                if (target.closest('.stylist-card-body')) { // Ensure we are on mobile view
-                    const serviceItem = target.closest('.service-item');
-                    const col = parseInt(serviceItem.dataset.col);
-                    const originalText = target.textContent;
+                const save = () => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    newState.stylists[stylistIndex].level = input.value.trim() || originalText;
+                    recordChange(newState);
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            } else if (target.matches('.service-name.editable')) {
+                if (target.closest('.stylist-card-body')) { // Ensure we are on mobile view
+                    const serviceItem = target.closest('.service-item');
+                    const col = parseInt(serviceItem.dataset.col);
+                    const originalText = target.textContent;
 
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText;
-                    target.replaceWith(input);
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'name-input';
+                    input.value = originalText;
+                    target.replaceWith(input);
 
-                    setTimeout(() => input.focus(), 100); // Apply same mobile focus fix
+                    setTimeout(() => input.focus(), 100);
 
-                    const save = () => {
-                        const newText = input.value.trim();
-                        if (newText && newText !== originalText) {
-                            const newState = deepClone(stateHistory[currentStateIndex]);
-                            newState.services[col - 1].name = newText;
-                            recordChange(newState);
-                        } else {
-                            updateDisplay(); // Just redraw to cancel the edit
-                        }
-                    };
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                }
-} else if (target.matches('.price-text')) {
-                const row = parseInt(target.closest('[data-row]').dataset.row);
-                const col = parseInt(target.closest('[data-col]').dataset.col);
-                const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
-                const input = document.createElement('input');
-                input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
-                target.replaceWith(input);
-                setTimeout(() => input.focus(), 100); // FIX: Added timeout for mobile keyboard
-                const save = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    const newPrice = input.value.trim();
-                    newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    recordChange(newState);
-                };
-                input.addEventListener('blur', save);
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-            
-            } else if (target.matches('.sticky-note')) {
-                const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
-                const col = parseInt(target.closest('[data-col]').dataset.col);
-                showNotePopup(row, col);
-            }
-        });
+                    const save = () => {
+                        const newText = input.value.trim();
+                        if (newText && newText !== originalText) {
+                            const newState = deepClone(stateHistory[currentStateIndex]);
+                            newState.services[col - 1].name = newText;
+                            recordChange(newState);
+                        } else {
+                            updateDisplay();
+                        }
+                    };
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+                }
+            } else if (target.matches('.price-text')) {
+                const row = parseInt(target.closest('[data-row]').dataset.row);
+                const col = parseInt(target.closest('[data-col]').dataset.col);
+                const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
+                const input = document.createElement('input');
+                input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
+                target.replaceWith(input);
+                setTimeout(() => input.focus(), 100);
+                const save = () => {
+                    const newState = deepClone(stateHistory[currentStateIndex]);
+                    const newPrice = input.value.trim();
+                    newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
+                    recordChange(newState);
+                };
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            } else if (target.matches('.sticky-note')) {
+                const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
+                const col = parseInt(target.closest('[data-col]').dataset.col);
+                showNotePopup(row, col);
+            }
+        });
 
         mainContentContainer.addEventListener('dblclick', (event) => {
             const target = event.target;
@@ -1272,34 +1266,34 @@ mainContentContainer.addEventListener('click', (event) => {
 
         document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => hideModal(btn.closest('.modal-popup'))));
 
-        document.getElementById('add-stylist-btn').addEventListener('click', () => {
-            const name = newStylistInput.value.trim();
-            if (!name) {
-                showToast("Please enter a stylist name first.", "error");
-                return;
-            }
-            const newState = deepClone(stateHistory[currentStateIndex]);
-            newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) });
-            recordChange(newState);
-            showToast(`Stylist "${name}" added.`, 'success');
-            newStylistInput.value = '';
-        });
+        document.getElementById('add-stylist-btn').addEventListener('click', () => {
+            const name = newStylistInput.value.trim();
+            if (!name) {
+                showToast("Please enter a stylist name first.", "error");
+                return;
+            }
+            const newState = deepClone(stateHistory[currentStateIndex]);
+            newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) });
+            recordChange(newState);
+            showToast(`Stylist "${name}" added.`, 'success');
+            newStylistInput.value = '';
+        });
 
-        document.getElementById('add-service-btn').addEventListener('click', () => {
-            const name = newServiceInput.value.trim();
-            if (!name) {
-                showToast("Please enter a service name first.", "error");
-                return;
-            }
-            const newState = deepClone(stateHistory[currentStateIndex]);
-            newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" });
-            newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
-            recordChange(newState);
-            showToast(`Service "${name}" added.`, 'success');
-            newServiceInput.value = '';
-        });
+        document.getElementById('add-service-btn').addEventListener('click', () => {
+            const name = newServiceInput.value.trim();
+            if (!name) {
+                showToast("Please enter a service name first.", "error");
+                return;
+            }
+            const newState = deepClone(stateHistory[currentStateIndex]);
+            newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" });
+            newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
+            recordChange(newState);
+            showToast(`Service "${name}" added.`, 'success');
+            newServiceInput.value = '';
+        });
 
-	document.getElementById('save-btn').addEventListener('click', () => saveData(true));
+        document.getElementById('save-btn').addEventListener('click', () => saveData(true));
         document.getElementById('export-btn').addEventListener('click', () => { saveData(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([localStorage.getItem(LOCAL_STORAGE_KEY)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
         document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); if (data?.salonState && data?.timestamp) { stateHistory = [data.salonState]; currentStateIndex = 0; lastUpdatedSpan.textContent = data.timestamp; updateDisplay(); updateUndoRedoButtons(); saveData(); showToast('Data imported!', 'success'); } else showToast('Error: Invalid file format.', 'error'); } catch (error) { showToast('Error reading file.', 'error'); } }; reader.readAsText(file); event.target.value = ''; });
