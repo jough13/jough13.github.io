@@ -10,144 +10,277 @@
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 
     <style>
-        /* --- General Styling & Cozy Theme --- */
+
+.no-transition * {
+  transition: none !important;
+}
         
-        :root {
-            /* Color Palette */
-            --parchment-bg: #FAF3E0;
-            --ink-text: #362f2f;
-            --header-accent: #6a040f;
-            --shadow-color: rgba(0, 0, 0, 0.1);
-            --divider-color: rgba(54, 47, 47, 0.4);
-            --subtle-text: #8c7d5d; /* Color for footer */
-        }
+/* --- General Styling & Color Theme --- */
 
-        body {
-            font-family: 'Lora', Georgia, serif;
-            background-color: #eaddc7;
-            color: var(--ink-text);
-            line-height: 1.7;
-            font-size: 18px;
-            margin: 0;
-            padding: 2rem 1rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
+:root {
+    /* Light Mode (Default) */
+    --bg-color: #eaddc7;
+    --page-color: #FAF3E0;
+    --text-color: #362f2f;
+    --header-accent: #6a040f;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --divider-color: rgba(54, 47, 47, 0.4);
+    --subtle-text: #8c7d5d;
+    --border-color: #DCD0B3;
+    --accent-green: #8FBC8F; /* Subtle green for light mode */
+    --accent-blue: #ADD8E6;  /* Subtle blue for light mode */
+}
 
-        /* --- Story Container --- */
+html.dark-mode {
+    /* Dark Mode Theme */
+    --bg-color: #1e272c; /* Dark blue-grey */
+    --page-color: #11181b; /* Even darker */
+    --text-color: #f0ead6; /* Light off-white / cream */
+    --header-accent: #ffd700; /* Gold */
+    --shadow-color: rgba(0, 0, 0, 0.6);
+    --divider-color: rgba(240, 234, 214, 0.4);
+    --subtle-text: #a8a19a; /* Muted tan */
+    --border-color: #384247; /* Darker grey-blue */
+    --accent-green: #556b2f; /* Dark olive green */
+    --accent-blue: #204060;  /* Darker blue */
+}
 
-        .story-container {
-            background-color: var(--parchment-bg);
-            max-width: 800px;
-            width: 100%;
-            padding: 3rem 4rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px var(--shadow-color);
-            border: 1px solid #DCD0B3;
-        }
+body {
+    font-family: 'Lora', Georgia, serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.7;
+    font-size: 18px;
+    margin: 0;
+    padding: 2rem 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    opacity: 0; /* Hide the body initially */
+    transition: opacity 0.4s ease-in-out; /* Add a smooth fade-in effect */
+}
 
-        @media (max-width: 768px) {
-            body {
-                padding: 1rem 0.5rem;
-            }
-            .story-container {
-                padding: 2rem 1.5rem;
-            }
-        }
+/* --- Story Container --- */
 
-        /* --- Typography & Content Styling --- */
+.story-container {
+    background-color: var(--page-color);
+    max-width: 800px;
+    width: 100%;
+    padding: 3rem 4rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px var(--shadow-color);
+    border: 1px solid var(--accent-green); /* Use green accent for the main border */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    position: relative;
+}
 
-        header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-            border-bottom: 1px solid #DCD0B3;
-            padding-bottom: 1.5rem;
-        }
+@media (max-width: 768px) {
+    body {
+        padding: 1rem 0.5rem;
+    }
+    .story-container {
+        padding: 2rem 1.5rem;
+    }
+}
 
-        h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 3.5rem;
-            color: var(--header-accent);
-            margin: 0;
-            font-weight: 700;
-        }
-        
-        .author {
-            font-size: 1.1rem;
-            font-style: italic;
-            color: #5c5c5c;
-            margin-top: 0.5rem;
-        }
+/* --- Typography & Content Styling --- */
 
-        article p {
-            margin-bottom: 1.5em;
-            text-align: justify;
-        }
-        
-        article p:first-of-type::first-letter {
-            font-family: 'Playfair Display', serif;
-            float: left;
-            font-size: 5rem;
-            line-height: 0.8;
-            padding-right: 0.75rem;
-            color: var(--header-accent);
-        }
-        
-        /* --- Scene Break Ornament --- */
+header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.5rem;
+    transition: border-color 0.3s ease;
+}
 
-        .scene-break {
-            border: 0;
-            text-align: center;
-            margin: 3rem 0;
-            position: relative;
-        }
+h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    color: var(--header-accent);
+    margin: 0;
+    font-weight: 700;
+    transition: color 0.3s ease;
+}
 
-        .scene-break::before {
-            content: '';
-            display: block;
-            width: 100%;
-            height: 1px;
-            background-image: linear-gradient(to right, 
-                transparent, 
-                var(--divider-color), 
-                transparent
-            );
-        }
+.author {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--subtle-text);
+    margin-top: 0.5rem;
+}
 
-        .scene-break::after {
-            content: '❖';
-            position: absolute;
-            top: -0.7em;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: var(--parchment-bg);
-            color: var(--divider-color);
-            padding: 0 0.5em;
-            font-size: 1.5rem;
-        }
+article p {
+    margin-bottom: 1.5em;
+    text-align: justify;
+}
 
-        /* --- Footer Styling (NEW) --- */
-        
-        footer {
-            text-align: center;
-            margin-top: 4rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #DCD0B3;
-            font-size: 0.9rem; /* Smaller for subtlety */
-            color: var(--subtle-text); /* Muted color */
-        }
+article p:first-of-type::first-letter {
+    font-family: 'Playfair Display', serif;
+    float: left;
+    font-size: 5rem;
+    line-height: 0.8;
+    padding-right: 0.75rem;
+    color: var(--header-accent);
+    transition: color 0.3s ease;
+}
 
-        footer p {
-            margin: 0;
-        }
+/* --- Scene Break Ornament --- */
+
+.scene-break {
+    border: 0;
+    text-align: center;
+    margin: 3rem 0;
+    position: relative;
+}
+
+.scene-break::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1px;
+    background-image: linear-gradient(to right, 
+        transparent, 
+        var(--accent-blue),
+        var(--divider-color),
+        var(--accent-blue), 
+        transparent
+    );
+}
+
+.scene-break::after {
+    content: '❖';
+    position: absolute;
+    top: -0.7em;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--page-color);
+    color: var(--divider-color);
+    padding: 0 0.5em;
+    font-size: 1.5rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- Footer Styling --- */
+
+footer {
+    text-align: center;
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    color: var(--subtle-text);
+    transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+footer p {
+    margin: 0;
+}
+
+/* --- Dark Mode Toggle Switch --- */
+.theme-switch-wrapper {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.theme-switch {
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    width: 50px;
+}
+
+.theme-switch input {
+    display:none;
+}
+
+.slider {
+    background-color: #ccc;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    background-color: #fff;
+    bottom: 4px;
+    content: "";
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .4s;
+    width: 16px;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--header-accent);
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* --- Subtle Green and Blue Accents --- */
+.story-container {
+    border: 1px solid var(--accent-light-1); /* Subtle green border in light mode */
+}
+
+body.dark-mode .story-container {
+    border: 1px solid var(--accent-dark-1); /* Dark olive green border in dark mode */
+}
+
+.scene-break::before {
+    background-image: linear-gradient(to right,
+        transparent,
+        var(--accent-light-2), /* Subtle blue in light mode */
+        var(--divider-color-light),
+        var(--accent-light-2),
+        transparent
+    );
+}
+
+body.dark-mode .scene-break::before {
+    background-image: linear-gradient(to right,
+        transparent,
+        var(--accent-dark-2), /* Darker blue in dark mode */
+        var(--divider-color-dark),
+        var(--accent-dark-2),
+        transparent
+    );
+}
 
     </style>
+
+<script>
+    (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark-mode') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    })();
+</script>
+
 </head>
 <body>
 
     <div class="story-container">
+        
+        <div class="theme-switch-wrapper">
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider round"></div>
+            </label>
+        </div>
+
         <header>
             <h1>Whispers of Respite</h1>
             </header>
@@ -289,7 +422,7 @@
                 <p>Elara Vance's form solidified last, becoming fully opaque just as Thomas did. She gasped softly as the luminous, impossible cloudscape she'd been effortlessly rendering vanished mid-stroke, the magical brush evaporating. Her hands felt shockingly empty; instinctively, she rubbed her thumb across her fingertips, a subconscious echo of adjusting the grip on a well-worn brush handle or feeling the faceted edges of a charcoal stick. Flexing slightly as if seeking the familiar weight of a real tool, she stared down at her own paint-free fingers, undeniably solid. The phantom air was replaced abruptly by the faint, sharp scent of fixative that always seemed to linger in her studio. Bewildered intensity replaced rapt wonder on her face as the memory of struggle surged back – the satisfyingly messy smudge of pigment under her palm, the precise layering needed for atmospheric depth, the vital imperfections that gave her work life – frustrating, vital, and unmistakably hers.</p>
                 <p>Their own memories surged back, no longer distant whispers but demanding presences – imperfect, complex, laden with anxieties and attachments, yet undeniably theirs. They looked around, truly seeing each other, seeing Elias and the weeping Mrs. Gable, their faces reflecting a shared, dawning awareness. As their individual anchors to reality strengthened, the Book of Endless Comfort’s creation began to unravel completely, no longer fighting, but simply letting go with a profound, almost mournful sigh of receding magic. The perpetual afternoon sun flickered and died, snuffed out like the last candle on a birthday cake.</p>
                 <p>The landscape dissolved entirely into golden mist. "It's all right," Elias said quickly, his voice a calm anchor amidst the patrons' frightened confusion. Mrs. Gable was weeping openly now, clinging to his arm. Finnian looked pale and nauseous, Thomas stared wildly at the dissolving world, and Elara Vance seemed frozen, her wide eyes reflecting the fading golden light. "We're going home now. Back to the library. Stay close. Follow my voice." He focused on the memory of his office, his armchair, the solid weight of the checkout ledger, projecting a sense of safety and return.</p>
-                <p>The mist swirled, thinned, and receded. The scent of old paper filled Elias's nostrils, strong and real, and he smiled despite his weariness. They stood blinking in the library's soft light, looking pale, disoriented, and utterly lost after their sudden return to reality. Their trembling hands and wide, unfocused eyes spoke volumes. His own fatigue could wait. Seeing the fragile state of the others, Elias knew his work wasn't finished yet.</p>
+                <p>The mist swirled, thinned, and receded. The scent of old paper filled Elias's nostrils, strong and real, and he smiled despite his weariness. They stood blinking in the library's soft light, looking pale, disoriented, and utterly lost after their sudden return to reality. Their trembling hands and wide, unfocused eyes spoke volumes. His own fatigue could wait. Seeing the fragile state of the others, Elias knew his work was not finished yet.</p>
                 <p>Elias sprang into action, instincts overriding his own weariness. "Easy now," he murmured, guiding Mrs. Gable to a sturdy armchair (pointedly not the one associated with the book). He fetched warm woolen blankets from the closet and draped them around their trembling shoulders. He rushed downstairs, returning a moment later with a tray laden with his best teapot, real chamomile flowers steeping in hot water, honey, and simple biscuits. He poured tea into solid, mismatched mugs. He didn't push them to talk. Instead, he sat with them, offering them a quiet presence, and the simple ritual of a hot cup of tea with friends.</p>
                 <p>Later that evening, long after the last patron had left and the shaken returnees had been carefully seen home (Mrs. Gable already making determined plans for Lily’s cake, Finnian clutching his worn violin case, Thomas heading off to apologize profusely to his friend Mark), Elias stood before the 'Book of Endless Comfort' once more. He hesitated for a moment, then reached out and lifted the cover. The book’s pull was gone. The golden glow from the spine was softer, gentler. The scent was still there – chamomile, bread, linen – but fainter now, a suggestion, not a smothering. And on the cover, where before there had been only warm, blank leather, faint silver letters now shimmered, spelling out a new title: 'Whispers of Respite'. He sensed the change in its magic – no longer total replacement, but something bounded, contained, offering perhaps short, guided moments of peace, like a quick rest in a quiet garden, the path back always clearly visible. The book had learned.</p>
                 <p>Elias took the volume and placed it not back in its isolated corner, but on a special shelf behind his own desk, among all the other items that required more careful stewardship. It was still a tool, potentially valuable, but one to be offered with wisdom, understanding, and clear boundaries. A  sense of relief washed over him. </p>
@@ -298,10 +431,37 @@
         </main>
 
         <footer>
-            <p>Version 1.0 &bull; Last Updated: August 20, 2025 &bull; &copy; 2025 Jough Donakowski</p>
+            <p>Version 1.1 &bull; Last Updated: August 20, 2025 &bull; &copy; 2025 Jough Donakowski</p>
         </footer>
 
     </div>
+
+<script>
+    const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+
+    // Set the toggle to the correct state on page load
+    if (document.documentElement.classList.contains('dark-mode')) {
+        toggleSwitch.checked = true;
+    }
+
+    // Function to handle the theme switch
+    function switchTheme(e) {
+        if (e.target.checked) {
+            document.documentElement.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark-mode');
+        } else {
+            document.documentElement.classList.remove('dark-mode');
+            localStorage.setItem('theme', 'light-mode');
+        }    
+    }
+
+    toggleSwitch.addEventListener('change', switchTheme, false);
+
+    // Wait for fonts to be loaded, then fade in the page
+    document.fonts.ready.then(function () {
+        document.body.style.opacity = 1;
+    });
+</script>
 
 </body>
 </html>
