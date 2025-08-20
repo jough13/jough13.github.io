@@ -3894,124 +3894,204 @@ const EquilibriumCalculator = ({ radionuclides }) => {
         };
 
 /**
- * @description A calculator for determining Critical Level (Lc), Detection Limit (Ld), and 
- * Minimum Detectable Activity (MDA) for a static sample.
+ * @description A unified calculator for determining detection limits for both
+ * MARSSIM-compliant static counts and scanning surveys.
  */
 const MDACalculator = () => {
-    // --- STATE MANAGEMENT FOR INPUTS ---
-    const [backgroundRate, setBackgroundRate] = React.useState('60');
-    const [backgroundRateUnit, setBackgroundRateUnit] = React.useState('cpm');
-    const [countTime, setCountTime] = React.useState('1');
-    const [countTimeUnit, setCountTimeUnit] = React.useState('minutes');
-    const [efficiency, setEfficiency] = React.useState('25');
-    
-    // --- STATE MANAGEMENT FOR OUTPUTS ---
+    // --- State to toggle between the two calculator modes ---
+    const [mdaMode, setMdaMode] = React.useState('static'); // 'static' or 'scan'
+
+    // --- REVISED: State for detailed Static MDA ---
+    const [backgroundCounts, setBackgroundCounts] = React.useState('1000');
+    const [backgroundTime, setBackgroundTime] = React.useState('10');
+    const [grossCounts, setGrossCounts] = React.useState('1100'); // Included for future use, not needed for MDA calc itself
+    const [grossTime, setGrossTime] = React.useState('1');
+    const [confidence, setConfidence] = React.useState('1.645'); // Corresponds to 95%
+    const [probeArea, setProbeArea] = React.useState('126');
+    const [instrumentEff, setInstrumentEff] = React.useState('22');
+    const [surfaceEff, setSurfaceEff] = React.useState('50');
+
+    // --- State for Scan MDC ---
+    const [scanBackground, setScanBackground] = React.useState('300');
+    const [scanSpeed, setScanSpeed] = React.useState('12.6');
+    const [hotspotDiameter, setHotspotDiameter] = React.useState('15');
+    const [dprime, setDprime] = React.useState('1.38');
+    const [surveyorEff, setSurveyorEff] = React.useState('0.5');
+
+    // --- Unified State for Results and Errors ---
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
-    const handleCalculate = () => {
-        // 1. --- Input Validation ---
-        const Rb_val = parseFloat(backgroundRate);
-        const t_val = parseFloat(countTime);
-        const eff_val = parseFloat(efficiency);
+    // --- Data for Selectable Options ---
+    const confidenceOptions = [
+        { value: '1.282', label: '90%' },
+        { value: '1.645', label: '95%' },
+        { value: '2.326', label: '99%' }
+    ];
+    const dprimeOptions = [
+        { value: '1.04', label: '1.04 (85% detection prob.)' },
+        { value: '1.28', label: '1.28 (90% detection prob.)' },
+        { value: '1.38', label: '1.38 (95% detection prob.)' }
+    ];
+    const surveyorEffOptions = [
+        { value: '0.5', label: '0.5 (Realistic default)' },
+        { value: '0.75', label: '0.75 (Highly trained/attentive)' }
+    ];
 
-        if (isNaN(Rb_val) || isNaN(t_val) || isNaN(eff_val) || Rb_val < 0 || t_val <= 0 || eff_val <= 0 || eff_val > 100) {
-            setError('Please enter valid, positive numbers for all fields. Efficiency must be between 0 and 100.');
-            setResult(null);
-            return;
+ // --- REVISED: Calculation Logic for detailed Static MDA ---
+    const handleStaticCalculate = () => {
+        const params = {
+            Cb: parseFloat(backgroundCounts), tb: parseFloat(backgroundTime),
+            Cg: parseFloat(grossCounts), tg: parseFloat(grossTime),
+            k: parseFloat(confidence), A: parseFloat(probeArea),
+            ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff)
+        };
+
+        if (Object.values(params).some(isNaN) || params.tb <= 0 || params.tg <= 0 || params.A <= 0 || params.ei <= 0 || params.es <= 0 ) {
+            setError('Please enter valid, positive numbers for all fields.');
+            setResult(null); return;
         }
         setError('');
 
-        // 2. --- Unit Conversion to Base Units (cps and seconds) ---
-        const t_seconds = t_val * (countTimeUnit === 'minutes' ? 60 : 1);
-        const Rb_cps = Rb_val / (backgroundRateUnit === 'cpm' ? 60 : 1);
-        const eff_decimal = eff_val / 100;
-
-        // 3. --- Perform Calculations ---
-        const B_total_counts = Rb_cps * t_seconds;
+        const rb = params.Cb / params.tb; // Background RATE in cpm or cps
         
-        // Critical Level (Lc) in counts
-        const Lc = 1.645 * Math.sqrt(B_total_counts);
-        
-        // Detection Limit (Ld) in counts (Currie approximation)
-        const Ld = 2.71 + 4.65 * Math.sqrt(B_total_counts);
-        
-        // Minimum Detectable Activity (MDA) in Becquerels (Bq)
-        const mda_bq = Ld / (eff_decimal * t_seconds);
+        // --- CORRECTED EFFICIENCY HANDLING ---
+        // Efficiencies are now handled as decimals throughout, as required by the formula.
+        const ei_dec = params.ei / 100.0;
+        const es_dec = params.es / 100.0;
+        const E_total = ei_dec * es_dec;
 
-        // Convert MDA to other common units
-        const mda_dpm = mda_bq * 60; // 1 Bq = 1 dps = 60 dpm
-        const mda_uCi = mda_bq / 37000; // 1 µCi = 37,000 Bq
-
+        const sigma = Math.sqrt(rb * params.tg * (1 + params.tg / params.tb));
+        const Lc = params.k * sigma;
+        const LLD = 2 * Lc + 3;
+        
+        // --- CORRECTED FORMULAS ---
+        // Now implementing your formula exactly: Rate * (100/Area) / Efficiencies
+        const net_rate_cpm = LLD / params.tg;
+        const MDA = net_rate_cpm * (100 / params.A) / E_total;
+        const backgroundActivity = rb * (100 / params.A) / E_total;
+        
         setResult({
+            type: 'static',
             Lc: Lc.toPrecision(3),
-            Ld: Ld.toPrecision(3),
-            mda_bq: mda_bq.toPrecision(3),
-            mda_dpm: mda_dpm.toPrecision(3),
-            mda_uCi: mda_uCi.toExponential(2)
+            LLD: LLD.toPrecision(3),
+            MDA: MDA.toPrecision(3),
+            backgroundActivity: backgroundActivity.toPrecision(3)
+        });
+    };
+    
+    // --- Calculation Logic for Scan MDC (Unchanged) ---
+    const handleScanCalculate = () => {
+        const params = {
+            b_cpm: parseFloat(scanBackground), area_cm2: parseFloat(probeArea),
+            eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff),
+            hs_diam_cm: parseFloat(hotspotDiameter), speed_cms: parseFloat(scanSpeed),
+            dp: parseFloat(dprime), p: parseFloat(surveyorEff)
+        };
+        if (Object.values(params).some(isNaN) || params.b_cpm < 0 || params.area_cm2 <= 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) {
+            setError('Please enter valid, positive numbers for all required fields.');
+            setResult(null); return;
+        }
+        setError('');
+        const b_cps = params.b_cpm / 60.0;
+        const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
+        const detector_width_cm = Math.sqrt(params.area_cm2);
+        const t_i = detector_width_cm / params.speed_cms;
+        const B_i = b_cps * t_i;
+        const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / t_i);
+        const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (params.area_cm2 / 100.0));
+        const background_activity = params.b_cpm / (E_total * (params.area_cm2 / 100.0));
+        
+        setResult({
+            type: 'scan', obs_interval: t_i.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3),
+            mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3),
+            background_activity: background_activity.toPrecision(3)
         });
     };
 
     return (
         <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">MDA & Critical Level Calculator</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For static sample counting.</p>
-                
-                <div className="space-y-4">
-                    {/* --- Input Fields --- */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Background Count Rate (R&darr;b)</label>
-                        <div className="flex gap-2 mt-1">
-                            <input type="number" value={backgroundRate} onChange={e => setBackgroundRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                            <select value={backgroundRateUnit} onChange={e => setBackgroundRateUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                <option value="cpm">CPM</option>
-                                <option value="cps">CPS</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (t)</label>
-                        <div className="flex gap-2 mt-1">
-                            <input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                            <select value={countTimeUnit} onChange={e => setCountTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                <option value="minutes">Minutes</option>
-                                <option value="seconds">Seconds</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Detector Efficiency (&epsilon;)</label>
-                        <div className="relative mt-1">
-                             <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">%</div>
-                        </div>
-                    </div>
-                    
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
-                    
-                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    
-                    {result && (
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-                            <div>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Critical Level (L&darr;c)</p>
-                                <p className="text-lg font-bold">{result.Lc} counts</p>
-                            </div>
-                            <div>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Detection Limit (L&darr;d)</p>
-                                <p className="text-lg font-bold">{result.Ld} counts</p>
-                            </div>
-                            <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Minimum Detectable Activity (MDA)</p>
-                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mda_bq} Bq</p>
-                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.mda_dpm} dpm / {result.mda_uCi} µCi</p>
-                            </div>
-                        </div>
-                    )}
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Detection Limit Calculator</h2>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => { setMdaMode('static'); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === 'static' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
+                    <button onClick={() => { setMdaMode('scan'); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === 'scan' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
                 </div>
+
+                {mdaMode === 'static' ? (
+                    // --- REVISED: Static MDA Form ---
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Background Counts</label><input type="number" value={backgroundCounts} onChange={e => setBackgroundCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Bkg. Count Time (min)</label><input type="number" value={backgroundTime} onChange={e => setBackgroundTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Gross Count Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div>
+                                <label className="block text-sm font-medium">Confidence Interval</label>
+                                <div className="flex items-center gap-2">
+                                    <select value={confidence} onChange={e => setConfidence(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{confidenceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                                    <input type="text" value={confidence} readOnly className="w-24 mt-1 p-2 rounded-md bg-slate-200 dark:bg-slate-800 text-center font-mono" title="k-value / z-score"/>
+                                </div>
+                            </div>
+                            <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        </div>
+                        <button onClick={handleStaticCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Static MDA</button>
+                    </div>
+                ) : (
+                    // --- Scan MDC Form ---
+                    <div className="space-y-4 animate-fade-in">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={scanBackground} onChange={e => setScanBackground(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Hot Spot Diameter (cm)</label><input type="number" value={hotspotDiameter} onChange={e => setHotspotDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        </div>
+                        <details className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50"><summary className="cursor-pointer text-sm font-semibold">Advanced Factors</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700"><div><label className="block text-sm font-medium">Detectability Index (d')</label><Tooltip text="Guidance from MARSSIM 6.7.2.1. Relates the desired probability of detecting a hot spot."><select value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{dprimeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div><div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><Tooltip text="Guidance from NUREG-1507, Sec. 6.6. Accounts for the human factor of the surveyor noticing an audible signal."><select value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{surveyorEffOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div></div></details>
+                        <button onClick={handleScanCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Scan MDC</button>
+                    </div>
+                )}
+                
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                
+                {/* --- Unified Results Display --- */}
+                {result && (
+                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
+                        {result.type === 'static' ? (
+                            <div className="space-y-3">
+                                <h3 className="text-lg font-bold text-center mb-2">Static Count Results</h3>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600">
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Critical Level (Lc):</span><span className="font-mono text-right">{result.Lc} net counts</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">LLD / Ld:</span><span className="font-mono text-right">{result.LLD} net counts</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.backgroundActivity} dpm/100cm²</span>
+                                </div>
+                                <div className="text-center pt-2">
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Minimum Detectable Activity (MDA)</p>
+                                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600">
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Observation Interval:</span><span className="font-mono text-right">{result.obs_interval} s</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Bkg. Counts in Interval:</span><span className="font-mono text-right">{result.bg_counts_in_interval} counts</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">MDCR (Surveyor):</span><span className="font-mono text-right">{result.mdcr} cpm</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.background_activity} dpm/100cm²</span>
+                                </div>
+                                <div className="text-center pt-2">
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Scan MDC</p>
+                                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.scan_mda}</p>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
