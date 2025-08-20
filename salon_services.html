@@ -1154,14 +1154,14 @@ mainContentContainer.addEventListener('click', (event) => {
                     input.addEventListener('blur', save);
                     input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
                 }
-            } else if (target.matches('.price-text')) {
+} else if (target.matches('.price-text')) {
                 const row = parseInt(target.closest('[data-row]').dataset.row);
                 const col = parseInt(target.closest('[data-col]').dataset.col);
                 const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
                 const input = document.createElement('input');
                 input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
                 target.replaceWith(input);
-                input.focus();
+                setTimeout(() => input.focus(), 100); // FIX: Added timeout for mobile keyboard
                 const save = () => {
                     const newState = deepClone(stateHistory[currentStateIndex]);
                     const newPrice = input.value.trim();
@@ -1170,6 +1170,7 @@ mainContentContainer.addEventListener('click', (event) => {
                 };
                 input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+            
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(target.closest('[data-col]').dataset.col);
