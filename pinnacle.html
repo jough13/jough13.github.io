@@ -7,16 +7,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Noto+Serif+SC:wght@400;700&display=swap');
 
-        /* * Define color variables for both dark (default) and light themes.
-         * The theme is applied by adding a `data-theme="light"` attribute to the <body>.
-        */
+        /* --- Color & Font Variables --- */
         :root {
-            /* Dark Theme (Default) */
+            /* Dark Theme Variables */
             --background-color: #1a1a1a;
             --text-color: #e8e8e8;
+            --text-muted-color: #888;
             --container-bg: #222222;
             --accent-red: #8B0000;
-            --accent-gold: #c5a05b;
             --shadow-color: rgba(0, 0, 0, 0.5);
             
             --font-body: 'Lora', serif;
@@ -24,12 +22,19 @@
         }
 
         [data-theme="light"] {
+            /* Light Theme Overrides */
             --background-color: #f4f1ea;
             --text-color: #2c2c2c;
+            --text-muted-color: #777;
             --container-bg: #ffffff;
             --accent-red: #a11d1d;
-            --accent-gold: #b3862f;
             --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* --- Anti-Flicker Fade-In Animation --- */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         body {
@@ -38,19 +43,28 @@
             color: var(--text-color);
             line-height: 1.8;
             margin: 0;
-            padding: 2rem 0; /* Add some padding for the toggle switch */
+            padding: 2rem 1rem;
             font-size: 1.1em;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             transition: background-color 0.3s, color 0.3s;
+            
+            /* Apply fade-in animation */
+            opacity: 0;
+            animation: fadeIn 0.8s ease-in-out forwards;
+        }
+        
+        /* ** CENTERING FIX ** */
+        /* This parent wrapper now controls the centering for both the story and footer */
+        main {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* This centers both children */
         }
 
         .story-container {
             max-width: 800px;
             width: 90%;
-            margin: 4rem 0;
+            margin: 4rem 0 2rem 0;
             padding: 3rem 4rem;
             background-color: var(--container-bg);
             border-left: 5px solid var(--accent-red);
@@ -59,6 +73,17 @@
             transition: background-color 0.3s, border-color 0.3s;
         }
         
+        h1 {
+            text-align: center;
+            font-family: var(--font-decorative);
+            font-weight: 700;
+            font-size: 2.5em;
+            color: var(--accent-red);
+            margin-bottom: 2rem;
+            line-height: 1.2;
+            transition: color 0.3s;
+        }
+
         .story-container p:first-of-type::first-letter {
             font-family: var(--font-decorative);
             color: var(--accent-red);
@@ -71,13 +96,20 @@
             transition: color 0.3s;
         }
         
-        .story-container p + p {
-            text-indent: 2em;
+        .story-container p + p { text-indent: 2em; }
+        p { margin-bottom: 1.5em; text-align: justify; }
+        
+        .page-footer {
+            padding: 1rem 0;
+            text-align: center;
         }
-
-        p {
-            margin-bottom: 1.5em;
-            text-align: justify;
+        
+        .page-footer p {
+            margin: 0;
+            font-size: 0.75em;
+            color: var(--text-muted-color);
+            opacity: 0.8;
+            transition: color 0.3s, opacity 0.3s;
         }
 
         /* --- Theme Toggle Switch --- */
@@ -85,8 +117,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            display: flex;
-            align-items: center;
+            z-index: 10;
         }
         .theme-switch {
             display: inline-block;
@@ -94,11 +125,9 @@
             position: relative;
             width: 50px;
         }
-        .theme-switch input {
-            display:none;
-        }
+        .theme-switch input { display:none; }
         .slider {
-            background-color: #333;
+            background-color: #ccc;
             bottom: 0;
             cursor: pointer;
             left: 0;
@@ -110,6 +139,7 @@
         }
         .slider:before {
             background-color: #fff;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
             bottom: 4px;
             content: "";
             height: 16px;
@@ -119,17 +149,14 @@
             width: 16px;
             border-radius: 50%;
         }
-        input:checked + .slider {
-            background-color: var(--accent-red);
-        }
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
+        input:checked + .slider { background-color: var(--accent-red); }
+        [data-theme="dark"] .slider { background-color: #333; }
+        input:checked + .slider:before { transform: translateX(26px); }
 
+        /* --- Responsive Design --- */
         @media (max-width: 768px) {
-            body {
-                font-size: 1em;
-            }
+            body { font-size: 1em; }
+            h1 { font-size: 2em; }
             .story-container {
                 padding: 2rem 1.5rem;
                 margin: 2rem 0;
@@ -142,7 +169,7 @@
         }
     </style>
 </head>
-<body data-theme="dark">
+<body data-theme="light">
 
     <div class="theme-switch-wrapper">
         <label class="theme-switch" for="checkbox">
@@ -151,60 +178,54 @@
         </label>
     </div>
 
-    <div class="story-container">
-        <p>Lobsang counted each chime the elevator made as it ascended the Pinnacle Tower. Twenty-seven. Twenty-eight. Each chime felt like a year of his life, a year spent away. A crisp, white envelope, bearing his parents' handwriting, had been delivered to his monastery while he was in deep meditation. Seven weeks ago, Lobsang thought, the memory a jarring intrusion into his otherwise tranquil existence. The world outside the monastery walls had changed dramatically over the decades, moving at a frenetic pace he was only beginning to grasp. Rinchen, his mentor, had warned him. And Rinchen, with his unwavering gaze, had reminded him of his duties. While the news of his brother, Tenzin's, grave illness was most unfortunate, a tragedy in itself, the Gompa Golden Monastery, perched high in the remote mountains, was in dire need of both hands to assist with repairs and, more pressingly, donations to ensure its survival. Lobsang had spent weeks in fervent prayer, wrestling with his conscience, meticulously planning, enduring travel, and now, finally, he was here. Fifty-two. Fifty-three. Ding!</p>
+    <main>
+        <div class="story-container">
+            <h1>The Price of a Heart</h1>
+            <p>Lobsang counted each chime the elevator made as it ascended the Pinnacle Tower. Twenty-seven. Twenty-eight. Each chime felt like a year of his life, a year spent away. A crisp, white envelope, bearing his parents' handwriting, had been delivered to his monastery while he was in deep meditation. Seven weeks ago, Lobsang thought, the memory a jarring intrusion into his otherwise tranquil existence. The world outside the monastery walls had changed dramatically over the decades, moving at a frenetic pace he was only beginning to grasp. Rinchen, his mentor, had warned him. And Rinchen, with his unwavering gaze, had reminded him of his duties. While the news of his brother, Tenzin's, grave illness was most unfortunate, a tragedy in itself, the Gompa Golden Monastery, perched high in the remote mountains, was in dire need of both hands to assist with repairs and, more pressingly, donations to ensure its survival. Lobsang had spent weeks in fervent prayer, wrestling with his conscience, meticulously planning, enduring travel, and now, finally, he was here. Fifty-two. Fifty-three. Ding!</p>
+            <p>The elevator doors slid open with a soft whoosh, revealing a hallway lined with vibrant orchids, their beauty a stark contrast to the austere simplicity of his monastic life. It was reminiscent of the path he walked each morning, lined with prayer flags fluttering in the wind, yet this hallway pulsed with a different energy; a hum of wealth and power. The receptionist, a young woman with styled hair and a practiced smile, saw his simple saffron and maroon robes and frowned briefly. Then, remembering Mr. Tenzin's cryptic instructions about a 'special visitor,' she decided this figure must surely be the man he was expecting, nodded curtly, and buzzed him through.</p>
+            <p>The door opened into a large, dimly lit office. Lobsang first thought the lighting inadequate, a flaw in the otherwise opulent design, but then he realized the subdued illumination might be intentional, creating an atmosphere of hushed intimacy. The door behind him closed with a click, sealing him in this unfamiliar world. Before he could even take a breath, a voice, rusty from disuse yet undeniably familiar, echoed across the room – his brother’s voice, the voice he hadn't heard in over twenty years.</p>
+            <p>“You didn’t have to come all this way, Lobsang. But… thank you.” A pause, filled only with the soft whir of the air conditioning. “Thank you. It’s… good to see you, after all this time.” Lobsang focused his gaze on his brother. Tenzin was seated in a large leather chair, his figure gaunt and thin, his skin unnaturally pale, almost translucent. The years, and clearly, the illness, had ravaged him. Lobsang, despite his spiritual training, felt a pang of sorrow, a flicker of the familial bond that had once been so strong. He collected himself, pushing down the emotion, and stepped forward, his bare feet silent on the plush carpet.</p>
+            <p>“They told me you are dying,” he said, his voice steady and even, betraying none of the turmoil within. A pause. And then: A laugh. A dry, brittle laugh. A laugh? He had not expected that reaction. “They say you have months, perhaps less. They wrote, in their carefully worded letter, 'If only you had another…'” Another what? What was the word they used? Oh. Yes, the clinical term. “'Another organ, a better one, a healthy one, you would live. You would have a chance.'”</p>
+            <p>Another pause, longer this time, and then laughter again. Stronger this time, with a hint of genuine amusement, a spark of the brother he remembered.</p>
+            <p>“Yes, brother! A new one would be great. Wonderful, in fact! Hah! But where in the world would I get one? These things aren’t common, you know. Not like buying rice at the market,” Tenzin said, his voice weak but laced with a familiar sarcasm. Lobsang drew a deep, steadying breath. Yes. This is precisely the moment. This was the plan.</p>
+            <p>“From me,” he said, his voice resolute. “From me. I will give it to you. For you.”</p>
+            <p>Tenzin stared at him, his eyes wide with disbelief. “I…. brother… what are you saying?”</p>
+            <p>A deep breath, a moment to gather his resolve. “If you donate $7,000,000 Singapore dollars to my temple, to the Gompa Golden Monastery, I will give you one of my kidneys. We have not been close these past years, it's true. We have chosen very different paths and disagree on much. But it pleases me to see you so… successful, to know that you are in a position where… we can use what resources we have, what blessings we have been given, to help each other.” This is what he had practiced, reciting the words in quiet solitude. One gets a chance at continued life, and a struggling temple gets a much-needed donation. A mutually beneficial agreement, a transaction that benefits everyone involved, for a relatively small price. One healthy kidney. But then… laughter? Again? What crucial detail had he missed?</p>
+            <p>“Brother,” Tenzin began, his voice regaining some of its strength, fueled by a mixture of amusement and pity. “You misunderstand. My kidneys, thankfully, are functioning perfectly well. It is my heart, Lobsang. My heart is failing.”</p>
+            <p>His heart. His heart? Lobsang's thoughts raced, a whirlwind of confusion and recalculation. This vital piece of information was not part of the carefully crafted plan. But, even as panic threatened to rise, a new thought, a daring possibility, occurred to Lobsang. It could still work. Perhaps this was, in a strange way, a blessing.</p>
+            <p>“Oh brother. Your heart? I am so very sorry to hear that. Truly. Your heart. A terrible affliction.” He paused, letting the gravity of the situation sink in. "Well then. It has been so good to see you, after all these years, but I must inform you that, given this new information, for my heart, my price is now $21,000,000 Singapore dollars.” He held Tenzin's gaze, his expression unwavering, a serene mask hiding the thoughts unfolding within his mind. The monastery, after all, always needs more repairs.</p>
+        </div>
 
-        <p>The elevator doors slid open with a soft whoosh, revealing a hallway lined with vibrant orchids, their beauty a stark contrast to the austere simplicity of his monastic life. It was reminiscent of the path he walked each morning, lined with prayer flags fluttering in the wind, yet this hallway pulsed with a different energy; a hum of wealth and power. The receptionist, a young woman with styled hair and a practiced smile, saw his simple saffron and maroon robes and frowned briefly. Then, remembering Mr. Tenzin's cryptic instructions about a 'special visitor,' she decided this figure must surely be the man he was expecting, nodded curtly, and buzzed him through.</p>
-
-        <p>The door opened into a large, dimly lit office. Lobsang first thought the lighting inadequate, a flaw in the otherwise opulent design, but then he realized the subdued illumination might be intentional, creating an atmosphere of hushed intimacy. The door behind him closed with a click, sealing him in this unfamiliar world. Before he could even take a breath, a voice, rusty from disuse yet undeniably familiar, echoed across the room – his brother’s voice, the voice he hadn't heard in over twenty years.</p>
-
-        <p>“You didn’t have to come all this way, Lobsang. But… thank you.” A pause, filled only with the soft whir of the air conditioning. “Thank you. It’s… good to see you, after all this time.” Lobsang focused his gaze on his brother. Tenzin was seated in a large leather chair, his figure gaunt and thin, his skin unnaturally pale, almost translucent. The years, and clearly, the illness, had ravaged him. Lobsang, despite his spiritual training, felt a pang of sorrow, a flicker of the familial bond that had once been so strong. He collected himself, pushing down the emotion, and stepped forward, his bare feet silent on the plush carpet.</p>
-
-        <p>“They told me you are dying,” he said, his voice steady and even, betraying none of the turmoil within. A pause. And then: A laugh. A dry, brittle laugh. A laugh? He had not expected that reaction. “They say you have months, perhaps less. They wrote, in their carefully worded letter, 'If only you had another…'” Another what? What was the word they used? Oh. Yes, the clinical term. “'Another organ, a better one, a healthy one, you would live. You would have a chance.'”</p>
-
-        <p>Another pause, longer this time, and then laughter again. Stronger this time, with a hint of genuine amusement, a spark of the brother he remembered.</p>
-
-        <p>“Yes, brother! A new one would be great. Wonderful, in fact! Hah! But where in the world would I get one? These things aren’t common, you know. Not like buying rice at the market,” Tenzin said, his voice weak but laced with a familiar sarcasm. Lobsang drew a deep, steadying breath. Yes. This is precisely the moment. This was the plan.</p>
-
-        <p>“From me,” he said, his voice resolute. “From me. I will give it to you. For you.”</p>
-
-        <p>Tenzin stared at him, his eyes wide with disbelief. “I…. brother… what are you saying?”</p>
-
-        <p>A deep breath, a moment to gather his resolve. “If you donate $7,000,000 Singapore dollars to my temple, to the Gompa Golden Monastery, I will give you one of my kidneys. We have not been close these past years, it's true. We have chosen very different paths and disagree on much. But it pleases me to see you so… successful, to know that you are in a position where… we can use what resources we have, what blessings we have been given, to help each other.” This is what he had practiced, reciting the words in quiet solitude. One gets a chance at continued life, and a struggling temple gets a much-needed donation. A mutually beneficial agreement, a transaction that benefits everyone involved, for a relatively small price. One healthy kidney. But then… laughter? Again? What crucial detail had he missed?</p>
-
-        <p>“Brother,” Tenzin began, his voice regaining some of its strength, fueled by a mixture of amusement and pity. “You misunderstand. My kidneys, thankfully, are functioning perfectly well. It is my heart, Lobsang. My heart is failing.”</p>
-
-        <p>His heart. His heart? Lobsang's thoughts raced, a whirlwind of confusion and recalculation. This vital piece of information was not part of the carefully crafted plan. But, even as panic threatened to rise, a new thought, a daring possibility, occurred to Lobsang. It could still work. Perhaps this was, in a strange way, a blessing.</p>
-
-        <p>“Oh brother. Your heart? I am so very sorry to hear that. Truly. Your heart. A terrible affliction.” He paused, letting the gravity of the situation sink in. "Well then. It has been so good to see you, after all these years, but I must inform you that, given this new information, for my heart, my price is now $21,000,000 Singapore dollars.” He held Tenzin's gaze, his expression unwavering, a serene mask hiding the thoughts unfolding within his mind. The monastery, after all, always needs more repairs.</p>
-    </div>
+        <footer class="page-footer">
+            <p>Version 1.6 &middot; Last Updated: August 20, 2025 &middot; &copy; 2025 Jough Donakowski</p>
+        </footer>
+    </main>
 
     <script>
-        // Self-executing function to handle theme switching
         (function() {
             const toggle = document.getElementById('checkbox');
-            const currentTheme = localStorage.getItem('theme');
+            const body = document.body;
 
-            // Set the initial state of the toggle based on saved theme or default
-            if (currentTheme) {
-                document.body.setAttribute('data-theme', currentTheme);
-                if (currentTheme === 'light') {
-                    toggle.checked = true;
-                }
+            // Determine the initial theme
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                // If no theme is in storage, use the default from the HTML body tag
+                theme = body.getAttribute('data-theme');
             }
 
-            // Listen for clicks on the toggle
+            // Apply the determined theme and set the toggle's state
+            body.setAttribute('data-theme', theme);
+            if (theme === 'light') {
+                toggle.checked = true;
+            }
+
+            // Listen for clicks on the toggle to switch themes
             toggle.addEventListener('change', function() {
-                if (this.checked) {
-                    document.body.setAttribute('data-theme', 'light');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    document.body.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                }
+                const newTheme = this.checked ? 'light' : 'dark';
+                body.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
             });
         })();
     </script>
-
 </body>
 </html>
