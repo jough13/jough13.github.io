@@ -689,3 +689,24 @@ body.loading #start-screen {
     background-color: #ff8c00;
     color: #111;
 }
+.dev-button {
+    background-color: #333;
+    border: 1px solid #888;
+    color: #ccc;
+    padding: 2px 8px;
+    font-size: 14px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+.dev-button:hover {
+    background-color: #555;
+}
+
+#dev-wipe-data {
+    border-color: #c0392b;
+    color: #e74c3c;
+}
+#dev-wipe-data:hover {
+    background-color: #c0392b;
+    color: #fff;
+}
