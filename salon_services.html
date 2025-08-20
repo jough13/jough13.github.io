@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.35 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.36 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -548,10 +548,13 @@
         const showModal = (popup) => {
             modalBackdrop.style.display = 'block';
             popup.style.display = 'block';
-            setTimeout(() => {
+            
+            // Use requestAnimationFrame to ensure the browser has processed the display change
+            // and new content before adding the 'visible' class to start the animation.
+            requestAnimationFrame(() => {
                 modalBackdrop.classList.add('visible');
                 popup.classList.add('visible');
-            }, 10);
+            });
         };
         const hideModal = (popup) => {
             modalBackdrop.classList.remove('visible');
@@ -788,30 +791,19 @@
             showModal(popup);
         };
         
-        const showServiceDetailsModal = (serviceIndex) => {
+const showServiceDetailsModal = (serviceIndex) => {
             const popup = document.getElementById('service-details-popup');
+            const salonState = stateHistory[currentStateIndex];
+            const service = salonState.services[serviceIndex];
+            if (!service) return;
+
             const title = document.getElementById('service-details-title');
             const durationInput = document.getElementById('service-duration-input');
             const priceRangeInput = document.getElementById('service-pricerange-input');
             const descriptionTextarea = document.getElementById('service-description-textarea');
             const performersList = document.getElementById('service-performers-list');
             const saveBtn = document.getElementById('service-details-save-btn');
-            const salonState = stateHistory[currentStateIndex];
-            const service = salonState.services[serviceIndex];
-
-            // --- FIX START ---
-            // First, clear any old data from the modal's fields.
-            // This prevents a "flash" of old content when the modal appears.
-            title.textContent = 'Service Details';
-            durationInput.value = '';
-            priceRangeInput.value = '';
-            descriptionTextarea.value = '';
-            performersList.innerHTML = '';
-            // --- FIX END ---
-
-            if (!service) return;
-
-            // Now, populate with the correct data for the selected service.
+            
             title.textContent = `${service.name} Details`;
             durationInput.value = service.duration || '';
             priceRangeInput.value = service.priceRange || '';
