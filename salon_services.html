@@ -7,7 +7,7 @@
     <style>
         :root {
             --primary-bg: #ffffff;
-            --secondary-bg: #f7f7ff;
+            --secondary-bg: #f7f7f7;
             --header-bg: #f0f0f0;
             --accent-color: #203459;
             --danger-hover: #ef5350;
@@ -183,7 +183,7 @@
         #note-entry-textarea, #profile-bio-textarea, #service-description-textarea { width: 100%; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; box-sizing: border-box; font-family: inherit; font-size: 1em; background-color: var(--primary-bg); color: var(--text-color); }
         #note-entry-textarea:focus, #profile-bio-textarea:focus, #service-description-textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         #note-entry-textarea { height: 120px; }
-        #profile-bio-textarea, #service-description-textarea { height: 100px; margin-top: 1rem; }
+        #profile-bio-textarea, #service-description-textarea { height: 100px; margin-top: 0.5rem; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
         .modal-actions button.secondary { background-color: #6c757d; }
         .manual-content { max-height: 70vh; overflow-y: auto; padding-right: 1rem; }
@@ -209,16 +209,26 @@
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
         
-        /* Profile Modal Styles */
-        #profile-popup .profile-content { display: flex; gap: 1.5rem; align-items: flex-start; }
-        #profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; flex-shrink: 0; }
-        #profile-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 3px solid var(--border-color); }
-        #profile-details { flex-grow: 1; }
-        #profile-name-wrapper { display: flex; align-items: center; gap: 0.5rem; }
-        #profile-name { font-size: 1.5rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; }
-        #profile-level { font-size: 1.1rem; color: #888; margin: 0; }
-        #profile-color-palette { margin-top: 0.5rem; display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 120px; }
-        #profile-edit-name-btn { padding: 0; width: 28px; height: 28px; font-size: 1rem; line-height: 28px; background: var(--secondary-bg); color: var(--text-color);}
+/* Profile Modal Styles */
+#profile-popup { max-width: 520px; }
+
+#profile-popup .profile-content { display: grid; grid-template-columns: 100px 1fr; gap: 2.25rem; align-items: flex-start; }
+
+#profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; flex: 0 0 100px; }
+
+#profile-photo { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 2px solid var(--border-color); } /* Slightly smaller photo */
+#profile-details { flex: 1; display: flex; flex-direction: column; }
+#profile-name-wrapper { display: flex; align-items: center; gap: 0.5rem; }
+#profile-name { font-size: 1.3rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; } /* Slightly smaller name */
+#profile-level { font-size: 0.9rem; color: #888; margin: 0; } /* Slightly smaller level */
+#profile-color-palette { margin-top: 0.25rem; display: none; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 100px; } /* Reduced gap and max-width */
+#profile-edit-name-btn { padding: 0; width: 24px; height: 24px; font-size: 0.9rem; line-height: 24px; background: var(--secondary-bg); color: var(--text-color);} /* Smaller edit button */
+#profile-details .modal-actions { justify-content: flex-end; margin-top: 0.75rem; } /* Reduced margin */
+#profile-bio-textarea { height: 80px; margin-top: 0.25rem; } /* Slightly reduced height and margin */
+#profile-change-photo-btn, #profile-delete-photo-btn, #profile-change-color-btn, #profile-save-bio-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
 
         /* Service Details Modal Styles */
         #service-details-popup .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
@@ -282,6 +292,7 @@
             .table-container { display: none; }
             #mobile-view-container { display: block; }
             #service-details-popup .details-grid { grid-template-columns: 1fr; }
+            #profile-popup .profile-content { flex-direction: column; align-items: center; }
         }
     </style>
 </head>
@@ -334,14 +345,49 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.33 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.35 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
     </div>
 
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
-    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2><p>Welcome! This tool helps you quickly manage which stylists perform which services and their prices.</p><h3>Key Features</h3><ul><li><strong>Stylist Profiles</strong>: Single-click a stylist's name to open their profile, where you can add a photo and a short bio. Use the edit button in the profile to change their name.</li><li><strong>Service Details</strong>: Single-click a service name in the table header to open its details, add notes, and see which stylists perform it.</li><li><strong>Advanced Filtering</strong>: Use the dropdown menu next to the search bar to filter stylists by their Level.</li><li><strong>Drag & Drop</strong>: To reorder stylists, simply click and hold on a stylist's row or card and drag it to a new position.</li><li><strong>Sorting</strong>: Click the small arrows in column headers to sort the table.</li><li><strong>Autosave</strong>: Your work is automatically saved to your browser.</li><li><strong>Developer Mode (Ctrl+Alt+D)</strong>: Reveals advanced tools like **Undo**, **Redo**, and **Reset All Data**.</li></ul><h3>Editing Information</h3><ul><li><strong>Double-click a service name</strong> to edit it.</li><li><strong>Single-click a level or price</strong> to edit it.</li></ul></div></div>
+    <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2>
+        <p>Welcome to the Service Matrix! Think of this as your digital cheat-sheet for everything related to stylists and the services they offer. Here’s a detailed guide on how to use it.</p>
+    
+        <h3>Getting Started: The Basics</h3>
+        <ul>
+            <li><strong>Adding a Stylist:</strong> In the top-left corner, type a new stylist's name into the "New Stylist Name..." box and click the "Add Stylist" button. They will be added to the bottom of the list.</li>
+            <li><strong>Adding a Service:</strong> Similarly, type a new service into the "New Service Name..." box and click "Add Service". A new column for this service will appear on the right side of the table.</li>
+            <li><strong>Marking Services:</strong> In the main grid, simply check the box where a stylist's row and a service's column meet to indicate they perform that service. On mobile, use the toggle switch.</li>
+        </ul>
+    
+        <h3>Editing Information</h3>
+        <ul>
+            <li><strong>Edit a Stylist's Name:</strong> Single-click on a stylist's name to open their Profile pop-up. Next to their name at the top, click the little pencil icon (✏️) to change it.</li>
+            <li><strong>Edit a Service's Name:</strong> Double-click on a service name in the table header. An input box will appear, allowing you to type a new name. A trash can icon (🗑️) will also appear if you wish to delete the service entirely.</li>
+            <li><strong>Edit a Price or Level:</strong> Simply single-click on any price or a stylist's level (e.g., "Level Five") in the table. An input box will appear for you to enter the new value.</li>
+        </ul>
+    
+        <h3>Stylist & Service Profiles</h3>
+        <ul>
+            <li><strong>Stylist Profiles:</strong> Single-click any stylist's name to open their profile. Here you can upload a photo, change their avatar color, and write a bio or important notes about their specialties.</li>
+            <li><strong>Service Details:</strong> Single-click any service name in the table header. A details panel will open, showing which stylists perform that service. You can also add information like the standard duration, price range, and a detailed description for that service.</li>
+        </ul>
+    
+        <h3>Organizing Your View</h3>
+        <ul>
+            <li><strong>Search and Filter:</strong> Use the central search bar to quickly find a stylist by name. You can also use the dropdown menu next to it to filter the view and show only stylists of a specific level.</li>
+            <li><strong>Reorder Stylists (Drag & Drop):</strong> To change the order of stylists, just click and hold on a stylist's row (or their card on mobile), drag it to a new position, and release.</li>
+            <li><strong>Sort Columns:</strong> To sort the table, click the small arrow icons (▲▼) in any column header. You can sort by stylist name (A-Z) or by price (low to high). Clicking the same arrow again will reverse the sort direction.</li>
+        </ul>
+        
+        <h3>Advanced Tools</h3>
+        <ul>
+            <li><strong>Autosave & Manual Save:</strong> All your changes are automatically saved to your browser a few seconds after you stop working. The "Last Updated" timestamp in the footer will confirm the last save time. You can also click the green "Save" button for an immediate save.</li>
+            <li><strong>Developer Mode (Ctrl+Alt+D):</strong> For power users, pressing `Ctrl+Alt+D` on your keyboard will reveal a hidden set of tools: **Undo**, **Redo**, and a **Reset All Data** button. The Undo/Redo functions can also be accessed with the standard `Ctrl+Z` and `Ctrl+Y` keyboard shortcuts.</li>
+        </ul>
+    </div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
@@ -542,17 +588,6 @@
             updateDisplay();
         };
 
-        const showServiceStylistsPopup = (serviceName, stylistsList) => {
-            const popup = document.getElementById('service-stylists-popup');
-            const title = document.getElementById('service-stylists-title');
-            const listContainer = document.getElementById('service-stylists-list');
-            title.textContent = `Stylists Who Perform "${serviceName}"`;
-            listContainer.innerHTML = stylistsList.length > 0 
-                ? stylistsList.map(name => `<p>${name}</p>`).join('') 
-                : '<p>No stylists are currently assigned to this service.</p>';
-            showModal(popup);
-        };
-
         const showNoteEntryPopup = (row, col) => {
             const popup = document.getElementById('note-entry-popup');
             const swatch = document.getElementById('note-entry-color-swatch');
@@ -653,7 +688,12 @@
             const changeColorBtn = document.getElementById('profile-change-color-btn');
             const profilePalette = document.getElementById('profile-color-palette');
             
+            const existingInput = popup.querySelector('.profile-details > .name-input');
+            if (existingInput) {
+                existingInput.replaceWith(nameWrapper);
+            }
             nameEl.textContent = stylist.name;
+            
             levelEl.textContent = stylist.level;
             photoEl.src = generateAvatar(stylist);
             bioTextarea.value = stylist.bio || '';
@@ -664,6 +704,7 @@
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'name-input';
+                input.style.fontSize = '1.5rem';
                 input.value = originalText;
                 nameWrapper.replaceWith(input);
                 input.focus();
@@ -676,11 +717,19 @@
                         recordChange(newState);
                         showToast("Name updated.", "success");
                         nameEl.textContent = newText;
+                    } else {
+                        nameEl.textContent = originalText;
                     }
                     input.replaceWith(nameWrapper);
                 };
-                input.addEventListener('blur', saveName);
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+                input.addEventListener('blur', saveName, { once: true });
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') e.target.blur();
+                    if (e.key === 'Escape') {
+                        input.value = originalText;
+                        e.target.blur();
+                    }
+                });
             };
             
             changePhotoBtn.onclick = () => photoUploadInput.click();
@@ -875,7 +924,7 @@
             const salonState = stateHistory[currentStateIndex];
             const headerRow = document.createElement('tr');
             const stylistArrow = `<span class="sort-arrow ${sortState.key === 'stylist' ? 'active' : ''}">${getSortIcon('stylist')}</span>`;
-            headerRow.innerHTML = `<th><div class="cell-wrapper sortable">Stylist ${stylistArrow}</div></th>`;
+            headerRow.innerHTML = `<th><div class="cell-wrapper sortable" data-sort="stylist">Stylist ${stylistArrow}</div></th>`;
             salonState.services.forEach((service, colIndex) => {
                 const th = document.createElement('th');
                 th.dataset.col = colIndex + 1;
@@ -1078,7 +1127,7 @@
 
         mainContentContainer.addEventListener('dblclick', (event) => {
             const target = event.target;
-            if (target.matches('.profile-link')) return; 
+            if (target.closest('.profile-link')) return; 
             clearTimeout(clickTimer);
             if (target.matches('.editable') && target.closest('th')) {
                 const cell = target.closest('th');
