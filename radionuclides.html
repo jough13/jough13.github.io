@@ -92,13 +92,12 @@
     -->
 
     <script>
-        const RADIONUCLIDE_DATA = [
-
+const RADIONUCLIDE_DATA = [
     { name: 'Actinium-225', symbol: 'Ac-225', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] }, halfLife: '9.92 days', decayConstant: '0.0698 day⁻¹', specificActivity: '7.8 x 10^13 Bq/g', parent: 'Thorium-229 (α)', daughter: 'Francium-221 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.001, unit: 'TBq' } },
     { name: 'Actinium-227', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Ac-227', emissionEnergies: { beta: ['0.045 MeV (max)'], gamma: [], alpha: ['4.95 MeV'] }, halfLife: '21.77 years', decayConstant: '0.0318 year⁻¹', specificActivity: '9.7 x 10^11 Bq/g', parent: 'Protactinium-231', daughter: 'Thorium-227 (β) or Francium-223 (α)', commonUses: ['Actinium-225 generator (medical)', 'Research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.0001, unit: 'TBq' } },
-    { name: 'Actinium-228', symbol: 'Ac-228', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.14 MeV (max)'], gamma: ['0.911 MeV', '0.969 MeV'], alpha: [] }, halfLife: '6.15 hours', decayConstant: '0.113 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Radium-228', daughter: 'Thorium-228 (β-)', commonUses: ['Intermediate in Thorium-232 decay chain'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.2, unit: 'TBq' } },
+    { name: 'Actinium-228', symbol: 'Ac-228', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.14 MeV (max)'], gamma: ['0.911 MeV', '0.969 MeV'], alpha: [] }, halfLife: '6.15 hours', decayConstant: '0.113 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Radium-228', daughter: 'Thorium-228 (β-)', commonUses: ['Intermediate in Thorium-232 decay chain'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.2, unit: 'TBq' }, gammaConstant: '0.844 R·m²/hr·Ci' },
     { name: 'Americium-241', symbol: 'Am-241', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] }, halfLife: '432.2 years', decayConstant: '0.00160 year⁻¹', specificActivity: '1.27 x 10^11 Bq/g', parent: 'Plutonium-241 (β-)', daughter: 'Neptunium-237', commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' }, gammaConstant: '0.012 R·m²/hr·Ci' },
-    { name: 'Antimony-124', symbol: 'Sb-124', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.35 MeV (max)'], gamma: ['0.603 MeV', '1.691 MeV'], alpha: [] }, halfLife: '60.2 days', decayConstant: '0.0115 day⁻¹', specificActivity: '7.8 x 10^14 Bq/g', parent: 'Tin-124', daughter: 'Tellurium-124 (stable)', commonUses: ['Tracer in hydrology', 'Industrial applications', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.6, unit: 'TBq' } },
+    { name: 'Antimony-124', symbol: 'Sb-124', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.35 MeV (max)'], gamma: ['0.603 MeV', '1.691 MeV'], alpha: [] }, halfLife: '60.2 days', decayConstant: '0.0115 day⁻¹', specificActivity: '7.8 x 10^14 Bq/g', parent: 'Tin-124', daughter: 'Tellurium-124 (stable)', commonUses: ['Tracer in hydrology', 'Industrial applications', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.6, unit: 'TBq' }, gammaConstant: '1.07 R·m²/hr·Ci' },
     { name: 'Antimony-125', symbol: 'Sb-125', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.767 MeV (max)'], gamma: ['0.428 MeV', '0.601 MeV'], alpha: [] }, halfLife: '2.758 years', decayConstant: '0.251 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Tin-125', daughter: 'Tellurium-125m (IT) -> Tellurium-125 (stable)', commonUses: ['Environmental tracer (fission product)', 'Calibration source'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 1, unit: 'TBq' } },
     { name: 'Arsenic-74', symbol: 'As-74', emissionType: ['Positron Emission', 'Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['1.35 MeV (max)'], gamma: ['0.596 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '17.77 days', decayConstant: '0.039 day⁻¹', specificActivity: '5.1 x 10^15 Bq/g', parent: 'Germanium-74', daughter: 'Selenium-74 (stable) or Germanium-74 (stable)', commonUses: ['PET imaging research', 'Tracer studies'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
     { name: 'Astatine-211', symbol: 'At-211', emissionType: ['Alpha', 'Electron Capture', 'X-ray'], emissionEnergies: { alpha: ['5.867 MeV'], beta: [], gamma: [] }, halfLife: '7.21 hours', decayConstant: '0.096 hour⁻¹', specificActivity: '7.8 x 10^16 Bq/g', parent: 'Bismuth-209 (α,2n)', daughter: 'Bismuth-207 (EC) or Polonium-211 (α)', commonUses: ['Targeted alpha therapy research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 0.005, unit: 'TBq' } },
@@ -131,23 +130,23 @@
     { name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' } },
     { name: 'Curium-244', symbol: 'Cm-244', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.805 MeV'], gamma: ['0.043 MeV'], beta: [] }, halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', specificActivity: '3.0 x 10^12 Bq/g', parent: 'Americium-244 (β-)', daughter: 'Plutonium-240', commonUses: ['Alpha particle X-ray spectrometers (APXS) for space exploration', 'Neutron sources'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 0.002, unit: 'TBq' } },
     { name: 'Erbium-169', symbol: 'Er-169', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.341 MeV (max)'], gamma: [], alpha: [] }, halfLife: '9.4 days', decayConstant: '0.0737 day⁻¹', specificActivity: '5.2 x 10^14 Bq/g', parent: 'Erbium-168 (n,γ)', daughter: 'Thulium-169 (stable)', commonUses: ['Radiation synovectomy for arthritis treatment.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 1, unit: 'TBq' } },
-    { name: 'Europium-152', symbol: 'Eu-152', emissionType: ['Beta-minus', 'Electron Capture', 'Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.48 MeV (max)'], gamma: ['0.122 MeV', '1.408 MeV'], alpha: [] }, halfLife: '13.54 years', decayConstant: '0.0512 year⁻¹', specificActivity: '6.4 x 10^12 Bq/g', parent: 'Samarium-152 (n,γ)', daughter: 'Samarium-152 (stable) or Gadolinium-152 (stable)', commonUses: ['Calibration sources for gamma spectroscopy', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
-    { name: 'Europium-154', symbol: 'Eu-154', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.85 MeV (max)'], gamma: ['1.274 MeV', '0.723 MeV'], alpha: [] }, halfLife: '8.59 years', decayConstant: '0.0807 year⁻¹', specificActivity: '9.8 x 10^12 Bq/g', parent: 'Samarium-154 (n,γ)', daughter: 'Gadolinium-154 (stable)', commonUses: ['Environmental monitoring (fission product)', 'Calibration sources'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.6, unit: 'TBq' } },
+    { name: 'Europium-152', symbol: 'Eu-152', emissionType: ['Beta-minus', 'Electron Capture', 'Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.48 MeV (max)'], gamma: ['0.122 MeV', '1.408 MeV'], alpha: [] }, halfLife: '13.54 years', decayConstant: '0.0512 year⁻¹', specificActivity: '6.4 x 10^12 Bq/g', parent: 'Samarium-152 (n,γ)', daughter: 'Samarium-152 (stable) or Gadolinium-152 (stable)', commonUses: ['Calibration sources for gamma spectroscopy', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' }, gammaConstant: '0.744 R·m²/hr·Ci' },
+    { name: 'Europium-154', symbol: 'Eu-154', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.85 MeV (max)'], gamma: ['1.274 MeV', '0.723 MeV'], alpha: [] }, halfLife: '8.59 years', decayConstant: '0.0807 year⁻¹', specificActivity: '9.8 x 10^12 Bq/g', parent: 'Samarium-154 (n,γ)', daughter: 'Gadolinium-154 (stable)', commonUses: ['Environmental monitoring (fission product)', 'Calibration sources'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.756 R·m²/hr·Ci' },
     { name: 'Fluorine-18', symbol: 'F-18', emissionType: ['Positron Emission'], emissionEnergies: { beta: ['0.6335 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, halfLife: '109.7 minutes', decayConstant: '0.00632 min⁻¹', specificActivity: '3.5 x 10^18 Bq/g', parent: 'Oxygen-18 (p,n)', daughter: 'Oxygen-18 (stable)', commonUses: ['PET imaging (Positron Emission Tomography)', 'Most common PET radioisotope, particularly for FDG (Fluorodeoxyglucose) scans'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' } },
     { name: 'Fluorine-19', symbol: 'F-19', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['NMR', 'Fluorinated compounds (not a radionuclide use)'], category: 'Stable/Reference', commonality: 'N/A' },
-    { name: 'Gadolinium-153', symbol: 'Gd-153', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.097 MeV', '0.103 MeV'], alpha: [] }, halfLife: '240.4 days', decayConstant: '0.00288 day⁻¹', specificActivity: '1.3 x 10^14 Bq/g', parent: 'Europium-153 (n,γ)', daughter: 'Europium-153 (stable)', commonUses: ['Bone densitometry', 'X-ray absorption measurements', 'Calibration sources'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 9, unit: 'TBq' } },
+    { name: 'Gadolinium-153', symbol: 'Gd-153', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.097 MeV', '0.103 MeV'], alpha: [] }, halfLife: '240.4 days', decayConstant: '0.00288 day⁻¹', specificActivity: '1.3 x 10^14 Bq/g', parent: 'Europium-153 (n,γ)', daughter: 'Europium-153 (stable)', commonUses: ['Bone densitometry', 'X-ray absorption measurements', 'Calibration sources'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 9, unit: 'TBq' }, gammaConstant: '0.11 R·m²/hr·Ci' },
     { name: 'Gadolinium-159', symbol: 'Gd-159', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.970 MeV (max)'], gamma: ['0.363 MeV'], alpha: [] }, halfLife: '18.48 hours', decayConstant: '0.0375 hour⁻¹', specificActivity: '3.6 x 10^16 Bq/g', parent: 'Europium-159', daughter: 'Terbium-159 (stable)', commonUses: ['Boron Neutron Capture Therapy (BNCT) research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.3, unit: 'TBq' } },
     { name: 'Gallium-67', symbol: 'Ga-67', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.093 MeV', '0.185 MeV', '0.300 MeV'], alpha: [] }, halfLife: '3.26 days', decayConstant: '0.213 day⁻¹', specificActivity: '3.8 x 10^15 Bq/g', parent: 'Zinc-67 (p,n)', daughter: 'Zinc-67 (stable)', commonUses: ['Tumor imaging (lymphomas, lung cancer)', 'Infection imaging', 'Inflammation imaging'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 7, A2: 3, unit: 'TBq' } },
     { name: 'Gallium-68', symbol: 'Ga-68', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.90 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, halfLife: '67.71 minutes', decayConstant: '0.0102 min⁻¹', specificActivity: '1.45 x 10^17 Bq/g', parent: 'Germanium-68', daughter: 'Zinc-68 (stable)', commonUses: ['PET imaging, especially with DOTATATE/DOTATOC for neuroendocrine tumors'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.5, unit: 'TBq' } },
     { name: 'Germanium-68', symbol: 'Ge-68', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: '270.95 days', decayConstant: '0.00256 day⁻¹', specificActivity: '2.8 x 10^14 Bq/g', parent: 'Arsenic-68', daughter: 'Gallium-68 (EC, β+)', commonUses: ['Generator for Ga-68 (PET imaging)'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
     { name: 'Gold-195m', symbol: 'Au-195m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.262 MeV'], alpha: [] }, halfLife: '30.5 seconds', decayConstant: '0.0227 s⁻¹', specificActivity: '1.5 x 10^18 Bq/g', parent: 'Mercury-195m', daughter: 'Gold-195', commonUses: ['Cardiac blood flow imaging (historical)'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' } },
-    { name: 'Gold-198', symbol: 'Au-198', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.961 MeV (max)'], gamma: ['0.412 MeV'], alpha: [] }, halfLife: '2.695 days', decayConstant: '0.257 day⁻¹', specificActivity: '9.3 x 10^15 Bq/g', parent: 'Gold-197 (n,γ)', daughter: 'Mercury-198 (stable)', commonUses: ['Radiotherapy (brachytherapy)', 'Tracers', 'Industrial applications'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' } },
+    { name: 'Gold-198', symbol: 'Au-198', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.961 MeV (max)'], gamma: ['0.412 MeV'], alpha: [] }, halfLife: '2.695 days', decayConstant: '0.257 day⁻¹', specificActivity: '9.3 x 10^15 Bq/g', parent: 'Gold-197 (n,γ)', daughter: 'Mercury-198 (stable)', commonUses: ['Radiotherapy (brachytherapy)', 'Tracers', 'Industrial applications'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.23 R·m²/hr·Ci' },
     { name: 'Holmium-166', symbol: 'Ho-166', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.854 MeV (max)'], gamma: ['0.080 MeV'], alpha: [] }, halfLife: '26.8 hours', decayConstant: '0.0258 hour⁻¹', specificActivity: '2.5 x 10^16 Bq/g', parent: 'Holmium-165 (n,γ)', daughter: 'Erbium-166 (stable)', commonUses: ['Radiotherapy for liver tumors, bone pain palliation, radiosynovectomy.'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.3, unit: 'TBq' } },
     { name: 'Indium-111', symbol: 'In-111', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.171 MeV', '0.245 MeV'], alpha: [] }, halfLife: '2.80 days', decayConstant: '0.247 day⁻¹', specificActivity: '2.6 x 10^16 Bq/g', parent: 'Cadmium-111 (p,n)', daughter: 'Cadmium-111 (stable)', commonUses: ['White blood cell labeling (infection imaging)', 'Tumor imaging', 'CSF flow studies'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 3, A2: 3, unit: 'TBq' } },
     { name: 'Indium-113m', symbol: 'In-113m', emissionType: ['Isomeric Transition', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.392 MeV'], alpha: [] }, halfLife: '1.658 hours', decayConstant: '0.418 hour⁻¹', specificActivity: '4.1 x 10^17 Bq/g', parent: 'Tin-113', daughter: 'Indium-113 (stable)', commonUses: ['Medical diagnostic imaging (historical)'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 2, unit: 'TBq' } },
     { name: 'Indium-115', symbol: 'In-115', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.499 MeV (max)'], gamma: [], alpha: [] }, halfLife: '4.41 x 10¹⁴ years', decayConstant: '1.57 x 10⁻¹⁵ year⁻¹', specificActivity: '2.6 x 10^2 Bq/g', parent: 'Primordial', daughter: 'Tin-115 (stable)', commonUses: ['Neutrino mass experiments', 'Research (extremely weak activity)'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 1, unit: 'TBq' } },
     { name: 'Iodine-123', symbol: 'I-123', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.159 MeV'], alpha: [] }, halfLife: '13.22 hours', decayConstant: '0.0524 hour⁻¹', specificActivity: '7.4 x 10^16 Bq/g', parent: 'Xenon-123', daughter: 'Tellurium-123 (stable)', commonUses: ['SPECT imaging for thyroid function and tumors', 'Cardiac and neurological imaging'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 6, A2: 3, unit: 'TBq' } },
-    { name: 'Iodine-125', symbol: 'I-125', emissionType: ['Electron Capture', 'X-ray', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.0355 MeV'], alpha: [] }, halfLife: '59.4 days', decayConstant: '0.0117 day⁻¹', specificActivity: '6.4 x 10^14 Bq/g', parent: 'Xenon-125', daughter: 'Tellurium-125 (stable)', commonUses: ['Brachytherapy (prostate cancer)', 'Radioimmunoassay', 'Bone mineral density (historical)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 3, unit: 'TBq' }, gammaConstant: '0.07 R·m²/hr·Ci' },    
+    { name: 'Iodine-125', symbol: 'I-125', emissionType: ['Electron Capture', 'X-ray', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.0355 MeV'], alpha: [] }, halfLife: '59.4 days', decayConstant: '0.0117 day⁻¹', specificActivity: '6.4 x 10^14 Bq/g', parent: 'Xenon-125', daughter: 'Tellurium-125 (stable)', commonUses: ['Brachytherapy (prostate cancer)', 'Radioimmunoassay', 'Bone mineral density (historical)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 3, unit: 'TBq' }, gammaConstant: '0.07 R·m²/hr·Ci' },
     { name: 'Iodine-129', symbol: 'I-129', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.154 MeV (max)'], gamma: ['0.039 MeV'], alpha: [] }, halfLife: '16.1 million years', decayConstant: '4.31 x 10⁻⁸ year⁻¹', specificActivity: '6.54 x 10^6 Bq/g', parent: 'Tellurium-129 (β-)', daughter: 'Xenon-129 (stable)', commonUses: ['Environmental tracer (long-lived fission product)', 'Geological dating'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' } },
     { name: 'Iodine-131', symbol: 'I-131', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.606 MeV (max)'], gamma: ['0.364 MeV (dominant)'], alpha: [] }, halfLife: '8.02 days', decayConstant: '0.0864 day⁻¹', gammaConstant: '0.22 R·m²/hr·Ci', specificActivity: '4.6 x 10^15 Bq/g', parent: 'Tellurium-131', daughter: 'Xenon-131 (stable)', commonUses: ['Diagnosis and treatment of thyroid cancer and hyperthyroidism', 'Medical imaging (diagnostic tracer)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc', decayConstant: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 3, A2: 0.7, unit: 'TBq' } },
     { name: 'Iridium-192', symbol: 'Ir-192', emissionType: ['Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.672 MeV (max)'], gamma: ['0.317 MeV', '0.468 MeV'], alpha: [] }, halfLife: '73.83 days', decayConstant: '0.00939 day⁻¹', gammaConstant: '0.48 R·m²/hr·Ci', specificActivity: '3.41 x 10^14 Bq/g', parent: 'Iridium-191 (n,γ)', daughter: 'Platinum-192 (stable) / Osmium-192 (stable)', commonUses: ['High-dose-rate (HDR) brachytherapy', 'Industrial gamma radiography'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 1, A2: 0.5, unit: 'TBq' } },
@@ -167,8 +166,8 @@
     { name: 'Lead-214', symbol: 'Pb-214', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.02 MeV (max)'], gamma: ['0.295 MeV', '0.352 MeV'], alpha: [] }, halfLife: '26.8 minutes', decayConstant: '0.0259 min⁻¹', specificActivity: '2.7 x 10^17 Bq/g', parent: 'Polonium-218 (α)', daughter: 'Bismuth-214 (β-)', commonUses: ['Intermediate in Radon-222 decay chain', 'Environmental monitoring'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.2, unit: 'TBq' } },
     { name: 'Lutetium-176', symbol: 'Lu-176', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.202 MeV', '0.307 MeV'], alpha: [] }, halfLife: '3.78 x 10¹⁰ years', decayConstant: '1.83 x 10⁻¹¹ year⁻¹', specificActivity: '2.0 x 10^6 Bq/g', parent: 'Primordial', daughter: 'Hafnium-176 (stable)', commonUses: ['Lutetium-Hafnium dating (geological)', 'Research'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' } },
     { name: 'Lutetium-177', symbol: 'Lu-177', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.498 MeV (max)'], gamma: ['0.113 MeV', '0.208 MeV'], alpha: [] }, halfLife: '6.647 days', decayConstant: '0.104 day⁻¹', specificActivity: '3.9 x 10^14 Bq/g', parent: 'Ytterbium-176 (n,γ)', daughter: 'Hafnium-177 (stable)', commonUses: ['Peptide receptor radionuclide therapy (PRRT) for neuroendocrine tumors'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.5, unit: 'TBq' } },
-    { name: 'Manganese-54', symbol: 'Mn-54', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.835 MeV'], alpha: [] }, halfLife: '312.1 days', decayConstant: '0.00222 day⁻¹', gammaConstant: '0.47 R·m²/hr·Ci', specificActivity: '2.56 x 10^14 Bq/g', parent: 'Iron-54 (d,2n)', daughter: 'Chromium-54 (stable)', commonUses: ['Calibration sources', 'Environmental tracer'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' } },    
-    { name: 'Molybdenum-99', symbol: 'Mo-99', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.214 MeV (max)'], gamma: ['0.739 MeV', '0.181 MeV'], alpha: [] }, halfLife: '65.94 hours', decayConstant: '0.0105 hour⁻¹', specificActivity: '1.77 x 10^16 Bq/g', parent: 'Uranium-235 Fission', daughter: 'Technetium-99m', commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' } },
+    { name: 'Manganese-54', symbol: 'Mn-54', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.835 MeV'], alpha: [] }, halfLife: '312.1 days', decayConstant: '0.00222 day⁻¹', gammaConstant: '0.47 R·m²/hr·Ci', specificActivity: '2.56 x 10^14 Bq/g', parent: 'Iron-54 (d,2n)', daughter: 'Chromium-54 (stable)', commonUses: ['Calibration sources', 'Environmental tracer'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' } },
+    { name: 'Molybdenum-99', symbol: 'Mo-99', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.214 MeV (max)'], gamma: ['0.739 MeV', '0.181 MeV'], alpha: [] }, halfLife: '65.94 hours', decayConstant: '0.0105 hour⁻¹', specificActivity: '1.77 x 10^16 Bq/g', parent: 'Uranium-235 Fission', daughter: 'Technetium-99m', commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.07 R·m²/hr·Ci' },
     { name: 'Neptunium-237', symbol: 'Np-237', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.788 MeV'], beta: [], gamma: ['0.029 MeV', '0.086 MeV'] }, halfLife: '2.144 million years', decayConstant: '3.23 x 10⁻⁷ year⁻¹', specificActivity: '2.6 x 10^7 Bq/g', parent: 'Americium-241 (α)', daughter: 'Protactinium-233 (α)', commonUses: ['Intermediate in Neptunium series decay', 'Nuclear waste studies'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.002, unit: 'TBq' } },
     { name: 'Nickel-56', symbol: 'Ni-56', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.158 MeV', '0.812 MeV'], alpha: [] }, halfLife: '6.075 days', decayConstant: '0.114 day⁻¹', specificActivity: '1.38 x 10^16 Bq/g', parent: 'Zinc-56', daughter: 'Cobalt-56', commonUses: ['Supernova studies (astrophysics)', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
     { name: 'Nickel-59', symbol: 'Ni-59', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: '76,000 years', decayConstant: '9.12 x 10⁻⁶ year⁻¹', specificActivity: '1.03 x 10^9 Bq/g', parent: 'Copper-59', daughter: 'Cobalt-59 (stable)', commonUses: ['Neutron activation product (long-lived)', 'Geological dating (historical)', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' } },
@@ -215,14 +214,14 @@
     { name: 'Ruthenium-103', symbol: 'Ru-103', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.226 MeV (max)'], gamma: ['0.497 MeV'], alpha: [] }, halfLife: '39.25 days', decayConstant: '0.0176 day⁻¹', specificActivity: '1.3 x 10^15 Bq/g', parent: 'Technetium-103', daughter: 'Rhodium-103 (stable)', commonUses: ['Fission product', 'Environmental tracer'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 0.7, unit: 'TBq' } },
     { name: 'Samarium-153', symbol: 'Sm-153', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.808 MeV (max)'], gamma: ['0.103 MeV'], alpha: [] }, halfLife: '46.28 hours', decayConstant: '0.0150 hour⁻¹', specificActivity: '3.5 x 10^15 Bq/g', parent: 'Samarium-152 (n,γ)', daughter: 'Europium-153 (stable)', commonUses: ['Palliative bone pain therapy (metastatic cancer)'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 0.6, unit: 'TBq' } },
     { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.5, unit: 'TBq' } },
-    { name: 'Scandium-46', symbol: 'Sc-46', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.357 MeV (max)'], gamma: ['0.889 MeV', '1.121 MeV'], alpha: [] }, halfLife: '83.79 days', decayConstant: '0.00827 day⁻¹', specificActivity: '1.24 x 10^15 Bq/g', parent: 'Calcium-46 (n,p)', daughter: 'Titanium-46 (stable)', commonUses: ['Tracer in hydrology and industrial processes', 'Calibration source'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' } },
+    { name: 'Scandium-46', symbol: 'Sc-46', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.357 MeV (max)'], gamma: ['0.889 MeV', '1.121 MeV'], alpha: [] }, halfLife: '83.79 days', decayConstant: '0.00827 day⁻¹', specificActivity: '1.24 x 10^15 Bq/g', parent: 'Calcium-46 (n,p)', daughter: 'Titanium-46 (stable)', commonUses: ['Tracer in hydrology and industrial processes', 'Calibration source'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' }, gammaConstant: '1.17 R·m²/hr·Ci' },
     { name: 'Scandium-47', symbol: 'Sc-47', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.601 MeV (max)'], gamma: ['0.159 MeV'], alpha: [] }, halfLife: '3.35 days', decayConstant: '0.207 day⁻¹', specificActivity: '3.1 x 10^16 Bq/g', parent: 'Titanium-47 (n,p)', daughter: 'Titanium-47 (stable)', commonUses: ['Theranostics (pairs with Sc-44 for PET), targeted radiotherapy research.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 9, A2: 0.5, unit: 'TBq' } },
     { name: 'Selenium-76', symbol: 'Se-76', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['Reference for stable selenium', 'not a radionuclide use'], category: 'Stable/Reference', commonality: 'N/A' },
     { name: 'Selenium-79', symbol: 'Se-79', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.151 MeV (max)'], gamma: [], alpha: [] }, halfLife: '327,000 years', decayConstant: '2.12 x 10⁻⁶ year⁻¹', specificActivity: '9.2 x 10^8 Bq/g', parent: 'Bromine-79 (n,p)', daughter: 'Bromine-79 (stable)', commonUses: ['Environmental tracer (long-lived fission product)'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 2, unit: 'TBq' } },
-    { name: 'Silver-110m', symbol: 'Ag-110m', emissionType: ['Beta-minus', 'Isomeric Transition', 'Gamma'], emissionEnergies: { beta: ['0.529 MeV (max)'], gamma: ['0.885 MeV', '0.658 MeV', '1.505 MeV'], alpha: [] }, halfLife: '249.8 days', decayConstant: '0.00277 day⁻¹', specificActivity: '1.93 x 10^14 Bq/g', parent: 'Cadmium-108', daughter: 'Cadmium-110 (stable) or Palladium-110 (stable)', commonUses: ['Environmental monitoring (fission product', 'activation product)'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.4, unit: 'TBq' } },
+    { name: 'Silver-110m', symbol: 'Ag-110m', emissionType: ['Beta-minus', 'Isomeric Transition', 'Gamma'], emissionEnergies: { beta: ['0.529 MeV (max)'], gamma: ['0.885 MeV', '0.658 MeV', '1.505 MeV'], alpha: [] }, halfLife: '249.8 days', decayConstant: '0.00277 day⁻¹', specificActivity: '1.93 x 10^14 Bq/g', parent: 'Cadmium-108', daughter: 'Cadmium-110 (stable) or Palladium-110 (stable)', commonUses: ['Environmental monitoring (fission product', 'activation product)'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.4, unit: 'TBq' }, gammaConstant: '1.65 R·m²/hr·Ci' },
     { name: 'Sodium-22', symbol: 'Na-22', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: ['1.275 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '2.602 years', decayConstant: '0.266 year⁻¹', gammaConstant: '1.20 R·m²/hr·Ci', specificActivity: '6.45 x 10^13 Bq/g', parent: 'Magnesium-22 (EC)', daughter: 'Neon-22 (stable)', commonUses: ['Calibration sources for PET scanners', 'Tracers for biological studies'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' } },
     { name: 'Sodium-23', symbol: 'Na-23', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['Reference for stable sodium', 'not a radionuclide use'], category: 'Stable/Reference', commonality: 'N/A' },
-    { name: 'Sodium-24', symbol: 'Na-24', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.39 MeV (max)'], gamma: ['1.369 MeV', '2.754 MeV'], alpha: [] }, halfLife: '14.96 hours', decayConstant: '0.0463 hour⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Magnesium-24 (n,p)', daughter: 'Magnesium-24 (stable)', commonUses: ['Hydrological tracer', 'Flow studies', 'Research'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' } },
+    { name: 'Sodium-24', symbol: 'Na-24', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.39 MeV (max)'], gamma: ['1.369 MeV', '2.754 MeV'], alpha: [] }, halfLife: '14.96 hours', decayConstant: '0.0463 hour⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Magnesium-24 (n,p)', daughter: 'Magnesium-24 (stable)', commonUses: ['Hydrological tracer', 'Flow studies', 'Research'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' }, gammaConstant: '1.84 R·m²/hr·Ci' },
     { name: 'Strontium-82', symbol: 'Sr-82', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.776 MeV'], alpha: [] }, halfLife: '25.36 days', decayConstant: '0.0273 day⁻¹', specificActivity: '2.4 x 10^15 Bq/g', parent: 'Yttrium-85', daughter: 'Rubidium-82', commonUses: ['Generator for Rubidium-82, used for cardiac PET imaging.'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
     { name: 'Strontium-89', symbol: 'Sr-89', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['1.49 MeV (max)'], gamma: [], alpha: [] }, halfLife: '50.5 days', decayConstant: '0.0137 day⁻¹', specificActivity: '1.09 x 10^15 Bq/g', parent: 'Uranium Fission', daughter: 'Yttrium-89 (stable)', commonUses: ['Palliative bone pain therapy (metastatic cancer)'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' } },
     { name: 'Strontium-90', symbol: 'Sr-90', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: [], alpha: [] }, halfLife: '28.9 years', decayConstant: '0.0240 year⁻¹', specificActivity: '5.15 x 10^12 Bq/g', parent: 'Uranium Fission', daughter: 'Yttrium-90', commonUses: ['Radioisotope thermoelectric generators (RTGs)', 'Industrial gauges', 'Medical radiation therapy for bone cancer'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.3, unit: 'TBq' } },
@@ -230,7 +229,7 @@
     { name: 'Sulfur-35', symbol: 'S-35', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.167 MeV (max)'], gamma: [], alpha: [] }, halfLife: '87.51 days', decayConstant: '0.00792 day⁻¹', specificActivity: '1.57 x 10^15 Bq/g', parent: 'Chlorine-35 (n,p)', daughter: 'Chlorine-35 (stable)', commonUses: ['Molecular biology (protein labeling)', 'Metabolic studies'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 3, unit: 'TBq' } },
     { name: 'Tantalum-182', symbol: 'Ta-182', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.526 MeV (max)'], gamma: ['1.121 MeV', '1.221 MeV'], alpha: [] }, halfLife: '114.4 days', decayConstant: '0.00606 day⁻¹', specificActivity: '5.2 x 10^14 Bq/g', parent: 'Tantalum-181 (n,γ)', daughter: 'Tungsten-182 (stable)', commonUses: ['Radiography of heavy metals', 'Calibration sources'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.8, unit: 'TBq' } },
     { name: 'Technetium-99', symbol: 'Tc-99', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.294 MeV (max)'], gamma: [], alpha: [] }, halfLife: '211,100 years', decayConstant: '3.28 x 10⁻⁶ year⁻¹', specificActivity: '6.3 x 10^8 Bq/g', parent: 'Technetium-99m', daughter: 'Ruthenium-99 (stable)', commonUses: ['Daughter product of Tc-99m', 'Environmental tracer', 'Long-lived fission product in nuclear waste'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.9, unit: 'TBq' } },
-    { name: 'Technetium-99m', symbol: 'Tc-99m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.1405 MeV'], alpha: [] }, halfLife: '6.01 hours', decayConstant: '0.115 hour⁻¹', specificActivity: '1.95 x 10^17 Bq/g', parent: 'Molybdenum-99', daughter: 'Technetium-99', commonUses: ['Medical diagnostic imaging (most common medical isotope for various scans: bone, heart, kidney, brain, etc.)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc', decayConstant: 'nndc' }, shipping: { A1: 8, A2: 0.7, unit: 'TBq' } },
+    { name: 'Technetium-99m', symbol: 'Tc-99m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.1405 MeV'], alpha: [] }, halfLife: '6.01 hours', decayConstant: '0.115 hour⁻¹', specificActivity: '1.95 x 10^17 Bq/g', parent: 'Molybdenum-99', daughter: 'Technetium-99', commonUses: ['Medical diagnostic imaging (most common medical isotope for various scans: bone, heart, kidney, brain, etc.)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc', decayConstant: 'nndc' }, shipping: { A1: 8, A2: 0.7, unit: 'TBq' }, gammaConstant: '0.08 R·m²/hr·Ci' },
     { name: 'Tellurium-123m', symbol: 'Te-123m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.159 MeV'], alpha: [] }, halfLife: '119.7 days', decayConstant: '0.00579 day⁻¹', specificActivity: '4.1 x 10^14 Bq/g', parent: 'Antimony-123', daughter: 'Tellurium-123 (stable)', commonUses: ['Medical imaging (historical)', 'Research tracer'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 8, A2: 1, unit: 'TBq' } },
     { name: 'Tellurium-128', symbol: 'Te-128', emissionType: ['Double Beta-minus'], emissionEnergies: { beta: ['0.867 MeV (total)'], gamma: [], alpha: [] }, halfLife: '2.2 x 10²⁴ years', decayConstant: '3.15 x 10⁻²⁵ year⁻¹', specificActivity: '1.4 x 10^-8 Bq/g', parent: 'Primordial', daughter: 'Xenon-128 (stable)', commonUses: ['Longest measured half-life', 'Fundamental physics research'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' } },
     { name: 'Tellurium-130', symbol: 'Te-130', emissionType: ['Double Beta-minus'], emissionEnergies: { beta: ['2.528 MeV (total)'], gamma: [], alpha: [] }, halfLife: '2.5 x 10²¹ years', decayConstant: '2.77 x 10⁻²² year⁻¹', specificActivity: '1.6 x 10^-5 Bq/g', parent: 'Primordial', daughter: 'Xenon-130 (stable)', commonUses: ['Double beta decay research'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' } },
@@ -267,6 +266,10 @@
     { name: 'Zirconium-89', symbol: 'Zr-89', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.902 MeV (max)'], gamma: ['0.909 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '78.41 hours', decayConstant: '0.00884 hour⁻¹', specificActivity: '1.18 x 10^16 Bq/g', parent: 'Yttrium-89 (p,n)', daughter: 'Yttrium-89 (stable)', commonUses: ['PET imaging, particularly for antibody-based imaging (immuno-PET) due to its longer half-life.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
     { name: 'Zirconium-95', symbol: 'Zr-95', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.399 MeV (max)'], gamma: ['0.724 MeV', '0.757 MeV'], alpha: [] }, halfLife: '64.03 days', decayConstant: '0.0108 day⁻¹', specificActivity: '8.8 x 10^14 Bq/g', parent: 'Uranium Fission', daughter: 'Niobium-95', commonUses: ['Fission product', 'Environmental tracer'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.8, unit: 'TBq' } }
 ];
+
+
+
+
     </script>
 
 
@@ -285,7 +288,7 @@
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '2.9.4';
+        const VERSION = '2.9.5';
         const LAST_UPDATED = 'August 21, 2025';
 
         /**
@@ -3493,49 +3496,48 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
 
 
 /**
- * @description A calculator for determining dose rate from either a gamma-emitting point source
- * or from Bremsstrahlung X-rays generated by a beta emitter in shielding.
+ * @description A unified calculator for dose rate from various source types and geometries.
+ * - Gamma Mode: Calculates dose from Point, Line, or Area sources.
+ * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
  */
 const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-    // --- State to toggle between calculator modes ---
+    // --- STATE MANAGEMENT ---
     const [calcMode, setCalcMode] = React.useState('gamma'); // 'gamma' or 'bremsstrahlung'
+    const [geometryMode, setGeometryMode] = React.useState('point'); // 'point', 'line', or 'area'
 
-    // --- State for Gamma Mode ---
-    const [gammaNuclideSymbol, setGammaNuclideSymbol] = React.useState('');
+    // --- Common State ---
+    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
     const [activity, setActivity] = React.useState('1');
     const [activityUnit, setActivityUnit] = React.useState('mCi');
     const [distance, setDistance] = React.useState('1');
     const [distanceUnit, setDistanceUnit] = React.useState('m');
-
-    // --- State for Bremsstrahlung Mode ---
-    const [betaNuclideSymbol, setBetaNuclideSymbol] = React.useState('');
-    const [betaActivity, setBetaActivity] = React.useState('1');
-    const [betaActivityUnit, setBetaActivityUnit] = React.useState('mCi');
-    const [betaDistance, setBetaDistance] = React.useState('10');
-    const [betaDistanceUnit, setBetaDistanceUnit] = React.useState('cm');
+    
+    // --- Geometry-Specific State ---
+    const [lineLength, setLineLength] = React.useState('1');
+    const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
+    const [diskRadius, setDiskRadius] = React.useState('10');
+    const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
     const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
 
-    // --- Unified State ---
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
     // --- Memoized Data Lists ---
     const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
     const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-
-    const selectedBetaNuclide = React.useMemo(() => 
-        betaNuclides.find(n => n.symbol === betaNuclideSymbol),
-        [betaNuclideSymbol, betaNuclides]
-    );
+    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
 
     // --- Handle Pre-selection ---
     React.useEffect(() => {
         if (preselectedNuclide) {
-            if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
-                setGammaNuclideSymbol(preselectedNuclide);
+            const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
+            const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
+            if (isGamma) {
+                setNuclideSymbol(preselectedNuclide);
                 setCalcMode('gamma');
-            } else if (betaNuclides.find(n => n.symbol === preselectedNuclide)) {
-                setBetaNuclideSymbol(preselectedNuclide);
+                setGeometryMode('point'); // Default to point source for simplicity
+            } else if (isBeta) {
+                setNuclideSymbol(preselectedNuclide);
                 setCalcMode('bremsstrahlung');
             }
         }
@@ -3543,53 +3545,60 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- Data Constants ---
     const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-    const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
-    const activityFactorsBq = { 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9 };
+    const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
+    const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
     const distanceFactorsCm = { 'cm': 1, 'm': 100, 'in': 2.54, 'ft': 30.48 };
 
     const handleCalculate = () => {
         setResult(null);
         setError('');
 
-        if (calcMode === 'gamma') {
-            const nuclide = gammaNuclides.find(n => n.symbol === gammaNuclideSymbol);
-            if (!nuclide) { setError('Please select a radionuclide.'); return; }
-            const activityValue = parseFloat(activity);
-            const distanceValue = parseFloat(distance);
-            if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
-                setError('Please enter valid, positive numbers for activity and distance.'); return;
+        if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
+        const activityValue = parseFloat(activity);
+        const distanceValue = parseFloat(distance);
+        if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
+            setError('Please enter valid, positive numbers for activity and distance.'); return;
+        }
+
+        try {
+            if (calcMode === 'gamma') {
+                if (!selectedNuclide.gammaConstant) { throw new Error('This nuclide is not a significant gamma emitter for this calculation.'); }
+                const gammaConstant = parseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
+                const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+                let doseRateR_hr = 0;
+
+                if (geometryMode === 'point') {
+                    doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                } else if (geometryMode === 'line') {
+                    const length_m = parseFloat(lineLength) * distanceFactorsM[lineLengthUnit];
+                    if (isNaN(length_m) || length_m <= 0) { throw new Error("Line length must be a positive number."); }
+                    const linearActivity = activityInCi / length_m; // Ci/m
+                    doseRateR_hr = ((gammaConstant * linearActivity) / distanceInM) * (Math.atan(length_m / (2 * distanceInM)));
+                } else { // area
+                    const radius_m = parseFloat(diskRadius) * distanceFactorsM[diskRadiusUnit];
+                    if (isNaN(radius_m) || radius_m <= 0) { throw new Error("Disk radius must be a positive number."); }
+                    const area_m2 = Math.PI * Math.pow(radius_m, 2);
+                    const areaActivity = activityInCi / area_m2; // Ci/m²
+                    doseRateR_hr = Math.PI * gammaConstant * areaActivity * Math.log((Math.pow(radius_m, 2) + Math.pow(distanceInM, 2)) / Math.pow(distanceInM, 2));
+                }
+                setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
+
+            } else { // Bremsstrahlung
+                const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+                if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
+                const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
+                const f = 3.5e-4 * Z * E_max;
+                const E_avg = E_max / 3;
+                const activityBq = activityValue * activityFactorsBq[activityUnit];
+                const totalEnergyRate = activityBq * E_avg * f;
+                const distance_cm = distanceValue * distanceFactorsM[distanceUnit] * 100;
+                const energyFluenceRate = totalEnergyRate / (4 * Math.PI * Math.pow(distance_cm, 2));
+                const doseRate_mrem_hr = energyFluenceRate * 5.76e-5;
+                setResult({ type: 'bremsstrahlung', doseRate: doseRate_mrem_hr.toPrecision(3), bremsstrahlungFraction: (f * 100).toPrecision(2) });
             }
-            const gammaConstant = parseFloat(nuclide.gammaConstant);
-            const activityInCi = activityValue * activityFactorsCi[activityUnit];
-            const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-            const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-            setResult({
-                type: 'gamma',
-                r_hr: doseRateR_hr.toPrecision(3),
-                mrem_hr: (doseRateR_hr * 1000).toPrecision(3),
-                uSv_hr: (doseRateR_hr * 10000).toPrecision(3)
-            });
-        } else { // Bremsstrahlung
-            if (!selectedBetaNuclide) { setError('Please select a beta-emitting radionuclide.'); return; }
-            const activityValue = parseFloat(betaActivity);
-            const distanceValue = parseFloat(betaDistance);
-            if (isNaN(activityValue) || isNaN(distanceValue) || activityValue <= 0 || distanceValue <= 0) {
-                setError('Please enter valid, positive numbers for activity and distance.'); return;
-            }
-            const E_max = parseEnergyToMeV(selectedBetaNuclide.emissionEnergies.beta);
-            const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
-            const f = 3.5e-4 * Z * E_max;
-            const E_avg = E_max / 3;
-            const activityBq = activityValue * activityFactorsBq[betaActivityUnit];
-            const totalEnergyRate = activityBq * E_avg * f;
-            const distance_cm = distanceValue * distanceFactorsCm[betaDistanceUnit];
-            const energyFluenceRate = totalEnergyRate / (4 * Math.PI * Math.pow(distance_cm, 2));
-            const doseRate_mrem_hr = energyFluenceRate * 5.76e-5;
-            setResult({
-                type: 'bremsstrahlung',
-                doseRate: doseRate_mrem_hr.toPrecision(3),
-                bremsstrahlungFraction: (f * 100).toPrecision(2)
-            });
+        } catch (e) {
+            setError(e.message);
         }
     };
 
@@ -3598,62 +3607,37 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2>
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => {setCalcMode('gamma'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Source</button>
+                    <button onClick={() => {setCalcMode('gamma'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
                     <button onClick={() => {setCalcMode('bremsstrahlung'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'bremsstrahlung' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta Bremsstrahlung</button>
                 </div>
 
                 <div className="space-y-4">
-                    {calcMode === 'gamma' ? (
+                    <SearchableSelect options={calcMode === 'gamma' ? gammaNuclides : betaNuclides} onSelect={(symbol) => { setNuclideSymbol(symbol); setResult(null); setError(''); }} placeholder={`Search for a ${calcMode} emitter...`}/>
+                    {selectedNuclide && (<div className="p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-center font-bold">{selectedNuclide.name}</div>)}
+                    <div><label className="block text-sm font-medium">Total Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                    
+                    {calcMode === 'gamma' && (
                         <div className="animate-fade-in space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium">Radionuclide</label>
-                                <select value={gammaNuclideSymbol} onChange={e => setGammaNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                    <option value="">Select a gamma emitter...</option>
-                                    {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
-                                </select>
-                            </div>
-                            <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="block text-sm font-medium">Distance from Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        </div>
-                    ) : (
-                        <div className="animate-fade-in space-y-4">
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bremsstrahlung Calculation</label>
-                                <Tooltip text="This calculator estimates the dose rate from Bremsstrahlung ('braking radiation') X-rays. It assumes the chosen shield is thick enough to stop all beta particles and calculates the dose from the secondary X-rays produced during this rapid deceleration.">
-                                    <Icon path={ICONS.help} className="w-4 h-4 text-slate-400" />
-                                </Tooltip>
-                            </div>
-                            <div><label className="block text-sm font-medium">Beta Emitter</label><SearchableSelect options={betaNuclides} onSelect={(symbol) => { setBetaNuclideSymbol(symbol); setResult(null); setError(''); }} placeholder="Search for a beta emitter..."/></div>
-                            {selectedBetaNuclide && (<div className="p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-center font-bold">{selectedBetaNuclide.name} (E-max: {parseEnergyToMeV(selectedBetaNuclide.emissionEnergies.beta)} MeV)</div>)}
-                            <div><label className="block text-sm font-medium">Activity</label><div className="flex"><input type="number" value={betaActivity} onChange={e => setBetaActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={betaActivityUnit} onChange={e => setBetaActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsBq).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="block text-sm font-medium">Distance</label><div className="flex"><input type="number" value={betaDistance} onChange={e => setBetaDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={betaDistanceUnit} onChange={e => setBetaDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsCm).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                            <div><label className="block text-sm font-medium">Source Geometry</label><select value={geometryMode} onChange={e => setGeometryMode(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="point">Point</option><option value="line">Line</option><option value="area">Area (Disk)</option></select></div>
+                            {geometryMode === 'line' && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
+                            {geometryMode === 'area' && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
                         </div>
                     )}
+                    {calcMode === 'bremsstrahlung' && (
+                         <div className="animate-fade-in"><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                    )}
                     
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Dose Rate</button>
+                    <div><label className="block text-sm font-medium">Perpendicular Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
-                    {result && result.type === 'gamma' && (
-                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Gamma Dose Rate</p>
-                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
-                            <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
-                        </div>
-                    )}
-                    {result && result.type === 'bremsstrahlung' && (
-                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Bremsstrahlung Dose Rate</p>
-                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.doseRate} mrem/hr</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
-                        </div>
-                    )}
+                    {result && result.type === 'gamma' && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Gamma Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p></div>)}
+                    {result && result.type === 'bremsstrahlung' && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Bremsstrahlung Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.doseRate} mrem/hr</p><p className="text-xs text-slate-500 dark:text-slate-400 mt-1">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p></div>)}
                 </div>
             </div>
         </div>
     );
 };
-
 
 
 
