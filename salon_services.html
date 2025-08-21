@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <title>Posh Salon Service Matrix</title>
     <style>
         :root {
@@ -216,15 +218,15 @@
 
 #profile-popup .profile-photo-area { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; flex: 0 0 100px; }
 
-#profile-photo { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 2px solid var(--border-color); } /* Slightly smaller photo */
+#profile-photo { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; background-color: var(--secondary-bg); border: 2px solid var(--border-color); }
 #profile-details { flex: 1; display: flex; flex-direction: column; }
 #profile-name-wrapper { display: flex; align-items: center; gap: 0.5rem; }
-#profile-name { font-size: 1.3rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; } /* Slightly smaller name */
-#profile-level { font-size: 0.9rem; color: #888; margin: 0; } /* Slightly smaller level */
-#profile-color-palette { margin-top: 0.25rem; display: none; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 100px; } /* Reduced gap and max-width */
-#profile-edit-name-btn { padding: 0; width: 24px; height: 24px; font-size: 0.9rem; line-height: 24px; background: var(--secondary-bg); color: var(--text-color);} /* Smaller edit button */
-#profile-details .modal-actions { justify-content: flex-end; margin-top: 0.75rem; } /* Reduced margin */
-#profile-bio-textarea { height: 80px; margin-top: 0.25rem; } /* Slightly reduced height and margin */
+#profile-name { font-size: 1.3rem; font-weight: 600; color: var(--accent-color); margin: 0 0 0.25rem 0; }
+#profile-level { font-size: 0.9rem; color: #888; margin: 0; }
+#profile-color-palette { margin-top: 0.25rem; display: none; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 100px; }
+#profile-edit-name-btn { padding: 0; width: 24px; height: 24px; font-size: 0.9rem; line-height: 24px; background: var(--secondary-bg); color: var(--text-color);}
+#profile-details .modal-actions { justify-content: flex-end; margin-top: 0.75rem; }
+#profile-bio-textarea { height: 80px; margin-top: 0.25rem; }
 #profile-change-photo-btn, #profile-delete-photo-btn, #profile-change-color-btn, #profile-save-bio-btn {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
@@ -293,18 +295,13 @@
             #mobile-view-container { display: block; }
             #service-details-popup .details-grid { grid-template-columns: 1fr; }
             #profile-popup .profile-content { flex-direction: column; align-items: center; }
-
+            
             /* ======================================================================== */
-            /* === FIX STARTS HERE ==================================================== */
+            /* === CHANGE #2: Added CSS rule to prevent zooming on input focus ======== */
             /* ======================================================================== */
-            /* This single rule prevents the "bounce" (auto-zoom) on mobile        */
-            /* when an input field is focused by making its font size large enough. */
             .price-input, .name-input {
                 font-size: 16px;
             }
-            /* ======================================================================== */
-            /* === FIX ENDS HERE ====================================================== */
-            /* ======================================================================== */
         }
     </style>
 </head>
@@ -357,7 +354,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.42 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.44 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -366,99 +363,17 @@
     <div id="note-popup" class="modal-popup"><button class="close-popup">&times;</button><h2>Sticky Note</h2><div id="note-popup-content"></div><span id="delete-note-popup" class="delete-note">Delete this note</span></div>
     <div id="manual-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="manual-content"><h2>Posh Salon: User Manual ✂️</h2>
         <p>Welcome to the Service Matrix! Think of this as your digital cheat-sheet for everything related to stylists and the services they offer. Here’s a detailed guide on how to use it.</p>
-    
-        <h3>Getting Started: The Basics</h3>
-        <ul>
-            <li><strong>Adding a Stylist:</strong> In the top-left corner, type a new stylist's name into the "New Stylist Name..." box and click the "Add Stylist" button. They will be added to the bottom of the list.</li>
-            <li><strong>Adding a Service:</strong> Similarly, type a new service into the "New Service Name..." box and click "Add Service". A new column for this service will appear on the right side of the table.</li>
-            <li><strong>Marking Services:</strong> In the main grid, simply check the box where a stylist's row and a service's column meet to indicate they perform that service. On mobile, use the toggle switch.</li>
-        </ul>
-    
-        <h3>Editing Information</h3>
-        <ul>
-            <li><strong>Edit a Stylist's Name:</strong> Single-click on a stylist's name to open their Profile pop-up. Next to their name at the top, click the little pencil icon (✏️) to change it.</li>
-            <li><strong>Edit a Service's Name:</strong> Double-click on a service name in the table header. An input box will appear, allowing you to type a new name. A trash can icon (🗑️) will also appear if you wish to delete the service entirely.</li>
-            <li><strong>Edit a Price or Level:</strong> Simply single-click on any price or a stylist's level (e.g., "Level Five") in the table. An input box will appear for you to enter the new value.</li>
-        </ul>
-    
-        <h3>Stylist & Service Profiles</h3>
-        <ul>
-            <li><strong>Stylist Profiles:</strong> Single-click any stylist's name to open their profile. Here you can upload a photo, change their avatar color, and write a bio or important notes about their specialties.</li>
-            <li><strong>Service Details:</strong> Single-click any service name in the table header. A details panel will open, showing which stylists perform that service. You can also add information like the standard duration, price range, and a detailed description for that service.</li>
-        </ul>
-    
-        <h3>Organizing Your View</h3>
-        <ul>
-            <li><strong>Search and Filter:</strong> Use the central search bar to quickly find a stylist by name. You can also use the dropdown menu next to it to filter the view and show only stylists of a specific level.</li>
-            <li><strong>Reorder Stylists (Drag & Drop):</strong> To change the order of stylists, just click and hold on a stylist's row (or their card on mobile), drag it to a new position, and release.</li>
-            <li><strong>Sort Columns:</strong> To sort the table, click the small arrow icons (▲▼) in any column header. You can sort by stylist name (A-Z) or by price (low to high). Clicking the same arrow again will reverse the sort direction.</li>
-        </ul>
-        
-        <h3>Advanced Tools</h3>
-        <ul>
-            <li><strong>Autosave & Manual Save:</strong> All your changes are automatically saved to your browser a few seconds after you stop working. The "Last Updated" timestamp in the footer will confirm the last save time. You can also click the green "Save" button for an immediate save.</li>
-            <li><strong>Developer Mode (Ctrl+Alt+D):</strong> For power users, pressing `Ctrl+Alt+D` on your keyboard will reveal a hidden set of tools: **Undo**, **Redo**, and a **Reset All Data** button. The Undo/Redo functions can also be accessed with the standard `Ctrl+Z` and `Ctrl+Y` keyboard shortcuts.</li>
-        </ul>
+        <h3>Getting Started: The Basics</h3><ul><li><strong>Adding a Stylist:</strong> In the top-left corner, type a new stylist's name into the "New Stylist Name..." box and click the "Add Stylist" button. They will be added to the bottom of the list.</li><li><strong>Adding a Service:</strong> Similarly, type a new service into the "New Service Name..." box and click "Add Service". A new column for this service will appear on the right side of the table.</li><li><strong>Marking Services:</strong> In the main grid, simply check the box where a stylist's row and a service's column meet to indicate they perform that service. On mobile, use the toggle switch.</li></ul>
+        <h3>Editing Information</h3><ul><li><strong>Edit a Stylist's Name:</strong> Single-click on a stylist's name to open their Profile pop-up. Next to their name at the top, click the little pencil icon (✏️) to change it.</li><li><strong>Edit a Service's Name:</strong> Double-click on a service name in the table header. An input box will appear, allowing you to type a new name. A trash can icon (🗑️) will also appear if you wish to delete the service entirely.</li><li><strong>Edit a Price or Level:</strong> Simply single-click on any price or a stylist's level (e.g., "Level Five") in the table. An input box will appear for you to enter the new value.</li></ul>
+        <h3>Stylist & Service Profiles</h3><ul><li><strong>Stylist Profiles:</strong> Single-click any stylist's name to open their profile. Here you can upload a photo, change their avatar color, and write a bio or important notes about their specialties.</li><li><strong>Service Details:</strong> Single-click any service name in the table header. A details panel will open, showing which stylists perform that service. You can also add information like the standard duration, price range, and a detailed description for that service.</li></ul>
+        <h3>Organizing Your View</h3><ul><li><strong>Search and Filter:</strong> Use the central search bar to quickly find a stylist by name. You can also use the dropdown menu next to it to filter the view and show only stylists of a specific level.</li><li><strong>Reorder Stylists (Drag & Drop):</strong> To change the order of stylists, just click and hold on a stylist's row (or their card on mobile), drag it to a new position, and release.</li><li><strong>Sort Columns:</strong> To sort the table, click the small arrow icons (▲▼) in any column header. You can sort by stylist name (A-Z) or by price (low to high). Clicking the same arrow again will reverse the sort direction.</li></ul>
+        <h3>Advanced Tools</h3><ul><li><strong>Autosave & Manual Save:</strong> All your changes are automatically saved to your browser a few seconds after you stop working. The "Last Updated" timestamp in the footer will confirm the last save time. You can also click the green "Save" button for an immediate save.</li><li><strong>Developer Mode (Ctrl+Alt+D):</strong> For power users, pressing `Ctrl+Alt+D` on your keyboard will reveal a hidden set of tools: **Undo**, **Redo**, and a **Reset All Data** button. The Undo/Redo functions can also be accessed with the standard `Ctrl+Z` and `Ctrl+Y` keyboard shortcuts.</li></ul>
     </div></div>
     <div id="note-entry-popup" class="modal-popup"><div class="modal-header"><h2>Add Sticky Note</h2><div id="note-entry-color-swatch"></div></div><textarea id="note-entry-textarea" placeholder="Enter your note text here..."></textarea><div class="modal-actions"><button id="note-entry-cancel" class="secondary">Cancel</button><button id="note-entry-save">Save Note</button></div></div>
     <div id="confirm-popup" class="modal-popup"><h2 id="confirm-title">Confirm Action</h2><p id="confirm-message">Are you sure?</p><div class="modal-actions"><button id="confirm-cancel-btn" class="secondary">Cancel</button><button id="confirm-confirm-btn" class="danger-btn">Confirm</button></div></div>
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
-    
-    <div id="profile-popup" class="modal-popup">
-        <button class="close-popup">&times;</button>
-        <div class="profile-content">
-            <div class="profile-photo-area">
-                <img id="profile-photo" src="" alt="Stylist Photo">
-                <button id="profile-change-photo-btn">Change Photo</button>
-                <button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button>
-                <button id="profile-change-color-btn">Change Color</button>
-                <div id="profile-color-palette" class="color-palette"></div>
-            </div>
-            <div class="profile-details">
-                <div id="profile-name-wrapper">
-                    <h2 id="profile-name"></h2>
-                    <button id="profile-edit-name-btn">✏️</button>
-                </div>
-                <p id="profile-level"></p>
-                <label for="profile-bio-textarea">Bio / Notes:</label>
-                <textarea id="profile-bio-textarea" rows="4"></textarea>
-                <div class="modal-actions">
-                    <button id="profile-save-bio-btn" class="save-btn">Save Bio</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="service-details-popup" class="modal-popup">
-        <button class="close-popup">&times;</button>
-        <h2 id="service-details-title">Service Details</h2>
-        <div class="details-grid">
-            <div>
-                <div class="input-group">
-                    <label for="service-duration-input">Standard Duration:</label>
-                    <input type="text" id="service-duration-input" placeholder="e.g., 2.5 hours">
-                </div>
-            </div>
-            <div>
-                <div class="input-group">
-                    <label for="service-pricerange-input">Base Price Range:</label>
-                    <input type="text" id="service-pricerange-input" placeholder="e.g., $150 - $250">
-                </div>
-            </div>
-        </div>
-        <div class="input-group" style="margin-top: 1rem;">
-            <label for="service-description-textarea">Description:</label>
-            <textarea id="service-description-textarea" rows="3" placeholder="e.g., A detailed description of the service, including the process, products used, and expected results."></textarea>
-        </div>
-        
-        <h3>Performed By:</h3>
-        <div id="service-performers-list"></div>
-
-        <div class="modal-actions">
-            <button id="service-details-save-btn" class="save-btn">Save Details</button>
-        </div>
-    </div>
-
+    <div id="profile-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="profile-content"><div class="profile-photo-area"><img id="profile-photo" src="" alt="Stylist Photo"><button id="profile-change-photo-btn">Change Photo</button><button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button><button id="profile-change-color-btn">Change Color</button><div id="profile-color-palette" class="color-palette"></div></div><div class="profile-details"><div id="profile-name-wrapper"><h2 id="profile-name"></h2><button id="profile-edit-name-btn">✏️</button></div><p id="profile-level"></p><label for="profile-bio-textarea">Bio / Notes:</label><textarea id="profile-bio-textarea" rows="4"></textarea><div class="modal-actions"><button id="profile-save-bio-btn" class="save-btn">Save Bio</button></div></div></div></div>
+    <div id="service-details-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-details-title">Service Details</h2><div class="details-grid"><div><div class="input-group"><label for="service-duration-input">Standard Duration:</label><input type="text" id="service-duration-input" placeholder="e.g., 2.5 hours"></div></div><div><div class="input-group"><label for="service-pricerange-input">Base Price Range:</label><input type="text" id="service-pricerange-input" placeholder="e.g., $150 - $250"></div></div></div><div class="input-group" style="margin-top: 1rem;"><label for="service-description-textarea">Description:</label><textarea id="service-description-textarea" rows="3" placeholder="e.g., A detailed description of the service, including the process, products used, and expected results."></textarea></div><h3>Performed By:</h3><div id="service-performers-list"></div><div class="modal-actions"><button id="service-details-save-btn" class="save-btn">Save Details</button></div></div>
     <div id="toast-container"></div>
     <input type="file" id="photo-upload-input" accept="image/*" style="display: none;">
     
@@ -738,8 +653,8 @@
                     input.replaceWith(nameWrapper);
                 };
 
-input.focus();
-input.addEventListener('blur', saveName, { once: true });
+                input.focus();
+                input.addEventListener('blur', saveName, { once: true });
                 
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') e.target.blur();
@@ -1083,8 +998,85 @@ input.addEventListener('blur', saveName, { once: true });
             recordChange(newState);
         });
 
+        // ========================================================================
+        // === CHANGE #3: Added 'touchstart' listener to intercept mobile taps ====
+        // ========================================================================
+        mainContentContainer.addEventListener('touchstart', (event) => {
+            const target = event.target;
+            // This listener is specifically for mobile card view to prevent the bounce.
+            // It runs the same logic as the 'click' handler, but on 'touchstart'
+            // and calls preventDefault() to stop the browser's default action.
+            if (target.closest('.stylist-card')) {
+                if (target.matches('.editable.level-text')) {
+                    event.preventDefault(); // Stop the bounce
+                    const stylistIndex = parseInt(target.closest('[data-row]').dataset.row);
+                    const originalText = target.textContent;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'name-input';
+                    input.value = originalText === 'Add Level' ? '' : originalText;
+                    target.replaceWith(input);
+                    const save = () => {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.stylists[stylistIndex].level = input.value.trim() || originalText;
+                        recordChange(newState);
+                    };
+                    requestAnimationFrame(() => input.focus());
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+
+                } else if (target.matches('.service-name.editable')) {
+                    event.preventDefault(); // Stop the bounce
+                    const serviceItem = target.closest('.service-item');
+                    const col = parseInt(serviceItem.dataset.col);
+                    const originalText = target.textContent;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'name-input';
+                    input.value = originalText;
+                    target.replaceWith(input);
+                    const save = () => {
+                        const newText = input.value.trim();
+                        if (newText && newText !== originalText) {
+                            const newState = deepClone(stateHistory[currentStateIndex]);
+                            newState.services[col - 1].name = newText;
+                            recordChange(newState);
+                        } else {
+                            updateDisplay();
+                        }
+                    };
+                    requestAnimationFrame(() => input.focus());
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+
+                } else if (target.matches('.price-text')) {
+                    event.preventDefault(); // Stop the bounce
+                    const row = parseInt(target.closest('[data-row]').dataset.row);
+                    const col = parseInt(target.closest('[data-col]').dataset.col);
+                    const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
+                    const input = document.createElement('input');
+                    input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
+                    target.replaceWith(input);
+                    const save = () => {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        const newPrice = input.value.trim();
+                        newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
+                        recordChange(newState);
+                    };
+                    requestAnimationFrame(() => input.focus());
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+                }
+            }
+        }, { passive: false });
+
         mainContentContainer.addEventListener('click', (event) => {
             const target = event.target;
+
+            // Because the 'touchstart' listener above handles mobile taps, this 'click'
+            // listener will now only fire for actual mouse clicks on desktop, or on
+            // elements not covered by the touchstart listener.
+            
             if (target.matches('.profile-link')) {
                 clearTimeout(clickTimer);
                 const row = parseInt(target.closest('[data-row]').dataset.row);
@@ -1114,7 +1106,7 @@ input.addEventListener('blur', saveName, { once: true });
                 
                 if (rowEl) {
                     stylistIndex = parseInt(rowEl.dataset.row);
-                } else if (target.dataset.stylistIndex) {
+                } else if (target.dataset.stylistIndex) { // For the modal
                     stylistIndex = parseInt(target.dataset.stylistIndex);
                 } else {
                     return;
@@ -1133,38 +1125,10 @@ input.addEventListener('blur', saveName, { once: true });
                     recordChange(newState);
                 };
 
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-
+                requestAnimationFrame(() => input.focus());
+                input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-            } else if (target.matches('.service-name.editable')) {
-                if (target.closest('.stylist-card-body')) {
-                    const serviceItem = target.closest('.service-item');
-                    const col = parseInt(serviceItem.dataset.col);
-                    const originalText = target.textContent;
 
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText;
-                    target.replaceWith(input);
-
-                    const save = () => {
-                        const newText = input.value.trim();
-                        if (newText && newText !== originalText) {
-                            const newState = deepClone(stateHistory[currentStateIndex]);
-                            newState.services[col - 1].name = newText;
-                            recordChange(newState);
-                        } else {
-                            updateDisplay();
-                        }
-                    };
-                    
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-                    
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                }
             } else if (target.matches('.price-text')) {
                 const row = parseInt(target.closest('[data-row]').dataset.row);
                 const col = parseInt(target.closest('[data-col]').dataset.col);
@@ -1180,10 +1144,10 @@ input.addEventListener('blur', save);
                     recordChange(newState);
                 };
 
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-
+                requestAnimationFrame(() => input.focus());
+                input.addEventListener('blur', save);
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
+
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(target.closest('[data-col]').dataset.col);
@@ -1222,6 +1186,7 @@ input.addEventListener('blur', save);
             }
         });
         
+        // Drag and drop listeners remain unchanged...
         let draggedElementIndex = null;
         mainContentContainer.addEventListener('dragstart', (e) => {
             const draggable = e.target.closest('[draggable="true"]');
@@ -1230,48 +1195,10 @@ input.addEventListener('blur', save);
                 setTimeout(() => draggable.classList.add('dragging'), 0);
             }
         });
-
-        mainContentContainer.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            const target = e.target.closest('[draggable="true"]');
-            if (target && parseInt(target.dataset.row) !== draggedElementIndex) {
-                const rect = target.getBoundingClientRect();
-                const isMobile = target.classList.contains('stylist-card');
-                if (e.clientY < rect.top + rect.height / 2) {
-                    target.classList.add(isMobile ? 'mobile-drag-over' : 'drag-over');
-                } else {
-                    target.classList.remove(isMobile ? 'mobile-drag-over' : 'drag-over');
-                }
-            }
-        });
-
-        mainContentContainer.addEventListener('dragleave', (e) => {
-            const target = e.target.closest('[draggable="true"]');
-            if (target) {
-                target.classList.remove('drag-over', 'mobile-drag-over');
-            }
-        });
-
-        mainContentContainer.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const dropTarget = e.target.closest('[draggable="true"]');
-            if (dropTarget && draggedElementIndex !== null) {
-                const targetIndex = parseInt(dropTarget.dataset.row);
-                sortState = { key: 'manual', direction: 'asc' };
-                const newState = deepClone(stateHistory[currentStateIndex]);
-                const [draggedItem] = newState.stylists.splice(draggedElementIndex, 1);
-                newState.stylists.splice(targetIndex, 0, draggedItem);
-                recordChange(newState);
-            }
-            draggedElementIndex = null;
-        });
-
-        mainContentContainer.addEventListener('dragend', () => {
-            document.querySelectorAll('.dragging, .drag-over, .mobile-drag-over').forEach(el => {
-                el.classList.remove('dragging', 'drag-over', 'mobile-drag-over');
-            });
-            draggedElementIndex = null;
-        });
+        mainContentContainer.addEventListener('dragover', (e) => { e.preventDefault(); const target = e.target.closest('[draggable="true"]'); if (target && parseInt(target.dataset.row) !== draggedElementIndex) { const rect = target.getBoundingClientRect(); const isMobile = target.classList.contains('stylist-card'); if (e.clientY < rect.top + rect.height / 2) { target.classList.add(isMobile ? 'mobile-drag-over' : 'drag-over'); } else { target.classList.remove(isMobile ? 'mobile-drag-over' : 'drag-over'); } } });
+        mainContentContainer.addEventListener('dragleave', (e) => { const target = e.target.closest('[draggable="true"]'); if (target) { target.classList.remove('drag-over', 'mobile-drag-over'); } });
+        mainContentContainer.addEventListener('drop', (e) => { e.preventDefault(); const dropTarget = e.target.closest('[draggable="true"]'); if (dropTarget && draggedElementIndex !== null) { const targetIndex = parseInt(dropTarget.dataset.row); sortState = { key: 'manual', direction: 'asc' }; const newState = deepClone(stateHistory[currentStateIndex]); const [draggedItem] = newState.stylists.splice(draggedElementIndex, 1); newState.stylists.splice(targetIndex, 0, draggedItem); recordChange(newState); } draggedElementIndex = null; });
+        mainContentContainer.addEventListener('dragend', () => { document.querySelectorAll('.dragging, .drag-over, .mobile-drag-over').forEach(el => { el.classList.remove('dragging', 'drag-over', 'mobile-drag-over'); }); draggedElementIndex = null; });
         
         NOTE_COLORS.forEach(c => {
             const box = document.createElement('div');
@@ -1284,26 +1211,18 @@ input.addEventListener('blur', save);
         colorPalette.appendChild(cancelBox);
 
         document.querySelectorAll('.close-popup').forEach(btn => btn.addEventListener('click', () => hideModal(btn.closest('.modal-popup'))));
-
         document.getElementById('add-stylist-btn').addEventListener('click', () => {
             const name = newStylistInput.value.trim();
-            if (!name) {
-                showToast("Please enter a stylist name first.", "error");
-                return;
-            }
+            if (!name) { showToast("Please enter a stylist name first.", "error"); return; }
             const newState = deepClone(stateHistory[currentStateIndex]);
             newState.stylists.push({ name, level: "Apprentice", note: null, photo: null, bio: "", avatarColor: null, services: newState.services.map(() => ({ checked: false, price: '', note: null })) });
             recordChange(newState);
             showToast(`Stylist "${name}" added.`, 'success');
             newStylistInput.value = '';
         });
-
         document.getElementById('add-service-btn').addEventListener('click', () => {
             const name = newServiceInput.value.trim();
-            if (!name) {
-                showToast("Please enter a service name first.", "error");
-                return;
-            }
+            if (!name) { showToast("Please enter a service name first.", "error"); return; }
             const newState = deepClone(stateHistory[currentStateIndex]);
             newState.services.push({ name, note: null, duration: "", priceRange: "", description: "" });
             newState.stylists.forEach(s => s.services.push({ checked: false, price: '', note: null }));
@@ -1312,6 +1231,7 @@ input.addEventListener('blur', save);
             newServiceInput.value = '';
         });
 
+        // Final event listeners remain unchanged
         document.getElementById('save-btn').addEventListener('click', () => saveData(true));
         document.getElementById('export-btn').addEventListener('click', () => { saveData(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([localStorage.getItem(LOCAL_STORAGE_KEY)], { type: 'application/json' })); a.download = 'salon-data.json'; a.click(); URL.revokeObjectURL(a.href); showToast("Data exported.", "info"); });
         document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
