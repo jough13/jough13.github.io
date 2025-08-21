@@ -93,7 +93,7 @@
 
     <script>
 const RADIONUCLIDE_DATA = [
-    { name: 'Actinium-225', symbol: 'Ac-225', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] }, halfLife: '9.92 days', decayConstant: '0.0698 day⁻¹', specificActivity: '7.8 x 10^13 Bq/g', parent: 'Thorium-229 (α)', daughter: 'Francium-221 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.001, unit: 'TBq' } },
+    { name: 'Actinium-225', symbol: 'Ac-225', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] }, halfLife: '10.0 days', decayConstant: '0.0693 day⁻¹', specificActivity: '7.8 x 10^13 Bq/g', parent: 'Thorium-229 (α)', daughter: 'Francium-221 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.001, unit: 'TBq' } },
     { name: 'Actinium-227', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Ac-227', emissionEnergies: { beta: ['0.045 MeV (max)'], gamma: [], alpha: ['4.95 MeV'] }, halfLife: '21.77 years', decayConstant: '0.0318 year⁻¹', specificActivity: '9.7 x 10^11 Bq/g', parent: 'Protactinium-231', daughter: 'Thorium-227 (β) or Francium-223 (α)', commonUses: ['Actinium-225 generator (medical)', 'Research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.0001, unit: 'TBq' } },
     { name: 'Actinium-228', symbol: 'Ac-228', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.14 MeV (max)'], gamma: ['0.911 MeV', '0.969 MeV'], alpha: [] }, halfLife: '6.15 hours', decayConstant: '0.113 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Radium-228', daughter: 'Thorium-228 (β-)', commonUses: ['Intermediate in Thorium-232 decay chain'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.2, unit: 'TBq' }, gammaConstant: '0.844 R·m²/hr·Ci' },
     { name: 'Americium-241', symbol: 'Am-241', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] }, halfLife: '432.2 years', decayConstant: '0.00160 year⁻¹', specificActivity: '1.27 x 10^11 Bq/g', parent: 'Plutonium-241 (β-)', daughter: 'Neptunium-237', commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' }, gammaConstant: '0.012 R·m²/hr·Ci' },
@@ -367,7 +367,7 @@ const RADIONUCLIDE_DATA = [
                     { nuclide: 'Lead-206', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
                 ]
             },
-            {
+		{
                 id: 'Th-232-series',
                 name: 'Thorium-232 Decay Series (Thorium Series)',
                 startNuclide: 'Thorium-232',
@@ -380,8 +380,13 @@ const RADIONUCLIDE_DATA = [
                     { nuclide: 'Radon-220', decayType: 'Alpha', halfLife: '55.6 seconds', daughter: 'Polonium-216' },
                     { nuclide: 'Polonium-216', decayType: 'Alpha', halfLife: '0.145 seconds', daughter: 'Lead-212' },
                     { nuclide: 'Lead-212', decayType: 'Beta-minus', halfLife: '10.64 hours', daughter: 'Bismuth-212' },
-                    { nuclide: 'Bismuth-212', decayType: 'Beta-minus', halfLife: '60.55 minutes', daughter: 'Polonium-212' },
+                    // --- CORRECTED BRANCHING DECAY ---
+                    { nuclide: 'Bismuth-212', decayType: 'Beta-minus (64.1%) / Alpha (35.9%)', halfLife: '60.55 minutes', daughter: 'Polonium-212 / Thallium-208' },
+                    // --- PATH 1: From Beta Decay ---
                     { nuclide: 'Polonium-212', decayType: 'Alpha', halfLife: '0.299 microseconds', daughter: 'Lead-208' },
+                    // --- PATH 2: From Alpha Decay ---
+                    { nuclide: 'Thallium-208', decayType: 'Beta-minus', halfLife: '3.053 minutes', daughter: 'Lead-208' },
+                    // --- FINAL STABLE PRODUCT ---
                     { nuclide: 'Lead-208', decayType: 'Stable', halfLife: 'Stable', daughter: 'N/A' }
                 ]
             },
@@ -476,6 +481,116 @@ const RADIONUCLIDE_DATA = [
          */
 
         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
+
+        /**
+         * @description Creates a formatted string of key info for a nuclide tooltip.
+         * @param {object} nuclide - The nuclide object.
+         * @returns {string} A formatted string with half-life and emission types.
+         */
+
+        const generateQuickInfoText = (nuclide) => {
+            if (!nuclide) return '';
+            const halfLife = `Half-life: ${formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}`;
+            const emissions = `Emissions: ${(nuclide.emissionType || []).join(', ')}`;
+            return `${halfLife} | ${emissions}`;
+        };
+
+
+
+
+/**
+         * Implements the Bateman equations for a full decay series, including branching decays.
+         * It iteratively builds an analytical solution for each nuclide as a sum of exponential terms.
+         * @param {Array<object>} chain - The array of nuclide objects in the decay series.
+         * @param {number} A1_0 - The initial activity of the parent nuclide.
+         * @param {number} t_seconds - The elapsed time in seconds.
+         * @returns {Array<number>} An array of activities for each nuclide in the chain at time t.
+         */
+        const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
+            const nuclideMap = new Map();
+
+            // 1. Pre-process the chain into a graph-like map for easy lookup.
+            chain.forEach(step => {
+                const lambda = parseHalfLifeToSeconds(step.halfLife) === Infinity ? 0 : Math.log(2) / parseHalfLifeToSeconds(step.halfLife);
+                if (!nuclideMap.has(step.nuclide)) {
+                    nuclideMap.set(step.nuclide, { name: step.nuclide, lambda, parents: [], solution: [] });
+                } else {
+                    nuclideMap.get(step.nuclide).lambda = lambda;
+                }
+
+                if (step.daughter !== 'N/A') {
+                    const decayTypes = step.decayType.split(' / ').map(s => s.trim());
+                    const daughters = step.daughter.split(' / ').map(s => s.trim());
+                    daughters.forEach((daughterName, i) => {
+                        // Extract branching ratio if present, e.g., "Beta-minus (64.1%)"
+                        const match = decayTypes[i] ? decayTypes[i].match(/\(([\d.]+)%\)/) : null;
+                        const br = match ? parseFloat(match[1]) / 100.0 : 1.0;
+
+                        if (!nuclideMap.has(daughterName)) {
+                            nuclideMap.set(daughterName, { name: daughterName, lambda: 0, parents: [], solution: [] });
+                        }
+                        nuclideMap.get(daughterName).parents.push({ name: step.nuclide, br: br });
+                    });
+                }
+            });
+
+            // 2. Iteratively build the analytical solution for each nuclide.
+            for (const step of chain) {
+                const nuclideName = step.nuclide;
+                const nuclide = nuclideMap.get(nuclideName);
+                
+                if (nuclide.parents.length === 0) { // This is the root parent
+                    if (nuclide.lambda === 0) continue;
+                    const N0 = A1_0 / nuclide.lambda;
+                    nuclide.solution.push({ coeff: N0, lambda: nuclide.lambda });
+                } else {
+                    const solutionMap = new Map(); // Used to consolidate terms
+                    for (const parent of nuclide.parents) {
+                        const parentNuclide = nuclideMap.get(parent.name);
+                        for (const term of parentNuclide.solution) {
+                            const C = parent.br * parentNuclide.lambda * term.coeff;
+                            
+                            // Handle the case where decay constants are identical (or very close)
+                            if (Math.abs(nuclide.lambda - term.lambda) < 1e-20) {
+                                // This case leads to a t*e^(-lambda*t) term, which complicates the solution structure.
+                                // For simplicity and to avoid a full rewrite, we'll approximate by introducing a tiny difference.
+                                // This is a common numerical stability trick.
+                                term.lambda *= (1 + 1e-9);
+                            }
+
+                            const coeff = C / (nuclide.lambda - term.lambda);
+                            // Add the two new terms to the solution map, consolidating as we go
+                            solutionMap.set(term.lambda, (solutionMap.get(term.lambda) || 0) + coeff);
+                            solutionMap.set(nuclide.lambda, (solutionMap.get(nuclide.lambda) || 0) - coeff);
+                        }
+                    }
+                    // Convert the map back to the solution array format
+                    nuclide.solution = Array.from(solutionMap, ([lambda, coeff]) => ({ lambda, coeff }));
+                }
+            }
+
+            // 3. Calculate the final activities at the specified time.
+            const finalActivities = [];
+            for (const step of chain) {
+                const nuclide = nuclideMap.get(step.nuclide);
+                if (nuclide.lambda === 0) {
+                    finalActivities.push(0);
+                    continue;
+                }
+                let N_t = 0;
+                for (const term of nuclide.solution) {
+                    N_t += term.coeff * Math.exp(-term.lambda * t_seconds);
+                }
+                const A_t = N_t * nuclide.lambda;
+                finalActivities.push(A_t > 0 ? A_t : 0); // Ensure no negative activities from floating point errors
+            }
+            return finalActivities;
+        };
+
+
+
+
+
 
         /**
          * Parses a half-life string (e.g., "1600 years") into a total number of seconds.
@@ -2397,6 +2512,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     setError('Please select a decay series.');
                     return;
                 }
+
                 
                 // Validate all numerical inputs
 
@@ -2421,7 +2537,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         
                         // 1. Run the calculation once for the final time point for the results table.
 
-                        const calculatedActivities = runBatemanCalculation(series.chain, A0, t_seconds);
+                        const calculatedActivities = runBatemanWithBranching(series.chain, A0, t_seconds);
                         const finalResults = series.chain.map((step, i) => ({
                             name: step.nuclide,
                             activity: calculatedActivities[i]
@@ -2449,7 +2565,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
                             // This is computationally intensive: must run the full Bateman calculation for each point.
 
-                            const activitiesAtTimePoint = runBatemanCalculation(series.chain, A0, timePoint_seconds);
+                            const activitiesAtTimePoint = runBatemanWithBranching(series.chain, A0, timePoint_seconds);
                             activitiesAtTimePoint.forEach((act, j) => {
                                 datasets[j].data.push(act);
                             });
@@ -3207,19 +3323,11 @@ const App = () => {
         };
 
 
-        
-
-
-
+     
 
 
 	/**
-	 * @description A searchable dropdown component for selecting items from a large list.
-	 * @param {{
-	 * options: Array<{name: string, symbol: string, [key: string]: any}>,
-	 * onSelect: (symbol: string) => void,
-	 * placeholder: string
-	 * }} props
+	 * @description A searchable dropdown component for selecting items from a large list, with tooltips.
 	 */
 	const SearchableSelect = ({ options, onSelect, placeholder }) => {
 	    const [inputValue, setInputValue] = React.useState('');
@@ -3228,47 +3336,25 @@ const App = () => {
 	    const containerRef = React.useRef(null);
 	    const listRef = React.useRef(null);
 
-	// Filter and sort options based on user input
-
-	const filteredOptions = React.useMemo(() => {
-	    if (!inputValue) return [];
-	    const normInput = normalizeString(inputValue);
-	
-	    // Define the priority order for sorting
-
-	    const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
-    
-	    return options
-	        .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
-
-		.sort((a, b) => {
-
-		    // 1. Prioritize "starts with" matches
-
-		    const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
-		    const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
-		    if (aStartsWith !== bStartsWith) {
-		        return aStartsWith ? -1 : 1; // true comes first
-		    }
-
-		    // 2. Prioritize by commonality (descending)
-
-		    const orderA = commonalityOrder[a.commonality] || 0;
-		    const orderB = commonalityOrder[b.commonality] || 0;
-		    if (orderB !== orderA) {
-		        return orderB - orderA;
-		    }
-    
-		    // 3. Fallback to alphabetical
-
-		    return a.name.localeCompare(b.name);
-		})
-
-	        .slice(0, 10); // Limit to top 10 results
-	}, [inputValue, options]);
+	    const filteredOptions = React.useMemo(() => {
+	        if (!inputValue) return [];
+	        const normInput = normalizeString(inputValue);
+	        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
 	    
-	    // Handle clicks outside to close the dropdown
-
+	        return options
+	            .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
+	            .sort((a, b) => {
+	                const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
+	                const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
+	                if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+	                const orderA = commonalityOrder[a.commonality] || 0;
+	                const orderB = commonalityOrder[b.commonality] || 0;
+	                if (orderB !== orderA) return orderB - orderA;
+	                return a.name.localeCompare(b.name);
+	            })
+	            .slice(0, 10);
+	    }, [inputValue, options]);
+	    
 	    React.useEffect(() => {
 	        const handleClickOutside = (event) => {
 	            if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -3279,8 +3365,6 @@ const App = () => {
 	        return () => document.removeEventListener('mousedown', handleClickOutside);
 	    }, []);
     
-	    // Handle keyboard navigation
-
 	    const handleKeyDown = (e) => {
 	        if (filteredOptions.length === 0) return;
 	        if (e.key === 'ArrowDown') {
@@ -3293,18 +3377,13 @@ const App = () => {
 	            if (activeIndex > -1 && filteredOptions[activeIndex]) {
 	                handleSelect(filteredOptions[activeIndex]);
 	            } else if (filteredOptions.length > 0) {
-        
-	        	// If user just types and hits enter without navigating, select the first item.
-
-        	        handleSelect(filteredOptions[0]);
-       		     }
+	                handleSelect(filteredOptions[0]);
+	            }
 	        } else if (e.key === 'Escape') {
 	            setIsOpen(false);
 	        }
 	    };
     
-	    // Scroll the active item into view
-	
 	    React.useEffect(() => {
 	        if (activeIndex !== -1 && listRef.current?.children[activeIndex]) {
 	            listRef.current.children[activeIndex].scrollIntoView({ block: 'nearest' });
@@ -3330,7 +3409,7 @@ const App = () => {
 	                    onChange={(e) => {
 	                        setInputValue(e.target.value);
 	                        setIsOpen(true);
-	                        setActiveIndex(-1); // Reset index on new input
+	                        setActiveIndex(-1);
 	                    }}
 	                    onKeyDown={handleKeyDown}
 	                    onFocus={() => { if(inputValue) setIsOpen(true); }}
@@ -3342,24 +3421,23 @@ const App = () => {
 	            {isOpen && filteredOptions.length > 0 && (
 	                <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
         	            {filteredOptions.map((option, index) => (
-	                        <li
-	                            key={option.symbol}
-	                            onClick={() => handleSelect(option)}
-	                            onMouseEnter={() => setActiveIndex(index)}
-	                            className={`p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${
-	                                index === activeIndex ? 'bg-sky-100 dark:bg-sky-900' : ''
-	                            }`}
-	                        >
-	                            {option.name} ({option.symbol})
-	                        </li>
+                            <Tooltip key={option.symbol} text={generateQuickInfoText(option)}>
+                                <li
+	                                onClick={() => handleSelect(option)}
+	                                onMouseEnter={() => setActiveIndex(index)}
+	                                className={`w-full p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${
+	                                    index === activeIndex ? 'bg-sky-100 dark:bg-sky-900' : ''
+	                                }`}
+	                            >
+	                                {option.name} ({option.symbol})
+	                            </li>
+                            </Tooltip>
 	                    ))}
 	                </ul>
 	            )}
 	        </div>
 	    );
 	};
-
-
 
 /**
  * @description An advanced view for comparing multiple radionuclides side-by-side.
@@ -3493,151 +3571,197 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
 
 
 
-
-
 /**
- * @description A unified calculator for dose rate from various source types and geometries.
- * - Gamma Mode: Calculates dose from Point, Line, or Area sources.
- * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
- */
-const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-    // --- STATE MANAGEMENT ---
-    const [calcMode, setCalcMode] = React.useState('gamma'); // 'gamma' or 'bremsstrahlung'
-    const [geometryMode, setGeometryMode] = React.useState('point'); // 'point', 'line', or 'area'
+     * @description A unified calculator for dose rate from various source types and geometries.
+     * - Gamma Mode: Calculates dose from Point, Line, or Area sources.
+     * - Beta Mode: Calculates skin dose from a beta point source, accounting for range in air.
+     * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
+     */
+    const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+        // --- STATE MANAGEMENT ---
+        const [calcMode, setCalcMode] = React.useState('gamma');
+        const [geometryMode, setGeometryMode] = React.useState('point');
+        const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+        const [activity, setActivity] = React.useState('1');
+        const [activityUnit, setActivityUnit] = React.useState('mCi');
+        const [distance, setDistance] = React.useState('1');
+        const [distanceUnit, setDistanceUnit] = React.useState('m');
+        const [lineLength, setLineLength] = React.useState('1');
+        const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
+        const [diskRadius, setDiskRadius] = React.useState('10');
+        const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
+        const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
+        const [result, setResult] = React.useState(null);
+        const [error, setError] = React.useState('');
 
-    // --- Common State ---
-    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-    const [activity, setActivity] = React.useState('1');
-    const [activityUnit, setActivityUnit] = React.useState('mCi');
-    const [distance, setDistance] = React.useState('1');
-    const [distanceUnit, setDistanceUnit] = React.useState('m');
-    
-    // --- Geometry-Specific State ---
-    const [lineLength, setLineLength] = React.useState('1');
-    const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
-    const [diskRadius, setDiskRadius] = React.useState('10');
-    const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
-    const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
+        // --- Memoized Data Lists ---
+        const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+        const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+        const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
 
-    const [result, setResult] = React.useState(null);
-    const [error, setError] = React.useState('');
-
-    // --- Memoized Data Lists ---
-    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
-
-    // --- Handle Pre-selection ---
-    React.useEffect(() => {
-        if (preselectedNuclide) {
-            const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
-            const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
-            if (isGamma) {
-                setNuclideSymbol(preselectedNuclide);
-                setCalcMode('gamma');
-                setGeometryMode('point'); // Default to point source for simplicity
-            } else if (isBeta) {
-                setNuclideSymbol(preselectedNuclide);
-                setCalcMode('bremsstrahlung');
-            }
-        }
-    }, [preselectedNuclide, gammaNuclides, betaNuclides]);
-
-    // --- Data Constants ---
-    const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-    const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
-    const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
-    const distanceFactorsCm = { 'cm': 1, 'm': 100, 'in': 2.54, 'ft': 30.48 };
-
-    const handleCalculate = () => {
-        setResult(null);
-        setError('');
-
-        if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
-        const activityValue = parseFloat(activity);
-        const distanceValue = parseFloat(distance);
-        if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
-            setError('Please enter valid, positive numbers for activity and distance.'); return;
-        }
-
-        try {
-            if (calcMode === 'gamma') {
-                if (!selectedNuclide.gammaConstant) { throw new Error('This nuclide is not a significant gamma emitter for this calculation.'); }
-                const gammaConstant = parseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
-                const activityInCi = activityValue * activityFactorsCi[activityUnit];
-                const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-                let doseRateR_hr = 0;
-
-                if (geometryMode === 'point') {
-                    doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-                } else if (geometryMode === 'line') {
-                    const length_m = parseFloat(lineLength) * distanceFactorsM[lineLengthUnit];
-                    if (isNaN(length_m) || length_m <= 0) { throw new Error("Line length must be a positive number."); }
-                    const linearActivity = activityInCi / length_m; // Ci/m
-                    doseRateR_hr = ((gammaConstant * linearActivity) / distanceInM) * (Math.atan(length_m / (2 * distanceInM)));
-                } else { // area
-                    const radius_m = parseFloat(diskRadius) * distanceFactorsM[diskRadiusUnit];
-                    if (isNaN(radius_m) || radius_m <= 0) { throw new Error("Disk radius must be a positive number."); }
-                    const area_m2 = Math.PI * Math.pow(radius_m, 2);
-                    const areaActivity = activityInCi / area_m2; // Ci/m²
-                    doseRateR_hr = Math.PI * gammaConstant * areaActivity * Math.log((Math.pow(radius_m, 2) + Math.pow(distanceInM, 2)) / Math.pow(distanceInM, 2));
+        // --- Handle Pre-selection ---
+        React.useEffect(() => {
+            if (preselectedNuclide) {
+                const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
+                const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
+                if (isGamma) {
+                    setNuclideSymbol(preselectedNuclide);
+                    setCalcMode('gamma');
+                    setGeometryMode('point');
+                } else if (isBeta) {
+                    setNuclideSymbol(preselectedNuclide);
+                    setCalcMode('beta');
                 }
-                setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
-
-            } else { // Bremsstrahlung
-                const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
-                if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
-                const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
-                const f = 3.5e-4 * Z * E_max;
-                const E_avg = E_max / 3;
-                const activityBq = activityValue * activityFactorsBq[activityUnit];
-                const totalEnergyRate = activityBq * E_avg * f;
-                const distance_cm = distanceValue * distanceFactorsM[distanceUnit] * 100;
-                const energyFluenceRate = totalEnergyRate / (4 * Math.PI * Math.pow(distance_cm, 2));
-                const doseRate_mrem_hr = energyFluenceRate * 5.76e-5;
-                setResult({ type: 'bremsstrahlung', doseRate: doseRate_mrem_hr.toPrecision(3), bremsstrahlungFraction: (f * 100).toPrecision(2) });
             }
-        } catch (e) {
-            setError(e.message);
-        }
-    };
+        }, [preselectedNuclide, gammaNuclides, betaNuclides]);
 
-    return (
-        <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => {setCalcMode('gamma'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
-                    <button onClick={() => {setCalcMode('bremsstrahlung'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'bremsstrahlung' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta Bremsstrahlung</button>
-                </div>
+        // --- Data Constants ---
+        const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+        const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
 
-                <div className="space-y-4">
-                    <SearchableSelect options={calcMode === 'gamma' ? gammaNuclides : betaNuclides} onSelect={(symbol) => { setNuclideSymbol(symbol); setResult(null); setError(''); }} placeholder={`Search for a ${calcMode} emitter...`}/>
-                    {selectedNuclide && (<div className="p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-center font-bold">{selectedNuclide.name}</div>)}
-                    <div><label className="block text-sm font-medium">Total Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                    
-                    {calcMode === 'gamma' && (
-                        <div className="animate-fade-in space-y-4">
-                            <div><label className="block text-sm font-medium">Source Geometry</label><select value={geometryMode} onChange={e => setGeometryMode(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="point">Point</option><option value="line">Line</option><option value="area">Area (Disk)</option></select></div>
-                            {geometryMode === 'line' && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
-                            {geometryMode === 'area' && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
-                        </div>
-                    )}
-                    {calcMode === 'bremsstrahlung' && (
-                         <div className="animate-fade-in"><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                    )}
-                    
-                    <div><label className="block text-sm font-medium">Perpendicular Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
-                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    
-                    {result && result.type === 'gamma' && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Gamma Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p></div>)}
-                    {result && result.type === 'bremsstrahlung' && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Bremsstrahlung Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.doseRate} mrem/hr</p><p className="text-xs text-slate-500 dark:text-slate-400 mt-1">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p></div>)}
+        const handleCalculate = () => {
+            setResult(null);
+            setError('');
+            if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
+            const activityValue = parseFloat(activity);
+            const distanceValue = parseFloat(distance);
+            if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
+                setError('Please enter valid, positive numbers for activity and distance.'); return;
+            }
+            try {
+                if (calcMode === 'gamma') {
+                    if (!selectedNuclide.gammaConstant) { throw new Error('This nuclide is not a significant gamma emitter for this calculation.'); }
+                    const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+                    const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                    const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+                    let doseRateR_hr = 0;
+                    if (geometryMode === 'point') {
+                        doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                    } else if (geometryMode === 'line') {
+                        const length_m = parseFloat(lineLength) * distanceFactorsM[lineLengthUnit];
+                        if (isNaN(length_m) || length_m <= 0) { throw new Error("Line length must be a positive number."); }
+                        const linearActivity = activityInCi / length_m;
+                        doseRateR_hr = ((gammaConstant * linearActivity) / distanceInM) * (Math.atan(length_m / (2 * distanceInM)));
+                    } else { // area
+                        const radius_m = parseFloat(diskRadius) * distanceFactorsM[diskRadiusUnit];
+                        if (isNaN(radius_m) || radius_m <= 0) { throw new Error("Disk radius must be a positive number."); }
+                        const area_m2 = Math.PI * Math.pow(radius_m, 2);
+                        const areaActivity = activityInCi / area_m2;
+                        doseRateR_hr = Math.PI * gammaConstant * areaActivity * Math.log((Math.pow(radius_m, 2) + Math.pow(distanceInM, 2)) / Math.pow(distanceInM, 2));
+                    }
+                    setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
+                } else if (calcMode === 'beta') {
+                    const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+                    if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
+                    const distanceInCm = distanceValue * distanceFactorsM[distanceUnit] * 100;
+                    const densityOfAir = 0.001225; // g/cm^3
+                    let range_g_cm2;
+                    if (E_max >= 0.8) { range_g_cm2 = 0.542 * E_max - 0.133; }
+                    else { range_g_cm2 = 0.407 * Math.pow(E_max, 1.38); }
+                    const maxRange_cm = range_g_cm2 / densityOfAir;
+                    let doseRate_mrem_hr = 0;
+                    if (distanceInCm < maxRange_cm) {
+                        const activityIn_mCi = activityValue * { 'Ci': 1000, 'mCi': 1, 'µCi': 0.001, 'GBq': 27.027, 'MBq': 0.027, 'Bq': 2.7e-8 }[activityUnit];
+                        doseRate_mrem_hr = (185800 * activityIn_mCi) / Math.pow(distanceInCm, 2);
+                    }
+                    setResult({ type: 'beta', mrem_hr: doseRate_mrem_hr.toPrecision(3), max_range_cm: maxRange_cm.toPrecision(3) });
+                } else { // Bremsstrahlung
+                    const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+                    if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
+                    const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
+                    const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                    const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+                    const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
+                    const doseRate_rad_hr = doseRate_rad_hr_at_1m / Math.pow(distanceInM, 2);
+                    const doseRate_mrem_hr = doseRate_rad_hr * 1000;
+                    const f = 3.5e-4 * Z * E_max;
+                    setResult({ type: 'bremsstrahlung', doseRate: doseRate_mrem_hr.toPrecision(3), bremsstrahlungFraction: (f * 100).toPrecision(2) });
+                }
+            } catch (e) {
+                setError(e.message);
+            }
+        };
+
+        return (
+            <div className="p-4 animate-fade-in">
+                <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2>
+                    <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                        <button onClick={() => {setCalcMode('gamma'); setResult(null); setError('');}} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
+                        <button onClick={() => {setCalcMode('beta'); setResult(null); setError('');}} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'beta' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta</button>
+                        <button onClick={() => {setCalcMode('bremsstrahlung'); setResult(null); setError('');}} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'bremsstrahlung' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Bremsstrahlung</button>
+                    </div>
+                    <div className="space-y-3">
+                        <SearchableSelect
+                            options={
+                                calcMode === 'gamma' ? gammaNuclides :
+                                calcMode === 'beta' ? betaNuclides :
+                                betaNuclides
+                            }
+                            onSelect={(symbol) => { setNuclideSymbol(symbol); setResult(null); setError(''); }}
+                            placeholder={`Search for a ${calcMode} emitter...`}
+                        />
+                        {selectedNuclide && (<div className="p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-center font-bold">{selectedNuclide.name}</div>)}
+                        <div><label className="block text-sm font-medium">Total Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                        
+                        {calcMode === 'gamma' && (
+                            <div className="animate-fade-in space-y-3">
+                                <div><label className="block text-sm font-medium">Source Geometry</label><select value={geometryMode} onChange={e => setGeometryMode(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="point">Point</option><option value="line">Line</option><option value="area">Area (Disk)</option></select></div>
+                                {geometryMode === 'line' && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
+                                {geometryMode === 'area' && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}
+                            </div>
+                        )}
+                        {calcMode === 'bremsstrahlung' && (
+                            <div className="animate-fade-in"><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                        )}
+                        
+                        <div><label className="block text-sm font-medium">Perpendicular Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                        <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                        
+                        {result && result.type === 'gamma' && (
+                            <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Gamma Dose Rate</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
+                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
+                            </div>
+                        )}
+                        
+                        {result && result.type === 'beta' && (
+                            <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Beta Dose Rate (Skin)</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 border-t border-slate-300 dark:border-slate-600 pt-2">
+                                    Max Beta Range in Air: <strong>{result.max_range_cm} cm</strong>. Beyond this distance, the dose rate is zero.
+                                </p>
+                            </div>
+                        )}
+                        
+                        {result && result.type === 'bremsstrahlung' && (
+                            <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Bremsstrahlung Dose Rate</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.doseRate} mrem/hr</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-};
+        );
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
