@@ -1128,7 +1128,7 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
          * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
          */
 
-const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite }) => {
+const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator }) => {
 
     const getSourceLink = (sourceKey) => {
         const source = sources[sourceKey];
@@ -1171,7 +1171,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
 
     const isFavorite = favorites?.includes(nuclide.symbol);
 
-    // Full detailed view
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
@@ -1216,6 +1215,21 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
                     {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
                 </ul>
+            </div>
+            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
+                    {nuclide.gammaConstant && (
+                        <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Dose Rate</button>
+                    )}
+                    {nuclide.gammaConstant && HVL_DATA[nuclide.symbol] && (
+                         <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shielding</button>
+                    )}
+                    {nuclide.shipping && (
+                         <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
+                    )}
+                </div>
             </div>
             {nuclide.decaySeriesId && (
                 <div className="mt-6 text-center">
@@ -1746,7 +1760,7 @@ const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisi
 
 
 
-const DecayCalculator = ({ radionuclides }) => {
+const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- STATE & CONSTANTS ---
     const [selectedNuclide, setSelectedNuclide] = React.useState(null);
@@ -1777,7 +1791,6 @@ const DecayCalculator = ({ radionuclides }) => {
             });
     }, [radionuclides]);
 
-    // It now automatically sets the time unit and a default elapsed time based on the nuclide's half-life.
     const handleNuclideSelect = React.useCallback((symbol) => {
         const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol);
         if (nuclideToSet) {
@@ -1794,6 +1807,13 @@ const DecayCalculator = ({ radionuclides }) => {
             }
         }
     }, [sortedRadionuclides]);
+
+    // --- NEW: Hook to handle pre-selection from NuclideCard ---
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            handleNuclideSelect(preselectedNuclide);
+        }
+    }, [preselectedNuclide, handleNuclideSelect]);
 
     const handleCalculate = () => {
         if (!selectedNuclide) {
@@ -1823,7 +1843,7 @@ const DecayCalculator = ({ radionuclides }) => {
 
             const generateSingleNuclideChart = (N0) => {
                 const labels = [], parentData = [];
-                const totalTime = t_input * 2;
+                const totalTime = t_input * 2 > 0 ? t_input * 2 : 1; // Ensure totalTime is positive
                 const steps = 100;
                 for (let i = 0; i <= steps; i++) {
                     const timePoint = (totalTime / steps) * i;
@@ -1855,6 +1875,7 @@ const DecayCalculator = ({ radionuclides }) => {
                     const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
                     const t_final = t_seconds_calc / unitConversions[timeUnit];
                     setResult({ value: t_final.toPrecision(4), unit: timeUnit, label: 'Time Elapsed' });
+                    setChartData(null); // No chart for this mode
                     break;
                 }
                 case 'findInitial': {
@@ -1865,7 +1886,6 @@ const DecayCalculator = ({ radionuclides }) => {
                     generateSingleNuclideChart(N0);
                     break;
                 }
-
                 case 'findDaughterActivity': {
                     const N0_parent = parseFloat(initialActivity);
                     const N0_daughter = parseFloat(initialDaughterActivity);
@@ -1880,24 +1900,29 @@ const DecayCalculator = ({ radionuclides }) => {
                     const daughterName = selectedNuclide.daughter.split('(')[0].trim();
                     const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
                     
-                    // --- NEW LOGIC TO HANDLE STABLE DAUGHTERS ---
                     if (!daughterNuclide && selectedNuclide.daughter.toLowerCase().includes('stable')) {
-                        // If the lookup fails BUT the daughter is stable, we know its activity is zero.
                         const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
-                        
-                        // The activity of a stable daughter is always 0.
                         const A_daughter = 0; 
-                        
                         setResult({
                             parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name },
-                            daughter: { value: A_daughter.toPrecision(4), name: daughterName, isStable: true }
+                            daughter: { value: A_daughter.toFixed(4), name: daughterName, isStable: true }
                         });
-
-                        // We can skip the rest of the logic and chart generation for this case.
-                        setChartData(null); // Or update to show daughter at a flat 0.
-                        return; // Exit gracefully.
+                        const labels = [], parentData = [], daughterData = [];
+                        const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
+                        const steps = 100;
+                        for (let i = 0; i <= steps; i++) {
+                            const timePoint = (totalTime / steps) * i;
+                            labels.push(timePoint.toFixed(2));
+                            const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                            parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
+                            daughterData.push(0);
+                        }
+                        setChartData({ labels, parentData, daughterData, parentName: selectedNuclide.name, daughterName, timeUnit });
+                        return;
                     }
 
+                    if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
+                    
                     const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
                     const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
                     let A_daughter;
@@ -1922,7 +1947,7 @@ const DecayCalculator = ({ radionuclides }) => {
                     });
                     
                     const labels = [], parentData = [], daughterData = [];
-                    const totalTime = t_input * 2;
+                    const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
                     const steps = 100;
                     for (let i = 0; i <= steps; i++) {
                         const timePoint = (totalTime / steps) * i;
@@ -2050,11 +2075,14 @@ const DecayCalculator = ({ radionuclides }) => {
     );
 };
 
+
+
+
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
  * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
  */
-const TransportationCalculator = ({ radionuclides }) => {
+const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- STATE MANAGEMENT ---
     const [selectedSymbol, setSelectedSymbol] = React.useState('');
     const [formType, setFormType] = React.useState('A2'); // Default to Normal Form (more conservative)
@@ -2069,11 +2097,18 @@ const TransportationCalculator = ({ radionuclides }) => {
         [radionuclides]
     );
     
-    // --- NEW: Get the full nuclide object based on the selected symbol ---
+    // Get the full nuclide object based on the selected symbol
     const selectedNuclide = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === selectedSymbol),
         [selectedSymbol, transportNuclides]
     );
+
+    // --- Hook to handle pre-selection from NuclideCard ---
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            setSelectedSymbol(preselectedNuclide);
+        }
+    }, [preselectedNuclide]);
 
     const activityFactorsTBq = {
         'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12,
@@ -2126,7 +2161,6 @@ const TransportationCalculator = ({ radionuclides }) => {
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Shipping Calculator</h2>
                 <div className="space-y-4">
-                    {/* --- REVISED: Nuclide Selector --- */}
                     <div>
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                         <div className="mt-1 min-h-[42px]">
@@ -2146,7 +2180,6 @@ const TransportationCalculator = ({ radionuclides }) => {
                             )}
                         </div>
                     </div>
-                    {/* --- (Rest of the form is unchanged) --- */}
                     <div>
                         <label className="block text-sm font-medium">Material Form</label>
                         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -2178,9 +2211,6 @@ const TransportationCalculator = ({ radionuclides }) => {
         </div>
     );
 };
-
-
-
 
 
 
@@ -2842,65 +2872,31 @@ const ManualContent = () => (
          * It manages all primary state, handles routing between views, and orchestrates all user interactions.
          */
 
-        const App = () => {
+
+
+const App = () => {
 
             // --- STATE MANAGEMENT ---
-            // Core App State
-
             const [activeView, setActiveView] = React.useState('home');
-            const [result, setResult] = React.useState(null); // The currently selected nuclide for display
+            const [result, setResult] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
+            const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
             
-            // Search & Suggestions State
-
             const [nuclideName, setNuclideName] = React.useState('');
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
             
-            // UI State
-
             const [isManualOpen, setIsManualOpen] = React.useState(false);
             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
             const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
             
-            // Persistent State (localStorage)
-
             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
-           
-            // State for managing favorite nuclides, loaded from localStorage
-           
-            const [favorites, setFavorites] = React.useState(() => {
-            try {
-                return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]');
-            } catch (e) {
-                return []; // Return empty array on error
-            }
-        });
-
-        // Function to add or remove a nuclide from favorites
-
-        const toggleFavorite = (symbol) => {
-            const newFavorites = favorites.includes(symbol)
-                ? favorites.filter(s => s !== symbol) // If it exists, remove it
-                : [...favorites, symbol];              // If it doesn't exist, add it
-
-            setFavorites(newFavorites);
-            localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
-        };
-
-        const handleClearFavorites = () => {
-            setFavorites([]); // Clear the favorites from the component's state
-            localStorage.removeItem('favoriteNuclides'); // Remove them from browser storage
-        };
+            const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
             
-            // Derived/Generated State
-
             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
             
-            // Filter State
-
             const [sortBy, setSortBy] = React.useState('name');
             const [sortOrder, setSortOrder] = React.useState('asc');
             const [selectedCategory, setSelectedCategory] = React.useState('All');
@@ -2913,39 +2909,32 @@ const ManualContent = () => (
             const [maxHalfLife, setMaxHalfLife] = React.useState('');
             const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState('years');
 
-            // Refs for DOM elements
-
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
 
-		const handleNavClick = (view) => {
-                	
-			// Always set the view and reset other UI states
-	
-	                setActiveView(view);
-        	        setCurrentDecaySeriesId(null);
-	                setIsFiltersVisible(false);
+            const handleNavClick = (view) => {
+                setPreselectedNuclide(null); // Clear any pre-selected nuclide
+                setActiveView(view);
+                setCurrentDecaySeriesId(null);
+                setIsFiltersVisible(false);
+                if (view === 'home') {
+                    setResult(null);
+                    setNuclideName('');
+                    setSuggestions([]);
+                    setErrorMessage('');
+                }
+            };
 
-                // If the user is clicking the 'home' button, also reset the search state.
-
-	                if (view === 'home') {
-        	            setResult(null);
-                	    setNuclideName('');
-	                    setSuggestions([]);
-        	            setErrorMessage('');
-	                }
-	            };
-
-            // --- SIDE EFFECTS ---
-            // Effect to apply the dark/light theme to the HTML element.
+            const handleSendToCalculator = (viewId, nuclideSymbol) => {
+                setPreselectedNuclide(nuclideSymbol);
+                setActiveView(viewId);
+            };
 
             React.useEffect(() => {
                 const root = window.document.documentElement;
                 root.classList.toggle('dark', theme === 'dark');
                 localStorage.setItem('theme', theme);
             }, [theme]);
-
-            // Effect to handle clicks outside the suggestions box to close it.
 
             React.useEffect(() => {
                 const handleClickOutside = (e) => {
@@ -2957,64 +2946,44 @@ const ManualContent = () => (
                 return () => document.removeEventListener('mousedown', handleClickOutside);
             }, []);
 
-            // Effect to generate a set of random suggestions on initial load.
-
             React.useEffect(() => {
                 const common = radionuclides.filter(n => n.commonality === 'Common');
                 setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
             }, []);
 
-            // --- DATA DERIVATION & FILTERING ---
-
-            // Memoized selectors to get unique categories for filter dropdowns.
-
             const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
             const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
             const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
 
-            // A callback that returns the full list of nuclides after applying all active filters and sorting.
-
             const getFilteredAndSortedRadionuclides = React.useCallback(() => {
                 let filtered = [...radionuclides];
-                // Apply filters
                 if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
                 if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
                 if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
-                
-                // Helper for energy range filtering
-
                 const filterByEnergyRange = (nuclide, type, min, max) => {
                     const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
-                    if (energy === 0 && (min || max)) return false; // Exclude if it has no energy of this type
+                    if (energy === 0 && (min || max)) return false;
                     const minVal = parseFloat(min); const maxVal = parseFloat(max);
                     if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
                     if (!isNaN(minVal)) return energy >= minVal; 
                     if (!isNaN(maxVal)) return energy <= maxVal;
                     return true;
                 };
-
                 if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
                 if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
                 if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
-
-                // Apply half-life range filter
-
                 if (minHalfLife || maxHalfLife) {
                     const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
                     const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
                     const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
-
-                        filtered = filtered.filter(n => {
-                    const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
-                if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false; // Exclude stable nuclides from range filters
-                    const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
-                    const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
-                return checkMin && checkMax;
-            });
-        }
-
-                // Apply sorting
-
+                    filtered = filtered.filter(n => {
+                        const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
+                        if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false;
+                        const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
+                        const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
+                        return checkMin && checkMax;
+                    });
+                }
                 filtered.sort((a, b) => {
                     let compare = 0;
                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
@@ -3028,23 +2997,26 @@ const ManualContent = () => (
             }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
 
             const filteredList = getFilteredAndSortedRadionuclides();
-
-            // --- EVENT HANDLERS ---
-
             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
-            
-const updateSearchHistory = (nuclide) => {
-    setSearchHistory(prev => {
-        // Now we only store the symbol string
-        const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)];
-        const limitedHistory = newHistory.slice(0, 5);
-        localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory));
-        return limitedHistory;
-    });
-}
-
+            const toggleFavorite = (symbol) => {
+                const newFavorites = favorites.includes(symbol) ? favorites.filter(s => s !== symbol) : [...favorites, symbol];
+                setFavorites(newFavorites);
+                localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
+            };
+            const handleClearFavorites = () => {
+                setFavorites([]);
+                localStorage.removeItem('favoriteNuclides');
+            };
+            const updateSearchHistory = (nuclide) => {
+                setSearchHistory(prev => {
+                    const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)];
+                    const limitedHistory = newHistory.slice(0, 5);
+                    localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory));
+                    return limitedHistory;
+                });
+            }
             const handleNuclideSelection = (nuclide) => {
                 setNuclideName(nuclide.name);
                 setResult(nuclide);
@@ -3052,52 +3024,30 @@ const updateSearchHistory = (nuclide) => {
                 setErrorMessage('');
                 setActiveView('home');
                 setCurrentDecaySeriesId(null);
-
-                // Automatically choose the best unit for half-life display
-
                 setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
                 updateSearchHistory(nuclide);
             };
-
             const handleNuclideNameChange = (e) => {
                 const value = e.target.value;
                 setNuclideName(value);
                 if (value.length > 0) {
                     const normVal = normalizeString(value);
                     const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
-                    const filtered = radionuclides
-                        .filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
-                        .sort((a, b) => {
-		
-		    // 1. Prioritize "starts with" matches
-		
-		    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
-		    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
-		    if (aStartsWith !== bStartsWith) {
-		        return aStartsWith ? -1 : 1; // true comes first
-		    }
-
-		    // 2. Prioritize by commonality (descending)
-
-		    const orderA = commonalityOrder[a.commonality] || 0;
-		    const orderB = commonalityOrder[b.commonality] || 0;
-		    if (orderB !== orderA) {
-		        return orderB - orderA;
-		    }
-
-		    // 3. Fallback to alphabetical
-
-		    return a.name.localeCompare(b.name);
-		})
-
-                        .slice(0, 10);
+                    const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal)).sort((a, b) => {
+                        const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
+                        const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
+                        if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+                        const orderA = commonalityOrder[a.commonality] || 0;
+                        const orderB = commonalityOrder[b.commonality] || 0;
+                        if (orderB !== orderA) return orderB - orderA;
+                        return a.name.localeCompare(b.name);
+                    }).slice(0, 10);
                     setSuggestions(filtered);
                 } else {
                     setSuggestions([]);
-                    setResult(null); // Clear result if search is cleared
+                    setResult(null);
                 }
             };
-            
             const handleLookup = () => {
                 setSuggestions([]);
                 const normInput = normalizeString(nuclideName);
@@ -3110,7 +3060,6 @@ const updateSearchHistory = (nuclide) => {
                     setActiveView('home');
                 }
             };
-
             const handleKeyDown = (e) => {
                 if (e.key === 'Enter') {
                     if (activeSuggestionIndex !== -1 && suggestions.length > 0) {
@@ -3129,41 +3078,34 @@ const updateSearchHistory = (nuclide) => {
                 }
             };
 
-            /**
-             * The main view router for the application. It selects which component to display
-             * based on the `activeView` state.
-             */
-
             const renderActiveView = () => {
                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit };
                 
                 switch (activeView) {
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
-                    case 'calculator': return <DecayCalculator radionuclides={radionuclides} />;
-                    case 'mda': return <MDACalculator />;
-	 	    case 'marssim': return <MARSSIM_SampleCalculator />;
-		    case 'wrs': return <WRS_Calculator />;
+                    case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'mda': return <MDACalculator preselectedNuclide={preselectedNuclide} />;
+                    case 'marssim': return <MARSSIM_SampleCalculator />;
+                    case 'wrs': return <WRS_Calculator />;
                     case 'emc': return <EMC_Calculator />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
-                    case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;                    
-                    case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;                    
-                    case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
+                    case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;
+                    case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                     case 'specificActivity': return <SpecificActivityCalculator />;
-                    case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} />;
-                    case 'shielding': return <ShieldingCalculator radionuclides={radionuclides} />;
-                    case 'stayTime': return <StayTimeCalculator radionuclides={radionuclides} />;
-		    case 'transportation': return <TransportationCalculator radionuclides={radionuclides} />;
+                    case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'shielding': return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'stayTime': return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'transportation': return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                     case 'converter': return <UnitConverter />;
                     case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
             
-
-	case 'home':
-	default:
-	    if (result) {
-	        return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} /></div>;
-	 	   }
-	    return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
-
+                    case 'home':
+                    default:
+                        if (result) {
+                            return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} /></div>;
+                        }
+                        return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
                 }
             };
             
@@ -3177,20 +3119,25 @@ const updateSearchHistory = (nuclide) => {
                             <main className="min-h-[400px]">
                                 {renderActiveView()}
                             </main>
-
-			<footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-			    <p className="text-xs text-slate-500 dark:text-slate-400">
-			        <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
-			    </p>
-			</footer>
-
+                            <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
+                                </p>
+                            </footer>
                             <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
                         </div>
                     </div>
                 </ToastProvider>
             );
         };
+
+
         
+
+
+
+
+
 	/**
 	 * @description A searchable dropdown component for selecting items from a large list.
 	 * @param {{
@@ -3486,127 +3433,115 @@ const ComparisonView = ({ radionuclides, onNuclideClick }) => {
           * @param {{radionuclides: Array<object>}} props - Component props.
           * @param {Array<object>} props.radionuclides - The full list of radionuclides, used to populate the selector with only those that have a gammaConstant.
           */
+const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState('mCi');
+    const [distance, setDistance] = React.useState('1');
+    const [distanceUnit, setDistanceUnit] = React.useState('m');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
-            const DoseRateCalculator = ({ radionuclides }) => {
-            const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-            const [activity, setActivity] = React.useState('1');
-            const [activityUnit, setActivityUnit] = React.useState('mCi');
-            const [distance, setDistance] = React.useState('1');
-            const [distanceUnit, setDistanceUnit] = React.useState('m');
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
+    const gammaNuclides = React.useMemo(() => 
+        radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
 
-            // Filter for nuclides that have a gamma constant, as it's required for this calculation
+    // Hook to handle pre-selection from NuclideCard
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            // Check if the preselected nuclide is valid for this calculator
+            if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
+                setNuclideSymbol(preselectedNuclide);
+            }
+        }
+    }, [preselectedNuclide, gammaNuclides]);
 
-            const gammaNuclides = React.useMemo(() => 
-                radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
-                [radionuclides]
-            );
+    const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+    const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
 
-            // Define conversion factors for units
+    const handleCalculate = () => {
+        const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
+        if (!nuclide) {
+            setError('Please select a radionuclide.');
+            setResult(null);
+            return;
+        }
+        
+        const gammaConstant = parseFloat(nuclide.gammaConstant);
+        const activityValue = parseFloat(activity);
+        const distanceValue = parseFloat(distance);
 
-            const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-            const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+        if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
+            setError('Please enter valid, positive numbers for activity and distance.');
+            setResult(null);
+            return;
+        }
 
-            const handleCalculate = () => {
-                const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
-                if (!nuclide) {
-                    setError('Please select a radionuclide.');
-                    setResult(null);
-                    return;
-                }
-                
-                // Parse the gamma constant value from the string (e.g., "1.32 R·m²/hr·Ci")
+        setError('');
 
-                const gammaConstant = parseFloat(nuclide.gammaConstant);
-                const activityValue = parseFloat(activity);
-                const distanceValue = parseFloat(distance);
+        const activityInCi = activityValue * activityFactors[activityUnit];
+        const distanceInM = distanceValue * distanceFactors[distanceUnit];
 
-                if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
-                    setError('Please enter valid, positive numbers for activity and distance.');
-                    setResult(null);
-                    return;
-                }
+        // Dose Rate = (Gamma Constant * Activity) / distance^2
+        const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
 
-                setError('');
+        setResult({
+            r_hr: doseRateR_hr.toPrecision(3),
+            mrem_hr: (doseRateR_hr * 1000).toPrecision(3),
+            uSv_hr: (doseRateR_hr * 10000).toPrecision(3)
+        });
+    };
 
-                // Convert all inputs to base units used in the gamma constant (Ci and m)
-
-                const activityInCi = activityValue * activityFactors[activityUnit];
-                const distanceInM = distanceValue * distanceFactors[distanceUnit];
-
-                // Dose Rate = (Gamma Constant * Activity) / distance^2
-
-                const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-
-                // Convert result to more common units
-
-                setResult({
-                    r_hr: doseRateR_hr.toPrecision(3),
-                    mrem_hr: (doseRateR_hr * 1000).toPrecision(3), // 1 R ≈ 1 rem; 1 rem = 1000 mrem
-                    uSv_hr: (doseRateR_hr * 10000).toPrecision(3) // 1 R ≈ 10 mSv; 1 mSv = 1000 µSv
-                });
-            };
-
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Dose Rate Calculator</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For unshielded gamma point sources.</p>
-
-                        <div className="space-y-4">
-
-                            {/* Nuclide Selector */}
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                                <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                    <option value="">Select a gamma emitter...</option>
-                                    {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name} ({n.symbol})</option>)}
-                                </select>
-                            </div>
-                            
-                            {/* Activity Input */}
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (A)</label>
-                                <div className="flex gap-2 mt-1">
-                                    <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                                    <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                        {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Distance Input */}
-
-                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance from Source (d)</label>
-                                <div className="flex gap-2 mt-1">
-                                    <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                                    <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                       {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Dose Rate</button>
-                            
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            
-                            {result && (
-                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Dose Rate</p>
-                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
-                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
-                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">({result.r_hr} R/hr)</p>
-                                </div>
-                            )}
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Dose Rate Calculator</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For unshielded gamma point sources.</p>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                            <option value="">Select a gamma emitter...</option>
+                            {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name} ({n.symbol})</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (A)</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
                         </div>
                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance from Source (d)</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                            <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                               {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Dose Rate</button>
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Dose Rate</p>
+                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
+                            <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
+                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">({result.r_hr} R/hr)</p>
+                        </div>
+                    )}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
+
+
+
 
 /**
  * @description An advanced calculator to analyze and model parent-daughter equilibrium.
