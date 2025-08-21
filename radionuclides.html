@@ -97,7 +97,7 @@
     { name: 'Actinium-225', symbol: 'Ac-225', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.83 MeV (dominant)'], gamma: ['0.099 MeV', '0.150 MeV'], beta: [] }, halfLife: '9.92 days', decayConstant: '0.0698 day⁻¹', specificActivity: '7.8 x 10^13 Bq/g', parent: 'Thorium-229 (α)', daughter: 'Francium-221 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.001, unit: 'TBq' } },
     { name: 'Actinium-227', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Ac-227', emissionEnergies: { beta: ['0.045 MeV (max)'], gamma: [], alpha: ['4.95 MeV'] }, halfLife: '21.77 years', decayConstant: '0.0318 year⁻¹', specificActivity: '9.7 x 10^11 Bq/g', parent: 'Protactinium-231', daughter: 'Thorium-227 (β) or Francium-223 (α)', commonUses: ['Actinium-225 generator (medical)', 'Research'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.0001, unit: 'TBq' } },
     { name: 'Actinium-228', symbol: 'Ac-228', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.14 MeV (max)'], gamma: ['0.911 MeV', '0.969 MeV'], alpha: [] }, halfLife: '6.15 hours', decayConstant: '0.113 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Radium-228', daughter: 'Thorium-228 (β-)', commonUses: ['Intermediate in Thorium-232 decay chain'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.2, unit: 'TBq' } },
-    { name: 'Americium-241', symbol: 'Am-241', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] }, halfLife: '432.2 years', decayConstant: '0.00160 year⁻¹', specificActivity: '1.27 x 10^11 Bq/g', parent: 'Plutonium-241 (β-)', daughter: 'Neptunium-237', commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' } },
+    { name: 'Americium-241', symbol: 'Am-241', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.486 MeV'], gamma: ['0.0595 MeV'], beta: [] }, halfLife: '432.2 years', decayConstant: '0.00160 year⁻¹', specificActivity: '1.27 x 10^11 Bq/g', parent: 'Plutonium-241 (β-)', daughter: 'Neptunium-237', commonUses: ['Smoke detectors', 'Industrial gauges (thickness, density)', 'Neutron sources'], category: 'Industrial', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' }, gammaConstant: '0.012 R·m²/hr·Ci' },
     { name: 'Antimony-124', symbol: 'Sb-124', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.35 MeV (max)'], gamma: ['0.603 MeV', '1.691 MeV'], alpha: [] }, halfLife: '60.2 days', decayConstant: '0.0115 day⁻¹', specificActivity: '7.8 x 10^14 Bq/g', parent: 'Tin-124', daughter: 'Tellurium-124 (stable)', commonUses: ['Tracer in hydrology', 'Industrial applications', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.6, unit: 'TBq' } },
     { name: 'Antimony-125', symbol: 'Sb-125', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.767 MeV (max)'], gamma: ['0.428 MeV', '0.601 MeV'], alpha: [] }, halfLife: '2.758 years', decayConstant: '0.251 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Tin-125', daughter: 'Tellurium-125m (IT) -> Tellurium-125 (stable)', commonUses: ['Environmental tracer (fission product)', 'Calibration source'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 1, unit: 'TBq' } },
     { name: 'Arsenic-74', symbol: 'As-74', emissionType: ['Positron Emission', 'Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['1.35 MeV (max)'], gamma: ['0.596 MeV', '0.511 MeV (annihilation)'], alpha: [] }, halfLife: '17.77 days', decayConstant: '0.039 day⁻¹', specificActivity: '5.1 x 10^15 Bq/g', parent: 'Germanium-74', daughter: 'Selenium-74 (stable) or Germanium-74 (stable)', commonUses: ['PET imaging research', 'Tracer studies'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
@@ -147,7 +147,7 @@
     { name: 'Indium-113m', symbol: 'In-113m', emissionType: ['Isomeric Transition', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.392 MeV'], alpha: [] }, halfLife: '1.658 hours', decayConstant: '0.418 hour⁻¹', specificActivity: '4.1 x 10^17 Bq/g', parent: 'Tin-113', daughter: 'Indium-113 (stable)', commonUses: ['Medical diagnostic imaging (historical)'], category: 'Medical', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 2, unit: 'TBq' } },
     { name: 'Indium-115', symbol: 'In-115', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.499 MeV (max)'], gamma: [], alpha: [] }, halfLife: '4.41 x 10¹⁴ years', decayConstant: '1.57 x 10⁻¹⁵ year⁻¹', specificActivity: '2.6 x 10^2 Bq/g', parent: 'Primordial', daughter: 'Tin-115 (stable)', commonUses: ['Neutrino mass experiments', 'Research (extremely weak activity)'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 1, unit: 'TBq' } },
     { name: 'Iodine-123', symbol: 'I-123', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.159 MeV'], alpha: [] }, halfLife: '13.22 hours', decayConstant: '0.0524 hour⁻¹', specificActivity: '7.4 x 10^16 Bq/g', parent: 'Xenon-123', daughter: 'Tellurium-123 (stable)', commonUses: ['SPECT imaging for thyroid function and tumors', 'Cardiac and neurological imaging'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 6, A2: 3, unit: 'TBq' } },
-    { name: 'Iodine-125', symbol: 'I-125', emissionType: ['Electron Capture', 'X-ray', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.0355 MeV'], alpha: [] }, halfLife: '59.4 days', decayConstant: '0.0117 day⁻¹', specificActivity: '6.4 x 10^14 Bq/g', parent: 'Xenon-125', daughter: 'Tellurium-125 (stable)', commonUses: ['Brachytherapy (prostate cancer)', 'Radioimmunoassay', 'Bone mineral density (historical)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 3, unit: 'TBq' } },
+    { name: 'Iodine-125', symbol: 'I-125', emissionType: ['Electron Capture', 'X-ray', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.0355 MeV'], alpha: [] }, halfLife: '59.4 days', decayConstant: '0.0117 day⁻¹', specificActivity: '6.4 x 10^14 Bq/g', parent: 'Xenon-125', daughter: 'Tellurium-125 (stable)', commonUses: ['Brachytherapy (prostate cancer)', 'Radioimmunoassay', 'Bone mineral density (historical)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 3, unit: 'TBq' }, gammaConstant: '0.07 R·m²/hr·Ci' },    
     { name: 'Iodine-129', symbol: 'I-129', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.154 MeV (max)'], gamma: ['0.039 MeV'], alpha: [] }, halfLife: '16.1 million years', decayConstant: '4.31 x 10⁻⁸ year⁻¹', specificActivity: '6.54 x 10^6 Bq/g', parent: 'Tellurium-129 (β-)', daughter: 'Xenon-129 (stable)', commonUses: ['Environmental tracer (long-lived fission product)', 'Geological dating'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' } },
     { name: 'Iodine-131', symbol: 'I-131', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.606 MeV (max)'], gamma: ['0.364 MeV (dominant)'], alpha: [] }, halfLife: '8.02 days', decayConstant: '0.0864 day⁻¹', gammaConstant: '0.22 R·m²/hr·Ci', specificActivity: '4.6 x 10^15 Bq/g', parent: 'Tellurium-131', daughter: 'Xenon-131 (stable)', commonUses: ['Diagnosis and treatment of thyroid cancer and hyperthyroidism', 'Medical imaging (diagnostic tracer)'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc', decayConstant: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 3, A2: 0.7, unit: 'TBq' } },
     { name: 'Iridium-192', symbol: 'Ir-192', emissionType: ['Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.672 MeV (max)'], gamma: ['0.317 MeV', '0.468 MeV'], alpha: [] }, halfLife: '73.83 days', decayConstant: '0.00939 day⁻¹', gammaConstant: '0.48 R·m²/hr·Ci', specificActivity: '3.41 x 10^14 Bq/g', parent: 'Iridium-191 (n,γ)', daughter: 'Platinum-192 (stable) / Osmium-192 (stable)', commonUses: ['High-dose-rate (HDR) brachytherapy', 'Industrial gamma radiography'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 1, A2: 0.5, unit: 'TBq' } },
@@ -167,7 +167,7 @@
     { name: 'Lead-214', symbol: 'Pb-214', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.02 MeV (max)'], gamma: ['0.295 MeV', '0.352 MeV'], alpha: [] }, halfLife: '26.8 minutes', decayConstant: '0.0259 min⁻¹', specificActivity: '2.7 x 10^17 Bq/g', parent: 'Polonium-218 (α)', daughter: 'Bismuth-214 (β-)', commonUses: ['Intermediate in Radon-222 decay chain', 'Environmental monitoring'], category: 'Natural', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.2, unit: 'TBq' } },
     { name: 'Lutetium-176', symbol: 'Lu-176', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.202 MeV', '0.307 MeV'], alpha: [] }, halfLife: '3.78 x 10¹⁰ years', decayConstant: '1.83 x 10⁻¹¹ year⁻¹', specificActivity: '2.0 x 10^6 Bq/g', parent: 'Primordial', daughter: 'Hafnium-176 (stable)', commonUses: ['Lutetium-Hafnium dating (geological)', 'Research'], category: 'Natural', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' } },
     { name: 'Lutetium-177', symbol: 'Lu-177', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.498 MeV (max)'], gamma: ['0.113 MeV', '0.208 MeV'], alpha: [] }, halfLife: '6.647 days', decayConstant: '0.104 day⁻¹', specificActivity: '3.9 x 10^14 Bq/g', parent: 'Ytterbium-176 (n,γ)', daughter: 'Hafnium-177 (stable)', commonUses: ['Peptide receptor radionuclide therapy (PRRT) for neuroendocrine tumors'], category: 'Medical', commonality: 'Moderate', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.5, unit: 'TBq' } },
-    { name: 'Manganese-54', symbol: 'Mn-54', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.835 MeV'], alpha: [] }, halfLife: '312.1 days', decayConstant: '0.00222 day⁻¹', gammaConstant: '0.47 R·m²/hr·Ci', specificActivity: '2.56 x 10^14 Bq/g', parent: 'Iron-54 (d,2n)', daughter: 'Chromium-54 (stable)', commonUses: ['Calibration sources', 'Environmental tracer'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
+    { name: 'Manganese-54', symbol: 'Mn-54', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.835 MeV'], alpha: [] }, halfLife: '312.1 days', decayConstant: '0.00222 day⁻¹', gammaConstant: '0.47 R·m²/hr·Ci', specificActivity: '2.56 x 10^14 Bq/g', parent: 'Iron-54 (d,2n)', daughter: 'Chromium-54 (stable)', commonUses: ['Calibration sources', 'Environmental tracer'], category: 'Industrial', commonality: 'Moderate', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' } },    
     { name: 'Molybdenum-99', symbol: 'Mo-99', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.214 MeV (max)'], gamma: ['0.739 MeV', '0.181 MeV'], alpha: [] }, halfLife: '65.94 hours', decayConstant: '0.0105 hour⁻¹', specificActivity: '1.77 x 10^16 Bq/g', parent: 'Uranium-235 Fission', daughter: 'Technetium-99m', commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'], category: 'Medical', commonality: 'Common', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' } },
     { name: 'Neptunium-237', symbol: 'Np-237', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['4.788 MeV'], beta: [], gamma: ['0.029 MeV', '0.086 MeV'] }, halfLife: '2.144 million years', decayConstant: '3.23 x 10⁻⁷ year⁻¹', specificActivity: '2.6 x 10^7 Bq/g', parent: 'Americium-241 (α)', daughter: 'Protactinium-233 (α)', commonUses: ['Intermediate in Neptunium series decay', 'Nuclear waste studies'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.002, unit: 'TBq' } },
     { name: 'Nickel-56', symbol: 'Ni-56', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.158 MeV', '0.812 MeV'], alpha: [] }, halfLife: '6.075 days', decayConstant: '0.114 day⁻¹', specificActivity: '1.38 x 10^16 Bq/g', parent: 'Zinc-56', daughter: 'Cobalt-56', commonUses: ['Supernova studies (astrophysics)', 'Research'], category: 'Industrial', commonality: 'Rare', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' } },
@@ -306,11 +306,30 @@
          */
 
         const HVL_DATA = {
+            'Am-241': { 'Lead': 0.02, 'Concrete': 2.3, 'Steel': 0.8 },
+            'Au-198': { 'Lead': 0.33, 'Concrete': 4.7, 'Steel': 1.4 },
+            'Ba-133': { 'Lead': 0.29, 'Concrete': 4.1, 'Steel': 1.2 },
             'Co-60': { 'Lead': 1.2, 'Concrete': 6.0, 'Steel': 2.1 },
             'Cs-137': { 'Lead': 0.65, 'Concrete': 4.8, 'Steel': 1.6 },
+            'Eu-152': { 'Lead': 1.0, 'Concrete': 5.8, 'Steel': 2.0 },
+            'Gd-153': { 'Lead': 0.02, 'Concrete': 2.1, 'Steel': 0.2 },
+            'I-125': { 'Lead': 0.002, 'Concrete': 1.9, 'Steel': 0.1 },
+            'I-131': { 'Lead': 0.3, 'Concrete': 4.0, 'Steel': 1.2 },
             'Ir-192': { 'Lead': 0.33, 'Concrete': 4.3, 'Steel': 1.3 },
-            'Ba-133': { 'Lead': 0.29, 'Concrete': 4.1, 'Steel': 1.2 },
+            'Mn-54': { 'Lead': 0.8, 'Concrete': 5.2, 'Steel': 1.8 },
             'Na-22': { 'Lead': 0.97, 'Concrete': 5.8, 'Steel': 2.0 },
+            'Na-24': { 'Lead': 1.5, 'Concrete': 7.2, 'Steel': 2.5 },
+            'Sc-46': { 'Lead': 1.0, 'Concrete': 5.9, 'Steel': 2.0 },
+            'Se-75': { 'Lead': 0.1, 'Concrete': 3.5, 'Steel': 0.9 },
+            'Tc-99m': { 'Lead': 0.03, 'Concrete': 2.2, 'Steel': 0.3 },
+            'Zn-65': { 'Lead': 1.1, 'Concrete': 5.9, 'Steel': 2.1 }
+        };
+
+        const SHIELDING_MATERIALS = {
+            'Plastic': { Z: 6, density: 1.18 }, // Using Carbon for approximation
+            'Aluminum': { Z: 13, density: 2.70 },
+            'Steel': { Z: 26, density: 7.85 }, // Using Iron for approximation
+            'Lead': { Z: 82, density: 11.34 }
         };
 
         //==============================================================================
@@ -1144,7 +1163,11 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
          * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
          */
 
-const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator }) => {
+
+
+
+
+const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare }) => {
 
     const getSourceLink = (sourceKey) => {
         const source = sources[sourceKey];
@@ -1152,8 +1175,8 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
     };
 
     const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
-        const displayValue = value && String(value).trim() ? String(value).trim() : 'N/A';
-        const shouldAppendUnit = unit && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
+        const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
+        const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
 
         return (
             <div className="flex items-start">
@@ -1161,10 +1184,10 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
                 <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-                    <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
-                        {value} {/* Use the value prop directly to allow JSX */}
-                        {shouldAppendUnit ? ` ${unit}` : ''}
-                        {sourceKey && <sup> {getSourceLink(sourceKey)}</sup>}
+                    <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
+                        {displayValue}
+                        {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
+                        {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
                     </p>
                 </div>
             </div>
@@ -1180,7 +1203,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 onClick={() => onNuclideClick(nuclide)} 
                 className={`p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
             >
-                {/* --- MODIFIED: Added half-life category tag --- */}
                 <div className="flex justify-between items-start">
                     <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
@@ -1194,7 +1216,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
     const isFavorite = favorites?.includes(nuclide.symbol);
     const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
 
-    // Full detailed view
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
@@ -1216,7 +1237,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 )}
             </div>
             <div className="grid md:grid-cols-2 gap-6 mt-4">
-                {/* --- MODIFIED: Added half-life category to DataPoint value --- */}
                 <DataPoint 
                     label="Half-life"
                     value={<>
@@ -1251,14 +1271,10 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
             </div>
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                    <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
                     <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
-                    {nuclide.gammaConstant && (
-                        <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Dose Rate</button>
-                    )}
-                    {nuclide.gammaConstant && HVL_DATA[nuclide.symbol] && (
-                         <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shielding</button>
-                    )}
+                    {/* The Dose Rate and Shielding buttons that caused confusion have been removed. */}
                     {nuclide.shipping && (
                          <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
                     )}
@@ -1272,7 +1288,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         </div>
     );
 };
-
 
 
 
@@ -2919,30 +2934,23 @@ const ManualContent = () => (
 
 
 const App = () => {
-
             // --- STATE MANAGEMENT ---
             const [activeView, setActiveView] = React.useState('home');
             const [result, setResult] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
-            
+            const [comparisonList, setComparisonList] = React.useState([]);
             const [nuclideName, setNuclideName] = React.useState('');
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
-
-	    const { addToast } = useToast();
-            
             const [isManualOpen, setIsManualOpen] = React.useState(false);
             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
             const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
-            
             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
             const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
-            
             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
-            
             const [sortBy, setSortBy] = React.useState('name');
             const [sortOrder, setSortOrder] = React.useState('asc');
             const [selectedCategory, setSelectedCategory] = React.useState('All');
@@ -2957,9 +2965,10 @@ const App = () => {
 
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
+            const { addToast } = useToast();
 
             const handleNavClick = (view) => {
-                setPreselectedNuclide(null); // Clear any pre-selected nuclide
+                setPreselectedNuclide(null);
                 setActiveView(view);
                 setCurrentDecaySeriesId(null);
                 setIsFiltersVisible(false);
@@ -2974,6 +2983,21 @@ const App = () => {
             const handleSendToCalculator = (viewId, nuclideSymbol) => {
                 setPreselectedNuclide(nuclideSymbol);
                 setActiveView(viewId);
+            };
+
+            const handleAddToCompare = (nuclideSymbol) => {
+                const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
+                if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
+                    setComparisonList(prevList => [...prevList, nuclideToAdd]);
+                    addToast(`${nuclideToAdd.name} added to comparison.`);
+                } else if (nuclideToAdd) {
+                    addToast(`${nuclideToAdd.name} is already in the comparison.`);
+                }
+                setActiveView('compare');
+            };
+
+            const handleRemoveFromCompare = (nuclideSymbol) => {
+                setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol));
             };
 
             React.useEffect(() => {
@@ -3011,7 +3035,7 @@ const App = () => {
                     if (energy === 0 && (min || max)) return false;
                     const minVal = parseFloat(min); const maxVal = parseFloat(max);
                     if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
-                    if (!isNaN(minVal)) return energy >= minVal; 
+                    if (!isNaN(minVal)) return energy >= minVal;
                     if (!isNaN(maxVal)) return energy <= maxVal;
                     return true;
                 };
@@ -3035,7 +3059,7 @@ const App = () => {
                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
                     else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
                     else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
-                    else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
+                    else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.gamma);
                     else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
                     return sortOrder === 'asc' ? compare : -compare;
                 });
@@ -3046,24 +3070,15 @@ const App = () => {
             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
-    const toggleFavorite = (symbol) => {
-        const isCurrentlyFavorite = favorites.includes(symbol);
-        const nuclide = radionuclides.find(n => n.symbol === symbol);
-        
-        const newFavorites = isCurrentlyFavorite
-            ? favorites.filter(s => s !== symbol)
-            : [...favorites, symbol];
-
-        setFavorites(newFavorites);
-        localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
-
-        // Display the toast message
-        if (isCurrentlyFavorite) {
-            addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`);
-        } else {
-            addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`);
-        }
-    };
+            const toggleFavorite = (symbol) => {
+                const nuclide = radionuclides.find(n => n.symbol === symbol);
+                const isCurrentlyFavorite = favorites.includes(symbol);
+                const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol];
+                setFavorites(newFavorites);
+                localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
+                if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } 
+                else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); }
+            };
             const handleClearFavorites = () => {
                 setFavorites([]);
                 localStorage.removeItem('favoriteNuclides');
@@ -3143,14 +3158,14 @@ const App = () => {
                 switch (activeView) {
                     case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
                     case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                    case 'mda': return <MDACalculator preselectedNuclide={preselectedNuclide} />;
-                    case 'marssim': return <MARSSIM_SampleCalculator />;
-                    case 'wrs': return <WRS_Calculator />;
+                    case 'mda': return <MDACalculator />;
+	 	            case 'marssim': return <MARSSIM_SampleCalculator />;
+		            case 'wrs': return <WRS_Calculator />;
                     case 'emc': return <EMC_Calculator />;
                     case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
-                    case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                    case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} onDecaySeriesClick={handleDecaySeriesClick} />;
-                    case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                    case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;
+                    case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} />;
+                    case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
                     case 'specificActivity': return <SpecificActivityCalculator />;
                     case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                     case 'shielding': return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
@@ -3162,31 +3177,29 @@ const App = () => {
                     case 'home':
                     default:
                         if (result) {
-                            return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} /></div>;
+                            return <div className="p-4"><NuclideCard nuclide={result} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} /></div>;
                         }
                         return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites}/>;
                 }
             };
             
             return (
-                <ToastProvider>
-                    <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
-                        <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
-                            <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
-                            <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-                            <MainNav activeView={activeView} onNavClick={handleNavClick} />
-                            <main className="min-h-[400px]">
-                                {renderActiveView()}
-                            </main>
-                            <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
-                                </p>
-                            </footer>
-                            <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-                        </div>
+                <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
+                    <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
+                        <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
+                        <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
+                        <MainNav activeView={activeView} onNavClick={handleNavClick} />
+                        <main className="min-h-[400px]">
+                            {renderActiveView()}
+                        </main>
+                        <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
+                            </p>
+                        </footer>
+                        <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
                     </div>
-                </ToastProvider>
+                </div>
             );
         };
 
@@ -3343,37 +3356,26 @@ const App = () => {
 	    );
 	};
 
+
+
 /**
  * @description An advanced view for comparing multiple radionuclides side-by-side.
- * Features dynamic highlighting of min/max values and in-cell data bars for quick analysis.
- * @param {{
- * radionuclides: Array<object>,
- * onNuclideClick: (nuclide: object) => void
- * }} props
+ * Features dynamic highlighting, in-cell data bars, and an integrated
+ * percentage difference tag when comparing two nuclides.
  */
-const ComparisonView = ({ radionuclides, onNuclideClick }) => {
-    const [comparisonList, setComparisonList] = React.useState([]);
 
+const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddToCompare, onRemoveFromCompare }) => {
+    
     const sortedNuclides = React.useMemo(() =>
         [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
         [radionuclides]
     );
 
     const handleAddNuclide = (symbol) => {
-        if (symbol && !comparisonList.find(n => n.symbol === symbol)) {
-            const nuclideToAdd = radionuclides.find(n => n.symbol === symbol);
-            if (nuclideToAdd) {
-                setComparisonList(prevList => [...prevList, nuclideToAdd]);
-            }
-        }
+        onAddToCompare(symbol);
     };
     
-    const handleRemoveNuclide = (symbol) => {
-        setComparisonList(prevList => prevList.filter(n => n.symbol !== symbol));
-    };
-
     const propertiesToCompare = [
-        // Using a 'type' key to identify which rows should have highlighting/bars
         { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
         { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
         { label: 'Alpha Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.alpha) },
@@ -3400,20 +3402,19 @@ const ComparisonView = ({ radionuclides, onNuclideClick }) => {
                 {comparisonList.length === 0 ? (
                     <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
                         <h3 className="text-lg font-semibold">The Comparison Table is Empty</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box to add radionuclides to compare.</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box or a nuclide's detail card to add to the comparison.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[600px] text-left border-collapse">
                             <thead>
                                 <tr>
-                                    {/* --- Sticky Header for Property Column --- */}
                                     <th className="sticky left-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold z-10 border-b border-r border-slate-200 dark:border-slate-600">Property</th>
                                     {comparisonList.map(nuclide => (
                                         <th key={nuclide.symbol} className="p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
                                             <div className="flex justify-between items-center">
                                                 <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>{nuclide.name}</span>
-                                                <button onClick={() => handleRemoveNuclide(nuclide.symbol)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
+                                                <button onClick={() => onRemoveFromCompare(nuclide.symbol)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
                                             </div>
                                         </th>
                                     ))}
@@ -3421,11 +3422,10 @@ const ComparisonView = ({ radionuclides, onNuclideClick }) => {
                             </thead>
                             <tbody>
                                 {propertiesToCompare.map(prop => {
-                                    // --- LOGIC FOR HIGHLIGHTING AND BARS ---
                                     let values = [], maxVal = -Infinity, minVal = Infinity;
                                     if (prop.type === 'numeric') {
                                         values = comparisonList.map(nuclide => {
-                                            const rawValue = prop.key === 'emissionEnergies' ? nuclide[prop.key] : nuclide[prop.key];
+                                            const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
                                             const formattedVal = prop.format(rawValue);
                                             return isNaN(formattedVal) || formattedVal === Infinity ? null : formattedVal;
                                         }).filter(v => v !== null);
@@ -3438,33 +3438,41 @@ const ComparisonView = ({ radionuclides, onNuclideClick }) => {
 
                                     return (
                                         <tr key={prop.label} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                            {/* --- Sticky Body Cell for Property Column --- */}
                                             <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 p-3 font-medium text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-slate-600 z-10">{prop.label}</td>
                                             
-                                            {comparisonList.map(nuclide => {
-                                                const rawValue = nuclide[prop.key];
+                                            {comparisonList.map((nuclide, nuclideIndex) => {
+                                                const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
                                                 const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
-                                                
                                                 let cellClass = 'border-b border-slate-200 dark:border-slate-600';
                                                 let displayValue = formattedValue;
                                                 
                                                 if(prop.type === 'numeric') {
                                                     const numericVal = parseFloat(formattedValue);
                                                     displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toExponential(2);
-                                                    if (numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
-                                                    if (numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
+                                                    if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
+                                                    if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
                                                 }
-
                                                 const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
+
+                                                let differenceTag = null;
+                                                if (comparisonList.length === 2 && nuclideIndex === 1 && prop.type === 'numeric') {
+                                                    const val1 = values[0];
+                                                    const val2 = values[1];
+                                                    if (val1 !== null && val2 !== null && !isNaN(val1) && !isNaN(val2) && val1 !== 0) {
+                                                        const diff = ((val2 - val1) / val1) * 100;
+                                                        const diffColor = diff >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                                                        const sign = diff >= 0 ? '+' : '';
+                                                        differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
+                                                    }
+                                                }
 
                                                 return (
                                                     <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
-                                                        {/* In-cell data bar */}
-                                                        {prop.type === 'numeric' && barWidth > 0 &&
-                                                            <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>
-                                                        }
-                                                        {/* Cell value, positioned above the bar */}
-                                                        <span className="relative">{displayValue}</span>
+                                                        {prop.type === 'numeric' && barWidth > 0 && <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>}
+                                                        <div className="relative">
+                                                            <span>{displayValue}</span>
+                                                            {differenceTag}
+                                                        </div>
                                                     </td>
                                                 );
                                             })}
@@ -3484,113 +3492,160 @@ const ComparisonView = ({ radionuclides, onNuclideClick }) => {
 
 
 
-
-
-         /**
-          * @description A calculator for determining the external dose rate from a gamma-emitting point source.
-          * It uses the gamma constant (Γ) and the inverse square law.
-          * @param {{radionuclides: Array<object>}} props - Component props.
-          * @param {Array<object>} props.radionuclides - The full list of radionuclides, used to populate the selector with only those that have a gammaConstant.
-          */
+/**
+ * @description A calculator for determining dose rate from either a gamma-emitting point source
+ * or from Bremsstrahlung X-rays generated by a beta emitter in shielding.
+ */
 const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+    // --- State to toggle between calculator modes ---
+    const [calcMode, setCalcMode] = React.useState('gamma'); // 'gamma' or 'bremsstrahlung'
+
+    // --- State for Gamma Mode ---
+    const [gammaNuclideSymbol, setGammaNuclideSymbol] = React.useState('');
     const [activity, setActivity] = React.useState('1');
     const [activityUnit, setActivityUnit] = React.useState('mCi');
     const [distance, setDistance] = React.useState('1');
     const [distanceUnit, setDistanceUnit] = React.useState('m');
+
+    // --- State for Bremsstrahlung Mode ---
+    const [betaNuclideSymbol, setBetaNuclideSymbol] = React.useState('');
+    const [betaActivity, setBetaActivity] = React.useState('1');
+    const [betaActivityUnit, setBetaActivityUnit] = React.useState('mCi');
+    const [betaDistance, setBetaDistance] = React.useState('10');
+    const [betaDistanceUnit, setBetaDistanceUnit] = React.useState('cm');
+    const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
+
+    // --- Unified State ---
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
-    const gammaNuclides = React.useMemo(() => 
-        radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
-        [radionuclides]
+    // --- Memoized Data Lists ---
+    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+
+    const selectedBetaNuclide = React.useMemo(() => 
+        betaNuclides.find(n => n.symbol === betaNuclideSymbol),
+        [betaNuclideSymbol, betaNuclides]
     );
 
-    // Hook to handle pre-selection from NuclideCard
+    // --- Handle Pre-selection ---
     React.useEffect(() => {
         if (preselectedNuclide) {
-            // Check if the preselected nuclide is valid for this calculator
             if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
-                setNuclideSymbol(preselectedNuclide);
+                setGammaNuclideSymbol(preselectedNuclide);
+                setCalcMode('gamma');
+            } else if (betaNuclides.find(n => n.symbol === preselectedNuclide)) {
+                setBetaNuclideSymbol(preselectedNuclide);
+                setCalcMode('bremsstrahlung');
             }
         }
-    }, [preselectedNuclide, gammaNuclides]);
+    }, [preselectedNuclide, gammaNuclides, betaNuclides]);
 
-    const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-    const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+    // --- Data Constants ---
+    const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+    const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+    const activityFactorsBq = { 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9 };
+    const distanceFactorsCm = { 'cm': 1, 'm': 100, 'in': 2.54, 'ft': 30.48 };
 
     const handleCalculate = () => {
-        const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
-        if (!nuclide) {
-            setError('Please select a radionuclide.');
-            setResult(null);
-            return;
-        }
-        
-        const gammaConstant = parseFloat(nuclide.gammaConstant);
-        const activityValue = parseFloat(activity);
-        const distanceValue = parseFloat(distance);
-
-        if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
-            setError('Please enter valid, positive numbers for activity and distance.');
-            setResult(null);
-            return;
-        }
-
+        setResult(null);
         setError('');
 
-        const activityInCi = activityValue * activityFactors[activityUnit];
-        const distanceInM = distanceValue * distanceFactors[distanceUnit];
-
-        // Dose Rate = (Gamma Constant * Activity) / distance^2
-        const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-
-        setResult({
-            r_hr: doseRateR_hr.toPrecision(3),
-            mrem_hr: (doseRateR_hr * 1000).toPrecision(3),
-            uSv_hr: (doseRateR_hr * 10000).toPrecision(3)
-        });
+        if (calcMode === 'gamma') {
+            const nuclide = gammaNuclides.find(n => n.symbol === gammaNuclideSymbol);
+            if (!nuclide) { setError('Please select a radionuclide.'); return; }
+            const activityValue = parseFloat(activity);
+            const distanceValue = parseFloat(distance);
+            if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
+                setError('Please enter valid, positive numbers for activity and distance.'); return;
+            }
+            const gammaConstant = parseFloat(nuclide.gammaConstant);
+            const activityInCi = activityValue * activityFactorsCi[activityUnit];
+            const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+            const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+            setResult({
+                type: 'gamma',
+                r_hr: doseRateR_hr.toPrecision(3),
+                mrem_hr: (doseRateR_hr * 1000).toPrecision(3),
+                uSv_hr: (doseRateR_hr * 10000).toPrecision(3)
+            });
+        } else { // Bremsstrahlung
+            if (!selectedBetaNuclide) { setError('Please select a beta-emitting radionuclide.'); return; }
+            const activityValue = parseFloat(betaActivity);
+            const distanceValue = parseFloat(betaDistance);
+            if (isNaN(activityValue) || isNaN(distanceValue) || activityValue <= 0 || distanceValue <= 0) {
+                setError('Please enter valid, positive numbers for activity and distance.'); return;
+            }
+            const E_max = parseEnergyToMeV(selectedBetaNuclide.emissionEnergies.beta);
+            const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
+            const f = 3.5e-4 * Z * E_max;
+            const E_avg = E_max / 3;
+            const activityBq = activityValue * activityFactorsBq[betaActivityUnit];
+            const totalEnergyRate = activityBq * E_avg * f;
+            const distance_cm = distanceValue * distanceFactorsCm[betaDistanceUnit];
+            const energyFluenceRate = totalEnergyRate / (4 * Math.PI * Math.pow(distance_cm, 2));
+            const doseRate_mrem_hr = energyFluenceRate * 5.76e-5;
+            setResult({
+                type: 'bremsstrahlung',
+                doseRate: doseRate_mrem_hr.toPrecision(3),
+                bremsstrahlungFraction: (f * 100).toPrecision(2)
+            });
+        }
     };
 
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Dose Rate Calculator</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For unshielded gamma point sources.</p>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Dose Rate Calculator</h2>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => {setCalcMode('gamma'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Source</button>
+                    <button onClick={() => {setCalcMode('bremsstrahlung'); setResult(null); setError('');}} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'bremsstrahlung' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta Bremsstrahlung</button>
+                </div>
+
                 <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                        <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                            <option value="">Select a gamma emitter...</option>
-                            {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name} ({n.symbol})</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (A)</label>
-                        <div className="flex gap-2 mt-1">
-                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                    {calcMode === 'gamma' ? (
+                        <div className="animate-fade-in space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium">Radionuclide</label>
+                                <select value={gammaNuclideSymbol} onChange={e => setGammaNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                    <option value="">Select a gamma emitter...</option>
+                                    {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
+                                </select>
+                            </div>
+                            <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-sm font-medium">Distance from Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance from Source (d)</label>
-                        <div className="flex gap-2 mt-1">
-                            <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                            <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                               {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                    ) : (
+                        <div className="animate-fade-in space-y-4">
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bremsstrahlung Calculation</label>
+                                <Tooltip text="This calculator estimates the dose rate from Bremsstrahlung ('braking radiation') X-rays. It assumes the chosen shield is thick enough to stop all beta particles and calculates the dose from the secondary X-rays produced during this rapid deceleration.">
+                                    <Icon path={ICONS.help} className="w-4 h-4 text-slate-400" />
+                                </Tooltip>
+                            </div>
+                            <div><label className="block text-sm font-medium">Beta Emitter</label><SearchableSelect options={betaNuclides} onSelect={(symbol) => { setBetaNuclideSymbol(symbol); setResult(null); setError(''); }} placeholder="Search for a beta emitter..."/></div>
+                            {selectedBetaNuclide && (<div className="p-2 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-center font-bold">{selectedBetaNuclide.name} (E-max: {parseEnergyToMeV(selectedBetaNuclide.emissionEnergies.beta)} MeV)</div>)}
+                            <div><label className="block text-sm font-medium">Activity</label><div className="flex"><input type="number" value={betaActivity} onChange={e => setBetaActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={betaActivityUnit} onChange={e => setBetaActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsBq).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-sm font-medium">Distance</label><div className="flex"><input type="number" value={betaDistance} onChange={e => setBetaDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={betaDistanceUnit} onChange={e => setBetaDistanceUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(distanceFactorsCm).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
                         </div>
-                    </div>
+                    )}
+                    
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Dose Rate</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    {result && (
+                    
+                    {result && result.type === 'gamma' && (
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Dose Rate</p>
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Gamma Dose Rate</p>
                             <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.mrem_hr} mrem/hr</p>
                             <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
-                            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">({result.r_hr} R/hr)</p>
+                        </div>
+                    )}
+                    {result && result.type === 'bremsstrahlung' && (
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Bremsstrahlung Dose Rate</p>
+                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.doseRate} mrem/hr</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
                         </div>
                     )}
                 </div>
