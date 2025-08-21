@@ -3813,133 +3813,140 @@ const EquilibriumCalculator = ({ radionuclides }) => {
          * @param {{radionuclides: Array<object>}} props
          */
 
-        const ShieldingCalculator = ({ radionuclides }) => {
-            const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-            const [activity, setActivity] = React.useState('1');
-            const [activityUnit, setActivityUnit] = React.useState('mCi');
-            const [distance, setDistance] = React.useState('1');
-            const [distanceUnit, setDistanceUnit] = React.useState('m');
-            const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
-            const [shieldThickness, setShieldThickness] = React.useState('1');
-            const [thicknessUnit, setThicknessUnit] = React.useState('cm');
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
-            
-            // Filter for nuclides that have both gamma constant and HVL data
+const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState('mCi');
+    const [distance, setDistance] = React.useState('1');
+    const [distanceUnit, setDistanceUnit] = React.useState('m');
+    const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
+    const [shieldThickness, setShieldThickness] = React.useState('1');
+    const [thicknessUnit, setThicknessUnit] = React.useState('cm');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const shieldingNuclides = React.useMemo(() =>
+        radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
 
-            const shieldingNuclides = React.useMemo(() =>
-                radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)),
-                [radionuclides]
-            );
+    // Hook to handle pre-selection from NuclideCard
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            // Check if the preselected nuclide is valid for this calculator
+            if (shieldingNuclides.find(n => n.symbol === preselectedNuclide)) {
+                setNuclideSymbol(preselectedNuclide);
+            }
+        }
+    }, [preselectedNuclide, shieldingNuclides]);
 
-            const materials = ['Lead', 'Concrete', 'Steel'];
-            const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-            const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
-            const thicknessFactors = { 'cm': 1, 'mm': 0.1, 'in': 2.54 };
+    const materials = ['Lead', 'Concrete', 'Steel'];
+    const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+    const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+    const thicknessFactors = { 'cm': 1, 'mm': 0.1, 'in': 2.54 };
 
-            const handleCalculate = () => {
-                const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol);
-                if (!nuclide) {
-                    setError('Please select a radionuclide.');
-                    setResult(null);
-                    return;
-                }
-                
-                const gammaConstant = parseFloat(nuclide.gammaConstant);
-                const activityValue = parseFloat(activity);
-                const distanceValue = parseFloat(distance);
-                const thicknessValue = parseFloat(shieldThickness);
-                const hvl = HVL_DATA[nuclide.symbol][shieldMaterial];
+    const handleCalculate = () => {
+        const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol);
+        if (!nuclide) {
+            setError('Please select a radionuclide.');
+            setResult(null);
+            return;
+        }
+        
+        const gammaConstant = parseFloat(nuclide.gammaConstant);
+        const activityValue = parseFloat(activity);
+        const distanceValue = parseFloat(distance);
+        const thicknessValue = parseFloat(shieldThickness);
+        const hvl = HVL_DATA[nuclide.symbol][shieldMaterial];
 
-                if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || isNaN(thicknessValue) || distanceValue <= 0 || activityValue < 0 || thicknessValue < 0) {
-                    setError('Please enter valid, positive numbers for all fields.');
-                    setResult(null);
-                    return;
-                }
-                setError('');
+        if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || isNaN(thicknessValue) || distanceValue <= 0 || activityValue < 0 || thicknessValue < 0) {
+            setError('Please enter valid, positive numbers for all fields.');
+            setResult(null);
+            return;
+        }
+        setError('');
 
-                const activityInCi = activityValue * activityFactors[activityUnit];
-                const distanceInM = distanceValue * distanceFactors[distanceUnit];
-                const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
+        const activityInCi = activityValue * activityFactors[activityUnit];
+        const distanceInM = distanceValue * distanceFactors[distanceUnit];
+        const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
 
-                // 1. Calculate unshielded dose rate
-                const unshieldedRate = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+        const unshieldedRate = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+        const shieldedRate = unshieldedRate * Math.pow(0.5, thicknessInCm / hvl);
+        
+        setResult({
+            unshielded: (unshieldedRate * 1000).toPrecision(3),
+            shielded: (shieldedRate * 1000).toPrecision(3)
+        });
+    };
 
-                // 2. Calculate shielded dose rate
-                const shieldedRate = unshieldedRate * Math.pow(0.5, thicknessInCm / hvl);
-                
-                setResult({
-                    unshielded: (unshieldedRate * 1000).toPrecision(3), // mrem/hr
-                    shielded: (shieldedRate * 1000).toPrecision(3) // mrem/hr
-                });
-            };
-
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Gamma Shielding Calculator</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For unshielded gamma point sources.</p>
-                        <div className="space-y-4">
-                            {/* Inputs */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                                    <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                        <option value="">Select source...</option>
-                                        {shieldingNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Activity</label>
-                                    <div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                                            {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance</label>
-                                    <div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                                        <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                                            {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Material</label>
-                                    <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                        {materials.map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Shield Thickness</label>
-                                    <div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                                        <select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                                            {Object.keys(thicknessFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Gamma Shielding Calculator</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Calculates dose rate with shielding.</p>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                            <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                <option value="">Select source...</option>
+                                {shieldingNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Activity</label>
+                            <div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                    {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
                             </div>
-                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {result && (
-                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
-                                    <div>
-                                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p>
-                                        <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded} mrem/hr</p>
-                                    </div>
-                                    <div className="font-bold text-2xl">↓</div>
-                                    <div>
-                                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p>
-                                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded} mrem/hr</p>
-                                    </div>
-                                </div>
-                            )}
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance</label>
+                            <div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                    {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Material</label>
+                            <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {materials.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        </div>
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Shield Thickness</label>
+                            <div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                <select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                    {Object.keys(thicknessFactors).map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
+                            <div>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p>
+                                <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded} mrem/hr</p>
+                            </div>
+                            <div className="font-bold text-2xl">↓</div>
+                            <div>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p>
+                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded} mrem/hr</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
+
+
+
 
         /**
          * @description A calculator for determining allowable stay time based on dose rate and a dose limit.
