@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.39 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.40 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -1121,7 +1121,7 @@ input.addEventListener('blur', saveName, { once: true });
                     recordChange(newState);
                 };
 
-input.focus();
+requestAnimationFrame(() => input.focus());
 input.addEventListener('blur', save);
 
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -1148,7 +1148,7 @@ input.addEventListener('blur', save);
                         }
                     };
                     
-input.focus();
+requestAnimationFrame(() => input.focus());
 input.addEventListener('blur', save);
                     
                     input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
@@ -1168,8 +1168,8 @@ input.addEventListener('blur', save);
                     recordChange(newState);
                 };
 
-               input.focus();
-               input.addEventListener('blur', save);
+requestAnimationFrame(() => input.focus());
+input.addEventListener('blur', save);
 
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.sticky-note')) {
