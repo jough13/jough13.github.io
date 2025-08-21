@@ -285,7 +285,7 @@
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '2.9.2';
+        const VERSION = '2.9.4';
         const LAST_UPDATED = 'August 21, 2025';
 
         /**
@@ -534,6 +534,22 @@
 	    return value; // Return raw value if no unit is matched
 	
 };
+
+
+
+
+
+	const getHalfLifeCategory = (seconds) => {
+            if (seconds === Infinity) return { label: 'Stable', color: 'text-slate-500 dark:text-slate-400' };
+            if (seconds < 3600) return { label: 'Very Short', color: 'text-red-500' }; // < 1 Hour
+            if (seconds < 86400 * 2) return { label: 'Short', color: 'text-amber-500' }; // < 2 Days
+            if (seconds < 31557600 * 10) return { label: 'Medium', color: 'text-sky-500' }; // < 10 Years
+            if (seconds < 31557600 * 1000000) return { label: 'Long', color: 'text-indigo-500' }; // < 1 Million Years
+            return { label: 'Geological', color: 'text-purple-500' };
+        };
+
+
+
 
         /**
          * Parses a string to standardize its numeric part into "e" notation if it's very large or small.
@@ -1146,7 +1162,7 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
                     <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
-                        {displayValue}
+                        {value} {/* Use the value prop directly to allow JSX */}
                         {shouldAppendUnit ? ` ${unit}` : ''}
                         {sourceKey && <sup> {getSourceLink(sourceKey)}</sup>}
                     </p>
@@ -1157,12 +1173,18 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
 
     if (isCompact) {
         const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
+        const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
+        
         return (
             <div 
                 onClick={() => onNuclideClick(nuclide)} 
                 className={`p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
             >
-                <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                {/* --- MODIFIED: Added half-life category tag --- */}
+                <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                </div>
                 <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
                 <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
             </div>
@@ -1170,7 +1192,9 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
     }
 
     const isFavorite = favorites?.includes(nuclide.symbol);
+    const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
 
+    // Full detailed view
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
@@ -1192,7 +1216,16 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 )}
             </div>
             <div className="grid md:grid-cols-2 gap-6 mt-4">
-                <DataPoint label="Half-life" value={formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} sourceKey={nuclide.sourceRef?.halfLife} iconPath={ICONS.hourglass} />
+                {/* --- MODIFIED: Added half-life category to DataPoint value --- */}
+                <DataPoint 
+                    label="Half-life"
+                    value={<>
+                        {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
+                        <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                    </>}
+                    sourceKey={nuclide.sourceRef?.halfLife}
+                    iconPath={ICONS.hourglass}
+                />
                 <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
                 <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
                 <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
@@ -1239,7 +1272,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         </div>
     );
 };
-
 
 
 
@@ -1448,9 +1480,10 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
          */
 
 const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible }) => {
+    const { selectedCategory, setSelectedCategory } = filterProps;
+
     return (
         <div className="relative">
-            {/* Button to show filters on mobile */}
             <div className="px-4 pt-4 lg:hidden">
                 <button
                     onClick={() => setIsFiltersVisible(true)}
@@ -1466,23 +1499,34 @@ const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisi
                     setIsFiltersVisible={setIsFiltersVisible}/>
                 <div className="lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
                     
-                    {/* --- MODIFIED HEADER SECTION --- */}
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                         <p className="text-sm text-slate-500 dark:text-slate-400 flex-shrink-0">
                             Showing {filteredList.length} of {radionuclides.length} nuclides.
                         </p>
                         
-                        {/* --- NEW LEGEND --- */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
                             {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
                                 const bgColor = styles.border.replace('border-l-', 'bg-');
+                                const isActive = selectedCategory === category;
                                 return (
-                                    <div key={category} className="flex items-center gap-1.5">
+                                    <button 
+                                        key={category}
+                                        onClick={() => setSelectedCategory(prev => prev === category ? 'All' : category)}
+                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-200 ${isActive ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-sky-500 bg-white dark:bg-slate-700' : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700'}`}
+                                    >
                                         <div className={`w-3 h-3 rounded-full ${bgColor}`}></div>
                                         <span className="text-slate-600 dark:text-slate-300">{category.replace('/', '/ ')}</span>
-                                    </div>
+                                    </button>
                                 );
                             })}
+                            
+                            {/* --- NEW: Show All Button --- */}
+                            <button
+                                onClick={() => setSelectedCategory('All')}
+                                className={`px-2 py-1 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 ${selectedCategory === 'All' ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-slate-500 bg-white dark:bg-slate-700' : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700'}`}
+                            >
+                                Show All
+                            </button>
                         </div>
                     </div>
 
@@ -4009,126 +4053,184 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
 
 
 
-        /**
-         * @description A calculator for determining allowable stay time based on dose rate and a dose limit.
-         * @param {{radionuclides: Array<object>}} props
-         */
+/**
+ * @description A calculator for determining allowable stay time and total dose received.
+ * The dose rate can be calculated from a specific source or entered manually.
+ */
+const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
+    // --- NEW: State to toggle between input modes ---
+    const [inputMode, setInputMode] = React.useState('fromSource'); // 'fromSource' or 'manualRate'
 
-        const StayTimeCalculator = ({ radionuclides }) => {
-            const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-            const [activity, setActivity] = React.useState('1');
-            const [activityUnit, setActivityUnit] = React.useState('mCi');
-            const [distance, setDistance] = React.useState('1');
-            const [distanceUnit, setDistanceUnit] = React.useState('m');
-            const [doseLimit, setDoseLimit] = React.useState('2');
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
+    // --- State for "fromSource" mode ---
+    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState('mCi');
+    const [distance, setDistance] = React.useState('1');
+    const [distanceUnit, setDistanceUnit] = React.useState('m');
 
-            const gammaNuclides = React.useMemo(() =>
-                radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
-                [radionuclides]
-            );
+    // --- State for "manualRate" mode ---
+    const [manualDoseRate, setManualDoseRate] = React.useState('10');
+    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState('mrem/hr');
+    
+    // --- State for Planning ---
+    const [doseLimit, setDoseLimit] = React.useState('2');
+    const [plannedTime, setPlannedTime] = React.useState('10');
+    const [plannedTimeUnit, setPlannedTimeUnit] = React.useState('minutes');
 
-            const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-            const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
-            const handleCalculate = () => {
-                const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
-                if (!nuclide) {
-                    setError('Please select a radionuclide.');
-                    setResult(null);
-                    return;
-                }
+    const gammaNuclides = React.useMemo(() =>
+        radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
+
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
+                setNuclideSymbol(preselectedNuclide);
+                setInputMode('fromSource'); // Switch to the correct mode
+            }
+        }
+    }, [preselectedNuclide, gammaNuclides]);
+
+    const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+    const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
+    const timeFactors = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
+    const doseRateFactors = { 'mrem/hr': 1, 'mR/hr': 1, 'µSv/hr': 0.1, 'R/hr': 1000 };
+
+    const handleCalculate = () => {
+        setResult(null);
+        setError('');
+
+        let doseRate_mrem_hr = 0;
+
+        // --- STEP 1: Determine the dose rate from the selected input mode ---
+        if (inputMode === 'fromSource') {
+            const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
+            if (!nuclide) { setError('Please select a radionuclide.'); return; }
+            
+            const activityValue = parseFloat(activity);
+            const distanceValue = parseFloat(distance);
+            if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) {
+                setError('Please enter valid, positive numbers for activity and distance.'); return;
+            }
+
+            const gammaConstant = parseFloat(nuclide.gammaConstant);
+            const activityInCi = activityValue * activityFactors[activityUnit];
+            const distanceInM = distanceValue * distanceFactors[distanceUnit];
+            const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+            doseRate_mrem_hr = doseRateR_hr * 1000;
+        } else { // manualRate
+            const manualRate = parseFloat(manualDoseRate);
+            if (isNaN(manualRate) || manualRate < 0) {
+                setError('Please enter a valid, non-negative dose rate.'); return;
+            }
+            doseRate_mrem_hr = manualRate * doseRateFactors[manualDoseRateUnit];
+        }
+
+        // --- STEP 2: Perform the planning calculations (this logic is now common to both modes) ---
+        const limit = parseFloat(doseLimit);
+        const plannedTimeValue = parseFloat(plannedTime);
+
+        if (isNaN(limit) || isNaN(plannedTimeValue) || limit <= 0 || plannedTimeValue < 0) {
+            setError('Please enter valid, positive numbers for dose limit and planned time.'); return;
+        }
+
+        if (doseRate_mrem_hr <= 0) {
+            setError('Dose rate must be greater than zero to calculate stay time.'); return;
+        }
+
+        // Calculation 1: Max Stay Time
+        const stayTimeHours = limit / doseRate_mrem_hr;
+        const totalMinutes = stayTimeHours * 60;
+        const minutes = Math.floor(totalMinutes);
+        const seconds = Math.round((totalMinutes - minutes) * 60);
+
+        // Calculation 2: Total Dose Received
+        const plannedTimeInHours = plannedTimeValue * timeFactors[plannedTimeUnit];
+        const totalDoseReceived = doseRate_mrem_hr * plannedTimeInHours;
+        const isSafe = totalDoseReceived <= limit;
+
+        setResult({
+            doseRate: doseRate_mrem_hr.toPrecision(3),
+            stayTime: `${minutes} min ${seconds} sec`,
+            totalDoseReceived: totalDoseReceived.toPrecision(3),
+            isSafe: isSafe
+        });
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Stay Time & Dose Calculator</h2>
                 
-                const gammaConstant = parseFloat(nuclide.gammaConstant);
-                const activityValue = parseFloat(activity);
-                const distanceValue = parseFloat(distance);
-                const limit = parseFloat(doseLimit);
+                {/* --- NEW: Input Mode Switcher --- */}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setInputMode('fromSource')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'fromSource' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Calculate from Source</button>
+                    <button onClick={() => setInputMode('manualRate')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'manualRate' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Enter Dose Rate</button>
+                </div>
 
-                if (isNaN(gammaConstant) || isNaN(activityValue) || isNaN(distanceValue) || isNaN(limit) || distanceValue <= 0 || activityValue < 0 || limit <= 0) {
-                    setError('Please enter valid, positive numbers for all fields.');
-                    setResult(null);
-                    return;
-                }
-                setError('');
-
-                const activityInCi = activityValue * activityFactors[activityUnit];
-                const distanceInM = distanceValue * distanceFactors[distanceUnit];
-
-                const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-                const doseRate_mrem_hr = doseRateR_hr * 1000; // 1 R/hr ≈ 1000 mrem/hr
-
-                if (doseRate_mrem_hr <= 0) {
-                    setError('Calculated dose rate is zero. Stay time is effectively infinite.');
-                    setResult(null);
-                    return;
-                }
-
-                const stayTimeHours = limit / doseRate_mrem_hr;
-                const totalMinutes = stayTimeHours * 60;
-                const minutes = Math.floor(totalMinutes);
-                const seconds = Math.round((totalMinutes - minutes) * 60);
-
-                setResult({
-                    doseRate: doseRate_mrem_hr.toPrecision(3),
-                    stayTime: `${minutes} min ${seconds} sec`
-                });
-            };
-
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-1">Stay Time Calculator</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Calculates time to reach a dose limit.</p>
-                        <div className="space-y-4">
-
-                            {/* Inputs */}
-
-                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium">Source Information</label>
-                                    <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                        <option value="">Select source...</option>
-                                        {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium">Activity</label>
-                                        <div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
-                                                {Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium">Distance</label>
-                                        <div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                                            <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
-                                                {Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
+                <div className="space-y-4">
+                    {inputMode === 'fromSource' ? (
+                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
+                            <label className="block text-sm font-semibold">Source Information</label>
+                            <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                <option value="">Select source...</option>
+                                {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
+                            </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
-                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                <label className="block text-sm font-medium">Dose Limit (mrem)</label>
-                                <input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                            </div>
-                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Stay Time</button>
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {result && (
-                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">At a dose rate of <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate} mrem/hr</span></p>
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 mt-2">Maximum Stay Time to receive {doseLimit} mrem is:</p>
-                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
-                                </div>
-                            )}
+                        </div>
+                    ) : (
+                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
+                            <label className="block text-sm font-semibold">Known Dose Rate</label>
+                            <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(doseRateFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                        </div>
+                    )}
+                    
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <label className="block text-sm font-semibold">Planning</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="block text-xs font-medium">Dose Limit (mrem)</label><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-xs font-medium">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(timeFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
                     </div>
+
+                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-4">
+                            <div className="text-center">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Dose Rate in Area: <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate} mrem/hr</span></p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-center">
+                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
+                                    <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
+                                    <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
+                                </div>
+                                <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
+                                    <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived} mrem</p>
+                                    <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
+                                </div>
+                            </div>
+                             {!result.isSafe && <p className="text-center font-bold text-red-500 text-sm">WARNING: Exceeds dose limit!</p>}
+                        </div>
+                    )}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
+
+
+
+
 
 /**
  * @description A unified calculator for determining detection limits for both
