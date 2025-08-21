@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.38 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.39 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -726,10 +726,8 @@
                     input.replaceWith(nameWrapper);
                 };
 
-                setTimeout(() => {
-                    input.focus();
-                    input.addEventListener('blur', saveName, { once: true });
-                }, 150);
+input.focus();
+input.addEventListener('blur', saveName, { once: true });
                 
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') e.target.blur();
@@ -1123,10 +1121,8 @@
                     recordChange(newState);
                 };
 
-                setTimeout(() => {
-                    input.focus();
-                    input.addEventListener('blur', save);
-                }, 150);
+input.focus();
+input.addEventListener('blur', save);
 
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.service-name.editable')) {
@@ -1152,10 +1148,8 @@
                         }
                     };
                     
-                    setTimeout(() => {
-                        input.focus();
-                        input.addEventListener('blur', save);
-                    }, 150);
+input.focus();
+input.addEventListener('blur', save);
                     
                     input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
                 }
@@ -1174,10 +1168,8 @@
                     recordChange(newState);
                 };
 
-                setTimeout(() => {
-                    input.focus();
-                    input.addEventListener('blur', save);
-                }, 150);
+               input.focus();
+               input.addEventListener('blur', save);
 
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.sticky-note')) {
