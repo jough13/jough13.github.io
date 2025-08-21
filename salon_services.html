@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.41 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.42 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -726,8 +726,8 @@
                     input.replaceWith(nameWrapper);
                 };
 
-input.focus();
-input.addEventListener('blur', saveName, { once: true });
+                input.focus();
+                input.addEventListener('blur', saveName, { once: true });
                 
                 input.addEventListener('keydown', e => {
                     if (e.key === 'Enter') e.target.blur();
@@ -921,63 +921,6 @@ input.addEventListener('blur', saveName, { once: true });
             }
         };
 
-const createInputForEditable = (target) => {
-    // Prevent the browser from firing a 'click' event later
-    event.preventDefault();
-
-    const rowEl = target.closest('[data-row]');
-    if (!rowEl) return;
-    
-    const rowIndex = parseInt(rowEl.dataset.row);
-    const colIndex = parseInt(target.closest('[data-col]').dataset.col);
-    const originalText = target.textContent;
-    const isPrice = target.matches('.price-text');
-    const isLevel = target.matches('.level-text');
-
-    const input = document.createElement('input');
-    input.className = isPrice ? 'price-input' : 'name-input';
-
-    if (isPrice) {
-        input.type = 'number';
-        input.step = '0.01';
-        input.value = target.classList.contains('placeholder') ? '' : originalText.replace('$', '').trim();
-    } else {
-        input.type = 'text';
-        input.value = originalText === 'Add Level' ? '' : originalText;
-    }
-
-    target.replaceWith(input);
-    input.focus();
-
-    const save = () => {
-        const newState = deepClone(stateHistory[currentStateIndex]);
-        const newValue = input.value.trim();
-        
-        if (isLevel) {
-            newState.stylists[rowIndex].level = newValue || originalText;
-        } else if (isPrice) {
-            newState.stylists[rowIndex].services[colIndex - 1].price = newValue ? parseFloat(newValue).toFixed(2) : '';
-        } else { // Is a service name
-            if (newValue && newValue !== originalText) {
-                newState.services[colIndex - 1].name = newValue;
-            } else {
-                // If no change, we need to manually trigger a re-render to put the span back
-                updateDisplay();
-                return;
-            }
-        }
-        recordChange(newState);
-    };
-    
-    input.addEventListener('blur', save, { once: true });
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === 'Escape') {
-            e.preventDefault();
-            input.blur();
-        }
-    });
-};
-
         // --- RENDER FUNCTIONS ---
         const renderTable = (stylistsToRender) => {
             const thead = servicesTable.querySelector('thead');
@@ -1128,17 +1071,98 @@ const createInputForEditable = (target) => {
             recordChange(newState);
         });
 
-// NEW: Add a 'touchstart' listener specifically for mobile editing to fix the bounce
-mainContentContainer.addEventListener('touchstart', (event) => {
-    const target = event.target;
-    // We only run this logic inside a mobile card view
-    if (target.closest('.stylist-card-body') || target.matches('.level-text')) {
-        if (target.matches('.level-text, .service-name.editable, .price-text')) {
-            createInputForEditable(target);
-        }
-    }
-}, { passive: false }); // passive: false is needed for preventDefault() to work
-
+        // ========================================================================
+        // === FIX STARTS HERE ====================================================
+        // ========================================================================
+        
+        // This function replaces the multiple, repetitive blocks of code for editing.
+        // It's called by both the `touchstart` (mobile) and `click` (desktop) listeners.
+        const createInputForEditable = (target) => {
+            const rowEl = target.closest('[data-row]');
+            if (!rowEl && !target.dataset.stylistIndex) return;
+            
+            // Determine stylist index from table row or profile modal
+            const stylistIndex = rowEl ? parseInt(rowEl.dataset.row) : parseInt(target.dataset.stylistIndex);
+        
+            const originalText = target.textContent;
+            const isPrice = target.matches('.price-text');
+            const isLevel = target.matches('.level-text');
+            const isServiceNameMobile = target.matches('.service-name.editable');
+        
+            const input = document.createElement('input');
+            input.className = isPrice ? 'price-input' : 'name-input';
+        
+            if (isPrice) {
+                input.type = 'number';
+                input.step = '0.01';
+                input.value = target.classList.contains('placeholder') ? '' : originalText.replace('$', '').trim();
+            } else {
+                input.type = 'text';
+                input.value = originalText === 'Add Level' ? '' : originalText;
+            }
+        
+            target.replaceWith(input);
+            requestAnimationFrame(() => input.focus());
+        
+            const save = () => {
+                const newState = deepClone(stateHistory[currentStateIndex]);
+                const newValue = input.value.trim();
+                let changed = false;
+        
+                if (isLevel) {
+                    if ((newValue || originalText) !== newState.stylists[stylistIndex].level) {
+                        newState.stylists[stylistIndex].level = newValue || originalText;
+                        changed = true;
+                    }
+                } else if (isPrice) {
+                    const colIndex = parseInt(target.closest('[data-col]').dataset.col);
+                    const newPrice = newValue ? parseFloat(newValue).toFixed(2) : '';
+                    if (newPrice !== newState.stylists[stylistIndex].services[colIndex - 1].price) {
+                        newState.stylists[stylistIndex].services[colIndex - 1].price = newPrice;
+                        changed = true;
+                    }
+                } else if (isServiceNameMobile) {
+                    const colIndex = parseInt(target.closest('[data-col]').dataset.col);
+                    if (newValue && newValue !== originalText) {
+                        newState.services[colIndex - 1].name = newValue;
+                        changed = true;
+                    }
+                }
+        
+                if (changed) {
+                    recordChange(newState);
+                } else {
+                    updateDisplay();
+                }
+            };
+        
+            input.addEventListener('blur', save, { once: true });
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                    e.preventDefault();
+                    input.blur();
+                }
+            });
+        };
+        
+        // Add a 'touchstart' listener specifically for mobile editing to fix the bounce
+        mainContentContainer.addEventListener('touchstart', (event) => {
+            const target = event.target;
+            // We only run this logic inside a mobile card view.
+            if (target.closest('.stylist-card')) {
+                // If the target is one of the editable text fields...
+                if (target.matches('.level-text, .price-text, .service-name.editable')) {
+                    // This is the key: prevent the default browser action (zooming/bouncing).
+                    event.preventDefault();
+                    // Then, run the logic to create the input field.
+                    createInputForEditable(target);
+                }
+            }
+        }, { passive: false }); // `passive: false` is needed for preventDefault() to work.
+        
+        // ========================================================================
+        // === FIX ENDS HERE ======================================================
+        // ========================================================================
 
 
         mainContentContainer.addEventListener('click', (event) => {
@@ -1166,82 +1190,12 @@ mainContentContainer.addEventListener('touchstart', (event) => {
                     const colIndex = parseInt(target.closest('th').dataset.col) - 1;
                     showServiceDetailsModal(colIndex);
                 }, 250);
-            } else if (target.matches('.editable.level-text')) {
-                let stylistIndex;
-                const rowEl = target.closest('[data-row]');
-                
-                if (rowEl) {
-                    stylistIndex = parseInt(rowEl.dataset.row);
-                } else if (target.dataset.stylistIndex) {
-                    stylistIndex = parseInt(target.dataset.stylistIndex);
-                } else {
-                    return;
+            } else if (target.matches('.editable.level-text, .price-text')) {
+                // This now only handles clicks on desktop or in the profile modal,
+                // as the touchstart listener above handles taps on mobile cards.
+                if (!target.closest('.stylist-card')) {
+                    createInputForEditable(target);
                 }
-
-                const originalText = target.textContent;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.value = originalText === 'Add Level' ? '' : originalText;
-                target.replaceWith(input);
-
-                const save = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].level = input.value.trim() || originalText;
-                    recordChange(newState);
-                };
-
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-            } else if (target.matches('.service-name.editable')) {
-                if (target.closest('.stylist-card-body')) {
-                    const serviceItem = target.closest('.service-item');
-                    const col = parseInt(serviceItem.dataset.col);
-                    const originalText = target.textContent;
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText;
-                    target.replaceWith(input);
-
-                    const save = () => {
-                        const newText = input.value.trim();
-                        if (newText && newText !== originalText) {
-                            const newState = deepClone(stateHistory[currentStateIndex]);
-                            newState.services[col - 1].name = newText;
-                            recordChange(newState);
-                        } else {
-                            updateDisplay();
-                        }
-                    };
-                    
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-                    
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                }
-            } else if (target.matches('.price-text')) {
-                const row = parseInt(target.closest('[data-row]').dataset.row);
-                const col = parseInt(target.closest('[data-col]').dataset.col);
-                const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
-                const input = document.createElement('input');
-                input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
-                target.replaceWith(input);
-                
-                const save = () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    const newPrice = input.value.trim();
-                    newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    recordChange(newState);
-                };
-
-requestAnimationFrame(() => input.focus());
-input.addEventListener('blur', save);
-
-                input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(target.closest('[data-col]').dataset.col);
