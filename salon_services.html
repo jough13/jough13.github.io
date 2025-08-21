@@ -345,7 +345,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.40 | Last Updated: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.41 | Last Updated: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -921,6 +921,63 @@ input.addEventListener('blur', saveName, { once: true });
             }
         };
 
+const createInputForEditable = (target) => {
+    // Prevent the browser from firing a 'click' event later
+    event.preventDefault();
+
+    const rowEl = target.closest('[data-row]');
+    if (!rowEl) return;
+    
+    const rowIndex = parseInt(rowEl.dataset.row);
+    const colIndex = parseInt(target.closest('[data-col]').dataset.col);
+    const originalText = target.textContent;
+    const isPrice = target.matches('.price-text');
+    const isLevel = target.matches('.level-text');
+
+    const input = document.createElement('input');
+    input.className = isPrice ? 'price-input' : 'name-input';
+
+    if (isPrice) {
+        input.type = 'number';
+        input.step = '0.01';
+        input.value = target.classList.contains('placeholder') ? '' : originalText.replace('$', '').trim();
+    } else {
+        input.type = 'text';
+        input.value = originalText === 'Add Level' ? '' : originalText;
+    }
+
+    target.replaceWith(input);
+    input.focus();
+
+    const save = () => {
+        const newState = deepClone(stateHistory[currentStateIndex]);
+        const newValue = input.value.trim();
+        
+        if (isLevel) {
+            newState.stylists[rowIndex].level = newValue || originalText;
+        } else if (isPrice) {
+            newState.stylists[rowIndex].services[colIndex - 1].price = newValue ? parseFloat(newValue).toFixed(2) : '';
+        } else { // Is a service name
+            if (newValue && newValue !== originalText) {
+                newState.services[colIndex - 1].name = newValue;
+            } else {
+                // If no change, we need to manually trigger a re-render to put the span back
+                updateDisplay();
+                return;
+            }
+        }
+        recordChange(newState);
+    };
+    
+    input.addEventListener('blur', save, { once: true });
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+            e.preventDefault();
+            input.blur();
+        }
+    });
+};
+
         // --- RENDER FUNCTIONS ---
         const renderTable = (stylistsToRender) => {
             const thead = servicesTable.querySelector('thead');
@@ -1070,6 +1127,19 @@ input.addEventListener('blur', saveName, { once: true });
             }
             recordChange(newState);
         });
+
+// NEW: Add a 'touchstart' listener specifically for mobile editing to fix the bounce
+mainContentContainer.addEventListener('touchstart', (event) => {
+    const target = event.target;
+    // We only run this logic inside a mobile card view
+    if (target.closest('.stylist-card-body') || target.matches('.level-text')) {
+        if (target.matches('.level-text, .service-name.editable, .price-text')) {
+            createInputForEditable(target);
+        }
+    }
+}, { passive: false }); // passive: false is needed for preventDefault() to work
+
+
 
         mainContentContainer.addEventListener('click', (event) => {
             const target = event.target;
