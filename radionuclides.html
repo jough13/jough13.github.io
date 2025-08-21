@@ -285,7 +285,7 @@
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '2.9';
+        const VERSION = '2.9.1';
         const LAST_UPDATED = 'August 21, 2025';
 
         /**
@@ -2885,6 +2885,8 @@ const App = () => {
             const [nuclideName, setNuclideName] = React.useState('');
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
+
+	    const { addToast } = useToast();
             
             const [isManualOpen, setIsManualOpen] = React.useState(false);
             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
@@ -3000,11 +3002,24 @@ const App = () => {
             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
-            const toggleFavorite = (symbol) => {
-                const newFavorites = favorites.includes(symbol) ? favorites.filter(s => s !== symbol) : [...favorites, symbol];
-                setFavorites(newFavorites);
-                localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
-            };
+    const toggleFavorite = (symbol) => {
+        const isCurrentlyFavorite = favorites.includes(symbol);
+        const nuclide = radionuclides.find(n => n.symbol === symbol);
+        
+        const newFavorites = isCurrentlyFavorite
+            ? favorites.filter(s => s !== symbol)
+            : [...favorites, symbol];
+
+        setFavorites(newFavorites);
+        localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites));
+
+        // Display the toast message
+        if (isCurrentlyFavorite) {
+            addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`);
+        } else {
+            addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`);
+        }
+    };
             const handleClearFavorites = () => {
                 setFavorites([]);
                 localStorage.removeItem('favoriteNuclides');
@@ -4810,7 +4825,11 @@ const EMC_Calculator = () => {
 
         // Final step: Render the main App component into the DOM.
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(
+    <ToastProvider>
+        <App />
+    </ToastProvider>
+);
     </script>
 </body>
 </html>
