@@ -3266,16 +3266,21 @@ const App = () => {
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
 
-            const scrollToMainContent = () => {
-                    if (mainContentRef.current) {
-                        mainContentRef.current.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start',
-                    });
-                }
-            };
+
+const scrollToMainContent = () => {
+    // Check if the screen is in mobile mode (less than 768px)
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile && mainContentRef.current) {
+        mainContentRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    }
+};
 
             const handleNavClick = (view) => {
+                window.scrollTo(0, 0); // <-- ADD THIS LINE to always scroll to the top
                 setPreselectedNuclide(null);
                 setActiveView(view);
                 setCurrentDecaySeriesId(null);
@@ -3286,6 +3291,7 @@ const App = () => {
                     setSuggestions([]);
                     setErrorMessage('');
                 }
+                scrollToMainContent();
             };
 
             const handleSendToCalculator = (viewId, nuclideSymbol) => {
@@ -3530,6 +3536,7 @@ return (
             <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
             <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
             <MainNav activeView={activeView} onNavClick={handleNavClick} />
+            
             <main ref={mainContentRef} className="min-h-[400px]">
                 {renderActiveView()}
             </main>
