@@ -3230,7 +3230,7 @@ const ManualContent = () => (
 const App = () => {
             // --- STATE MANAGEMENT ---
             const [activeView, setActiveView] = React.useState('home');
-	    const [previousView, setPreviousView] = React.useState(null);
+	        const [previousView, setPreviousView] = React.useState(null);
             const [result, setResult] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
@@ -3258,11 +3258,20 @@ const App = () => {
             const [maxHalfLife, setMaxHalfLife] = React.useState('');
             const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState('years');
 
-
+            const mainContentRef = React.useRef(null);
 
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
+
+            const scrollToMainContent = () => {
+                    if (mainContentRef.current) {
+                        mainContentRef.current.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                    });
+                }
+            };
 
             const handleNavClick = (view) => {
                 setPreselectedNuclide(null);
@@ -3398,7 +3407,8 @@ const App = () => {
                 setCurrentDecaySeriesId(null);
                 setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
                 updateSearchHistory(nuclide);
-		setPreviousView(activeView);
+		        setPreviousView(activeView);
+                scrollToMainContent();
             };
             const handleNuclideNameChange = (e) => {
                 const value = e.target.value;
@@ -3511,9 +3521,6 @@ const renderActiveView = () => {
     }
 };
 
-
-
-
             
 return (
     <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
@@ -3521,7 +3528,7 @@ return (
             <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
             <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
             <MainNav activeView={activeView} onNavClick={handleNavClick} />
-            <main className="min-h-[400px]">
+            <main ref={mainContentRef} className="min-h-[400px]">
                 {renderActiveView()}
             </main>
             <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
