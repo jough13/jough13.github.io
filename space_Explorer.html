@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void - v0.8.26 (Post-Nexus Story)</title>
+    <title>Wayfinder: Echoes of the Void - v0.9.0 (Post-Nexus Story)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+	
+	*, *::before, *::after {
+	box-sizing: inherit;
+
         html {
             height: 100%;
             overflow: hidden; 
@@ -38,6 +42,8 @@
             overflow-y: auto; 
             padding: 15px; 
             box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
         }
 
         /* Custom Scrollbar Styles for WebKit browsers */
@@ -138,7 +144,7 @@
         }
         #messageArea {
             height: 120px; 
-            overflow-y: scroll; 
+            overflow-y: auto;
             color: #FFD700; 
             text-align: left; 
             font-size: 16px;
@@ -241,7 +247,7 @@
             <div id="messageArea">Welcome, Explorer!</div>
 
             <div id="codexOverlay">
-                <button id="codexCloseButton" onclick="toggleCodex(false)">&times;</button>
+                <button id="codexCloseButton">&times;</button>
                 <div id="codexTitle">Codex Galactica</div>
                 <div id="codexContent">
                     <div id="codexCategories"></div>
@@ -257,12 +263,13 @@
             Docked Mission Actions - C: Complete Delivery | G: Claim Reward / Turn-in <br>
             Combat - F: Fight | C: Charge Attack | V: Evade | R: Run
         </div>
-        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.8.21</div>
-    </script>
-
+        <div id="versionInfo">Wayfinder: Echoes of the Void - v0.9.0</div>
+ 
     <script>
+
         // --- Game Configuration ---
-        const GAME_VERSION = "v0.8.21"; 
+
+        const GAME_VERSION = "v0.9.0"; 
         const MAP_WIDTH = 55; 
         const MAP_HEIGHT = 14; 
         const PLAYER_CHAR_VAL = '@'; const EMPTY_SPACE_CHAR_VAL = '.';
@@ -507,7 +514,7 @@
         };
 
     
-        // --- Global State Variables - Declare globally, instantiate in initializeGame ---
+	// --- Global State Variables - Declare globally, instantiate in initializeGame ---
 
         var playerX, playerY, playerFuel, playerCredits, playerShields; 
         var playerShip;
@@ -660,31 +667,19 @@
         }
 
         function updateNotorietyTitle() {
-            let currentTitle = "Rookie Spacer"; 
+            let currentTitle = "Unknown"; // A default fallback
+            // Loop backwards from the highest possible score to the lowest
             for (let i = NOTORIETY_TITLES.length - 1; i >= 0; i--) {
+                // If the player's score is greater than or equal to the score for this title...
                 if (playerNotoriety >= NOTORIETY_TITLES[i].score) {
+                    // ...we've found the correct title.
                     currentTitle = NOTORIETY_TITLES[i].title;
-                    break;
-                }
-            }
-
-            if (playerNotoriety < 0) {
-                for (let i = 0; i < NOTORIETY_TITLES.length; i++) {
-                    if (playerNotoriety <= NOTORIETY_TITLES[i].score) { 
-                        currentTitle = NOTORIETY_TITLES[i].title;
-                        break; 
-                    }
-                 }
-            } else { 
-                 for (let i = NOTORIETY_TITLES.length - 1; i >= 0; i--) {
-                    if (playerNotoriety >= NOTORIETY_TITLES[i].score) {
-                        currentTitle = NOTORIETY_TITLES[i].title;
-                        break;
-                    }
+                    break; // Exit the loop immediately
                 }
             }
             playerNotorietyTitle = currentTitle;
         }
+
         function unlockLoreEntry(entryKey) {
             if (LORE_DATABASE[entryKey] && !discoveredLoreEntries.has(entryKey)) {
                 discoveredLoreEntries.add(entryKey);
@@ -795,6 +790,8 @@
             updateMessage(`Welcome to ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
 
             renderGame();
+
+	    document.body.style.opacity = '1'; 
 
         }
 
@@ -1301,11 +1298,8 @@
             }
             if (asteroid.minedThisVisit) {
                 updateMessage("This asteroid field has been depleted for this visit.");
-
                 renderGame();
-
                 return;
-
             }
 
             let minedResourcesMessage = "Mining operation yields:\n";
@@ -1350,6 +1344,72 @@
             updateMessage(minedResourcesMessage);
             renderGame();
 
+        }
+
+	function startEncounter(tileObject) {
+            switch (tileObject.type) {
+                case 'anomaly':
+                    handleAnomalyEncounter(tileObject);
+                    break;
+                // You could add a case for 'derelict' here in the future
+                default:
+                    updateMessage("Your sensors can't get a clear reading.");
+                    renderGame();
+                    break;
+            }
+
+        }
+
+	function handleAnomalyEncounter(anomalyObject) {
+            const outcomes = [
+                {
+                    text: "A burst of exotic particles revitalizes your ship! Shields fully restored!",
+                    effect: () => { playerShields = MAX_SHIELDS; }
+                },
+                {
+                    text: "You discover a small, stable wormhole within the anomaly containing a drifting cargo pod. You salvage 1000 Credits!",
+                    effect: () => { playerCredits += 1000; }
+                },
+                {
+                    text: "The anomaly contains a pocket of stabilized exotic matter. You carefully collect 2 units of Void Crystals!",
+                    effect: () => { 
+                        if (currentCargoLoad + 2 <= PLAYER_CARGO_CAPACITY) {
+                            playerCargo.VOID_CRYSTALS = (playerCargo.VOID_CRYSTALS || 0) + 2;
+                            updateCurrentCargoLoad();
+                        } else {
+                            updateMessage("You found Void Crystals but had no cargo space to collect them!", true);
+                        }
+                    }
+                },
+                {
+                    text: "The anomaly collapses violently! Your ship is battered by gravimetric shear. Hull takes 20 damage!",
+                    effect: () => { playerHull -= 20; if (playerHull < 0) playerHull = 0; }
+                },
+                {
+                    text: "A strange energy feedback loop drains your fuel reserves! You lose 50 fuel.",
+                    effect: () => { playerFuel -= 50; if (playerFuel < 0) playerFuel = 0; }
+                },
+                {
+                    text: "Your sensors record a massive amount of data before the anomaly dissipates. You gain 50 XP for the discovery!",
+                    effect: () => { playerXP += 50; checkLevelUp(); }
+                },
+                {
+                    text: "A psionic echo from the anomaly reverberates through your mind, revealing a forgotten piece of lore.",
+                    effect: () => { unlockLoreEntry("XENO_ANOMALIES"); }
+                }
+            ];
+
+            // Select a random outcome
+            const chosenOutcome = outcomes[Math.floor(Math.random() * outcomes.length)];
+
+            // Apply the effect and update the message
+            chosenOutcome.effect();
+            updateMessage(`Investigating the ${anomalyObject.subtype || 'anomaly'}...\n${chosenOutcome.text}`);
+
+            // Mark the anomaly as studied so it can't be used again
+            anomalyObject.studied = true;
+
+            renderGame();
         }
 
         function calculatePrice(bP,pM){return Math.round(bP*pM);}
@@ -1752,93 +1812,162 @@
         function renderCodexCategories() { /* Same as v0.6.11 */ codexCategoriesElement.innerHTML='';const cats=new Set();Object.values(LORE_DATABASE).forEach(e=>{if(discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k=>LORE_DATABASE[k]===e)))cats.add(e.category);});Array.from(cats).sort().forEach(cat=>{const cD=document.createElement('div');cD.textContent=cat;cD.className='codex-list-item';if(cat===currentCodexCategory)cD.classList.add('active');cD.onclick=()=>{currentCodexCategory=cat;renderCodexCategories();renderCodexEntries(cat);codexEntryTextElement.innerHTML="Select an entry.";};codexCategoriesElement.appendChild(cD);});}
         function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category===category&&discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}});}
 
-        function generateMissionsForStation(stationName) {
-            // This function creates a list of missions for a station and stores it.
-            MISSIONS_DATABASE[stationName] = [];
-            const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
-            const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2); // Generate 2 or 3 missions
+        /**
+         * Selects a random, valid mission destination from the LOCATIONS_DATA.
+         * Ensures the destination is not the same as the starting station.
+         * @param {string} currentStationName - The name of the station generating the mission.
+         * @returns {object|null} A location object {name, key, coords} or null if no valid destination is found.
+         */
+        function selectRandomDestination(currentStationName) {
+            const allLocationKeys = Object.keys(LOCATIONS_DATA);
+            const possibleDestinations = allLocationKeys.filter(key => key !== currentStationName);
+            
+            if (possibleDestinations.length === 0) return null;
 
-            for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
-                // 1. Pick a random template
-                const templateIndex = Math.floor(Math.random() * availableTemplates.length);
-                const template = availableTemplates[templateIndex];
-                
-                // 2. Create a deep copy to avoid modifying the original template
-                let newMission = JSON.parse(JSON.stringify(template));
-
-                // 3. Fill in the mission details
-                newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
-                newMission.giver = stationName;
-                
-                // Resolve random counts, rewards, etc.
-                const objective = newMission.objective_templates[0];
-                if (objective.count) {
-                    objective.count = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
-                }
-                newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
-                newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
-                newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
-
-
-                // 4. Customize text and objectives based on type (SIMPLE VERSION)
-                let targetSectorName = "the local sector";
-                let targetSectorCoords = `(${currentSectorX},${currentSectorY})`;
-                
-                if (objective.type === "DELIVERY") {
-                    // For simplicity, all deliveries currently go to Planet Omega
-                    objective.destinationName = "Planet Omega";
-                    objective.destinationSectorKey = "0,0";
-                    const itemID = "FOOD_SUPPLIES"; // Simple hardcoded item
-                    objective.itemID = itemID;
-                    newMission.description_template = newMission.description_template.replace('{itemName}', COMMODITIES[itemID].name).replace('{count}', objective.count).replace('{destinationName}', objective.destinationName);
-                    newMission.title_template = newMission.title_template.replace('{destinationName}', objective.destinationName);
-                    newMission.briefing_template = newMission.briefing_template.replace('{destinationName}', objective.destinationName).replace('{itemName}', COMMODITIES[itemID].name);
-                } else {
-                     newMission.description_template = newMission.description_template.replace('{sectorName}', targetSectorName).replace('{sectorCoords}', targetSectorCoords).replace('{count}', objective.count);
-                     newMission.title_template = newMission.title_template.replace('{sectorName}', targetSectorName);
-                     newMission.briefing_template = newMission.briefing_template.replace('{sectorName}', targetSectorName);
-                }
-                
-                // Finalize objectives
-                newMission.objectives = [objective];
-                newMission.title = newMission.title_template;
-                newMission.description = newMission.description_template;
-                
-                // 5. Add the finished mission to the database
-                MISSIONS_DATABASE[stationName].push(newMission);
-            }
+            const destinationKey = possibleDestinations[Math.floor(Math.random() * possibleDestinations.length)];
+            const destinationData = LOCATIONS_DATA[destinationKey];
+            
+            // Note: This assumes all locations are in sector 0,0 for now. 
+            // This can be expanded later if locations are added to other sectors.
+            return { 
+                name: destinationKey, 
+                key: "0,0", 
+                coords: destinationData.coords 
+            };
         }
 
-        // --- Mission Functions ---
+        /**
+         * Selects a random commodity that a specific location buys.
+         * @param {string} locationName - The name of the location.
+         * @returns {string|null} The ID of a commodity or null.
+         */
+        function selectRandomCommodity(locationName) {
+            const location = LOCATIONS_DATA[locationName];
+            if (!location || !location.buys || location.buys.length === 0) return null;
 
-            function displayMissionBoard() {
-            
-            const currentLocation = getCombinedLocationData(playerY, playerX);
-            const stationName = currentLocation.name;
+            const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
+            return commodity.id;
+        }
 
-            if (!MISSIONS_DATABASE[stationName]) {
-                generateMissionsForStation(stationName);
+function generateMissionsForStation(stationName) {
+    const generatedMissions = [];
+    const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
+    const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
+
+    for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
+        try {
+            const templateIndex = Math.floor(Math.random() * availableTemplates.length);
+            let newMission = JSON.parse(JSON.stringify(availableTemplates[templateIndex]));
+
+            newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
+            newMission.giver = stationName;
+            const objective = newMission.objective_templates[0];
+
+            // Step 1: Randomize objective counts FIRST
+            if (objective.count) {
+                objective.count = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
             }
 
-            // This is the only location check you need.
+            // Step 2: Randomize rewards
+            newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
+            newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
+            newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
 
+            let success = true;
+
+            // Step 3: Configure the mission details and build strings from templates
+            switch (newMission.type) {
+                case "BOUNTY":
+                    objective.targetSectorKey = `${currentSectorX},${currentSectorY}`;
+                    newMission.title = newMission.title_template.replace('{sectorName}', 'Local Sector');
+                    newMission.description = newMission.description_template
+                        .replace('{sectorName}', 'the local')
+                        .replace('{sectorCoords}', `(${objective.targetSectorKey})`)
+                        .replace('{count}', objective.count);
+                    break;
+                case "DELIVERY": {
+                    const destination = selectRandomDestination(stationName);
+                    if (!destination) { success = false; break; }
+                    const deliveryItem = selectRandomCommodity(destination.name);
+                    if (!deliveryItem) { success = false; break; }
+                    
+                    objective.destinationName = destination.name;
+                    objective.destinationSectorKey = destination.key;
+                    objective.itemID = deliveryItem;
+                    
+                    newMission.title = newMission.title_template.replace('{destinationName}', objective.destinationName);
+                    newMission.description = newMission.description_template
+                        .replace('{destinationName}', objective.destinationName)
+                        .replace('{count}', objective.count)
+                        .replace('{itemName}', COMMODITIES[deliveryItem].name);
+                    break;
+                }
+                case "ACQUIRE": {
+                    const acquireItem = selectRandomCommodity(stationName);
+                    if (!acquireItem) { success = false; break; }
+                    
+                    objective.itemID = acquireItem;
+                    
+                    newMission.title = newMission.title_template.replace('{itemName}', COMMODITIES[acquireItem].name);
+                    newMission.description = newMission.description_template
+                        .replace('{count}', objective.count)
+                        .replace('{itemName}', COMMODITIES[acquireItem].name);
+                    break;
+                }
+                case "SURVEY":
+                    objective.targetType = 'anomaly';
+                    objective.subtype = 'unstable warp pocket';
+                    objective.sectorKey = "ANY";
+                    newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
+                    newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
+                    break;
+                default:
+                    success = false;
+            }
+
+            if (success) {
+                newMission.objectives = [objective];
+                generatedMissions.push(newMission);
+            }
+        } catch (error) {
+            // This will prevent a single broken mission from crashing the whole game
+            console.error("Failed to generate a mission:", error);
+        }
+    }
+    return generatedMissions;
+}
+
+
+
+
+
+
+
+        function displayMissionBoard() {
+            const currentLocation = getCombinedLocationData(playerY, playerX);
             if (!currentLocation || !currentLocation.isMajorHub) {
                 updateMessage("Mission board not accessible here.");
-                currentMissionContext = null; 
                 renderGame();
                 return;
             }
+            
+            const stationName = currentLocation.name;
+            let stationMissions = MISSIONS_DATABASE[stationName];
 
-            missionsAvailableAtStation = []; 
+            if (!stationMissions) {
+                stationMissions = generateMissionsForStation(stationName);
+                MISSIONS_DATABASE[stationName] = stationMissions;
+            }
 
-            const stationMissions = MISSIONS_DATABASE[stationName] || [];
+            missionsAvailableAtStation = [];
 
-            stationMissions.forEach(mission => {
-                if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id)) { 
+            (stationMissions || []).forEach(mission => {
+                if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id)) {
                     let meetsPrereqs = true;
                     if (mission.prerequisites) {
-                        if (mission.prerequisites.level && playerLevel < mission.prerequisites.level) meetsPrereqs = false;
-                        if (mission.prerequisites.completedMission && !playerCompletedMissions.has(mission.prerequisites.completedMission)) meetsPrereqs = false;
+                        if (mission.prerequisites.minLevel && playerLevel < mission.prerequisites.minLevel) {
+                            meetsPrereqs = false;
+                        }
                     }
                     if (meetsPrereqs) {
                         missionsAvailableAtStation.push(mission);
@@ -2156,8 +2285,13 @@
                         else { updateMessage("Ship outfitting not available here."); actionTaken = true; }
                         break;
                     case 'k':
-                        if (currentLocation.isMajorHub) { displayMissionBoard(); actionTaken = true; } 
-                        else { updateMessage("No mission board available at this remote outpost."); actionTaken = true; }
+                        if (currentLocation.isMajorHub) { 
+                            displayMissionBoard(); 
+                            actionTaken = true; 
+                        } else { 
+                            updateMessage("No mission board available at this remote outpost."); 
+                            actionTaken = true; 
+                        }
                         break;
                     case 'c': // Complete Delivery
                         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
@@ -2213,6 +2347,17 @@
             event.preventDefault();
         });
         document.addEventListener('DOMContentLoaded', initializeGame);
+
+	document.getElementById("codexCloseButton")
+	.addEventListener("click", () => toggleCodex(false));
+
     </script>
+
+<script>
+    window.addEventListener("load", () => {
+        document.getElementById("page-wrapper").style.opacity = "1";
+    });
+</script>
+
 </body>
 </html>
