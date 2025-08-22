@@ -36,8 +36,13 @@
     <!-- Google Fonts for a clean, modern typeface -->
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+ 
+  
     <!-- Custom Application Styles -->
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
 
 <style>
     /* This is now the only style block needed for the fade-in.
@@ -1056,17 +1061,53 @@ const CATEGORY_STYLES = {
 	 */
 
 const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
-    return (
-        <div className="relative flex items-center group">
-            {children}
-            {/* This div now uses the 'widthClass' prop for its width */}
-            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 text-left whitespace-normal ${widthClass}`}>
+    // State to manage visibility and position
+    const [show, setShow] = React.useState(false);
+    const [coords, setCoords] = React.useState({ x: 0, y: 0 });
+    // A ref to get the position of the element that triggers the tooltip
+    const triggerRef = React.useRef(null);
+
+    const handleMouseEnter = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            // Calculate position: center of the trigger, just below it
+            setCoords({
+                left: rect.left + rect.width / 2,
+                top: rect.bottom + window.scrollY,
+            });
+            setShow(true);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setShow(false);
+    };
+
+    // This is the actual tooltip content that will be "teleported"
+    const tooltipElement = show && (
+        ReactDOM.createPortal(
+            <div
+                style={{ top: coords.top, left: coords.left }}
+                // We use translate to center the tooltip and push it down slightly
+                className={`fixed top-0 left-0 -translate-x-1/2 translate-y-2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg z-50 transition-opacity duration-300 pointer-events-none ${widthClass} ${show ? 'opacity-100' : 'opacity-0'}`}
+            >
                 {text}
-                <svg className="absolute text-slate-800 dark:text-slate-900 h-2 w-full left-0 bottom-full" x="0px" y="0px" viewBox="0 0 255 255">
-                    <polygon className="fill-current" points="0,255 127.5,0 255,255"/>
-                </svg>
-            </div>
-        </div>
+            </div>,
+            // Teleport destination: the main body of the document
+            document.body
+        )
+    );
+
+    return (
+        <>
+            {/* This adds our mouse events and ref to the child element (the button or span) */}
+            {React.cloneElement(children, {
+                ref: triggerRef,
+                onMouseEnter: handleMouseEnter,
+                onMouseLeave: handleMouseLeave,
+            })}
+            {tooltipElement}
+        </>
     );
 };
 
@@ -1096,9 +1137,6 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
                 </button>
             );
         };
-
-
-
 
         /**
          * @description The main header for the application.
@@ -1179,8 +1217,8 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
                 placeholder="Search by name or symbol (e.g., U-238)"
                 className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
             />
-            {nuclideName && (
-                <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500">
+            {nuclideName && (             
+	 	<button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
                     <Icon path={ICONS.clear} className="w-5 h-5" />
                 </button>
             )}
@@ -1373,8 +1411,6 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
          * @param {(seriesId: string) => void} [props.onDecaySeriesClick] - Click handler for the 'View Decay Series' button.
          * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
          */
-
-
 const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
     const getSourceLink = (sourceKey) => {
@@ -1406,10 +1442,11 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
         const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
         
-        return (
+        // Define the card's appearance once
+        const compactCardJSX = (
             <div 
                 onClick={() => onNuclideClick(nuclide)} 
-                className={`flex flex-col justify-between p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
+                className={`flex flex-col justify-between p-4 h-full bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
             >
                 <div>
                     <div className="flex justify-between items-start">
@@ -1421,20 +1458,19 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                 </div>
                 
                 <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                    {nuclide.commonalityReason ? (
-                        /* The change is here: Using a flexible width to prevent cutoff */
-                        <Tooltip text={nuclide.commonalityReason} widthClass="w-auto max-w-md">
-                            <span className="underline decoration-dotted cursor-help">
-                                {nuclide.category} - {nuclide.commonality}
-                            </span>
-                        </Tooltip>
-                    ) : (
-                        <span>
-                            {nuclide.category} - {nuclide.commonality}
-                        </span>
-                    )}
+                    {/* This is now just plain text with no hover effects */}
+                    <span>{nuclide.category} - {nuclide.commonality}</span>
                 </div>
             </div>
+        );
+
+        // Conditionally wrap the entire card in a tooltip if there's a reason to show one
+        return nuclide.commonalityReason ? (
+            <Tooltip text={nuclide.commonalityReason} widthClass="w-96">
+                {compactCardJSX}
+            </Tooltip>
+        ) : (
+            compactCardJSX
         );
     }
 
@@ -1453,18 +1489,9 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
                         </a>
                         ({nuclide.symbol})
                     </h2>
+                    {/* CHANGE: The tooltip has been completely removed from this span */}
                     <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-                        {nuclide.commonalityReason ? (
-                            <Tooltip text={nuclide.commonalityReason} widthClass="w-96">
-                                <span className="underline decoration-dotted cursor-help">
-                                    {nuclide.category} - {nuclide.commonality}
-                                </span>
-                            </Tooltip>
-                        ) : (
-                            <span>
-                                {nuclide.category} - {nuclide.commonality}
-                            </span>
-                        )}
+                        {nuclide.category} - {nuclide.commonality}
                     </span>
                 </div>
                 
@@ -1538,8 +1565,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         </div>
     );
 };
-
-
 
 
         /**
@@ -3057,6 +3082,9 @@ const MassActivityCalculator = ({ radionuclides }) => {
          * @description A modal dialog that displays the user manual and FAQ content.
          * @param {{isOpen: boolean, onClose: () => void}} props - Controls the visibility of the modal.
          */
+
+
+
 
 const ManualContent = () => (
     <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
@@ -5139,26 +5167,45 @@ const WRS_Calculator = () => {
  * @description A calculator that performs the MARSSIM Sign Test for an
  * Elevated Measurement Comparison (EMC) area.
  */
+
+/**
+* @description A calculator that performs the MARSSIM Sign Test for an
+* Elevated Measurement Comparison (EMC) area.
+*/
 const EMC_Calculator = () => {
     // --- STATE MANAGEMENT ---
     const [dcglw, setDcglw] = React.useState('100');
     const [areaFactor, setAreaFactor] = React.useState('3');
     const [emcData, setEmcData] = React.useState('120, 150, 95, 250, 180, 210, 190, 280');
-    const [alpha, setAlpha] = React.useState('0.05');
-    
+    const [alpha, setAlpha] = React.useState('0.05'); // Default alpha
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
-    
+
     // MARSSIM Table I.3: Critical Values for the Sign Test
-    // Keyed by sample size N
+    // Keyed by alpha level, then by sample size N
     const signTestCriticalValues = {
         '0.05': {
             5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12,
             16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17,
             25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21
+        },
+        '0.025': {
+            5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12,
+            16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18,
+            25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22
+        },
+        '0.01': {
+            5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13,
+            16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18,
+            25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22
+        },
+        '0.10': {
+            5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11,
+            16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16,
+            25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20
         }
     };
-    
+
     const parseData = (dataString) => {
         return dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
     };
@@ -5166,34 +5213,43 @@ const EMC_Calculator = () => {
     const handleCalculate = () => {
         setResult(null);
         setError('');
+
         const data = parseData(emcData);
         const dcglw_val = parseFloat(dcglw);
         const af_val = parseFloat(areaFactor);
 
         // --- Validation ---
         if (isNaN(dcglw_val) || isNaN(af_val) || dcglw_val <= 0 || af_val <= 1) {
-            setError('DCGL and Area Factor must be valid numbers (AF > 1).'); return;
+            setError('DCGL and Area Factor must be valid numbers (AF > 1).');
+            return;
         }
-        if (data.length === 0) { setError('Please enter measurement data.'); return; }
-        
+        if (data.length === 0) {
+            setError('Please enter measurement data.');
+            return;
+        }
+
         // --- MARSSIM EMC Calculations ---
         const n = data.length;
         const dcgl_emc = dcglw_val * af_val;
-        
+
         // Count the number of positive differences (DCGLEMC - measurement > 0)
+        // Note: Sign Test is for non-parametric data, so we don't assume normality.
+        // We compare each measurement to DCGL_EMC. If meas < DCGL_EMC, then (DCGL_EMC - meas) > 0.
+        // MARSSIM convention for S+ is the number of values where the null hypothesis (contamination) is true,
+        // so for EMC it's values *less than* the DCGL_EMC.
         const S_plus = data.filter(val => (dcgl_emc - val) > 0).length;
-        
+
         // Look up the critical value from the table
         const Cs = signTestCriticalValues[alpha]?.[n];
-        
+
         if (Cs === undefined) {
-            setError(`A critical value is not available for a sample size of ${n}. Please use a sample size between 5 and 30.`);
+            setError(`A critical value is not available for a sample size of ${n} at alpha ${alpha}. Please use a sample size between 5 and 30.`);
             return;
         }
-        
+
         // --- Make a decision ---
         const testPassed = S_plus >= Cs;
-        
+
         setResult({
             conclusion: testPassed ? 'PASS' : 'FAIL',
             reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`,
@@ -5224,12 +5280,18 @@ const EMC_Calculator = () => {
                            <label className="block text-sm font-medium">Elevated Area Measurements</label>
                            <textarea value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium">Significance Level (&alpha;)</label>
+                            <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                <option value="0.05">0.05</option>
+                                <option value="0.025">0.025</option>
+                                <option value="0.01">0.01</option>
+                                <option value="0.10">0.10</option>
+                            </select>
+                        </div>
                     </div>
-                    
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Sign Test</button>
-                    
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    
                     {result && (
                         <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                             <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
