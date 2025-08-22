@@ -1060,6 +1060,9 @@ const CATEGORY_STYLES = {
 	 * @param {{text: string, children: React.ReactNode}} props
 	 */
 
+
+
+
 const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
     // State to manage visibility and position
     const [show, setShow] = React.useState(false);
@@ -1071,9 +1074,10 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
             // Calculate position: center of the trigger, just below it
+            // We use rect.bottom which is relative to the viewport
             setCoords({
                 left: rect.left + rect.width / 2,
-                top: rect.bottom + window.scrollY,
+                top: rect.bottom, // The corrected line: use rect.bottom, not rect.bottom + window.scrollY
             });
             setShow(true);
         }
@@ -1110,6 +1114,10 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
         </>
     );
 };
+
+
+
+
 
         /**
          * @description A button that copies a given text string to the clipboard and shows a confirmation.
