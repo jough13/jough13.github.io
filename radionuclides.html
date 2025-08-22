@@ -65,7 +65,6 @@
     }
 
 
-
     /* Custom scrollbar styling for a consistent look across browsers */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -314,7 +313,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '2.9.6';
+        const VERSION = '2.9.7';
         const LAST_UPDATED = 'August 22, 2025';
 
         /**
@@ -947,6 +946,13 @@ const formatHalfLife = (halfLifeStr, targetUnit) => {
             transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"
 	};
 
+const CATEGORY_DESCRIPTIONS = {
+    'Medical': 'Used for diagnosis, therapy, or medical research.',
+    'Industrial': 'Used in manufacturing, gauging, sterilization, or other industrial processes.',
+    'Natural': 'Occurs naturally in the environment or as part of a decay series.',
+    'Stable/Reference': 'A stable isotope, often used as a reference or target material.',
+};
+
 const CATEGORY_STYLES = {
     'Medical':    {
         border: 'border-l-sky-400 dark:border-l-sky-600',
@@ -1049,14 +1055,16 @@ const CATEGORY_STYLES = {
 	 * @param {{text: string, children: React.ReactNode}} props
 	 */
 
-
-const Tooltip = ({ text, children }) => {
+const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
     return (
         <div className="relative flex items-center group">
             {children}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-96 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 text-left whitespace-normal">
+            {/* This div now uses the 'widthClass' prop for its width */}
+            <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 text-left whitespace-normal ${widthClass}`}>
                 {text}
-                <svg className="absolute text-slate-800 dark:text-slate-900 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
+                <svg className="absolute text-slate-800 dark:text-slate-900 h-2 w-full left-0 bottom-full" x="0px" y="0px" viewBox="0 0 255 255">
+                    <polygon className="fill-current" points="0,255 127.5,0 255,255"/>
+                </svg>
             </div>
         </div>
     );
@@ -1089,6 +1097,9 @@ const Tooltip = ({ text, children }) => {
             );
         };
 
+
+
+
         /**
          * @description The main header for the application.
          * @param {{onHelpClick: () => void, theme: string, toggleTheme: () => void}} props - Handlers and state for help and theme toggling.
@@ -1096,12 +1107,14 @@ const Tooltip = ({ text, children }) => {
 
 const Header = ({ onHelpClick, theme, toggleTheme }) => (
     <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
-
-        {/* NEW: Container for the help button on the left */}
+        
         <div className="absolute top-4 left-4">
-            <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
-                <Icon path={ICONS.help} className="w-6 h-6" />
-            </button>
+            {/* Add the widthClass="w-auto" prop here */}
+            <Tooltip text="Open User Manual" widthClass="w-auto">
+                <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
+                    <Icon path={ICONS.help} className="w-6 h-6" />
+                </button>
+            </Tooltip>
         </div>
 
         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
@@ -1111,14 +1124,19 @@ const Header = ({ onHelpClick, theme, toggleTheme }) => (
             Version: {VERSION} | Last Updated: {LAST_UPDATED}
         </p>
 
-        {/* This container now ONLY has the theme toggle on the right */}
         <div className="absolute top-4 right-4">
-            <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
-                <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
-            </button>
+            {/* Add the widthClass="w-auto" prop here */}
+            <Tooltip text="Toggle Theme" widthClass="w-auto">
+                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
+                    <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
+                </button>
+            </Tooltip>
         </div>
     </header>
 );
+
+
+
 
         /**
          * @description The primary search input with auto-suggestions.
@@ -1190,57 +1208,63 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
          * @param {{activeView: string, onNavClick: (view: string) => void}} props - The currently active view and the click handler.
          */
 
-        const MainNav = ({ activeView, onNavClick }) => {
-            const navItems = [ 
-                { id: 'database', label: 'Database', icon: ICONS.database }, 
-                { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
-                { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
-                { id: 'mda', label: 'MDA', icon: ICONS.search },
+const MainNav = ({ activeView, onNavClick }) => {
+    const navItems = [ 
+        { id: 'database', label: 'Database', icon: ICONS.database }, 
+        { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
+        { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
+        { id: 'mda', label: 'MDA', icon: ICONS.search },
 		{ id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
-                { id: 'wrs', label: 'WRS Test', icon: ICONS.database },
-                { id: 'emc', label: 'EMC Sign Test', icon: ICONS.search },
-                { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
-                { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
-                { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
-                { id: 'specificActivity', label: 'Specific Activity', icon: ICONS.specificActivity },
-                { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, 
-                { id: 'shielding', label: 'Shielding', icon: ICONS.doseRate }, // Reusing the shield icon
-                { id: 'stayTime', label: 'Stay Time', icon: ICONS.stopwatch },
+        { id: 'wrs', label: 'WRS Test', icon: ICONS.database },
+        { id: 'emc', label: 'EMC Sign Test', icon: ICONS.search },
+        { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
+        { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
+        { id: 'massActivity', label: 'Mass ↔ Activity', icon: ICONS.mass }, 
+        { id: 'specificActivity', label: 'Specific Activity', icon: ICONS.specificActivity },
+        { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, 
+        { id: 'shielding', label: 'Shielding', icon: ICONS.doseRate },
+        { id: 'stayTime', label: 'Stay Time', icon: ICONS.stopwatch },
 		{ id: 'transportation', label: 'Transportation', icon: ICONS.transport },
-                { id: 'converter', label: 'Converter', icon: ICONS.converter } 
-            ];
+        { id: 'converter', label: 'Converter', icon: ICONS.converter } 
+    ];
 
-            // Internal component for a single navigation button.
+    const NavButton = ({ item }) => (
+        // The outer button is the full-width clickable area
+        <button
+            onClick={() => onNavClick(item.id)}
+            className="flex-shrink-0 w-full"
+        >
+            {/* This inner span contains the visual styles */}
+            <span
+                 className={`mx-auto flex items-center justify-center gap-2 px-2 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
+                    activeView === item.id 
+                        ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow' 
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-800 hover:text-sky-600 dark:hover:text-sky-400 hover:shadow-md hover:-translate-y-1'
+                }`}
+            >
+                <Icon path={item.icon} className="w-4 h-4" />
+                <span className="truncate">{item.label}</span>
+            </span>
+        </button>
+    );
 
-            const NavButton = ({ item }) => (
-                <button
-                    onClick={() => onNavClick(item.id)}
-                    className={`flex-shrink-0 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                        activeView === item.id 
-                            ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow' 
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                    }`}
-                >
-                    <Icon path={item.icon} className="w-4 h-4" />
-                    <span className="truncate">{item.label}</span>
-                </button>
-            );
-
-            return (
-                <div className="px-4 pb-2">
-                    {/* Mobile: Horizontally Scrolling Row */}
-                    <div className="md:hidden">
-                        <div className="flex overflow-x-auto pb-2 -mx-4 px-4 gap-2">
-                            {navItems.map(item => <NavButton key={item.id} item={item} />)}
-                        </div>
-                    </div>
-                    {/* Desktop: Grid */}
-                    <div className="hidden md:grid grid-cols-4 gap-2">
-                        {navItems.map(item => <NavButton key={item.id} item={item} />)}
-                    </div>
+    return (
+        <div className="px-4 pb-2">
+            {/* Mobile: Horizontally Scrolling Row */}
+            <div className="md:hidden">
+                <div className="flex overflow-x-auto pb-2 -mx-4 px-4 gap-2">
+                    {navItems.map(item => <NavButton key={item.id} item={item} />)}
                 </div>
-            );
-        };
+            </div>
+            {/* Desktop: Grid */}
+            <div className="hidden md:grid grid-cols-4 gap-2">
+                {navItems.map(item => <NavButton key={item.id} item={item} />)}
+            </div>
+        </div>
+    );
+};
+
+
 
         //==============================================================================
         // --- VIEW COMPONENTS
@@ -1351,14 +1375,6 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
          */
 
 
-
-
-
-
-
-
-
-
 const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
     const getSourceLink = (sourceKey) => {
@@ -1393,18 +1409,36 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         return (
             <div 
                 onClick={() => onNuclideClick(nuclide)} 
-                className={`p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
+                className={`flex flex-col justify-between p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
             >
-                <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                <div>
+                    <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                    </div>
+                    <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
+                    <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
                 </div>
-                <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
-                <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
+                
+                <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    {nuclide.commonalityReason ? (
+                        /* The change is here: Using a flexible width to prevent cutoff */
+                        <Tooltip text={nuclide.commonalityReason} widthClass="w-auto max-w-md">
+                            <span className="underline decoration-dotted cursor-help">
+                                {nuclide.category} - {nuclide.commonality}
+                            </span>
+                        </Tooltip>
+                    ) : (
+                        <span>
+                            {nuclide.category} - {nuclide.commonality}
+                        </span>
+                    )}
+                </div>
             </div>
         );
     }
 
+    // This is the detailed card view
     const isFavorite = favorites?.includes(nuclide.symbol);
     const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
 
@@ -1412,34 +1446,27 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
 
             <div className="flex justify-between items-start">
-
-
-
-
-
-
-<div className="flex items-center gap-2">
-    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-            {nuclide.name}
-        </a>
-        ({nuclide.symbol})
-    </h2>
-    <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-        {nuclide.category} -
-        {nuclide.commonalityReason ? (
-            <Tooltip text={nuclide.commonalityReason}>
-                
-                <span className="underline decoration-dotted cursor-help">{nuclide.commonality}</span>
-            </Tooltip>
-        ) : (
-            <span>{nuclide.commonality}</span>
-        )}
-    </span>
-</div>
-
-
-
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                            {nuclide.name}
+                        </a>
+                        ({nuclide.symbol})
+                    </h2>
+                    <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
+                        {nuclide.commonalityReason ? (
+                            <Tooltip text={nuclide.commonalityReason} widthClass="w-96">
+                                <span className="underline decoration-dotted cursor-help">
+                                    {nuclide.category} - {nuclide.commonality}
+                                </span>
+                            </Tooltip>
+                        ) : (
+                            <span>
+                                {nuclide.category} - {nuclide.commonality}
+                            </span>
+                        )}
+                    </span>
+                </div>
                 
                 <div className="flex items-center gap-2 mt-1">
                     {showBackButton && (
@@ -1511,9 +1538,6 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
         </div>
     );
 };
-
-
-
 
 
 
