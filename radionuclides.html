@@ -1094,24 +1094,31 @@ const Tooltip = ({ text, children }) => {
          * @param {{onHelpClick: () => void, theme: string, toggleTheme: () => void}} props - Handlers and state for help and theme toggling.
          */
 
-        const Header = ({ onHelpClick, theme, toggleTheme }) => (
-            <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
-                <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
-                    Radionuclide Lookup Tool
-                </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                    Version: {VERSION} | Last Updated: {LAST_UPDATED}
-                </p>
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
-                        <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
-                    </button>
-                    <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
-                        <Icon path={ICONS.help} className="w-6 h-6" />
-                    </button>
-                </div>
-            </header>
-        );
+const Header = ({ onHelpClick, theme, toggleTheme }) => (
+    <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+
+        {/* NEW: Container for the help button on the left */}
+        <div className="absolute top-4 left-4">
+            <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
+                <Icon path={ICONS.help} className="w-6 h-6" />
+            </button>
+        </div>
+
+        <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white">
+            Radionuclide Lookup Tool
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+            Version: {VERSION} | Last Updated: {LAST_UPDATED}
+        </p>
+
+        {/* This container now ONLY has the theme toggle on the right */}
+        <div className="absolute top-4 right-4">
+            <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
+                <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
+            </button>
+        </div>
+    </header>
+);
 
         /**
          * @description The primary search input with auto-suggestions.
