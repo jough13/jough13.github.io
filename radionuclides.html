@@ -1170,8 +1170,12 @@ const Header = ({ onHelpClick, theme, toggleTheme }) => (
             Version: {VERSION} | Last Updated: {LAST_UPDATED}
         </p>
 
-        <div className="absolute top-4 right-4">
-            {/* Add the widthClass="w-auto" prop here */}
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+            {/* The new "Buy Me a Coffee" button for desktop, hidden on smaller screens */}
+            <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
+                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
+            </a>
+            {/* The existing dark mode toggle */}
             <Tooltip text="Toggle Theme" widthClass="w-auto">
                 <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
                     <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
@@ -1180,8 +1184,6 @@ const Header = ({ onHelpClick, theme, toggleTheme }) => (
         </div>
     </header>
 );
-
-
 
 
         /**
@@ -3531,11 +3533,17 @@ return (
             <main ref={mainContentRef} className="min-h-[400px]">
                 {renderActiveView()}
             </main>
-            <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
-                </p>
-            </footer>
+<footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
+    <p className="text-xs text-slate-500 dark:text-slate-400">
+        <strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.
+    </p>
+    {/* This is the donation button for mobile, hidden on larger screens */}
+    <div className="mt-4 flex justify-center md:hidden">
+        <a href="https://www.buymeacoffee.com/jough" target="_blank">
+            <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
+        </a>
+    </div>
+</footer>
             <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
         </div>
     </div>
