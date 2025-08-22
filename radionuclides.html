@@ -1288,12 +1288,27 @@ const MainNav = ({ activeView, onNavClick }) => {
 
     return (
         <div className="px-4 pb-2">
-            {/* Mobile: Horizontally Scrolling Row */}
-            <div className="md:hidden">
-                <div className="flex overflow-x-auto pb-2 -mx-4 px-4 gap-2">
-                    {navItems.map(item => <NavButton key={item.id} item={item} />)}
-                </div>
-            </div>
+{/* Mobile: Grid Menu. */}
+<div className="md:hidden">
+    <div className="grid grid-cols-2 gap-4">
+        {navItems.map(item => (
+            <button
+                key={item.id}
+                onClick={() => onNavClick(item.id)}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-colors ${
+                    activeView === item.id
+                        ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50'
+                }`}
+            >
+                <Icon path={item.icon} className="w-8 h-8 mb-2" />
+                <span className="text-sm font-semibold">{item.label}</span>
+            </button>
+        ))}
+    </div>
+</div>
+
+
             {/* Desktop: Grid */}
             <div className="hidden md:grid grid-cols-4 gap-2">
                 {navItems.map(item => <NavButton key={item.id} item={item} />)}
