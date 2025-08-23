@@ -1236,11 +1236,10 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
          * @param {{onHelpClick: () => void, theme: string, toggleTheme: () => void}} props - Handlers and state for help and theme toggling.
          */
 
-const Header = ({ onHelpClick, theme, toggleTheme }) => (
+const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
     <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
         
         <div className="absolute top-4 left-4">
-            {/* Add the widthClass="w-auto" prop here */}
             <Tooltip text="Open User Manual" widthClass="w-auto">
                 <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
                     <Icon path={ICONS.help} className="w-6 h-6" />
@@ -1255,20 +1254,23 @@ const Header = ({ onHelpClick, theme, toggleTheme }) => (
         </p>
 
         <div className="absolute top-4 right-4 flex items-center gap-2">
-            {/* The new "Buy Me a Coffee" button for desktop, hidden on smaller screens */}
             <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
                 <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
             </a>
-            {/* The existing dark mode toggle */}
             <Tooltip text="Toggle Theme" widthClass="w-auto">
                 <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
                     <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
                 </button>
             </Tooltip>
+            {/* The new settings button */}
+            <Tooltip text="Settings" widthClass="w-auto">
+                <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+                    <Icon path={ICONS.settings} className="w-6 h-6" />
+                </button>
+            </Tooltip>
         </div>
     </header>
 );
-
 
         /**
          * @description The primary search input with auto-suggestions.
@@ -1338,7 +1340,6 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
          * @param {{activeView: string, onNavClick: (view: string) => void}} props - The currently active view and the click handler.
          */
 
-
 const MainNav = ({ activeView, onNavClick }) => {
     const navItems = [ 
         {id: 'home', label: 'Home', icon: ICONS.home },
@@ -1346,7 +1347,7 @@ const MainNav = ({ activeView, onNavClick }) => {
         { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
         { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
         { id: 'mda', label: 'MDA', icon: ICONS.search },
-        { id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
+		{ id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
         { id: 'wrs', label: 'WRS Test', icon: ICONS.database },
         { id: 'emc', label: 'EMC Sign Test', icon: ICONS.search },
         { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series }, 
@@ -1356,9 +1357,8 @@ const MainNav = ({ activeView, onNavClick }) => {
         { id: 'doseRate', label: 'Dose Rate', icon: ICONS.doseRate }, 
         { id: 'shielding', label: 'Shielding', icon: ICONS.doseRate },
         { id: 'stayTime', label: 'Stay Time', icon: ICONS.stopwatch },
-        { id: 'transportation', label: 'Transportation', icon: ICONS.transport },
-        { id: 'converter', label: 'Converter', icon: ICONS.converter },
-        { id: 'settings', label: 'Settings', icon: ICONS.settings } // <-- ADD THIS ITEM
+		{ id: 'transportation', label: 'Transportation', icon: ICONS.transport },
+        { id: 'converter', label: 'Converter', icon: ICONS.converter }
     ];
 
     const NavButton = ({ item }) => (
@@ -3810,9 +3810,12 @@ if (result) {
 return (
     <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
         <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
-            <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} />
-            <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-            <MainNav activeView={activeView} onNavClick={handleNavClick} />
+            
+            <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
+
+                <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
+            
+                <MainNav activeView={activeView} onNavClick={handleNavClick} />
             
             <main ref={mainContentRef} className="min-h-[400px]">
                 {renderActiveView()}
