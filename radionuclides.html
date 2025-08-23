@@ -3389,7 +3389,12 @@ const scrollToMainContent = () => {
 };
 
             const handleNavClick = (view) => {
-                window.scrollTo(0, 0); // <-- ADD THIS LINE to always scroll to the top
+
+      // Only scroll if the user is scrolled down more than 200px
+
+            if (window.scrollY > 200) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
                 setPreselectedNuclide(null);
                 setActiveView(view);
                 setCurrentDecaySeriesId(null);
