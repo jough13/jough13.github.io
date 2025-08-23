@@ -318,7 +318,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.6';
+        const VERSION = '3.0.7';
         const LAST_UPDATED = 'August 23, 2025';
 
         /**
@@ -1560,9 +1560,10 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
         return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
     };
 
-    const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
+const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
         const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
-        const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && !displayValue.toLowerCase().includes(unit.toLowerCase());
+        // CORRECTED LINE: Check if the displayValue is 'None' before deciding to append the unit
+        const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
 
         return (
             <div className="flex items-start">
@@ -1825,8 +1826,6 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
 
 const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scrollPositionRef }) => {
 
-    // Destructure all filter-related state and handlers from the filterProps object.
-
     const {
         sortBy, setSortBy, sortOrder, setSortOrder,
         selectedCategory, setSelectedCategory, allCategories,
@@ -1835,30 +1834,35 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
         minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy,
         minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
         minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
-        minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
+        minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit,
+        // New prop: a function to clear all filters
+        clearFilters
     } = filterProps;
 
     const handleClose = () => {
         setIsFiltersVisible(false);
-        // Use a timeout to wait for the animation (300ms matches the CSS duration)
         setTimeout(() => {
             window.scrollTo({
                 top: scrollPositionRef.current,
                 behavior: 'smooth'
             });
-        }, 300); 
+        }, 300);
     };
-    
+
+    const handleClear = () => {
+        clearFilters();
+        // You can keep the sidebar open or close it after clearing. Closing might be better for mobile UX.
+        // setIsFiltersVisible(false);
+    };
+
     return (
         <>
-            {/* Backdrop for mobile view when the sidebar is open */}
-            <div 
+            <div
                 className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 onClick={handleClose}
                 aria-hidden="true">
             </div>
 
-            {/* The actual sidebar panel - THIS IS THE CORRECTED PART */}
             <aside
                 className={`fixed top-0 left-0 w-80 h-full bg-slate-50 dark:bg-slate-900 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:w-auto lg:h-auto lg:transform-none lg:col-span-1 ${
                     isFiltersVisible ? 'translate-x-0' : '-translate-x-full'
@@ -1867,9 +1871,16 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
                 <div className="p-4 space-y-4 h-full overflow-y-auto">
                     <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
-                        <button onClick={handleClose} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
-                            <Icon path={ICONS.clear} className="w-6 h-6" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <Tooltip text="Clear Filters" widthClass="w-auto">
+                                <button onClick={handleClear} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    <Icon path={ICONS.clear} className="w-6 h-6" />
+                                </button>
+                            </Tooltip>
+                            <button onClick={handleClose} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                                <Icon path={ICONS.clear} className="w-6 h-6" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Sorting controls */}
@@ -1934,7 +1945,7 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
          * @param {(isVisible: boolean) => void} props.setIsFiltersVisible - Handler to toggle mobile filter visibility.
          */
 
-const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible, scrollPositionRef }) => {
+const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible, scrollPositionRef, handleClearFilters }) => {
 
     const { selectedCategory, setSelectedCategory } = filterProps;
 
@@ -1956,10 +1967,13 @@ return (
                 
                 {/* --- THIS IS THE CORRECTED LINE --- */}
 <FilterSidebar
-    filterProps={filterProps}
+    filterProps={{
+        ...filterProps,
+        clearFilters: handleClearFilters // Pass the new function down
+    }}
     isFiltersVisible={isFiltersVisible}
     setIsFiltersVisible={setIsFiltersVisible}
-    scrollPositionRef={scrollPositionRef} 
+    scrollPositionRef={scrollPositionRef}
 />
                 
                 <div className="col-span-4 lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
@@ -3524,7 +3538,6 @@ const ManualContent = () => {
          */
 
 
-
 const App = () => {
             // --- STATE MANAGEMENT ---
             const [activeView, setActiveView] = React.useState('home');
@@ -3544,17 +3557,21 @@ const App = () => {
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
             const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
-            const [sortBy, setSortBy] = React.useState('name');
-            const [sortOrder, setSortOrder] = React.useState('asc');
-            const [selectedCategory, setSelectedCategory] = React.useState('All');
-            const [selectedEmissionType, setSelectedEmissionType] = React.useState('All');
-            const [selectedCommonality, setSelectedCommonality] = React.useState('All');
-            const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(''); const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState('');
-            const [minBetaEnergy, setMinBetaEnergy] = React.useState(''); const [maxBetaEnergy, setMaxBetaEnergy] = React.useState('');
-            const [minGammaEnergy, setMinGammaEnergy] = React.useState(''); const [maxGammaEnergy, setMaxGammaEnergy] = React.useState('');
-            const [minHalfLife, setMinHalfLife] = React.useState('');
-            const [maxHalfLife, setMaxHalfLife] = React.useState('');
-            const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState('years');
+            
+    const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
+    const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
+    const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
+    const [selectedEmissionType, setSelectedEmissionType] = React.useState(() => localStorage.getItem('filterEmissionType') || 'All');
+    const [selectedCommonality, setSelectedCommonality] = React.useState(() => localStorage.getItem('filterCommonality') || 'All');
+    const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(() => localStorage.getItem('filterMinAlphaEnergy') || '');
+    const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState(() => localStorage.getItem('filterMaxAlphaEnergy') || '');
+    const [minBetaEnergy, setMinBetaEnergy] = React.useState(() => localStorage.getItem('filterMinBetaEnergy') || '');
+    const [maxBetaEnergy, setMaxBetaEnergy] = React.useState(() => localStorage.getItem('filterMaxBetaEnergy') || '');
+    const [minGammaEnergy, setMinGammaEnergy] = React.useState(() => localStorage.getItem('filterMinGammaEnergy') || '');
+    const [maxGammaEnergy, setMaxGammaEnergy] = React.useState(() => localStorage.getItem('filterMaxGammaEnergy') || '');
+    const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
+    const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
+    const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
 
             const mainContentRef = React.useRef(null);
 
@@ -3563,7 +3580,6 @@ const App = () => {
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
-
 
 const scrollToMainContent = () => {
     // Check if the screen is in mobile mode (less than 768px)
@@ -3616,6 +3632,23 @@ const scrollToMainContent = () => {
             const handleRemoveFromCompare = (nuclideSymbol) => {
                 setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol));
             };
+
+React.useEffect(() => {
+    localStorage.setItem('filterSortBy', sortBy);
+    localStorage.setItem('filterSortOrder', sortOrder);
+    localStorage.setItem('filterCategory', selectedCategory);
+    localStorage.setItem('filterEmissionType', selectedEmissionType);
+    localStorage.setItem('filterCommonality', selectedCommonality);
+    localStorage.setItem('filterMinAlphaEnergy', minAlphaEnergy);
+    localStorage.setItem('filterMaxAlphaEnergy', maxAlphaEnergy);
+    localStorage.setItem('filterMinBetaEnergy', minBetaEnergy);
+    localStorage.setItem('filterMaxBetaEnergy', maxBetaEnergy);
+    localStorage.setItem('filterMinGammaEnergy', minGammaEnergy);
+    localStorage.setItem('filterMaxGammaEnergy', maxGammaEnergy);
+    localStorage.setItem('filterMinHalfLife', minHalfLife);
+    localStorage.setItem('filterMaxHalfLife', maxHalfLife);
+    localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
+}, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
 
             React.useEffect(() => {
                 const root = window.document.documentElement;
@@ -3742,6 +3775,22 @@ const scrollToMainContent = () => {
                     setResult(null);
                 }
             };
+            const handleClearFilters = () => {
+    setSortBy('name');
+    setSortOrder('asc');
+    setSelectedCategory('All');
+    setSelectedEmissionType('All');
+    setSelectedCommonality('All');
+    setMinAlphaEnergy('');
+    setMaxAlphaEnergy('');
+    setMinBetaEnergy('');
+    setMaxBetaEnergy('');
+    setMinGammaEnergy('');
+    setMaxGammaEnergy('');
+    setMinHalfLife('');
+    setMaxHalfLife('');
+    setHalfLifeFilterUnit('years');
+};
             const handleLookup = () => {
                 setSuggestions([]);
                 const normInput = normalizeString(nuclideName);
@@ -3776,7 +3825,16 @@ const renderActiveView = () => {
     const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit };
 
     switch (activeView) {
-        case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef}  />;
+        case 'database': 
+            return <DatabaseView 
+                filteredList={filteredList} 
+                onNuclideClick={handleNuclideSelection} 
+                filterProps={filterProps} 
+                isFiltersVisible={isFiltersVisible} 
+                setIsFiltersVisible={setIsFiltersVisible} 
+                scrollPositionRef={scrollPositionRef} 
+                handleClearFilters={handleClearFilters} // <-- This is the crucial line
+            />;
         case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'mda': return <MDACalculator />;
         case 'marssim': return <MARSSIM_SampleCalculator />;
@@ -3792,7 +3850,7 @@ const renderActiveView = () => {
         case 'stayTime': return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'transportation': return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'converter': return <UnitConverter />;
-        case 'settings': return <SettingsPanel />; // <-- ADD THIS NEW CASE
+        case 'settings': return <SettingsPanel />;
         case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
         case 'home':
         default:
