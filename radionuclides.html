@@ -318,7 +318,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.1';
+        const VERSION = '3.0.2';
         const LAST_UPDATED = 'August 23, 2025';
 
         /**
@@ -1673,8 +1673,10 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
          * @param {{filterProps: object, isFiltersVisible: boolean, setIsFiltersVisible: (isVisible: boolean) => void}} props
          */
 
-const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) => {
+const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scrollPositionRef }) => {
+
     // Destructure all filter-related state and handlers from the filterProps object.
+
     const {
         sortBy, setSortBy, sortOrder, setSortOrder,
         selectedCategory, setSelectedCategory, allCategories,
@@ -1686,12 +1688,23 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) =
         minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
     } = filterProps;
 
+    const handleClose = () => {
+        setIsFiltersVisible(false);
+        // Use a timeout to wait for the animation (300ms matches the CSS duration)
+        setTimeout(() => {
+            window.scrollTo({
+                top: scrollPositionRef.current,
+                behavior: 'smooth'
+            });
+        }, 300); 
+    };
+    
     return (
         <>
             {/* Backdrop for mobile view when the sidebar is open */}
             <div 
                 className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                onClick={() => setIsFiltersVisible(false)}
+                onClick={handleClose}
                 aria-hidden="true">
             </div>
 
@@ -1704,7 +1717,7 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) =
                 <div className="p-4 space-y-4 h-full overflow-y-auto">
                     <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
-                        <button onClick={() => setIsFiltersVisible(false)} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <button onClick={handleClose} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
                             <Icon path={ICONS.clear} className="w-6 h-6" />
                         </button>
                     </div>
@@ -1771,7 +1784,8 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) =
          * @param {(isVisible: boolean) => void} props.setIsFiltersVisible - Handler to toggle mobile filter visibility.
          */
 
-const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible }) => {
+const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible, scrollPositionRef }) => {
+
     const { selectedCategory, setSelectedCategory } = filterProps;
 
 return (
@@ -1779,6 +1793,7 @@ return (
             <div className="px-4 pt-4 lg:hidden">
 <button
     onClick={() => {
+        scrollPositionRef.current = window.scrollY;
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setIsFiltersVisible(true);
     }}
@@ -1794,6 +1809,7 @@ return (
     filterProps={filterProps}
     isFiltersVisible={isFiltersVisible}
     setIsFiltersVisible={setIsFiltersVisible}
+    scrollPositionRef={scrollPositionRef} 
 />
                 
                 <div className="col-span-4 lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
@@ -3352,6 +3368,8 @@ const App = () => {
 
             const mainContentRef = React.useRef(null);
 
+             const scrollPositionRef = React.useRef(0);
+
             const inputRef = React.useRef(null);
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
@@ -3568,7 +3586,7 @@ const renderActiveView = () => {
     const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit };
 
     switch (activeView) {
-        case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} />;
+        case 'database': return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef}  />;
         case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'mda': return <MDACalculator />;
         case 'marssim': return <MARSSIM_SampleCalculator />;
