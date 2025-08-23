@@ -2000,254 +2000,263 @@ return (
          * various radiological and physical units, such as activity, dose, and energy.
          */
 
-        const UnitConverter = () => {
+const UnitConverter = () => {
 
-            // --- STATE MANAGEMENT ---
+    // --- STATE MANAGEMENT ---
 
-            const [value, setValue] = React.useState(''); // The input value to be converted
-            const [fromUnit, setFromUnit] = React.useState('Gy'); // The unit to convert from
-            const [toUnit, setToUnit] = React.useState('rad'); // The unit to convert to
-            const [result, setResult] = React.useState(''); // The calculated result of the conversion
-            const [error, setError] = React.useState(''); // Any error messages to display
+    const [value, setValue] = React.useState(''); // The input value to be converted
+    const [fromUnit, setFromUnit] = React.useState('Gy'); // The unit to convert from
+    const [toUnit, setToUnit] = React.useState('rad'); // The unit to convert to
+    const [result, setResult] = React.useState(''); // The calculated result of the conversion
+    const [error, setError] = React.useState(''); // Any error messages to display
 
-            // --- DATA & CONFIGURATION ---
+    // --- DATA & CONFIGURATION ---
 
-            /**
-             * Defines the grouping of units for display in dropdown menus.
-             */
-            const units = {
-                'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'Ci', 'mCi', 'µCi', 'dps', 'dpm'],
-                'Radiation Dose': ['Gy', 'rad', 'Sv', 'rem', 'R', 'cGy', 'mrem'],
-                'Dose Rate': ['µSv/hr', 'mrem/hr', 'mGy/hr', 'mrad/hr'],
-                'Energy': ['J', 'eV', 'keV', 'MeV'],
-                'Radioactive Concentration': ['Bq/L', 'µCi/mL', 'pCi/L', 'Bq/m³'],
-                'Length': ['m', 'cm', 'mm', 'km', 'in', 'ft'],
-                'Area': ['m²', 'cm²', 'in²', 'ft²'],
-                'Mass': ['g', 'kg', 'mg', 'µg', 'lb', 'oz'],
-            };
+    /**
+     * Defines the grouping of units for display in dropdown menus.
+     */
+    const units = {
+        'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'Ci', 'mCi', 'µCi', 'dps', 'dpm'],
+        'Radiation Dose': ['Gy', 'cGy', 'mGy', 'rad', 'Sv', 'cSv', 'mSv', 'rem', 'mrem', 'R'],
+        'Dose Rate': ['Gy/s', 'Gy/hr', 'cGy/hr', 'rad/hr', 'Sv/s', 'Sv/hr', 'mSv/hr', 'µSv/hr', 'rem/hr', 'mrem/hr'],
+        'Energy': ['J', 'eV', 'keV', 'MeV'],
+        'Radioactive Concentration': ['Bq/L', 'µCi/mL', 'pCi/L', 'Bq/m³'],
+        'Length': ['m', 'cm', 'mm', 'km', 'in', 'ft'],
+        'Area': ['m²', 'cm²', 'in²', 'ft²'],
+        'Mass': ['g', 'kg', 'mg', 'µg', 'lb', 'oz'],
+    };
 
-            /**
-             * Defines the conversion factors for each unit relative to a base unit for its category.
-             * The `base` property ensures that only units of the same type can be converted (e.g., activity to activity).
-             */
+    /**
+     * Defines the conversion factors for each unit relative to a base unit for its category.
+     * The `base` property ensures that only units of the same type can be converted (e.g., activity to activity).
+     */
 
-            const factors = {
+    const factors = {
 
-                // Radiation Dose (Base: Gray)
-                'Gy':   { base: 'dose',     factor: 1 },
-                'rad':  { base: 'dose',     factor: 0.01 },
-                'Sv':   { base: 'dose',     factor: 1 },
-                'rem':  { base: 'dose',     factor: 0.01 },
-                'R':    { base: 'dose',     factor: 0.00877 },
-                'cGy':  { base: 'dose',     factor: 0.01 },
-                'mrem': { base: 'dose',     factor: 1e-5 },
+        // Radiation Dose (Base: Gray)
+        'Gy':   { base: 'dose',     factor: 1 },
+        'cGy':  { base: 'dose',     factor: 0.01 },
+        'mGy':  { base: 'dose',     factor: 1e-3 },
+        'rad':  { base: 'dose',     factor: 0.01 },
+        'Sv':   { base: 'dose',     factor: 1 },
+        'cSv':  { base: 'dose',     factor: 0.01 },
+        'mSv':  { base: 'dose',     factor: 1e-3 },
+        'rem':  { base: 'dose',     factor: 0.01 },
+        'mrem': { base: 'dose',     factor: 1e-5 },
+        'R':    { base: 'dose',     factor: 0.00877 },
 
-                // Activity (Base: Becquerel)
-                'Bq':   { base: 'activity', factor: 1 },
-                'kBq':  { base: 'activity', factor: 1e3 },
-                'MBq':  { base: 'activity', factor: 1e6 },
-                'GBq':  { base: 'activity', factor: 1e9 },
-                'Ci':   { base: 'activity', factor: 3.7e10 },
-                'mCi':  { base: 'activity', factor: 3.7e7 },
-                'µCi':  { base: 'activity', factor: 3.7e4 },
-                'dps':  { base: 'activity', factor: 1 },
-                'dpm':  { base: 'activity', factor: 1 / 60 },
+        // Activity (Base: Becquerel)
+        'Bq':   { base: 'activity', factor: 1 },
+        'kBq':  { base: 'activity', factor: 1e3 },
+        'MBq':  { base: 'activity', factor: 1e6 },
+        'GBq':  { base: 'activity', factor: 1e9 },
+        'Ci':   { base: 'activity', factor: 3.7e10 },
+        'mCi':  { base: 'activity', factor: 3.7e7 },
+        'µCi':  { base: 'activity', factor: 3.7e4 },
+        'dps':  { base: 'activity', factor: 1 },
+        'dpm':  { base: 'activity', factor: 1 / 60 },
 
-                // Dose Rate (Base: Sievert/hour)
-                'µSv/hr':  { base: 'doseRate', factor: 1e-6 },
-                'mrem/hr': { base: 'doseRate', factor: 1e-5 },
-                'mGy/hr':  { base: 'doseRate', factor: 1e-3 },
-                'mrad/hr': { base: 'doseRate', factor: 1e-5 },
+        // Dose Rate (Base: Sievert/hour)
+        'Gy/s':     { base: 'doseRate', factor: 3.6e3 },
+        'Gy/hr':    { base: 'doseRate', factor: 1 },
+        'cGy/hr':   { base: 'doseRate', factor: 0.01 },
+        'rad/hr':   { base: 'doseRate', factor: 0.01 },
+        'Sv/s':     { base: 'doseRate', factor: 3.6e3 },
+        'Sv/hr':    { base: 'doseRate', factor: 1 },
+        'mSv/hr':   { base: 'doseRate', factor: 1e-3 },
+        'µSv/hr':   { base: 'doseRate', factor: 1e-6 },
+        'rem/hr':   { base: 'doseRate', factor: 0.01 },
+        'mrem/hr':  { base: 'doseRate', factor: 1e-5 },
 
-                // Energy (Base: Joule)
-                'J':    { base: 'energy',   factor: 1 },
-                'eV':   { base: 'energy',   factor: 1.60218e-19 },
-                'keV':  { base: 'energy',   factor: 1.60218e-16 },
-                'MeV':  { base: 'energy',   factor: 1.60218e-13 },
-                
-                // --- NEW FACTORS ---
-                // Radioactive Concentration (Base: Bq/L)
-                'Bq/L':    { base: 'concentration', factor: 1 },
-                'µCi/mL':  { base: 'concentration', factor: 3.7e7 },
-                'pCi/L':   { base: 'concentration', factor: 0.037 },
-                'Bq/m³':   { base: 'concentration', factor: 0.001 },
+        // Energy (Base: Joule)
+        'J':    { base: 'energy',   factor: 1 },
+        'eV':   { base: 'energy',   factor: 1.60218e-19 },
+        'keV':  { base: 'energy',   factor: 1.60218e-16 },
+        'MeV':  { base: 'energy',   factor: 1.60218e-13 },
+        
+        // --- NEW FACTORS ---
+        // Radioactive Concentration (Base: Bq/L)
+        'Bq/L':    { base: 'concentration', factor: 1 },
+        'µCi/mL':  { base: 'concentration', factor: 3.7e7 },
+        'pCi/L':   { base: 'concentration', factor: 0.037 },
+        'Bq/m³':   { base: 'concentration', factor: 0.001 },
 
-                // Length (Base: meter)
-                'm':  { base: 'length', factor: 1 },
-                'cm': { base: 'length', factor: 0.01 },
-                'mm': { base: 'length', factor: 0.001 },
-                'km': { base: 'length', factor: 1000 },
-                'in': { base: 'length', factor: 0.0254 },
-                'ft': { base: 'length', factor: 0.3048 },
+        // Length (Base: meter)
+        'm':  { base: 'length', factor: 1 },
+        'cm': { base: 'length', factor: 0.01 },
+        'mm': { base: 'length', factor: 0.001 },
+        'km': { base: 'length', factor: 1000 },
+        'in': { base: 'length', factor: 0.0254 },
+        'ft': { base: 'length', factor: 0.3048 },
 
-                // Area (Base: square meter)
-                'm²':  { base: 'area', factor: 1 },
-                'cm²': { base: 'area', factor: 1e-4 },
-                'in²': { base: 'area', factor: 0.00064516 },
-                'ft²': { base: 'area', factor: 0.092903 },
+        // Area (Base: square meter)
+        'm²':  { base: 'area', factor: 1 },
+        'cm²': { base: 'area', factor: 1e-4 },
+        'in²': { base: 'area', factor: 0.00064516 },
+        'ft²': { base: 'area', factor: 0.092903 },
 
-                // Mass (Base: gram)
-                'g':  { base: 'mass', factor: 1 },
-                'kg': { base: 'mass', factor: 1000 },
-                'mg': { base: 'mass', factor: 0.001 },
-                'µg': { base: 'mass', factor: 1e-6 },
-                'lb': { base: 'mass', factor: 453.592 },
-                'oz': { base: 'mass', factor: 28.3495 },
-            };
+        // Mass (Base: gram)
+        'g':  { base: 'mass', factor: 1 },
+        'kg': { base: 'mass', factor: 1000 },
+        'mg': { base: 'mass', factor: 0.001 },
+        'µg': { base: 'mass', factor: 1e-6 },
+        'lb': { base: 'mass', factor: 453.592 },
+        'oz': { base: 'mass', factor: 28.3495 },
+    };
 
-            // --- LOGIC & SIDE EFFECTS ---
+    // --- LOGIC & SIDE EFFECTS ---
 
-            /**
-             * This effect ensures that if a user changes the 'From' unit to a different
-             * category, the 'To' unit automatically updates to a compatible unit.
-             */
+    /**
+     * This effect ensures that if a user changes the 'From' unit to a different
+     * category, the 'To' unit automatically updates to a compatible unit.
+     */
 
-            React.useEffect(() => {
-                const fromBase = factors[fromUnit]?.base;
-                const toBase = factors[toUnit]?.base;
+    React.useEffect(() => {
+        const fromBase = factors[fromUnit]?.base;
+        const toBase = factors[toUnit]?.base;
 
-                // If 'from' and 'to' units are from different categories...
+        // If 'from' and 'to' units are from different categories...
 
-                if (fromBase && fromBase !== toBase) {
+        if (fromBase && fromBase !== toBase) {
 
-                    // ...find the first unit that is compatible with the new 'from' category...
+            // ...find the first unit that is compatible with the new 'from' category...
 
-                    const compatibleUnit = Object.keys(factors).find(u => factors[u].base === fromBase);
+            const compatibleUnit = Object.keys(factors).find(u => factors[u]?.base === fromBase);
 
-                    // ...and set it as the new 'to' unit.
+            // ...and set it as the new 'to' unit.
 
-                    if (compatibleUnit) {
-                        setToUnit(compatibleUnit);
-                    }
-                }
-            }, [fromUnit]); // Reruns whenever the 'from' unit changes.
+            if (compatibleUnit) {
+                setToUnit(compatibleUnit);
+            }
+        }
+    }, [fromUnit]); // Reruns whenever the 'from' unit changes.
 
-            /**
-             * Performs the unit conversion. Wrapped in `useCallback` for optimization.
-             */
+    /**
+     * Performs the unit conversion. Wrapped in `useCallback` for optimization.
+     */
 
-            const handleConvert = React.useCallback(() => {
-                const val = parseFloat(value);
-                if (isNaN(val)) {
-                    if (value) setError("Invalid input value."); // Show error only if there's text
-                    setResult('');
-                    return;
-                }
+    const handleConvert = React.useCallback(() => {
+        const val = parseFloat(value);
+        if (isNaN(val)) {
+            if (value) setError("Invalid input value."); // Show error only if there's text
+            setResult('');
+            return;
+        }
 
-                const from = factors[fromUnit];
-                const to = factors[toUnit];
+        const from = factors[fromUnit];
+        const to = factors[toUnit];
 
-                // Check for incompatible unit types (e.g., converting Gy to Bq)
+        // Check for incompatible unit types (e.g., converting Gy to Bq)
 
-                if (!from || !to || from.base !== to.base) {
-                    setError("Cannot convert between these units.");
-                    setResult('');
-                    return;
-                }
+        if (!from || !to || from.base !== to.base) {
+            setError("Cannot convert between these units.");
+            setResult('');
+            return;
+        }
 
-                // Core conversion formula: (value * from_factor) / to_factor
+        // Core conversion formula: (value * from_factor) / to_factor
 
-                const convertedVal = val * from.factor / to.factor;
-                setError('');
-                setResult(convertedVal.toPrecision(4));
-            }, [value, fromUnit, toUnit]);
+        const convertedVal = val * from.factor / to.factor;
+        setError('');
+        setResult(convertedVal.toPrecision(4));
+    }, [value, fromUnit, toUnit]);
 
-            /**
-             * This effect automatically triggers the conversion whenever any of the
-             * input values or units change.
-             */
+    /**
+     * This effect automatically triggers the conversion whenever any of the
+     * input values or units change.
+     */
 
-            React.useEffect(() => {
-                handleConvert();
-            }, [value, fromUnit, toUnit, handleConvert]);
+    React.useEffect(() => {
+        handleConvert();
+    }, [value, fromUnit, toUnit, handleConvert]);
 
-            /**
-             * Swaps the 'from' and 'to' units if they are compatible.
-             */
+    /**
+     * Swaps the 'from' and 'to' units if they are compatible.
+     */
 
-            const handleSwap = () => {
-                const from = factors[fromUnit];
-                const to = factors[toUnit];
-                if (from && to && from.base === to.base) {
-                    setFromUnit(toUnit);
-                    setToUnit(fromUnit);
-                } else {
-                    setError("Cannot swap incompatible units.");
-                }
-            };
+    const handleSwap = () => {
+        const from = factors[fromUnit];
+        const to = factors[toUnit];
+        if (from && to && from.base === to.base) {
+            setFromUnit(toUnit);
+            setToUnit(fromUnit);
+        } else {
+            setError("Cannot swap incompatible units.");
+        }
+    };
 
-            // Dynamically create a list of units compatible with the current 'From' unit.
-            // This is used to populate the 'To' unit dropdown.
+    // Dynamically create a list of units compatible with the current 'From' unit.
+    // This is used to populate the 'To' unit dropdown.
 
-            const currentBase = factors[fromUnit]?.base;
-            const compatibleUnits = Object.fromEntries(
-                Object.entries(units)
-                    .map(([group, unitList]) => {
-                        const filteredList = unitList.filter(u => factors[u]?.base === currentBase);
-                        return [group, filteredList];
-                    })
-                    .filter(([group, unitList]) => unitList.length > 0)
-            );
+    const currentBase = factors[fromUnit]?.base;
+    const compatibleUnits = Object.fromEntries(
+        Object.entries(units)
+            .map(([group, unitList]) => {
+                const filteredList = unitList.filter(u => factors[u]?.base === currentBase);
+                return [group, filteredList];
+            })
+            .filter(([group, unitList]) => unitList.length > 0)
+    );
 
-            // --- JSX RENDERING ---
+    // --- JSX RENDERING ---
 
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2>
-                        <div className="space-y-4">
-                            {/* Value Input */}
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Value</label>
-                                <input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter a value" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                            </div>
-                            
-                            {/* Unit Selectors and Swap Button */}
-                            <div className="flex flex-col sm:flex-row gap-4 items-end">
-                                <div className="w-full sm:flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From</label>
-                                    <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                        {Object.entries(units).map(([group, list]) => (
-                                            <optgroup label={group} key={group}>
-                                                {list.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-                                </div>
-                                
-                                <div className="flex-shrink-0 pb-1">
-                                    <button onClick={handleSwap} className="p-2 rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-sky-200 dark:hover:bg-sky-700 transition" aria-label="Swap units">
-                                        {/* Swap Icon SVG */}
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                                    </button>
-                                </div>
-                                
-                                <div className="w-full sm:flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
-                                    <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                        {Object.entries(compatibleUnits).map(([group, list]) => (
-                                            <optgroup label={group} key={group}>
-                                                {list.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            {/* Error and Result Display */}
-
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {result && !error && (
-                                <div className="flex items-center justify-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                                    <p className="text-lg font-bold text-center flex-grow">{value} {fromUnit} = {result} {toUnit}</p>
-                                    <CopyButton textToCopy={result} />
-                                </div>
-                            )}
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2>
+                <div className="space-y-4">
+                    {/* Value Input */}
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Value</label>
+                        <input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter a value" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    
+                    {/* Unit Selectors and Swap Button */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                        <div className="w-full sm:flex-1">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From</label>
+                            <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {Object.entries(units).map(([group, list]) => (
+                                    <optgroup label={group} key={group}>
+                                        {list.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </optgroup>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div className="flex-shrink-0 pb-1">
+                            <button onClick={handleSwap} className="p-2 rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-sky-200 dark:hover:bg-sky-700 transition" aria-label="Swap units">
+                                {/* Swap Icon SVG */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 dark:text-slate-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div className="w-full sm:flex-1">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
+                            <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {Object.entries(compatibleUnits).map(([group, list]) => (
+                                    <optgroup label={group} key={group}>
+                                        {list.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </optgroup>
+                                ))}
+                            </select>
                         </div>
                     </div>
+                    
+                    {/* Error and Result Display */}
+
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && !error && (
+                        <div className="flex items-center justify-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                            <p className="text-lg font-bold text-center flex-grow">{value} {fromUnit} = {result} {toUnit}</p>
+                            <CopyButton textToCopy={result} />
+                        </div>
+                    )}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
 
         /**
          * @description A comprehensive calculator for various radioactive decay scenarios,
@@ -4124,6 +4133,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
      * - Beta Mode: Calculates skin dose from a beta point source, accounting for range in air.
      * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
      */
+
 const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- STATE MANAGEMENT ---
     
@@ -4314,7 +4324,6 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
-
 
 /**
  * @description An advanced calculator to analyze and model parent-daughter equilibrium.
@@ -4586,6 +4595,7 @@ const EquilibriumCalculator = ({ radionuclides }) => {
  * 2. (Find Thickness) Calculates required shielding thickness for a specific radionuclide.
  * 3. (Generic Rate) Calculates final OR initial dose rate from a user-inputted HVL.
  */
+
 const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- State to toggle between the three calculator modes ---
@@ -5747,11 +5757,10 @@ const SettingsPanel = () => {
     const { settings, updateSettings } = React.useContext(SettingsContext);
     const { addToast } = useToast();
 
-    // Data for the dropdown options
-    const activityUnits = ['Bq', 'kBq', 'MBq', 'GBq', 'Ci', 'mCi', 'µCi'];
-    const doseRateUnits = ['mrem/hr', 'µSv/hr', 'mR/hr'];
-    const distanceUnits = ['m', 'cm', 'ft', 'in'];
-    const timeUnits = ['s', 'min', 'h', 'd', 'yr'];
+    // Updated data for the dropdown options
+    const activityUnits = ['Bq', 'kBq', 'MBq', 'GBq', 'Ci', 'mCi', 'µCi', 'dps', 'dpm'];
+    const doseRateUnits = ['Gy/s', 'Gy/hr', 'cGy/hr', 'rad/hr', 'Sv/s', 'Sv/hr', 'mSv/hr', 'µSv/hr', 'rem/hr', 'mrem/hr'];
+    const distanceUnits = ['m', 'cm', 'mm', 'km', 'in', 'ft'];
 
     const handleSettingChange = (key, value) => {
         updateSettings({ [key]: value });
