@@ -318,7 +318,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.2';
+        const VERSION = '3.0.3!';
         const LAST_UPDATED = 'August 23, 2025';
 
         /**
@@ -1255,6 +1255,7 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
 
 const MainNav = ({ activeView, onNavClick }) => {
     const navItems = [ 
+        {id: 'home', label: 'Home', icon: ICONS.home },
         { id: 'database', label: 'Database', icon: ICONS.database }, 
         { id: 'compare', label: 'Compare', icon: ICONS.compare }, 
         { id: 'calculator', label: 'Decay', icon: ICONS.calculator }, 
@@ -1295,18 +1296,21 @@ const MainNav = ({ activeView, onNavClick }) => {
 
     return (
         <div className="px-4 pb-2">
-{/* Mobile: Grid Menu. */}
+
+            {/* Mobile: Grid Menu. */}
+
 <div className="md:hidden">
     <div className="grid grid-cols-2 gap-4">
         {navItems.map(item => (
             <button
                 key={item.id}
                 onClick={() => onNavClick(item.id)}
+                // ADD THE HIGHLIGHTED PART TO THIS CLASSNAME
                 className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-colors ${
                     activeView === item.id
                         ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50'
-                }`}
+                } ${item.id === 'home' ? 'col-span-2' : ''}`}
             >
                 <Icon path={item.icon} className="w-8 h-8 mb-2" />
                 <span className="text-sm font-semibold">{item.label}</span>
@@ -1315,16 +1319,13 @@ const MainNav = ({ activeView, onNavClick }) => {
     </div>
 </div>
 
-
-            {/* Desktop: Grid */}
-            <div className="hidden md:grid grid-cols-4 gap-2">
-                {navItems.map(item => <NavButton key={item.id} item={item} />)}
-            </div>
+{/* Desktop: Grid */}
+<div className="hidden md:grid grid-cols-4 gap-2">
+    {navItems.filter(item => item.id !== 'home').map(item => <NavButton key={item.id} item={item} />)}
+</div>
         </div>
     );
 };
-
-
 
         //==============================================================================
         // --- VIEW COMPONENTS
