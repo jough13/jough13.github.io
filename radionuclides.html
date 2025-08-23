@@ -3333,33 +3333,48 @@ const ManualContent = () => {
 
             <h3 className="mt-6"><strong>Compare</strong></h3>
             <p>
-                The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude.
+                The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function, allowing you to save the comparison table as a text file that can be opened in a spreadsheet program like Excel for further analysis.
             </p>
-
+            
             <h3 className="mt-6"><strong>Calculators</strong></h3>
             <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
+
             <h4 className="italic mt-4">Decay Calculators</h4>
             <ul>
-                <li><strong>Decay:</strong> Based on the fundamental decay equation, this tool can solve for any one variable given the others. It's perfect for answering questions like "How much of my 100 mCi source will be left in 3 weeks?" or "How long will it take for this sample to decay to 1 mCi?".</li>
+                <li><strong>Decay:</strong> Based on the fundamental decay equation, this tool can solve for any one variable given the others. It's perfect for answering questions like "How much of my 100 mCi source will be left in 3 weeks?" or "How long will it take for this sample to decay to 1 mCi?". It also includes a Parent-Daughter mode to model the activity of a progeny nuclide over time, including its in-growth and decay.</li>
                 <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
                 <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> or <strong>Transient</strong> and calculate important metrics like the time to maximum daughter activity.</li>
             </ul>
+
             <h4 className="italic mt-4">Activity & Dose Calculators</h4>
             <ul>
                 <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity using its half-life and atomic weight. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?".</li>
                 <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity (Bq/g) from its fundamental properties: atomic weight and half-life.</li>
-                <li><strong>Dose Rate:</strong> Calculates the gamma dose rate from an unshielded point source. It uses the nuclide's gamma constant (Γ) and the inverse square law.</li>
-                <li><strong>Shielding:</strong> This calculator adds shielding to the Dose Rate calculation. It uses the concept of a Half-Value Layer (HVL) to determine the final dose rate after passing through a shield.</li>
-                <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
+                <li><strong>Dose Rate:</strong> Calculates the dose rate from a point source for gamma, beta, and bremsstrahlung radiation. It uses the nuclide's gamma constant (Γ) and the inverse square law for gammas, and specialized equations for beta and bremsstrahlung.</li>
+                <li><strong>Shielding:</strong> This calculator models the attenuation of gamma radiation through a shield. It has three modes: <strong>From Source</strong> (calculates final dose rate from a known nuclide, activity, and shield thickness), <strong>Find Thickness</strong> (determines the thickness needed to reach a target dose rate), and <strong>Generic Rate</strong> (allows you to use a user-defined HVL for a custom material).</li>
+                <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit. The dose rate can either be entered manually or calculated from a source.</li>
             </ul>
             
+            <h4 className="italic mt-4">Transportation</h4>
+            <p>This calculator determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> (Special Form) and A<sub>2</sub> (Normal Form) values. It's an essential tool for preparing radioactive material for transport.</p>
+
             <h3 className="mt-6"><strong>MARSSIM Tools</strong></h3>
             <p>This suite of calculators assists with the design and data assessment for a final status survey, following the guidance in the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM).</p>
             <ul>
-                <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (L<sub>c</sub>)</strong> is the threshold for deciding if a signal is statistically significant. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify.</li>
+                <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (L<sub>c</sub>)</strong> is the threshold for deciding if a signal is statistically significant. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify. This tool includes modes for both static counts and scan surveys.</li>
                 <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit based on your desired error rates (α and β), the cleanup limit (DCGL), the expected background level (LBGR), and the variability of the contamination (σ).</li>
-                <li><strong>WRS Test:</strong> Performs the Wilcoxon Rank Sum statistical test to compare a survey unit to a reference area to determine if the survey unit passes.</li>
-                <li><strong>EMC Sign Test:</strong> Performs the Sign Test for an Elevated Measurement Comparison (EMC), used when individual measurements exceed the DCGL.</li>
+                <li><strong>WRS Test:</strong> Performs the Wilcoxon Rank Sum statistical test to compare a survey unit to a reference area. This is a non-parametric test used to determine if the survey unit passes. The result will indicate whether an Elevated Measurement Comparison (EMC) is also needed.</li>
+                <li><strong>EMC Sign Test:</strong> Performs the Sign Test for an Elevated Measurement Comparison (EMC), used when individual measurements exceed the DCGL. This test helps determine if an isolated "hot spot" is acceptable.</li>
+            </ul>
+
+            <hr className="my-4" />
+            
+            <h2 className="text-slate-900 dark:text-slate-100"><strong>Settings & Customization</strong></h2>
+            <p>The <strong>Settings</strong> panel, accessible from the gear icon in the top right, allows you to set default units for the main calculators. This can streamline your workflow by pre-populating inputs with your preferred units for **Activity**, **Dose Rate**, and **Distance**.</p>
+            <ul>
+                <li><strong>Activity:</strong> Set your preferred unit for activity (e.g., Ci, mCi, Bq). This will be the default for calculators like Dose Rate and Stay Time.</li>
+                <li><strong>Dose Rate:</strong> Set your preferred dose rate unit (e.g., mrem/hr, µSv/hr). This will be the default for calculators like Dose Rate, Shielding, and Stay Time.</li>
+                <li><strong>Distance:</strong> Set your preferred distance unit (e.g., m, cm, ft). This will be the default for calculators that require a distance from the source.</li>
             </ul>
 
             <hr className="my-4" />
@@ -3467,7 +3482,7 @@ const ManualContent = () => {
             <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS).</p>
 
             <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
-            <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools.</p>
+            <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools. Additionally, certain calculations (like the parent-daughter equilibrium) only feature nuclides with known progeny that are themselves radioactive.</p>
             
             <h4 className="italic mt-4">What is the disclaimer?</h4>
             <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently validated for accuracy and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
