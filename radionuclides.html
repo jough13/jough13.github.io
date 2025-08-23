@@ -1649,15 +1649,8 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                 </div>
                 
                 <div className="flex items-center gap-2 mt-1">
-                    {showBackButton && (
-                        <button 
-                            onClick={onBackClick} 
-                            className="p-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition flex items-center gap-2 text-sm"
-                        >
-                            <Icon path={ICONS.database} className="w-4 h-4" />
-                            Back
-                        </button>
-                    )}
+
+
                     {toggleFavorite && (
                         <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
@@ -1737,6 +1730,18 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                    
+{showBackButton && (
+    <button 
+        onClick={onBackClick}
+        // This is the final, polished className
+        className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
+    >
+        <Icon path={ICONS.database} className="w-4 h-4" />
+        Back
+    </button>
+)}
+
                     <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
                     <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
                     {nuclide.shipping && (
@@ -3863,10 +3868,10 @@ const renderActiveView = () => {
         case 'settings': return <SettingsPanel />;
         case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
         case 'home':
-        default:
-if (result) {
-                return <div className="p-4">
-                    <NuclideCard
+            default:
+                if (result) {
+                    return <div className="p-4">
+                        <NuclideCard
                         nuclide={result}
                         radionuclides={radionuclides}
                         onDecaySeriesClick={handleDecaySeriesClick}
@@ -3876,9 +3881,10 @@ if (result) {
                         onSendToCalculator={handleSendToCalculator}
                         onAddToCompare={handleAddToCompare}
                         onNuclideClick={handleNuclideSelection}
-                        showBackButton={previousView === 'database'}
+                        showBackButton={previousView === 'database' || previousView === 'home'}
+                        
                         onBackClick={() => {
-                            setActiveView('database');
+                            setActiveView(previousView || 'home'); 
                             setResult(null);
                             setPreviousView(null);
                         }}
@@ -3927,8 +3933,6 @@ return (
     </div>
 );
         };
-
-
      
 
 
