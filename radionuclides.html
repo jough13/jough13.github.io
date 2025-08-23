@@ -1253,22 +1253,30 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
             Version: {VERSION} | Last Updated: {LAST_UPDATED}
         </p>
 
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-            <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
-                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
-            </a>
-            <Tooltip text="Toggle Theme" widthClass="w-auto">
-                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
-                    <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
-                </button>
-            </Tooltip>
-            {/* The new settings button */}
-            <Tooltip text="Settings" widthClass="w-auto">
-                <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
-                    <Icon path={ICONS.settings} className="w-6 h-6" />
-                </button>
-            </Tooltip>
-        </div>
+<div className="absolute top-4 left-4 flex items-center gap-2">
+    <Tooltip text="Open User Manual" widthClass="w-auto">
+        <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
+            <Icon path={ICONS.help} className="w-6 h-6" />
+        </button>
+    </Tooltip>
+    <Tooltip text="Toggle Theme" widthClass="w-auto">
+        <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
+            <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
+        </button>
+    </Tooltip>
+</div>
+
+<div className="absolute top-4 right-4 flex items-center gap-2">
+    <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
+        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
+    </a>
+    {/* The new settings button */}
+    <Tooltip text="Settings" widthClass="w-auto">
+        <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+            <Icon path={ICONS.settings} className="w-6 h-6" />
+        </button>
+    </Tooltip>
+</div>
     </header>
 );
 
