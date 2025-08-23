@@ -339,31 +339,33 @@ const RADIONUCLIDE_DATA = [
          * Source: Approximate values from various health physics resources.
          */
 
-        const HVL_DATA = {
-            'Am-241': { 'Lead': 0.02, 'Steel': 0.8, 'Concrete': 2.3, 'Aluminum': 1.5, 'Water': 4.2, sourceRef: 'rse' },
-            'Au-198': { 'Lead': 0.33, 'Steel': 1.4, 'Concrete': 4.7, 'Aluminum': 2.5, 'Water': 6.8, sourceRef: 'rse' },
-            'Ba-133': { 'Lead': 0.29, 'Steel': 1.2, 'Concrete': 4.1, 'Aluminum': 2.2, 'Water': 5.8, sourceRef: 'rse' },
-            'Co-60':  { 'Lead': 1.2,  'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
-            'Cs-137': { 'Lead': 0.65, 'Steel': 1.6, 'Concrete': 4.8, 'Aluminum': 3.0, 'Water': 8.0, sourceRef: 'rse' },
-            'Eu-152': { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.5, sourceRef: 'rse' },
-            'Ga-67':  { 'Lead': 0.07, 'Steel': 0.8, 'Concrete': 3.0, 'Aluminum': 1.5, 'Water': 4.8, sourceRef: 'rse' },
-            'I-125':  { 'Lead': 0.002,'Steel': 0.1, 'Concrete': 1.9, 'Aluminum': 0.6, 'Water': 1.8, sourceRef: 'rse' },
-            'I-131':  { 'Lead': 0.3,  'Steel': 1.2, 'Concrete': 4.0, 'Aluminum': 2.2, 'Water': 6.0, sourceRef: 'rse' },
-            'Ir-192': { 'Lead': 0.33, 'Steel': 1.3, 'Concrete': 4.3, 'Aluminum': 2.1, 'Water': 6.1, sourceRef: 'rse' },
-            'Mn-54':  { 'Lead': 0.8,  'Steel': 1.8, 'Concrete': 5.2, 'Aluminum': 3.6, 'Water': 9.0, sourceRef: 'rse' },
-            'Mo-99':  { 'Lead': 0.7,  'Steel': 1.7, 'Concrete': 5.0, 'Aluminum': 3.1, 'Water': 8.2, sourceRef: 'rse' },
-            'Na-22':  { 'Lead': 1.1,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.2, sourceRef: 'rse' },
-            'Na-24':  { 'Lead': 1.5,  'Steel': 2.5, 'Concrete': 7.2, 'Aluminum': 6.1, 'Water': 14.5, sourceRef: 'rse' },
-            'Sc-46':  { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.9, 'Aluminum': 4.2, 'Water': 10.0, sourceRef: 'rse' },
-            'Tc-99m': { 'Lead': 0.03, 'Steel': 0.3, 'Concrete': 2.2, 'Aluminum': 0.8, 'Water': 4.6, sourceRef: 'rse' }
-        };
+const HVL_DATA = {
+    'Am-241': { 'Lead': 0.02, 'Steel': 0.8, 'Concrete': 2.3, 'Aluminum': 1.5, 'Water': 4.2, sourceRef: 'rse' },
+    'Au-198': { 'Lead': 0.33, 'Steel': 1.4, 'Concrete': 4.7, 'Aluminum': 2.5, 'Water': 6.8, sourceRef: 'rse' },
+    'Ba-133': { 'Lead': 0.29, 'Steel': 1.2, 'Concrete': 4.1, 'Aluminum': 2.2, 'Water': 5.8, sourceRef: 'rse' },
+    'Co-60':  { 'Lead': 1.2,  'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
+    'Cs-137': { 'Lead': 0.65, 'Steel': 1.6, 'Concrete': 4.8, 'Aluminum': 3.0, 'Water': 8.0, sourceRef: 'rse' },
+    'Eu-152': { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.5, sourceRef: 'rse' },
+    'Ga-67':  { 'Lead': 0.07, 'Steel': 0.8, 'Concrete': 3.0, 'Aluminum': 1.5, 'Water': 4.8, sourceRef: 'rse' },
+    'I-125':  { 'Lead': 0.002,'Steel': 0.1, 'Concrete': 1.9, 'Aluminum': 0.6, 'Water': 1.8, sourceRef: 'rse' },
+    'I-131':  { 'Lead': 0.3,  'Steel': 1.2, 'Concrete': 4.0, 'Aluminum': 2.2, 'Water': 6.0, sourceRef: 'rse' },
+    'Ir-192': { 'Lead': 0.33, 'Steel': 1.3, 'Concrete': 4.3, 'Aluminum': 2.1, 'Water': 6.1, sourceRef: 'rse' },
+    'Mn-54':  { 'Lead': 0.8,  'Steel': 1.8, 'Concrete': 5.2, 'Aluminum': 3.6, 'Water': 9.0, sourceRef: 'rse' },
+    'Mo-99':  { 'Lead': 0.7,  'Steel': 1.7, 'Concrete': 5.0, 'Aluminum': 3.1, 'Water': 8.2, sourceRef: 'rse' },
+    'Na-22':  { 'Lead': 1.1,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.2, sourceRef: 'rse' },
+    'Na-24':  { 'Lead': 1.5,  'Steel': 2.5, 'Concrete': 7.2, 'Aluminum': 6.1, 'Water': 14.5, sourceRef: 'rse' },
+    'Sc-46':  { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.9, 'Aluminum': 4.2, 'Water': 10.0, sourceRef: 'rse' },
+    'Tc-99m': { 'Lead': 0.03, 'Steel': 0.3, 'Concrete': 2.2, 'Aluminum': 0.8, 'Water': 4.6, sourceRef: 'rse' }
+};
 
-        const SHIELDING_MATERIALS = {
-            'Plastic': { Z: 6, density: 1.18 }, // Using Carbon for approximation
-            'Aluminum': { Z: 13, density: 2.70 },
-            'Steel': { Z: 26, density: 7.85 }, // Using Iron for approximation
-            'Lead': { Z: 82, density: 11.34 }
-        };
+const SHIELDING_MATERIALS = {
+    'Plastic': { Z: 6, density: 1.18 }, // Using Carbon for approximation
+    'Aluminum': { Z: 13, density: 2.70 },
+    'Steel': { Z: 26, density: 7.85 }, // Using Iron for approximation
+    'Lead': { Z: 82, density: 11.34 },
+    'Water': { Z: 8, density: 1.00 }, // Using Oxygen for approximation
+    'Concrete': { Z: 11.3, density: 2.35 } // Weighted average of common elements
+};
 
         //==============================================================================
         // --- CORE DATA
@@ -752,49 +754,59 @@ const parseHalfLifeToSeconds = (halfLifeStr) => {
          * @param {string} str - The input string (e.g., "1.55 x 10⁻¹⁰ year⁻¹").
          * @returns {string} The formatted string with standardized notation.
          */
-        const standardizeScientificDisplay = (str) => {
-            if (typeof str !== 'string' || !str) return str;
 
-            // First, check for the "x 10" format, now including unicode superscripts
-            const sciNotationRegex = /([\d.,]+) x 10\^?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*(.*)/;
-            const sciMatch = str.match(sciNotationRegex);
+/*
+ * Parses a string to standardize its numeric part into "e" notation if it's very large or small.
+ * Handles multiple formats: "1.23 x 10^4", "1.23 x 10⁻⁴", "4,059", and "0.0123".
+ * @param {string} str - The input string (e.g., "1.55 x 10⁻¹⁰ year⁻¹").
+ * @returns {string} The formatted string with standardized notation.
+ */
+const standardizeScientificDisplay = (str) => {
+    if (typeof str !== 'string' || !str) return str;
 
-            if (sciMatch) {
-                const mantissa = parseFloat(sciMatch[1].replace(/,/g, ''));
-                const exponentStr = sciMatch[2];
-                const units = sciMatch[3] || '';
+    // A map to convert unicode superscripts and minus signs to standard characters.
+    const superToRegularMap = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', '−': '-' };
 
-                // Helper to convert superscript characters to regular digits
-                const superToRegularMap = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', '−': '-' };
-                const regularExponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
-                const exponent = parseInt(regularExponentStr);
+    // Regex to capture the mantissa, exponent (in any format), and any trailing units.
+    const sciNotationRegex = /([\d.,]+)\s*x\s*10\^?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*(.*)/;
+    const sciMatch = str.match(sciNotationRegex);
 
-                if (isNaN(mantissa) || isNaN(exponent)) return str;
-                
-                const numericValue = mantissa * Math.pow(10, exponent);
-                return `${numericValue.toExponential(2)} ${units}`.trim();
-            }
+    if (sciMatch) {
+        const mantissa = parseFloat(sciMatch[1].replace(/,/g, ''));
+        const exponentStr = sciMatch[2];
+        const units = sciMatch[3] || '';
 
-            // If not, handle it as a plain number that might have commas and units
-            const plainNumberRegex = /^([-\d.,]+)(.*)/;
-            const plainMatch = str.match(plainNumberRegex);
-            if (plainMatch) {
-                const numberPart = plainMatch[1].replace(/,/g, '');
-                const units = plainMatch[2] || '';
-                const numericValue = parseFloat(numberPart);
-                if (isNaN(numericValue)) return str;
+        const regularExponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
+        const exponent = parseInt(regularExponentStr);
 
-                const absValue = Math.abs(numericValue);
-                if (numericValue === 0) return `0 ${units}`.trim();
+        if (isNaN(mantissa) || isNaN(exponent)) return str;
+        
+        const numericValue = mantissa * Math.pow(10, exponent);
+        return `${numericValue.toExponential(2)} ${units}`.trim();
+    }
 
-                if (absValue > 10000 || absValue < 0.001) {
-                    return `${numericValue.toExponential(2)} ${units}`.trim();
-                }
-                return `${numericValue.toPrecision(3)} ${units}`.trim();
-            }
+    // If not in scientific notation, handle it as a plain number.
+    const plainNumberRegex = /^([-\d.,]+)(.*)/;
+    const plainMatch = str.match(plainNumberRegex);
+    if (plainMatch) {
+        const numberPart = plainMatch[1].replace(/,/g, '');
+        const units = plainMatch[2] || '';
+        const numericValue = parseFloat(numberPart);
+        if (isNaN(numericValue)) return str;
 
-            return str; // Return original string if no numeric pattern is found
-        };
+        const absValue = Math.abs(numericValue);
+        if (numericValue === 0) return `0 ${units}`.trim();
+
+        // Use exponential notation for very large or very small numbers.
+        if (absValue > 10000 || absValue < 0.001) {
+            return `${numericValue.toExponential(2)} ${units}`.trim();
+        }
+        // For other numbers, use a fixed precision.
+        return `${numericValue.toPrecision(3)} ${units}`.trim();
+    }
+
+    return str;
+};
 
         /**
          * Determines the most appropriate human-readable unit for a given duration in seconds.
@@ -937,6 +949,7 @@ const formatHalfLife = (halfLifeStr, targetUnit) => {
     doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z",
     mass: "M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z",
     series: "M21 8H3V6h18v2zm0 4H3v2h18v-2zm0 6H3v2h18v-2z",
+    settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
     stopwatch: "M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.98-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-1.68-.46-3.24-1.25-4.55l.22-.16zm-1.07-1.01A6.995 6.995 0 115.34 19.66 6.995 6.995 0 0117.96 6.38z",
     transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
     settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" // <-- ADD THIS PATH
@@ -946,38 +959,38 @@ const formatHalfLife = (halfLifeStr, targetUnit) => {
         // --- GLOBAL SETTINGS & CONTEXT
         //==============================================================================
 
-        const SettingsContext = React.createContext();
+const SettingsContext = React.createContext();
 
-        const defaultSettings = {
-            activity: 'mCi',
-            doseRate: 'mrem/hr',
-            distance: 'm',
-        };
+const defaultSettings = {
+    activity: 'mCi',
+    doseRate: 'mrem/hr',
+    distance: 'm',
+};
 
-        const SettingsProvider = ({ children }) => {
-            const [settings, setSettings] = React.useState(() => {
-                try {
-                    const saved = localStorage.getItem('rad_tool_settings');
-                    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
-                } catch (e) {
-                    return defaultSettings;
-                }
-            });
+const SettingsProvider = ({ children }) => {
+    const [settings, setSettings] = React.useState(() => {
+        try {
+            const saved = localStorage.getItem('rad_tool_settings');
+            return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+        } catch (e) {
+            return defaultSettings;
+        }
+    });
 
-            const updateSettings = (newSettings) => {
-                setSettings(prev => {
-                    const updated = { ...prev, ...newSettings };
-                    localStorage.setItem('rad_tool_settings', JSON.stringify(updated));
-                    return updated;
-                });
-            };
+    const updateSettings = (newSettings) => {
+        setSettings(prev => {
+            const updated = { ...prev, ...newSettings };
+            localStorage.setItem('rad_tool_settings', JSON.stringify(updated));
+            return updated;
+        });
+    };
 
-            return (
-                <SettingsContext.Provider value={{ settings, updateSettings }}>
-                    {children}
-                </SettingsContext.Provider>
-            );
-        };
+    return (
+        <SettingsContext.Provider value={{ settings, updateSettings }}>
+            {children}
+        </SettingsContext.Provider>
+    );
+};
 
 const CATEGORY_DESCRIPTIONS = {
     'Medical': 'Used for diagnosis, therapy, or medical research.',
