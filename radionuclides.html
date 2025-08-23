@@ -3106,9 +3106,6 @@ const MassActivityCalculator = ({ radionuclides }) => {
          */
 
 
-
-
-
 const ManualContent = () => {
     return (
         <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
@@ -3172,7 +3169,7 @@ const ManualContent = () => {
             <h3 className="mt-6"><strong>MARSSIM Tools</strong></h3>
             <p>This suite of calculators assists with the design and data assessment for a final status survey, following the guidance in the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM).</p>
             <ul>
-                <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (Lc)</strong> is the threshold for deciding if a signal is statistically significant. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify.</li>
+                <li><strong>MDA & Critical Level:</strong> Calculates key decision values for radiation counting. The <strong>Critical Level (L<sub>c</sub>)</strong> is the threshold for deciding if a signal is statistically significant. The <strong>Minimum Detectable Activity (MDA)</strong> is the smallest amount of activity you can reliably quantify.</li>
                 <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit based on your desired error rates (α and β), the cleanup limit (DCGL), the expected background level (LBGR), and the variability of the contamination (σ).</li>
                 <li><strong>WRS Test:</strong> Performs the Wilcoxon Rank Sum statistical test to compare a survey unit to a reference area to determine if the survey unit passes.</li>
                 <li><strong>EMC Sign Test:</strong> Performs the Sign Test for an Elevated Measurement Comparison (EMC), used when individual measurements exceed the DCGL.</li>
@@ -3246,20 +3243,20 @@ const ManualContent = () => {
             </div>
 
             <h3 className="mt-6">MARSSIM Formulas</h3>
-            <h4 className="italic mt-4">Critical Level (L&#x209C;) & MDA</h4>
-            <p>The decision level for detecting activity above background (Currie formulation):</p>
+            <h4 className="italic mt-4">Critical Level (L<sub>c</sub>) & MDA</h4>
+            <p>The decision level for detecting activity above background is calculated from the standard deviation of the background count:</p>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>L&#x209C; (counts) = 2.33 * sqrt(μ&#x2091;)</pre>
+                <pre>L<sub>c</sub> (counts) = 1.645 * sqrt(Background_Counts * (1 + Gross_Time / Bkg_Time))</pre>
             </div>
-            <p>The Minimum Detectable Activity (MDA) that can be reliably quantified is:</p>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>MDA ≈ (2.71 + 4.65 * sqrt(B)) / (T * ε * Y)</pre>
+            <p>The Minimum Detectable Activity (MDA) is then calculated from the <strong>Lower Limit of Detection (LLD)</strong>, which is derived from the L<sub>c</sub>:</p>
+            <div className="my-2 p-3 text-center font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+                <pre className="text-sm">LLD (counts) = 2 * L<sub>c</sub> + 3</pre>
+                <pre className="mt-2 text-sm">MDA (dpm/100cm²) = (LLD / Gross_Time) * (100 / Probe_Area) / Total_Efficiency</pre>
             </div>
             <ul>
-                <li><code>μ&#x2091;</code> is the true mean of background counts.</li>
-                <li><code>B</code> is the total number of background counts observed in count time <code>T</code>.</li>
-                <li><code>ε</code> is the detector efficiency.</li>
-                <li><code>Y</code> represents other factors like yield or area.</li>
+                <li><code>L<sub>c</sub></code> is the <strong>Critical Level</strong>; a result above this is statistically significant.</li>
+                <li><code>LLD</code> is the smallest net count that can be reliably quantified.</li>
+                <li><code>Total_Efficiency</code> is the instrument efficiency multiplied by the surface efficiency.</li>
             </ul>
 
             <h4 className="italic mt-4">Number of Samples</h4>
@@ -3272,8 +3269,8 @@ const ManualContent = () => {
             <h4 className="italic mt-4">WRS & Sign Tests</h4>
             <p>These are non-parametric statistical hypothesis tests. Rather than a simple formula, they are procedural:</p>
             <ul>
-                <li><strong>WRS Test:</strong> All measurements from the survey unit and reference area are combined and ranked from lowest to highest. The sum of the ranks from the survey unit (W&#x209B;) is calculated and compared to a critical value from a table to test the null hypothesis.</li>
-                <li><strong>Sign Test:</strong> Each measurement in an elevated area is compared to the DCGL. The test counts how many measurements exceed the DCGL. This count is the test statistic (S+), which is compared to a critical value from the binomial distribution to test the null hypothesis.</li>
+                <li><strong>WRS Test:</strong> All measurements from the survey unit and reference area are combined and ranked from lowest to highest. The sum of the ranks from the survey unit (W<sub>s</sub>) is calculated and compared to a critical value from a table to test the null hypothesis.</li>
+                <li><strong>Sign Test:</strong> Each measurement in an elevated area is compared to the DCGL. The test counts how many measurements exceed the DCGL. This count is the test statistic (S+) which is compared to a critical value from the binomial distribution to test the null hypothesis.</li>
             </ul>
             
             <hr className="my-4" />
@@ -3291,14 +3288,6 @@ const ManualContent = () => {
         </div>
     );
 };
-
-         
-
-
-
-
-
-
 
 
         const ManualModal = ({ isOpen, onClose }) => {
