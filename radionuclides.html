@@ -3194,30 +3194,30 @@ const ManualContent = () => {
 
             <h3 className="mt-6">Decay & Activity Formulas</h3>
             <h4 className="italic mt-4">Radioactive Decay</h4>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>A(t) = A₀ * e<sup>-λt</sup></pre>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>A(t) = A<sub>0</sub> * e<sup>-λt</sup></pre>
             </div>
             <ul>
                 <li><code>A(t)</code> is the activity at time <code>t</code>.</li>
-                <li><code>A₀</code> is the initial activity at <code>t=0</code>.</li>
+                <li><code>A<sub>0</sub></code> is the initial activity at <code>t=0</code>.</li>
                 <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T<sub>1/2</sub></code>.</li>
             </ul>
 
             <h4 className="italic mt-4">Series (Bateman) Decay</h4>
             <p>For a decay chain <code>A → B → C</code>, the activity of the daughter <code>B</code> is given by:</p>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ₂/(λ₂-λ₁)] * [e<sup>-λ₁t</sup> - e<sup>-λ₂t</sup>] + A<sub>2</sub>(0)e<sup>-λ₂t</sup></pre>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ<sub>2</sub>/(λ<sub>2</sub>-λ<sub>1</sub>)] * [e<sup>-λ<sub>1</sub>t</sup> - e<sup>-λ<sub>2</sub>t</sup>] + A<sub>2</sub>(0)e<sup>-λ<sub>2</sub>t</sup></pre>
             </div>
             <p>The calculator solves the full system of Bateman equations for any chain length.</p>
 
             <h4 className="italic mt-4">Time to Maximum Daughter Activity</h4>
             <p>For a parent-daughter pair, the time at which the daughter's activity is at its peak is:</p>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>t<sub>max</sub> = ln(λ₂ / λ₁) / (λ₂ - λ₁)</pre>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>t<sub>max</sub> = ln(λ<sub>2</sub> / λ<sub>1</sub>) / (λ<sub>2</sub> - λ<sub>1</sub>)</pre>
             </div>
 
             <h4 className="italic mt-4">Specific Activity (SA) & Mass-Activity Conversion</h4>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>SA (Bq/g) = (N<sub>a</sub> * λ) / M<sub>a</sub> = (N<sub>a</sub> * ln(2)) / (T<sub>1/2</sub> * M<sub>a</sub>)</pre>
             </div>
             <ul>
@@ -3228,7 +3228,7 @@ const ManualContent = () => {
 
             <h3 className="mt-6">Dose & Shielding Formulas</h3>
             <h4 className="italic mt-4">Dose Rate (Unshielded Point Source)</h4>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>Dose Rate = (Γ * A) / d²</pre>
             </div>
             <ul>
@@ -3239,29 +3239,28 @@ const ManualContent = () => {
             </ul>
 
             <h4 className="italic mt-4">Shielding</h4>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>D<sub>shielded</sub> = D<sub>unshielded</sub> * (0.5)<sup>(x / HVL)</sup></pre>
             </div>
             <ul>
                 <li><code>D<sub>shielded</sub></code> is the shielded dose rate.</li>
-                <li><code>n</code> is the number of half-value layers.</li>
                 <li><code>x</code> is the shield thickness.</li>
                 <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
             </ul>
 
             <h4 className="italic mt-4">Stay Time</h4>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>Stay Time = Dose Limit / Dose Rate</pre>
             </div>
 
             <h3 className="mt-6">MARSSIM Formulas</h3>
             <h4 className="italic mt-4">Critical Level (L<sub>c</sub>) & MDA</h4>
             <p>The decision level for detecting activity above background is calculated from the standard deviation of the background count:</p>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>L<sub>c</sub> (counts) = 1.645 * sqrt(Background_Counts * (1 + Gross_Time / Bkg_Time))</pre>
             </div>
             <p>The Minimum Detectable Activity (MDA) is then calculated from the <strong>Lower Limit of Detection (LLD)</strong>, which is derived from the L<sub>c</sub>:</p>
-            <div className="my-2 p-3 text-center font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre className="text-sm">LLD (counts) = 2 * L<sub>c</sub> + 3</pre>
                 <pre className="mt-2 text-sm">MDA (dpm/100cm²) = (LLD / Gross_Time) * (100 / Probe_Area) / Total<sub>Efficiency</sub></pre>
             </div>
@@ -3273,7 +3272,7 @@ const ManualContent = () => {
 
             <h4 className="italic mt-4">Number of Samples</h4>
             <p>The number of samples (N) is calculated based on the desired error rates and the "Relative Shift":</p>
-            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>Relative Shift = (DCGL - LBGR) / σ</pre>
             </div>
             <p>This value is looked up in a MARSSIM table or used in a formula to find the base number of samples required, which is then adjusted for statistical overage.</p>
