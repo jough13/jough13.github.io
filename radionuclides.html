@@ -318,7 +318,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.0';
+        const VERSION = '3.0.1';
         const LAST_UPDATED = 'August 22, 2025';
 
         /**
@@ -1673,102 +1673,93 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
          * @param {{filterProps: object, isFiltersVisible: boolean, setIsFiltersVisible: (isVisible: boolean) => void}} props
          */
 
-        const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) => {
+const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible }) => {
+    // Destructure all filter-related state and handlers from the filterProps object.
+    const {
+        sortBy, setSortBy, sortOrder, setSortOrder,
+        selectedCategory, setSelectedCategory, allCategories,
+        selectedEmissionType, setSelectedEmissionType, allEmissionTypes,
+        selectedCommonality, setSelectedCommonality, allCommonalityCategories,
+        minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy,
+        minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
+        minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
+        minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
+    } = filterProps;
 
-            // Destructure all filter-related state and handlers from the filterProps object.
+    return (
+        <>
+            {/* Backdrop for mobile view when the sidebar is open */}
+            <div 
+                className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                onClick={() => setIsFiltersVisible(false)}
+                aria-hidden="true">
+            </div>
 
-            const {
-                sortBy, setSortBy, sortOrder, setSortOrder,
-                selectedCategory, setSelectedCategory, allCategories,
-                selectedEmissionType, setSelectedEmissionType, allEmissionTypes,
-                selectedCommonality, setSelectedCommonality, allCommonalityCategories,
-                minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy,
-                minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
-                minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
-                minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
-
-            } = filterProps;
-
-            return (
-                <>
-
-                    {/* Backdrop for mobile view when the sidebar is open */}
-
-                    <div className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity ${isFiltersVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                        onClick={() => setIsFiltersVisible(false)}
-                        aria-hidden="true">
+            {/* The actual sidebar panel - THIS IS THE CORRECTED PART */}
+            <aside
+                className={`fixed top-0 left-0 w-80 h-full bg-slate-50 dark:bg-slate-900 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:w-auto lg:h-auto lg:transform-none lg:col-span-1 ${
+                    isFiltersVisible ? 'translate-x-0' : '-translate-x-full'
+                }`}
+            >
+                <div className="p-4 space-y-4 h-full overflow-y-auto">
+                    <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
+                        <button onClick={() => setIsFiltersVisible(false)} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                            <Icon path={ICONS.clear} className="w-6 h-6" />
+                        </button>
                     </div>
 
-                    {/* The actual sidebar panel */}
+                    {/* Sorting controls */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sort by</label>
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                            <option value="name">Name</option>
+                            <option value="halfLife">Half-life</option>
+                            <option value="alphaEnergy">Alpha Energy</option>
+                            <option value="betaEnergy">Beta Energy</option>
+                            <option value="gammaEnergy">Gamma Energy</option>
+                        </select>
+                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
+                    </div>
 
-                    <aside
-                        className={`fixed top-0 left-0 w-80 h-full bg-slate-50 dark:bg-slate-900 z-50 transform transition-transform duration-300 ease-in-out lg:relative lg:w-auto lg:h-auto lg:transform-none lg:col-span-1 lg:bg-transparent lg:dark:bg-transparent ${
-                            isFiltersVisible ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-                        }`}
-                    >
-                        <div className="p-4 space-y-4 h-full overflow-y-auto lg:bg-slate-50 lg:dark:bg-slate-800/50 rounded-lg">
-                            <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
-                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
-                                <button onClick={() => setIsFiltersVisible(false)} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
-                                    <Icon path={ICONS.clear} className="w-6 h-6" />
-                                </button>
-                            </div>
-
-                            {/* Sorting controls */}
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Sort by</label>
-                                <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
-                                    <option value="name">Name</option>
-                                    <option value="halfLife">Half-life</option>
-                                    <option value="alphaEnergy">Alpha Energy</option>
-                                    <option value="betaEnergy">Beta Energy</option>
-                                    <option value="gammaEnergy">Gamma Energy</option>
-                                </select>
-                                <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
-                                </select>
-                            </div>
-
-                            {/* Filtering controls */}
-
-                            <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label><select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                            <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emission Type</label><select value={selectedEmissionType} onChange={e => setSelectedEmissionType(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allEmissionTypes.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                            <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Commonality</label><select value={selectedCommonality} onChange={e => setSelectedCommonality(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCommonalityCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                            
-                            {/* Half-life range filter */}
-
-                            <div>
-                                <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Half-life</h4>
-                            <div className="flex gap-2 mt-2">
-                                <input type="number" placeholder="Min" value={minHalfLife} onChange={e => setMinHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
-                                <input type="number" placeholder="Max" value={maxHalfLife} onChange={e => setMaxHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
-                            </div>
-                                <select value={halfLifeFilterUnit} onChange={e => setHalfLifeFilterUnit(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
-                                    <option value="seconds">Seconds</option>
-                                    <option value="minutes">Minutes</option>
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="years">Years</option>
-                                </select>
-                            </div>
-
-                            {/* Energy range filters */}
-
-                            <div>
-                                <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
-                                <div className="space-y-2 mt-2">
-                                    <label className="text-sm">Alpha</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minAlphaEnergy} onChange={e => setMinAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxAlphaEnergy} onChange={e => setMaxAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                    <label className="text-sm">Beta</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minBetaEnergy} onChange={e => setMinBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxBetaEnergy} onChange={e => setMaxBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                    <label className="text-sm">Gamma</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minGammaEnergy} onChange={e => setMinGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxGammaEnergy} onChange={e => setMaxGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
-                                </div>
-                            </div>
+                    {/* Filtering controls */}
+                    <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Category</label><select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emission Type</label><select value={selectedEmissionType} onChange={e => setSelectedEmissionType(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allEmissionTypes.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div><label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Commonality</label><select value={selectedCommonality} onChange={e => setSelectedCommonality(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">{allCommonalityCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    
+                    {/* Half-life range filter */}
+                    <div>
+                        <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Half-life</h4>
+                        <div className="flex gap-2 mt-2">
+                            <input type="number" placeholder="Min" value={minHalfLife} onChange={e => setMinHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
+                            <input type="number" placeholder="Max" value={maxHalfLife} onChange={e => setMaxHalfLife(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" />
                         </div>
-                    </aside>
-                </>
-            );
-        };
+                        <select value={halfLifeFilterUnit} onChange={e => setHalfLifeFilterUnit(e.target.value)} className="mt-1 w-full p-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-md">
+                            <option value="seconds">Seconds</option>
+                            <option value="minutes">Minutes</option>
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                            <option value="years">Years</option>
+                        </select>
+                    </div>
+
+                    {/* Energy range filters */}
+                    <div>
+                        <h4 className="text-md font-semibold text-slate-700 dark:text-slate-300 mt-4">Energy (MeV)</h4>
+                        <div className="space-y-2 mt-2">
+                            <label className="text-sm">Alpha</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minAlphaEnergy} onChange={e => setMinAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxAlphaEnergy} onChange={e => setMaxAlphaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                            <label className="text-sm">Beta</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minBetaEnergy} onChange={e => setMinBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxBetaEnergy} onChange={e => setMaxBetaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                            <label className="text-sm">Gamma</label><div className="flex gap-2"><input type="number" placeholder="Min" value={minGammaEnergy} onChange={e => setMinGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /><input type="number" placeholder="Max" value={maxGammaEnergy} onChange={e => setMaxGammaEnergy(e.target.value)} className="w-full p-1 rounded-md text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600" /></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </>
+    );
+};
         
         /**
          * @description The main view for Browse the entire database with filters.
@@ -1783,22 +1774,29 @@ const NuclideCard = ({ nuclide, isCompact = false, onNuclideClick, onDecaySeries
 const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible }) => {
     const { selectedCategory, setSelectedCategory } = filterProps;
 
-    return (
+return (
         <div className="relative">
             <div className="px-4 pt-4 lg:hidden">
-                <button
-                    onClick={() => setIsFiltersVisible(true)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition">
-                    <Icon path={ICONS.filter} className="w-5 h-5" /> Filters & Sorting
-                </button>
-            </div>
+<button
+    onClick={() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsFiltersVisible(true);
+    }}
+    className="w-full flex items-center justify-center gap-2 ...">
+    <Icon path={ICONS.filter} className="w-5 h-5" /> Filters & Sorting
+</button>
+</div>
 
             <div className="grid lg:grid-cols-4 gap-4 p-4">
-                <FilterSidebar
-                    filterProps={filterProps}
-                    isFiltersVisible={isFiltersVisible}
-                    setIsFiltersVisible={setIsFiltersVisible}/>
-                <div className="lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
+                
+                {/* --- THIS IS THE CORRECTED LINE --- */}
+<FilterSidebar
+    filterProps={filterProps}
+    isFiltersVisible={isFiltersVisible}
+    setIsFiltersVisible={setIsFiltersVisible}
+/>
+                
+                <div className="col-span-4 lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
                     
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                         <p className="text-sm text-slate-500 dark:text-slate-400 flex-shrink-0">
@@ -1821,7 +1819,6 @@ const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisi
                                 );
                             })}
                             
-                            {/* --- NEW: Show All Button --- */}
                             <button
                                 onClick={() => setSelectedCategory('All')}
                                 className={`px-2 py-1 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 ${selectedCategory === 'All' ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-slate-500 bg-white dark:bg-slate-700' : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700'}`}
@@ -1839,7 +1836,6 @@ const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisi
         </div>
     );
 };
-
 
         /**
          * @description A component that provides a user interface for converting between
@@ -3105,7 +3101,6 @@ const MassActivityCalculator = ({ radionuclides }) => {
          * @param {{isOpen: boolean, onClose: () => void}} props - Controls the visibility of the modal.
          */
 
-
 const ManualContent = () => {
     return (
         <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
@@ -3183,35 +3178,35 @@ const ManualContent = () => {
             <h3 className="mt-6">Decay & Activity Formulas</h3>
             <h4 className="italic mt-4">Radioactive Decay</h4>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>A(t) = A₀ * e^(-λt)</pre>
+                <pre>A(t) = A₀ * e<sup>-λt</sup></pre>
             </div>
             <ul>
                 <li><code>A(t)</code> is the activity at time <code>t</code>.</li>
                 <li><code>A₀</code> is the initial activity at <code>t=0</code>.</li>
-                <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T½</code>.</li>
+                <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T<sub>1/2</sub></code>.</li>
             </ul>
 
             <h4 className="italic mt-4">Series (Bateman) Decay</h4>
             <p>For a decay chain <code>A → B → C</code>, the activity of the daughter <code>B</code> is given by:</p>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>A₂(t) = [A₁(0) * λ₂/(λ₂-λ₁)] * [e^(-λ₁t) - e^(-λ₂t)] + A₂(0)e^(-λ₂t)</pre>
+                <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ₂/(λ₂-λ₁)] * [e<sup>-λ₁t</sup> - e<sup>-λ₂t</sup>] + A<sub>2</sub>(0)e<sup>-λ₂t</sup></pre>
             </div>
             <p>The calculator solves the full system of Bateman equations for any chain length.</p>
 
             <h4 className="italic mt-4">Time to Maximum Daughter Activity</h4>
             <p>For a parent-daughter pair, the time at which the daughter's activity is at its peak is:</p>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>t_max = ln(λ₂ / λ₁) / (λ₂ - λ₁)</pre>
+                <pre>t<sub>max</sub> = ln(λ₂ / λ₁) / (λ₂ - λ₁)</pre>
             </div>
 
             <h4 className="italic mt-4">Specific Activity (SA) & Mass-Activity Conversion</h4>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>SA (Bq/g) = (Nₐ * λ) / Mₐ = (Nₐ * ln(2)) / (T½ * Mₐ)</pre>
+                <pre>SA (Bq/g) = (N<sub>a</sub> * λ) / M<sub>a</sub> = (N<sub>a</sub> * ln(2)) / (T<sub>1/2</sub> * M<sub>a</sub>)</pre>
             </div>
             <ul>
-                <li><code>Nₐ</code> is Avogadro's Number (6.022 x 10²³ atoms/mol).</li>
-                <li><code>Mₐ</code> is the molar mass of the radionuclide (g/mol).</li>
-                <li><code>T½</code> is the half-life in seconds.</li>
+                <li><code>N<sub>a</sub></code> is Avogadro's Number (6.022 x 10<sup>23</sup> atoms/mol).</li>
+                <li><code>M<sub>a</sub></code> is the molar mass of the radionuclide (g/mol).</li>
+                <li><code>T<sub>1/2</sub></code> is the half-life in seconds.</li>
             </ul>
 
             <h3 className="mt-6">Dose & Shielding Formulas</h3>
@@ -3228,10 +3223,10 @@ const ManualContent = () => {
 
             <h4 className="italic mt-4">Shielding</h4>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800">
-                <pre>D_shielded = D_unshielded * (0.5)^(x / HVL)</pre>
+                <pre>D<sub>shielded</sub> = D<sub>unshielded</sub> * (0.5)<sup>(x / HVL)</sup></pre>
             </div>
             <ul>
-                <li><code>D_shielded</code> is the shielded dose rate.</li>
+                <li><code>D<sub>shielded</sub></code> is the shielded dose rate.</li>
                 <li><code>n</code> is the number of half-value layers.</li>
                 <li><code>x</code> is the shield thickness.</li>
                 <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
@@ -3251,12 +3246,12 @@ const ManualContent = () => {
             <p>The Minimum Detectable Activity (MDA) is then calculated from the <strong>Lower Limit of Detection (LLD)</strong>, which is derived from the L<sub>c</sub>:</p>
             <div className="my-2 p-3 text-center font-mono rounded-md bg-slate-100 dark:bg-slate-800">
                 <pre className="text-sm">LLD (counts) = 2 * L<sub>c</sub> + 3</pre>
-                <pre className="mt-2 text-sm">MDA (dpm/100cm²) = (LLD / Gross_Time) * (100 / Probe_Area) / Total_Efficiency</pre>
+                <pre className="mt-2 text-sm">MDA (dpm/100cm²) = (LLD / Gross_Time) * (100 / Probe_Area) / Total<sub>Efficiency</sub></pre>
             </div>
             <ul>
                 <li><code>L<sub>c</sub></code> is the <strong>Critical Level</strong>; a result above this is statistically significant.</li>
                 <li><code>LLD</code> is the smallest net count that can be reliably quantified.</li>
-                <li><code>Total_Efficiency</code> is the instrument efficiency multiplied by the surface efficiency.</li>
+                <li><code>Total<sub>Efficiency</sub></code> is the instrument efficiency multiplied by the surface efficiency.</li>
             </ul>
 
             <h4 className="italic mt-4">Number of Samples</h4>
@@ -3288,7 +3283,6 @@ const ManualContent = () => {
         </div>
     );
 };
-
 
         const ManualModal = ({ isOpen, onClose }) => {
             if (!isOpen) return null;
