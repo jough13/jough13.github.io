@@ -3622,6 +3622,7 @@ const handleNavClick = (view) => {
                     setNuclideName('');
                     setSuggestions([]);
                     setErrorMessage('');
+                    
                 }
                 scrollToMainContent();
             };
@@ -3765,7 +3766,7 @@ React.useEffect(() => {
                 setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
                 updateSearchHistory(nuclide);
 		        setPreviousView(activeView);
-                scrollToMainContent();
+
             };
             const handleNuclideNameChange = (e) => {
                 const value = e.target.value;
