@@ -1307,24 +1307,66 @@ const CATEGORY_STYLES = {
         };
 
 const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
-    // State to manage visibility and position
-    const [show, setShow] = React.useState(false);
-    const [coords, setCoords] = React.useState({ x: 0, y: 0 });
-    // A ref to get the position of the element that triggers the tooltip
+    // State now manages visibility, coordinates, and position ('top' or 'bottom')
+    const [tooltipState, setTooltipState] = React.useState({
+        show: false,
+        x: 0,
+        y: 0,
+        position: 'bottom'
+    });
     const triggerRef = React.useRef(null);
 
     const handleMouseEnter = () => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
-            // Calculate position: center of the trigger, just below it
-            // We use rect.bottom which is relative to the viewport
-            setCoords({
-                left: rect.left + rect.width / 2,
-                top: rect.bottom, // The corrected line: use rect.bottom, not rect.bottom + window.scrollY
+            
+            // --- NEW LOGIC ---
+            // Check if the element is in the bottom half of the viewport
+            const position = rect.top > window.innerHeight / 2 ? 'top' : 'bottom';
+
+            setTooltipState({
+                show: true,
+                x: rect.left + rect.width / 2, // Center horizontally
+                y: position === 'bottom' ? rect.bottom : rect.top, // Anchor to bottom or top edge
+                position: position
             });
-            setShow(true);
         }
     };
+
+    const handleMouseLeave = () => {
+        // Only update the 'show' property to allow a fade-out animation
+        setTooltipState(prev => ({ ...prev, show: false }));
+    };
+
+    // Conditionally set CSS classes based on whether the tooltip should be above or below
+    const positionClasses = tooltipState.position === 'bottom'
+        ? 'translate-y-2' // Pushes it down from the anchor point
+        : '-translate-y-full -translate-y-2'; // Pushes it fully up, plus an 8px margin
+
+    const tooltipElement = tooltipState.show && (
+        ReactDOM.createPortal(
+            <div
+                style={{ top: tooltipState.y, left: tooltipState.x }}
+                // The -translate-x-1/2 centers it, positionClasses handles vertical placement
+                className={`fixed top-0 left-0 -translate-x-1/2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg z-50 transition-opacity duration-300 pointer-events-none ${widthClass} ${tooltipState.show ? 'opacity-100' : 'opacity-0'} ${positionClasses}`}
+            >
+                {text}
+            </div>,
+            document.body
+        )
+    );
+
+    return (
+        <>
+            {React.cloneElement(children, {
+                ref: triggerRef,
+                onMouseEnter: handleMouseEnter,
+                onMouseLeave: handleMouseLeave,
+            })}
+            {tooltipElement}
+        </>
+    );
+};
 
     const handleMouseLeave = () => {
         setShow(false);
@@ -4848,14 +4890,29 @@ const handleCalculate = () => {
 )}
 
                     {/* --- UI for External Dose Modes --- */}
-                    {(calcMode === 'gamma' || calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
+{(calcMode === 'gamma' || calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
                         <div className="space-y-3 animate-fade-in">
                              <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1/37, 'MBq': 1/37000, 'Bq': 1/3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                              <div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                             
+                             
+                             {calcMode === 'bremsstrahlung' && (
+                                <div>
+                                    <label className="block text-sm font-medium">Shield Material</label>
+                                    <select 
+                                        value={shieldMaterial} 
+                                        onChange={e => setShieldMaterial(e.target.value)} 
+                                        className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
+                                    >
+                                        {Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                </div>
+                             )}
+                            
                         </div>
                     )}
                     
-                    {/* --- ADDED: UI for Internal Dose Mode --- */}
+                    {/* --- UI for Internal Dose Mode --- */}
                     {calcMode === 'internal' && (
                         <div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div className="grid grid-cols-2 gap-4">
