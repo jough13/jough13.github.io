@@ -345,7 +345,7 @@ const HVL_DATA = {
     'Am-241': { 'Lead': 0.02, 'Steel': 0.8, 'Concrete': 2.3, 'Aluminum': 1.5, 'Water': 4.2, sourceRef: 'rse' },
     'Au-198': { 'Lead': 0.33, 'Steel': 1.4, 'Concrete': 4.7, 'Aluminum': 2.5, 'Water': 6.8, sourceRef: 'rse' },
     'Ba-133': { 'Lead': 0.29, 'Steel': 1.2, 'Concrete': 4.1, 'Aluminum': 2.2, 'Water': 5.8, sourceRef: 'rse' },
-    'Co-60':  { 'Lead': 1.2,  'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
+    'Co-60':  { 'Lead': 1.2, 'Tungsten': 0.7, 'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
     'Cs-137': { 'Lead': 0.65, 'Steel': 1.6, 'Concrete': 4.8, 'Aluminum': 3.0, 'Water': 8.0, sourceRef: 'rse' },
     'Eu-152': { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.5, sourceRef: 'rse' },
     'Ga-67':  { 'Lead': 0.07, 'Steel': 0.8, 'Concrete': 3.0, 'Aluminum': 1.5, 'Water': 4.8, sourceRef: 'rse' },
@@ -1499,13 +1499,12 @@ const MainNav = ({ activeView, onNavClick }) => {
 
 const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
     
-    // Find the full nuclide objects for our favorite symbols
+    // This logic to find the full nuclide objects is already perfect
     const favoriteNuclides = React.useMemo(() => 
         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [favorites, radionuclides]
     );
 
-    // Find the full nuclide objects for our search history symbols
     const searchHistoryNuclides = React.useMemo(() => 
         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [searchHistory, radionuclides]
@@ -1519,7 +1518,7 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 </div>
             )}
 
-            {/* --- Suggestions Card --- */}
+            {/* --- Suggestions Card (Unchanged) --- */}
             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -1534,7 +1533,7 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 </div>
             </div>
 
-            {/* --- Favorites Card --- */}
+            {/* --- Favorites Card (Updated) --- */}
             {favoriteNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -1543,20 +1542,21 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                             Clear Favorites
                         </button>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-3">
+                    {/* THIS IS THE MAIN CHANGE: We now render a grid of NuclideCards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {favoriteNuclides.map(n => (
-                            <button 
+                            <NuclideCard 
                                 key={n.symbol} 
-                                onClick={() => handleNuclideSelection(n)} 
-                                className="px-4 py-2 bg-yellow-100 dark:bg-yellow-400/20 text-yellow-800 dark:text-yellow-200 text-sm font-semibold rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-400/30 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
-                                {n.name}
-                            </button>
+                                nuclide={n} 
+                                isCompact={true} 
+                                onNuclideClick={handleNuclideSelection} 
+                            />
                         ))}
                     </div>
                 </div>
             )}
         
-            {/* --- Recent Searches Card --- */}
+            {/* --- Recent Searches Card (Updated) --- */}
             {searchHistoryNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -1565,14 +1565,15 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                             Clear History
                         </button>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-3">
+                    {/* THIS IS THE MAIN CHANGE: We now render a grid of NuclideCards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {searchHistoryNuclides.map(n => (
-                            <button 
+                            <NuclideCard 
                                 key={n.symbol} 
-                                onClick={() => handleNuclideSelection(n)} 
-                                className="px-4 py-2 bg-white dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-full hover:bg-slate-200 dark:hover:bg-slate-600/80 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
-                                {n.name}
-                            </button>
+                                nuclide={n} 
+                                isCompact={true} 
+                                onNuclideClick={handleNuclideSelection} 
+                            />
                         ))}
                     </div>
                 </div>
@@ -2141,7 +2142,7 @@ const UnitConverter = () => {
         'Energy': ['J', 'eV', 'keV', 'MeV'],
         'Radioactive Concentration': ['Bq/L', 'µCi/mL', 'pCi/L', 'Bq/m³'],
         'Length': ['m', 'cm', 'mm', 'km', 'in', 'ft'],
-        'Area': ['m²', 'cm²', 'in²', 'ft²'],
+         'Area': ['m²', 'cm²', 'in²', 'ft²', 'barn'],
         'Mass': ['g', 'kg', 'mg', 'µg', 'lb', 'oz'],
     };
 
@@ -2213,6 +2214,7 @@ const UnitConverter = () => {
         'cm²': { base: 'area', factor: 1e-4 },
         'in²': { base: 'area', factor: 0.00064516 },
         'ft²': { base: 'area', factor: 0.092903 },
+        'barn': { base: 'area', factor: 1e-28 },
 
         // Mass (Base: gram)
         'g':  { base: 'mass', factor: 1 },
@@ -4023,7 +4025,7 @@ return (
 </footer>
             <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
         </div>
-        <BackToTopButton />
+       
     </div>
 );
         };
