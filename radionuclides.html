@@ -115,6 +115,8 @@
 
  	<div id="root"></div>
 
+    <div id="back-to-top-root"></div>
+
     <!-- 
       The primary dataset for all radionuclides.
       Keeping this in a separate script tag makes the main application logic cleaner and easier to manage.
@@ -1354,7 +1356,53 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
     </div>
 );
 
+/**
+ * @description A button that appears when the user scrolls down, allowing them to quickly return to the top of the page.
+ */
+const BackToTopButton = () => {
+    const [isVisible, setIsVisible] = React.useState(false);
 
+    // This function is called whenever the user scrolls
+    const toggleVisibility = () => {
+        if (window.pageYOffset > 300) { // Show button if scrolled more than 300px
+            setIsVisible(true);
+        } else {
+            setIsVisible(false);
+        }
+    };
+
+    // This function scrolls the page to the top smoothly
+    const scrollToTop = () => {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    };
+
+    React.useEffect(() => {
+        window.addEventListener('scroll', toggleVisibility);
+        // Clean up the listener when the component is removed
+        return () => {
+            window.removeEventListener('scroll', toggleVisibility);
+        };
+    }, []);
+
+    return (
+        <div className="fixed bottom-4 right-4 z-50">
+            {isVisible && (
+                <button
+                    onClick={scrollToTop}
+                    className="p-3 bg-sky-600 text-white rounded-full shadow-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-300 animate-fade-in"
+                    aria-label="Go to top"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                </button>
+            )}
+        </div>
+    );
+};
 
         /**
          * @description The main navigation bar, which is responsive for mobile and desktop.
@@ -1732,7 +1780,7 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
             
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-    
+
     <div className="flex flex-wrap justify-center gap-2">
         
         {showBackButton && (
@@ -3967,12 +4015,11 @@ return (
 </footer>
             <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
         </div>
+        
     </div>
 );
         };
      
-
-
 	/**
 	 * @description A searchable dropdown component for selecting items from a large list, with tooltips.
 	 */
@@ -5896,6 +5943,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <App />
         </ToastProvider>
     </SettingsProvider>
+);
+
+ReactDOM.createRoot(document.getElementById('back-to-top-root')).render(
+    <BackToTopButton />
 );
 
 const SettingsPanel = () => {
