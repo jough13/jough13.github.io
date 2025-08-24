@@ -1647,23 +1647,41 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
 
 const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
+    // --- THIS HELPER COMPONENT HAS BEEN REWRITTEN ---
     const ClickableNuclide = ({ text }) => {
         if (!text || !onNuclideClick) return <span>{text}</span>;
-        
-        const nuclideName = text.split('(')[0].trim();
-        const foundNuclide = radionuclides.find(n => n.name === nuclideName || n.symbol === nuclideName);
 
-        if (foundNuclide) {
-            return (
-                <button 
-                    onClick={() => onNuclideClick(foundNuclide)} 
-                    className="text-sky-500 hover:underline font-semibold"
-                >
-                    {text}
-                </button>
-            );
-        }
-        return <span>{text}</span>;
+        // This regex splits the string by " or " or "/", but keeps the delimiters in the resulting array.
+        // For example: "A or B" becomes ["A", " or ", "B"]
+        const parts = text.split(/(\s+or\s+|\s*\/\s*)/);
+
+        return (
+            <>
+                {parts.map((part, index) => {
+                    if (!part) return null; // Skip any empty parts
+                    
+                    // Clean the part to get a potential nuclide name
+                    const nuclideName = part.split('(')[0].trim();
+                    const foundNuclide = radionuclides.find(n => n.name === nuclideName || n.symbol === nuclideName);
+
+                    if (foundNuclide) {
+                        // If we found a match in our database, render a clickable button
+                        return (
+                            <button 
+                                key={index} 
+                                onClick={() => onNuclideClick(foundNuclide)} 
+                                className="text-sky-500 hover:underline font-semibold"
+                            >
+                                {part}
+                            </button>
+                        );
+                    } else {
+                        // Otherwise, it's a delimiter or plain text, so render it as a simple span
+                        return <span key={index}>{part}</span>;
+                    }
+                })}
+            </>
+        );
     };
 
     const getSourceLink = (sourceKey) => {
@@ -1692,7 +1710,6 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
     };
 
     if (isCompact) {
-        // ... (The compact card logic remains unchanged)
         const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
         const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
         const compactCardJSX = (
@@ -1721,7 +1738,6 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
 
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
-            {/* ... (The main header of the card remains unchanged) ... */}
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
@@ -1752,10 +1768,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </div>
             </div>
 
-            {/* --- THIS IS THE RESTRUCTURED DATA SECTION --- */}
             <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
-                
-                {/* Section 1: Decay Properties */}
                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
                     <DataPoint 
@@ -1766,8 +1779,6 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                     />
                     <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
                 </div>
-
-                {/* Section 2: Physical Properties */}
                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
                     <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
@@ -1776,15 +1787,13 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                         <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
                     )}
                 </div>
-
-                {/* Section 3: Genealogy */}
                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
                     <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
                     <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
                 </div>
-
             </div>
+
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
                 <div className="space-y-4">
@@ -1792,13 +1801,10 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
                         <div className="grid md:grid-cols-3 gap-4 mt-1">
                             <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
-                            
                             <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` (${nuclide.avgBetaEnergy} avg)` : ''}`} unit="MeV" iconSymbol="β"/>
-
                             <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
                         </div>
                     </div>
-
                     {nuclide.daughterEmissions && (
                          <div className="animate-fade-in">
                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -1831,56 +1837,50 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </ul>
             </div>
             
-{HVL_DATA[nuclide.symbol] && (
-    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Shielding Data (HVL in cm)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-            {Object.entries(HVL_DATA[nuclide.symbol]).map(([material, value]) => {
-                // Don't display the 'sourceRef' property from the data object
-                if (material === 'sourceRef') return null;
-                return (
-                    <div key={material}>
-                        <span className="font-semibold text-slate-500 dark:text-slate-400">{material}: </span>
-                        <span className="text-slate-700 dark:text-slate-200">{value} cm</span>
+            {HVL_DATA[nuclide.symbol] && (
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Shielding Data (HVL in cm)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                        {Object.entries(HVL_DATA[nuclide.symbol]).map(([material, value]) => {
+                            if (material === 'sourceRef') return null;
+                            return (
+                                <div key={material}>
+                                    <span className="font-semibold text-slate-500 dark:text-slate-400">{material}: </span>
+                                    <span className="text-slate-700 dark:text-slate-200">{value} cm</span>
+                                </div>
+                            );
+                        })}
                     </div>
-                );
-            })}
-        </div>
-    </div>
-)}
+                </div>
+            )}
 
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-
-    <div className="flex flex-wrap justify-center gap-2">
-        
-        {showBackButton && (
-            <Tooltip text="Go back to the previous view" widthClass="w-auto">
-                <button 
-                    onClick={onBackClick}
-                    className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
-                >
-                    <Icon path={ICONS.database} className="w-4 h-4" />
-                    Back
-                </button>
-            </Tooltip>
-        )}
-
-        <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
-            <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
-        </Tooltip>
-        
-        <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
-            <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
-        </Tooltip>
-
-        {nuclide.shipping && (
-            <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
-                 <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
-            </Tooltip>
-        )}
-    </div>
-</div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
+                <div className="flex flex-wrap justify-center gap-2">
+                    {showBackButton && (
+                        <Tooltip text="Go back to the previous view" widthClass="w-auto">
+                            <button 
+                                onClick={onBackClick}
+                                className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
+                            >
+                                <Icon path={ICONS.database} className="w-4 h-4" />
+                                Back
+                            </button>
+                        </Tooltip>
+                    )}
+                    <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
+                        <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
+                    </Tooltip>
+                    <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
+                        <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
+                    </Tooltip>
+                    {nuclide.shipping && (
+                        <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
+                             <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
+                        </Tooltip>
+                    )}
+                </div>
+            </div>
             
             {nuclide.decaySeriesId && (
                 <div className="mt-6 text-center">
@@ -4449,15 +4449,15 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
 const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- STATE MANAGEMENT ---
     
-    const { settings } = React.useContext(SettingsContext); // <-- Add this line to get settings
+    const { settings } = React.useContext(SettingsContext);
 
     const [calcMode, setCalcMode] = React.useState('gamma');
     const [geometryMode, setGeometryMode] = React.useState('point');
     const [nuclideSymbol, setNuclideSymbol] = React.useState('');
     const [activity, setActivity] = React.useState('1');
-    const [activityUnit, setActivityUnit] = React.useState(settings.activity); // <-- Use global setting
+    const [activityUnit, setActivityUnit] = React.useState(settings.activity);
     const [distance, setDistance] = React.useState('1');
-    const [distanceUnit, setDistanceUnit] = React.useState(settings.distance); // <-- Use global setting
+    const [distanceUnit, setDistanceUnit] = React.useState(settings.distance);
     const [lineLength, setLineLength] = React.useState('1');
     const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
     const [diskRadius, setDiskRadius] = React.useState('10');
@@ -4489,7 +4489,6 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- Data Constants ---
     const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-    const activityFactors_uCi = { 'Ci': 1e6, 'mCi': 1000, 'µCi': 1, 'GBq': 27027, 'MBq': 27.027, 'Bq': 2.7e-5 };
     const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
 
     const handleCalculate = () => {
@@ -4525,32 +4524,28 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                 setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
 
             } else if (calcMode === 'beta') {
-                // 1. Get Maximum & Average Beta Energy from nuclide data.
                 const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
                 if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
-    
-                // 2. Calculate the maximum range of the beta particle in air. This logic is correct and remains.
+                
                 const distanceInCm = distanceValue * distanceFactorsM[distanceUnit] * 100;
                 const densityOfAir = 0.001225; // g/cm^3
                 const range_g_cm2 = (E_max >= 0.8) ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
                 const maxRange_cm = range_g_cm2 / densityOfAir;
-    
+                
                 let doseRate_mrem_hr = 0;
-    
-                // 3. Only calculate a dose if the distance is within the beta's maximum range.
+                
                 if (distanceInCm < maxRange_cm) {
-                    // 4. Convert user's input activity to microcuries (µCi) using our new constant object.
-                    const activityIn_uCi = activityValue * activityFactors_uCi[activityUnit];
-        
-                    // 5. Use the precise average energy if available, otherwise approximate it.
+                    const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                    const distanceInFeet = distanceValue * (distanceFactorsM[distanceUnit] / 0.3048);
                     const E_avg = selectedNuclide.avgBetaEnergy ? parseFloat(selectedNuclide.avgBetaEnergy) : E_max / 3.0;
-        
-                    // 6. Apply the new, energy-dependent formula for dose rate.
-                    doseRate_mrem_hr = ((2130 * activityIn_uCi * E_avg) / Math.pow(distanceInCm, 2)) * 1000;
+                    
+                    // Corrected Point Source Formula: D(rad/hr) = (33.8 * A_Ci * E_avg) / d_ft^2
+                    const doseRate_rad_hr = (33.8 * activityInCi * E_avg) / Math.pow(distanceInFeet, 2);
+                    doseRate_mrem_hr = doseRate_rad_hr * 1000;
                 }
     
-                // 7. Update the result state with the calculated values.
                 setResult({ type: 'beta', mrem_hr: doseRate_mrem_hr.toPrecision(3), max_range_cm: maxRange_cm.toPrecision(3) });
+                
             } else { // Bremsstrahlung
                 const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
                 if (!E_max || E_max === 0) { throw new Error("This nuclide is not a significant beta emitter."); }
