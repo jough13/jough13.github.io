@@ -296,9 +296,7 @@
             #service-details-popup .details-grid { grid-template-columns: 1fr; }
             #profile-popup .profile-content { flex-direction: column; align-items: center; }
             
-            /* ======================================================================== */
-            /* === CHANGE #1: Added CSS rule to prevent zooming on input focus ======== */
-            /* ======================================================================== */
+            /* Ensure input font size is 16px on mobile to prevent auto-zoom */
             .price-input, .name-input {
                 font-size: 16px;
             }
@@ -875,15 +873,46 @@
                 const nameCell = document.createElement('td');
                 nameCell.dataset.col = 0;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
-                nameCell.innerHTML = `<div class="cell-wrapper"><div class="stylist-info-wrapper"><img class="stylist-avatar" src="${generateAvatar(stylist)}"><div class="stylist-info"><span class="editable profile-link">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
+                
+                // ========================================================================
+                // === CHANGE #1a: Updated renderTable to use the show/hide pattern =====
+                // ========================================================================
+                const levelText = stylist.level || 'Add Level';
+                nameCell.innerHTML = `<div class="cell-wrapper">
+                    <div class="stylist-info-wrapper">
+                        <img class="stylist-avatar" src="${generateAvatar(stylist)}">
+                        <div class="stylist-info">
+                            <span class="editable profile-link">${stylist.name}</span>
+                            <div>
+                                <span class="editable level-text">${levelText}</span>
+                                <input type="text" class="name-input" value="${levelText === 'Add Level' ? '' : levelText}" style="display:none; width: 120px;">
+                            </div>
+                        </div>
+                    </div>
+                    ${stylistNoteHTML}
+                </div>`;
                 row.appendChild(nameCell);
+
                 stylist.services.forEach((service, colIndex) => {
                     const cell = document.createElement('td');
                     cell.dataset.col = colIndex + 1;
                     const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
                     const priceClass = service.price ? 'price-text' : 'price-text placeholder';
                     let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                    cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
+                    
+                    // ========================================================================
+                    // === CHANGE #1b: Updated renderTable to use the show/hide pattern =====
+                    // ========================================================================
+                    cell.innerHTML = `<div class="cell-wrapper">
+                        <div class="cell-content">
+                            <input type="checkbox" ${service.checked ? 'checked' : ''}>
+                            <div>
+                                <span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span>
+                                <input type="number" class="price-input" value="${service.price || ''}" step="0.01" style="display:none;">
+                            </div>
+                        </div>
+                        ${cellNoteHTML}
+                    </div>`;
                     row.appendChild(cell);
                 });
                 tbody.appendChild(row);
@@ -904,7 +933,26 @@
                 card.dataset.row = originalRowIndex;
                 card.draggable = true;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};" data-col="0"></div>` : '';
-                card.innerHTML = `<div class="stylist-card-header" data-col="0"><div class="stylist-info-wrapper"><img class="stylist-avatar" src="${generateAvatar(stylist)}"><div class="stylist-info"><span class="editable profile-link">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div><div class="stylist-card-body"></div>`;
+                
+                // ========================================================================
+                // === CHANGE #1c: Updated renderMobileView to use the show/hide pattern ==
+                // ========================================================================
+                const levelText = stylist.level || 'Add Level';
+                card.innerHTML = `<div class="stylist-card-header" data-col="0">
+                    <div class="stylist-info-wrapper">
+                        <img class="stylist-avatar" src="${generateAvatar(stylist)}">
+                        <div class="stylist-info">
+                            <span class="editable profile-link">${stylist.name}</span>
+                             <div>
+                                <span class="editable level-text">${levelText}</span>
+                                <input type="text" class="name-input" value="${levelText === 'Add Level' ? '' : levelText}" style="display:none; width: 120px;">
+                            </div>
+                        </div>
+                    </div>
+                    ${stylistNoteHTML}
+                </div>
+                <div class="stylist-card-body"></div>`;
+
                 const cardBody = card.querySelector('.stylist-card-body');
                 salonState.services.forEach((serviceData, colIndex) => {
                     const service = stylist.services[colIndex];
@@ -915,7 +963,18 @@
                     const priceClass = service.price ? 'price-text' : 'price-text placeholder';
                     let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
                     
-                    serviceItem.innerHTML = `<span class="service-name editable">${serviceData.name}</span><div class="service-controls"><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span><label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>${cellNoteHTML}</div>`;
+                    // ========================================================================
+                    // === CHANGE #1d: Updated renderMobileView to use the show/hide pattern ==
+                    // ========================================================================
+                    serviceItem.innerHTML = `<span class="service-name editable">${serviceData.name}</span>
+                        <div class="service-controls">
+                            <div>
+                                <span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span>
+                                <input type="number" class="price-input" value="${service.price || ''}" step="0.01" style="display:none;">
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>
+                            ${cellNoteHTML}
+                        </div>`;
 
                     cardBody.appendChild(serviceItem);
                 });
@@ -998,84 +1057,8 @@
             recordChange(newState);
         });
 
-        // ========================================================================
-        // === CHANGE #2: Added 'touchstart' listener to intercept mobile taps ====
-        // ========================================================================
-        mainContentContainer.addEventListener('touchstart', (event) => {
-            const target = event.target;
-            // This listener is specifically for mobile card view to prevent the bounce.
-            // It runs the same logic as the 'click' handler, but on 'touchstart'
-            // and calls preventDefault() to stop the browser's default action.
-            if (target.closest('.stylist-card')) {
-                if (target.matches('.editable.level-text')) {
-                    event.preventDefault(); // Stop the bounce
-                    const stylistIndex = parseInt(target.closest('[data-row]').dataset.row);
-                    const originalText = target.textContent;
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText === 'Add Level' ? '' : originalText;
-                    target.replaceWith(input);
-                    const save = () => {
-                        const newState = deepClone(stateHistory[currentStateIndex]);
-                        newState.stylists[stylistIndex].level = input.value.trim() || originalText;
-                        recordChange(newState);
-                    };
-                    requestAnimationFrame(() => input.focus());
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-
-                } else if (target.matches('.service-name.editable')) {
-                    event.preventDefault(); // Stop the bounce
-                    const serviceItem = target.closest('.service-item');
-                    const col = parseInt(serviceItem.dataset.col);
-                    const originalText = target.textContent;
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'name-input';
-                    input.value = originalText;
-                    target.replaceWith(input);
-                    const save = () => {
-                        const newText = input.value.trim();
-                        if (newText && newText !== originalText) {
-                            const newState = deepClone(stateHistory[currentStateIndex]);
-                            newState.services[col - 1].name = newText;
-                            recordChange(newState);
-                        } else {
-                            updateDisplay();
-                        }
-                    };
-                    requestAnimationFrame(() => input.focus());
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-
-                } else if (target.matches('.price-text')) {
-                    event.preventDefault(); // Stop the bounce
-                    const row = parseInt(target.closest('[data-row]').dataset.row);
-                    const col = parseInt(target.closest('[data-col]').dataset.col);
-                    const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
-                    const input = document.createElement('input');
-                    input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
-                    target.replaceWith(input);
-                    const save = () => {
-                        const newState = deepClone(stateHistory[currentStateIndex]);
-                        const newPrice = input.value.trim();
-                        newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                        recordChange(newState);
-                    };
-                    requestAnimationFrame(() => input.focus());
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-                }
-            }
-        }, { passive: false });
-
         mainContentContainer.addEventListener('click', (event) => {
             const target = event.target;
-
-            // Because the 'touchstart' listener above handles mobile taps, this 'click'
-            // listener will now only fire for actual mouse clicks on desktop, or on
-            // elements not covered by the touchstart listener.
             
             if (target.matches('.profile-link')) {
                 clearTimeout(clickTimer);
@@ -1100,54 +1083,64 @@
                     const colIndex = parseInt(target.closest('th').dataset.col) - 1;
                     showServiceDetailsModal(colIndex);
                 }, 250);
+            
+            // ========================================================================
+            // === CHANGE #2a: Rewrote editable field logic to use show/hide pattern ==
+            // ========================================================================
             } else if (target.matches('.editable.level-text')) {
-                let stylistIndex;
-                const rowEl = target.closest('[data-row]');
+                event.preventDefault();
+                const container = target.parentElement;
+                const input = container.querySelector('.name-input');
                 
-                if (rowEl) {
-                    stylistIndex = parseInt(rowEl.dataset.row);
-                } else if (target.dataset.stylistIndex) { // For the modal
-                    stylistIndex = parseInt(target.dataset.stylistIndex);
-                } else {
-                    return;
-                }
-
-                const originalText = target.textContent;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.value = originalText === 'Add Level' ? '' : originalText;
-                target.replaceWith(input);
+                target.style.display = 'none';
+                input.style.display = 'inline-block';
+                input.focus();
+                input.select();
 
                 const save = () => {
+                    let stylistIndex;
+                    const rowEl = target.closest('[data-row]');
+                    if (rowEl) {
+                        stylistIndex = parseInt(rowEl.dataset.row);
+                    } else if (target.dataset.stylistIndex) { // For the modal
+                        stylistIndex = parseInt(target.dataset.stylistIndex);
+                    } else { return; }
+
                     const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].level = input.value.trim() || originalText;
-                    recordChange(newState);
+                    newState.stylists[stylistIndex].level = input.value.trim() || 'Add Level';
+                    recordChange(newState); // This will re-render, no need to manually hide/show
                 };
 
-                requestAnimationFrame(() => input.focus());
-                input.addEventListener('blur', save);
+                input.addEventListener('blur', save, { once: true });
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
 
             } else if (target.matches('.price-text')) {
-                const row = parseInt(target.closest('[data-row]').dataset.row);
-                const col = parseInt(target.closest('[data-col]').dataset.col);
-                const originalValue = target.classList.contains('placeholder') ? '' : target.textContent.replace('$', '').trim();
-                const input = document.createElement('input');
-                input.type = 'number'; input.className = 'price-input'; input.value = originalValue; input.step = '0.01';
-                target.replaceWith(input);
+                event.preventDefault();
+                const container = target.parentElement;
+                const input = container.querySelector('.price-input');
+
+                target.style.display = 'none';
+                input.style.display = 'inline-block';
+                input.focus();
+                input.select();
                 
                 const save = () => {
+                    const row = parseInt(target.closest('[data-row]').dataset.row);
+                    const col = parseInt(target.closest('[data-col]').dataset.col);
+
                     const newState = deepClone(stateHistory[currentStateIndex]);
                     const newPrice = input.value.trim();
                     newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    recordChange(newState);
+                    recordChange(newState); // This will re-render, no need to manually hide/show
                 };
-
-                requestAnimationFrame(() => input.focus());
-                input.addEventListener('blur', save);
+                
+                input.addEventListener('blur', save, { once: true });
                 input.addEventListener('keydown', e => e.key === 'Enter' && e.target.blur());
-
+            
+            // ========================================================================
+            // === END OF CHANGE #2a ==================================================
+            // ========================================================================
+            
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(target.closest('[data-col]').dataset.col);
