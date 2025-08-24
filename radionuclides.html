@@ -1252,46 +1252,42 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
          */
 
 const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
-    <header className="relative text-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+    // 1. Changed to a flex container that justifies space between its children
+    <header className="flex items-center justify-between p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
         
-        <div className="absolute top-4 left-4">
+        {/* 2. Left-side icons are grouped in one div */}
+        <div className="flex items-center gap-2">
             <Tooltip text="Open User Manual" widthClass="w-auto">
                 <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
                     <Icon path={ICONS.help} className="w-6 h-6" />
                 </button>
             </Tooltip>
+            <Tooltip text="Toggle Theme" widthClass="w-auto">
+                <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
+                    <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
+                </button>
+            </Tooltip>
         </div>
 
-        <h1 className="text-xl md:text-3xl font-bold text-center text-gray-800 dark:text-slate-100">Health Physics Toolbox</h1>
+        {/* 3. Title and subtitle are wrapped to be treated as the center block */}
+        <div className="text-center">
+            <h1 className="text-xl md:text-3xl font-bold text-gray-800 dark:text-slate-100">Health Physics Toolbox</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                Version: {VERSION} | Last Updated: {LAST_UPDATED}
+            </p>
+        </div>
 
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-            Version: {VERSION} | Last Updated: {LAST_UPDATED}
-        </p>
-
-<div className="absolute top-4 left-4 flex items-center gap-2">
-    <Tooltip text="Open User Manual" widthClass="w-auto">
-        <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
-            <Icon path={ICONS.help} className="w-6 h-6" />
-        </button>
-    </Tooltip>
-    <Tooltip text="Toggle Theme" widthClass="w-auto">
-        <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
-            <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
-        </button>
-    </Tooltip>
-</div>
-
-<div className="absolute top-4 right-4 flex items-center gap-2">
-    <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
-        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
-    </a>
-    {/* The new settings button */}
-    <Tooltip text="Settings" widthClass="w-auto">
-        <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
-            <Icon path={ICONS.settings} className="w-6 h-6" />
-        </button>
-    </Tooltip>
-</div>
+        {/* 4. Right-side icons are grouped in one div */}
+        <div className="flex items-center gap-2">
+            <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
+                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
+            </a>
+            <Tooltip text="Settings" widthClass="w-auto">
+                <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+                    <Icon path={ICONS.settings} className="w-6 h-6" />
+                </button>
+            </Tooltip>
+        </div>
     </header>
 );
 
@@ -1712,8 +1708,6 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
         )}
     </div>
 </div>
-
-
             <div className="grid md:grid-cols-2 gap-6 mt-4">
                 <DataPoint 
                     label="Half-life"
@@ -1728,7 +1722,6 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                 <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
                 <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
                 
-
                 <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
                 <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
 
@@ -1782,8 +1775,24 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                 </ul>
             </div>
             
-            
-            
+{HVL_DATA[nuclide.symbol] && (
+    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Shielding Data (HVL in cm)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+            {Object.entries(HVL_DATA[nuclide.symbol]).map(([material, value]) => {
+                // Don't display the 'sourceRef' property from the data object
+                if (material === 'sourceRef') return null;
+                return (
+                    <div key={material}>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">{material}: </span>
+                        <span className="text-slate-700 dark:text-slate-200">{value} cm</span>
+                    </div>
+                );
+            })}
+        </div>
+    </div>
+)}
+
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
 
@@ -1825,7 +1834,6 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
         </div>
     );
 };
-
         /**
          * @description Displays a full decay series chain.
          * @param {{seriesId: string, onBack: () => void, onNuclideClick: (nuclide: object) => void}} props - The series ID and navigation handlers.
@@ -1921,7 +1929,6 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
         minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
         minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
         minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit,
-        // New prop: a function to clear all filters
         clearFilters
     } = filterProps;
 
@@ -1937,8 +1944,6 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
 
     const handleClear = () => {
         clearFilters();
-        // You can keep the sidebar open or close it after clearing. Closing might be better for mobile UX.
-        // setIsFiltersVisible(false);
     };
 
     return (
@@ -1958,11 +1963,13 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
                     <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
                         <div className="flex items-center gap-2">
-                            <Tooltip text="Clear Filters" widthClass="w-auto">
-                                <button onClick={handleClear} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
-                                    <Icon path={ICONS.clear} className="w-6 h-6" />
-                                </button>
-                            </Tooltip>
+                            {/* --- THIS IS THE CHANGED PART --- */}
+                            <button 
+                                onClick={handleClear} 
+                                className="px-3 py-1 text-xs font-semibold text-sky-700 dark:text-sky-300 bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            >
+                                Clear
+                            </button>
                             <button onClick={handleClose} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
                                 <Icon path={ICONS.clear} className="w-6 h-6" />
                             </button>
