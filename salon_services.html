@@ -169,9 +169,6 @@
         .modal-backdrop.visible { opacity: 1; }
 
         .modal-popup {
-            /* ======================================================================== */
-            /* === CHANGE #1: Changed positioning to be scroll-aware ================ */
-            /* ======================================================================== */
             display: none; position: absolute; z-index: 1000; left: 50%; top: 50%;
             padding: 2rem; background: var(--modal-bg); border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: left; width: 90%; max-width: 600px;
@@ -301,7 +298,14 @@
             .main-controls { flex-direction: column; align-items: stretch; gap: 1.5rem; }
             .controls-column { width: 100%; text-align: center; }
             .controls-column.right, .controls-column.left { align-items: center; }
-            .controls-column.right .control-group { justify-content: center; }
+            /* ======================================================================== */
+            /* === FINAL CHANGE: Keep control groups in a row ======================= */
+            /* ======================================================================== */
+            .controls-column .control-group {
+                justify-content: center;
+                flex-direction: row; /* Keep input/button pairs together */
+                flex-wrap: nowrap;
+            }
         }
         @media (max-width: 800px) {
             body { padding: 1rem 0; overflow-y: auto; }
@@ -334,7 +338,7 @@
             </div>
             <div class="controls-column middle">
                 <h1>Posh Salon Service Matrix</h1>
-                <div class="control-group" style="justify-content: center;">
+                <div class="control-group">
                     <select id="level-filter"><option value="all">All Levels</option></select>
                     <input type="text" id="search-input" placeholder="Search Stylists...">
                 </div>
@@ -495,9 +499,6 @@
         };
 
         const showModal = (popup) => {
-            // ========================================================================
-            // === CHANGE #2: Adjust modal position based on scroll =================
-            // ========================================================================
             const scrollY = window.scrollY || document.documentElement.scrollTop;
             popup.style.top = `${scrollY + window.innerHeight / 2}px`;
             
