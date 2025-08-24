@@ -1351,16 +1351,7 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
 
 const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection, onNavClick }) => (
     <div className="relative p-4 flex items-center gap-2">
-<button
-    onClick={() => onNavClick('home')}
-    // FINAL: Added a border to match search bar height and the focus ring effect
-    className="hidden md:flex items-center gap-2 p-3 md:px-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
-    aria-label="Home"
->
-    <Icon path={ICONS.home} className="w-5 h-5" />
-    <span className="font-semibold">Home</span>
-</button>
-
+        {/* The search bar is now the FIRST item in the flex container */}
         <div className="relative flex-grow">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
@@ -1374,12 +1365,23 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
                 placeholder="Search by name or symbol (e.g., U-238)"
                 className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
             />
-            {nuclideName && (             
-	 	<button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
+            {nuclideName && (
+                <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
                     <Icon path={ICONS.clear} className="w-5 h-5" />
                 </button>
             )}
         </div>
+
+        {/* The home button is now the SECOND item, appearing on the right */}
+        <button
+            onClick={() => onNavClick('home')}
+            className="hidden md:flex items-center gap-2 p-3 md:px-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            aria-label="Home"
+        >
+            <Icon path={ICONS.home} className="w-5 h-5" />
+            <span className="font-semibold">Home</span>
+        </button>
+        
         {suggestions.length > 0 && (
             <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
                 {suggestions.map((s, i) => {
@@ -3721,6 +3723,8 @@ const App = () => {
             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
             const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
+
+            
             
     const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
     const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
@@ -3736,6 +3740,44 @@ const App = () => {
     const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
     const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
     const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
+
+    React.useEffect(() => {
+    const handleHashChange = () => {
+        const hash = window.location.hash.replace('#', '');
+        // An array of all valid views your app can be in
+        const validViews = ['home', 'database', 'compare', 'calculator', 'mda', 'marssim', 'wrs', 'emc', 'seriesCalculator', 'equilibrium', 'massActivity', 'specificActivity', 'doseRate', 'shielding', 'stayTime', 'transportation', 'converter', 'settings', 'decaySeries'];
+        
+        let targetView = 'home'; // Default to home view
+        if (hash && validViews.includes(hash)) {
+            targetView = hash;
+        } else {
+            // If the hash is invalid or missing, gently correct it to #home
+            // Using replaceState to avoid cluttering browser history
+            history.replaceState(null, '', '#home');
+        }
+        
+        // Update the view in the app's state
+        setActiveView(targetView);
+        
+        // This is also the perfect place for cleanup logic that runs on every navigation
+        setPreselectedNuclide(null);
+        if (targetView === 'home') {
+            setResult(null);
+            setNuclideName('');
+            setSuggestions([]);
+            setErrorMessage('');
+        }
+    };
+
+    // This tells the browser to run our function whenever the hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // We also run it once on initial load to set the correct view
+    handleHashChange();
+
+    // This is a cleanup function to prevent memory leaks
+    return () => window.removeEventListener('hashchange', handleHashChange);
+}, []); // The empty array [] ensures this setup code only runs once
 
             const mainContentRef = React.useRef(null);
 
@@ -3766,37 +3808,28 @@ const scrollToMainContent = () => {
 };
 
 const handleNavClick = (view) => {
+    // This function now simply changes the URL hash.
+    // The useEffect hook from Step 1 will detect this change and update the view.
+    window.location.hash = view;
+    scrollToMainContent();
+};
 
+const handleSendToCalculator = (viewId, nuclideSymbol) => {
+    setPreselectedNuclide(nuclideSymbol);
+    window.location.hash = viewId;
+};
 
-                setPreselectedNuclide(null);
-                setActiveView(view);
-                setCurrentDecaySeriesId(null);
-                setIsFiltersVisible(false);
-                if (view === 'home') {
-                    setResult(null);
-                    setNuclideName('');
-                    setSuggestions([]);
-                    setErrorMessage('');
-                    
-                }
-                scrollToMainContent();
-            };
+const handleAddToCompare = (nuclideSymbol) => {
+    const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
+    if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
+        setComparisonList(prevList => [...prevList, nuclideToAdd]);
+        addToast(`${nuclideToAdd.name} added to comparison.`);
+    } else if (nuclideToAdd) {
+        addToast(`${nuclideToAdd.name} is already in the comparison.`);
+    }
 
-            const handleSendToCalculator = (viewId, nuclideSymbol) => {
-                setPreselectedNuclide(nuclideSymbol);
-                setActiveView(viewId);
-            };
-
-            const handleAddToCompare = (nuclideSymbol) => {
-                const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
-                if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
-                    setComparisonList(prevList => [...prevList, nuclideToAdd]);
-                    addToast(`${nuclideToAdd.name} added to comparison.`);
-                } else if (nuclideToAdd) {
-                    addToast(`${nuclideToAdd.name} is already in the comparison.`);
-                }
-                setActiveView('compare');
-            };
+    window.location.hash = 'compare';
+};
 
             const handleRemoveFromCompare = (nuclideSymbol) => {
                 setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol));
@@ -3892,8 +3925,14 @@ React.useEffect(() => {
 
             const filteredList = getFilteredAndSortedRadionuclides();
             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+            
             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); };
-            const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); setActiveView('decaySeries'); };
+            
+            const handleDecaySeriesClick = (seriesId) => { 
+                  setCurrentDecaySeriesId(seriesId); 
+            window.location.hash = 'decaySeries'; 
+            };
+            
             const toggleFavorite = (symbol) => {
                 const nuclide = radionuclides.find(n => n.symbol === symbol);
                 const isCurrentlyFavorite = favorites.includes(symbol);
@@ -3915,19 +3954,17 @@ React.useEffect(() => {
                     return limitedHistory;
                 });
             }
-            const handleNuclideSelection = (nuclide) => {
-                setNuclideName(nuclide.name);
-                setResult(nuclide);
-                setSuggestions([]);
-                setErrorMessage('');
-                setPreviousView(activeView); // <-- ADD THIS LINE to remember where we came from
-                setActiveView('home');
-                setCurrentDecaySeriesId(null);
-                setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
-                updateSearchHistory(nuclide);
-		        setPreviousView(activeView);
-
-            };
+const handleNuclideSelection = (nuclide) => {
+    setNuclideName(nuclide.name);
+    setResult(nuclide);
+    setSuggestions([]);
+    setErrorMessage('');
+    setPreviousView(activeView); 
+    window.location.hash = 'home'; // Changed this line
+    setCurrentDecaySeriesId(null);
+    setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
+    updateSearchHistory(nuclide);
+};
             const handleNuclideNameChange = (e) => {
                 const value = e.target.value;
                 setNuclideName(value);
@@ -4051,11 +4088,10 @@ const renderActiveView = () => {
                         onNuclideClick={handleNuclideSelection}
                         showBackButton={previousView === 'database' || previousView === 'home'}
                         
-                        onBackClick={() => {
-                            setActiveView(previousView || 'home'); 
-                            setResult(null);
-                            setPreviousView(null);
-                        }}
+onBackClick={() => {
+    window.location.hash = previousView || 'home';
+    // The useEffect hook now handles resetting the result for you!
+}}
                     />
                 </div>;
             }
