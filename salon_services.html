@@ -81,7 +81,7 @@
         .main-controls h1 { margin: 0; font-size: 1.75rem; color: var(--accent-color); font-weight: 600; }
         .control-group { position: relative; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
         .controls-column.right .control-group { justify-content: flex-end; }
-        input[type="text"], select, textarea {
+        input[type="text"], input[type="number"], select, textarea {
             border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px;
             background-color: var(--primary-bg); color: var(--text-color);
             transition: box-shadow 0.2s, background-color 0.3s;
@@ -91,7 +91,7 @@
         select {-webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1em; padding-right: 2.5rem; }
         body.dark-mode select { background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); }
 
-        input[type="text"]:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-color); opacity: 0.8; }
         button {
             background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem;
             border-radius: 8px; cursor: pointer; font-weight: 500;
@@ -210,6 +210,10 @@
         footer { text-align: center; margin-top: 2rem; padding: 1rem 0 0 0; font-size: 0.9em; color: #888; }
         footer a { color: var(--accent-color); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
+
+        /* Styles for the new edit modal */
+        #edit-value-popup { max-width: 400px; }
+        #edit-value-input { width: 100%; box-sizing: border-box; margin-top: 1rem; font-size: 1.2rem; }
         
 /* Profile Modal Styles */
 #profile-popup { max-width: 520px; }
@@ -296,8 +300,7 @@
             #service-details-popup .details-grid { grid-template-columns: 1fr; }
             #profile-popup .profile-content { flex-direction: column; align-items: center; }
             
-            /* Ensure input font size is 16px on mobile to prevent auto-zoom */
-            .price-input, .name-input {
+            #edit-value-input {
                 font-size: 16px;
             }
         }
@@ -372,6 +375,16 @@
     <div id="service-stylists-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-stylists-title"></h2><div id="service-stylists-list"></div></div>
     <div id="profile-popup" class="modal-popup"><button class="close-popup">&times;</button><div class="profile-content"><div class="profile-photo-area"><img id="profile-photo" src="" alt="Stylist Photo"><button id="profile-change-photo-btn">Change Photo</button><button id="profile-delete-photo-btn" class="danger-btn">Delete Photo</button><button id="profile-change-color-btn">Change Color</button><div id="profile-color-palette" class="color-palette"></div></div><div class="profile-details"><div id="profile-name-wrapper"><h2 id="profile-name"></h2><button id="profile-edit-name-btn">✏️</button></div><p id="profile-level"></p><label for="profile-bio-textarea">Bio / Notes:</label><textarea id="profile-bio-textarea" rows="4"></textarea><div class="modal-actions"><button id="profile-save-bio-btn" class="save-btn">Save Bio</button></div></div></div></div>
     <div id="service-details-popup" class="modal-popup"><button class="close-popup">&times;</button><h2 id="service-details-title">Service Details</h2><div class="details-grid"><div><div class="input-group"><label for="service-duration-input">Standard Duration:</label><input type="text" id="service-duration-input" placeholder="e.g., 2.5 hours"></div></div><div><div class="input-group"><label for="service-pricerange-input">Base Price Range:</label><input type="text" id="service-pricerange-input" placeholder="e.g., $150 - $250"></div></div></div><div class="input-group" style="margin-top: 1rem;"><label for="service-description-textarea">Description:</label><textarea id="service-description-textarea" rows="3" placeholder="e.g., A detailed description of the service, including the process, products used, and expected results."></textarea></div><h3>Performed By:</h3><div id="service-performers-list"></div><div class="modal-actions"><button id="service-details-save-btn" class="save-btn">Save Details</button></div></div>
+    
+    <div id="edit-value-popup" class="modal-popup">
+        <h2 id="edit-value-title">Edit Value</h2>
+        <input type="text" id="edit-value-input">
+        <div class="modal-actions">
+            <button id="edit-value-cancel-btn" class="secondary">Cancel</button>
+            <button id="edit-value-save-btn" class="save-btn">Save</button>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
     <input type="file" id="photo-upload-input" accept="image/*" style="display: none;">
     
@@ -512,6 +525,58 @@
             }
             sortState = { key: currentKey, direction: newDirection };
             updateDisplay();
+        };
+
+        // ========================================================================
+        // === CHANGE #2: ADDED a new function to show the generic edit modal =====
+        // ========================================================================
+        const showEditValueModal = ({ title, currentValue, inputType = 'text', onSave }) => {
+            const popup = document.getElementById('edit-value-popup');
+            const titleEl = document.getElementById('edit-value-title');
+            const inputEl = document.getElementById('edit-value-input');
+            const saveBtn = document.getElementById('edit-value-save-btn');
+            const cancelBtn = document.getElementById('edit-value-cancel-btn');
+
+            titleEl.textContent = title;
+            inputEl.type = inputType;
+            inputEl.value = currentValue;
+            if (inputType === 'number') {
+                inputEl.step = '0.01';
+            }
+
+            const handleSave = () => {
+                onSave(inputEl.value);
+                cleanup();
+            };
+
+            const handleCancel = () => {
+                cleanup();
+            };
+            
+            const handleKeydown = (e) => {
+                if (e.key === 'Enter') {
+                    handleSave();
+                } else if (e.key === 'Escape') {
+                    handleCancel();
+                }
+            };
+
+            const cleanup = () => {
+                hideModal(popup);
+                saveBtn.removeEventListener('click', handleSave);
+                cancelBtn.removeEventListener('click', handleCancel);
+                inputEl.removeEventListener('keydown', handleKeydown);
+            };
+
+            saveBtn.addEventListener('click', handleSave, { once: true });
+            cancelBtn.addEventListener('click', handleCancel, { once: true });
+            inputEl.addEventListener('keydown', handleKeydown);
+
+            showModal(popup);
+            setTimeout(() => {
+                inputEl.focus();
+                inputEl.select();
+            }, 50); // Small delay to ensure focus works after modal transition
         };
 
         const showNoteEntryPopup = (row, col) => {
@@ -873,40 +938,15 @@
                 const nameCell = document.createElement('td');
                 nameCell.dataset.col = 0;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};"></div>` : '';
-                
-                const levelText = stylist.level || 'Add Level';
-                nameCell.innerHTML = `<div class="cell-wrapper">
-                    <div class="stylist-info-wrapper">
-                        <img class="stylist-avatar" src="${generateAvatar(stylist)}">
-                        <div class="stylist-info">
-                            <span class="editable profile-link">${stylist.name}</span>
-                            <div>
-                                <span class="editable level-text">${levelText}</span>
-                                <input type="text" class="name-input" value="${levelText === 'Add Level' ? '' : levelText}" style="display:none; width: 120px;">
-                            </div>
-                        </div>
-                    </div>
-                    ${stylistNoteHTML}
-                </div>`;
+                nameCell.innerHTML = `<div class="cell-wrapper"><div class="stylist-info-wrapper"><img class="stylist-avatar" src="${generateAvatar(stylist)}"><div class="stylist-info"><span class="editable profile-link">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div>`;
                 row.appendChild(nameCell);
-
                 stylist.services.forEach((service, colIndex) => {
                     const cell = document.createElement('td');
                     cell.dataset.col = colIndex + 1;
                     const priceHTML = service.price ? `$${parseFloat(service.price).toFixed(2)}` : 'Add Price';
                     const priceClass = service.price ? 'price-text' : 'price-text placeholder';
                     let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
-                    
-                    cell.innerHTML = `<div class="cell-wrapper">
-                        <div class="cell-content">
-                            <input type="checkbox" ${service.checked ? 'checked' : ''}>
-                            <div>
-                                <span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span>
-                                <input type="number" class="price-input" value="${service.price || ''}" step="0.01" style="display:none;">
-                            </div>
-                        </div>
-                        ${cellNoteHTML}
-                    </div>`;
+                    cell.innerHTML = `<div class="cell-wrapper"><div class="cell-content"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span></div>${cellNoteHTML}</div>`;
                     row.appendChild(cell);
                 });
                 tbody.appendChild(row);
@@ -927,23 +967,7 @@
                 card.dataset.row = originalRowIndex;
                 card.draggable = true;
                 let stylistNoteHTML = stylist.note ? `<div class="sticky-note" style="background-color: ${stylist.note.color}; border: ${stylist.note.border || 'none'};" data-col="0"></div>` : '';
-                
-                const levelText = stylist.level || 'Add Level';
-                card.innerHTML = `<div class="stylist-card-header" data-col="0">
-                    <div class="stylist-info-wrapper">
-                        <img class="stylist-avatar" src="${generateAvatar(stylist)}">
-                        <div class="stylist-info">
-                            <span class="editable profile-link">${stylist.name}</span>
-                             <div>
-                                <span class="editable level-text">${levelText}</span>
-                                <input type="text" class="name-input" value="${levelText === 'Add Level' ? '' : levelText}" style="display:none; width: 120px;">
-                            </div>
-                        </div>
-                    </div>
-                    ${stylistNoteHTML}
-                </div>
-                <div class="stylist-card-body"></div>`;
-
+                card.innerHTML = `<div class="stylist-card-header" data-col="0"><div class="stylist-info-wrapper"><img class="stylist-avatar" src="${generateAvatar(stylist)}"><div class="stylist-info"><span class="editable profile-link">${stylist.name}</span><span class="editable level-text">${stylist.level || 'Add Level'}</span></div></div>${stylistNoteHTML}</div><div class="stylist-card-body"></div>`;
                 const cardBody = card.querySelector('.stylist-card-body');
                 salonState.services.forEach((serviceData, colIndex) => {
                     const service = stylist.services[colIndex];
@@ -954,15 +978,7 @@
                     const priceClass = service.price ? 'price-text' : 'price-text placeholder';
                     let cellNoteHTML = service.note ? `<div class="sticky-note" style="background-color: ${service.note.color}; border: ${service.note.border || 'none'};"></div>` : '';
                     
-                    serviceItem.innerHTML = `<span class="service-name editable">${serviceData.name}</span>
-                        <div class="service-controls">
-                            <div>
-                                <span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span>
-                                <input type="number" class="price-input" value="${service.price || ''}" step="0.01" style="display:none;">
-                            </div>
-                            <label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>
-                            ${cellNoteHTML}
-                        </div>`;
+                    serviceItem.innerHTML = `<span class="service-name editable">${serviceData.name}</span><div class="service-controls"><span class="${priceClass}" data-placeholder="Add Price">${priceHTML}</span><label class="toggle-switch"><input type="checkbox" ${service.checked ? 'checked' : ''}><span class="slider"></span></label>${cellNoteHTML}</div>`;
 
                     cardBody.appendChild(serviceItem);
                 });
@@ -1072,84 +1088,54 @@
                     showServiceDetailsModal(colIndex);
                 }, 250);
             
+            // ========================================================================
+            // === CHANGE #3: REWRITING the logic to use the new modal pop-up =======
+            // ========================================================================
             } else if (target.matches('.editable.level-text')) {
                 event.preventDefault();
-                const container = target.parentElement;
-                const input = container.querySelector('.name-input');
-                
-                target.style.display = 'none';
-                input.style.display = 'inline-block';
-                input.focus();
-                input.select();
+                let stylistIndex;
+                const rowEl = target.closest('[data-row]');
+                if (rowEl) {
+                    stylistIndex = parseInt(rowEl.dataset.row, 10);
+                } else if (target.dataset.stylistIndex) {
+                    stylistIndex = parseInt(target.dataset.stylistIndex, 10);
+                } else { return; }
 
-                const save = () => {
-                    let stylistIndex;
-                    const rowEl = target.closest('[data-row]');
-                    if (rowEl) {
-                        stylistIndex = parseInt(rowEl.dataset.row);
-                    } else if (target.dataset.stylistIndex) {
-                        stylistIndex = parseInt(target.dataset.stylistIndex);
-                    } else { return; }
+                const stylist = stateHistory[currentStateIndex].stylists[stylistIndex];
+                const currentValue = stylist.level === 'Add Level' ? '' : stylist.level;
 
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.stylists[stylistIndex].level = input.value.trim() || 'Add Level';
-                    recordChange(newState);
-                };
-                
-                // ========================================================================
-                // === FINAL FIX: Delay attaching the blur listener to prevent race condition
-                // ========================================================================
-                const handleKeyDown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.target.blur();
+                showEditValueModal({
+                    title: `Edit Level for ${stylist.name}`,
+                    currentValue: currentValue,
+                    inputType: 'text',
+                    onSave: (newValue) => {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.stylists[stylistIndex].level = newValue.trim() || 'Add Level';
+                        recordChange(newState);
                     }
-                };
-                input.addEventListener('keydown', handleKeyDown);
-
-                setTimeout(() => {
-                    input.addEventListener('blur', () => {
-                        input.removeEventListener('keydown', handleKeyDown);
-                        save();
-                    }, { once: true });
-                }, 0);
+                });
 
             } else if (target.matches('.price-text')) {
                 event.preventDefault();
-                const container = target.parentElement;
-                const input = container.querySelector('.price-input');
+                const rowIndex = parseInt(target.closest('[data-row]').dataset.row, 10);
+                const colIndex = parseInt(target.closest('[data-col]').dataset.col, 10) -1;
+                const salonState = stateHistory[currentStateIndex];
+                const stylist = salonState.stylists[rowIndex];
+                const service = salonState.services[colIndex];
+                const currentValue = stylist.services[colIndex].price || '';
 
-                target.style.display = 'none';
-                input.style.display = 'inline-block';
-                input.focus();
-                input.select();
-                
-                const save = () => {
-                    const row = parseInt(target.closest('[data-row]').dataset.row);
-                    const col = parseInt(target.closest('[data-col]').dataset.col);
-
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    const newPrice = input.value.trim();
-                    newState.stylists[row].services[col - 1].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
-                    recordChange(newState);
-                };
-                
-                // ========================================================================
-                // === FINAL FIX: Delay attaching the blur listener to prevent race condition
-                // ========================================================================
-                const handleKeyDown = (e) => {
-                    if (e.key === 'Enter') {
-                        e.target.blur();
+                showEditValueModal({
+                    title: `Edit Price: ${service.name}`,
+                    currentValue: currentValue,
+                    inputType: 'number',
+                    onSave: (newValue) => {
+                        const newState = deepClone(salonState);
+                        const newPrice = newValue.trim();
+                        newState.stylists[rowIndex].services[colIndex].price = newPrice ? parseFloat(newPrice).toFixed(2) : '';
+                        recordChange(newState);
                     }
-                };
-                input.addEventListener('keydown', handleKeyDown);
+                });
 
-                setTimeout(() => {
-                    input.addEventListener('blur', () => {
-                        input.removeEventListener('keydown', handleKeyDown);
-                        save();
-                    }, { once: true });
-                }, 0);
-            
             } else if (target.matches('.sticky-note')) {
                 const row = target.closest('[data-row]') ? parseInt(target.closest('[data-row]').dataset.row) : -1;
                 const col = parseInt(target.closest('[data-col]').dataset.col);
