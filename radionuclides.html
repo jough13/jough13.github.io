@@ -1252,16 +1252,11 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
          */
 
 const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
-    // 1. Changed to a flex container that justifies space between its children
-    <header className="flex items-center justify-between p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+    // 1. We no longer need justify-between as the flex-1 children handle spacing
+    <header className="flex items-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
         
-        {/* 2. Left-side icons are grouped in one div */}
-        <div className="flex items-center gap-2">
-            <Tooltip text="Open User Manual" widthClass="w-auto">
-                <button onClick={onHelpClick} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
-                    <Icon path={ICONS.help} className="w-6 h-6" />
-                </button>
-            </Tooltip>
+        {/* 2. Left Column: Takes up 1/3 of the space, content pushed to the start */}
+        <div className="flex-1 flex justify-start">
             <Tooltip text="Toggle Theme" widthClass="w-auto">
                 <button onClick={toggleTheme} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Toggle dark mode">
                     <Icon path={theme === 'dark' ? ICONS.sun : ICONS.moon} className="w-6 h-6" />
@@ -1269,24 +1264,32 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
             </Tooltip>
         </div>
 
-        {/* 3. Title and subtitle are wrapped to be treated as the center block */}
-        <div className="text-center">
+        {/* 3. Center Column: Takes up 1/3 of the space, text is centered within it */}
+        <div className="flex-1 text-center">
             <h1 className="text-xl md:text-3xl font-bold text-gray-800 dark:text-slate-100">Health Physics Toolbox</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
                 Version: {VERSION} | Last Updated: {LAST_UPDATED}
             </p>
         </div>
 
-        {/* 4. Right-side icons are grouped in one div */}
-        <div className="flex items-center gap-2">
+        {/* 4. Right Column: Takes up 1/3 of the space, content pushed to the end */}
+        <div className="flex-1 flex justify-end items-center gap-2">
             <a href="https://www.buymeacoffee.com/jough" target="_blank" className="hidden md:block">
                 <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
             </a>
-            <Tooltip text="Settings" widthClass="w-auto">
-                <button onClick={() => onNavClick('settings')} className="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
-                    <Icon path={ICONS.settings} className="w-6 h-6" />
-                </button>
-            </Tooltip>
+            {/* 5. A new flex-col div to stack the icons vertically */}
+            <div className="flex flex-col">
+                <Tooltip text="Settings" widthClass="w-auto">
+                    <button onClick={() => onNavClick('settings')} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+                        <Icon path={ICONS.settings} className="w-5 h-5" />
+                    </button>
+                </Tooltip>
+                <Tooltip text="Open User Manual" widthClass="w-auto">
+                    <button onClick={onHelpClick} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
+                        <Icon path={ICONS.help} className="w-5 h-5" />
+                    </button>
+                </Tooltip>
+            </div>
         </div>
     </header>
 );
