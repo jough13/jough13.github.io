@@ -1727,28 +1727,42 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                     {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
                 </ul>
             </div>
+            
+            
+            
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                    
-{showBackButton && (
-    <button 
-        onClick={onBackClick}
-        // This is the final, polished className
-        className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
-    >
-        <Icon path={ICONS.database} className="w-4 h-4" />
-        Back
-    </button>
-)}
+    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
+    
+    <div className="flex flex-wrap justify-center gap-2">
+        
+        {showBackButton && (
+            <Tooltip text="Go back to the previous view" widthClass="w-auto">
+                <button 
+                    onClick={onBackClick}
+                    className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
+                >
+                    <Icon path={ICONS.database} className="w-4 h-4" />
+                    Back
+                </button>
+            </Tooltip>
+        )}
 
-                    <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
-                    <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
-                    {nuclide.shipping && (
-                         <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
-                    )}
-                </div>
-            </div>
+        <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
+            <button onClick={() => onAddToCompare(nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Add to Compare</button>
+        </Tooltip>
+        
+        <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
+            <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Decay Calc</button>
+        </Tooltip>
+
+        {nuclide.shipping && (
+            <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
+                 <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="p-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition">Shipping</button>
+            </Tooltip>
+        )}
+    </div>
+</div>
+            
             {nuclide.decaySeriesId && (
                 <div className="mt-6 text-center">
                     <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">View Full Decay Series</button>
@@ -2026,9 +2040,18 @@ return (
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredList.map(n => <NuclideCard key={n.symbol} nuclide={n} isCompact={true} onNuclideClick={onNuclideClick} />)}
-                    </div>
+<div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+    {filteredList.length > 0 ? (
+        filteredList.map(n => <NuclideCard key={n.symbol} nuclide={n} isCompact={true} onNuclideClick={onNuclideClick} />)
+    ) : (
+        <div className="col-span-full text-center py-16 px-4">
+            <Icon path={ICONS.search} className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto" />
+            <h3 className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-300">No Results Found</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Try adjusting your filter criteria.</p>
+        </div>
+    )}
+</div>
+                    
                 </div>
             </div>
         </div>
@@ -3648,6 +3671,11 @@ const handleNavClick = (view) => {
                 setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol));
             };
 
+            const handleClearCompare = () => {
+            setComparisonList([]);
+            addToast('Comparison list cleared.');
+            };
+
 React.useEffect(() => {
     localStorage.setItem('filterSortBy', sortBy);
     localStorage.setItem('filterSortOrder', sortOrder);
@@ -3857,7 +3885,16 @@ const renderActiveView = () => {
         case 'emc': return <EMC_Calculator />;
         case 'seriesCalculator': return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} />;
         case 'equilibrium': return <EquilibriumCalculator radionuclides={radionuclides} />;
-        case 'compare': return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} />;
+        
+        case 'compare': return <ComparisonView 
+            radionuclides={radionuclides} 
+            onNuclideClick={handleNuclideSelection} 
+            comparisonList={comparisonList} 
+            onAddToCompare={handleAddToCompare} 
+            onRemoveFromCompare={handleRemoveFromCompare}
+            onClearCompare={handleClearCompare}
+        />;
+
         case 'massActivity': return <MassActivityCalculator radionuclides={radionuclides} />;
         case 'specificActivity': return <SpecificActivityCalculator />;
         case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
@@ -4054,7 +4091,7 @@ return (
  * Features dynamic highlighting, in-cell data bars, and an integrated
  * percentage difference tag when comparing two nuclides.
  */
-const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddToCompare, onRemoveFromCompare }) => {
+const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddToCompare, onRemoveFromCompare, onClearCompare }) => {
     
     const sortedNuclides = React.useMemo(() =>
         [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
@@ -4089,7 +4126,6 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                 if (typeof formattedValue === 'number' && !isNaN(formattedValue) && formattedValue !== Infinity) {
                     rowData.push(formattedValue.toExponential(3));
                 } else {
-                    // Enclose strings with commas in quotes to prevent CSV errors
                     const cleanString = String(formattedValue).includes(',') ? `"${formattedValue}"` : formattedValue;
                     rowData.push(cleanString);
                 }
@@ -4099,7 +4135,6 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
 
         const csvContent = [headers.join(','), ...rows].join('\n');
         
-        // Create a blob and trigger a download
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         if (link.download !== undefined) {
@@ -4118,15 +4153,27 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
             <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Compare Radionuclides</h2>
-                    {comparisonList.length > 0 && (
-                        <button 
-                            onClick={() => handleExportToCSV(propertiesToCompare, comparisonList)}
-                            className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2"
-                        >
-                            <Icon path={ICONS.database} className="w-4 h-4" />
-                            Export to CSV
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {comparisonList.length > 1 && (
+                            <button 
+                                onClick={onClearCompare}
+                                // --- THIS IS THE ONLY LINE THAT CHANGED ---
+                                className="px-3 py-2 text-sm bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+                            >
+                                <Icon path={ICONS.clear} className="w-4 h-4" />
+                                Clear All
+                            </button>
+                        )}
+                        {comparisonList.length > 0 && (
+                            <button 
+                                onClick={() => handleExportToCSV(propertiesToCompare, comparisonList)}
+                                className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2"
+                            >
+                                <Icon path={ICONS.database} className="w-4 h-4" />
+                                Export to CSV
+                            </button>
+                        )}
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-2 mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
