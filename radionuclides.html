@@ -320,8 +320,8 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.7';
-        const LAST_UPDATED = 'August 23, 2025';
+        const VERSION = '3.0.8';
+        const LAST_UPDATED = 'August 24, 2025';
 
         /**
          * Data sources used in the application.
@@ -954,10 +954,10 @@ const formatHalfLife = (halfLifeStr, targetUnit) => {
     settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
     stopwatch: "M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.98-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-1.68-.46-3.24-1.25-4.55l.22-.16zm-1.07-1.01A6.995 6.995 0 115.34 19.66 6.995 6.995 0 0117.96 6.38z",
     transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
-    settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" // <-- ADD THIS PATH
+
 };
 
-//==============================================================================
+        //==============================================================================
         // --- GLOBAL SETTINGS & CONTEXT
         //==============================================================================
 
@@ -2534,6 +2534,9 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                     if (!daughterNuclide && selectedNuclide.daughter.toLowerCase().includes('stable')) {
                         const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
                         const A_daughter = 0; 
+
+                        setRemainingActivity(Nt_parent_activity.toPrecision(4)); 
+
                         setResult({
                             parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name },
                             daughter: { value: A_daughter.toFixed(4), name: daughterName, isStable: true }
@@ -3815,7 +3818,7 @@ React.useEffect(() => {
                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
                     else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
                     else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
-                    else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.gamma);
+                    else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
                     else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
                     return sortOrder === 'asc' ? compare : -compare;
                 });
