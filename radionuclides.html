@@ -1215,9 +1215,50 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
     );
 };
 
+/**
+ * @description A reusable modal dialog for confirming user actions.
+ * @param {{isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, children: React.ReactNode}} props
+ */
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
+    if (!isOpen) return null;
 
-
-
+    return (
+        // Backdrop
+        <div 
+            className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
+            onClick={onClose} // Close modal if backdrop is clicked
+        >
+            {/* Modal Panel */}
+            <div 
+                className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
+                onClick={e => e.stopPropagation()} // Prevent click inside from closing modal
+            >
+                <div className="p-6">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        {children}
+                    </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                    >
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
         /**
          * @description A button that copies a given text string to the clipboard and shows a confirmation.
@@ -4166,8 +4207,12 @@ return (
  * Features dynamic highlighting, in-cell data bars, and an integrated
  * percentage difference tag when comparing two nuclides.
  */
+
 const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddToCompare, onRemoveFromCompare, onClearCompare }) => {
     
+    // 1. Add state to manage the modal's visibility
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+
     const sortedNuclides = React.useMemo(() =>
         [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
         [radionuclides]
@@ -4177,6 +4222,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         onAddToCompare(symbol);
     };
     
+    // (This propertiesToCompare array is unchanged)
     const propertiesToCompare = [
         { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
         { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
@@ -4188,7 +4234,8 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         { label: 'Parent', key: 'parent', type: 'categorical' },
         { label: 'Daughter', key: 'daughter', type: 'categorical' },
     ];
-
+    
+    // (This handleExportToCSV function is unchanged)
     const handleExportToCSV = (properties, nuclides) => {
         const headers = ['Property', ...nuclides.map(n => n.name)];
         
@@ -4223,6 +4270,11 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         }
     };
 
+    const handleConfirmClear = () => {
+        onClearCompare();
+        setIsModalOpen(false);
+    };
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-7xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -4231,8 +4283,8 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                     <div className="flex items-center gap-2">
                         {comparisonList.length > 1 && (
                             <button 
-                                onClick={onClearCompare}
-                                // --- THIS IS THE ONLY LINE THAT CHANGED ---
+                                // 2. Update the button to open the modal
+                                onClick={() => setIsModalOpen(true)}
                                 className="px-3 py-2 text-sm bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center gap-2"
                             >
                                 <Icon path={ICONS.clear} className="w-4 h-4" />
@@ -4264,13 +4316,14 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                         <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box or a nuclide's detail card to add to the comparison.</p>
                     </div>
                 ) : (
+                    // (The table structure itself is unchanged)
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[600px] text-left border-collapse">
                             <thead>
                                 <tr>
                                     <th className="sticky left-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold z-10 border-b border-r border-slate-200 dark:border-slate-600">Property</th>
                                     {comparisonList.map(nuclide => (
-                                        <th key={nuclide.symbol} className="p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
+                                        <th key={nuclide.symbol} className="sticky top-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
                                             <div className="flex justify-between items-center">
                                                 <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>{nuclide.name}</span>
                                                 <button onClick={() => onRemoveFromCompare(nuclide.symbol)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
@@ -4343,6 +4396,17 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                     </div>
                 )}
             </div>
+
+            {/* 3. Add the modal component to the JSX */}
+            <ConfirmationModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onConfirm={handleConfirmClear}
+                title="Clear Comparison List"
+            >
+                <p>Are you sure you want to clear the entire comparison list? This action cannot be undone.</p>
+            </ConfirmationModal>
+
         </div>
     );
 };
@@ -5703,16 +5767,22 @@ const WRS_Calculator = () => {
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM WRS Test Calculator</h2>
                 <div className="space-y-4">
                     {/* ... (Input fields are unchanged) ... */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium">Reference Area Data</label>
-                            <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Survey Unit Data</label>
-                            <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                        </div>
-                    </div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+        <label className="block text-sm font-medium">Reference Area Data</label>
+        <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+        <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
+            Samples (n): {parseData(referenceData).length}
+        </p>
+    </div>
+    <div>
+        <label className="block text-sm font-medium">Survey Unit Data</label>
+        <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+        <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
+            Samples (m): {parseData(surveyData).length}
+        </p>
+    </div>
+</div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium">DCGL</label>
@@ -5727,6 +5797,7 @@ const WRS_Calculator = () => {
                                 <option value="0.10">0.10</option>
                             </select>
                         </div>
+                        
                     </div>
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Perform WRS Test</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
