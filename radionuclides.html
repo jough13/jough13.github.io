@@ -320,7 +320,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.0.8';
+        const VERSION = '3.0.9';
         const LAST_UPDATED = 'August 24, 2025';
 
         /**
@@ -1351,16 +1351,14 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
 
 const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection, onNavClick }) => (
     <div className="relative p-4 flex items-center gap-2">
-        {/* --- NEW Home Button --- */}
-<button 
-    onClick={() => onNavClick('home')} 
-    className="hidden md:block p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" 
-    aria-label="Home"
->
-    <Icon path={ICONS.home} className="w-5 h-5" />
-</button>
+        <button 
+            onClick={() => onNavClick('home')} 
+            className="hidden md:block p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" 
+            aria-label="Home"
+        >
+            <Icon path={ICONS.home} className="w-5 h-5" />
+        </button>
 
-        {/* --- Existing Search Input --- */}
         <div className="relative flex-grow">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
@@ -1381,16 +1379,33 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
             )}
         </div>
         {suggestions.length > 0 && (
-            <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {suggestions.map((s, i) => (
-                    <li
-                        key={s.symbol}
-                        className={`p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900' : ''}`}
-                        onClick={() => handleNuclideSelection(s)}
-                    >
-                        {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
-                    </li>
-                ))}
+            <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                {suggestions.map((s, i) => {
+                    const styles = CATEGORY_STYLES[s.category] || CATEGORY_STYLES['default'];
+                    return (
+                        <li
+                            key={s.symbol}
+                            className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''}`}
+                            onClick={() => handleNuclideSelection(s)}
+                        >
+                            {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
+                        </li>
+                    );
+                })}
+                {/* --- THIS IS THE NEW LEGEND FOOTER --- */}
+                <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                        {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
+                            const bgColor = styles.border.replace('border-l-', 'bg-');
+                            return (
+                                <div key={category} className="flex items-center gap-1.5">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </ul>
         )}
     </div>
@@ -1635,7 +1650,6 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
     const ClickableNuclide = ({ text }) => {
         if (!text || !onNuclideClick) return <span>{text}</span>;
         
-        // Find the nuclide name, which is usually the first part of the string
         const nuclideName = text.split('(')[0].trim();
         const foundNuclide = radionuclides.find(n => n.name === nuclideName || n.symbol === nuclideName);
 
@@ -1649,7 +1663,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </button>
             );
         }
-        return <span>{text}</span>; // Return plain text if not found
+        return <span>{text}</span>;
     };
 
     const getSourceLink = (sourceKey) => {
@@ -1657,33 +1671,30 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
         return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
     };
 
-const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
+    const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
         const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
-        // CORRECTED LINE: Check if the displayValue is 'None' before deciding to append the unit
         const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
 
         return (
-            <div className="flex items-start">
+            <div className="flex items-start py-2">
                 {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
                 {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
                 <div>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-
                     <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
                         {(label === 'Parent' || label === 'Daughter') ? <ClickableNuclide text={displayValue} /> : displayValue}
                         {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
                         {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
                     </p>
-
                 </div>
             </div>
         );
     };
 
     if (isCompact) {
+        // ... (The compact card logic remains unchanged)
         const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
         const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
-        
         const compactCardJSX = (
             <div 
                 onClick={() => onNuclideClick(nuclide)} 
@@ -1697,20 +1708,12 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
                     <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
                     <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
                 </div>
-                
                 <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
                     <span>{nuclide.category} - {nuclide.commonality}</span>
                 </div>
             </div>
         );
-
-        return nuclide.commonalityReason ? (
-            <Tooltip text={nuclide.commonalityReason} widthClass="w-96">
-                {compactCardJSX}
-            </Tooltip>
-        ) : (
-            compactCardJSX
-        );
+        return nuclide.commonalityReason ? (<Tooltip text={nuclide.commonalityReason} widthClass="w-96">{compactCardJSX}</Tooltip>) : (compactCardJSX);
     }
 
     const isFavorite = favorites?.includes(nuclide.symbol);
@@ -1718,60 +1721,69 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
 
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
-
+            {/* ... (The main header of the card remains unchanged) ... */}
             <div className="flex justify-between items-start">
-    <div className="flex items-center gap-2">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-                {nuclide.name}
-            </a>
-            ({nuclide.symbol})
-        </h2>
-        
-        {nuclide.commonalityReason ? (
-            <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
-                    {nuclide.category} - {nuclide.commonality}
-                    <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
-                </span>
-            </Tooltip>
-        ) : (
-            <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-                {nuclide.category} - {nuclide.commonality}
-            </span>
-        )}
-    </div>
-    
-    <div className="flex items-center gap-2 mt-1">
-        {toggleFavorite && (
-            <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                </svg>
-            </button>
-        )}
-    </div>
-</div>
-            <div className="grid md:grid-cols-2 gap-6 mt-4">
-                <DataPoint 
-                    label="Half-life"
-                    value={<>
-                        {formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)}
-                        <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
-                    </>}
-                    sourceKey={nuclide.sourceRef?.halfLife}
-                    iconPath={ICONS.hourglass}
-                />
-                <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
-                <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
-                <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
-                
-                <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
-                <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                            {nuclide.name}
+                        </a>
+                        ({nuclide.symbol})
+                    </h2>
+                    {nuclide.commonalityReason ? (
+                        <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
+                                {nuclide.category} - {nuclide.commonality}
+                                <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
+                            </span>
+                        </Tooltip>
+                    ) : (
+                        <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
+                            {nuclide.category} - {nuclide.commonality}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    {toggleFavorite && (
+                        <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        </button>
+                    )}
+                </div>
+            </div>
 
-                {nuclide.gammaConstant && (
-                    <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
-                )}
+            {/* --- THIS IS THE RESTRUCTURED DATA SECTION --- */}
+            <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
+                
+                {/* Section 1: Decay Properties */}
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
+                    <DataPoint 
+                        label="Half-life"
+                        value={<>{formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
+                        sourceKey={nuclide.sourceRef?.halfLife}
+                        iconPath={ICONS.hourglass}
+                    />
+                    <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
+                </div>
+
+                {/* Section 2: Physical Properties */}
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
+                    <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
+                    <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
+                    {nuclide.gammaConstant && (
+                        <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
+                    )}
+                </div>
+
+                {/* Section 3: Genealogy */}
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
+                    <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
+                    <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
+                </div>
+
             </div>
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
@@ -4089,118 +4101,134 @@ return (
 );
         };
      
-	/**
-	 * @description A searchable dropdown component for selecting items from a large list, with tooltips.
-	 */
-	const SearchableSelect = ({ options, onSelect, placeholder }) => {
-	    const [inputValue, setInputValue] = React.useState('');
-	    const [isOpen, setIsOpen] = React.useState(false);
-	    const [activeIndex, setActiveIndex] = React.useState(-1);
-	    const containerRef = React.useRef(null);
-	    const listRef = React.useRef(null);
+/**
+ * @description A searchable dropdown component for selecting items from a large list.
+ */
+const SearchableSelect = ({ options, onSelect, placeholder }) => {
+    const [inputValue, setInputValue] = React.useState('');
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [activeIndex, setActiveIndex] = React.useState(-1);
+    const containerRef = React.useRef(null);
+    const listRef = React.useRef(null);
 
-	    const filteredOptions = React.useMemo(() => {
-	        if (!inputValue) return [];
-	        const normInput = normalizeString(inputValue);
-	        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
-	    
-	        return options
-	            .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
-	            .sort((a, b) => {
-	                const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
-	                const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
-	                if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
-	                const orderA = commonalityOrder[a.commonality] || 0;
-	                const orderB = commonalityOrder[b.commonality] || 0;
-	                if (orderB !== orderA) return orderB - orderA;
-	                return a.name.localeCompare(b.name);
-	            })
-	            .slice(0, 10);
-	    }, [inputValue, options]);
-	    
-	    React.useEffect(() => {
-	        const handleClickOutside = (event) => {
-	            if (containerRef.current && !containerRef.current.contains(event.target)) {
-	                setIsOpen(false);
-	            }
-	        };
-	        document.addEventListener('mousedown', handleClickOutside);
-	        return () => document.removeEventListener('mousedown', handleClickOutside);
-	    }, []);
+    const filteredOptions = React.useMemo(() => {
+        if (!inputValue) return [];
+        const normInput = normalizeString(inputValue);
+        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
     
-	    const handleKeyDown = (e) => {
-	        if (filteredOptions.length === 0) return;
-	        if (e.key === 'ArrowDown') {
-	            e.preventDefault();
-	            setActiveIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
-	        } else if (e.key === 'ArrowUp') {
-	            e.preventDefault();
-	            setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
-	        } else if (e.key === 'Enter') {
-	            if (activeIndex > -1 && filteredOptions[activeIndex]) {
-	                handleSelect(filteredOptions[activeIndex]);
-	            } else if (filteredOptions.length > 0) {
-	                handleSelect(filteredOptions[0]);
-	            }
-	        } else if (e.key === 'Escape') {
-	            setIsOpen(false);
-	        }
-	    };
+        return options
+            .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
+            .sort((a, b) => {
+                const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
+                const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
+                if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+                const orderA = commonalityOrder[a.commonality] || 0;
+                const orderB = commonalityOrder[b.commonality] || 0;
+                if (orderB !== orderA) return orderB - orderA;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, 10);
+    }, [inputValue, options]);
     
-	    React.useEffect(() => {
-	        if (activeIndex !== -1 && listRef.current?.children[activeIndex]) {
-	            listRef.current.children[activeIndex].scrollIntoView({ block: 'nearest' });
-	        }
-	    }, [activeIndex]);
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-	    const handleSelect = (option) => {
-	        onSelect(option.symbol);
-	        setInputValue('');
-	        setIsOpen(false);
-	        setActiveIndex(-1);
-	    };
+    const handleKeyDown = (e) => {
+        if (filteredOptions.length === 0) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
+        } else if (e.key === 'Enter') {
+            if (activeIndex > -1 && filteredOptions[activeIndex]) {
+                handleSelect(filteredOptions[activeIndex]);
+            } else if (filteredOptions.length > 0) {
+                handleSelect(filteredOptions[0]);
+            }
+        } else if (e.key === 'Escape') {
+            setIsOpen(false);
+        }
+    };
 
-	    return (
-	        <div className="relative w-full" ref={containerRef}>
-	            <div className="relative">
-	                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-	                     <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
-	                </div>
-	                <input
-	                    type="text"
-	                    value={inputValue}
-	                    onChange={(e) => {
-	                        setInputValue(e.target.value);
-	                        setIsOpen(true);
-	                        setActiveIndex(-1);
-	                    }}
-	                    onKeyDown={handleKeyDown}
-	                    onFocus={() => { if(inputValue) setIsOpen(true); }}
-	                    placeholder={placeholder}
-	                    className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
-	                    autoComplete="off"
-	                />
-	            </div>
-	            {isOpen && filteredOptions.length > 0 && (
-	                <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
-        	            {filteredOptions.map((option, index) => (
-                            <Tooltip key={option.symbol} text={generateQuickInfoText(option)}>
-                                <li
-	                                onClick={() => handleSelect(option)}
-	                                onMouseEnter={() => setActiveIndex(index)}
-	                                className={`w-full p-3 cursor-pointer text-slate-700 dark:text-slate-200 hover:bg-sky-100 dark:hover:bg-sky-900 ${
-	                                    index === activeIndex ? 'bg-sky-100 dark:bg-sky-900' : ''
-	                                }`}
-	                            >
-	                                {option.name} ({option.symbol})
-	                            </li>
-                            </Tooltip>
-	                    ))}
-	                </ul>
-	            )}
-	        </div>
-	    );
-	};
+    React.useEffect(() => {
+        if (activeIndex !== -1 && listRef.current?.children[activeIndex]) {
+            listRef.current.children[activeIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }, [activeIndex]);
+
+    const handleSelect = (option) => {
+        onSelect(option.symbol);
+        setInputValue('');
+        setIsOpen(false);
+        setActiveIndex(-1);
+    };
+
+    return (
+        <div className="relative w-full" ref={containerRef}>
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                     <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+                </div>
+                <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => {
+                        setInputValue(e.target.value);
+                        setIsOpen(true);
+                        setActiveIndex(-1);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => { if(inputValue) setIsOpen(true); }}
+                    placeholder={placeholder}
+                    className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    autoComplete="off"
+                />
+            </div>
+            {isOpen && filteredOptions.length > 0 && (
+                <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-72 overflow-y-auto">
+                    {filteredOptions.map((option, index) => {
+                        const styles = CATEGORY_STYLES[option.category] || CATEGORY_STYLES['default'];
+                        return (
+                            // --- THIS IS THE MODIFIED PART (TOOLTIP REMOVED) ---
+                            <li
+                                key={option.symbol}
+                                onClick={() => handleSelect(option)}
+                                onMouseEnter={() => setActiveIndex(index)}
+                                className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${
+                                    index === activeIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''
+                                }`}
+                            >
+                                {option.name} ({option.symbol})
+                            </li>
+                        )
+                    })}
+                    <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                            {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
+                                const bgColor = styles.border.replace('border-l-', 'bg-');
+                                return (
+                                    <div key={category} className="flex items-center gap-1.5">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </ul>
+            )}
+        </div>
+    );
+};
 
 /**
  * @description An advanced view for comparing multiple radionuclides side-by-side.
