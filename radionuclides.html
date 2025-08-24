@@ -1262,7 +1262,7 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
             </Tooltip>
         </div>
 
-        <h1 className="text-xl md:text-3xl font-bold text-center text-gray-800">Health Physics Toolbox</h1>
+        <h1 className="text-xl md:text-3xl font-bold text-center text-gray-800 dark:text-slate-100">Health Physics Toolbox</h1>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
             Version: {VERSION} | Last Updated: {LAST_UPDATED}
@@ -1499,7 +1499,6 @@ const MainNav = ({ activeView, onNavClick }) => {
 
 const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
     
-    // This logic to find the full nuclide objects is already perfect
     const favoriteNuclides = React.useMemo(() => 
         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [favorites, radionuclides]
@@ -1518,22 +1517,7 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 </div>
             )}
 
-            {/* --- Suggestions Card (Unchanged) --- */}
-            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
-                <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
-                <div className="flex flex-wrap justify-center gap-3">
-                    {randomSuggestions.map(n => (
-                        <button 
-                            key={n.symbol} 
-                            onClick={() => handleNuclideSelection(n)} 
-                            className="px-4 py-2 bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-sm font-semibold rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
-                            {n.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* --- Favorites Card (Updated) --- */}
+            {/* --- Section 1: Favorites (Moved to top) --- */}
             {favoriteNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -1542,7 +1526,6 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                             Clear Favorites
                         </button>
                     </div>
-                    {/* THIS IS THE MAIN CHANGE: We now render a grid of NuclideCards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {favoriteNuclides.map(n => (
                             <NuclideCard 
@@ -1556,7 +1539,7 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 </div>
             )}
         
-            {/* --- Recent Searches Card (Updated) --- */}
+            {/* --- Section 2: Recent Searches (Moved to middle) --- */}
             {searchHistoryNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -1565,7 +1548,6 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                             Clear History
                         </button>
                     </div>
-                    {/* THIS IS THE MAIN CHANGE: We now render a grid of NuclideCards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {searchHistoryNuclides.map(n => (
                             <NuclideCard 
@@ -1578,6 +1560,21 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                     </div>
                 </div>
             )}
+
+            {/* --- Section 3: Suggestions (Moved to bottom) --- */}
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
+                <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {randomSuggestions.map(n => (
+                        <NuclideCard 
+                            key={n.symbol} 
+                            nuclide={n} 
+                            isCompact={true} 
+                            onNuclideClick={handleNuclideSelection} 
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };
@@ -3677,6 +3674,14 @@ const App = () => {
              const scrollPositionRef = React.useRef(0);
 
             const inputRef = React.useRef(null);
+
+            React.useEffect(() => {
+    // If we are on the main home screen (not showing a result card)
+    if (activeView === 'home' && !result) {
+        inputRef.current?.focus(); // Focus the search bar
+    }
+}, [activeView, result]); // Re-run this check whenever the view or result changes
+
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
 
