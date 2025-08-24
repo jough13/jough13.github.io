@@ -1592,8 +1592,6 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
          */
 
 
-
-
 const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
     const ClickableNuclide = ({ text }) => {
@@ -1684,30 +1682,40 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
 
             <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-                            {nuclide.name}
-                        </a>
-                        ({nuclide.symbol})
-                    </h2>
-                    <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-                        {nuclide.category} - {nuclide.commonality}
-                    </span>
-                </div>
-                
-                <div className="flex items-center gap-2 mt-1">
+    <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+            <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                {nuclide.name}
+            </a>
+            ({nuclide.symbol})
+        </h2>
+        
+        {nuclide.commonalityReason ? (
+            <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
+                    {nuclide.category} - {nuclide.commonality}
+                    <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
+                </span>
+            </Tooltip>
+        ) : (
+            <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
+                {nuclide.category} - {nuclide.commonality}
+            </span>
+        )}
+    </div>
+    
+    <div className="flex items-center gap-2 mt-1">
+        {toggleFavorite && (
+            <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                </svg>
+            </button>
+        )}
+    </div>
+</div>
 
 
-                    {toggleFavorite && (
-                        <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
-                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                            </svg>
-                        </button>
-                    )}
-                </div>
-            </div>
             <div className="grid md:grid-cols-2 gap-6 mt-4">
                 <DataPoint 
                     label="Half-life"
@@ -4015,7 +4023,7 @@ return (
 </footer>
             <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
         </div>
-        
+        <BackToTopButton />
     </div>
 );
         };
