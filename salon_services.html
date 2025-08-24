@@ -48,6 +48,15 @@
             overflow: hidden;
         }
         
+        /* ======================================================================== */
+        /* === CHANGE #1: Added class to prevent "flicker" on initial load ====== */
+        /* ======================================================================== */
+        .content-hidden .container {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        
         body.placing-note { cursor: crosshair; }
         
         .container {
@@ -61,6 +70,8 @@
             display: flex;
             flex-direction: column;
             height: calc(100vh - 4rem);
+            opacity: 1;
+            visibility: visible;
         }
         
         .main-controls, footer { flex-shrink: 0; }
@@ -306,7 +317,7 @@
         }
     </style>
 </head>
-<body>
+<body class="content-hidden">
     <div id="modal-backdrop" class="modal-backdrop"></div>
     <div class="container">
         
@@ -527,9 +538,6 @@
             updateDisplay();
         };
 
-        // ========================================================================
-        // === CHANGE #2: ADDED a new function to show the generic edit modal =====
-        // ========================================================================
         const showEditValueModal = ({ title, currentValue, inputType = 'text', onSave }) => {
             const popup = document.getElementById('edit-value-popup');
             const titleEl = document.getElementById('edit-value-title');
@@ -576,7 +584,7 @@
             setTimeout(() => {
                 inputEl.focus();
                 inputEl.select();
-            }, 50); // Small delay to ensure focus works after modal transition
+            }, 50);
         };
 
         const showNoteEntryPopup = (row, col) => {
@@ -1088,9 +1096,6 @@
                     showServiceDetailsModal(colIndex);
                 }, 250);
             
-            // ========================================================================
-            // === CHANGE #3: REWRITING the logic to use the new modal pop-up =======
-            // ========================================================================
             } else if (target.matches('.editable.level-text')) {
                 event.preventDefault();
                 let stylistIndex;
@@ -1239,6 +1244,11 @@
         applyTheme(localStorage.getItem(THEME_KEY) || 'light');
         loadInitialData();
         window.addEventListener('resize', debounce(updateDisplay, 250));
+        
+        // ========================================================================
+        // === CHANGE #3: Remove the hidden class to show content smoothly ======
+        // ========================================================================
+        document.body.classList.remove('content-hidden');
     });
 </script>
 </body>
