@@ -2815,6 +2815,10 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [chartData, setChartData] = React.useState(null);
     const [error, setError] = React.useState('');
 
+    const timeUnits = longTimeUnits_ordered; // Corrected line
+    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+    
+    // ... (rest of the component remains the same)
     const sortedRadionuclides = React.useMemo(() => {
         const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
         return [...radionuclides]
@@ -2871,7 +2875,7 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
             return;
         }
         
-        const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
         setError('');
         setResult(null);
         setChartData(null);
@@ -4746,6 +4750,34 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     ) : (
                         <SearchableSelect options={availableNuclides} onSelect={(symbol) => { setNuclideSymbol(symbol); }} placeholder={`Select ${calcMode === 'internal' ? 'an' : 'a'} ${calcMode} emitter...`} />
                     )}
+                    
+                    {/* NEW SECTION: Displays ALI/DAC values if available */}
+                    {selectedNuclide?.dosimetry && (
+                        <div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs">
+                             <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                10 CFR 20 Appendix B Values:
+                             </h4>
+                             <ul className="list-disc list-inside space-y-1">
+                                {Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (
+                                    <li key={key}>
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                                            ALI ({key.replace('inhalation_', 'Inh. ')}): 
+                                        </span>
+                                        <span className="text-slate-700 dark:text-slate-200">{val} µCi</span>
+                                    </li>
+                                ))}
+                                {Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (
+                                    <li key={key}>
+                                        <span className="font-medium text-slate-700 dark:text-slate-200">
+                                            DAC ({key.replace('inhalation_', 'Inh. ')}):
+                                        </span>
+                                        <span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span>
+                                    </li>
+                                ))}
+                             </ul>
+                        </div>
+                    )}
+
 
                     { (calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
                         <div className="space-y-3 animate-fade-in">
