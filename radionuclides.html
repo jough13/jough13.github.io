@@ -463,7 +463,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.0';
+        const VERSION = '3.1.1';
         const LAST_UPDATED = 'August 24, 2025';
 
         /**
@@ -1307,47 +1307,57 @@ const CATEGORY_STYLES = {
         };
 
 const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
-    // State to manage visibility and position
-    const [show, setShow] = React.useState(false);
-    const [coords, setCoords] = React.useState({ x: 0, y: 0 });
-    // A ref to get the position of the element that triggers the tooltip
+    // State now manages visibility, coordinates, and position ('top' or 'bottom')
+    const [tooltipState, setTooltipState] = React.useState({
+        show: false,
+        x: 0,
+        y: 0,
+        position: 'bottom'
+    });
     const triggerRef = React.useRef(null);
 
     const handleMouseEnter = () => {
         if (triggerRef.current) {
             const rect = triggerRef.current.getBoundingClientRect();
-            // Calculate position: center of the trigger, just below it
-            // We use rect.bottom which is relative to the viewport
-            setCoords({
-                left: rect.left + rect.width / 2,
-                top: rect.bottom, // The corrected line: use rect.bottom, not rect.bottom + window.scrollY
+            
+            // --- NEW LOGIC ---
+            // Check if the element is in the bottom half of the viewport
+            const position = rect.top > window.innerHeight / 2 ? 'top' : 'bottom';
+
+            setTooltipState({
+                show: true,
+                x: rect.left + rect.width / 2, // Center horizontally
+                y: position === 'bottom' ? rect.bottom : rect.top, // Anchor to bottom or top edge
+                position: position
             });
-            setShow(true);
         }
     };
 
     const handleMouseLeave = () => {
-        setShow(false);
+        // Only update the 'show' property to allow a fade-out animation
+        setTooltipState(prev => ({ ...prev, show: false }));
     };
 
-    // This is the actual tooltip content that will be "teleported"
-    const tooltipElement = show && (
+    // Conditionally set CSS classes based on whether the tooltip should be above or below
+    const positionClasses = tooltipState.position === 'bottom'
+        ? 'translate-y-2' // Pushes it down from the anchor point
+        : '-translate-y-full -translate-y-2'; // Pushes it fully up, plus an 8px margin
+
+    const tooltipElement = tooltipState.show && (
         ReactDOM.createPortal(
             <div
-                style={{ top: coords.top, left: coords.left }}
-                // We use translate to center the tooltip and push it down slightly
-                className={`fixed top-0 left-0 -translate-x-1/2 translate-y-2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg z-50 transition-opacity duration-300 pointer-events-none ${widthClass} ${show ? 'opacity-100' : 'opacity-0'}`}
+                style={{ top: tooltipState.y, left: tooltipState.x }}
+                // The -translate-x-1/2 centers it, positionClasses handles vertical placement
+                className={`fixed top-0 left-0 -translate-x-1/2 p-2 text-xs text-white bg-slate-800 dark:bg-slate-900 rounded-md shadow-lg z-50 transition-opacity duration-300 pointer-events-none ${widthClass} ${tooltipState.show ? 'opacity-100' : 'opacity-0'} ${positionClasses}`}
             >
                 {text}
             </div>,
-            // Teleport destination: the main body of the document
             document.body
         )
     );
 
     return (
         <>
-            {/* This adds our mouse events and ref to the child element (the button or span) */}
             {React.cloneElement(children, {
                 ref: triggerRef,
                 onMouseEnter: handleMouseEnter,
@@ -1357,6 +1367,7 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
         </>
     );
 };
+
 
 /**
  * @description A reusable modal dialog for confirming user actions.
@@ -1805,7 +1816,20 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                     if (foundNuclide) {
                         return ( <button key={index} onClick={() => onNuclideClick(foundNuclide)} className="text-sky-500 hover:underline font-semibold">{part}</button> );
                     } else {
-                        return <span key={index}>{part}</span>;
+    
+                        // If the part isn't a clickable nuclide, show it as plain text.
+    
+                        // ADDED: Check if the reason it's not clickable is because it's stable.
+    
+                        const isStable = text.toLowerCase().includes('stable') || radionuclides.find(n => n.name === nuclideName)?.halfLife === 'Stable';
+    
+                        return (
+    
+                        <span key={index}>
+                            {part}
+                            {isStable && <span className="text-xs font-medium text-slate-400 dark:text-slate-500 ml-1">(Stable)</span>}
+                            </span>
+                        );
                     }
                 })}
             </>
@@ -2058,15 +2082,21 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
          * @param {{seriesId: string, onBack: () => void, onNuclideClick: (nuclide: object) => void}} props - The series ID and navigation handlers.
          */
 
+/**
+         * @description Displays a full decay series chain in a graphical, horizontal format.
+         * @param {{seriesId: string, onBack: () => void, onNuclideClick: (nuclide: object) => void}} props - The series ID and navigation handlers.
+         */
 	    const DecaySeriesViewer = ({ seriesId, onBack, onNuclideClick }) => {
             const series = decaySeriesData.find(s => s.id === seriesId);
             if (!series) return <p>Decay series not found.</p>;
 
-            // Reusable internal components
+            // --- INTERNAL COMPONENTS FOR THE DIAGRAM ---
+
+            // A single nuclide in the chain
             const NuclideNode = ({ step }) => (
-                <div className="p-3 my-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-center shadow flex-shrink-0">
+                <div className="p-3 my-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-center shadow flex-shrink-0 border border-slate-200 dark:border-slate-600">
                     <span
-                        className="font-bold text-sky-600 dark:text-sky-400 cursor-pointer hover:underline"
+                        className="font-bold text-lg text-sky-600 dark:text-sky-400 cursor-pointer hover:underline"
                         onClick={() => {
                             const found = radionuclides.find(n => normalizeString(n.name) === normalizeString(step.nuclide));
                             if (found) onNuclideClick(found);
@@ -2078,34 +2108,40 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </div>
             );
 
+            // An arrow representing a decay step
             const DecayArrow = ({ decayType }) => (
-                <div className="flex-grow flex items-center justify-center relative mx-2 h-12">
-                    <div className="absolute left-0 top-1/2 w-full h-0.5 bg-slate-300 dark:bg-slate-600"></div>
-                    <div className="relative bg-white dark:bg-slate-800 px-2 text-center">
-                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{decayType}</span>
-                        <span className="text-slate-400 block -mt-1">&rarr;</span>
+                <div className="flex-shrink-0 flex items-center justify-center relative mx-2 w-40 text-center">
+                    {/* The horizontal line of the arrow */}
+                    <div className="absolute left-0 w-full h-0.5 bg-slate-300 dark:bg-slate-600"></div>
+                    {/* Arrowhead */}
+                    <div className="absolute right-0 w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[8px] border-l-slate-400 dark:border-l-slate-500"></div>
+                    {/* Text label floating above the line */}
+                    <div className="relative bg-white dark:bg-slate-800 px-2">
+                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{decayType}</span>
                     </div>
                 </div>
             );
             
-            // Recursive component to render a chain or sub-chain
+            // Recursive component that renders a chain or a sub-chain horizontally
             const RenderChain = ({ chain }) => (
-                <>
+                <div className="flex items-center">
                     {chain.map((step, index) => (
-                        <div key={step.nuclide + index} className="flex flex-col items-center">
+                        <div key={step.nuclide + index} className="flex items-center">
                             <NuclideNode step={step} />
                             
-                            {/* If the step has branches, render them side-by-side */}
+                            {/* If the step has branches, render them vertically stacked */}
                             {step.branches && (
-                                <div className="flex justify-around w-full border-l border-r border-slate-300 dark:border-slate-600 rounded-b-lg">
-                                    {step.branches.map((branch, branchIndex) => (
-                                        <div key={branchIndex} className="flex flex-col items-center p-2">
-                                            {/* Extract decay type for this specific branch */}
-                                            <DecayArrow decayType={step.decayType.split('/')[branchIndex]?.trim() || ''} />
-                                            <RenderChain chain={branch} />
-                                        </div>
-                                    ))}
-                                </div>
+                                <>
+                                    <DecayArrow decayType="" />
+                                    <div className="flex flex-col">
+                                        {step.branches.map((branch, branchIndex) => (
+                                            <div key={branchIndex} className="flex items-center p-2">
+                                                <DecayArrow decayType={step.decayType.split('/')[branchIndex]?.trim() || ''} />
+                                                <RenderChain chain={branch} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
                             )}
                             
                             {/* If it's a linear step, render the arrow to the next step */}
@@ -2114,16 +2150,19 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                             )}
                         </div>
                     ))}
-                </>
+                </div>
             );
+
+            // --- MAIN COMPONENT RENDER ---
 
             return (
                 <div className="p-4 animate-fade-in">
                     <button onClick={onBack} className="mb-4 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition">&larr; Back to Result</button>
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">{series.name}</h2>
+                        {/* Container that allows horizontal scrolling for long chains */}
                         <div className="overflow-x-auto pb-4">
-                           <div className="inline-block min-w-full">
+                           <div className="inline-block min-w-full p-2">
                                 <RenderChain chain={series.chain} />
                            </div>
                         </div>
@@ -3076,10 +3115,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Source Activity</label>
-                        <div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(activityFactorsTBq).map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-                    </div>
+
+
 
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Package Type</button>
                     
@@ -3947,11 +3984,12 @@ const App = () => {
             const inputRef = React.useRef(null);
 
             React.useEffect(() => {
-    // If we are on the main home screen (not showing a result card)
-    if (activeView === 'home' && !result) {
-        inputRef.current?.focus(); // Focus the search bar
-    }
-}, [activeView, result]); // Re-run this check whenever the view or result changes
+              // This effect runs only once after the initial render.
+              const initialHash = window.location.hash.replace('#', '');
+              if (initialHash === 'home' || initialHash === '') {
+                inputRef.current?.focus();
+              }
+            }, []); // Empty dependency array means this runs only on mount.
 
             const suggestionsRef = React.useRef(null);
             const { addToast } = useToast();
@@ -3968,11 +4006,23 @@ const scrollToMainContent = () => {
     }
 };
 
+const handleClearSearch = () => {
+                setNuclideName('');
+                setSuggestions([]);
+                setResult(null);
+                inputRef.current?.focus(); // Re-focus the input after clearing
+            };
+
 const handleNavClick = (view) => {
     // This function now simply changes the URL hash.
-    // The useEffect hook from Step 1 will detect this change and update the view.
     window.location.hash = view;
     scrollToMainContent();
+
+    // If navigating to the main home view, explicitly blur the search input
+    // to prevent the keyboard from opening on mobile devices.
+    if (view === 'home') {
+        inputRef.current?.blur();
+    }
 };
 
 const handleSendToCalculator = (viewId, nuclideSymbol) => {
@@ -4275,8 +4325,8 @@ return (
             
             <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
 
-                <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={() => { setNuclideName(''); setSuggestions([]); setResult(null); }} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-            
+                <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
+
                 <MainNav activeView={activeView} onNavClick={handleNavClick} />
             
             <main ref={mainContentRef} className="min-h-[400px]">
@@ -4303,6 +4353,7 @@ return (
 /**
  * @description A searchable dropdown component for selecting items from a large list.
  */
+
 const SearchableSelect = ({ options, onSelect, placeholder }) => {
     const [inputValue, setInputValue] = React.useState('');
     const [isOpen, setIsOpen] = React.useState(false);
@@ -4371,6 +4422,13 @@ const SearchableSelect = ({ options, onSelect, placeholder }) => {
         setActiveIndex(-1);
     };
 
+    // --- NEW: A handler to clear the input text ---
+    const handleClear = () => {
+        setInputValue('');
+        setIsOpen(false);
+        setActiveIndex(-1);
+    };
+
     return (
         <div className="relative w-full" ref={containerRef}>
             <div className="relative">
@@ -4391,13 +4449,21 @@ const SearchableSelect = ({ options, onSelect, placeholder }) => {
                     className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
                     autoComplete="off"
                 />
+                {/* --- NEW: The conditional clear button --- */}
+                {inputValue && (
+                    <button 
+                        onClick={handleClear} 
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none"
+                    >
+                        <Icon path={ICONS.clear} className="w-5 h-5" />
+                    </button>
+                )}
             </div>
             {isOpen && filteredOptions.length > 0 && (
                 <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-72 overflow-y-auto">
                     {filteredOptions.map((option, index) => {
                         const styles = CATEGORY_STYLES[option.category] || CATEGORY_STYLES['default'];
                         return (
-                            // --- THIS IS THE MODIFIED PART (TOOLTIP REMOVED) ---
                             <li
                                 key={option.symbol}
                                 onClick={() => handleSelect(option)}
@@ -4656,6 +4722,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     
     // ADDED: 'internal' as a new mode. Default to gamma.
     const [calcMode, setCalcMode] = React.useState('gamma');
+
+    
     
     // State for External Dose modes
     const [geometryMode, setGeometryMode] = React.useState('point');
@@ -4741,25 +4809,91 @@ const handleCalculate = () => {
         const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
 
         switch (calcMode) {
-            case 'gamma': {
-                if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
-                if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
-                
-                const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
-                const activityInCi = activityValue * activityFactorsCi[activityUnit];
-                const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-                let doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-                
-                setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
-                break;
+        
+        case 'gamma': {
+    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+    if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
+    
+    const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+    const activityConcentrationInCi = activityValue * activityFactorsCi[activityUnit];
+    const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+    let doseRateR_hr = 0;
+
+    switch (geometryMode) {
+        case 'point':
+            // No change for point source, input is total activity
+            // Formula: Ḋ = (Γ * A) / d²
+            doseRateR_hr = (gammaConstant * activityConcentrationInCi) / Math.pow(distanceInM, 2);
+            break;
+        
+        case 'line':
+            const len_val = parseFloat(lineLength);
+            if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
+            const len_m = len_val * distanceFactorsM[lineLengthUnit];
+            
+            // CHANGED: Calculate total activity from linear concentration
+            const totalActivityCi_line = activityConcentrationInCi * len_m;
+            
+            // Formula: Ḋ = (2 * Γ * A_total / (L*d)) * atan(L / (2*d))
+            doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
+            break;
+
+        case 'area':
+            const rad_val = parseFloat(diskRadius);
+            if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
+            const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
+
+            // CHANGED: Convert input areal concentration to Ci/m²
+            const area_m2_of_unit = Math.pow(distanceFactorsM[diskRadiusUnit], 2);
+            const arealActivityCi_m2 = activityConcentrationInCi / area_m2_of_unit;
+            
+            // Formula: Ḋ = π * Γ * Cₐ * ln(1 + r²/h²)
+            doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
+            break;
+    }
+    
+    setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
+    break;
+
             }
-            case 'beta': {
-                const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
-                if (!E_max) throw new Error("Nuclide is not a significant beta emitter.");
-                // Note: The original simple message is kept here. A full beta dose model is more complex.
-                setResult({ type: 'beta', mrem_hr: 'N/A', note: `Beta Eₘₐₓ is ${E_max} MeV. Use specific beta dose rate models for accurate results.` });
-                break;
-            }
+case 'beta': {
+    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+    if (!selectedNuclide.avgBetaEnergy) {
+        throw new Error(`This calculator requires an Average Beta Energy (Eₐᵥ₉), which is not available for ${selectedNuclide.name}.`);
+    }
+
+    const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+    const E_avg = parseFloat(selectedNuclide.avgBetaEnergy);
+    const activityInCi = activityValue * activityFactorsCi[activityUnit];
+    const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
+
+    // --- Calculate Beta Range in Air ---
+    let range_m;
+    if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } 
+    else {
+        const range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
+        range_m = (range_mg_cm2 / 1.225) / 100;
+    }
+    const range_cm = range_m * 100;
+
+    // --- Calculate Dose Rate ---
+    let doseRate_mrad_hr = 0;
+    if (distance_cm < range_cm) {
+        // This formula provides an estimate of skin dose rate in rad/hr
+        const doseRate_rad_hr = (200 * activityInCi * E_avg) / Math.pow(distance_cm, 2);
+        doseRate_mrad_hr = doseRate_rad_hr * 1000;
+    }
+    
+    setResult({ 
+        type: 'beta', 
+        doseRate_mrad_hr: doseRate_mrad_hr.toPrecision(3),
+        e_max: E_max,
+        isBeyondRange: distance_cm >= range_cm,
+        range_m: range_m.toPrecision(2),
+        range_ft: (range_m * 3.28084).toPrecision(2)
+    });
+    break;
+}
 
             // --- ADDED: Bremsstrahlung calculation logic ---
             case 'bremsstrahlung': {
@@ -4835,14 +4969,96 @@ const handleCalculate = () => {
 )}
 
                     {/* --- UI for External Dose Modes --- */}
-                    {(calcMode === 'gamma' || calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
-                        <div className="space-y-3 animate-fade-in">
-                             <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1/37, 'MBq': 1/37000, 'Bq': 1/3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                             <div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        </div>
-                    )}
                     
-                    {/* --- ADDED: UI for Internal Dose Mode --- */}
+{(calcMode === 'gamma') && (
+    <div className="space-y-3 animate-fade-in">
+        
+        {/* Geometry Selector */}
+        <div>
+            <label className="block text-sm font-medium">Source Geometry</label>
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1">
+                <button onClick={() => setGeometryMode('point')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === 'point' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Point</button>
+                <button onClick={() => setGeometryMode('line')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === 'line' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Line</button>
+                <button onClick={() => setGeometryMode('area')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === 'area' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Area (Disk)</button>
+            </div>
+        </div>
+
+{/* DYNAMIC ACTIVITY/CONCENTRATION INPUT */}
+<div>
+    <label className="block text-sm font-medium">
+        {/* Main Label Text Changes Based on Geometry */}
+        <span>
+            {
+                {
+                    point: 'Source Activity',
+                    line: 'Linear Activity Concentration',
+                    area: 'Areal Activity Concentration'
+                }[geometryMode]
+            }
+        </span>
+        {/* Dynamic Units Display in a smaller font */}
+        <span className="text-xs text-slate-400 ml-2">
+            (
+            {activityUnit}
+            {geometryMode === 'line' && `/${lineLengthUnit}`}
+            {geometryMode === 'area' && <>/{diskRadiusUnit}<sup>2</sup></>}
+            )
+        </span>
+    </label>
+    <div className="flex">
+        <input 
+            type="number" 
+            value={activity} 
+            onChange={e => setActivity(e.target.value)} 
+            className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"
+        />
+        <select 
+            value={activityUnit} 
+            onChange={e => setActivityUnit(e.target.value)} 
+            className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"
+        >
+            {Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+    </div>
+</div>
+        <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        
+        <div><label className="block text-sm font-medium">{geometryMode === 'point' ? 'Distance to Source' : 'Perpendicular Distance'}</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+
+        {geometryMode === 'line' && (
+            <div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        )}
+
+        {geometryMode === 'area' && (
+            <div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        )}
+    </div>
+)}
+
+{/* --- This part for beta/bremsstrahlung remains separate --- */}
+{(calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
+    <div className="space-y-3 animate-fade-in">
+        <div><label className="block text-sm font-m
+            edium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        
+            <div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        
+        {calcMode === 'bremsstrahlung' && (
+           <div>
+               <label className="block text-sm font-medium">Shield Material</label>
+               <select 
+                   value={shieldMaterial} 
+                   onChange={e => setShieldMaterial(e.target.value)} 
+                   className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
+               >
+                   {Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}
+               </select>
+           </div>
+        )}
+    </div>
+)}
+                    
+                    {/* --- UI for Internal Dose Mode --- */}
                     {calcMode === 'internal' && (
                         <div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <div className="grid grid-cols-2 gap-4">
@@ -4868,8 +5084,37 @@ const handleCalculate = () => {
             <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.cede_mrem} mrem</p>
             <p className="text-lg font-medium text-slate-600 dark:text-slate-300">({result.cede_mSv} mSv)</p>
        </>}
-       {result.type === 'beta' && <p className="text-sm text-slate-600 dark:text-slate-300">{result.note}</p>}
-       
+
+{result.type === 'beta' && (
+    <>
+        <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Estimated Beta Dose Rate (Skin)</p>
+        
+        {result.isBeyondRange ? (
+            <p className="text-xl font-bold text-slate-600 dark:text-slate-300 my-1">
+                0 mrad/hr
+            </p>
+        ) : (
+            <>
+                <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
+                    {result.doseRate_mrad_hr} mrad/hr
+                </p>
+                <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
+                    ({(result.doseRate_mrad_hr / 100).toPrecision(3)} µSv/hr)
+                </p>
+            </>
+        )}
+        
+        <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
+            {result.isBeyondRange && (
+                <p className="font-semibold text-amber-600 dark:text-amber-400">
+                    Distance is beyond the beta's maximum range in air.
+                </p>
+            )}
+            <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+            <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
+        </div>
+    </>
+)}
        {result.type === 'bremsstrahlung' && <>
             <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Bremsstrahlung Dose Rate</p>
             <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.doseRate} mrem/hr</p>
@@ -5908,12 +6153,6 @@ const MARSSIM_SampleCalculator = () => {
     );
 };
 
-
-
-
-
-
-
 /**
  * @description A calculator that performs the MARSSIM Wilcoxon Rank Sum (WRS) test
  * to compare a survey unit to a reference area, with large sample approximation and EMC logic.
@@ -6113,13 +6352,7 @@ const WRS_Calculator = () => {
     );
 };
 
-
-/**
- * @description A calculator that performs the MARSSIM Sign Test for an
- * Elevated Measurement Comparison (EMC) area.
- */
-
-/**
+/*
 * @description A calculator that performs the MARSSIM Sign Test for an
 * Elevated Measurement Comparison (EMC) area.
 */
