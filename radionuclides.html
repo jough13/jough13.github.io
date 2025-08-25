@@ -936,7 +936,7 @@ const SHIELDING_MATERIALS = {
                                 // This case leads to a t*e^(-lambda*t) term, which complicates the solution structure.
                                 // For simplicity and to avoid a full rewrite, we'll approximate by introducing a tiny difference.
                                 // This is a common numerical stability trick.
-                                term.lambda *= (1 + 1e-9);
+                                term.lambda *= (1 + 1e-10);
                             }
 
                             const coeff = C / (nuclide.lambda - term.lambda);
@@ -968,7 +968,6 @@ const SHIELDING_MATERIALS = {
             return finalActivities;
         };
 
-
 	/**
          * Flattens a potentially nested decay chain into a simple, unique list of nuclides
          * for the Bateman calculator.
@@ -995,8 +994,6 @@ const SHIELDING_MATERIALS = {
             recurse(chain);
             return flatChain;
         };
-
-
 
         /**
          * Parses a half-life string (e.g., "1600 years") into a total number of seconds.
@@ -1553,7 +1550,6 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
         </>
     );
 };
-
 
 /**
  * @description A reusable modal dialog for confirming user actions.
@@ -3998,7 +3994,6 @@ const handleNuclideSelection = (nuclide) => {
     setResult(nuclide);
     setSuggestions([]);
     setErrorMessage('');
-    setPreviousView(activeView); 
     window.location.hash = 'home'; // Changed this line
     setCurrentDecaySeriesId(null);
     setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
@@ -4128,8 +4123,7 @@ const renderActiveView = () => {
                         showBackButton={previousView === 'database' || previousView === 'home'}
                         
 onBackClick={() => {
-    window.location.hash = previousView || 'home';
-    // The useEffect hook now handles resetting the result for you!
+    window.history.back(); // This navigates to the previous URL hash
 }}
                     />
                 </div>;
@@ -4641,23 +4635,26 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
                             break;
                         }
-                        case 'line': {
-                            const len_val = parseFloat(lineLength);
-                            if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
-                            const len_m = len_val * distanceFactorsM[lineLengthUnit];
-                            const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
-                            const totalActivityCi_line = linearActivityCi_per_m * len_m;
-                            doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
-                            break;
-                        }
-                        case 'area': {
-                            const rad_val = parseFloat(diskRadius);
-                            if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
-                            const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
-                            const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
-                            doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
-                            break;
-                        }
+                case 'line': {
+                    const len_val = parseFloat(lineLength);
+                    if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
+                    const len_m = len_val * distanceFactorsM[lineLengthUnit];
+                    const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
+                    
+                    // The correct formula for a line source
+                    doseRateR_hr = ((2 * gammaConstant * linearActivityCi_per_m) / distanceInM) * Math.atan(len_m / (2 * distanceInM));
+                    break;
+                }
+                    case 'area': {
+                    const rad_val = parseFloat(diskRadius);
+                    if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
+                    const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
+                    const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
+                    
+                    // The correct formula for an area source
+                    doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + Math.pow(rad_m / distanceInM, 2));
+                    break;
+                }
                     }
                     const doseRate_mrem_hr = doseRateR_hr * 1000;
                     setResult({ type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') });
@@ -4839,24 +4836,84 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 </div>
                             </div>
                             {geometryMode === 'point' && (
-                                <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div>
+                                    <label className="block text-sm font-medium">Source Activity</label>
+                                    <div className="flex">
+                                        <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                            {activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
                             )}
                             {geometryMode === 'line' && (
-                                <div><label className="block text-sm font-medium">Linear Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div>
+                                    <label className="block text-sm font-medium">Linear Activity Concentration</label>
+                                    <div className="flex">
+                                        <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                        <select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                            {linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
                             )}
                             {geometryMode === 'area' && (
-                                <div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setArealActivityUnit(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div>
+                                    <label className="block text-sm font-medium">Areal Activity Concentration</label>
+                                    <div className="flex">
+                                        <input
+                                            type="number"
+                                            value={activity}
+                                            onChange={e => setActivity(e.target.value)}
+                                            className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"
+                                        />
+                                        <select
+                                            value={arealActivityUnit}
+                                            onChange={e => setArealActivityUnit(e.target.value)}
+                                            className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"
+                                        >
+                                            {arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
                             )}
-                            <div>
-                                <label className="block text-sm font-medium">{geometryMode === 'point' ? 'Distance to Source' : 'Perpendicular Distance'}</label>
-                                <div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-                            </div>
-                            {geometryMode === 'line' && (
-                                <div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            {(geometryMode === 'line' || geometryMode === 'area') && (
+                                <div className="space-y-4">
+                                    {geometryMode === 'line' && (
+                                        <div>
+                                            <label className="block text-sm font-medium">Line Length</label>
+                                            <div className="flex">
+                                                <input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                                <select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                                    {distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {geometryMode === 'area' && (
+                                        <div>
+                                            <label className="block text-sm font-medium">Disk Radius</label>
+                                            <div className="flex">
+                                                <input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                                <select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                                    {distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
-                            {geometryMode === 'area' && (
-                                <div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            )}
+<div>
+    <Tooltip text="Assumes a perpendicular distance from the center of the line source." widthClass="w-72">
+        <label className="block text-sm font-medium">Distance from Center of Source</label>
+    </Tooltip>
+    <div className="flex">
+        <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+        <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+            {distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+    </div>
+</div>
                         </div>
                     )}
                     
@@ -4879,7 +4936,15 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </div>
                                 )}
                             </div>
-                            <div><label className="block text-sm font-medium">Intake Amount</label><div className="flex"><input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div>
+                                <label className="block text-sm font-medium">Intake Amount</label>
+                                <div className="flex">
+                                    <input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                    <select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                        {intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     )}
                 
@@ -5189,10 +5254,7 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const availableMaterials = React.useMemo(() => {
         const nuclideHVLData = HVL_DATA[nuclideSymbol];
-        if (nuclideHVLData) {
-            return Object.keys(nuclideHVLData).filter(key => key !== 'sourceRef');
-        }
-        return ['Lead', 'Concrete', 'Steel']; // Fallback list
+        return nuclideHVLData ? Object.keys(nuclideHVLData).filter(key => key !== 'sourceRef') : [];
     }, [nuclideSymbol]);
 
     React.useEffect(() => {
