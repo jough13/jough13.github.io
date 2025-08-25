@@ -556,7 +556,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.4 (pi)';
+        const VERSION = '3.1.5';
         const LAST_UPDATED = 'August 25, 2025';
 
         /**
@@ -4538,8 +4538,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
      * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
      */
 
-
-     const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { settings } = React.useContext(SettingsContext);
 
     // --- STATE MANAGEMENT ---
@@ -4612,6 +4611,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
     }, [preselectedNuclide, gammaNuclides, betaNuclides]);
 
     React.useEffect(() => {
+        // Correctly reset the solubility class if the route changes to ingestion
         if (calcMode === 'internal' && intakeRoute === 'inhalation' && availableClasses.length > 0) {
             if (!availableClasses.includes(solubility)) {
                 setSolubility(availableClasses[0]);
@@ -4619,7 +4619,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         } else {
             setSolubility('');
         }
-    }, [calcMode, intakeRoute, availableClasses, selectedNuclide]);
+    }, [calcMode, intakeRoute, availableClasses, solubility]);
 
     const handleCalculate = () => {
         if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
@@ -4741,6 +4741,30 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         'bremsstrahlung': 'Bremsstrahlung Dose Rate',
         'internal': 'Committed Effective Dose (CEDE)'
     };
+    
+    // The handler to set a new nuclide
+    const handleNuclideSelect = React.useCallback((symbol) => {
+        // NEW FIX: Ensure solubility is reset to a valid value for the new nuclide.
+        const nuclideToSet = availableNuclides.find(n => n.symbol === symbol);
+        setNuclideSymbol(symbol);
+        
+        if (nuclideToSet && nuclideToSet.dosimetry) {
+            setIntakeRoute('inhalation');
+            const newAvailableClasses = Object.keys(nuclideToSet.dosimetry?.ALI || {})
+                .filter(k => k.startsWith('inhalation_'))
+                .map(k => k.split('_')[1]);
+            
+            if (newAvailableClasses.length > 0) {
+                setSolubility(newAvailableClasses[0]); // Set the first available class as the default
+            } else {
+                setSolubility(''); // Or set to an empty string if no classes exist
+            }
+        } else {
+            setSolubility('');
+            setIntakeRoute('inhalation');
+        }
+        
+    }, [availableNuclides]);
 
     return (
         <div className="p-4 animate-fade-in">
@@ -4757,7 +4781,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                     {selectedNuclide ? (
                         <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} />
                     ) : (
-                        <SearchableSelect options={availableNuclides} onSelect={(symbol) => { setNuclideSymbol(symbol); }} placeholder={`Select ${calcMode === 'internal' ? 'an' : 'a'} ${calcMode} emitter...`} />
+                        <SearchableSelect options={availableNuclides} onSelect={handleNuclideSelect} placeholder={`Select ${calcMode === 'internal' ? 'an' : 'a'} ${calcMode} emitter...`} />
                     )}
                     
                     {/* NEW SECTION: Displays ALI/DAC values if available */}
@@ -4821,7 +4845,7 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                                 <div><label className="block text-sm font-medium">Linear Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             )}
                             {geometryMode === 'area' && (
-                                <div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setArealActivityUnit(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             )}
                             <div>
                                 <label className="block text-sm font-medium">{geometryMode === 'point' ? 'Distance to Source' : 'Perpendicular Distance'}</label>
@@ -4838,9 +4862,22 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                     
                     {calcMode === 'internal' && (
                         <div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-sm font-medium">Intake Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>
-                                {intakeRoute === 'inhalation' && <div><label className="block text-sm font-medium">Solubility Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} disabled={availableClasses.length === 0} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium">Intake Route</label>
+                                    <select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                        <option value="inhalation">Inhalation</option>
+                                        <option value="ingestion">Ingestion</option>
+                                    </select>
+                                </div>
+                                {intakeRoute === 'inhalation' && (
+                                    <div>
+                                        <label className="block text-sm font-medium">Solubility Class</label>
+                                        <select value={solubility} onChange={e => setSolubility(e.target.value)} disabled={availableClasses.length === 0} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                            {availableClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                             <div><label className="block text-sm font-medium">Intake Amount</label><div className="flex"><input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
@@ -5026,13 +5063,13 @@ const EquilibriumCalculator = ({ radionuclides }) => {
         }
     }, [parentNuclide, daughterNuclide, initialActivity, initialDaughterActivity, timeElapsed, timeUnit]);
 
-    const handleParentChange = (symbol) => {
-        const parent = parentNuclides.find(p => p.symbol === symbol);
-        setResult(null);
-        setChartData(null);
-        setError('');
-        setParentNuclide(parent || null);
-    };
+const handleParentChange = (symbol) => {
+    const parent = parentNuclides.find(p => p.symbol === symbol);
+    setResult(null);
+    setChartData(null);
+    setError('');
+    setParentNuclide(parent || null);
+};
 
     return (
         <div className="p-4 animate-fade-in">
@@ -5278,17 +5315,15 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         thicknessUnit, targetDoseRate, targetDoseRateUnit, shieldingNuclides, availableMaterials
     ]);
 
-    const handleHVLModeToggle = (event) => {
-        setUseManualHVL(event.target.checked);
-        if (event.target.checked) {
-             setShieldMaterial('Other');
-        } else {
-             if (availableMaterials.length > 0) {
-                 setShieldMaterial(availableMaterials[0]);
-             }
-        }
-        setManualHVL('');
-    };
+const handleHVLModeToggle = (event) => {
+    setUseManualHVL(event.target.checked);
+    if (event.target.checked) {
+         setShieldMaterial('Other');
+    } else {
+         setShieldMaterial(availableMaterials[0]);
+    }
+    setManualHVL('');
+};
     
     return (
         <div className="p-4 animate-fade-in">
