@@ -2817,7 +2817,7 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     }, [sortedRadionuclides]);
 
-    // --- NEW: Hook to handle pre-selection from NuclideCard ---
+    // --- Hook to handle pre-selection from NuclideCard ---
     React.useEffect(() => {
         if (preselectedNuclide) {
             handleNuclideSelect(preselectedNuclide);
@@ -2852,7 +2852,7 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             const generateSingleNuclideChart = (N0) => {
                 const labels = [], parentData = [];
-                const totalTime = t_input * 2 > 0 ? t_input * 2 : 1; // Ensure totalTime is positive
+                const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
                 const steps = 100;
                 for (let i = 0; i <= steps; i++) {
                     const timePoint = (totalTime / steps) * i;
@@ -2868,8 +2868,8 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                     const N0 = parseFloat(initialActivity);
                     if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
                     const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
-                    setRemainingActivity(Nt.toPrecision(4)); // <-- Set the specific state
-                    setResult(null); // <-- Clear the separate result box state
+                    setRemainingActivity(Nt.toPrecision(4));
+                    setResult(null);
                     generateSingleNuclideChart(N0);
                     break;
                 }
@@ -2885,8 +2885,8 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                     }
                     const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
                     const t_final = t_seconds_calc / unitConversions[timeUnit];
-                    setTimeElapsed(t_final.toPrecision(4)); // <-- Set the specific state
-                    setResult(null); // <-- Clear the separate result box state
+                    setTimeElapsed(t_final.toPrecision(4));
+                    setResult(null);
                     setChartData(null);
                     break;
                 }
@@ -2894,12 +2894,11 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                     const Nt = parseFloat(remainingActivity);
                     if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
                     const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
-                    setInitialActivity(N0.toPrecision(4)); // <-- Set the specific state
-                    setResult(null); // <-- Clear the separate result box state
+                    setInitialActivity(N0.toPrecision(4));
+                    setResult(null);
                     generateSingleNuclideChart(N0);
                     break;
                 }
-
                 case 'findDaughterActivity': {
                     const N0_parent = parseFloat(initialActivity);
                     const N0_daughter = parseFloat(initialDaughterActivity);
@@ -2951,10 +2950,10 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                         const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
                         let daughterIngrowth;
                         if (Math.abs(lambda1 - lambda2) < 1e-12) {
-              daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
-        } else {
-          daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent* (Math.exp(-lambda1* t_seconds) - Math.exp(-lambda2 * t_seconds));
-        }
+                            daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
+                        } else {
+                            daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent* (Math.exp(-lambda1* t_seconds) - Math.exp(-lambda2 * t_seconds));
+                        }
                         A_daughter = initialDaughterDecay + daughterIngrowth;
                     }
                     
@@ -2998,6 +2997,13 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     };
     
+    // MODIFIED: This effect now watches all inputs and triggers the calculation automatically.
+    React.useEffect(() => {
+        if (selectedNuclide) {
+            handleCalculate();
+        }
+    }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity]);
+
     const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
         <div>
             <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
@@ -3020,18 +3026,14 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                     <div>
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                         <div className="mt-1 min-h-[42px]">
-
-
-
-
-{selectedNuclide ? (
-    <CalculatorNuclideInfo 
-        nuclide={selectedNuclide} 
-        onClear={() => { setSelectedNuclide(null); setResult(null); setChartData(null); setError(''); }}
-    />
-) : (
-    <SearchableSelect options={sortedRadionuclides} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/>
-)}
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo 
+                                    nuclide={selectedNuclide} 
+                                    onClear={() => { setSelectedNuclide(null); setResult(null); setChartData(null); setError(''); }}
+                                />
+                            ) : (
+                                <SearchableSelect options={sortedRadionuclides} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/>
+                            )}
                         </div>
                     </div>
                     <div>
@@ -3055,7 +3057,10 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                         }
                         {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits)}
                     </div>
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    
+                    {/* The manual calculate button is now hidden, as calculations are automatic */}
+                    {/* <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button> */}
+                    
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     {result && (
                         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
@@ -3094,13 +3099,11 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
     );
 };
 
-
-
-
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
  * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
  */
+
 const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- STATE MANAGEMENT ---
     const [selectedSymbol, setSelectedSymbol] = React.useState('');
@@ -3110,19 +3113,16 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
-    // Filter the main list for only nuclides that have shipping data.
     const transportNuclides = React.useMemo(() => 
         radionuclides.filter(n => n.shipping && n.shipping.A1 !== null && n.shipping.A2 !== null).sort((a,b) => a.name.localeCompare(b.name)),
         [radionuclides]
     );
     
-    // Get the full nuclide object based on the selected symbol
     const selectedNuclide = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === selectedSymbol),
         [selectedSymbol, transportNuclides]
     );
 
-    // --- Hook to handle pre-selection from NuclideCard ---
     React.useEffect(() => {
         if (preselectedNuclide) {
             setSelectedSymbol(preselectedNuclide);
@@ -3167,8 +3167,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             exceptedLimitTBq: exceptedLimitTBq.toExponential(3)
         });
     };
+
+    // ADDED: This effect triggers the calculation automatically.
+    React.useEffect(() => {
+        if (selectedNuclide && activity) {
+            handleCalculate();
+        } else {
+            setResult(null);
+            setError('');
+        }
+    }, [selectedNuclide, formType, activity, activityUnit]);
     
-    // Helper object for styling the results box
     const resultStyles = {
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
@@ -3183,32 +3192,42 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     <div>
                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                         <div className="mt-1 min-h-[42px]">
-                            
-{selectedNuclide ? (
-    <CalculatorNuclideInfo
-        nuclide={selectedNuclide}
-        onClear={() => { setSelectedSymbol(''); setResult(null); setError(''); }}
-    />
-) : (
-    <SearchableSelect
-        options={transportNuclides}
-        onSelect={(symbol) => { setSelectedSymbol(symbol); setResult(null); setError(''); }}
-        placeholder="Search for a radionuclide..."
-    />
-)}
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo
+                                    nuclide={selectedNuclide}
+                                    onClear={() => { setSelectedSymbol(''); setResult(null); setError(''); }}
+                                />
+                            ) : (
+                                <SearchableSelect
+                                    options={transportNuclides}
+                                    onSelect={(symbol) => { setSelectedSymbol(symbol); }}
+                                    placeholder="Search for a radionuclide..."
+                                />
+                            )}
                         </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Material Form</label>
                         <div className="mt-2 grid grid-cols-2 gap-2">
-                            <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden"/>Special Form (A1)</label>
-                            <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
+                             <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden"/>Special Form (A1)</label>
+                            </Tooltip>
+                            <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
+                            </Tooltip>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Source Activity</label>
+                        <div className="flex">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                {Object.keys(activityFactorsTBq).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
                         </div>
                     </div>
 
-
-
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Package Type</button>
+                    {/* REMOVED: The manual calculate button is no longer needed. */}
                     
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
@@ -3227,9 +3246,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
-
-
-
 
         /**
          * @description A calculator that uses the Bateman equations to model the activity of every
@@ -3570,79 +3586,84 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
          * @description A calculator for finding the specific activity of a nuclide from its atomic weight and half-life.
          */
 
-        const SpecificActivityCalculator = () => {
-            const [atomicWeight, setAtomicWeight] = React.useState('');
-            const [halfLifeValue, setHalfLifeValue] = React.useState('');
-            const [halfLifeUnit, setHalfLifeUnit] = React.useState('years');
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
+const SpecificActivityCalculator = () => {
+    const [atomicWeight, setAtomicWeight] = React.useState('');
+    const [halfLifeValue, setHalfLifeValue] = React.useState('');
+    const [halfLifeUnit, setHalfLifeUnit] = React.useState('years');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
-            const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
-            const unitMultipliers = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+    const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+    const unitMultipliers = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
 
-            const handleCalculate = () => {
-                const A = parseFloat(atomicWeight);
-                const T_val = parseFloat(halfLifeValue);
+    const handleCalculate = () => {
+        const A = parseFloat(atomicWeight);
+        const T_val = parseFloat(halfLifeValue);
 
-                if (isNaN(A) || A <= 0 || isNaN(T_val) || T_val <= 0) {
-                    setError('Atomic weight and half-life must be positive numbers.');
-                    setResult(null);
-                    return;
-                }
-                setError('');
-                
-                // Convert half-life to seconds to get the decay constant (λ).
+        if (isNaN(A) || A <= 0 || isNaN(T_val) || T_val <= 0) {
+            setError('Atomic weight and half-life must be positive numbers.');
+            setResult(null);
+            return;
+        }
+        setError('');
+        
+        const T_seconds = T_val * unitMultipliers[halfLifeUnit];
+        const lambda = Math.log(2) / T_seconds;
+        const Na = 6.02214076e23;
 
-                const T_seconds = T_val * unitMultipliers[halfLifeUnit];
-                const lambda = Math.log(2) / T_seconds;
-                const Na = 6.02214076e23; // Avogadro's number
+        const sa_bq_per_g = (lambda * Na) / A;
+        const sa_ci_per_g = sa_bq_per_g / 3.7e10;
 
-                // Formula: Specific Activity (Bq/g) = (λ * Nₐ) / Molar Mass (A)
+        setResult({
+            bq: sa_bq_per_g.toPrecision(4),
+            ci: sa_ci_per_g.toPrecision(4)
+        });
+    };
 
-                const sa_bq_per_g = (lambda * Na) / A;
-                const sa_ci_per_g = sa_bq_per_g / 3.7e10; // Convert Bq/g to Ci/g
+    // ADDED: This effect triggers the calculation automatically whenever an input changes.
+    React.useEffect(() => {
+        if (atomicWeight && halfLifeValue) {
+            handleCalculate();
+        } else {
+            setResult(null);
+            setError('');
+        }
+    }, [atomicWeight, halfLifeValue, halfLifeUnit]);
 
-                setResult({
-                    bq: sa_bq_per_g.toPrecision(4),
-                    ci: sa_ci_per_g.toPrecision(4)
-                });
-            };
-
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Specific Activity Calculator</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Atomic Weight (g/mol)</label>
-                                <input type="number" value={atomicWeight} onChange={e => setAtomicWeight(e.target.value)} placeholder="e.g., 60 for Co-60" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Half-life</label>
-                                <div className="flex gap-2 mt-1">
-                                    <input type="number" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} placeholder="e.g., 5.27" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                                    <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                        {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            {result && (
-                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Specific Activity</p>
-                                    <p className="text-lg font-bold">{result.bq} Bq/g</p>
-                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.ci} Ci/g)</p>
-                                </div>
-                            )}
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Specific Activity Calculator</h2>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Atomic Weight (g/mol)</label>
+                        <input type="number" value={atomicWeight} onChange={e => setAtomicWeight(e.target.value)} placeholder="e.g., 60 for Co-60" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Half-life</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} placeholder="e.g., 5.27" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
                         </div>
                     </div>
+                    
+                    {/* REMOVED: The manual "Calculate" button is no longer needed. */}
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4">
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Specific Activity</p>
+                            <p className="text-lg font-bold">{result.bq} Bq/g</p>
+                            <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.ci} Ci/g)</p>
+                        </div>
+                    )}
                 </div>
-            );
-        };
-
-
-
+            </div>
+        </div>
+    );
+};
 
         /**
          * @description A calculator to convert between the mass of a radionuclide and its total activity.
@@ -3651,78 +3672,97 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
 const MassActivityCalculator = ({ radionuclides }) => {
     const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-    const [mass, setMass] = React.useState(''); const [massUnit, setMassUnit] = React.useState('g');
-    const [activity, setActivity] = React.useState(''); const [activityUnit, setActivityUnit] = React.useState('Ci');
+    const [mass, setMass] = React.useState(''); 
+    const [massUnit, setMassUnit] = React.useState('g');
+    const [activity, setActivity] = React.useState(''); 
+    const [activityUnit, setActivityUnit] = React.useState('Ci');
     const [error, setError] = React.useState('');
     
     const massUnits = { 'g': 1, 'mg': 1e-3, 'µg': 1e-6 };
     const activityUnits = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
 
-    // Memoized list of nuclides that have specific activity data.
     const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
     
-    // A stable handler function for selecting a nuclide.
     const handleNuclideSelect = React.useCallback((symbol) => {
         const nuclideToSet = nuclidesWithSA.find(n => n.symbol === symbol);
         setSelectedNuclide(nuclideToSet);
-    }, [nuclidesWithSA]); // This dependency array ensures the function is stable.
+    }, [nuclidesWithSA]);
 
-    /**
-     * Handles the calculation in either direction (mass to activity, or activity to mass).
-     * @param {'toActivity' | 'toMass'} direction - The direction of the conversion.
-     */
-    const handleCalculation = (direction) => {
-        if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
+    // REMOVED: The old manual handleCalculation function is no longer needed.
+
+    // ADDED: Two useEffect hooks for automatic, bi-directional calculation.
+
+    // This hook calculates ACTIVITY from MASS
+    React.useEffect(() => {
+        if (!selectedNuclide) return;
+        const massValue = parseFloat(mass);
+        if (!mass || isNaN(massValue) || massValue < 0) {
+            setActivity(''); // Clear the other field if this one is empty/invalid
+            setError('');
+            return;
+        }
         
         const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
-        if (saBqPerG === 0) { setError('Specific activity data is missing or invalid for this nuclide.'); return; }
-        
-        if (direction === 'toActivity') {
-            const massValue = parseFloat(mass);
-            if(isNaN(massValue) || massValue < 0) { setError('Invalid mass value.'); return; }
+        if (saBqPerG > 0) {
             const massInG = massValue * massUnits[massUnit];
             const activityInBq = massInG * saBqPerG;
             const finalActivity = activityInBq / activityUnits[activityUnit];
-            setActivity(finalActivity.toPrecision(4));
-        } else { // 'toMass'
-            const activityValue = parseFloat(activity);
-            if(isNaN(activityValue) || activityValue < 0) { setError('Invalid activity value.'); return; }
+            
+            // This check prevents an infinite loop by only updating if the value has actually changed.
+            if (Math.abs(parseFloat(activity) - parseFloat(finalActivity.toPrecision(4))) > 1e-9) {
+                setActivity(finalActivity.toPrecision(4));
+            }
+            setError('');
+        }
+    }, [mass, massUnit, selectedNuclide, activityUnit]);
+
+    // This hook calculates MASS from ACTIVITY
+    React.useEffect(() => {
+        if (!selectedNuclide) return;
+        const activityValue = parseFloat(activity);
+        if (!activity || isNaN(activityValue) || activityValue < 0) {
+            setMass(''); // Clear the other field if this one is empty/invalid
+            setError('');
+            return;
+        }
+
+        const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
+        if (saBqPerG > 0) {
             const activityInBq = activityValue * activityUnits[activityUnit];
             const massInG = activityInBq / saBqPerG;
             const finalMass = massInG / massUnits[massUnit];
-            setMass(finalMass.toPrecision(4));
+
+            // This check prevents an infinite loop.
+            if (Math.abs(parseFloat(mass) - parseFloat(finalMass.toPrecision(4))) > 1e-9) {
+                setMass(finalMass.toPrecision(4));
+            }
+            setError('');
         }
-        setError('');
-    };
+    }, [activity, activityUnit, selectedNuclide, massUnit]);
     
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Mass ↔ Activity Calculator</h2>
                 <div className="space-y-4">
-                    
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo
+                                    nuclide={selectedNuclide}
+                                    onClear={() => { setSelectedNuclide(null); setMass(''); setActivity(''); setError(''); }}
+                                />
+                            ) : (
+                                <SearchableSelect
+                                    options={nuclidesWithSA}
+                                    onSelect={handleNuclideSelect}
+                                    placeholder="Search for a radionuclide..."
+                                />
+                            )}
+                        </div>
+                    </div>
 
-
-<div>
-    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-    <div className="mt-1 min-h-[42px]">
-
-{selectedNuclide ? (
-    <CalculatorNuclideInfo
-        nuclide={selectedNuclide}
-        onClear={() => { setSelectedNuclide(null); setMass(''); setActivity(''); setError(''); }}
-    />
-) : (
-    <SearchableSelect
-        options={nuclidesWithSA}
-        onSelect={handleNuclideSelect}
-        placeholder="Search for a radionuclide..."
-    />
-)}    </div>
-</div>
-
-
-                    {/* Mass to Activity Section */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                         <label className="text-md font-semibold">Mass</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -3731,18 +3771,15 @@ const MassActivityCalculator = ({ radionuclides }) => {
                                 {Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
                         </div>
-                        <div className="text-center mt-4">
-                            <button onClick={() => handleCalculation('toActivity')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↓ Calculate Activity ↓</button>
-                        </div>
                     </div>
                     
-                    {/* Activity to Mass Section */}
+                    <div className="text-center text-2xl font-bold text-slate-400 dark:text-slate-500">
+                        ↕
+                    </div>
+
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                         <label className="text-md font-semibold">Activity</label>
-                        <div className="text-center mt-4">
-                            <button onClick={() => handleCalculation('toMass')} className="w-full sm:w-auto px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">↑ Calculate Mass ↑</button>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                             <input type="number" placeholder="Enter Activity" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                             <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
                                 {Object.keys(activityUnits).map(u => <option key={u} value={u}>{u}</option>)}
@@ -4117,6 +4154,8 @@ const App = () => {
              const scrollPositionRef = React.useRef(0);
 
             const inputRef = React.useRef(null);
+
+
 
             React.useEffect(() => {
               // This effect runs only once after the initial render.
@@ -4903,6 +4942,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
 
     // Handles pre-selection from other parts of the app
+
     React.useEffect(() => {
         if (preselectedNuclide) {
             const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
@@ -4929,9 +4969,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     }, [calcMode, intakeRoute, availableClasses]);
 
+    React.useEffect(() => {
+    setResult(null);
+    setError('');
+    }, [calcMode, geometryMode]);
 
     // --- CALCULATION HANDLER ---
-const handleCalculate = () => {
+
+    const handleCalculate = () => {
     setResult(null);
     setError('');
     if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
@@ -5732,23 +5777,19 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
  */
 
 const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
-
-    // --- NEW: State to toggle between input modes ---
-    
-    const { settings } = React.useContext(SettingsContext); // <-- Get global settings
+    const { settings } = React.useContext(SettingsContext);
 
     const [inputMode, setInputMode] = React.useState('fromSource');
 
     const [nuclideSymbol, setNuclideSymbol] = React.useState('');
     const [activity, setActivity] = React.useState('1');
-    const [activityUnit, setActivityUnit] = React.useState(settings.activity); // <-- Use global setting
+    const [activityUnit, setActivityUnit] = React.useState(settings.activity);
     const [distance, setDistance] = React.useState('1');
-    const [distanceUnit, setDistanceUnit] = React.useState(settings.distance); // <-- Use global setting
+    const [distanceUnit, setDistanceUnit] = React.useState(settings.distance);
 
     const [manualDoseRate, setManualDoseRate] = React.useState('10');
-    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(settings.doseRate); // <-- Use global setting
+    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(settings.doseRate);
     
-    // --- State for Planning ---
     const [doseLimit, setDoseLimit] = React.useState('2');
     const [plannedTime, setPlannedTime] = React.useState('10');
     const [plannedTimeUnit, setPlannedTimeUnit] = React.useState('minutes');
@@ -5765,7 +5806,7 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (preselectedNuclide) {
             if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
                 setNuclideSymbol(preselectedNuclide);
-                setInputMode('fromSource'); // Switch to the correct mode
+                setInputMode('fromSource');
             }
         }
     }, [preselectedNuclide, gammaNuclides]);
@@ -5781,7 +5822,6 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let doseRate_mrem_hr = 0;
 
-        // --- STEP 1: Determine the dose rate from the selected input mode ---
         if (inputMode === 'fromSource') {
             const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
             if (!nuclide) { setError('Please select a radionuclide.'); return; }
@@ -5805,7 +5845,6 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             doseRate_mrem_hr = manualRate * doseRateFactors[manualDoseRateUnit];
         }
 
-        // --- STEP 2: Perform the planning calculations (this logic is now common to both modes) ---
         const limit = parseFloat(doseLimit);
         const plannedTimeValue = parseFloat(plannedTime);
 
@@ -5817,13 +5856,11 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             setError('Dose rate must be greater than zero to calculate stay time.'); return;
         }
 
-        // Calculation 1: Max Stay Time
         const stayTimeHours = limit / doseRate_mrem_hr;
         const totalMinutes = stayTimeHours * 60;
         const minutes = Math.floor(totalMinutes);
         const seconds = Math.round((totalMinutes - minutes) * 60);
 
-        // Calculation 2: Total Dose Received
         const plannedTimeInHours = plannedTimeValue * timeFactors[plannedTimeUnit];
         const totalDoseReceived = doseRate_mrem_hr * plannedTimeInHours;
         const isSafe = totalDoseReceived <= limit;
@@ -5836,12 +5873,23 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         });
     };
 
+    // ADDED: This effect auto-calculates ONLY when in 'manualRate' mode.
+    React.useEffect(() => {
+        if (inputMode === 'manualRate' && manualDoseRate && doseLimit && plannedTime) {
+            handleCalculate();
+        } else {
+            // Clear results if switching away from manual mode with insufficient data
+            if (inputMode !== 'manualRate') {
+                setResult(null);
+            }
+        }
+    }, [inputMode, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit]);
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Stay Time & Dose Calculator</h2>
                 
-                {/* --- NEW: Input Mode Switcher --- */}
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
                     <button onClick={() => setInputMode('fromSource')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'fromSource' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Calculate from Source</button>
                     <button onClick={() => setInputMode('manualRate')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'manualRate' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Enter Dose Rate</button>
@@ -5852,17 +5900,18 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
                             <label className="block text-sm font-semibold">Source Information</label>
                             {nuclideSymbol ? (
-    <CalculatorNuclideInfo
-        nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)}
-        onClear={() => { setNuclideSymbol(''); setResult(null); setError(''); }}
-    />
-) : (
-    <select value={nuclideSymbol} onChange={e => setNuclideSymbol(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-        <option value="">Select source...</option>
-        {gammaNuclides.map(n => <option key={n.symbol} value={n.symbol}>{n.name}</option>)}
-    </select>
-)}
-                                <div className="grid grid-cols-2 gap-4">
+                                <CalculatorNuclideInfo
+                                    nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)}
+                                    onClear={() => { setNuclideSymbol(''); setResult(null); setError(''); }}
+                                />
+                            ) : (
+                                <SearchableSelect
+                                    options={gammaNuclides}
+                                    onSelect={(symbol) => setNuclideSymbol(symbol)}
+                                    placeholder="Search for a gamma emitter..."
+                                />
+                            )}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(activityFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                 <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(distanceFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
@@ -5882,7 +5931,13 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                         </div>
                     </div>
 
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                    {/* MODIFIED: The button is now only shown when it's needed. */}
+                    {inputMode === 'fromSource' && (
+                        <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
+                            Calculate
+                        </button>
+                    )}
+                    
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
                     {result && (
