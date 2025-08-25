@@ -6,6 +6,28 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+    (function() {
+        // Function to apply the dark theme
+        const applyTheme = () => {
+            document.documentElement.classList.add('dark');
+        };
+
+        // Check 1: See if a theme is explicitly saved in localStorage
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            applyTheme();
+            return;
+        }
+
+        // Check 2: If no saved theme, check the user's OS/browser preference
+        if (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            applyTheme();
+        }
+    })();
+</script>
+
     <title>Health Physics Toolbox</title>
 
     <!-- External Libraries & Frameworks -->
@@ -65,7 +87,70 @@
 </style>
 
 <style>
+
+    .loading-text {
+        margin-top: 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #94a3b8; /* slate-400 */
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: .5;
+      }
+    }
+</style>
+
+<style>
+
+    /* LOADER STYLES */
+#loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background-color: #0f172a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+}
+
+    /* Add this class with JS to hide the loader */
+    #loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    /* The animated spinner element */
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #334155; /* slate-700 */
+        border-bottom-color: #38bdf8; /* sky-400 */
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<style>
+
     body { 
+        /* Sets the default background to your dark theme color */
+        background-color: #0f172a; /* This is Tailwind's slate-900 */
+        
         font-family: 'Inter', sans-serif; 
     }
 
@@ -111,9 +196,14 @@
 
 <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
 
-    <!-- The root element where the React application will be mounted. -->
+<div id="loader">
+    <div class="spinner"></div>
+    <p class="loading-text">Health Physics Toolbox loading...</p>
+</div>
 
- 	<div id="root"></div>
+    <!-- The root element where the React application will be mounted. -->
+ 	
+   <div id="root"></div>
 
     <div id="back-to-top-root"></div>
 
@@ -6570,6 +6660,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 ReactDOM.createRoot(document.getElementById('back-to-top-root')).render(
     <BackToTopButton />
 );
+
+// After the app is rendered, find the loader and fade it out.
+const loader = document.getElementById('loader');
+if (loader) {
+    // A small timeout ensures the app has painted before the loader disappears.
+    setTimeout(() => {
+        loader.classList.add('hidden');
+    }, 100); // 100ms delay
+}
 
 const SettingsPanel = () => {
     const { settings, updateSettings } = React.useContext(SettingsContext);
