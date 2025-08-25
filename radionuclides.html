@@ -553,8 +553,8 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.2';
-        const LAST_UPDATED = 'August 24, 2025';
+        const VERSION = '3.1.3;
+        const LAST_UPDATED = 'August 25, 2025';
 
         /**
          * Data sources used in the application.
@@ -4919,6 +4919,22 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
     const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
 
+    const [linearActivityUnit, setLinearActivityUnit] = React.useState('mCi/m');
+    const [arealActivityUnit, setArealActivityUnit] = React.useState('µCi/cm²');
+    
+    const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
+    const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
+
+    const linearActivityFactorsCi_per_m = {
+        'Ci/m': 1, 'mCi/m': 1e-3, 'µCi/m': 1e-6,
+        'Ci/cm': 100, 'mCi/cm': 0.1, 'µCi/cm': 1e-4
+    };
+
+    const arealActivityFactorsCi_per_m2 = {
+     'Ci/m²': 1, 'mCi/m²': 1e-3, 'µCi/m²': 1e-6,
+     'Ci/cm²': 10000, 'mCi/cm²': 10, 'µCi/cm²': 0.01
+    };
+
     // ADDED: State for the new Internal Dose module
     const [intakeRoute, setIntakeRoute] = React.useState('inhalation');
     const [solubility, setSolubility] = React.useState('');
@@ -4990,60 +5006,70 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
     
     try {
+        
         // Shared constants for external dose modes
+        
         const activityValue = parseFloat(activity);
         const distanceValue = parseFloat(distance);
         const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
         const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
-
-        switch (calcMode) {
         
-        case 'gamma': {
-    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
-    if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
-    
-    const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
-    const activityConcentrationInCi = activityValue * activityFactorsCi[activityUnit];
-    const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-    let doseRateR_hr = 0;
+        const linearActivityFactorsCi_per_m = {
+            'Ci/m': 1, 'mCi/m': 1e-3, 'µCi/m': 1e-6,
+            'Ci/cm': 100, 'mCi/cm': 0.1, 'µCi/cm': 1e-4
+        };
 
-    switch (geometryMode) {
-        case 'point':
-            // No change for point source, input is total activity
-            // Formula: Ḋ = (Γ * A) / d²
-            doseRateR_hr = (gammaConstant * activityConcentrationInCi) / Math.pow(distanceInM, 2);
-            break;
+    // The goal is to convert any unit to a base of Ci/m²
         
-        case 'line':
-            const len_val = parseFloat(lineLength);
-            if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
-            const len_m = len_val * distanceFactorsM[lineLengthUnit];
-            
-            // CHANGED: Calculate total activity from linear concentration
-            const totalActivityCi_line = activityConcentrationInCi * len_m;
-            
-            // Formula: Ḋ = (2 * Γ * A_total / (L*d)) * atan(L / (2*d))
-            doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
-            break;
+        const arealActivityFactorsCi_per_m2 = {
+             'Ci/m²': 1, 'mCi/m²': 1e-3, 'µCi/m²': 1e-6,
+             'Ci/cm²': 10000, 'mCi/cm²': 10, 'µCi/cm²': 0.01
+            };
 
-        case 'area':
-            const rad_val = parseFloat(diskRadius);
-            if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
-            const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
+switch (calcMode) {
+    case 'gamma': {
+        if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+        if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
 
-            // CHANGED: Convert input areal concentration to Ci/m²
-            const area_m2_of_unit = Math.pow(distanceFactorsM[diskRadiusUnit], 2);
-            const arealActivityCi_m2 = activityConcentrationInCi / area_m2_of_unit;
-            
-            // Formula: Ḋ = π * Γ * Cₐ * ln(1 + r²/h²)
-            doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
-            break;
-    }
-    
-    setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
-    break;
+        const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+        const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+        let doseRateR_hr = 0;
 
+        switch (geometryMode) {
+            case 'point': {
+                // Point source logic is unchanged, it uses simple activity
+                const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                break;
             }
+            case 'line': {
+                const len_val = parseFloat(lineLength);
+                if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
+                const len_m = len_val * distanceFactorsM[lineLengthUnit];
+                
+                // CHANGED: Use the new linear concentration factors directly
+                const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
+                const totalActivityCi_line = linearActivityCi_per_m * len_m;
+                
+                doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
+                break;
+            }
+            case 'area': {
+                const rad_val = parseFloat(diskRadius);
+                if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
+                const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
+
+                // CHANGED: Use the new areal concentration factors directly
+                const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
+
+                doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
+                break;
+            }
+        }
+        setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
+        break;
+    }
+
 case 'beta': {
     if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
     if (!selectedNuclide.avgBetaEnergy) {
@@ -5158,10 +5184,10 @@ case 'beta': {
 
                     {/* --- UI for External Dose Modes --- */}
                     
-{(calcMode === 'gamma') && (
+{ (calcMode === 'gamma') && (
     <div className="space-y-3 animate-fade-in">
         
-        {/* Geometry Selector */}
+        {/* Geometry Selector (this part is unchanged) */}
         <div>
             <label className="block text-sm font-medium">Source Geometry</label>
             <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1">
@@ -5171,77 +5197,79 @@ case 'beta': {
             </div>
         </div>
 
-{/* DYNAMIC ACTIVITY/CONCENTRATION INPUT */}
-<div>
-    <label className="block text-sm font-medium">
-        {/* Main Label Text Changes Based on Geometry */}
-        <span>
-            {
-                {
-                    point: 'Source Activity',
-                    line: 'Linear Activity Concentration',
-                    area: 'Areal Activity Concentration'
-                }[geometryMode]
-            }
-        </span>
-        {/* Dynamic Units Display in a smaller font */}
-        <span className="text-xs text-slate-400 ml-2">
-            (
-            {activityUnit}
-            {geometryMode === 'line' && `/${lineLengthUnit}`}
-            {geometryMode === 'area' && <>/{diskRadiusUnit}<sup>2</sup></>}
-            )
-        </span>
-    </label>
-    <div className="flex">
-        <input 
-            type="number" 
-            value={activity} 
-            onChange={e => setActivity(e.target.value)} 
-            className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"
-        />
-        <select 
-            value={activityUnit} 
-            onChange={e => setActivityUnit(e.target.value)} 
-            className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"
-        >
-            {Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}
-        </select>
-    </div>
-</div>
-        <div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-        
-        <div><label className="block text-sm font-medium">{geometryMode === 'point' ? 'Distance to Source' : 'Perpendicular Distance'}</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        {/* --- REVISED: Conditional Input Blocks --- */}
 
+        {/* Point Source Input */}
+        {geometryMode === 'point' && (
+            <div>
+                <label className="block text-sm font-medium">Source Activity</label>
+                <div className="flex">
+                    <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                    <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                        {Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
+        )}
+
+        {/* Line Source Input */}
         {geometryMode === 'line' && (
-            <div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+            <div>
+                <label className="block text-sm font-medium">Linear Activity Concentration</label>
+                <div className="flex">
+                    <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                    <select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                        {Object.keys(linearActivityFactorsCi_per_m).map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
         )}
 
+        {/* Area Source Input */}
         {geometryMode === 'area' && (
-            <div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+            <div>
+                <label className="block text-sm font-medium">Areal Activity Concentration</label>
+                <div className="flex">
+                    <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                    <select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                        {Object.keys(arealActivityFactorsCi_per_m2).map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
         )}
-    </div>
-)}
 
-{/* --- This part for beta/bremsstrahlung remains separate --- */}
-{(calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
-    <div className="space-y-3 animate-fade-in">
-        <div><label className="block text-sm font-m
-            edium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+        {/* The rest of the inputs (Distance, Line Length, etc.) are unchanged */}
+        <div>
+            <label className="block text-sm font-medium">{geometryMode === 'point' ? 'Distance to Source' : 'Perpendicular Distance'}</label>
+            <div className="flex">
+                <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                    {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+            </div>
+        </div>
         
-            <div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys({ 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 }).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-        
-        {calcMode === 'bremsstrahlung' && (
-           <div>
-               <label className="block text-sm font-medium">Shield Material</label>
-               <select 
-                   value={shieldMaterial} 
-                   onChange={e => setShieldMaterial(e.target.value)} 
-                   className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
-               >
-                   {Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}
-               </select>
-           </div>
+        {geometryMode === 'line' && (
+            <div>
+                <label className="block text-sm font-medium">Line Length</label>
+                <div className="flex">
+                    <input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                    <select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                        {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
+        )}
+        {geometryMode === 'area' && (
+            <div>
+                <label className="block text-sm font-medium">Disk Radius</label>
+                <div className="flex">
+                    <input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                    <select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                        {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                </div>
+            </div>
         )}
     </div>
 )}
