@@ -370,7 +370,7 @@
 
         <footer>
             <p>
-                Posh Salon Service Matrix v2.5 | Last Saved: <span id="last-updated-span">Never</span> | 
+                Posh Salon Service Matrix v2.5.1 | Last Saved: <span id="last-updated-span">Never</span> | 
                 <a href="https://www.poshsalonwbg.com" target="_blank" rel="noopener noreferrer">Posh Salon Website</a>
             </p>
         </footer>
@@ -545,7 +545,7 @@
             updateDisplay();
         };
 
-        const showEditValueModal = ({ title, currentValue, inputType = 'text', onSave }) => {
+const showEditValueModal = ({ title, currentValue, inputType = 'text', onSave }) => {
             const popup = document.getElementById('edit-value-popup');
             const titleEl = document.getElementById('edit-value-title');
             const inputEl = document.getElementById('edit-value-input');
@@ -580,7 +580,7 @@
                 hideModal(popup);
                 saveBtn.removeEventListener('click', handleSave);
                 cancelBtn.removeEventListener('click', handleCancel);
-                inputEl.removeEventListener('keydown', handleKeydown);
+                inputEl.removeEventListener('keydown', handleKeydown); // <<-- Add this line
             };
 
             saveBtn.addEventListener('click', handleSave, { once: true });
@@ -594,7 +594,7 @@
             }, 50);
         };
 
-        const showNoteEntryPopup = (row, col) => {
+const showNoteEntryPopup = (row, col) => {
             const popup = document.getElementById('note-entry-popup');
             const swatch = document.getElementById('note-entry-color-swatch');
             const textarea = document.getElementById('note-entry-textarea');
@@ -603,6 +603,7 @@
             textarea.value = '';
             swatch.style.backgroundColor = selectedNoteColor.color;
             swatch.style.border = selectedNoteColor.border || 'none';
+            
             const handleSave = () => {
                 const newState = deepClone(stateHistory[currentStateIndex]);
                 const newNote = { text: textarea.value, ...selectedNoteColor };
@@ -613,15 +614,29 @@
                 showToast("Note added.", "success");
                 cleanup();
             };
+            
             const handleCancel = () => cleanup();
+            
+            const handleKeydown = (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    handleSave();
+                } else if (e.key === 'Escape') {
+                    handleCancel();
+                }
+            };
+            
             const cleanup = () => {
                 hideModal(popup);
                 togglePlacingNote(false);
                 saveBtn.removeEventListener('click', handleSave);
                 cancelBtn.removeEventListener('click', handleCancel);
+                textarea.removeEventListener('keydown', handleKeydown); // <<-- Add this line
             };
+            
             saveBtn.addEventListener('click', handleSave, { once: true });
             cancelBtn.addEventListener('click', handleCancel, { once: true });
+            textarea.addEventListener('keydown', handleKeydown); // <<-- Add this line
+
             showModal(popup);
             textarea.focus();
         };
@@ -676,7 +691,7 @@
             showModal(popup);
         };
 
-        const showProfileModal = (stylistIndex) => {
+const showProfileModal = (stylistIndex) => {
             const popup = document.getElementById('profile-popup');
             const salonState = stateHistory[currentStateIndex];
             const stylist = salonState.stylists[stylistIndex];
@@ -694,10 +709,7 @@
             const changeColorBtn = document.getElementById('profile-change-color-btn');
             const profilePalette = document.getElementById('profile-color-palette');
             
-            const existingInput = popup.querySelector('.profile-details > .name-input');
-            if (existingInput) {
-                existingInput.replaceWith(nameWrapper);
-            }
+            // Fix: No need to check for existing input and replace
             nameEl.textContent = stylist.name;
             
             levelEl.textContent = stylist.level || 'Add Level';
@@ -713,9 +725,12 @@
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.className = 'name-input';
-                input.style.fontSize = '1.5rem';
+                input.style.fontSize = '1.3rem'; // Use the correct font size
                 input.value = originalText;
-                nameWrapper.replaceWith(input);
+                
+                // --- CORRECTED LOGIC ---
+                // Replace the h2 element with the input, keeping the parent wrapper
+                nameEl.replaceWith(input);
                 
                 const saveName = () => {
                     const newText = input.value.trim();
@@ -725,10 +740,9 @@
                         recordChange(newState);
                         showToast("Name updated.", "success");
                         nameEl.textContent = newText;
-                    } else {
-                        nameEl.textContent = originalText;
                     }
-                    input.replaceWith(nameWrapper);
+                    // Replace the input with the h2 element
+                    input.replaceWith(nameEl);
                 };
 
                 input.focus();
@@ -1155,8 +1169,9 @@
             }
         });
 
-        mainContentContainer.addEventListener('dblclick', (event) => {
+mainContentContainer.addEventListener('dblclick', (event) => {
             const target = event.target;
+            // Add this check to prevent issues when dbl-clicking on the profile link inside the stylist's name
             if (target.closest('.profile-link')) return; 
             clearTimeout(clickTimer);
             if (target.matches('.editable') && target.closest('th')) {
@@ -1164,29 +1179,72 @@
                 const col = parseInt(cell.dataset.col);
                 const originalText = target.textContent;
                 const nameWrapper = target.closest('.name-wrapper');
-                const editInput = document.createElement('input'); editInput.type = 'text'; editInput.className = 'name-input'; editInput.value = originalText;
-                const deleteBtn = document.createElement('button'); deleteBtn.className = 'remove-btn'; deleteBtn.innerHTML = '🗑️';
-                nameWrapper.innerHTML = ''; nameWrapper.appendChild(editInput); nameWrapper.appendChild(deleteBtn);
+                
+                // --- NEW LOGIC: Check if an input already exists to prevent duplicates ---
+                if (nameWrapper.querySelector('input')) return;
+                
+                const editInput = document.createElement('input'); 
+                editInput.type = 'text'; 
+                editInput.className = 'name-input'; 
+                editInput.value = originalText;
+                
+                const deleteBtn = document.createElement('button'); 
+                deleteBtn.className = 'remove-btn'; 
+                deleteBtn.innerHTML = '🗑️';
+
+                // Temporarily hide the old elements and append the new ones
+                nameWrapper.style.display = 'none';
+                cell.appendChild(editInput);
+                cell.appendChild(deleteBtn);
+                
                 editInput.focus();
-                const handleSave = (input, originalText, updateFn) => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    const newText = input.value.trim();
-                    updateFn(newState, newText || originalText);
-                    recordChange(newState);
+                
+                const handleSave = () => {
+                    const newText = editInput.value.trim();
+                    if (newText && newText !== originalText) {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.services[col - 1].name = newText;
+                        recordChange(newState);
+                        showToast(`Service name updated to "${newText}".`, 'success');
+                    } else {
+                        // If no change, or empty name, just re-render to reset
+                        updateDisplay(); 
+                    }
+                    // Clean up temporary elements regardless
+                    editInput.remove();
+                    deleteBtn.remove();
                 };
-                deleteBtn.addEventListener('mousedown', () => showConfirmModal(`Remove service "${originalText}"?`, () => {
-                    const newState = deepClone(stateHistory[currentStateIndex]);
-                    newState.services.splice(col - 1, 1);
-                    newState.stylists.forEach(s => s.services.splice(col - 1, 1));
-                    showToast(`Service "${originalText}" removed.`, "info");
-                    recordChange(newState);
-                }));
-                editInput.addEventListener('blur', () => handleSave(editInput, originalText, (state, val) => state.services[col - 1].name = val));
-                editInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.target.blur(); });
+
+                // Use 'blur' to save changes
+                editInput.addEventListener('blur', handleSave);
+
+                // Keyboard shortcuts for saving/canceling
+                editInput.addEventListener('keydown', (e) => { 
+                    if (e.key === 'Enter') {
+                        editInput.blur(); // Trigger blur to save
+                    }
+                    if (e.key === 'Escape') {
+                        updateDisplay(); // Re-render to cancel without saving
+                    }
+                });
+
+                // Add a confirmation for deletion
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent blur from firing
+                    showConfirmModal(`Remove service "${originalText}"?`, () => {
+                        const newState = deepClone(stateHistory[currentStateIndex]);
+                        newState.services.splice(col - 1, 1);
+                        newState.stylists.forEach(s => s.services.splice(col - 1, 1));
+                        showToast(`Service "${originalText}" removed.`, "info");
+                        recordChange(newState);
+                        // Clean up temporary elements
+                        editInput.remove();
+                        deleteBtn.remove();
+                    });
+                });
             }
         });
         
-        // Drag and drop listeners remain unchanged...
         let draggedElementIndex = null;
         mainContentContainer.addEventListener('dragstart', (e) => {
             const draggable = e.target.closest('[draggable="true"]');
@@ -1197,7 +1255,38 @@
         });
         mainContentContainer.addEventListener('dragover', (e) => { e.preventDefault(); const target = e.target.closest('[draggable="true"]'); if (target && parseInt(target.dataset.row) !== draggedElementIndex) { const rect = target.getBoundingClientRect(); const isMobile = target.classList.contains('stylist-card'); if (e.clientY < rect.top + rect.height / 2) { target.classList.add(isMobile ? 'mobile-drag-over' : 'drag-over'); } else { target.classList.remove(isMobile ? 'mobile-drag-over' : 'drag-over'); } } });
         mainContentContainer.addEventListener('dragleave', (e) => { const target = e.target.closest('[draggable="true"]'); if (target) { target.classList.remove('drag-over', 'mobile-drag-over'); } });
-        mainContentContainer.addEventListener('drop', (e) => { e.preventDefault(); const dropTarget = e.target.closest('[draggable="true"]'); if (dropTarget && draggedElementIndex !== null) { const targetIndex = parseInt(dropTarget.dataset.row); sortState = { key: 'manual', direction: 'asc' }; const newState = deepClone(stateHistory[currentStateIndex]); const [draggedItem] = newState.stylists.splice(draggedElementIndex, 1); newState.stylists.splice(targetIndex, 0, draggedItem); recordChange(newState); } draggedElementIndex = null; });
+        
+mainContentContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dropTarget = e.target.closest('[draggable="true"]');
+            if (dropTarget && draggedElementIndex !== null) {
+                const dropTargetIndex = parseInt(dropTarget.dataset.row);
+
+                if (draggedElementIndex === dropTargetIndex) return;
+                
+                const newState = deepClone(stateHistory[currentStateIndex]);
+                const draggedItem = newState.stylists[draggedElementIndex];
+                
+                // Filter out the dragged item
+                const filteredStylists = newState.stylists.filter((item, index) => index !== draggedElementIndex);
+                
+                // Insert the dragged item at the new position
+                filteredStylists.splice(dropTargetIndex, 0, draggedItem);
+                
+                // Overwrite the stylists array with the newly ordered one
+                newState.stylists = filteredStylists;
+                
+                // Set sort state to manual after a drag operation
+                sortState = { key: 'manual', direction: 'asc' };
+                recordChange(newState);
+            }
+            // Always clean up after the drop, regardless of success
+            document.querySelectorAll('.dragging, .drag-over, .mobile-drag-over').forEach(el => {
+                el.classList.remove('dragging', 'drag-over', 'mobile-drag-over');
+            });
+            draggedElementIndex = null;
+        });
+
         mainContentContainer.addEventListener('dragend', () => { document.querySelectorAll('.dragging, .drag-over, .mobile-drag-over').forEach(el => { el.classList.remove('dragging', 'drag-over', 'mobile-drag-over'); }); draggedElementIndex = null; });
         
         NOTE_COLORS.forEach(c => {
