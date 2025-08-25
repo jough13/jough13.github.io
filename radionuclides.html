@@ -4538,7 +4538,8 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
      * - Bremsstrahlung Mode: Calculates dose from X-rays produced by a beta source.
      */
 
-const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+
+     const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { settings } = React.useContext(SettingsContext);
 
     // --- STATE MANAGEMENT ---
@@ -4733,6 +4734,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         intakeRoute, solubility, intakeAmount, intakeUnit
     ]);
 
+    // MAP OF CALCULATION MODES TO DISPLAY TITLES
+    const resultTitles = {
+        'gamma': 'Gamma Dose Rate',
+        'beta': 'Estimated Beta Dose Rate (Skin)',
+        'bremsstrahlung': 'Bremsstrahlung Dose Rate',
+        'internal': 'Committed Effective Dose (CEDE)'
+    };
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -4841,13 +4850,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     
                     {result && (
                         <div className="text-center p-6 bg-sky-50 dark:bg-sky-900/50 rounded-lg mt-4 border-2 border-sky-500">
+                           <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">
+                                {resultTitles[result.type]}
+                           </p>
                            {result.type === 'gamma' && <>
-                                <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Gamma Dose Rate</p>
                                 <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
                            </>}
                            {result.type === 'beta' && (
                                 <>
-                                    <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Estimated Beta Dose Rate (Skin)</p>
                                     {result.isBeyondRange ? (
                                         <p className="text-4xl font-bold text-slate-600 dark:text-slate-300 my-1">0</p>
                                     ) : (
@@ -4861,12 +4871,10 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 </>
                            )}
                            {result.type === 'bremsstrahlung' && <>
-                                <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Bremsstrahlung Dose Rate</p>
                                 <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
                                 <p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
                            </>}
                            {result.type === 'internal' && <>
-                                <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Committed Effective Dose (CEDE)</p>
                                 <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
                            </>}
                         </div>
