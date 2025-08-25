@@ -3766,7 +3766,7 @@ const ManualContent = () => {
         <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
             <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
             <p>
-                Welcome to the Radionuclide Lookup Tool! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
+                Welcome to the Health Physics Toolbox! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
             </p>
             
             <hr className="my-4" />
@@ -3814,17 +3814,21 @@ const ManualContent = () => {
                 <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> or <strong>Transient</strong> and calculate important metrics like the time to maximum daughter activity.</li>
             </ul>
 
-            <h4 className="italic mt-4">Activity & Dose Calculators</h4>
+            {/* MODIFIED: Updated Dose & Dose Rate description */}
+            <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
             <ul>
-                <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity using its half-life and atomic weight. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?".</li>
-                <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity (Bq/g) from its fundamental properties: atomic weight and half-life.</li>
-                <li><strong>Dose Rate:</strong> Calculates the dose rate from a point source for gamma, beta, and bremsstrahlung radiation. It uses the nuclide's gamma constant (Γ) and the inverse square law for gammas, and specialized equations for beta and bremsstrahlung.</li>
+                <li><strong>Dose & Dose Rate:</strong> Calculates the dose rate from various sources. The **Gamma** mode is highly versatile, modeling dose rates from **Point, Line, and Area (Disk)** source geometries. The **Beta** mode provides an estimated skin dose rate and the beta's maximum range in air. The **Bremsstrahlung** mode estimates the X-ray dose rate produced by beta particles interacting with shielding. The **Internal** mode calculates the Committed Effective Dose (CEDE) from a given intake based on the nuclide's ALI value.</li>
                 <li><strong>Shielding:</strong> This calculator models the attenuation of gamma radiation through a shield. It has three modes: <strong>From Source</strong> (calculates final dose rate from a known nuclide, activity, and shield thickness), <strong>Find Thickness</strong> (determines the thickness needed to reach a target dose rate), and <strong>Generic Rate</strong> (allows you to use a user-defined HVL for a custom material).</li>
                 <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit. The dose rate can either be entered manually or calculated from a source.</li>
             </ul>
             
-            <h4 className="italic mt-4">Transportation</h4>
-            <p>This calculator determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> (Special Form) and A<sub>2</sub> (Normal Form) values. It's an essential tool for preparing radioactive material for transport.</p>
+            {/* MODIFIED: Combined Mass/Activity/Transportation into one section */}
+            <h4 className="italic mt-4">Activity & Transportation Calculators</h4>
+            <ul>
+                <li><strong>Mass ↔ Activity:</strong> Converts between a nuclide's mass and its activity using its half-life and atomic weight. It's useful for answering questions like "What is the activity of 5 micrograms of Plutonium-239?".</li>
+                <li><strong>Specific Activity:</strong> Calculates a nuclide's specific activity (Bq/g) from its fundamental properties: atomic weight and half-life.</li>
+                <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> (Special Form) and A<sub>2</sub> (Normal Form) values. It's an essential tool for preparing radioactive material for transport.</li>
+            </ul>
 
             <h3 className="mt-6"><strong>MARSSIM Tools</strong></h3>
             <p>This suite of calculators assists with the design and data assessment for a final status survey, following the guidance in the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM).</p>
@@ -3885,15 +3889,40 @@ const ManualContent = () => {
             </ul>
 
             <h3 className="mt-6">Dose & Shielding Formulas</h3>
-            <h4 className="italic mt-4">Dose Rate (Unshielded Point Source)</h4>
+            
+            {/* MODIFIED: Updated this section */}
+            <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
+            <p>For a <strong>point source</strong>, the inverse square law is used:</p>
             <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                 <pre>Dose Rate = (Γ * A) / d²</pre>
             </div>
+            <p>For a <strong>line source</strong> of length L:</p>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>Dose Rate = (2 * Γ * A / (L*d)) * atan(L / (2*d))</pre>
+            </div>
+            <p>For a <strong>circular area (disk) source</strong> of radius r:</p>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>Dose Rate = π * Γ * Cₐ * ln(1 + r²/h²)</pre>
+            </div>
             <ul>
                 <li><code>Ḋ</code> is the dose rate (e.g., mrem/hr).</li>
-                <li><code>Γ</code> is the specific gamma-ray constant for the nuclide.</li>
-                <li><code>A</code> is the source activity.</li>
-                <li><code>d</code> is the distance from the source.</li>
+                <li><code>Γ</code> is the specific gamma-ray constant.</li>
+                <li><code>A</code> is the total source activity.</li>
+                <li><code>Cₐ</code> is the areal activity concentration (e.g., Ci/m²).</li>
+                <li><code>d</code> or <code>h</code> is the perpendicular distance from the source.</li>
+            </ul>
+            
+            {/* ADDED: Beta Dose Rate Explanation */}
+            <h4 className="italic mt-4">Dose Rate (Beta Point Source)</h4>
+            <p>An estimated skin dose rate is calculated using a standard formula based on the nuclide's average beta energy. <strong>Important:</strong> This calculation is only valid if the distance from the source is less than the beta particle's maximum range in air. The calculator automatically checks this condition.</p>
+            <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                <pre>D<sub>skin</sub> (rad/hr) ≈ (200 * A<sub>Ci</sub> * E<sub>avg</sub>) / d<sub>cm</sub>²</pre>
+            </div>
+            <ul>
+                <li><code>D<sub>skin</sub></code> is the estimated skin dose rate.</li>
+                <li><code>A<sub>Ci</sub></code> is the source activity in Curies.</li>
+                <li><code>E<sub>avg</sub></code> is the average beta energy in MeV.</li>
+                <li><code>d<sub>cm</sub></code> is the distance in centimeters.</li>
             </ul>
 
             <h4 className="italic mt-4">Shielding</h4>
@@ -3942,6 +3971,22 @@ const ManualContent = () => {
                 <li><strong>Sign Test:</strong> Each measurement in an elevated area is compared to the DCGL. The test counts how many measurements exceed the DCGL. This count is the test statistic (S+) which is compared to a critical value from the binomial distribution to test the null hypothesis.</li>
             </ul>
             
+            <hr className="my-4" />
+
+            {/* ADDED: New Contact & Copyright section */}
+            <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Copyright</strong></h2>
+            <p>
+                Feedback, bug reports, and suggestions are welcome! You can reach out via email, or check out my personal website and GitHub for other projects.
+            </p>
+            <ul>
+                <li><strong>Email:</strong> <a href="mailto:joughdonakowski@gmail.com" className="text-sky-500 hover:underline">joughdonakowski@gmail.com</a></li>
+                <li><strong>Website:</strong> <a href="https://www.joughdonakowski.com" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">www.joughdonakowski.com</a></li>
+                <li><strong>GitHub:</strong> <a href="https://jough13.github.io" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">jough13.github.io</a></li>
+            </ul>
+            <p className="mt-4 text-xs text-slate-500">
+                Copyright © 2025 Jough Donakowski. All rights reserved. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
+            </p>
+
             <hr className="my-4" />
 
             <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
