@@ -9,8 +9,26 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Enables Tailwind's dark mode feature, allowing class-based theme switching (e.g., <body class="dark">)
-        tailwind.config = { darkMode: 'class' }
+        // Enables Tailwind's dark mode feature, allowing class-based theme switching
+        tailwind.config = { darkMode: 'class' };
+
+        // --- THEME DETECTION SCRIPT ---
+        // This script runs before the page loads to prevent a flash of unstyled content (FOUC).
+        // It checks local storage first, then the user's system preference.
+        (function () {
+            const getInitialTheme = () => {
+                const savedTheme = localStorage.getItem('theme');
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme) {
+                    return savedTheme;
+                }
+                return systemPrefersDark ? 'dark' : 'light';
+            };
+            const initialTheme = getInitialTheme();
+            if (initialTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        })();
     </script>
     
     <!-- Google Fonts for a clean, modern typeface -->
@@ -38,13 +56,27 @@
                 transform: translateY(0);
             }
         }
+
+        /* Custom scrollbar styling for a consistent look across browsers */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 
 <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
 
+    <div class="fixed top-4 right-4 z-50">
+        <!-- New Theme Toggle Button -->
+        <button id="theme-toggle" class="p-2 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors bg-white dark:bg-slate-800 rounded-full shadow-lg" aria-label="Toggle dark mode">
+            <!-- Icon is dynamically set by the script below -->
+        </button>
+    </div>
+
     <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="max-w-xl w-full mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-700 animate-fade-in text-center space-y-6">
+        <div class="max-w-xl w-full mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl backdrop-blur-lg border border-slate-200 dark:border-slate-700 animate-fade-in text-center space-y-6">
             
             <h1 class="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">
                 Support the Health Physics Toolbox
@@ -66,7 +98,7 @@
             <!-- The button to go back to the app -->
             <div class="pt-6 border-t border-slate-200 dark:border-slate-700">
                 <a 
-                    href="https://jough13.github.io/radionuclides.html"
+                    href="radionuclides.html#home"
                     class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-lg font-semibold rounded-full shadow-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-200 transform hover:scale-105"
                 >
                     Back to the Health Physics Toolbox
@@ -74,82 +106,37 @@
             </div>
         </div>
     </div>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-    <!-- Basic HTML Metadata -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Support the Health Physics Toolbox</title>
 
-    <!-- Tailwind CSS for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- --- THEME TOGGLE SCRIPT --- -->
     <script>
-        // Enables Tailwind's dark mode feature, allowing class-based theme switching (e.g., <body class="dark">)
-        tailwind.config = { darkMode: 'class' }
+        const setupThemeToggle = () => {
+            const toggleButton = document.getElementById('theme-toggle');
+            const htmlElement = document.documentElement;
+
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+
+            const updateIcon = (theme) => {
+                toggleButton.innerHTML = theme === 'dark' ? sunIcon : moonIcon;
+            };
+
+            // Set initial icon
+            updateIcon(htmlElement.classList.contains('dark') ? 'dark' : 'light');
+
+            toggleButton.addEventListener('click', () => {
+                const isDark = htmlElement.classList.toggle('dark');
+                if (isDark) {
+                    localStorage.setItem('theme', 'dark');
+                    updateIcon('dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                    updateIcon('light');
+                }
+            });
+        };
+
+        // Run the setup script once the DOM is ready
+        document.addEventListener('DOMContentLoaded', setupThemeToggle);
     </script>
-    
-    <!-- Google Fonts for a clean, modern typeface -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            /* Fallback and default dark theme background */
-            background-color: #0f172a; 
-        }
-
-        /* The fade-in animation for the main content */
-        .animate-fade-in {
-            animation: fade-in 0.5s ease-out forwards;
-        }
-
-        @keyframes fade-in {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-</head>
-
-<body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
-
-    <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="max-w-xl w-full mx-auto bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-700 animate-fade-in text-center space-y-6">
-            
-            <h1 class="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-100">
-                Support the Health Physics Toolbox
-            </h1>
-            
-            <p class="text-slate-600 dark:text-slate-300 text-lg">
-                If this tool has been helpful, please consider supporting its development. Your contribution helps keep the project alive and free for everyone.
-            </p>
-
-            <p class="text-amber-500 font-semibold text-xl">
-                You will need to restart the app after donating, so please be sure your workspace is saved.
-            </p>
-            
-            <!-- The Buy Me a Coffee button generated by the script -->
-            <div class="flex justify-center my-6">
-                <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="jough" data-color="#5F7FFF" data-emoji="☕" data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#ffffff" data-coffee-color="#FFDD00"></script>
-            </div>
-            
-            <!-- The button to go back to the app -->
-            <div class="pt-6 border-t border-slate-200 dark:border-slate-700">
-                <a 
-                    href="https://jough13.github.io/radionuclides.html"
-                    class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-lg font-semibold rounded-full shadow-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-all duration-200 transform hover:scale-105"
-                >
-                    Back to the Health Physics Toolbox
-                </a>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
