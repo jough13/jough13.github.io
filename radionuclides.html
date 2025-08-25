@@ -87,51 +87,25 @@
 </style>
 
 <style>
-
-    .loading-text {
-        margin-top: 20px;
-        font-size: 1rem;
-        font-weight: 500;
-        color: #94a3b8; /* slate-400 */
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    /* --- LOADER STYLES (NOW THEME-AWARE) --- */
+    
+    /* Light Mode Defaults */
+    #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background-color: #f1f5f9; /* slate-100 */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
     }
 
-    @keyframes pulse {
-      0%, 100% {
-        opacity: 1;
-      }
-      50% {
-        opacity: .5;
-      }
-    }
-</style>
-
-<style>
-
-    /* LOADER STYLES */
-#loader {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background-color: #0f172a;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
-}
-
-    /* Add this class with JS to hide the loader */
-    #loader.hidden {
-        opacity: 0;
-        visibility: hidden;
-    }
-
-    /* The animated spinner element */
     .spinner {
         width: 48px;
         height: 48px;
-        border: 5px solid #334155; /* slate-700 */
+        border: 5px solid #cbd5e1; /* slate-300 */
         border-bottom-color: #38bdf8; /* sky-400 */
         border-radius: 50%;
         display: inline-block;
@@ -139,9 +113,38 @@
         animation: spin 1s linear infinite;
     }
 
+    .loading-text {
+        margin-top: 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #64748b; /* slate-500 */
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Dark Mode Overrides */
+    .dark #loader {
+        background-color: #0f172a; /* slate-900 */
+    }
+    .dark .spinner {
+        border: 5px solid #334155; /* slate-700 */
+        border-bottom-color: #38bdf8; /* sky-400 */
+    }
+    .dark .loading-text {
+        color: #94a3b8; /* slate-400 */
+    }
+
+    /* General Loader Logic (Unchanged) */
+    #loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
     }
 </style>
 
@@ -553,7 +556,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.3';
+        const VERSION = '3.1.4 (pi)';
         const LAST_UPDATED = 'August 25, 2025';
 
         /**
@@ -5671,33 +5674,6 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         setResult(null);
         setError('');
 
-        if (calcMode === 'genericRate') {
-            const knownRateVal = parseFloat(knownDoseRate);
-            const thicknessVal = parseFloat(shieldThickness);
-            const hvlVal = parseFloat(manualHVL);
-
-            if (isNaN(knownRateVal) || isNaN(thicknessVal) || isNaN(hvlVal) || knownRateVal < 0 || thicknessVal < 0 || hvlVal <= 0) {
-                setError('Please enter valid, positive numbers for all fields.'); return;
-            }
-            const knownRate_mrem_hr = knownRateVal * doseRateFactors[knownDoseRateUnit];
-            const thickness_cm = thicknessVal * thicknessFactors[thicknessUnit];
-
-            if (genericMode === 'findFinal') {
-                const finalRate_mrem_hr = knownRate_mrem_hr * Math.pow(0.5, thickness_cm / hvlVal);
-                setResult({
-                    type: 'genericRateFinal',
-                    initial: knownRate_mrem_hr.toPrecision(3),
-                    final: finalRate_mrem_hr.toPrecision(3)
-                });
-            } else { // findInitial
-                const initialRate_mrem_hr = knownRate_mrem_hr / Math.pow(0.5, thickness_cm / hvlVal);
-                setResult({
-                    type: 'genericRateInitial',
-                    initial: initialRate_mrem_hr.toPrecision(3),
-                    final: knownRate_mrem_hr.toPrecision(3)
-                });
-            }
-        } else {
             const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol);
             if (!nuclide) { setError('Please select a radionuclide.'); return; }
             
@@ -5718,27 +5694,72 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 if (isNaN(thicknessValue) || thicknessValue < 0) { setError('Please enter a valid, non-negative thickness.'); return; }
                 const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
                 const shieldedRateR_hr = unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
-                setResult({ type: 'doseRate', unshielded: (unshieldedRateR_hr * 1000).toPrecision(3), shielded: (shieldedRateR_hr * 1000).toPrecision(3) });
+                const unshielded_mrem_hr = unshieldedRateR_hr * 1000;
+
+                const shielded_mrem_hr = shieldedRateR_hr * 1000;
+
+                setResult({ 
+                    type: 'doseRate', 
+                    unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), 
+                    shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate')
+                });
             } else { // findThickness
                 const targetRateValue = parseFloat(targetDoseRate);
                 if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
                 const targetRateR_hr = (targetRateValue * doseRateFactors[targetDoseRateUnit]) / 1000;
                 if (targetRateR_hr >= unshieldedRateR_hr) { setError('Target dose rate is higher than the unshielded dose rate. No shielding is required.'); return; }
                 const requiredThickness_cm = hvl_cm * Math.log2(unshieldedRateR_hr / targetRateR_hr);
-                setResult({ type: 'thickness', unshielded: (unshieldedRateR_hr * 1000).toPrecision(3), cm: requiredThickness_cm.toPrecision(3), mm: (requiredThickness_cm * 10).toPrecision(3), in: (requiredThickness_cm / 2.54).toPrecision(3) });
+                
+                const unshielded_mrem_hr = unshieldedRateR_hr * 1000;
+
+                setResult({ 
+                    type: 'thickness', 
+                    unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'),
+                    thickness: formatSensibleUnit(requiredThickness_cm, 'distance')
+                });
             }
         }
-    };
 
 React.useEffect(() => {
-    // Run if in generic mode or if a nuclide is selected for other modes
-    if (calcMode === 'genericRate' || nuclideSymbol) {
+    setResult(null);
+    setError('');
+
+    if (calcMode === 'genericRate') {
+        // --- Generic Rate logic is now handled directly inside the hook ---
+        const knownRateVal = parseFloat(knownDoseRate);
+        const thicknessVal = parseFloat(shieldThickness);
+        const hvlVal = parseFloat(manualHVL);
+
+        if (isNaN(knownRateVal) || isNaN(thicknessVal) || isNaN(hvlVal) || knownRateVal < 0 || thicknessVal < 0 || hvlVal <= 0) {
+            // Silently return without an error message for a cleaner live-calc experience
+            return;
+        }
+
+        const knownRate_mrem_hr = knownRateVal * doseRateFactors[knownDoseRateUnit];
+        const thickness_cm = thicknessVal * thicknessFactors[thicknessUnit];
+
+        if (genericMode === 'findFinal') {
+            const finalRate_mrem_hr = knownRate_mrem_hr * Math.pow(0.5, thickness_cm / hvlVal);
+            setResult({
+                type: 'genericRateFinal',
+                initial: formatSensibleUnit(knownRate_mrem_hr, 'doseRate'),
+                final: formatSensibleUnit(finalRate_mrem_hr, 'doseRate')
+            });
+        } else { // findInitial
+            const initialRate_mrem_hr = knownRate_mrem_hr / Math.pow(0.5, thickness_cm / hvlVal);
+            setResult({
+                type: 'genericRateInitial',
+                initial: formatSensibleUnit(initialRate_mrem_hr, 'doseRate'),
+                final: formatSensibleUnit(knownRate_mrem_hr, 'doseRate')
+            });
+        }
+
+    } else if (nuclideSymbol) {
+        // --- For other modes, call the simplified handleCalculate function ---
         handleCalculate();
-    } else {
-        setResult(null);
-        setError('');
     }
-}, [
+
+}, [ // The dependency array remains the same
     calcMode, genericMode, nuclideSymbol, activity, activityUnit,
     distance, distanceUnit, knownDoseRate, knownDoseRateUnit,
     manualHVL, shieldMaterial, shieldThickness, thicknessUnit,
@@ -5803,30 +5824,37 @@ React.useEffect(() => {
                     
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
-                    {result && (
-                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
-                           { (result.type === 'doseRate' || result.type === 'genericRateFinal') && <>
-                                <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded / Initial</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded || result.initial} mrem/hr</p></div>
-                                <div className="font-bold text-2xl">↓</div>
-                                <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded / Final</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded || result.final} mrem/hr</p></div>
-                           </>}
-                           { result.type === 'thickness' && <>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">To reduce from {result.unshielded} mrem/hr to {targetDoseRate} {targetDoseRateUnit}, you need:</p>
-                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-2">{result.cm} cm</p>
-                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.mm} mm / {result.in} in) of {shieldMaterial}</p>
-                           </>}
-                           { result.type === 'genericRateInitial' && <>
-                                <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Initial Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.initial} {knownDoseRateUnit}</p></div>
-                                <div className="font-bold text-2xl">↓</div>
-                                <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Known Final Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.final} {knownDoseRateUnit}</p></div>
-                           </>}
+{result && (
+    <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
+       { result.type === 'doseRate' && <>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded.value} {result.unshielded.unit}</p></div>
+            <div className="font-bold text-2xl">↓</div>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded.value} {result.shielded.unit}</p></div>
+       </>}
+       { result.type === 'thickness' && <>
+            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">To reduce from {result.unshielded.value} {result.unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p>
+            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-2">{result.thickness.value} {result.thickness.unit}</p>
+            <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {shieldMaterial}</p>
+       </>}
+       
+       {/* --- THIS IS THE CORRECTED PART FOR GENERIC RATE --- */}
+       { result.type === 'genericRateFinal' && <>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initial.value} {result.initial.unit}</p></div>
+            <div className="font-bold text-2xl">↓</div>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final.value} {result.final.unit}</p></div>
+       </>}
+       { result.type === 'genericRateInitial' && <>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Initial Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.initial.value} {result.initial.unit}</p></div>
+            <div className="font-bold text-2xl">↓</div>
+            <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Known Final Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.final.value} {result.final.unit}</p></div>
+       </>}
+    </div>
+)}
                         </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
+                        </div>
+                        </div>
+                    );
+                };
 
 /**
  * @description A calculator for determining allowable stay time and total dose received.
@@ -5939,9 +5967,9 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         const isSafe = totalDoseReceived <= limit;
 
         setResult({
-            doseRate: doseRate_mrem_hr.toPrecision(3),
+            doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'),
             stayTime: `${minutes} min ${seconds} sec`,
-            totalDoseReceived: totalDoseReceived.toPrecision(3),
+            totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'),
             isSafe: isSafe
         });
     };
@@ -6012,26 +6040,26 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                     
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
-                    {result && (
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-4">
-                            <div className="text-center">
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Dose Rate in Area: <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate} mrem/hr</span></p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-center">
-                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
-                                    <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
-                                    <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
-                                </div>
-                                <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
-                                    <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived} mrem</p>
-                                    <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
-                                </div>
-                            </div>
-                             {!result.isSafe && <p className="text-center font-bold text-red-500 text-sm">WARNING: Exceeds dose limit!</p>}
-                        </div>
-                    )}
+{result && (
+    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-4">
+        <div className="text-center">
+            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Dose Rate in Area: <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate.value} {result.doseRate.unit}</span></p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
+                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
+                <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
+                <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
+            </div>
+            <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
+                <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived.value} {result.totalDoseReceived.unit}</p>
+                <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
+            </div>
+        </div>
+         {!result.isSafe && <p className="text-center font-bold text-red-500 text-sm">WARNING: Exceeds dose limit!</p>}
+    </div>
+)}
                 </div>
             </div>
         </div>
