@@ -553,7 +553,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.1';
+        const VERSION = '3.1.2';
         const LAST_UPDATED = 'August 24, 2025';
 
         /**
@@ -1896,7 +1896,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
 
     const ClickableNuclide = ({ text }) => {
         if (!text || !onNuclideClick) return <span>{text}</span>;
-        const parts = text.split(/(\s+or\s+|\s*\/\s*)/);
+        const parts = text.split(/(\s+or\s+|\s*\/\s*|\s*->\s*)/);
         return (
             <>
                 {parts.map((part, index) => {
@@ -2818,11 +2818,20 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [sortedRadionuclides]);
 
     // --- Hook to handle pre-selection from NuclideCard ---
+
     React.useEffect(() => {
         if (preselectedNuclide) {
             handleNuclideSelect(preselectedNuclide);
         }
     }, [preselectedNuclide, handleNuclideSelect]);
+
+    // ADDED: This effect clears old results when the calculation mode changes.
+
+    React.useEffect(() => {
+        setResult(null);
+        setChartData(null); // Also clear the chart data for this calculator
+        setError('');
+    }, [calculationMode]);
 
     const handleCalculate = () => {
         if (!selectedNuclide) {
@@ -4535,6 +4544,12 @@ const SearchableSelect = ({ options, onSelect, placeholder }) => {
     const containerRef = React.useRef(null);
     const listRef = React.useRef(null);
 
+        const handleClear = () => {
+        setInputValue('');
+        setIsOpen(false);
+        setActiveIndex(-1);
+    };
+
     const filteredOptions = React.useMemo(() => {
         if (!inputValue) return [];
         const normInput = normalizeString(inputValue);
@@ -4596,44 +4611,37 @@ const SearchableSelect = ({ options, onSelect, placeholder }) => {
         setActiveIndex(-1);
     };
 
-    // --- NEW: A handler to clear the input text ---
-    const handleClear = () => {
-        setInputValue('');
-        setIsOpen(false);
-        setActiveIndex(-1);
-    };
-
     return (
         <div className="relative w-full" ref={containerRef}>
-            <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                     <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
-                </div>
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => {
-                        setInputValue(e.target.value);
-                        setIsOpen(true);
-                        setActiveIndex(-1);
-                    }}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => { if(inputValue) setIsOpen(true); }}
-                    placeholder={placeholder}
-                    className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                    autoComplete="off"
-                />
-                {/* --- NEW: The conditional clear button --- */}
-                {inputValue && (
-                    <button 
-                        onClick={handleClear} 
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none"
-                    >
-                        <Icon path={ICONS.clear} className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
-            {isOpen && filteredOptions.length > 0 && (
+    <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+             <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+        </div>
+        <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+                setInputValue(e.target.value);
+                setIsOpen(true);
+                setActiveIndex(-1);
+            }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => { if(inputValue) setIsOpen(true); }}
+            placeholder={placeholder}
+            className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            autoComplete="off"
+        />
+        {/* --- THIS IS THE NEW PART --- */}
+        {inputValue && (
+            <button 
+                onClick={handleClear} 
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none"
+            >
+                <Icon path={ICONS.clear} className="w-5 h-5" />
+            </button>
+        )}
+    </div>
+    {isOpen && filteredOptions.length > 0 && (
                 <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-72 overflow-y-auto">
                     {filteredOptions.map((option, index) => {
                         const styles = CATEGORY_STYLES[option.category] || CATEGORY_STYLES['default'];
@@ -5141,11 +5149,11 @@ case 'beta': {
         onClear={() => { setNuclideSymbol(''); setResult(null); setError(''); }}
     />
 ) : (
-    <SearchableSelect 
-        options={availableNuclides} 
-        onSelect={(symbol) => { setNuclideSymbol(symbol); setResult(null); setError(''); }}
-        placeholder={`Select a ${calcMode} emitter...`}
-    />
+<SearchableSelect 
+    options={availableNuclides} 
+    onSelect={(symbol) => { setNuclideSymbol(symbol); setResult(null); setError(''); }}
+    placeholder={`Select ${calcMode === 'internal' ? 'an' : 'a'} ${calcMode} emitter...`}
+/>
 )}
 
                     {/* --- UI for External Dose Modes --- */}
@@ -5618,6 +5626,13 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     }, [preselectedNuclide, shieldingNuclides]);
 
+    // ADDED: This effect clears old results when the calculator mode changes.
+
+    React.useEffect(() => {
+        setResult(null);
+        setError('');
+    }, [calcMode]);
+
     const materials = ['Lead', 'Concrete', 'Steel', 'Other'];
     const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
     const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
@@ -5806,10 +5821,26 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (preselectedNuclide) {
             if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
                 setNuclideSymbol(preselectedNuclide);
-                setInputMode('fromSource');
+                setInputMode('fromSource'); // Switch to the correct mode
             }
         }
     }, [preselectedNuclide, gammaNuclides]);
+
+    // MODIFIED: This single hook now handles both auto-calculation AND clearing results.
+
+    React.useEffect(() => {
+
+        // First, clear any old results whenever a relevant input changes.
+
+        setResult(null);
+        setError('');
+        
+        // Then, if in manual mode, perform the auto-calculation.
+
+        if (inputMode === 'manualRate' && manualDoseRate && doseLimit && plannedTime) {
+            handleCalculate();
+        }
+    }, [inputMode, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit]);
 
     const activityFactors = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
     const distanceFactors = { 'm': 1, 'cm': 0.01, 'ft': 0.3048 };
