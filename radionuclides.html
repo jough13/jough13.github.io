@@ -553,7 +553,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.3;
+        const VERSION = '3.1.3';
         const LAST_UPDATED = 'August 25, 2025';
 
         /**
@@ -568,6 +568,71 @@ const RADIONUCLIDE_DATA = [
             hps: { name: 'Health Physics Society', url: 'https://hps.org/' },
             rse: { name: 'Radiation Safety Engineering, Inc.', url: 'https://www.radpro.com/sourcehvl.htm' } // <-- New source added
         };
+
+/**
+ * Configuration for smart unit selection.
+ * For each type, it lists units from smallest to largest.
+ * - threshold: The value above which the *next* unit in the list is considered.
+ * - factor: How many of the current unit are in one base unit (e.g., 1000 mrem in 1 rem).
+ */
+const SENSIBLE_UNIT_CONFIG = {
+    doseRate: {
+        baseUnit: 'mrem/hr',
+        units: [
+            { unit: 'µrem/hr', threshold: 1, factor: 0.001 },
+            { unit: 'mrem/hr', threshold: 1000, factor: 1 },
+            { unit: 'rem/hr',  threshold: Infinity, factor: 1000 }
+        ]
+    },
+    dose: {
+        baseUnit: 'mrem',
+        units: [
+            { unit: 'µrem', threshold: 1, factor: 0.001 },
+            { unit: 'mrem', threshold: 1000, factor: 1 },
+            { unit: 'rem',  threshold: Infinity, factor: 1000 }
+        ]
+    },
+    distance: {
+        baseUnit: 'cm',
+        units: [
+            { unit: 'mm', threshold: 1, factor: 0.1 },
+            { unit: 'cm', threshold: 100, factor: 1 },
+            { unit: 'm',  threshold: Infinity, factor: 100 }
+        ]
+    }
+    // You can add more types here later (e.g., 'activity', 'time')
+};
+
+/**
+ * Takes a raw value in a base unit and formats it into the most "sensible"
+ * larger or smaller unit for display.
+ * @param {number} value - The raw numerical value.
+ * @param {string} unitType - The type of unit (e.g., 'doseRate', 'distance').
+ * @returns {{value: string, unit: string}} An object with the formatted value and the chosen unit.
+ */
+const formatSensibleUnit = (value, unitType) => {
+    const config = SENSIBLE_UNIT_CONFIG[unitType];
+    if (!config) {
+        return { value: value.toPrecision(3), unit: '' };
+    }
+    
+    for (const unitInfo of config.units) {
+        if (Math.abs(value) < unitInfo.threshold) {
+            const displayValue = value / unitInfo.factor;
+            return {
+                value: displayValue.toPrecision(3),
+                unit: unitInfo.unit
+            };
+        }
+    }
+    
+    // Fallback to the largest unit if something goes wrong
+    const largestUnit = config.units[config.units.length - 1];
+    return {
+        value: (value / largestUnit.factor).toPrecision(3),
+        unit: largestUnit.unit
+    };
+};
 
         /**
          * Half-Value Layer (HVL) data in cm for common gamma emitters and materials.
@@ -1973,7 +2038,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </div>
             </div>
         );
-        return nuclide.commonalityReason ? (<Tooltip text={nuclide.commonalityReason} widthClass="w-96">{compactCardJSX}</Tooltip>) : (compactCardJSX);
+        return compactCardJSX;
     }
 
     const isFavorite = favorites?.includes(nuclide.symbol);
@@ -3278,91 +3343,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             const timeUnits = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
             const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
 
-            // --- CORE CALCULATION ENGINE ---
-
-            /**
-             * Implements the general Bateman equations to find the activity of each nuclide in a decay chain.
-             * This function calculates the number of atoms for each nuclide at time t, then converts to activity.
-             * @param {Array<object>} chain - The array of nuclide objects in the decay series.
-             * @param {number} A1_0 - The initial activity of the parent nuclide (nuclide 1).
-             * @param {number} t_seconds - The elapsed time in seconds.
-             * @returns {Array<number>} An array of activities for each nuclide in the chain at time t.
-             */
-
-            const runBatemanCalculation = (chain, A1_0, t_seconds) => {
-                // 1. Get decay constants (λ) for each nuclide in the chain. λ = ln(2) / T½.
-                const lambdas = chain.map(step => {
-                    const t_half = parseHalfLifeToSeconds(step.halfLife);
-                    return t_half === Infinity ? 0 : Math.log(2) / t_half; // λ is 0 for stable nuclides
-                });
-
-                if (lambdas[0] === 0) return Array(chain.length).fill(0); // Parent is stable, no decay.
-
-                // 2. Calculate the initial number of atoms of the parent from its activity (N = A/λ).
-
-                const N1_0 = A1_0 / lambdas[0];
-                const activities = [];
-
-                // 3. Loop through each nuclide in the chain (i) to calculate its number of atoms, N_i(t).
-                for (let i = 0; i < chain.length; i++) {
-
-                    // For stable nuclides (λ=0), activity is always 0.
-
-                    if (lambdas[i] === 0) {
-                        activities.push(0);
-                        continue;
-                    }
-
-                    // For the parent nuclide (i=0), use simple exponential decay: N(t) = N₀ * e^(-λt).
-
-                    if (i === 0) {
-                        const N1_t = N1_0 * Math.exp(-lambdas[0] * t_seconds);
-                        activities.push(N1_t * lambdas[0]); // A = Nλ
-                        continue;
-                    }
-
-                    // For all subsequent progeny (i > 0), use the full Bateman equation:
-                    // Nᵢ(t) = N₁(0) * (Π_{k=1}^{i-1} λₖ) * (Σ_{j=1}^{i} (e^{-λⱼt} / Π_{k=1, k≠j}^{i} (λₖ - λⱼ)))
-                    
-                    // First part: Product of parent decay constants: Π_{k=1}^{i-1} λₖ
-
-                    let lambda_product = 1;
-                    for (let k = 0; k < i; k++) {
-                        lambda_product *= lambdas[k];
-                    }
-
-                    // Second part: The summation term: Σ_{j=1}^{i} (...)
-
-                    let sum_term = 0;
-                    for (let j = 0; j <= i; j++) {
-
-                        // The denominator inside the sum: Π_{k=1, k≠j}^{i} (λₖ - λⱼ)
-
-                        let denominator_product = 1;
-                        for (let k = 0; k <= i; k++) {
-                            if (j !== k) {
-                                let diff = lambdas[k] - lambdas[j];
-
-                                // Handle the very rare case of identical lambdas to avoid division by zero.
-
-                                denominator_product *= (Math.abs(diff) < 1e-30) ? 1e-30 : diff;
-                            }
-                        }
-                        sum_term += Math.exp(-lambdas[j] * t_seconds) / denominator_product;
-                    }
-
-                    // Combine all parts to get the number of atoms for nuclide i at time t.
-
-                    const Ni_t = N1_0 * lambda_product * sum_term;
-
-                    // Convert number of atoms back to activity (A = Nλ).
-
-                    const Ai_t = Ni_t * lambdas[i];
-                    activities.push(Ai_t);
-                }
-                return activities;
-            };
-
             // --- UI HANDLERS & ORCHESTRATION ---
 
             /**
@@ -3376,7 +3356,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     setError('Please select a decay series.');
                     return;
                 }
-
                 
                 // Validate all numerical inputs
 
@@ -5000,116 +4979,90 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- CALCULATION HANDLER ---
 
-    const handleCalculate = () => {
+// REPLACE your entire handleCalculate function with this one
+
+const handleCalculate = () => {
     setResult(null);
     setError('');
     if (!selectedNuclide) { setError('Please select a radionuclide.'); return; }
-    
+
     try {
-        
-        // Shared constants for external dose modes
-        
         const activityValue = parseFloat(activity);
         const distanceValue = parseFloat(distance);
-        const activityFactorsCi = { 'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'GBq': 1 / 37, 'MBq': 1 / 37000, 'Bq': 1 / 3.7e10 };
-        const distanceFactorsM = { 'm': 1, 'cm': 0.01, 'ft': 0.3048, 'in': 0.0254 };
-        
-        const linearActivityFactorsCi_per_m = {
-            'Ci/m': 1, 'mCi/m': 1e-3, 'µCi/m': 1e-6,
-            'Ci/cm': 100, 'mCi/cm': 0.1, 'µCi/cm': 1e-4
-        };
 
-    // The goal is to convert any unit to a base of Ci/m²
-        
-        const arealActivityFactorsCi_per_m2 = {
-             'Ci/m²': 1, 'mCi/m²': 1e-3, 'µCi/m²': 1e-6,
-             'Ci/cm²': 10000, 'mCi/cm²': 10, 'µCi/cm²': 0.01
-            };
+        switch (calcMode) {
+            case 'gamma': {
+                if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+                if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
 
-switch (calcMode) {
-    case 'gamma': {
-        if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
-        if (!selectedNuclide.gammaConstant) throw new Error('Selected nuclide has no Gamma Constant.');
+                const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+                const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+                let doseRateR_hr = 0;
 
-        const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
-        const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-        let doseRateR_hr = 0;
-
-        switch (geometryMode) {
-            case 'point': {
-                // Point source logic is unchanged, it uses simple activity
+                switch (geometryMode) {
+                    case 'point': {
+                        const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                        doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                        break;
+                    }
+                    case 'line': {
+                        const len_val = parseFloat(lineLength);
+                        if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
+                        const len_m = len_val * distanceFactorsM[lineLengthUnit];
+                        const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
+                        const totalActivityCi_line = linearActivityCi_per_m * len_m;
+                        doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
+                        break;
+                    }
+                    case 'area': {
+                        const rad_val = parseFloat(diskRadius);
+                        if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
+                        const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
+                        const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
+                        doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
+                        break;
+                    }
+                }
+                const doseRate_mrem_hr = doseRateR_hr * 1000;
+                setResult({ 
+                    type: 'gamma', 
+                    dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') 
+                });
+                break;
+            }
+            case 'beta': {
+                if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+                if (!selectedNuclide.avgBetaEnergy) {
+                    throw new Error(`This calculator requires an Average Beta Energy (Eₐᵥ₉), which is not available for ${selectedNuclide.name}.`);
+                }
+                const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+                const E_avg = parseFloat(selectedNuclide.avgBetaEnergy);
                 const activityInCi = activityValue * activityFactorsCi[activityUnit];
-                doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
+
+                let range_m;
+                if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } 
+                else {
+                    const range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
+                    range_m = (range_mg_cm2 / 1.225) / 100;
+                }
+                const range_cm = range_m * 100;
+
+                let doseRate_mrad_hr = 0;
+                if (distance_cm < range_cm) {
+                    const doseRate_rad_hr = (200 * activityInCi * E_avg) / Math.pow(distance_cm, 2);
+                    doseRate_mrad_hr = doseRate_rad_hr * 1000;
+                }
+                setResult({ 
+                    type: 'beta', 
+                    dose: formatSensibleUnit(doseRate_mrad_hr, 'doseRate'),
+                    e_max: E_max,
+                    isBeyondRange: distance_cm >= range_cm,
+                    range_m: range_m.toPrecision(2),
+                    range_ft: (range_m * 3.28084).toPrecision(2)
+                });
                 break;
             }
-            case 'line': {
-                const len_val = parseFloat(lineLength);
-                if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.');
-                const len_m = len_val * distanceFactorsM[lineLengthUnit];
-                
-                // CHANGED: Use the new linear concentration factors directly
-                const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
-                const totalActivityCi_line = linearActivityCi_per_m * len_m;
-                
-                doseRateR_hr = ((2 * gammaConstant * totalActivityCi_line) / (len_m * distanceInM)) * Math.atan(len_m / (2 * distanceInM));
-                break;
-            }
-            case 'area': {
-                const rad_val = parseFloat(diskRadius);
-                if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.');
-                const rad_m = rad_val * distanceFactorsM[diskRadiusUnit];
-
-                // CHANGED: Use the new areal concentration factors directly
-                const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
-
-                doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + (Math.pow(rad_m, 2) / Math.pow(distanceInM, 2)));
-                break;
-            }
-        }
-        setResult({ type: 'gamma', mrem_hr: (doseRateR_hr * 1000).toPrecision(3), uSv_hr: (doseRateR_hr * 10000).toPrecision(3) });
-        break;
-    }
-
-case 'beta': {
-    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
-    if (!selectedNuclide.avgBetaEnergy) {
-        throw new Error(`This calculator requires an Average Beta Energy (Eₐᵥ₉), which is not available for ${selectedNuclide.name}.`);
-    }
-
-    const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
-    const E_avg = parseFloat(selectedNuclide.avgBetaEnergy);
-    const activityInCi = activityValue * activityFactorsCi[activityUnit];
-    const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
-
-    // --- Calculate Beta Range in Air ---
-    let range_m;
-    if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } 
-    else {
-        const range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
-        range_m = (range_mg_cm2 / 1.225) / 100;
-    }
-    const range_cm = range_m * 100;
-
-    // --- Calculate Dose Rate ---
-    let doseRate_mrad_hr = 0;
-    if (distance_cm < range_cm) {
-        // This formula provides an estimate of skin dose rate in rad/hr
-        const doseRate_rad_hr = (200 * activityInCi * E_avg) / Math.pow(distance_cm, 2);
-        doseRate_mrad_hr = doseRate_rad_hr * 1000;
-    }
-    
-    setResult({ 
-        type: 'beta', 
-        doseRate_mrad_hr: doseRate_mrad_hr.toPrecision(3),
-        e_max: E_max,
-        isBeyondRange: distance_cm >= range_cm,
-        range_m: range_m.toPrecision(2),
-        range_ft: (range_m * 3.28084).toPrecision(2)
-    });
-    break;
-}
-
-            // --- ADDED: Bremsstrahlung calculation logic ---
             case 'bremsstrahlung': {
                 if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
                 const E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
@@ -5119,19 +5072,18 @@ case 'beta': {
                 const activityInCi = activityValue * activityFactorsCi[activityUnit];
                 const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
                 
-                // Formula for Bremsstrahlung dose rate at 1 meter
                 const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
-                // Adjust for actual distance using inverse square law
                 const doseRate_rad_hr = doseRate_rad_hr_at_1m / Math.pow(distanceInM, 2);
                 const doseRate_mrem_hr = doseRate_rad_hr * 1000;
-
-                // Fraction of beta energy converted to X-rays
                 const f = 3.5e-4 * Z * E_max;
-                setResult({ type: 'bremsstrahlung', doseRate: doseRate_mrem_hr.toPrecision(3), bremsstrahlungFraction: (f * 100).toPrecision(2) });
+                
+                setResult({ 
+                    type: 'bremsstrahlung', 
+                    dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'),
+                    bremsstrahlungFraction: (f * 100).toPrecision(2) 
+                });
                 break;
             }
-            // --- END of added logic ---
-
             case 'internal': {
                 const intake = parseFloat(intakeAmount);
                 if (isNaN(intake) || intake < 0) throw new Error('Invalid intake amount.');
@@ -5144,7 +5096,10 @@ case 'beta': {
                 if (!ALI) throw new Error(`ALI value for ${aliKey} not found.`);
                 
                 const cede_mrem = (intakeInMuCi / ALI) * 5000;
-                setResult({ type: 'internal', cede_mrem: cede_mrem.toPrecision(3), cede_mSv: (cede_mrem / 100).toPrecision(3) });
+                setResult({ 
+                    type: 'internal', 
+                    dose: formatSensibleUnit(cede_mrem, 'dose') 
+                });
                 break;
             }
             default:
@@ -5154,6 +5109,22 @@ case 'beta': {
         setError(e.message);
     }
 };
+
+React.useEffect(() => {
+    // Only run the calculation if a nuclide has been selected
+    if (nuclideSymbol) {
+        handleCalculate();
+    } else {
+        // Clear old results if the nuclide is cleared
+        setResult(null);
+        setError('');
+    }
+}, [
+    nuclideSymbol, calcMode, geometryMode, activity, activityUnit,
+    linearActivityUnit, arealActivityUnit, distance, distanceUnit,
+    lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial,
+    intakeRoute, solubility, intakeAmount, intakeUnit
+]);
 
     return (
         <div className="p-4 animate-fade-in">
@@ -5183,7 +5154,37 @@ case 'beta': {
 )}
 
                     {/* --- UI for External Dose Modes --- */}
-                    
+{ (calcMode === 'beta' || calcMode === 'bremsstrahlung') && (
+    <div className="space-y-3 animate-fade-in">
+        <div>
+            <label className="block text-sm font-medium">Source Activity</label>
+            <div className="flex">
+                <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                    {Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+            </div>
+        </div>
+        <div>
+            <label className="block text-sm font-medium">Distance to Source</label>
+            <div className="flex">
+                <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                    {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+            </div>
+        </div>
+        { calcMode === 'bremsstrahlung' && (
+             <div>
+                <label className="block text-sm font-medium">Shield Material</label>
+                <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                    {Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+            </div>
+        )}
+    </div>
+)}
+
 { (calcMode === 'gamma') && (
     <div className="space-y-3 animate-fade-in">
         
@@ -5285,59 +5286,58 @@ case 'beta': {
                         </div>
                     )}
                     
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
+                
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
-                    {result && (
+{result && (
     <div className="text-center p-6 bg-sky-50 dark:bg-sky-900/50 rounded-lg mt-4 border-2 border-sky-500">
        {result.type === 'gamma' && <>
             <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Gamma Dose Rate</p>
-            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.mrem_hr} mrem/hr</p>
-            <p className="text-lg font-medium text-slate-600 dark:text-slate-300">({result.uSv_hr} µSv/hr)</p>
-       </>}
-       {result.type === 'internal' && <>
-            <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Committed Effective Dose (CEDE)</p>
-            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.cede_mrem} mrem</p>
-            <p className="text-lg font-medium text-slate-600 dark:text-slate-300">({result.cede_mSv} mSv)</p>
-       </>}
-
-{result.type === 'beta' && (
-    <>
-        <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Estimated Beta Dose Rate (Skin)</p>
-        
-        {result.isBeyondRange ? (
-            <p className="text-xl font-bold text-slate-600 dark:text-slate-300 my-1">
-                0 mrad/hr
+            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
+                {result.dose.value}
+                <span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span>
             </p>
-        ) : (
-            <>
-                <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
-                    {result.doseRate_mrad_hr} mrad/hr
-                </p>
-                <p className="text-lg font-medium text-slate-600 dark:text-slate-300">
-                    ({(result.doseRate_mrad_hr / 100).toPrecision(3)} µSv/hr)
-                </p>
-            </>
-        )}
-        
-        <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
-            {result.isBeyondRange && (
-                <p className="font-semibold text-amber-600 dark:text-amber-400">
-                    Distance is beyond the beta's maximum range in air.
-                </p>
-            )}
-            <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
-            <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
-        </div>
-    </>
-)}
-       {result.type === 'bremsstrahlung' && <>
-            <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Bremsstrahlung Dose Rate</p>
-            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.doseRate} mrem/hr</p>
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
        </>}
-    
 
+       {result.type === 'beta' && (
+            <>
+                <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Estimated Beta Dose Rate (Skin)</p>
+                {result.isBeyondRange ? (
+                    <p className="text-4xl font-bold text-slate-600 dark:text-slate-300 my-1">0</p>
+                ) : (
+                    <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
+                        {result.dose.value}
+                        <span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span>
+                    </p>
+                )}
+                <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
+                    {result.isBeyondRange && (
+                        <p className="font-semibold text-amber-600 dark:text-amber-400">
+                            Distance is beyond the beta's maximum range in air.
+                        </p>
+                    )}
+                    <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+                    <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
+                </div>
+            </>
+       )}
+
+    {result.type === 'bremsstrahlung' && <>
+        <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Bremsstrahlung Dose Rate</p>
+        <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
+            {result.dose.value}
+            <span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span>
+        </p>
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>
+    </>}
+
+{result.type === 'internal' && <>
+    <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">Committed Effective Dose (CEDE)</p>
+    <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">
+        {result.dose.value}
+        <span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span>
+    </p>
+</>}
     </div>
 )}
 
@@ -5730,6 +5730,21 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     };
 
+React.useEffect(() => {
+    // Run if in generic mode or if a nuclide is selected for other modes
+    if (calcMode === 'genericRate' || nuclideSymbol) {
+        handleCalculate();
+    } else {
+        setResult(null);
+        setError('');
+    }
+}, [
+    calcMode, genericMode, nuclideSymbol, activity, activityUnit,
+    distance, distanceUnit, knownDoseRate, knownDoseRateUnit,
+    manualHVL, shieldMaterial, shieldThickness, thicknessUnit,
+    targetDoseRate, targetDoseRateUnit
+]);
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -5786,7 +5801,6 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                         </div>
                     )}
                     
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
                     {result && (
@@ -5934,15 +5948,21 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // ADDED: This effect auto-calculates ONLY when in 'manualRate' mode.
     React.useEffect(() => {
-        if (inputMode === 'manualRate' && manualDoseRate && doseLimit && plannedTime) {
-            handleCalculate();
-        } else {
-            // Clear results if switching away from manual mode with insufficient data
-            if (inputMode !== 'manualRate') {
-                setResult(null);
-            }
+        setResult(null);
+        setError('');
+
+        // Guard clause: Don't calculate if the source isn't fully defined
+        if (inputMode === 'fromSource' && !nuclideSymbol) {
+            return;
         }
-    }, [inputMode, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit]);
+        
+        handleCalculate();
+
+    }, [
+        inputMode, nuclideSymbol, activity, activityUnit, distance,
+        distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit,
+        plannedTime, plannedTimeUnit
+    ]);
 
     return (
         <div className="p-4 animate-fade-in">
@@ -5989,13 +6009,6 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <div><label className="block text-xs font-medium">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(timeFactors).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
                     </div>
-
-                    {/* MODIFIED: The button is now only shown when it's needed. */}
-                    {inputMode === 'fromSource' && (
-                        <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
-                            Calculate
-                        </button>
-                    )}
                     
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
