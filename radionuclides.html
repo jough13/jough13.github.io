@@ -558,7 +558,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.6';
+        const VERSION = '3.1.7';
         const LAST_UPDATED = 'August 26, 2025';
 
         /**
@@ -1859,11 +1859,11 @@ const MainNav = ({ activeView, onNavClick }) => {
             <button
                 key={item.id}
                 onClick={() => onNavClick(item.id)}
-                // ADD THE HIGHLIGHTED PART TO THIS CLASSNAME
-                className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-colors ${
+                // --- THIS LINE HAS BEEN UPDATED ---
+                className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-all duration-150 ease-in-out ${
                     activeView === item.id
                         ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 active:scale-95'
                 } ${item.id === 'home' ? 'col-span-2' : ''}`}
             >
                 <Icon path={item.icon} className="w-8 h-8 mb-2" />
@@ -1897,6 +1897,10 @@ const MainNav = ({ activeView, onNavClick }) => {
 
 const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
     
+    // --- NEW: State to manage the confirmation modals ---
+    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
+
     const favoriteNuclides = React.useMemo(() => 
         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [favorites, radionuclides]
@@ -1906,6 +1910,17 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
         [searchHistory, radionuclides]
     );
+    
+    // --- NEW: Handlers to confirm clearing ---
+    const confirmClearFavorites = () => {
+        handleClearFavorites();
+        setIsFavoritesModalOpen(false);
+    };
+    
+    const confirmClearHistory = () => {
+        handleClearHistory();
+        setIsHistoryModalOpen(false);
+    };
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -1920,7 +1935,8 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
                         <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
-                        <button onClick={handleClearFavorites} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                        {/* UPDATED: Button now opens the modal */}
+                        <button onClick={() => setIsFavoritesModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
                             Clear Favorites
                         </button>
                     </div>
@@ -1942,7 +1958,8 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
                         <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
-                        <button onClick={handleClearHistory} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                        {/* UPDATED: Button now opens the modal */}
+                        <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
                             Clear History
                         </button>
                     </div>
@@ -1973,6 +1990,26 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
                     ))}
                 </div>
             </div>
+
+            {/* --- NEW: Add the modal components to the JSX --- */}
+            <ConfirmationModal
+                isOpen={isFavoritesModalOpen}
+                onClose={() => setIsFavoritesModalOpen(false)}
+                onConfirm={confirmClearFavorites}
+                title="Clear All Favorites"
+            >
+                <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
+            </ConfirmationModal>
+            
+            <ConfirmationModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                onConfirm={confirmClearHistory}
+                title="Clear Search History"
+            >
+                <p>Are you sure you want to clear your recent search history?</p>
+            </ConfirmationModal>
+
         </div>
     );
 };
@@ -2412,12 +2449,13 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
                     <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
                         <div className="flex items-center gap-2">
-                            {/* --- THIS IS THE CHANGED PART --- */}
+                            {/* --- THIS BUTTON HAS BEEN UPDATED --- */}
                             <button 
                                 onClick={handleClear} 
-                                className="px-3 py-1 text-xs font-semibold text-sky-700 dark:text-sky-300 bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                                className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-sky-700 dark:text-sky-300 bg-slate-200 dark:bg-slate-700 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                             >
-                                Clear
+                                <Icon path={ICONS.clear} className="w-4 h-4" />
+                                Clear All
                             </button>
                             <button onClick={handleClose} className="lg:hidden p-1 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
                                 <Icon path={ICONS.clear} className="w-6 h-6" />
@@ -3737,13 +3775,21 @@ const MassActivityCalculator = ({ radionuclides }) => {
          */
 
 const App = () => {
+
             // --- STATE MANAGEMENT ---
+
             const [activeView, setActiveView] = React.useState('home');
-	        const [previousView, setPreviousView] = React.useState(null);
+
             const [result, setResult] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
-            const [comparisonList, setComparisonList] = React.useState([]);
+            const [comparisonList, setComparisonList] = React.useState(() => {
+                try {
+                    return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]');
+                    } catch (e) {
+                    return [];
+                    }
+                });
             const [nuclideName, setNuclideName] = React.useState('');
             const [suggestions, setSuggestions] = React.useState([]);
             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
@@ -3906,6 +3952,10 @@ React.useEffect(() => {
                 root.classList.toggle('dark', theme === 'dark');
                 localStorage.setItem('theme', theme);
             }, [theme]);
+
+            React.useEffect(() => {
+                localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
+            }, [comparisonList]);
 
             React.useEffect(() => {
                 const handleClickOutside = (e) => {
@@ -4136,10 +4186,10 @@ const renderActiveView = () => {
                         onSendToCalculator={handleSendToCalculator}
                         onAddToCompare={handleAddToCompare}
                         onNuclideClick={handleNuclideSelection}
-                        showBackButton={previousView === 'database' || previousView === 'home'}
+                        showBackButton={true}
+                            onBackClick={() => {
+                            window.history.back();
                         
-onBackClick={() => {
-    window.history.back(); // This navigates to the previous URL hash
 }}
                     />
                 </div>;
