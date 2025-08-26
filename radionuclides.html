@@ -508,8 +508,10 @@ const RADIONUCLIDE_DATA = [
         dosimetry: { ALI: { inhalation_W: 900, ingestion: 600 }, DAC: { inhalation_W: 4e-7 }, sourceRef: '10CFR20' } },
     { name: 'Tin-126', symbol: 'Sn-126', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.380 MeV (max)'], gamma: ['0.087 MeV'], alpha: [] }, avgBetaEnergy: '0.127 MeV', halfLife: '230,000 years', decayConstant: '3.01 x 10⁻⁶ year⁻¹', specificActivity: '1.4 x 10^9 Bq/g', parent: 'Cadmium-126', daughter: 'Antimony-126 (β-)', commonUses: ['Long-lived fission product', 'Nuclear waste assessment'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An extremely long-lived fission product relevant in nuclear waste management.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.3, unit: 'TBq' }, 
         dosimetry: { ALI: { inhalation_W: 100, ingestion: 90 }, DAC: { inhalation_W: 5e-8 }, sourceRef: '10CFR20' } },
-    { name: 'Tritium', symbol: 'H-3', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.0186 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.006 MeV', halfLife: '12.32 years', decayConstant: '0.0563 year⁻¹', specificActivity: '3.59 x 10^14 Bq/g', parent: 'Lithium-6 (n,α)', daughter: 'Helium-3 (stable)', commonUses: ['Self-powered lighting (e.g., exit signs, watches)', 'Medical and biological tracer', 'Nuclear weapons component'], category: 'Industrial', commonality: 'Common', commonalityReason: 'Widely used in self-powered lighting (e.g., exit signs), as a biological tracer, and in nuclear weapons.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' }, 
-        dosimetry: { ALI: { ingestion: 80000 }, DAC: { inhalation_D: 20000 }, sourceRef: '10CFR20' } },
+{ 
+    name: 'Tritium', symbol: 'H-3', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.0186 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.006 MeV', halfLife: '12.32 years', decayConstant: '0.0563 year⁻¹', specificActivity: '3.59 x 10^14 Bq/g', parent: 'Lithium-6 (n,α)', daughter: 'Helium-3 (stable)', commonUses: ['Self-powered lighting (e.g., exit signs, watches)', 'Medical and biological tracer', 'Nuclear weapons component'], category: 'Industrial', commonality: 'Common', commonalityReason: 'Widely used in self-powered lighting (e.g., exit signs), as a biological tracer, and in nuclear weapons.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' }, 
+    // CORRECTED DOSIMETRY OBJECT
+    dosimetry: { ALI: { ingestion: 80000, inhalation_D: 80000 }, DAC: { inhalation_D: 2e-5 }, sourceRef: '10CFR20' } },
     { name: 'Tungsten-188', symbol: 'W-188', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.349 MeV (max)'], gamma: ['0.227 MeV'], alpha: [] }, avgBetaEnergy: '0.116 MeV', daughterEmissions: { from: 'Re-188', beta: ['2.12 MeV (max)'], gamma: ['0.155 MeV'] }, halfLife: '69.4 days', decayConstant: '0.00999 day⁻¹', specificActivity: '3.6 x 10^14 Bq/g', parent: 'Tantalum-186', daughter: 'Rhenium-188', commonUses: ['Generator for Rhenium-188, used in therapeutic applications.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'The parent isotope used in generators to produce the therapeutic isotope Re-188.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.3, unit: 'TBq' }, 
         dosimetry: { ALI: { inhalation_D: 200, inhalation_Y: 40, ingestion: 1000 }, DAC: { inhalation_D: 9e-8, inhalation_Y: 2e-8 }, sourceRef: '10CFR20' } },
     { name: 'Uranium-230', symbol: 'U-230', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.888 MeV'], beta: [], gamma: ['0.053 MeV'] }, halfLife: '20.8 days', decayConstant: '0.0333 day⁻¹', specificActivity: '1.87 x 10^15 Bq/g', parent: 'Plutonium-234 (α)', daughter: 'Thorium-226', commonUses: ['Medical isotope production (e.g., Ra-223 from Th-226 generator)', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A research isotope sometimes used in generators to produce medical alpha-emitters.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' }, 
@@ -1280,7 +1282,8 @@ const formatHalfLife = (halfLifeStr, targetUnit) => {
     settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
     stopwatch: "M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.98-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-1.68-.46-3.24-1.25-4.55l.22-.16zm-1.07-1.01A6.995 6.995 0 115.34 19.66 6.995 6.995 0 0117.96 6.38z",
     transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
-
+    transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
+    internalDose: "M12 5.9c1.16 0 2.1.94 2.1 2.1s-.94 2.1-2.1 2.1S9.9 9.16 9.9 8s.94-2.1 2.1-2.1m0 9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"        
 };
 
         //==============================================================================
@@ -6568,7 +6571,7 @@ const ManualModal = ({ isOpen, onClose }) => {
                         <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
                         <p>For a <strong>point source</strong>, the inverse square law is used:</p>
                         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                            <pre>Dose Rate = (Γ * A) / d²</pre>
+                            <pre>Dose Rate = (Γ * A) / d<sup>2</sup></pre>
                         </div>
                         <p>For a <strong>line source</strong> of length L:</p>
                         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
@@ -6576,13 +6579,13 @@ const ManualModal = ({ isOpen, onClose }) => {
                         </div>
                         <p>For a <strong>circular area (disk) source</strong> of radius r:</p>
                         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                            <pre>Dose Rate = π * Γ * Cₐ * ln(1 + r²/h²)</pre>
+                            <pre>Dose Rate = π * Γ * C<sub>a</sub> * ln(1 + r<sup>2</sup>/h<sup>2</sup>)</pre>
                         </div>
                         <ul>
                             <li><code>Ḋ</code> is the dose rate (e.g., mrem/hr).</li>
                             <li><code>Γ</code> is the specific gamma-ray constant.</li>
                             <li><code>A</code> is the total source activity.</li>
-                            <li><code>Cₐ</code> is the areal activity concentration (e.g., Ci/m²).</li>
+                            <li><code>C<sub>a</sub></code> is the areal activity concentration (e.g., Ci/m<sup>2</sup>).</li>
                             <li><code>d</code> or <code>h</code> is the perpendicular distance from the source.</li>
                         </ul>
                         
@@ -6590,7 +6593,7 @@ const ManualModal = ({ isOpen, onClose }) => {
                         <h4 className="italic mt-4">Dose Rate (Beta Point Source)</h4>
                         <p>An estimated skin dose rate is calculated using a standard formula based on the nuclide's average beta energy. <strong>Important:</strong> This calculation is only valid if the distance from the source is less than the beta particle's maximum range in air. The calculator automatically checks this condition.</p>
                         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                            <pre>D<sub>skin</sub> (rad/hr) ≈ (200 * A<sub>Ci</sub> * E<sub>avg</sub>) / d<sub>cm</sub>²</pre>
+                            <pre>D<sub>skin</sub> (rad/hr) ≈ (200 * A<sub>Ci</sub> * E<sub>avg</sub>) / d<sub>cm</sub><sup>2</sup></pre>
                         </div>
                         <ul>
                             <li><code>D<sub>skin</sub></code> is the estimated skin dose rate.</li>
@@ -6623,7 +6626,7 @@ const ManualModal = ({ isOpen, onClose }) => {
                         <p>The Minimum Detectable Activity (MDA) is then calculated from the <strong>Lower Limit of Detection (LLD)</strong>, which is derived from the L<sub>c</sub>:</p>
                         <div className="my-2 p-3 text-center font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                             <pre className="text-sm">LLD (counts) = 2 * L<sub>c</sub> + 3</pre>
-                            <pre className="mt-2 text-sm">MDA (dpm/100cm²) = (LLD / Gross_Time) * (100 / Probe_Area) / Total<sub>Efficiency</sub></pre>
+                            <pre className="mt-2 text-sm">MDA (dpm/100 cm<sup>2</sup>) = (LLD / Gross_Time) * (100 / Probe_Area) / Total<sub>Efficiency</sub></pre>
                         </div>
                         <ul>
                             <li><code>L<sub>c</sub></code> is the <strong>Critical Level</strong>; a result above this is statistically significant.</li>
@@ -6642,7 +6645,7 @@ const ManualModal = ({ isOpen, onClose }) => {
                         <p>These are non-parametric statistical hypothesis tests. Rather than a simple formula, they are procedural:</p>
                         <ul>
                             <li><strong>WRS Test:</strong> All measurements from the survey unit and reference area are combined and ranked from lowest to highest. The sum of the ranks from the survey unit (W<sub>s</sub>) is calculated and compared to a critical value from a table to test the null hypothesis.</li>
-                            <li><strong>Sign Test:</strong> Each measurement in an elevated area is compared to the DCGL. The test counts how many measurements exceed the DCGL. This count is the test statistic (S+) which is compared to a critical value from the binomial distribution to test the null hypothesis.</li>
+                            <li><strong>Sign Test:</strong> Each measurement in an elevated area is compared to the DCGL. The test counts how many measurements exceed the DCGL. This count is the test statistic (S<sup>+</sup>) which is compared to a critical value from the binomial distribution to test the null hypothesis.</li>
                         </ul>
                         
                         <hr className="my-4" />
