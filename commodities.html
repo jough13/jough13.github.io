@@ -51,6 +51,8 @@
         @keyframes toast-fade-in { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
         @keyframes toast-fade-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
         .toast.fade-out { animation: toast-fade-out 0.3s ease-in forwards; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
         @media (max-width: 1024px) {
             #lookupTable thead { display: none; }
             #lookupTable, #lookupTable tbody, #lookupTable tr, #lookupTable td { display: block; width: 100%; }
@@ -77,6 +79,7 @@
         }
     </style>
     <script>
+        // Check for dark mode preference before the page loads to prevent flickering
         if (localStorage.getItem('darkMode') === 'enabled' || (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
@@ -159,54 +162,66 @@
                             <th scope="col" class="px-6 py-3 text-center">
                                 <input type="checkbox" id="selectAllCheckbox" class="form-checkbox h-5 w-5 text-blue-600 rounded">
                             </th>
-                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')">Name or Nomenclature<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')">National Stock # (NSN)<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')">NIIN<span class="sort-arrow"></span></th>
-                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('radionuclide')">Radionuclide<span class="sort-arrow"></span></th>
-                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('activity_val')">Activity<span class="sort-arrow"></span></th>
-                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nrc_exemption_val')">NRC Exemption<span class="sort-arrow"></span></th>
-                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('dot_exemption_val')">DOT Exemption<span class="sort-arrow"></span></th>
-                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_limit_val')">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
-                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_pkg_limit_val')">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('name')" role="button" tabindex="0">Name or Nomenclature<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nsn')" role="button" tabindex="0">National Stock # (NSN)<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('niin')" role="button" tabindex="0">NIIN<span class="sort-arrow"></span></th>
+                            <th scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('radionuclide')" role="button" tabindex="0">Radionuclide<span class="sort-arrow"></span></th>
+                            <th id="activityHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('activity_val')" role="button" tabindex="0">Activity<span class="sort-arrow"></span></th>
+                            <th id="nrcExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('nrc_exemption_val')" role="button" tabindex="0">NRC Exemption<span class="sort-arrow"></span></th>
+                            <th id="dotExemptionHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('dot_exemption_val')" role="button" tabindex="0">DOT Exemption<span class="sort-arrow"></span></th>
+                            <th id="un2911Header" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_limit_val')" role="button" tabindex="0">UN 2911 Limit (per item)<span class="sort-arrow"></span></th>
+                            <th id="un2911PkgHeader" scope="col" class="px-6 py-3 sortable text-center" onclick="sortTable('un2911_pkg_limit_val')" role="button" tabindex="0">UN 2911 Limit (per package)<span class="sort-arrow"></span></th>
                         </tr>
                     </thead>
-                    <tbody class="dark:divide-gray-700"></tbody>
+                    <tbody class="dark:divide-gray-700">
+                        <tr id="loadingStateRow">
+                            <td colspan="10" class="text-center p-16">
+                                <div class="flex justify-center items-center gap-4">
+                                    <svg class="spinner h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-lg font-medium text-gray-600 dark:text-gray-400">Loading data...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
              <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400"></div>
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
             <p>Data provided for informational purposes. NRC values from 10 CFR 30.71. DOT values from 49 CFR § 173.425, § 173.435, & § 173.436.</p>
-            <p class="mt-2">Version 1.82 | Last Updated: August 7, 2025</p>
+            <p class="mt-2">Version 1.9 | Last Updated: August 26, 2025</p>
         </footer>
     </div>
 
-    <div id="compareModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="compareModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="compareModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Compare Selected Items</h2>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 id="compareModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Compare Selected Items</h2>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div id="compareContent" class="p-6"></div>
         </div>
     </div>
 
-    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="detailModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Item Details</h2>
-                <button id="closeDetailModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <button id="closeDetailModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div id="detailContent" class="p-6"></div>
             <div id="detailActions" class="p-4 border-t dark:border-gray-700 flex justify-between items-center"></div>
         </div>
     </div>
 
-    <div id="disposalRequestModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="disposalRequestModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="disposalRequestModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Prepare Disposal Request</h2>
-                <button id="closeDisposalRequestModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 id="disposalRequestModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Prepare Disposal Request</h2>
+                <button id="closeDisposalRequestModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div id="disposalRequestContent" class="p-6 overflow-y-auto"></div>
 		<div class="p-4 border-t dark:border-gray-700 flex justify-between items-center gap-4">
@@ -221,11 +236,11 @@
         </div>
     </div>
 
-    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">User Guide</h2>
-                <button id="closeHelpModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 id="helpModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">User Guide</h2>
+                <button id="closeHelpModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto">
                 <div class="prose prose-lg dark:prose-invert max-w-none space-y-4">
@@ -343,11 +358,11 @@
         </div>
     </div>
 
-    <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="addItemModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="addItemModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Add Custom Item</h2>
-                <button id="closeAddItemModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <button id="closeAddItemModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div class="p-6">
                 <form id="addItemForm" class="space-y-4">
@@ -392,7 +407,7 @@
     
     <input type="file" id="importFileInput" class="hidden" accept=".json">
 
-    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="confirmModalText">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-6 text-center">
                 <svg class="mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
@@ -409,31 +424,31 @@
         </div>
     </div>
 
-    <div id="radionuclideDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="radionuclideDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="radionuclideModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="radionuclideModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Radionuclide Details</h2>
-                <button id="closeRadionuclideModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <button id="closeRadionuclideModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div id="radionuclideContent" class="p-6"></div>
         </div>
     </div>
 
-    <div id="tooltipModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="tooltipModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="tooltipModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
                 <h2 id="tooltipModalTitle" class="text-xl font-bold text-gray-900 dark:text-white"></h2>
-                <button id="closeTooltipModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <button id="closeTooltipModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div id="tooltipContent" class="p-6"></div>
         </div>
     </div>
 
-    <div id="memoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="memoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="memoModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Example Disposal Request Memo</h2>
-                <button id="closeMemoModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 id="memoModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Example Disposal Request Memo</h2>
+                <button id="closeMemoModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto">
                 <pre id="memoContent" class="whitespace-pre-wrap font-mono text-sm bg-gray-50 dark:bg-gray-900 p-4 rounded-md"></pre>
@@ -444,15 +459,14 @@
         </div>
     </div>
 
-<div id="instructionsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+    <div id="instructionsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-labelledby="instructionsModalTitle">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">LLRW Disposal Request Submission Instructions</h2>
-                <button id="closeInstructionsModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+                <h2 id="instructionsModalTitle" class="text-xl font-bold text-gray-900 dark:text-white">LLRW Disposal Request Submission Instructions</h2>
+                <button id="closeInstructionsModalBtn" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 text-3xl" aria-label="Close">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto prose dark:prose-invert max-w-none">
                 <p>To submit a Department of the Navy (DON) request for Low-Level Radioactive Waste (LLRW) disposal, please gather the required documents as follows:</p>
-                
                 <ol>
                     <li>
                         <strong>Formal Correspondence (Cover Letter):</strong>
@@ -505,228 +519,227 @@
     </div>
 
     <script>
-
-	const rawTableData = [
-	 
-    { name: "SIGHT KIT", nsn: "1005-00-071-8030", radionuclide: "Pm-147", activity: "1", units: "mCi" },
-    { name: "RIFLE, 5.56 MILLIMETER", nsn: "1005-00-073-9421", radionuclide: "H-3", activity: "9", units: "mCi" },
-    { name: "POST ASSEMBLY", nsn: "1005-00-145-6378", radionuclide: "Pm-147", activity: "1", units: "mCi" },
-    { name: "POST ASSEMBLY", nsn: "1005-00-234-1568", radionuclide: "H-3", activity: "9", units: "mCi" },
-    { name: "SWITCH, TOGGLE", nsn: "5930-00-655-1514", radionuclide: "Ra-226", activity: "0.15", units: "µCi" },
-    { name: "WINDVANE ASSEMBLY", nsn: "1005-01-099-1450", radionuclide: "Th-232", activity: "2.6", units: "pCi" },
-    { name: "PISTOL, 9 MILLIMETER, AUTOMATIC", nsn: "1005-01-340-0096", radionuclide: "H-3", activity: "54.1", units: "mCi" },
-    { name: "RIFLE, 5.56 MILLIMETER", nsn: "1005-01-340-6037", radionuclide: "H-3", activity: "9", units: "mCi" },
-    { name: "MORTAR, 60 MILLIMETER", nsn: "1010-01-020-5626", radionuclide: "H-3", activity: "29", units: "Ci" },
-    { name: "SIGHT UNIT", nsn: "1240-01-174-1726", radionuclide: "H-3", activity: "6.7", units: "Ci" },
-    { name: "LIGHT, AIMING POST", nsn: "1290-00-169-1934", radionuclide: "H-3", activity: "5", units: "Ci" },
-    { name: "LIGHT, AIMING POST", nsn: "1290-00-169-1935", radionuclide: "H-3", activity: "9", units: "Ci" },
-    { name: "RANGE INDICATOR ASSEMBLY", nsn: "1010-01-115-3128", radionuclide: "H-3", activity: "3.19", units: "Ci" },
-    { name: "RANGE INDICATOR", nsn: "1010-01-237-9033", radionuclide: "H-3", activity: "3.19", units: "Ci" },
-    { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-086-8164", radionuclide: "H-3", activity: "24.8", units: "Ci" },
-    { name: "TELESCOPE, ELBOW", nsn: "1240-00-150-8886", radionuclide: "H-3", activity: "3.81", units: "Ci" },
-    { name: "TELESCOPE, PANORAMIC", nsn: "1240-00-150-8889", radionuclide: "H-3", activity: "5.59", units: "Ci" },
-    { name: "MOUNT, TELESCOPE", nsn: "1240-00-150-8890", radionuclide: "H-3", activity: "150", units: "mCi" },
-    { name: "COLLIMATOR, INFINITY AIMING REFERENCE", nsn: "1240-00-332-1780", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "QUADRANT, FIRE CONTROL", nsn: "1290-00-150-8891", radionuclide: "H-3", activity: "2.2", units: "Ci" },
-    { name: "QUADRANT, GUNNERS", nsn: "1290-00-169-1937", radionuclide: "H-3", activity: "75.1", units: "mCi" },
-    { name: "ALIGNMENT DEVICE, BORESIGHT", nsn: "4931-00-341-5119", radionuclide: "H-3", activity: "3", units: "Ci" },
-    { name: "ALIGNMENT DEVICE, BORESIGHT", nsn: "4931-01-187-9713", radionuclide: "H-3", activity: "3", units: "Ci" },
-    { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-322-9728", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-322-9752", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "MORTAR, 81MM", nsn: "1015-01-164-6651", radionuclide: "H-3", activity: "25.7", units: "Ci" },
-    { name: "SIGHT UNIT", nsn: "1240-01-379-7953", radionuclide: "H-3", activity: "6.7", units: "Ci" },
-    { name: "MORTAR, 120MM", nsn: "1015-01-226-1672", radionuclide: "H-3", activity: "24.8", units: "Ci" },
-    { name: "SIGHT UNIT", nsn: "1240-01-366-7322", radionuclide: "H-3", activity: "5.78", units: "Ci" },
-    { name: "HOWITZER, TOWED, 105MM", nsn: "1015-01-248-0859", radionuclide: "H-3", activity: "22.4", units: "Ci" },
-    { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-277-0472", radionuclide: "H-3", activity: "5.11", units: "Ci" },
-    { name: "MOUNT, TELESCOPE", nsn: "1240-01-277-0474", radionuclide: "H-3", activity: "2.65", units: "Ci" },
-    { name: "TELESCOPE, ELBOW", nsn: "1240-01-277-2875", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "MORTAR, CARRIER MOUNTED, 120MM", nsn: "1015-01-292-3801", radionuclide: "H-3", activity: "24.8", units: "Ci" },
-    { name: "HOWITZER, TOWED, 105MM", nsn: "1015-01-308-1872", radionuclide: "H-3", activity: "22.4", units: "Ci" },
-    { name: "RIFLE, RECOILLESS", nsn: "1015-01-314-1770", radionuclide: "H-3", activity: "210", units: "mCi" },
-    { name: "HOWITZER, MEDIUM, TOWED, 155MM", nsn: "1025-01-026-6648", radionuclide: "H-3", activity: "26.6", units: "Ci" },
-    { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-038-0530", radionuclide: "H-3", activity: "4.41", units: "Ci" },
-    { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-038-0531", radionuclide: "H-3", activity: "5.11", units: "Ci" },
-    { name: "MOUNT, TELESCOPE", nsn: "1240-01-039-7273", radionuclide: "H-3", activity: "150", units: "mCi" },
-    { name: "QUADRANT, FIRE CONTROL", nsn: "1290-01-037-3883", radionuclide: "H-3", activity: "1.9", units: "Ci" },
-    { name: "QUADRANT, FIRE CONTROL", nsn: "1290-01-037-7289", radionuclide: "H-3", activity: "1.95", units: "Ci" },
-    { name: "ALIGNMENT DEVICE", nsn: "4931-01-048-5834", radionuclide: "H-3", activity: "3", units: "Ci" },
-    { name: "SWITCH", nsn: "5930-00-655-1582", radionuclide: "Ra-226", activity: "0.15", units: "µCi" },
-    { name: "TURRET ASSEMBLY", nsn: "1220-01-308-3019", radionuclide: "Th-232", activity: "81.1", units: "nCi" },
-    { name: "OPTICAL IMAGING SET", nsn: "5855-01-201-4857", radionuclide: "Th-232", activity: "16", units: "nCi" },
-    { name: "CELL ASSEMBLY", nsn: "6650-01-169-9328", radionuclide: "Th-232", activity: "30", units: "nCi" },
-    { name: "PRISM", nsn: "6650-01-171-8538", radionuclide: "Th-232", activity: "0.9", units: "nCi" },
-    { name: "PRISM", nsn: "6650-01-171-8539", radionuclide: "Th-232", activity: "2.81", units: "nCi" },
-    { name: "LENS", nsn: "6650-01-176-3107", radionuclide: "Th-232", activity: "14", units: "nCi" },
-    { name: "LENS", nsn: "6650-01-176-3108", radionuclide: "Th-232", activity: "17", units: "nCi" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2770", radionuclide: "H-3", activity: "800", units: "mCi" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2774", radionuclide: "H-3", activity: "1", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2776", radionuclide: "H-3", activity: "800", units: "mCi" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-096-4479", radionuclide: "H-3", activity: "1.2", units: "Ci" },
-    { name: "CELL ASSEMBLY", nsn: "1240-00-257-2759", radionuclide: "H-3", activity: "4.41", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-135-3161", radionuclide: "H-3", activity: "1.2", units: "Ci" },
-    { name: "LEVEL ASSEMBLY", nsn: "1240-01-142-5381", radionuclide: "H-3", activity: "150", units: "mCi" },
-    { name: "LEVEL, FIRE CONTROL", nsn: "1290-00-257-2769", radionuclide: "H-3", activity: "150", units: "mCi" },
-    { name: "CELL ASSEMBLY", nsn: "1240-01-079-5453", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "COLLIMATOR", nsn: "1240-01-124-1358", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "MODIFICATION KIT, GUN, FIELD ARTILLERY", nsn: "9999-00-332-1779", radionuclide: "H-3", activity: "10", units: "Ci" },
-    { name: "CELL ASSEMBLY", nsn: "1240-01-048-0779", radionuclide: "H-3", activity: "4.41", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-113-7947", radionuclide: "H-3", activity: "4.41", units: "Ci" },
-    { name: "OBJECTIVE ASSEMBLY", nsn: "1240-01-043-9463", radionuclide: "H-3", activity: "2.4", units: "Ci" },
-    { name: "COUNTERBALANCE", nsn: "1240-01-044-6915", radionuclide: "H-3", activity: "2.7", units: "Ci" },
-    { name: "TELESCOPE ASSEMBLY", nsn: "1240-01-062-8264", radionuclide: "H-3", activity: "2.4", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6240-01-043-8209", radionuclide: "H-3", activity: "2.7", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-051-9606", radionuclide: "H-3", activity: "2.4", units: "Ci" },
-    { name: "DISPLAY UNIT", nsn: "1240-01-063-1351", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
-    { name: "DISPLAY UNIT", nsn: "1240-01-063-1401", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
-    { name: "MOUNT, TELESCOPE", nsn: "1240-01-050-5588", radionuclide: "H-3", activity: "5.08", units: "Ci" },
-    { name: "TELESCOPE", nsn: "1240-01-051-3657", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "LAMP UNIT", nsn: "1240-01-051-8472", radionuclide: "H-3", activity: "700", units: "mCi" },
-    { name: "LEVEL, FIRE CONTROL", nsn: "1240-01-057-0112", radionuclide: "H-3", activity: "100", units: "mCi" },
-    { name: "MOUNT, TELESCOPE", nsn: "1240-01-201-8299", radionuclide: "H-3", activity: "5.08", units: "Ci" },
-    { name: "TELESCOPE, ELBOW", nsn: "1240-01-211-3608", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "SCALE, INDICATING", nsn: "5355-01-053-3354", radionuclide: "H-3", activity: "1.2", units: "Ci" },
-    { name: "DIAL, CONTROL", nsn: "5355-01-053-6448", radionuclide: "H-3", activity: "2", units: "Ci" },
-    { name: "DIAL, CONTROL", nsn: "5355-01-212-8527", radionuclide: "H-3", activity: "2", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-053-3356", radionuclide: "H-3", activity: "90", units: "mCi" },
-    { name: "TELESCOPE, ELBOW", nsn: "1240-01-280-5337", radionuclide: "H-3", activity: "2.5", units: "Ci" },
-    { name: "LEVEL, FIRE CONTROL", nsn: "1240-01-287-9711", radionuclide: "H-3", activity: "150", units: "mCi" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-283-8659", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "LAMP, NUCLEAR", nsn: "6260-01-280-1795", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "RETICLE, OPTICAL INSTRUMENT", nsn: "6650-01-287-9710", radionuclide: "H-3", activity: "1.6", units: "Ci" },
-    { name: "SUBASSEMBLY", nsn: "1240-01-306-2058", radionuclide: "Th-232", activity: "6.41", units: "nCi" },
-    { name: "PRISM", nsn: "6650-01-170-4494", radionuclide: "Th-232", activity: "2.2", units: "nCi" },
-    { name: "DIAL, CONTROL", nsn: "5355-01-342-2421", radionuclide: "H-3", activity: "2", units: "Ci" },
-    { name: "DIAL, SCALE", nsn: "5355-01-343-1793", radionuclide: "H-3", activity: "1.1", units: "Ci" },
-    { name: "MOUNT, TELESCOPE", nsn: "6650-01-340-6082", radionuclide: "H-3", activity: "5", units: "Ci" },
-    { name: "TELESCOPE, ELBOW", nsn: "6650-01-341-5195", radionuclide: "H-3", activity: "800", units: "mCi" },
-    { name: "DIAL, SCALE", nsn: "5355-01-212-8526", radionuclide: "H-3", activity: "1.2", units: "Ci" },
-    { name: "SIGHT, BORE, OPTICAL", nsn: "1240-01-412-6608", radionuclide: "H-3", activity: "100", units: "mCi" },
-    { name: "SIGHT, REFLEX", nsn: "1240-01-435-1916", radionuclide: "H-3", activity: "100", units: "mCi" },
-    { name: "SIGHT UNIT", nsn: "1240-01-507-8580", radionuclide: "H-3", activity: "3.2", units: "Ci" },
-    { name: "SIGHT, BORE, OPTICAL", nsn: "1240-01-525-1648", radionuclide: "H-3", activity: "100", units: "mCi" },
-    { name: "SIGHT, REFLEX", nsn: "1240-01-581-6250", radionuclide: "H-3", activity: "250", units: "mCi" },
-    { name: "SIGHT, REFLEX", nsn: "1240-25-150-7592", radionuclide: "H-3", activity: "10", units: "mCi" },
-    { name: "SOURCE, RADIOACTIVE", nsn: "1260-01-510-1032", radionuclide: "Am-241", activity: "8", units: "µCi" },
-    { name: "RECEIVER-TRANSMITTER", nsn: "1270-01-437-6581", radionuclide: "Am-241", activity: "9", units: "µCi" },
-    { name: "OPTICS ASSEMBLY", nsn: "1280-01-300-0940", radionuclide: "Th-232", activity: "0.04", units: "µCi" },
-    { name: "PROBE, ICE DETECTOR", nsn: "1660-00-077-8473", radionuclide: "Sr-90", activity: "50", units: "µCi" },
-    { name: "REGULATOR, OXYGEN, DILUTER DEMAND", nsn: "1660-00-252-7796", radionuclide: "Ra-226", activity: "3", units: "µCi" },
-    { name: "PROBE, ICE DETECTOR", nsn: "1660-00-919-0419", radionuclide: "Sr-90", activity: "50", units: "µCi" },
-    { name: "REGULATOR, OXYGEN, DEMAND", nsn: "1660-00-927-1996", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
-    { name: "SELECTOR, FREQUENCY, INSTRUMENT LANDING SYSTEM", nsn: "1660-01-483-2581", radionuclide: "Kr-85", activity: "0.27", units: "µCi" },
-    { name: "REGULATOR, OXYGEN, DEMAND", nsn: "1660-01-492-5521", radionuclide: "Ra-226", activity: "1.2", units: "µCi" },
-    { name: "POD, AIRCRAFT", nsn: "1680-01-186-1430", radionuclide: "Th-232", activity: "0.03", units: "µCi" },
-    { name: "SELECTOR, FREQUENCY, INSTRUMENT LANDING SYSTEM", nsn: "1680-01-415-5778", radionuclide: "Kr-85", activity: "0.27", units: "µCi" },
-    { name: "FLAP, VARIABLE EXHAUST NOZZLE, PRIMARY", nsn: "2480-01-450-1973", radionuclide: "U-238", activity: "0.003", units: "µCi" },
-    { name: "EXCITER, GAS TURBINE ENGINE", nsn: "2835-00-601-1317", radionuclide: "Kr-85", activity: "6.9", units: "µCi" },
-    { name: "IGNITER, TURBINE ENGINE, GAS", nsn: "2835-01-200-0298", radionuclide: "Kr-85", activity: "0.224", units: "µCi" },
-    { name: "POWER UNIT, GAS TURBINE ENGINE", nsn: "2835-01-267-8229", radionuclide: "Kr-85", activity: "2.91", units: "µCi" },
-    { name: "POWER UNIT", nsn: "2835-01-373-4275", radionuclide: "Kr-85", activity: "2.92", units: "µCi" },
-    { name: "FLAP, VARIABLE EXHAUST NOZZLE, SECONDARY", nsn: "2840-01-438-9479", radionuclide: "U-238", activity: "0.03", units: "µCi" },
-    { name: "SEAL, VARIABLE EXHAUST NOZZLE, SECONDARY", nsn: "2840-01-440-7755", radionuclide: "U-238", activity: "0.002", units: "µCi" },
-    { name: "MIXER, AFTERBURNER", nsn: "2840-01-450-1980", radionuclide: "U-238", activity: "0.05", units: "µCi" },
-    { name: "SEAL, VARIABLE EXHAUST NOZZLE, PRIMARY", nsn: "2840-01-450-1982", radionuclide: "U-238", activity: "0.001", units: "µCi" },
-    { name: "FLAMEHOLDER, AFTERBURNER", nsn: "2840-01-450-3755", radionuclide: "U-238", activity: "0.06", units: "µCi" },
-    { name: "IGNITION UNIT", nsn: "2925-00-133-9594", radionuclide: "Kr-85", activity: "0.084", units: "µCi" },
-    { name: "VIBRATOR, IGNITION COIL", nsn: "2925-00-706-2720", radionuclide: "Cs-137", activity: "10", units: "µCi" },
-    { name: "IGNITION UNIT", nsn: "2925-00-800-3403", radionuclide: "Kr-85", activity: "5", units: "µCi" },
-    { name: "VIBRATOR, IGNITION COIL", nsn: "2925-00-968-9594", radionuclide: "Cs-137", activity: "5", units: "µCi" },
-    { name: "VIBRATOR, IGNITION COIL", nsn: "2925-01-022-3181", radionuclide: "H-3", activity: "13", units: "µCi" },
-    { name: "IGNITION EXCITER", nsn: "2925-01-057-6993", radionuclide: "Kr-85", activity: "2.9", units: "µCi" },
-    { name: "VIBRATOR, IGNITION", nsn: "2925-01-077-3310", radionuclide: "Kr-85", activity: "0.3", units: "µCi" },
-    { name: "VIBRATOR, IGNITION", nsn: "2925-01-077-6866", radionuclide: "Kr-85", activity: "0.2", units: "µCi" },
-    { name: "COIL, IGNITION-EXCITER", nsn: "2925-01-323-9835", radionuclide: "Kr-85", activity: "6", units: "mCi" },
-    { name: "IGNITER, SPARK GAP", nsn: "2925-01-550-0177", radionuclide: "Kr-85", activity: "0.173", units: "µCi" },
-    { name: "ELECTRODE, WELDING", nsn: "3439-00-105-9945", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
-    { name: "DETECTOR, IONIZATION", nsn: "4210-00-595-5139", radionuclide: "Am-241", activity: "4", units: "µCi" },
-    { name: "SEALED SOURCE, IONIZATION, SMOKE ALARM", nsn: "4210-01-185-2762", radionuclide: "Am-241", activity: "1.6", units: "µCi" },
-    { name: "DETECTOR, GAMMA", nsn: "4470-00-444-3666", radionuclide: "C-14", activity: "100", units: "µCi" },
-    { name: "PROCESSOR, VIDEO SIGNAL", nsn: "5836-01-052-6952", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
-    { name: "INDICATOR, RANGE", nsn: "5840-01-458-6159", radionuclide: "H-3", activity: "3.2", units: "Ci" },
-    { name: "INDICATOR, RANGE", nsn: "5840-01-642-5687", radionuclide: "H-3", activity: "3.2", units: "Ci" },
-    { name: "SPARK GAP, RADAR", nsn: "5841-01-054-6758", radionuclide: "Kr-85", activity: "25", units: "mCi" },
-    { name: "RECEIVER-TRANSMITTER", nsn: "5841-01-056-8647", radionuclide: "H-3", activity: "15", units: "mCi" },
-    { name: "RECEIVER-EXCITER", nsn: "5841-01-554-2099", radionuclide: "Pm-147", activity: "30", units: "µCi" },
-    { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-00-087-2948", radionuclide: "Th-232", activity: "4.9", units: "µCi" },
-    { name: "NIGHT VISION SIGHT, INDIVIDUAL SERVED WEAPON", nsn: "5855-00-147-2508", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
-    { name: "LENS ASSEMBLY", nsn: "5855-00-156-4992", radionuclide: "Th-232", activity: "5.8", units: "µCi" },
-    { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-00-177-3502", radionuclide: "Th-232", activity: "4.89", units: "µCi" },
-    { name: "LENS CAP", nsn: "5855-00-409-0915", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
-    { name: "NIGHT VISION SIGHT, INDIVIDUAL SERVED WEAPON", nsn: "5855-00-688-9954", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
-    { name: "NIGHT VISION SIGHT SUBASSEMBLY", nsn: "5855-00-791-1653", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
-    { name: "NIGHT VISION SIGHT", nsn: "5855-00-908-9314", radionuclide: "Th-232", activity: "15.2", units: "µCi" },
-    { name: "EYEPIECE ASSEMBLY, NIGHT VISION SIGHT", nsn: "5855-00-941-3037", radionuclide: "Th-232", activity: "2.9", units: "µCi" },
-    { name: "COLLIMATOR, BORESIGHT", nsn: "5855-01-029-8730", radionuclide: "Th-232", activity: "6", units: "nCi" },
-    { name: "NIGHT VISION SIGHT", nsn: "5855-01-037-7339", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
-    { name: "RECEIVER-CONVERTER, INFRARED", nsn: "5855-01-052-6849", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
-    { name: "AFOCAL ASSEMBLY", nsn: "5855-01-052-6944", radionuclide: "Th-232", activity: "0.002", units: "µCi" },
-    { name: "IMAGER, INFRARED", nsn: "5855-01-053-0672", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
-    { name: "INFRARED VIEWING SET", nsn: "5855-01-093-3080", radionuclide: "Th-232", activity: "0.1", units: "µCi" },
-    { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-01-352-7033", radionuclide: "Th-232", activity: "0.05", units: "µCi" },
-    { name: "WINDOW, INFRARED", nsn: "5855-01-377-7112", radionuclide: "Th-232", activity: "0.0015", units: "µCi" },
-    { name: "DETECTOR-DEWAR", nsn: "5855-01-486-0038", radionuclide: "Th-232", activity: "0.2", units: "µCi" },
-    { name: "DUPLEXER", nsn: "5895-00-056-7033", radionuclide: "Co-60", activity: "0.8", units: "µCi" },
-    { name: "CONTROL, RECEIVER", nsn: "5895-00-688-6030", radionuclide: "Ra-226", activity: "0.17", units: "µCi" },
-    { name: "TUBE, TRANSMIT-RECEIVE", nsn: "5895-01-375-6748", radionuclide: "Co-60/H-3", activity: "0.25/12510", units: "µCi" },
-    { name: "SWITCH, TOGGLE", nsn: "5930-00-615-9376", radionuclide: "Ra-226", activity: "150", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-001-1632", radionuclide: "Th-232", activity: "0.22", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-054-1987", radionuclide: "Th-232", activity: "3", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-060-3449", radionuclide: "Th-232", activity: "1.1", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-114-4849", radionuclide: "Th-232", activity: "0.018", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-131-6742", radionuclide: "Co-60", activity: "0.7", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-134-6004", radionuclide: "Re-187", activity: "0.01", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-134-6012", radionuclide: "Re-187", activity: "0.446", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-134-6031", radionuclide: "Re-187", activity: "0.01", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-134-6064", radionuclide: "Re-187", activity: "0.01", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-134-6073", radionuclide: "Re-187", activity: "0.0889", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-140-1600", radionuclide: "Kr-85", activity: "0.001", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-148-4724", radionuclide: "Ni-63", activity: "0.5", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-168-8386", radionuclide: "Th-232", activity: "1.1", units: "nCi" },
-    { name: "TUBE, ELECTRON", nsn: "5960-00-170-4582", radionuclide: "H-3", activity: "1", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-179-4446", radionuclide: "Re-187", activity: "10", units: "pCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-188-0968", radionuclide: "Kr-85", activity: "0.05", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-188-3565", radionuclide: "Co-60", activity: "1", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-188-3574", radionuclide: "Re-187", activity: "0.02", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-188-8612", radionuclide: "Re-187", activity: "0.01", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-193-5127", radionuclide: "Th-232", activity: "0.26", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-220-6892", radionuclide: "Co-60", activity: "0.09", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-262-0161", radionuclide: "Re-187", activity: "0.02", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-262-0163", radionuclide: "Re-187", activity: "0.02", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-262-0210", radionuclide: "Re-187", activity: "0.01", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-262-0286", radionuclide: "Co-60", activity: "0.02", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-280-5585", radionuclide: "Re-187", activity: "0.01", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-297-7099", radionuclide: "Th-232", activity: "1.1", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-307-9918", radionuclide: "Th-232", activity: "1.1", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-338-0377", radionuclide: "Th-232", activity: "1.1", units: "nCi" },
-    { name: "MAGNETRON", nsn: "5960-00-476-4750", radionuclide: "H-3", activity: "1", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-503-4880", radionuclide: "Kr-85", activity: "0.03", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-542-7004", radionuclide: "Re-187", activity: "0.04", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-552-0082", radionuclide: "Re-187", activity: "0.02", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-552-8277", radionuclide: "U-238", activity: "0.08", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-615-5619", radionuclide: "Th-232", activity: "120", units: "pCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-624-4718", radionuclide: "Ra-226", activity: "6", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-681-8037", radionuclide: "Co-60", activity: "0.15", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-682-8627", radionuclide: "Re-187", activity: "0.0889", units: "nCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-713-7014", radionuclide: "U-238", activity: "0.08", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-752-6384", radionuclide: "H-3", activity: "1", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-827-8782", radionuclide: "Re-187", activity: "4.46", units: "nCi" },
-    { name: "TUBE, ELECTRON", nsn: "5960-01-008-1351", radionuclide: "H-3", activity: "30", units: "mCi" },
-    { name: "TUBE, ELECTRON", nsn: "5960-01-008-1352", radionuclide: "H-3", activity: "30", units: "mCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-01-013-9344", radionuclide: "Co-60", activity: "0.1", units: "µCi" },
-    { name: "RADIAC SET", nsn: "6665-00-017-8903", radionuclide: "Kr-85", activity: "5", units: "mCi" },
-    { name: "DETECTOR", nsn: "6665-01-282-7139", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
-    { name: "RADIAC CALIBRATOR", nsn: "6665-01-333-5985", radionuclide: "Tc-99", activity: "0.2", units: "µCi" },
-    { name: "DETECTOR, CHEMICAL AGENT, AUTOMATIC", nsn: "6665-01-438-3673", radionuclide: "Ni-63", activity: "30", units: "mCi" },
-    { name: "DETECTOR KIT, CHEMICAL AGENT", nsn: "6665-01-491-8523", radionuclide: "Ni-63", activity: "10", units: "mCi" },
-    { name: "SOURCE SET, RADIOACTIVITY", nsn: "6665-01-546-6120", radionuclide: "Sr-90", activity: "0.15", units: "µCi" },
-    { name: "DETECTOR, CHEMICAL AGENT", nsn: "6665-99-203-6162", radionuclide: "Ni-63", activity: "30", units: "mCi" },
-    { name: "CHEMICAL AGENT MONITOR", nsn: "6665-99-725-9996", radionuclide: "Ni-63", activity: "10", units: "mCi" },
-    { name: "INDICATOR, PRESSURE", nsn: "6685-01-356-9967", radionuclide: "Sr-90", activity: "100", units: "µCi" },
-    { name: "ELECTRON TUBE", nsn: "5960-00-552-0082", radionuclide: "Re-187", activity: "0.02", units: "nCi" },
-
-	];
-
+        // --- DATA ---
+        const rawTableData = [
+            { name: "SIGHT KIT", nsn: "1005-00-071-8030", nuclides: [{ id: "Pm-147", activity: "1", units: "mCi" }] },
+            { name: "RIFLE, 5.56 MILLIMETER", nsn: "1005-00-073-9421", nuclides: [{ id: "H-3", activity: "9", units: "mCi" }] },
+            { name: "POST ASSEMBLY", nsn: "1005-00-145-6378", nuclides: [{ id: "Pm-147", activity: "1", units: "mCi" }] },
+            { name: "POST ASSEMBLY", nsn: "1005-00-234-1568", nuclides: [{ id: "H-3", activity: "9", units: "mCi" }] },
+            { name: "SWITCH, TOGGLE", nsn: "5930-00-655-1514", nuclides: [{ id: "Ra-226", activity: "0.15", units: "µCi" }] },
+            { name: "WINDVANE ASSEMBLY", nsn: "1005-01-099-1450", nuclides: [{ id: "Th-232", activity: "2.6", units: "pCi" }] },
+            { name: "PISTOL, 9 MILLIMETER, AUTOMATIC", nsn: "1005-01-340-0096", nuclides: [{ id: "H-3", activity: "54.1", units: "mCi" }] },
+            { name: "RIFLE, 5.56 MILLIMETER", nsn: "1005-01-340-6037", nuclides: [{ id: "H-3", activity: "9", units: "mCi" }] },
+            { name: "MORTAR, 60 MILLIMETER", nsn: "1010-01-020-5626", nuclides: [{ id: "H-3", activity: "29", units: "Ci" }] },
+            { name: "SIGHT UNIT", nsn: "1240-01-174-1726", nuclides: [{ id: "H-3", activity: "6.7", units: "Ci" }] },
+            { name: "LIGHT, AIMING POST", nsn: "1290-00-169-1934", nuclides: [{ id: "H-3", activity: "5", units: "Ci" }] },
+            { name: "LIGHT, AIMING POST", nsn: "1290-00-169-1935", nuclides: [{ id: "H-3", activity: "9", units: "Ci" }] },
+            { name: "RANGE INDICATOR ASSEMBLY", nsn: "1010-01-115-3128", nuclides: [{ id: "H-3", activity: "3.19", units: "Ci" }] },
+            { name: "RANGE INDICATOR", nsn: "1010-01-237-9033", nuclides: [{ id: "H-3", activity: "3.19", units: "Ci" }] },
+            { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-086-8164", nuclides: [{ id: "H-3", activity: "24.8", units: "Ci" }] },
+            { name: "TELESCOPE, ELBOW", nsn: "1240-00-150-8886", nuclides: [{ id: "H-3", activity: "3.81", units: "Ci" }] },
+            { name: "TELESCOPE, PANORAMIC", nsn: "1240-00-150-8889", nuclides: [{ id: "H-3", activity: "5.59", units: "Ci" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "1240-00-150-8890", nuclides: [{ id: "H-3", activity: "150", units: "mCi" }] },
+            { name: "COLLIMATOR, INFINITY AIMING REFERENCE", nsn: "1240-00-332-1780", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "QUADRANT, FIRE CONTROL", nsn: "1290-00-150-8891", nuclides: [{ id: "H-3", activity: "2.2", units: "Ci" }] },
+            { name: "QUADRANT, GUNNERS", nsn: "1290-00-169-1937", nuclides: [{ id: "H-3", activity: "75.1", units: "mCi" }] },
+            { name: "ALIGNMENT DEVICE, BORESIGHT", nsn: "4931-00-341-5119", nuclides: [{ id: "H-3", activity: "3", units: "Ci" }] },
+            { name: "ALIGNMENT DEVICE, BORESIGHT", nsn: "4931-01-187-9713", nuclides: [{ id: "H-3", activity: "3", units: "Ci" }] },
+            { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-322-9728", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "HOWITZER, LIGHT, TOWED, 105MM", nsn: "1015-00-322-9752", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "MORTAR, 81MM", nsn: "1015-01-164-6651", nuclides: [{ id: "H-3", activity: "25.7", units: "Ci" }] },
+            { name: "SIGHT UNIT", nsn: "1240-01-379-7953", nuclides: [{ id: "H-3", activity: "6.7", units: "Ci" }] },
+            { name: "MORTAR, 120MM", nsn: "1015-01-226-1672", nuclides: [{ id: "H-3", activity: "24.8", units: "Ci" }] },
+            { name: "SIGHT UNIT", nsn: "1240-01-366-7322", nuclides: [{ id: "H-3", activity: "5.78", units: "Ci" }] },
+            { name: "HOWITZER, TOWED, 105MM", nsn: "1015-01-248-0859", nuclides: [{ id: "H-3", activity: "22.4", units: "Ci" }] },
+            { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-277-0472", nuclides: [{ id: "H-3", activity: "5.11", units: "Ci" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "1240-01-277-0474", nuclides: [{ id: "H-3", activity: "2.65", units: "Ci" }] },
+            { name: "TELESCOPE, ELBOW", nsn: "1240-01-277-2875", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "MORTAR, CARRIER MOUNTED, 120MM", nsn: "1015-01-292-3801", nuclides: [{ id: "H-3", activity: "24.8", units: "Ci" }] },
+            { name: "HOWITZER, TOWED, 105MM", nsn: "1015-01-308-1872", nuclides: [{ id: "H-3", activity: "22.4", units: "Ci" }] },
+            { name: "RIFLE, RECOILLESS", nsn: "1015-01-314-1770", nuclides: [{ id: "H-3", activity: "210", units: "mCi" }] },
+            { name: "HOWITZER, MEDIUM, TOWED, 155MM", nsn: "1025-01-026-6648", nuclides: [{ id: "H-3", activity: "26.6", units: "Ci" }] },
+            { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-038-0530", nuclides: [{ id: "H-3", activity: "4.41", units: "Ci" }] },
+            { name: "TELESCOPE, PANORAMIC", nsn: "1240-01-038-0531", nuclides: [{ id: "H-3", activity: "5.11", units: "Ci" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "1240-01-039-7273", nuclides: [{ id: "H-3", activity: "150", units: "mCi" }] },
+            { name: "QUADRANT, FIRE CONTROL", nsn: "1290-01-037-3883", nuclides: [{ id: "H-3", activity: "1.9", units: "Ci" }] },
+            { name: "QUADRANT, FIRE CONTROL", nsn: "1290-01-037-7289", nuclides: [{ id: "H-3", activity: "1.95", units: "Ci" }] },
+            { name: "ALIGNMENT DEVICE", nsn: "4931-01-048-5834", nuclides: [{ id: "H-3", activity: "3", units: "Ci" }] },
+            { name: "SWITCH", nsn: "5930-00-655-1582", nuclides: [{ id: "Ra-226", activity: "0.15", units: "µCi" }] },
+            { name: "TURRET ASSEMBLY", nsn: "1220-01-308-3019", nuclides: [{ id: "Th-232", activity: "81.1", units: "nCi" }] },
+            { name: "OPTICAL IMAGING SET", nsn: "5855-01-201-4857", nuclides: [{ id: "Th-232", activity: "16", units: "nCi" }] },
+            { name: "CELL ASSEMBLY", nsn: "6650-01-169-9328", nuclides: [{ id: "Th-232", activity: "30", units: "nCi" }] },
+            { name: "PRISM", nsn: "6650-01-171-8538", nuclides: [{ id: "Th-232", activity: "0.9", units: "nCi" }] },
+            { name: "PRISM", nsn: "6650-01-171-8539", nuclides: [{ id: "Th-232", activity: "2.81", units: "nCi" }] },
+            { name: "LENS", nsn: "6650-01-176-3107", nuclides: [{ id: "Th-232", activity: "14", units: "nCi" }] },
+            { name: "LENS", nsn: "6650-01-176-3108", nuclides: [{ id: "Th-232", activity: "17", units: "nCi" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2770", nuclides: [{ id: "H-3", activity: "800", units: "mCi" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2774", nuclides: [{ id: "H-3", activity: "1", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-00-257-2776", nuclides: [{ id: "H-3", activity: "800", units: "mCi" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-096-4479", nuclides: [{ id: "H-3", activity: "1.2", units: "Ci" }] },
+            { name: "CELL ASSEMBLY", nsn: "1240-00-257-2759", nuclides: [{ id: "H-3", activity: "4.41", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-135-3161", nuclides: [{ id: "H-3", activity: "1.2", units: "Ci" }] },
+            { name: "LEVEL ASSEMBLY", nsn: "1240-01-142-5381", nuclides: [{ id: "H-3", activity: "150", units: "mCi" }] },
+            { name: "LEVEL, FIRE CONTROL", nsn: "1290-00-257-2769", nuclides: [{ id: "H-3", activity: "150", units: "mCi" }] },
+            { name: "CELL ASSEMBLY", nsn: "1240-01-079-5453", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "COLLIMATOR", nsn: "1240-01-124-1358", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "MODIFICATION KIT, GUN, FIELD ARTILLERY", nsn: "9999-00-332-1779", nuclides: [{ id: "H-3", activity: "10", units: "Ci" }] },
+            { name: "CELL ASSEMBLY", nsn: "1240-01-048-0779", nuclides: [{ id: "H-3", activity: "4.41", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-113-7947", nuclides: [{ id: "H-3", activity: "4.41", units: "Ci" }] },
+            { name: "OBJECTIVE ASSEMBLY", nsn: "1240-01-043-9463", nuclides: [{ id: "H-3", activity: "2.4", units: "Ci" }] },
+            { name: "COUNTERBALANCE", nsn: "1240-01-044-6915", nuclides: [{ id: "H-3", activity: "2.7", units: "Ci" }] },
+            { name: "TELESCOPE ASSEMBLY", nsn: "1240-01-062-8264", nuclides: [{ id: "H-3", activity: "2.4", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6240-01-043-8209", nuclides: [{ id: "H-3", activity: "2.7", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-051-9606", nuclides: [{ id: "H-3", activity: "2.4", units: "Ci" }] },
+            { name: "DISPLAY UNIT", nsn: "1240-01-063-1351", nuclides: [{ id: "Th-232", activity: "0.05", units: "µCi" }] },
+            { name: "DISPLAY UNIT", nsn: "1240-01-063-1401", nuclides: [{ id: "Th-232", activity: "0.05", units: "µCi" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "1240-01-050-5588", nuclides: [{ id: "H-3", activity: "5.08", units: "Ci" }] },
+            { name: "TELESCOPE", nsn: "1240-01-051-3657", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "LAMP UNIT", nsn: "1240-01-051-8472", nuclides: [{ id: "H-3", activity: "700", units: "mCi" }] },
+            { name: "LEVEL, FIRE CONTROL", nsn: "1240-01-057-0112", nuclides: [{ id: "H-3", activity: "100", units: "mCi" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "1240-01-201-8299", nuclides: [{ id: "H-3", activity: "5.08", units: "Ci" }] },
+            { name: "TELESCOPE, ELBOW", nsn: "1240-01-211-3608", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "SCALE, INDICATING", nsn: "5355-01-053-3354", nuclides: [{ id: "H-3", activity: "1.2", units: "Ci" }] },
+            { name: "DIAL, CONTROL", nsn: "5355-01-053-6448", nuclides: [{ id: "H-3", activity: "2", units: "Ci" }] },
+            { name: "DIAL, CONTROL", nsn: "5355-01-212-8527", nuclides: [{ id: "H-3", activity: "2", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-053-3356", nuclides: [{ id: "H-3", activity: "90", units: "mCi" }] },
+            { name: "TELESCOPE, ELBOW", nsn: "1240-01-280-5337", nuclides: [{ id: "H-3", activity: "2.5", units: "Ci" }] },
+            { name: "LEVEL, FIRE CONTROL", nsn: "1240-01-287-9711", nuclides: [{ id: "H-3", activity: "150", units: "mCi" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-283-8659", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "LAMP, NUCLEAR", nsn: "6260-01-280-1795", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "RETICLE, OPTICAL INSTRUMENT", nsn: "6650-01-287-9710", nuclides: [{ id: "H-3", activity: "1.6", units: "Ci" }] },
+            { name: "SUBASSEMBLY", nsn: "1240-01-306-2058", nuclides: [{ id: "Th-232", activity: "6.41", units: "nCi" }] },
+            { name: "PRISM", nsn: "6650-01-170-4494", nuclides: [{ id: "Th-232", activity: "2.2", units: "nCi" }] },
+            { name: "DIAL, CONTROL", nsn: "5355-01-342-2421", nuclides: [{ id: "H-3", activity: "2", units: "Ci" }] },
+            { name: "DIAL, SCALE", nsn: "5355-01-343-1793", nuclides: [{ id: "H-3", activity: "1.1", units: "Ci" }] },
+            { name: "MOUNT, TELESCOPE", nsn: "6650-01-340-6082", nuclides: [{ id: "H-3", activity: "5", units: "Ci" }] },
+            { name: "TELESCOPE, ELBOW", nsn: "6650-01-341-5195", nuclides: [{ id: "H-3", activity: "800", units: "mCi" }] },
+            { name: "DIAL, SCALE", nsn: "5355-01-212-8526", nuclides: [{ id: "H-3", activity: "1.2", units: "Ci" }] },
+            { name: "SIGHT, BORE, OPTICAL", nsn: "1240-01-412-6608", nuclides: [{ id: "H-3", activity: "100", units: "mCi" }] },
+            { name: "SIGHT, REFLEX", nsn: "1240-01-435-1916", nuclides: [{ id: "H-3", activity: "100", units: "mCi" }] },
+            { name: "SIGHT UNIT", nsn: "1240-01-507-8580", nuclides: [{ id: "H-3", activity: "3.2", units: "Ci" }] },
+            { name: "SIGHT, BORE, OPTICAL", nsn: "1240-01-525-1648", nuclides: [{ id: "H-3", activity: "100", units: "mCi" }] },
+            { name: "SIGHT, REFLEX", nsn: "1240-01-581-6250", nuclides: [{ id: "H-3", activity: "250", units: "mCi" }] },
+            { name: "SIGHT, REFLEX", nsn: "1240-25-150-7592", nuclides: [{ id: "H-3", activity: "10", units: "mCi" }] },
+            { name: "SOURCE, RADIOACTIVE", nsn: "1260-01-510-1032", nuclides: [{ id: "Am-241", activity: "8", units: "µCi" }] },
+            { name: "RECEIVER-TRANSMITTER", nsn: "1270-01-437-6581", nuclides: [{ id: "Am-241", activity: "9", units: "µCi" }] },
+            { name: "OPTICS ASSEMBLY", nsn: "1280-01-300-0940", nuclides: [{ id: "Th-232", activity: "0.04", units: "µCi" }] },
+            { name: "PROBE, ICE DETECTOR", nsn: "1660-00-077-8473", nuclides: [{ id: "Sr-90", activity: "50", units: "µCi" }] },
+            { name: "REGULATOR, OXYGEN, DILUTER DEMAND", nsn: "1660-00-252-7796", nuclides: [{ id: "Ra-226", activity: "3", units: "µCi" }] },
+            { name: "PROBE, ICE DETECTOR", nsn: "1660-00-919-0419", nuclides: [{ id: "Sr-90", activity: "50", units: "µCi" }] },
+            { name: "REGULATOR, OXYGEN, DEMAND", nsn: "1660-00-927-1996", nuclides: [{ id: "Ra-226", activity: "1.2", units: "µCi" }] },
+            { name: "SELECTOR, FREQUENCY, INSTRUMENT LANDING SYSTEM", nsn: "1660-01-483-2581", nuclides: [{ id: "Kr-85", activity: "0.27", units: "µCi" }] },
+            { name: "REGULATOR, OXYGEN, DEMAND", nsn: "1660-01-492-5521", nuclides: [{ id: "Ra-226", activity: "1.2", units: "µCi" }] },
+            { name: "POD, AIRCRAFT", nsn: "1680-01-186-1430", nuclides: [{ id: "Th-232", activity: "0.03", units: "µCi" }] },
+            { name: "SELECTOR, FREQUENCY, INSTRUMENT LANDING SYSTEM", nsn: "1680-01-415-5778", nuclides: [{ id: "Kr-85", activity: "0.27", units: "µCi" }] },
+            { name: "FLAP, VARIABLE EXHAUST NOZZLE, PRIMARY", nsn: "2480-01-450-1973", nuclides: [{ id: "U-238", activity: "0.003", units: "µCi" }] },
+            { name: "EXCITER, GAS TURBINE ENGINE", nsn: "2835-00-601-1317", nuclides: [{ id: "Kr-85", activity: "6.9", units: "µCi" }] },
+            { name: "IGNITER, TURBINE ENGINE, GAS", nsn: "2835-01-200-0298", nuclides: [{ id: "Kr-85", activity: "0.224", units: "µCi" }] },
+            { name: "POWER UNIT, GAS TURBINE ENGINE", nsn: "2835-01-267-8229", nuclides: [{ id: "Kr-85", activity: "2.91", units: "µCi" }] },
+            { name: "POWER UNIT", nsn: "2835-01-373-4275", nuclides: [{ id: "Kr-85", activity: "2.92", units: "µCi" }] },
+            { name: "FLAP, VARIABLE EXHAUST NOZZLE, SECONDARY", nsn: "2840-01-438-9479", nuclides: [{ id: "U-238", activity: "0.03", units: "µCi" }] },
+            { name: "SEAL, VARIABLE EXHAUST NOZZLE, SECONDARY", nsn: "2840-01-440-7755", nuclides: [{ id: "U-238", activity: "0.002", units: "µCi" }] },
+            { name: "MIXER, AFTERBURNER", nsn: "2840-01-450-1980", nuclides: [{ id: "U-238", activity: "0.05", units: "µCi" }] },
+            { name: "SEAL, VARIABLE EXHAUST NOZZLE, PRIMARY", nsn: "2840-01-450-1982", nuclides: [{ id: "U-238", activity: "0.001", units: "µCi" }] },
+            { name: "FLAMEHOLDER, AFTERBURNER", nsn: "2840-01-450-3755", nuclides: [{ id: "U-238", activity: "0.06", units: "µCi" }] },
+            { name: "IGNITION UNIT", nsn: "2925-00-133-9594", nuclides: [{ id: "Kr-85", activity: "0.084", units: "µCi" }] },
+            { name: "VIBRATOR, IGNITION COIL", nsn: "2925-00-706-2720", nuclides: [{ id: "Cs-137", activity: "10", units: "µCi" }] },
+            { name: "IGNITION UNIT", nsn: "2925-00-800-3403", nuclides: [{ id: "Kr-85", activity: "5", units: "µCi" }] },
+            { name: "VIBRATOR, IGNITION COIL", nsn: "2925-00-968-9594", nuclides: [{ id: "Cs-137", activity: "5", units: "µCi" }] },
+            { name: "VIBRATOR, IGNITION COIL", nsn: "2925-01-022-3181", nuclides: [{ id: "H-3", activity: "13", units: "µCi" }] },
+            { name: "IGNITION EXCITER", nsn: "2925-01-057-6993", nuclides: [{ id: "Kr-85", activity: "2.9", units: "µCi" }] },
+            { name: "VIBRATOR, IGNITION", nsn: "2925-01-077-3310", nuclides: [{ id: "Kr-85", activity: "0.3", units: "µCi" }] },
+            { name: "VIBRATOR, IGNITION", nsn: "2925-01-077-6866", nuclides: [{ id: "Kr-85", activity: "0.2", units: "µCi" }] },
+            { name: "COIL, IGNITION-EXCITER", nsn: "2925-01-323-9835", nuclides: [{ id: "Kr-85", activity: "6", units: "mCi" }] },
+            { name: "IGNITER, SPARK GAP", nsn: "2925-01-550-0177", nuclides: [{ id: "Kr-85", activity: "0.173", units: "µCi" }] },
+            { name: "ELECTRODE, WELDING", nsn: "3439-00-105-9945", nuclides: [{ id: "Th-232", activity: "0.2", units: "µCi" }] },
+            { name: "DETECTOR, IONIZATION", nsn: "4210-00-595-5139", nuclides: [{ id: "Am-241", activity: "4", units: "µCi" }] },
+            { name: "SEALED SOURCE, IONIZATION, SMOKE ALARM", nsn: "4210-01-185-2762", nuclides: [{ id: "Am-241", activity: "1.6", units: "µCi" }] },
+            { name: "DETECTOR, GAMMA", nsn: "4470-00-444-3666", nuclides: [{ id: "C-14", activity: "100", units: "µCi" }] },
+            { name: "PROCESSOR, VIDEO SIGNAL", nsn: "5836-01-052-6952", nuclides: [{ id: "Th-232", activity: "0.002", units: "µCi" }] },
+            { name: "INDICATOR, RANGE", nsn: "5840-01-458-6159", nuclides: [{ id: "H-3", activity: "3.2", units: "Ci" }] },
+            { name: "INDICATOR, RANGE", nsn: "5840-01-642-5687", nuclides: [{ id: "H-3", activity: "3.2", units: "Ci" }] },
+            { name: "SPARK GAP, RADAR", nsn: "5841-01-054-6758", nuclides: [{ id: "Kr-85", activity: "25", units: "mCi" }] },
+            { name: "RECEIVER-TRANSMITTER", nsn: "5841-01-056-8647", nuclides: [{ id: "H-3", activity: "15", units: "mCi" }] },
+            { name: "RECEIVER-EXCITER", nsn: "5841-01-554-2099", nuclides: [{ id: "Pm-147", activity: "30", units: "µCi" }] },
+            { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-00-087-2948", nuclides: [{ id: "Th-232", activity: "4.9", units: "µCi" }] },
+            { name: "NIGHT VISION SIGHT, INDIVIDUAL SERVED WEAPON", nsn: "5855-00-147-2508", nuclides: [{ id: "Th-232", activity: "15.2", units: "µCi" }] },
+            { name: "LENS ASSEMBLY", nsn: "5855-00-156-4992", nuclides: [{ id: "Th-232", activity: "5.8", units: "µCi" }] },
+            { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-00-177-3502", nuclides: [{ id: "Th-232", activity: "4.89", units: "µCi" }] },
+            { name: "LENS CAP", nsn: "5855-00-409-0915", nuclides: [{ id: "Th-232", activity: "2.9", units: "µCi" }] },
+            { name: "NIGHT VISION SIGHT, INDIVIDUAL SERVED WEAPON", nsn: "5855-00-688-9954", nuclides: [{ id: "Th-232", activity: "2.9", units: "µCi" }] },
+            { name: "NIGHT VISION SIGHT SUBASSEMBLY", nsn: "5855-00-791-1653", nuclides: [{ id: "Th-232", activity: "2.9", units: "µCi" }] },
+            { name: "NIGHT VISION SIGHT", nsn: "5855-00-908-9314", nuclides: [{ id: "Th-232", activity: "15.2", units: "µCi" }] },
+            { name: "EYEPIECE ASSEMBLY, NIGHT VISION SIGHT", nsn: "5855-00-941-3037", nuclides: [{ id: "Th-232", activity: "2.9", units: "µCi" }] },
+            { name: "COLLIMATOR, BORESIGHT", nsn: "5855-01-029-8730", nuclides: [{ id: "Th-232", activity: "6", units: "nCi" }] },
+            { name: "NIGHT VISION SIGHT", nsn: "5855-01-037-7339", nuclides: [{ id: "Th-232", activity: "0.05", units: "µCi" }] },
+            { name: "RECEIVER-CONVERTER, INFRARED", nsn: "5855-01-052-6849", nuclides: [{ id: "Th-232", activity: "0.0015", units: "µCi" }] },
+            { name: "AFOCAL ASSEMBLY", nsn: "5855-01-052-6944", nuclides: [{ id: "Th-232", activity: "0.002", units: "µCi" }] },
+            { name: "IMAGER, INFRARED", nsn: "5855-01-053-0672", nuclides: [{ id: "Th-232", activity: "0.0015", units: "µCi" }] },
+            { name: "INFRARED VIEWING SET", nsn: "5855-01-093-3080", nuclides: [{ id: "Th-232", activity: "0.1", units: "µCi" }] },
+            { name: "IMAGE INTENSIFIER ASSEMBLY", nsn: "5855-01-352-7033", nuclides: [{ id: "Th-232", activity: "0.05", units: "µCi" }] },
+            { name: "WINDOW, INFRARED", nsn: "5855-01-377-7112", nuclides: [{ id: "Th-232", activity: "0.0015", units: "µCi" }] },
+            { name: "DETECTOR-DEWAR", nsn: "5855-01-486-0038", nuclides: [{ id: "Th-232", activity: "0.2", units: "µCi" }] },
+            { name: "DUPLEXER", nsn: "5895-00-056-7033", nuclides: [{ id: "Co-60", activity: "0.8", units: "µCi" }] },
+            { name: "CONTROL, RECEIVER", nsn: "5895-00-688-6030", nuclides: [{ id: "Ra-226", activity: "0.17", units: "µCi" }] },
+            { name: "TUBE, TRANSMIT-RECEIVE", nsn: "5895-01-375-6748", nuclides: [
+                { id: "Co-60", activity: "0.25", units: "µCi" },
+                { id: "H-3", activity: "12510", units: "µCi" }
+            ]},
+            { name: "SWITCH, TOGGLE", nsn: "5930-00-615-9376", nuclides: [{ id: "Ra-226", activity: "150", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-001-1632", nuclides: [{ id: "Th-232", activity: "0.22", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-054-1987", nuclides: [{ id: "Th-232", activity: "3", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-060-3449", nuclides: [{ id: "Th-232", activity: "1.1", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-114-4849", nuclides: [{ id: "Th-232", activity: "0.018", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-131-6742", nuclides: [{ id: "Co-60", activity: "0.7", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-134-6004", nuclides: [{ id: "Re-187", activity: "0.01", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-134-6012", nuclides: [{ id: "Re-187", activity: "0.446", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-134-6031", nuclides: [{ id: "Re-187", activity: "0.01", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-134-6064", nuclides: [{ id: "Re-187", activity: "0.01", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-134-6073", nuclides: [{ id: "Re-187", activity: "0.0889", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-140-1600", nuclides: [{ id: "Kr-85", activity: "0.001", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-148-4724", nuclides: [{ id: "Ni-63", activity: "0.5", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-168-8386", nuclides: [{ id: "Th-232", activity: "1.1", units: "nCi" }] },
+            { name: "TUBE, ELECTRON", nsn: "5960-00-170-4582", nuclides: [{ id: "H-3", activity: "1", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-179-4446", nuclides: [{ id: "Re-187", activity: "10", units: "pCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-188-0968", nuclides: [{ id: "Kr-85", activity: "0.05", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-188-3565", nuclides: [{ id: "Co-60", activity: "1", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-188-3574", nuclides: [{ id: "Re-187", activity: "0.02", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-188-8612", nuclides: [{ id: "Re-187", activity: "0.01", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-193-5127", nuclides: [{ id: "Th-232", activity: "0.26", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-220-6892", nuclides: [{ id: "Co-60", activity: "0.09", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-262-0161", nuclides: [{ id: "Re-187", activity: "0.02", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-262-0163", nuclides: [{ id: "Re-187", activity: "0.02", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-262-0210", nuclides: [{ id: "Re-187", activity: "0.01", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-262-0286", nuclides: [{ id: "Co-60", activity: "0.02", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-280-5585", nuclides: [{ id: "Re-187", activity: "0.01", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-297-7099", nuclides: [{ id: "Th-232", activity: "1.1", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-307-9918", nuclides: [{ id: "Th-232", activity: "1.1", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-338-0377", nuclides: [{ id: "Th-232", activity: "1.1", units: "nCi" }] },
+            { name: "MAGNETRON", nsn: "5960-00-476-4750", nuclides: [{ id: "H-3", activity: "1", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-503-4880", nuclides: [{ id: "Kr-85", activity: "0.03", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-542-7004", nuclides: [{ id: "Re-187", activity: "0.04", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-552-0082", nuclides: [{ id: "Re-187", activity: "0.02", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-552-8277", nuclides: [{ id: "U-238", activity: "0.08", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-615-5619", nuclides: [{ id: "Th-232", activity: "120", units: "pCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-624-4718", nuclides: [{ id: "Ra-226", activity: "6", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-681-8037", nuclides: [{ id: "Co-60", activity: "0.15", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-682-8627", nuclides: [{ id: "Re-187", activity: "0.0889", units: "nCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-713-7014", nuclides: [{ id: "U-238", activity: "0.08", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-752-6384", nuclides: [{ id: "H-3", activity: "1", units: "µCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-00-827-8782", nuclides: [{ id: "Re-187", activity: "4.46", units: "nCi" }] },
+            { name: "TUBE, ELECTRON", nsn: "5960-01-008-1351", nuclides: [{ id: "H-3", activity: "30", units: "mCi" }] },
+            { name: "TUBE, ELECTRON", nsn: "5960-01-008-1352", nuclides: [{ id: "H-3", activity: "30", units: "mCi" }] },
+            { name: "ELECTRON TUBE", nsn: "5960-01-013-9344", nuclides: [{ id: "Co-60", activity: "0.1", units: "µCi" }] },
+            { name: "RADIAC SET", nsn: "6665-00-017-8903", nuclides: [{ id: "Kr-85", activity: "5", units: "mCi" }] },
+            { name: "DETECTOR", nsn: "6665-01-282-7139", nuclides: [{ id: "Tc-99", activity: "0.2", units: "µCi" }] },
+            { name: "RADIAC CALIBRATOR", nsn: "6665-01-333-5985", nuclides: [{ id: "Tc-99", activity: "0.2", units: "µCi" }] },
+            { name: "DETECTOR, CHEMICAL AGENT, AUTOMATIC", nsn: "6665-01-438-3673", nuclides: [{ id: "Ni-63", activity: "30", units: "mCi" }] },
+            { name: "DETECTOR KIT, CHEMICAL AGENT", nsn: "6665-01-491-8523", nuclides: [{ id: "Ni-63", activity: "10", units: "mCi" }] },
+            { name: "SOURCE SET, RADIOACTIVITY", nsn: "6665-01-546-6120", nuclides: [{ id: "Sr-90", activity: "0.15", units: "µCi" }] },
+            { name: "DETECTOR, CHEMICAL AGENT", nsn: "6665-99-203-6162", nuclides: [{ id: "Ni-63", activity: "30", units: "mCi" }] },
+            { name: "CHEMICAL AGENT MONITOR", nsn: "6665-99-725-9996", nuclides: [{ id: "Ni-63", activity: "10", units: "mCi" }] },
+            { name: "INDICATOR, PRESSURE", nsn: "6685-01-356-9967", nuclides: [{ id: "Sr-90", activity: "100", units: "µCi" }] },
+        ];
         const radionuclideDetails = {
             'H-3': { name: 'Tritium', halfLife: '12.3 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Tritium' },
             'Am-241': { name: 'Americium-241', halfLife: '432.2 years', decayMode: 'Alpha, Gamma', wiki: 'https://en.wikipedia.org/wiki/Americium-241' },
@@ -743,35 +756,30 @@
             'C-14': { name: 'Carbon-14', halfLife: '5730 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Carbon-14' },
             'Tc-99': { name: 'Technetium-99', halfLife: '211,100 years', decayMode: 'Beta', wiki: 'https://en.wikipedia.org/wiki/Technetium-99' }
         };
-
         const nrcExemptionValues = {
             'Am-241': '0.01 µCi', 'C-14': '100 µCi', 'Cs-137': '10 µCi', 'Co-60': '1 µCi',
             'H-3': '1,000 µCi', 'Kr-85': '100 µCi', 'Ni-63': '100 µCi', 'N-63': '100 µCi',
             'Pm-147': '10 µCi', 'Ra-226': '0.1 µCi', 'Re-187': '100 µCi', 'Sr-90': '0.1 µCi',
             'Tc-99': '10 µCi', 'Th-232': '--', 'U-238': '--'
         };
-
         const dotExemptionValues = {
             'H-3': '27 mCi', 'Am-241': '0.27 µCi', 'Th-232': '0.27 µCi', 'Sr-90': '0.27 µCi',
             'Ra-226': '0.27 µCi', 'Kr-85': '0.27 µCi', 'U-238': '0.27 µCi', 'Cs-137': '0.27 µCi',
             'Pm-147': '270 µCi', 'Co-60': '2.7 µCi', 'Re-187': '27 mCi', 'Ni-63': '2.7 mCi',
             'N-63': '2.7 mCi', 'C-14': '270 µCi', 'Tc-99': '270 µCi'
         };
-
         const un2911Limits = {
             'Am-241': '0.00027 Ci', 'C-14': '0.81 Ci', 'Co-60': '0.11 Ci', 'Cs-137': '0.16 Ci',
             'H-3': '22 Ci', 'Kr-85': '0.27 Ci', 'Ni-63': '8.1 Ci', 'N-63': '8.1 Ci',
             'Pm-147': '0.54 Ci', 'Ra-226': '0.00081 Ci', 'Re-187': 'Unlimited', 'Sr-90': '0.081 Ci',
             'Tc-99': '0.24 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
-
         const un2911PkgLimits = {
             'Am-241': '0.027 Ci', 'C-14': '81 Ci', 'Co-60': '11 Ci', 'Cs-137': '16 Ci',
             'H-3': '220 Ci', 'Kr-85': '2.7 Ci', 'Ni-63': '810 Ci', 'N-63': '810 Ci',
             'Pm-147': '54 Ci', 'Ra-226': '0.081 Ci', 'Re-187': 'Unlimited', 'Sr-90': '8.1 Ci',
             'Tc-99': '24 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
-
         const dotA2Values = {
             'Am-241': '0.027 Ci', 'C-14': '54 Ci', 'Co-60': '11 Ci', 'Cs-137': '16 Ci',
             'H-3': '1100 Ci', 'Kr-85': '270 Ci', 'Ni-63': '810 Ci', 'N-63': '810 Ci',
@@ -779,16 +787,40 @@
             'Tc-99': '54 Ci', 'Th-232': 'Unlimited', 'U-238': 'Unlimited'
         };
 
+        // --- GLOBAL STATE ---
         let tableData = [];
         let currentSort = { column: null, direction: 'asc' };
         
+        // --- UTILITY FUNCTIONS ---
         const CI_TO_BQ = 3.7e10;
-        const ciMultipliers = { 'pCi': 1e-12, 'nCi': 1e-9, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+        const ciMultipliers = { 'pci': 1e-12, 'nci': 1e-9, 'µci': 1e-6, 'uci': 1e-6, 'mci': 1e-3, 'ci': 1 };
+        
+        function safeSetItem(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                console.error(`Failed to set item "${key}":`, e);
+            }
+        }
+        function safeGetItem(key) {
+            try {
+                return localStorage.getItem(key);
+            } catch (e) {
+                console.error(`Failed to get item "${key}":`, e);
+                return null;
+            }
+        }
+        function safeRemoveItem(key) {
+            try {
+                localStorage.removeItem(key);
+            } catch (e) {
+                console.error(`Failed to remove item "${key}":`, e);
+            }
+        }
         
         function formatNumberWithCommas(number) {
             return number.toLocaleString('en-US');
         }
-
         function parseValueToCi(valueStr) {
             if (typeof valueStr !== 'string' || valueStr === '--' || valueStr.toLowerCase() === 'unlimited') {
                 return null;
@@ -796,10 +828,9 @@
             const parts = valueStr.trim().split(/\s+/);
             const value = parseFloat(String(parts[0]).replace(/,/g, ''));
             const unit = parts[1] || 'Ci';
-            const multiplier = ciMultipliers[unit.trim()] || 1;
+            const multiplier = ciMultipliers[unit.trim().toLowerCase()] || 1;
             return isNaN(value) ? null : value * multiplier;
         }
-
         function formatCi(valueCi) {
             if (valueCi === null || typeof valueCi === 'undefined') return '--';
             if (valueCi === 0) return '0 Ci';
@@ -812,7 +843,6 @@
             }
             return `${formatNumberWithCommas(parseFloat(value.toPrecision(3)))} ${units[unitIndex]}`;
         }
-
         function formatBq(valueCi) {
             if (valueCi === null || typeof valueCi === 'undefined') return '--';
             if (valueCi === 0) return '0 Bq';
@@ -834,32 +864,60 @@
             }
             return `${formatNumberWithCommas(displayValue)} ${units[unitIndex]}`;
         }
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
+        }
+        function activateFocusTrap(modalElement) {
+            const focusableElements = modalElement.querySelectorAll(
+                'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusableElements.length === 0) return;
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+            setTimeout(() => firstElement.focus(), 100);
+            function handleKeyDown(e) {
+                if (e.key !== 'Tab') return;
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        e.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+            modalElement.addEventListener('keydown', handleKeyDown);
+            return () => {
+                modalElement.removeEventListener('keydown', handleKeyDown);
+            };
+        }
 
+        // --- CORE LOGIC ---
         function processData(baseData, customData) {
             const processed = [];
             let uniqueId = 0;
             baseData.forEach(item => {
-                const hasMultipleNuclides = item.radionuclide.includes('/');
-                const hasMultipleActivities = String(item.activity).includes('/');
-                if (hasMultipleNuclides && hasMultipleActivities) {
-                    const nuclides = item.radionuclide.split('/');
-                    const activities = String(item.activity).split('/');
-                    if (nuclides.length === activities.length) {
-                        nuclides.forEach((nuclide, i) => {
-                            const singleItem = { ...item, radionuclide: nuclide.trim(), activity: activities[i].trim() };
-                            processed.push(createRowObject(singleItem, uniqueId++, false));
-                        });
-                        return;
-                    }
+                if (item.nuclides && item.nuclides.length > 0) {
+                    item.nuclides.forEach(nuclide => {
+                        const flatItem = {
+                            name: item.name, nsn: item.nsn,
+                            radionuclide: nuclide.id, activity: nuclide.activity, units: nuclide.units
+                        };
+                        processed.push(createRowObject(flatItem, uniqueId++, false));
+                    });
                 }
-                processed.push(createRowObject(item, uniqueId++, false));
             });
             customData.forEach(item => {
                 processed.push(createRowObject(item, item.id, true));
             });
             return processed;
         }
-        
         function createRowObject(item, id, isCustom = false) {
             const radionuclide = item.radionuclide.trim();
             const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
@@ -886,14 +944,15 @@
                 un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
             };
         }
-
         function highlightText(text, searchTerm) {
-            if (!searchTerm || !text) { return text; }
+            if (!searchTerm || !text) {
+                return text ? escapeHTML(text) : ''; 
+            }
+            const escapedText = escapeHTML(text);
             const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
-            return text.replace(regex, `<span class="highlight">$1</span>`);
+            const regex = new RegExp(`(${escapeHTML(escapedSearchTerm)})`, 'gi');
+            return escapedText.replace(regex, `<span class="highlight">$1</span>`);
         }
-
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
@@ -929,15 +988,11 @@
             }).join('');
             tableBody.innerHTML = rows;
         }
-
-        function sortTable(columnKey) {
-            const isAsc = currentSort.column === columnKey && currentSort.direction === 'asc';
-            currentSort.direction = isAsc ? 'desc' : 'asc';
-            currentSort.column = columnKey;
+        function performSort() {
             const filteredData = getFilteredData();
             filteredData.sort((a, b) => {
-                let valA = a[columnKey];
-                let valB = b[columnKey];
+                let valA = a[currentSort.column];
+                let valB = b[currentSort.column];
                 if (valA === null) return 1;
                 if (valB === null) return -1;
                 let comparison = 0;
@@ -952,7 +1007,17 @@
             updateSortArrows();
             populateTable(filteredData);
         }
-        
+        function sortTable(columnKey) {
+            const isSameColumn = currentSort.column === columnKey;
+            if (isSameColumn) {
+                currentSort.direction = (currentSort.direction === 'asc') ? 'desc' : 'asc';
+            } else {
+                currentSort.direction = 'asc';
+            }
+            currentSort.column = columnKey;
+            performSort();
+            saveState();
+        }
         function updateSortArrows() {
             document.querySelectorAll('.sortable').forEach(th => {
                 th.classList.remove('sorted-column');
@@ -966,7 +1031,6 @@
                 if (arrow) { arrow.classList.add(currentSort.direction); }
             }
         }
-        
         function getFilteredData() {
             const searchInput = document.getElementById("searchInput");
             const textFilter = searchInput.value.toUpperCase();
@@ -988,26 +1052,27 @@
                 return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
             });
         }
-
         function filterTable() {
             const filteredData = getFilteredData();
             const noResultsDiv = document.getElementById("noResults");
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
             populateTable(filteredData);
             if (filteredData.length === 0) {
                 noResultsDiv.innerHTML = `<p class="font-semibold">No results found.</p><p class="mt-2 text-sm">Try adjusting your search term or clearing some filters.</p>`;
                 noResultsDiv.style.display = 'block';
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.disabled = true;
             } else {
                 noResultsDiv.style.display = 'none';
+                selectAllCheckbox.disabled = false;
             }
             updateSelectionState();
         }
-
         function updateSelectionState() {
             const allVisibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
             const allVisibleChecked = Array.from(allVisibleCheckboxes).every(cb => cb.checked);
             document.getElementById('selectAllCheckbox').checked = allVisibleCheckboxes.length > 0 && allVisibleChecked;
         }
-
         function debounce(func, delay) {
             let timeout;
             return function(...args) {
@@ -1015,7 +1080,6 @@
                 timeout = setTimeout(() => func.apply(this, args), delay);
             };
         }
-
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -1029,105 +1093,89 @@
                 });
             }, 3000);
         }
-        
         function exportDisposalRequestAsCSV() {
-    const form = document.getElementById('disposalRequestForm');
-    if (!form) return;
-    
-    const escapeCsvCell = (cell) => {
-        if (cell === null || typeof cell === 'undefined') return '""';
-        let str = String(cell);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            str = `"${str.replace(/"/g, '""')}"`;
+            const form = document.getElementById('disposalRequestForm');
+            if (!form) return;
+            const escapeCsvCell = (cell) => {
+                if (cell === null || typeof cell === 'undefined') return '""';
+                let str = String(cell);
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    str = `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            };
+            const pocs = [];
+            const pocCards = form.querySelectorAll('.poc-card');
+            pocCards.forEach((card, index) => {
+                const pocNumber = index + 1;
+                const getValue = (field) => card.querySelector(`[data-form-id="poc${pocNumber}${field}"]`)?.value || '';
+                pocs.push({
+                    name: getValue('Name'), title: getValue('Title'), email: getValue('Email'),
+                    businessPhone: getValue('BusinessPhone'), mobilePhone: getValue('MobilePhone')
+                });
+            });
+            const staticHeadersStart = [
+                'UIC', 'Command Name', 'Street Address', 'City', 'State', 'Zip', 'Country'
+            ];
+            const pocHeaders = [];
+            pocs.forEach((poc, index) => {
+                const pocNumber = index + 1;
+                pocHeaders.push(
+                    `POC ${pocNumber} Name`, `POC ${pocNumber} Title`, `POC ${pocNumber} Email`,
+                    `POC ${pocNumber} Business #`, `POC ${pocNumber} Mobile #`
+                );
+            });
+            const staticHeadersEnd = [
+                'Security Requirements', 'Pickup Address', 'Pickup Building',
+                'Item Name', 'NSN', 'Quantity', 'Serial #(s)', 'DEMIL', 'SSDR', 'Radionuclide', 'Activity (Ci)', 'Assay Date',
+                'Licensed', 'License/Permit #', 'Form', 'Volume', 'Weight', 'Other Info',
+                'Mfg. Name', 'Mfg. Model', 'Mfg. Date'
+            ];
+            const headers = [...staticHeadersStart, ...pocHeaders, ...staticHeadersEnd];
+            let csvString = headers.map(escapeCsvCell).join(",") + "\n";
+            const itemCards = form.querySelectorAll('.disposal-item');
+            itemCards.forEach(itemCard => {
+                const itemId = itemCard.dataset.itemId;
+                const itemData = tableData.find(d => d.id == itemId);
+                const getFieldValue = (id) => itemCard.querySelector(`[data-form-id="${id}"]`)?.value || '';
+                const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
+                const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; ');
+                const staticRowDataStart = [
+                    form.querySelector('[data-form-id="uic"]').value, form.querySelector('[data-form-id="commandName"]').value,
+                    form.querySelector('[data-form-id="streetAddress"]').value, form.querySelector('[data-form-id="city"]').value,
+                    form.querySelector('[data-form-id="state"]').value, form.querySelector('[data-form-id="zip"]').value,
+                    form.querySelector('[data-form-id="country"]').value
+                ];
+                const pocRowData = [];
+                pocs.forEach(poc => {
+                    pocRowData.push(poc.name, poc.title, poc.email, poc.businessPhone, poc.mobilePhone);
+                });
+                const staticRowDataEnd = [
+                    form.querySelector('[data-form-id="security"]').value,
+                    form.querySelector('[data-form-id="pickupAddress"]').value, form.querySelector('[data-form-id="pickupBuilding"]').value,
+                    itemData.name, itemData.nsn, getFieldValue('quantity'), serials, getFieldValue('demil'), getFieldValue('ssdr'),
+                    itemData.radionuclide, itemData.activity_ci_str, getFieldValue('assayDate'), getFieldValue('licensed'),
+                    getFieldValue('licenseNumber'), getFieldValue('form'), getFieldValue('volume'), getFieldValue('weight'),
+                    getFieldValue('otherInfo'), getFieldValue('mfgName'), getFieldValue('mfgModel'), getFieldValue('mfgDate')
+                ];
+                const rowData = [...staticRowDataStart, ...pocRowData, ...staticRowDataEnd];
+                csvString += rowData.map(escapeCsvCell).join(",") + "\n";
+            });
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "disposal_request.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Disposal request exported as CSV!', 'success');
         }
-        return str;
-    };
 
-    // 1. Gather all POC data from the form first
-    const pocs = [];
-    const pocCards = form.querySelectorAll('.poc-card'); // Use the new class
-    pocCards.forEach((card, index) => {
-        const pocNumber = index + 1;
-        // Find inputs within this specific card
-        const getValue = (field) => card.querySelector(`[data-form-id="poc${pocNumber}${field}"]`)?.value || '';
-        pocs.push({
-            name: getValue('Name'),
-            title: getValue('Title'),
-            email: getValue('Email'),
-            businessPhone: getValue('BusinessPhone'),
-            mobilePhone: getValue('MobilePhone')
-        });
-    });
-
-    // 2. Build CSV headers dynamically based on how many POCs were found
-    const staticHeadersStart = [
-        'UIC', 'Command Name', 'Street Address', 'City', 'State', 'Zip', 'Country'
-    ];
-    const pocHeaders = [];
-    pocs.forEach((poc, index) => {
-        const pocNumber = index + 1;
-        pocHeaders.push(
-            `POC ${pocNumber} Name`, `POC ${pocNumber} Title`, `POC ${pocNumber} Email`,
-            `POC ${pocNumber} Business #`, `POC ${pocNumber} Mobile #`
-        );
-    });
-    const staticHeadersEnd = [
-        'Security Requirements', 'Pickup Address', 'Pickup Building',
-        'Item Name', 'NSN', 'Quantity', 'Serial #(s)', 'DEMIL', 'SSDR', 'Radionuclide', 'Activity (Ci)', 'Assay Date',
-        'Licensed', 'License/Permit #', 'Form', 'Volume', 'Weight', 'Other Info',
-        'Mfg. Name', 'Mfg. Model', 'Mfg. Date'
-    ];
-    const headers = [...staticHeadersStart, ...pocHeaders, ...staticHeadersEnd];
-    let csvString = headers.map(escapeCsvCell).join(",") + "\n";
-
-    // 3. Build each item row, including all collected POC data in each row
-    const itemCards = form.querySelectorAll('.disposal-item');
-    itemCards.forEach(itemCard => {
-        const itemId = itemCard.dataset.itemId;
-        const itemData = tableData.find(d => d.id == itemId);
-        const getFieldValue = (id) => itemCard.querySelector(`[data-form-id="${id}"]`)?.value || '';
-
-        const serialInputs = itemCard.querySelectorAll('[data-form-id="serial"]');
-        const serials = Array.from(serialInputs).map(input => input.value).filter(val => val).join('; ');
-
-        const staticRowDataStart = [
-            form.querySelector('[data-form-id="uic"]').value, form.querySelector('[data-form-id="commandName"]').value,
-            form.querySelector('[data-form-id="streetAddress"]').value, form.querySelector('[data-form-id="city"]').value,
-            form.querySelector('[data-form-id="state"]').value, form.querySelector('[data-form-id="zip"]').value,
-            form.querySelector('[data-form-id="country"]').value
-        ];
-
-        const pocRowData = [];
-        pocs.forEach(poc => {
-            pocRowData.push(poc.name, poc.title, poc.email, poc.businessPhone, poc.mobilePhone);
-        });
-
-        const staticRowDataEnd = [
-            form.querySelector('[data-form-id="security"]').value,
-            form.querySelector('[data-form-id="pickupAddress"]').value, form.querySelector('[data-form-id="pickupBuilding"]').value,
-            itemData.name, itemData.nsn, getFieldValue('quantity'), serials, getFieldValue('demil'), getFieldValue('ssdr'),
-            itemData.radionuclide, itemData.activity_ci_str, getFieldValue('assayDate'), getFieldValue('licensed'),
-            getFieldValue('licenseNumber'), getFieldValue('form'), getFieldValue('volume'), getFieldValue('weight'),
-            getFieldValue('otherInfo'), getFieldValue('mfgName'), getFieldValue('mfgModel'), getFieldValue('mfgDate')
-        ];
-
-        const rowData = [...staticRowDataStart, ...pocRowData, ...staticRowDataEnd];
-        csvString += rowData.map(escapeCsvCell).join(",") + "\n";
-    });
-    
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "disposal_request.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showToast('Disposal request exported as CSV!', 'success');
-}
-
+        // --- EVENT LISTENERS & INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
+            // Element selectors
             const darkModeToggle = document.getElementById('darkModeToggle');
             const unitToggle = document.getElementById('unitToggle');
             const tableBody = document.querySelector('#lookupTable tbody');
@@ -1180,27 +1228,52 @@
             const closeMemoModalBtn = document.getElementById('closeMemoModalBtn');
             const copyMemoBtn = document.getElementById('copyMemoBtn');
             const memoContent = document.getElementById('memoContent');
-	    const instructionsModal = document.getElementById('instructionsModal');
-	    const showInstructionsBtn = document.getElementById('showInstructionsBtn');
-	    const closeInstructionsModalBtn = document.getElementById('closeInstructionsModalBtn');
+            const instructionsModal = document.getElementById('instructionsModal');
+            const showInstructionsBtn = document.getElementById('showInstructionsBtn');
+            const closeInstructionsModalBtn = document.getElementById('closeInstructionsModalBtn');
+            const confirmModal = document.getElementById('confirmModal');
+            const confirmModalText = document.getElementById('confirmModalText');
+            const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
+            const confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
+            const allModals = [compareModal, detailModal, disposalRequestModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal, memoModal, instructionsModal];
 
-            if (document.documentElement.classList.contains('dark')) {
+            // State for accessibility and modals
+            let removeCurrentFocusTrap = null;
+            let confirmCallback = null;
+            let focusedElementBeforeModal = null;
+
+            // Centralized Modal Functions with Focus Management
+            function openModal(modalElement) {
+                focusedElementBeforeModal = document.activeElement;
+                modalElement.style.display = 'flex';
+                removeCurrentFocusTrap = activateFocusTrap(modalElement);
+            }
+            function closeModal(modalElement) {
+                if (typeof removeCurrentFocusTrap === 'function') {
+                    removeCurrentFocusTrap();
+                    removeCurrentFocusTrap = null;
+                }
+                modalElement.style.display = 'none';
+                if (focusedElementBeforeModal) {
+                    focusedElementBeforeModal.focus();
+                }
+            }
+
+            // Dark Mode
+            if (safeGetItem('darkMode') === 'enabled') {
                 darkModeToggle.checked = true;
             }
             darkModeToggle.addEventListener('change', () => {
                 if (darkModeToggle.checked) {
                     document.documentElement.classList.add('dark');
-                    localStorage.setItem('darkMode', 'enabled');
+                    safeSetItem('darkMode', 'enabled');
                 } else {
                     document.documentElement.classList.remove('dark');
-                    localStorage.setItem('darkMode', 'disabled');
+                    safeSetItem('darkMode', 'disabled');
                 }
             });
 
-            unitToggle.addEventListener('change', () => {
-                filterTable();
-            });
-            
+            // Table interaction
             tableBody.addEventListener('click', (event) => {
                 const toggleBtn = event.target.closest('.details-toggle-btn');
                 if (toggleBtn) {
@@ -1232,7 +1305,6 @@
                     }
                 }
             });
-
             tableBody.addEventListener('change', (event) => {
                  if (event.target.classList.contains('row-checkbox')) {
                     const row = event.target.closest('tr');
@@ -1278,8 +1350,9 @@
                 document.body.removeChild(textarea);
             }
 
+            // Modal Functions
             function showDetailModal(item) {
-                const isSiUnits = document.getElementById('unitToggle').checked;
+                const isSiUnits = unitToggle.checked;
                 detailModalTitle.textContent = item.name;
                 const copyButtonHTML = (copyText) => `
                     <button data-copy="${copyText || ''}" class="copy-btn ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Copy">
@@ -1287,8 +1360,8 @@
                         <svg class="checkmark-icon w-4 h-4 text-green-500 hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                     </button>`;
                 let content = `<div class="space-y-4">`;
-                content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${item.nsn || 'N/A'} ${copyButtonHTML(item.nsn)}</span></div>`;
-                content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${item.niin || 'N/A'} ${copyButtonHTML(item.niin)}</span></div>`;
+                content += `<div class="flex justify-between items-center"><strong>NSN:</strong> <span>${escapeHTML(item.nsn || 'N/A')} ${copyButtonHTML(item.nsn)}</span></div>`;
+                content += `<div class="flex justify-between items-center"><strong>NIIN:</strong> <span>${escapeHTML(item.niin || 'N/A')} ${copyButtonHTML(item.niin)}</span></div>`;		
                 if (item.nsn) {
                     content += `<div><a href="https://www.iso-group.com/NSN/${item.nsn}" target="_blank" class="text-blue-500 hover:underline">Lookup via ISO-Group</a></div>`;
                 }
@@ -1388,7 +1461,7 @@
                     editBtn.textContent = 'Edit';
                     editBtn.className = 'px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600';
                     editBtn.onclick = () => {
-                        detailModal.style.display = 'none';
+                        closeModal(detailModal);
                         showAddItemModal(item);
                     };
                     const deleteBtn = document.createElement('button');
@@ -1396,8 +1469,7 @@
                     deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600';
                     deleteBtn.onclick = () => {
                         showConfirmationModal(`Are you sure you want to delete the item "${item.name}"?`, () => {
-                            detailModal.style.display = 'none';
-                            confirmModal.style.display = 'none';
+                            closeModal(detailModal);
                             deleteCustomItem(item.id);
                         });
                     };
@@ -1405,19 +1477,14 @@
                     customActionsContainer.appendChild(deleteBtn);
                 }
                 detailActions.appendChild(customActionsContainer);
-                detailModal.style.display = 'flex';
+                openModal(detailModal);
             }
-
-            closeDetailModalBtn.addEventListener('click', () => {
-                detailModal.style.display = 'none';
-            });
-
             compareBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                const isSiUnits = document.getElementById('unitToggle').checked;
+                const isSiUnits = unitToggle.checked;
                 let content = '<div class="overflow-x-auto"><table class="w-full text-sm text-left">';
-                const headers = ['Attribute', ...selectedData.map(item => item.name)];
+                const headers = ['Attribute', ...selectedData.map(item => escapeHTML(item.name))];
                 content += '<thead><tr class="bg-gray-100 dark:bg-gray-700">';
                 headers.forEach(header => content += `<th class="px-4 py-2">${header}</th>`);
                 content += '</tr></thead><tbody>';
@@ -1434,77 +1501,27 @@
                     content += '<tr class="border-b dark:border-gray-700">';
                     content += `<td class="px-4 py-2 font-semibold">${attr.label}</td>`;
                     selectedData.forEach(item => {
-                        content += `<td class="px-4 py-2">${item[attr.key] || ''}</td>`;
+                        content += `<td class="px-4 py-2">${escapeHTML(item[attr.key] || '')}</td>`;
                     });
                     content += '</tr>';
                 });
                 content += '</tbody></table></div>';
                 compareContent.innerHTML = content;
-                compareModal.style.display = 'flex';
+                openModal(compareModal);
             });
-
-            closeModalBtn.addEventListener('click', () => {
-                compareModal.style.display = 'none';
-            });
-
-            exportSelectionBtn.addEventListener('click', () => {
-                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                const selectedData = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
-                const isSiUnits = document.getElementById('unitToggle').checked;
-                const headers = ["Name or Nomenclature", "NSN", "NIIN", "Radionuclide", "Activity", "NRC Exemption", "DOT Exemption", "UN 2911 Limit (per item)", "UN 2911 Limit (per package)"];
-                let csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h}"`).join(",") + "\n";
-                selectedData.forEach(item => {
-                    const row = [
-                        `"${item.name}"`, `"${item.nsn || ''}"`, `"${item.niin || ''}"`, `"${item.radionuclide}"`,
-                        `"${isSiUnits ? item.activity_bq_str : item.activity_ci_str}"`,
-                        `"${isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str}"`,
-                        `"${isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str}"`,
-                        `"${isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str}"`,
-                        `"${isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str}"`
-                    ].join(",");
-                    csvContent += row + "\n";
-                });
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "radioactive_commodities_selection.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-
-            clearSelectionBtn.addEventListener('click', () => {
-                const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
-                selectedCheckboxes.forEach(checkbox => {
-                    checkbox.checked = false;
-                    checkbox.closest('tr').classList.remove('selected-row');
-                });
-                compareBtn.disabled = true;
-                exportSelectionBtn.disabled = true;
-                clearSelectionBtn.disabled = true;
-                disposalRequestBtn.disabled = true;
-                saveSelectionBtn.disabled = true;
-                selectAllCheckbox.checked = false;
-            });
-            
-            disposalRequestBtn.addEventListener('click', () => {
-                showDisposalRequestModal();
-            });
-
-function createPocHtml(pocNumber) {
-    return `
-        <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
-            <h4 class="font-semibold mb-2">POC ${pocNumber}</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc${pocNumber}Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc${pocNumber}Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc${pocNumber}Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc${pocNumber}BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc${pocNumber}MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-            </div>
-        </div>`;
-}
-
+            function createPocHtml(pocNumber) {
+                return `
+                    <div class="p-4 border rounded-lg dark:border-gray-600 poc-card">
+                        <h4 class="font-semibold mb-2">POC ${pocNumber}</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label class="block text-sm font-medium">Name</label><input type="text" data-form-id="poc${pocNumber}Name" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Title</label><input type="text" data-form-id="poc${pocNumber}Title" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">E-mail</label><input type="email" data-form-id="poc${pocNumber}Email" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Business #</label><input type="tel" data-form-id="poc${pocNumber}BusinessPhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                            <div><label class="block text-sm font-medium">Mobile #</label><input type="tel" data-form-id="poc${pocNumber}MobilePhone" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                        </div>
+                    </div>`;
+            }
             function showDisposalRequestModal() {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedItems = Array.from(selectedCheckboxes).map(cb => tableData.find(d => d.id == cb.dataset.id));
@@ -1524,22 +1541,20 @@ function createPocHtml(pocNumber) {
                             <div><label class="block text-sm font-medium">Country (if not USA)</label><input type="text" data-form-id="country" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                         </div>
                     </details>`;
-              
-  content += `
-    <details class="group" open>
-        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
-            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
-        </summary>
-        <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4">
-                        <div id="pocContainer" class="space-y-4">
-                ${createPocHtml(1)}
-                ${createPocHtml(2)}
-            </div>
-            <button type="button" id="addPocBtn" class="mt-4 text-sm text-blue-600 hover:underline">+ Add another POC</button>
-            <div class="mt-4"><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
-        </div>
-    </details>`;
-
+                content += `
+                    <details class="group" open>
+                        <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
+                            <span class="group-open:hidden">►</span><span class="hidden group-open:inline">▼</span> Command POCs (at least two!)
+                        </summary>
+                        <div class="border-l-2 border-gray-200 dark:border-gray-600 pl-4">
+                                        <div id="pocContainer" class="space-y-4">
+                                ${createPocHtml(1)}
+                                ${createPocHtml(2)}
+                            </div>
+                            <button type="button" id="addPocBtn" class="mt-4 text-sm text-blue-600 hover:underline">+ Add another POC</button>
+                            <div class="mt-4"><label class="block text-sm font-medium">Facility Security Access Requirements</label><textarea data-form-id="security" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" rows="2"></textarea></div>
+                        </div>
+                    </details>`;
                 content += `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
@@ -1563,12 +1578,12 @@ function createPocHtml(pocNumber) {
                         <div id="disposalItemsContainer" class="border-l-2 border-gray-200 dark:border-gray-600 pl-4 space-y-4">`;
                 selectedItems.forEach((item, index) => {
                     content += `
-                        <div class="p-4 border rounded-lg dark:border-gray-600 disposal-item" data-item-id="${item.id}">
-                            <h4 class="font-semibold mb-2 text-base">${item.name}</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			    <div class="p-4 border rounded-lg dark:border-gray-600 disposal-item" data-item-id="${item.id}">
+			        <h4 class="font-semibold mb-2 text-base">${escapeHTML(item.name)}</h4>
+			        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div><label class="block text-sm font-medium">NSN</label><input type="text" value="${item.nsn || ''}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
                                 <div><label class="block text-sm font-medium">DEMIL</label><input type="text" data-form-id="demil" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                <div class="md:col-span-2"><label class="block text-sm font-medium">Serial #(s)</label><div class="serial-number-container space-y-2"><input type="text" data-form-id="serial" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div><button type="button" class="add-serial-btn mt-2 text-sm text-blue-600 hover:underline">+ Add another serial #</button></div>
+                                <div class="md:col-span-2"><label class="block text-sm font-medium">Serial #(s)</label><div class="serial-number-container space-y-2"><input type="text" data-form-id="serial" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div></div>
                                 <div><label class="block text-sm font-medium">SSDR</label><input type="text" data-form-id="ssdr" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium"># each</label><input type="number" value="1" min="1" data-form-id="quantity" class="quantity-input mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Radionuclide</label><input type="text" value="${item.radionuclide}" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm" readonly></div>
@@ -1576,7 +1591,7 @@ function createPocHtml(pocNumber) {
                                 <div><label class="block text-sm font-medium">Assay Date</label><input type="date" data-form-id="assayDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Licensed</label><select data-form-id="licensed" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"><option>No</option><option>Yes</option></select></div>
                                 <div class="md:col-span-2"><label class="block text-sm font-medium">NRC License # / MML Permit #</label><input type="text" data-form-id="licenseNumber" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                                <div><label class="block text-sm font-medium">Form</label><input type="text" data-form-id="form" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
+                                <div><label class="block text-sm font-medium">Form (i.e. Normal/Special/unknown)</label><input type="text" data-form-id="form" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Volume</label><input type="text" data-form-id="volume" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Weight</label><input type="text" data-form-id="weight" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div class="md:col-span-3"><label class="block text-sm font-medium">Other Info</label><input type="text" data-form-id="otherInfo" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
@@ -1584,7 +1599,7 @@ function createPocHtml(pocNumber) {
                                 <div><label class="block text-sm font-medium">Company Name</label><input type="text" data-form-id="mfgName" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Part/Model #</label><input type="text" data-form-id="mfgModel" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
                                 <div><label class="block text-sm font-medium">Date (on item)</label><input type="text" data-form-id="mfgDate" class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm"></div>
-                            </div>
+				</div>
                         </div>`;
                 });
                 content += `</div></details>`;
@@ -1601,24 +1616,36 @@ function createPocHtml(pocNumber) {
                 content += `<div id="packageAnalysis" class="mt-6"></div>`;
                 content += '</form>';
                 disposalRequestContent.innerHTML = content;
-                disposalRequestModal.style.display = 'flex';
+                openModal(disposalRequestModal);
                 calculateDisposalPackageAnalysis();
                 disposalRequestContent.querySelector('#disposalItemsContainer').addEventListener('input', calculateDisposalPackageAnalysis);
             }
-            
-            closeDisposalRequestModalBtn.addEventListener('click', () => {
-                disposalRequestModal.style.display = 'none';
-            });
-            
-            disposalRequestContent.addEventListener('click', (e) => {
-                if (e.target.classList.contains('add-serial-btn')) {
-                    const container = e.target.previousElementSibling;
-                    const newInput = document.createElement('input');
-                    newInput.type = 'text';
-                    newInput.dataset.formId = 'serial';
-                    newInput.className = 'mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm';
-                    container.appendChild(newInput);
+            disposalRequestContent.addEventListener('input', (e) => {
+                if (e.target.classList.contains('quantity-input')) {
+                    const quantityInput = e.target;
+                    const itemCard = quantityInput.closest('.disposal-item');
+                    const serialContainer = itemCard.querySelector('.serial-number-container');
+                    let targetCount = parseInt(quantityInput.value, 10);
+                    if (isNaN(targetCount) || targetCount < 1) {
+                        targetCount = 1;
+                    }
+                    const currentFields = serialContainer.querySelectorAll('input[data-form-id="serial"]');
+                    let currentCount = currentFields.length;
+                    while (currentCount < targetCount) {
+                        const newInput = document.createElement('input');
+                        newInput.type = 'text';
+                        newInput.dataset.formId = 'serial';
+                        newInput.className = 'mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm';
+                        serialContainer.appendChild(newInput);
+                        currentCount++;
+                    }
+                    while (currentCount > targetCount) {
+                        serialContainer.lastElementChild.remove();
+                        currentCount--;
+                    }
                 }
+            });
+            disposalRequestContent.addEventListener('click', (e) => {
                 if (e.target.classList.contains('add-picture-btn')) {
                     const container = e.target.previousElementSibling;
                     const newInput = document.createElement('input');
@@ -1627,27 +1654,24 @@ function createPocHtml(pocNumber) {
                     newInput.className = 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300 dark:hover:file:bg-gray-600';
                     container.appendChild(newInput);
                 }
-		if (e.target.id === 'addPocBtn') {
-      		    const pocContainer = document.getElementById('pocContainer');
-       	            const newPocNumber = pocContainer.children.length + 1;
-      		    const newPocCardHtml = createPocHtml(newPocNumber);
-	            pocContainer.insertAdjacentHTML('beforeend', newPocCardHtml);
-		}
+                if (e.target.id === 'addPocBtn') {
+                    const pocContainer = document.getElementById('pocContainer');
+                    const newPocNumber = pocContainer.children.length + 1;
+                    const newPocCardHtml = createPocHtml(newPocNumber);
+                    pocContainer.insertAdjacentHTML('beforeend', newPocCardHtml);
+                }
             });
-
             function calculateDisposalPackageAnalysis() {
                 const analysisContainer = document.getElementById('packageAnalysis');
                 if (!analysisContainer) return;
                 const itemCards = document.querySelectorAll('.disposal-item');
-                let dotExemptSum = 0;
-                let un2911PkgSum = 0;
-                let typeASum = 0;
+                let dotExemptSum = 0; let un2911PkgSum = 0; let typeASum = 0;
                 let analysisDetails = [];
                 itemCards.forEach(card => {
                     const itemId = card.dataset.itemId;
                     const itemData = tableData.find(d => d.id == itemId);
                     const quantityInput = card.querySelector('.quantity-input');
-                    const quantity = quantityInput ? parseInt(quantityInput.value, 10) : 0;
+                    const quantity = quantityInput ? parseFloat(quantityInput.value) : 0;
                     if (!itemData || isNaN(quantity) || quantity <= 0) { return; }
                     const totalActivity = itemData.activity_val * quantity;
                     let detailRow = { name: itemData.name, qty: quantity, activity: formatCi(totalActivity), dot: 'N/A', un2911: 'N/A', typeA: 'N/A' };
@@ -1725,7 +1749,6 @@ function createPocHtml(pocNumber) {
                     </details>`;
                 analysisContainer.innerHTML = content;
             }
-
             printRequestBtn.addEventListener('click', async () => {
                 const form = document.getElementById('disposalRequestForm');
                 const getValue = (id) => {
@@ -1774,21 +1797,24 @@ function createPocHtml(pocNumber) {
                             <div class="grid-item"><strong>State:</strong> <span>${getValue('state')}</span></div>
                             <div class="grid-item"><strong>Zip:</strong> <span>${getValue('zip')}</span></div>
                             <div class="grid-item"><strong>Country:</strong> <span>${getValue('country')}</span></div>
-                        </div></div>
-                        <div class="section"><h2>Command POCs</h2><h3>POC 1</h3><div class="grid-print">
-                            <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc1Name')}</span></div>
-                            <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc1Title')}</span></div>
-                            <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc1Email')}</span></div>
-                            <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc1BusinessPhone')}</span></div>
-                            <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc1MobilePhone')}</span></div>
-                        </div><h3 class="mt-4">POC 2</h3><div class="grid-print">
-                            <div class="grid-item"><strong>Name:</strong> <span>${getValue('poc2Name')}</span></div>
-                            <div class="grid-item"><strong>Title:</strong> <span>${getValue('poc2Title')}</span></div>
-                            <div class="grid-item"><strong>E-mail:</strong> <span>${getValue('poc2Email')}</span></div>
-                            <div class="grid-item"><strong>Business #:</strong> <span>${getValue('poc2BusinessPhone')}</span></div>
-                            <div class="grid-item"><strong>Mobile #:</strong> <span>${getValue('poc2MobilePhone')}</span></div>
-                        </div><div class="grid-item mt-4"><strong>Facility Security Access Requirements:</strong> <span>${getValue('security')}</span></div></div>
-                        <div class="section"><h2>Item Details</h2>`;
+                        </div></div>`;
+                printContent += `<div class="section"><h2>Command POCs</h2>`;
+                const pocCards = form.querySelectorAll('.poc-card');
+                pocCards.forEach((card, index) => {
+                    const pocNumber = index + 1;
+                    const getPocValue = (field) => card.querySelector(`[data-form-id="poc${pocNumber}${field}"]`)?.value || 'N/A';
+                    printContent += `
+                        <h3 class="mt-4">POC ${pocNumber}</h3>
+                        <div class="grid-print">
+                            <div class="grid-item"><strong>Name:</strong> <span>${getPocValue('Name')}</span></div>
+                            <div class="grid-item"><strong>Title:</strong> <span>${getPocValue('Title')}</span></div>
+                            <div class="grid-item"><strong>E-mail:</strong> <span>${getPocValue('Email')}</span></div>
+                            <div class="grid-item"><strong>Business #:</strong> <span>${getPocValue('BusinessPhone')}</span></div>
+                            <div class="grid-item"><strong>Mobile #:</strong> <span>${getPocValue('MobilePhone')}</span></div>
+                        </div>`;
+                });
+                printContent += `<div class="grid-item mt-4"><strong>Facility Security Access Requirements:</strong> <span>${getValue('security')}</span></div></div>`;
+                printContent += `<div class="section"><h2>Item Details</h2>`;
                 const imagePromises = [];
                 const itemCards = form.querySelectorAll('.disposal-item');
                 itemCards.forEach((itemCard, index) => {
@@ -1807,8 +1833,8 @@ function createPocHtml(pocNumber) {
                         }
                     });
                     printContent += `
-                        <div class="item-card"><h3>Item ${index + 1}: ${itemData.name}</h3><div class="grid-print">
-                            <div class="grid-item"><strong>NSN:</strong> <span>${itemData.nsn || 'N/A'}</span></div>
+                        <div class="item-card"><h3>Item ${index + 1}: ${escapeHTML(itemData.name)}</h3><div class="grid-print">
+                            <div class="grid-item"><strong>NSN:</strong> <span>${escapeHTML(itemData.nsn || 'N/A')}</span></div>
                             <div class="grid-item"><strong># each:</strong> <span>${getItemValue('quantity')}</span></div>
                             <div class="grid-item"><strong>DEMIL:</strong> <span>${getItemValue('demil')}</span></div>
                             <div class="grid-item"><strong>Serial #(s):</strong> <span>${serials}</span></div>
@@ -1847,7 +1873,6 @@ function createPocHtml(pocNumber) {
                 printWindow.focus();
                 setTimeout(() => { printWindow.print(); }, 500);
             });
-
             function populateRadionuclideFilter() {
                 const nuclides = [...new Set(tableData.map(item => item.radionuclide))].sort();
                 radionuclideFilter.innerHTML = '<option value="all">All Radionuclides</option>';
@@ -1858,30 +1883,17 @@ function createPocHtml(pocNumber) {
                     radionuclideFilter.appendChild(option);
                 });
             }
-
-            helpBtn.addEventListener('click', () => { helpModal.style.display = 'flex'; });
-            closeHelpModalBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });
-
-	    showInstructionsBtn.addEventListener('click', () => {
-  	        instructionsModal.style.display = 'flex';
-	});
-
-	    closeInstructionsModalBtn.addEventListener('click', () => {
-	        instructionsModal.style.display = 'none';
-});
-
-
             saveSelectionBtn.addEventListener('click', () => {
                 const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
                 const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.id);
-                localStorage.setItem('savedSelection', JSON.stringify(selectedIds));
+                safeSetItem('savedSelection', JSON.stringify(selectedIds));
                 showToast('Selection saved!', 'success');
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
             });
-
             loadSelectionBtn.addEventListener('click', () => {
-                const savedIds = JSON.parse(localStorage.getItem('savedSelection'));
+                const savedSelection = safeGetItem('savedSelection');
+                const savedIds = JSON.parse(savedSelection || '[]');
                 if (!savedIds || savedIds.length === 0) return;
                 clearSelectionBtn.click();
                 savedIds.forEach(id => {
@@ -1894,16 +1906,14 @@ function createPocHtml(pocNumber) {
                 });
                 showToast('Selection loaded.', 'info');
             });
-
             clearSavedBtn.addEventListener('click', () => {
                 showConfirmationModal('Are you sure you want to clear your saved selection?', () => {
-                    localStorage.removeItem('savedSelection');
+                    safeRemoveItem('savedSelection');
                     clearSavedBtn.disabled = true;
                     loadSelectionBtn.disabled = true;
                     showToast('Saved selection cleared.', 'success');
                 });
             });
-
             selectAllCheckbox.addEventListener('change', () => {
                 const isChecked = selectAllCheckbox.checked;
                 const visibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
@@ -1915,20 +1925,15 @@ function createPocHtml(pocNumber) {
                     }
                 });
             });
-
-            addItemBtn.addEventListener('click', () => { showAddItemModal(); });
-            closeAddItemModalBtn.addEventListener('click', () => { addItemModal.style.display = 'none'; });
-            cancelAddItemBtn.addEventListener('click', () => { addItemModal.style.display = 'none'; });
-
             addItemForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                addItemModal.style.display = 'none';
                 const newItemData = {
                     name: document.getElementById('itemName').value, nsn: document.getElementById('itemNsn').value,
                     radionuclide: document.getElementById('itemRadionuclide').value, activity: document.getElementById('itemActivity').value,
                     units: document.getElementById('itemUnits').value,
                 };
-                let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                const customItemsJSON = safeGetItem('customItems');
+                let customItems = JSON.parse(customItemsJSON || '[]');
                 const editId = document.getElementById('itemEditId').value;
                 if (editId) {
                     const index = customItems.findIndex(item => item.id == editId);
@@ -1939,17 +1944,16 @@ function createPocHtml(pocNumber) {
                     customItems.push({...newItemData, id: newId });
                     showToast('Item added!', 'success');
                 }
-                localStorage.setItem('customItems', JSON.stringify(customItems));
+                safeSetItem('customItems', JSON.stringify(customItems));
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
                 updateCustomItemButtonsState();
-                addItemForm.reset();
+                closeModal(addItemModal);
             });
-
             clearAddedBtn.addEventListener('click', () => {
                 showConfirmationModal("Are you sure you want to delete all custom-added items? This action cannot be undone.", () => {
-                    localStorage.removeItem('customItems');
+                    safeRemoveItem('customItems');
                     tableData = processData(rawTableData, []);
                     filterTable();
                     populateRadionuclideFilter();
@@ -1957,7 +1961,6 @@ function createPocHtml(pocNumber) {
                     showToast('All custom items have been deleted.', 'success');
                 });
             });
-
             function populateAddItemRadionuclides() {
                 const nuclides = [...new Set(Object.keys(nrcExemptionValues))].sort();
                 itemRadionuclideSelect.innerHTML = '';
@@ -1968,11 +1971,11 @@ function createPocHtml(pocNumber) {
                     itemRadionuclideSelect.appendChild(option);
                 });
             }
-
             function showAddItemModal(itemToEdit = null) {
                 addItemForm.reset();
                 if (itemToEdit) {
-                    const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                    const customItemsJSON = safeGetItem('customItems');
+                    const customItems = JSON.parse(customItemsJSON || '[]');
                     const originalCustomItem = customItems.find(ci => ci.id === itemToEdit.id);
                     document.getElementById('addItemModalTitle').textContent = 'Edit Custom Item';
                     document.getElementById('saveItemBtn').textContent = 'Update Item';
@@ -1989,29 +1992,29 @@ function createPocHtml(pocNumber) {
                     document.getElementById('saveItemBtn').textContent = 'Save Item';
                     document.getElementById('itemEditId').value = '';
                 }
-                addItemModal.style.display = 'flex';
+                openModal(addItemModal);
             }
-
             function deleteCustomItem(itemId) {
-                let customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                const customItemsJSON = safeGetItem('customItems');
+                let customItems = JSON.parse(customItemsJSON || '[]');
                 customItems = customItems.filter(item => item.id !== itemId);
-                localStorage.setItem('customItems', JSON.stringify(customItems));
+                safeSetItem('customItems', JSON.stringify(customItems));
                 tableData = processData(rawTableData, customItems);
                 filterTable();
                 populateRadionuclideFilter();
                 updateCustomItemButtonsState();
                 showToast('Item deleted.', 'success');
             }
-
             function updateCustomItemButtonsState() {
-                const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                const customItemsJSON = safeGetItem('customItems');
+                const customItems = JSON.parse(customItemsJSON || '[]');
                 const hasCustomItems = customItems.length > 0;
                 clearAddedBtn.disabled = !hasCustomItems;
                 exportCustomBtn.disabled = !hasCustomItems;
             }
-
             exportCustomBtn.addEventListener('click', () => {
-                const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+                const customItemsJSON = safeGetItem('customItems');
+                const customItems = JSON.parse(customItemsJSON || '[]');
                 if (customItems.length === 0) {
                     showToast('No custom items to export.', 'error');
                     return;
@@ -2028,11 +2031,9 @@ function createPocHtml(pocNumber) {
                 URL.revokeObjectURL(url);
                 showToast('Custom items exported!', 'success');
             });
-
             importCustomBtn.addEventListener('click', () => {
                 importFileInput.click();
             });
-
             importFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -2044,7 +2045,7 @@ function createPocHtml(pocNumber) {
                             throw new Error('Imported file is not a valid list.');
                         }
                         showConfirmationModal('Do you want to REPLACE your current custom items with the imported list?', () => {
-                            localStorage.setItem('customItems', JSON.stringify(importedItems));
+                            safeSetItem('customItems', JSON.stringify(importedItems));
                             tableData = processData(rawTableData, importedItems);
                             filterTable();
                             populateRadionuclideFilter();
@@ -2060,7 +2061,6 @@ function createPocHtml(pocNumber) {
                 };
                 reader.readAsText(file);
             });
-
             function saveState() {
                 const state = {
                     searchTerm: searchInput.value, radionuclide: radionuclideFilter.value,
@@ -2068,11 +2068,10 @@ function createPocHtml(pocNumber) {
                     isSiUnits: unitToggle.checked, sortColumn: currentSort.column,
                     sortDirection: currentSort.direction
                 };
-                localStorage.setItem('lookupTableState', JSON.stringify(state));
+                safeSetItem('lookupTableState', JSON.stringify(state));
             }
-
             function loadState() {
-                const savedState = localStorage.getItem('lookupTableState');
+                const savedState = safeGetItem('lookupTableState');
                 if (savedState) {
                     const state = JSON.parse(savedState);
                     searchInput.value = state.searchTerm || '';
@@ -2080,58 +2079,25 @@ function createPocHtml(pocNumber) {
                     nrcExemptFilter.checked = state.nrcExempt || false;
                     dotExemptFilter.checked = state.dotExempt || false;
                     unitToggle.checked = state.isSiUnits || false;
-                    currentSort.column = state.sortColumn || 'name';
+                    currentSort.column = state.sortColumn || null;
                     currentSort.direction = state.sortDirection || 'asc';
                 }
             }
-            
-            const confirmModal = document.getElementById('confirmModal');
-            const confirmModalText = document.getElementById('confirmModalText');
-            const confirmModalConfirmBtn = document.getElementById('confirmModalConfirmBtn');
-            const confirmModalCancelBtn = document.getElementById('confirmModalCancelBtn');
-            let confirmCallback = null;
-
             function showConfirmationModal(message, onConfirm) {
                 confirmModalText.textContent = message;
                 confirmCallback = onConfirm;
-                confirmModal.style.display = 'flex';
+                openModal(confirmModal);
             }
-
-            confirmModalCancelBtn.addEventListener('click', () => {
-                confirmModal.style.display = 'none';
-                confirmCallback = null;
-            });
-
-		confirmModalConfirmBtn.addEventListener('click', () => {
-		    if (typeof confirmCallback === 'function') {
-		        confirmCallback();
-		    }
-		    confirmModal.style.display = 'none'; // Add this line to hide the modal
-		    confirmCallback = null;
-		});
-
             clearFiltersBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 radionuclideFilter.value = 'all';
                 nrcExemptFilter.checked = false;
                 dotExemptFilter.checked = false;
-                localStorage.removeItem('lookupTableState');
-                filterTable(); 
+                currentSort.column = 'name';
+                currentSort.direction = 'asc';
+                safeRemoveItem('lookupTableState');
+                performSort();
             });
-
-            const allModals = [compareModal, detailModal, disposalRequestModal, helpModal, addItemModal, confirmModal, radionuclideDetailModal, tooltipModal, memoModal, instructionsModal];
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') {
-                    const openModal = allModals.find(m => m.style.display !== 'none');
-                    if (openModal) { openModal.style.display = 'none'; }
-                }
-            });
-            allModals.forEach(modal => {
-                modal.addEventListener('click', (event) => {
-                    if (event.target === modal) { modal.style.display = 'none'; }
-                });
-            });
-
             function showRadionuclideModal(nuclideId) {
                 const details = radionuclideDetails[nuclideId];
                 if (!details) return;
@@ -2144,13 +2110,8 @@ function createPocHtml(pocNumber) {
                 content += `<div class="mt-4"><a href="${details.wiki}" target="_blank" class="text-blue-500 hover:underline">Learn More on Wikipedia</a></div>`;
                 content += `</div>`;
                 modalContent.innerHTML = content;
-                radionuclideDetailModal.style.display = 'flex';
+                openModal(radionuclideDetailModal);
             }
-
-            closeRadionuclideModalBtn.addEventListener('click', () => {
-                radionuclideDetailModal.style.display = 'none';
-            });
-
             function showTooltipModal(tooltipKey) {
                 const tooltipModalTitle = document.getElementById('tooltipModalTitle');
                 const tooltipContent = document.getElementById('tooltipContent');
@@ -2164,22 +2125,26 @@ function createPocHtml(pocNumber) {
                 if (!data) return;
                 tooltipModalTitle.innerHTML = data.title;
                 tooltipContent.innerHTML = data.content;
-                tooltipModal.style.display = 'flex';
+                openModal(tooltipModal);
             }
-            
-            closeTooltipModalBtn.addEventListener('click', () => {
-                tooltipModal.style.display = 'none';
-            });
-
             generateMemoBtn.addEventListener('click', () => {
                 const form = document.getElementById('disposalRequestForm');
-                const poc1Name = form.querySelector('[data-form-id="poc1Name"]').value || '[POC 1 Name]';
-                const poc1Email = form.querySelector('[data-form-id="poc1Email"]').value || '[POC 1 Email]';
+                let primaryPocName = '[POC Name]'; let primaryPocEmail = '[POC Email]';
+                const pocCards = form.querySelectorAll('.poc-card');
+                for (let i = 0; i < pocCards.length; i++) {
+                    const card = pocCards[i]; const pocNumber = i + 1;
+                    const nameInput = card.querySelector(`[data-form-id="poc${pocNumber}Name"]`);
+                    const emailInput = card.querySelector(`[data-form-id="poc${pocNumber}Email"]`);
+                    if (nameInput && nameInput.value.trim() !== '') {
+                        primaryPocName = nameInput.value;
+                        primaryPocEmail = emailInput ? emailInput.value : '[POC Email]';
+                        break;
+                    }
+                }
                 const fundingChoice = form.querySelector('[data-form-id="funding"]').value;
                 const commandName = form.querySelector('[data-form-id="commandName"]').value || '[Command Name]';
                 const commandAddress = form.querySelector('[data-form-id="streetAddress"]').value || '[Command Address]';
                 const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
                 const memoText = `
                                                                                                                                    5104
                                                                                                                                    Ser ##/###
@@ -2198,64 +2163,101 @@ The purpose of this letter is to request disposal of low-level radioactive waste
 
 Enclosures (1) and (2) are provided in electronic format.
 
-The point of contact is ${poc1Name} who can be reached at ${poc1Email}.
+The point of contact is ${primaryPocName} who can be reached at ${primaryPocEmail}.
 
 
 
-
-        I. M. SIGNATURE
+    I. M. SIGNATURE
 
 Copy to:
 As needed`;
                 memoContent.textContent = memoText;
-                memoModal.style.display = 'flex';
+                openModal(memoModal);
             });
 
-            closeMemoModalBtn.addEventListener('click', () => {
-                memoModal.style.display = 'none';
+            // Add all modal closing event listeners
+            closeModalBtn.addEventListener('click', () => closeModal(compareModal));
+            closeDetailModalBtn.addEventListener('click', () => closeModal(detailModal));
+            closeDisposalRequestModalBtn.addEventListener('click', () => closeModal(disposalRequestModal));
+            closeHelpModalBtn.addEventListener('click', () => closeModal(helpModal));
+            closeAddItemModalBtn.addEventListener('click', () => closeModal(addItemModal));
+            cancelAddItemBtn.addEventListener('click', () => closeModal(addItemModal));
+            confirmModalCancelBtn.addEventListener('click', () => { closeModal(confirmModal); confirmCallback = null; });
+            closeRadionuclideModalBtn.addEventListener('click', () => closeModal(radionuclideDetailModal));
+            closeTooltipModalBtn.addEventListener('click', () => closeModal(tooltipModal));
+            closeMemoModalBtn.addEventListener('click', () => closeModal(memoModal));
+            closeInstructionsModalBtn.addEventListener('click', () => closeModal(instructionsModal));
+            confirmModalConfirmBtn.addEventListener('click', () => {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback();
+                }
+                closeModal(confirmModal);
+                confirmCallback = null;
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    const openModal = allModals.find(m => m.style.display !== 'none');
+                    if (openModal) { closeModal(openModal); }
+                }
+            });
+            allModals.forEach(modal => {
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) { closeModal(modal); }
+                });
             });
 
-            copyMemoBtn.addEventListener('click', () => {
-                copyToClipboard(memoContent.textContent, null);
+            document.querySelectorAll('th.sortable').forEach(header => {
+                header.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        header.click();
+                    }
+                });
             });
 
+            // Other button/form event listeners
+            disposalRequestBtn.addEventListener('click', showDisposalRequestModal);
+            helpBtn.addEventListener('click', () => openModal(helpModal));
+            showInstructionsBtn.addEventListener('click', () => openModal(instructionsModal));
+            addItemBtn.addEventListener('click', () => showAddItemModal());
+            copyMemoBtn.addEventListener('click', () => copyToClipboard(memoContent.textContent, null));
             const debouncedFilterAndSave = debounce(() => {
                 filterTable();
                 saveState();
             }, 300);
-
             searchInput.addEventListener('input', () => {
                 clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
                 debouncedFilterAndSave();
             });
-
             clearSearchBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 clearSearchBtn.classList.add('hidden');
                 filterTable();
                 saveState();
             });
-            
             exportCsvBtn.addEventListener('click', exportDisposalRequestAsCSV);
-            radionuclideFilter.addEventListener('change', () => { filterTable(); saveState(); });
-            nrcExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
-            dotExemptFilter.addEventListener('change', () => { filterTable(); saveState(); });
+            radionuclideFilter.addEventListener('change', debouncedFilterAndSave);
+            nrcExemptFilter.addEventListener('change', debouncedFilterAndSave);
+            dotExemptFilter.addEventListener('change', debouncedFilterAndSave);
             unitToggle.addEventListener('change', () => { filterTable(); saveState(); });
 
-            const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+            // Initial page load setup
+            const customItemsJSON = safeGetItem('customItems');
+            const customItems = JSON.parse(customItemsJSON || '[]');
             tableData = processData(rawTableData, customItems);
             populateRadionuclideFilter();
             populateAddItemRadionuclides();
             updateCustomItemButtonsState();
             loadState();
             clearSearchBtn.classList.toggle('hidden', searchInput.value === '');
-            filterTable(); 
-            sortTable(currentSort.column);
-            updateSortArrows();
-            if (localStorage.getItem('savedSelection')) {
+            currentSort.column = currentSort.column || 'name';
+            currentSort.direction = 'asc';
+            performSort();
+            if (safeGetItem('savedSelection')) {
                 loadSelectionBtn.disabled = false;
                 clearSavedBtn.disabled = false;
             }
+            document.getElementById('loadingStateRow').style.display = 'none';
         });
     </script>
 </body>
