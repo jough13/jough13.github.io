@@ -2629,17 +2629,26 @@ const UnitConverter = () => {
         'Mass': ['µg', 'mg', 'g', 'kg', 'oz', 'lb'],
     };
 
+    // Corrected factors object with a single base unit for each category
     const factors = {
-        'Gy': { base: 'dose', factor: 1 },
-        'cGy': { base: 'dose', factor: 0.01 },
-        'mGy': { base: 'dose', factor: 1e-3 },
-        'rad': { base: 'dose', factor: 0.01 },
-        'Sv': { base: 'dose', factor: 1 },
-        'cSv': { base: 'dose', factor: 0.01 },
-        'mSv': { base: 'dose', factor: 1e-3 },
-        'rem': { base: 'dose', factor: 0.01 },
-        'mrem': { base: 'dose', factor: 1e-5 },
-        'R': { base: 'dose', factor: 0.00877 },
+        // Base units: dose(rem), doseRate(mrem/hr), activity(Bq)
+        'mrem': { base: 'dose', factor: 0.001 },
+        'rem': { base: 'dose', factor: 1 },
+        'µSv': { base: 'dose', factor: 0.0001 },
+        'mSv': { base: 'dose', factor: 0.1 },
+        'Sv': { base: 'dose', factor: 100 },
+        'rad': { base: 'dose', factor: 1 },
+        'cGy': { base: 'dose', factor: 1 },
+        'Gy': { base: 'dose', factor: 100 },
+        'R': { base: 'dose', factor: 0.96 },
+
+        'µrem/hr': { base: 'doseRate', factor: 0.001 },
+        'mrem/hr': { base: 'doseRate', factor: 1 },
+        'rem/hr': { base: 'doseRate', factor: 1000 },
+        'µSv/hr': { base: 'doseRate', factor: 0.1 },
+        'mSv/hr': { base: 'doseRate', factor: 100 },
+        'Sv/hr': { base: 'doseRate', factor: 100000 },
+
         'Bq': { base: 'activity', factor: 1 },
         'kBq': { base: 'activity', factor: 1e3 },
         'MBq': { base: 'activity', factor: 1e6 },
@@ -2649,35 +2658,30 @@ const UnitConverter = () => {
         'µCi': { base: 'activity', factor: 3.7e4 },
         'dps': { base: 'activity', factor: 1 },
         'dpm': { base: 'activity', factor: 1 / 60 },
-        'Gy/s': { base: 'doseRate', factor: 3.6e3 },
-        'Gy/hr': { base: 'doseRate', factor: 1 },
-        'cGy/hr': { base: 'doseRate', factor: 0.01 },
-        'rad/hr': { base: 'doseRate', factor: 0.01 },
-        'Sv/s': { base: 'doseRate', factor: 3.6e3 },
-        'Sv/hr': { base: 'doseRate', factor: 1 },
-        'mSv/hr': { base: 'doseRate', factor: 1e-3 },
-        'µSv/hr': { base: 'doseRate', factor: 1e-6 },
-        'rem/hr': { base: 'doseRate', factor: 0.01 },
-        'mrem/hr': { base: 'doseRate', factor: 1e-5 },
+        
         'J': { base: 'energy', factor: 1 },
         'eV': { base: 'energy', factor: 1.60218e-19 },
         'keV': { base: 'energy', factor: 1.60218e-16 },
         'MeV': { base: 'energy', factor: 1.60218e-13 },
+        
         'Bq/L': { base: 'concentration', factor: 1 },
         'µCi/mL': { base: 'concentration', factor: 3.7e7 },
         'pCi/L': { base: 'concentration', factor: 0.037 },
         'Bq/m³': { base: 'concentration', factor: 0.001 },
+        
         'm': { base: 'length', factor: 1 },
         'cm': { base: 'length', factor: 0.01 },
         'mm': { base: 'length', factor: 0.001 },
         'km': { base: 'length', factor: 1000 },
         'in': { base: 'length', factor: 0.0254 },
         'ft': { base: 'length', factor: 0.3048 },
+        
         'm²': { base: 'area', factor: 1 },
         'cm²': { base: 'area', factor: 1e-4 },
         'in²': { base: 'area', factor: 0.00064516 },
         'ft²': { base: 'area', factor: 0.092903 },
         'barn': { base: 'area', factor: 1e-28 },
+        
         'g': { base: 'mass', factor: 1 },
         'kg': { base: 'mass', factor: 1000 },
         'mg': { base: 'mass', factor: 0.001 },
@@ -2705,7 +2709,7 @@ const UnitConverter = () => {
             setResult('');
             return;
         }
-        
+
         const from = factors[fromUnit];
         const to = factors[toUnit];
 
@@ -2714,8 +2718,9 @@ const UnitConverter = () => {
             setResult('');
             return;
         }
-        
-        const convertedVal = val * from.factor / to.factor;
+
+        // The conversion is now simpler: just multiply by the ratio of factors
+        const convertedVal = val * (from.factor / to.factor);
         setError('');
         setResult(convertedVal.toPrecision(4));
     }, [value, fromUnit, toUnit, factors]);
