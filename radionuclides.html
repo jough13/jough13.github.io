@@ -934,10 +934,13 @@ const SHIELDING_MATERIALS = {
                             const C = parent.br * parentNuclide.lambda * term.coeff;
                             
                             // Handle the case where decay constants are identical (or very close)
+
                             if (Math.abs(nuclide.lambda - term.lambda) < 1e-20) {
+
                                 // This case leads to a t*e^(-lambda*t) term, which complicates the solution structure.
                                 // For simplicity and to avoid a full rewrite, we'll approximate by introducing a tiny difference.
                                 // This is a common numerical stability trick.
+
                                 term.lambda *= (1 + 1e-10);
                             }
 
@@ -976,6 +979,7 @@ const SHIELDING_MATERIALS = {
          * @param {Array<object>} chain - The potentially nested chain data.
          * @returns {Array<object>} A flat array of unique nuclide steps.
          */
+
         const flattenChainForCalculator = (chain) => {
             const seen = new Set();
             const flatChain = [];
@@ -2191,6 +2195,14 @@ const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
 			<DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
 
                 </div>
+
+{nuclide.shipping && (
+    <div className="divide-y divide-slate-200 dark:divide-slate-700">
+        <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Transportation Limits</h3>
+        <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
+        <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
+    </div>
+)}
             </div>
 
             {/* ADDED: New Dosimetry section for the detailed view. */}
@@ -2927,6 +2939,22 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
             return;
         }
         const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+
+let lambda1;
+if (selectedNuclide.decayConstant) {
+    // Assuming decayConstant is in per-second units
+    // You might need to parse it if the unit is part of the string
+    lambda1 = parseFloat(selectedNuclide.decayConstant);
+    if (isNaN(lambda1)) {
+        // Fallback calculation if parsing fails
+        const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+        lambda1 = Math.log(2) / T1_seconds;
+    }
+} else {
+    const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+    lambda1 = Math.log(2) / T1_seconds;
+}
+
         if (T1_seconds === Infinity) {
             setError('Cannot calculate decay for a stable nuclide.');
             setResult(null);
