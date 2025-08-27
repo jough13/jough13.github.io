@@ -558,7 +558,7 @@ const RADIONUCLIDE_DATA = [
         // --- APPLICATION METADATA & CONSTANTS
         //==============================================================================
 
-        const VERSION = '3.1.8';
+        const VERSION = '3.2.0';
         const LAST_UPDATED = 'August 27, 2025';
 
         /**
@@ -1566,6 +1566,40 @@ const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
 };
 
 /**
+ * @description A reusable component that parses a string for nuclide names and turns them into clickable buttons.
+ * @param {{text: string, radionuclides: Array<object>, onNuclideClick: (nuclide: object) => void}} props
+ */
+
+const ClickableNuclide = ({ text, radionuclides, onNuclideClick }) => {
+    if (!text || !onNuclideClick) return <span>{text}</span>;
+    
+    // This splits the string by delimiters like ' or ' or ' -> ' while keeping them
+    const parts = text.split(/(\s+or\s+|\s*\/\s*|\s*->\s*)/);
+    
+    return (
+        <>
+            {parts.map((part, index) => {
+                if (!part) return null;
+                const nuclideName = part.split('(')[0].trim();
+                const foundNuclide = radionuclides.find(n => n.name === nuclideName || n.symbol === nuclideName);
+                
+                if (foundNuclide) {
+                    return ( <button key={index} onClick={() => onNuclideClick(foundNuclide)} className="text-sky-500 hover:underline font-semibold">{part}</button> );
+                } else {
+                    const isStable = text.toLowerCase().includes('stable') || radionuclides.find(n => n.name === nuclideName)?.halfLife === 'Stable';
+                    return (
+                        <span key={index}>
+                            {part}
+                            {isStable && <span className="text-xs font-medium text-slate-400 dark:text-slate-500 ml-1">(Stable)</span>}
+                        </span>
+                    );
+                }
+            })}
+        </>
+    );
+};
+
+/**
  * @description A reusable modal dialog for confirming user actions.
  * @param {{isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, children: React.ReactNode}} props
  */
@@ -2037,62 +2071,38 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
 
 const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
-    const ClickableNuclide = ({ text }) => {
-        if (!text || !onNuclideClick) return <span>{text}</span>;
-        const parts = text.split(/(\s+or\s+|\s*\/\s*|\s*->\s*)/);
-        return (
-            <>
-                {parts.map((part, index) => {
-                    if (!part) return null;
-                    const nuclideName = part.split('(')[0].trim();
-                    const foundNuclide = radionuclides.find(n => n.name === nuclideName || n.symbol === nuclideName);
-                    if (foundNuclide) {
-                        return ( <button key={index} onClick={() => onNuclideClick(foundNuclide)} className="text-sky-500 hover:underline font-semibold">{part}</button> );
-                    } else {
-    
-                        // If the part isn't a clickable nuclide, show it as plain text.
-    
-                        // ADDED: Check if the reason it's not clickable is because it's stable.
-    
-                        const isStable = text.toLowerCase().includes('stable') || radionuclides.find(n => n.name === nuclideName)?.halfLife === 'Stable';
-    
-                        return (
-    
-                        <span key={index}>
-                            {part}
-                            {isStable && <span className="text-xs font-medium text-slate-400 dark:text-slate-500 ml-1">(Stable)</span>}
-                            </span>
-                        );
-                    }
-                })}
-            </>
-        );
-    };
+
 
     const getSourceLink = (sourceKey) => {
         const source = sources[sourceKey];
         return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
     };
 
-    const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
-        const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
-        const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
-        return (
-            <div className="flex items-start py-2">
-                {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
-                {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
-                {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
-                <div>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-                    <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
-                        {(label === 'Parent' || label === 'Daughter') ? <ClickableNuclide text={displayValue} /> : displayValue}
-                        {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
-                        {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
-                    </p>
-                </div>
+const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
+    // This line correctly handles strings, numbers, or a React component (like our clickable link).
+    const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
+    
+    // This checks if we should add a unit suffix (e.g., "MeV")
+    const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
+
+    return (
+        <div className="flex items-start py-2">
+            {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
+            {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
+            {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
+            <div>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
+ 
+
+                    {displayValue}
+                    {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
+                    {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
+                </p>
             </div>
-        );
-    };
+        </div>
+    );
+};
 
     // REVERTED: The compact card is back to its original, cleaner state.
     if (isCompact) {
@@ -2176,8 +2186,10 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </div>
                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
-                    <DataPoint label="Parent" value={nuclide.parent} sourceKey={nuclide.sourceRef?.parent} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
-                    <DataPoint label="Daughter" value={nuclide.daughter} sourceKey={nuclide.sourceRef?.daughter} onNuclideClick={onNuclideClick} radionuclides={radionuclides} />
+
+			<DataPoint label="Parent" value={<ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.parent} />
+			<DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
+
                 </div>
             </div>
 
@@ -2410,12 +2422,11 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
             );
         };
 
-        /**
-         * @description A sidebar for filtering and sorting the nuclide database. It is responsive.
-         * @param {{filterProps: object, isFiltersVisible: boolean, setIsFiltersVisible: (isVisible: boolean) => void}} props
-         */
-
-const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scrollPositionRef }) => {
+/**
+ * @description A sidebar for filtering and sorting the nuclide database. It is responsive.
+ * @param {{filterProps: object, isFiltersVisible: boolean, setIsFiltersVisible: (isVisible: boolean) => void, handleClearFilters: () => void}} props
+ */
+const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scrollPositionRef, handleClearFilters }) => {
 
     const {
         sortBy, setSortBy, sortOrder, setSortOrder,
@@ -2425,8 +2436,7 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
         minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy,
         minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy,
         minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy,
-        minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit,
-        clearFilters
+        minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit
     } = filterProps;
 
     const handleClose = () => {
@@ -2437,10 +2447,6 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
                 behavior: 'smooth'
             });
         }, 300);
-    };
-
-    const handleClear = () => {
-        clearFilters();
     };
 
     return (
@@ -2460,9 +2466,9 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
                     <div className="flex justify-between items-center border-b border-slate-300 dark:border-slate-600 pb-2">
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white">Filters & Sorting</h3>
                         <div className="flex items-center gap-2">
-                            {/* --- THIS BUTTON HAS BEEN UPDATED --- */}
+                            {/* --- THIS BUTTON IS NOW CORRECTED --- */}
                             <button 
-                                onClick={handleClear} 
+                                onClick={handleClearFilters} 
                                 className="flex items-center gap-2 px-3 py-1 text-sm font-semibold text-sky-700 dark:text-sky-300 bg-slate-200 dark:bg-slate-700 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
                             >
                                 <Icon path={ICONS.clear} className="w-4 h-4" />
@@ -2526,46 +2532,39 @@ const FilterSidebar = ({ filterProps, isFiltersVisible, setIsFiltersVisible, scr
     );
 };
         
-        /**
-         * @description The main view for Browse the entire database with filters.
-         * @param {object} props - Component props.
-         * @param {Array<object>} props.filteredList - The list of nuclides after filtering and sorting.
-         * @param {object} props.filterProps - All state and handlers related to filtering.
-         * @param {(nuclide: object) => void} props.onNuclideClick - Handler for when a compact nuclide card is clicked.
-         * @param {boolean} props.isFiltersVisible - State for mobile filter visibility.
-         * @param {(isVisible: boolean) => void} props.setIsFiltersVisible - Handler to toggle mobile filter visibility.
-         */
+/**
+ * @description The main view for Browse the entire database with filters.
+ * @param {object} props - Component props.
+ */
 
 const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible, scrollPositionRef, handleClearFilters }) => {
 
     const { selectedCategory, setSelectedCategory } = filterProps;
 
-return (
+    return (
         <div className="relative">
             <div className="px-4 pt-4 lg:hidden">
-<button
-    onClick={() => {
-        scrollPositionRef.current = window.scrollY;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setIsFiltersVisible(true);
-    }}
-    className="w-full flex items-center justify-center gap-2 ...">
-    <Icon path={ICONS.filter} className="w-5 h-5" /> Filters & Sorting
-</button>
-</div>
+                <button
+                    onClick={() => {
+                        scrollPositionRef.current = window.scrollY;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        setIsFiltersVisible(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 p-3 text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                    <Icon path={ICONS.filter} className="w-5 h-5" /> Filters & Sorting
+                </button>
+            </div>
 
             <div className="grid lg:grid-cols-4 gap-4 p-4">
-                
-                {/* --- THIS IS THE CORRECTED LINE --- */}
-<FilterSidebar
-    filterProps={{
-        ...filterProps,
-        clearFilters: handleClearFilters // Pass the new function down
-    }}
-    isFiltersVisible={isFiltersVisible}
-    setIsFiltersVisible={setIsFiltersVisible}
-    scrollPositionRef={scrollPositionRef}
-/>
+
+                <FilterSidebar
+                    filterProps={filterProps}
+                    isFiltersVisible={isFiltersVisible}
+                    setIsFiltersVisible={setIsFiltersVisible}
+                    scrollPositionRef={scrollPositionRef}
+                    handleClearFilters={handleClearFilters} 
+                />
                 
                 <div className="col-span-4 lg:col-span-3 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 h-[calc(100vh-350px)] md:h-[calc(100vh-320px)] lg:h-auto overflow-y-auto">
                     
@@ -2579,14 +2578,16 @@ return (
                                 const bgColor = styles.border.replace('border-l-', 'bg-');
                                 const isActive = selectedCategory === category;
                                 return (
-                                    <button 
-                                        key={category}
-                                        onClick={() => setSelectedCategory(prev => prev === category ? 'All' : category)}
-                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-200 ${isActive ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-sky-500 bg-white dark:bg-slate-700' : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700'}`}
-                                    >
-                                        <div className={`w-3 h-3 rounded-full ${bgColor}`}></div>
-                                        <span className="text-slate-600 dark:text-slate-300">{category.replace('/', '/ ')}</span>
-                                    </button>
+                                    // --- TOOLTIP FEATURE ADDED HERE ---
+                                    <Tooltip key={category} text={CATEGORY_DESCRIPTIONS[category] || ''} widthClass="w-64">
+                                        <button 
+                                            onClick={() => setSelectedCategory(prev => prev === category ? 'All' : category)}
+                                            className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-200 ${isActive ? 'ring-2 ring-offset-2 ring-offset-slate-100 dark:ring-offset-slate-800 ring-sky-500 bg-white dark:bg-slate-700' : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700'}`}
+                                        >
+                                            <div className={`w-3 h-3 rounded-full ${bgColor}`}></div>
+                                            <span className="text-slate-600 dark:text-slate-300">{category.replace('/', '/ ')}</span>
+                                        </button>
+                                    </Tooltip>
                                 );
                             })}
                             
@@ -2599,18 +2600,17 @@ return (
                         </div>
                     </div>
 
-<div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-    {filteredList.length > 0 ? (
-        filteredList.map(n => <NuclideCard key={n.symbol} nuclide={n} isCompact={true} onNuclideClick={onNuclideClick} />)
-    ) : (
-        <div className="col-span-full text-center py-16 px-4">
-            <Icon path={ICONS.search} className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto" />
-            <h3 className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-300">No Results Found</h3>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Try adjusting your filter criteria.</p>
-        </div>
-    )}
-</div>
-                    
+                    <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {filteredList.length > 0 ? (
+                            filteredList.map(n => <NuclideCard key={n.symbol} nuclide={n} isCompact={true} onNuclideClick={onNuclideClick} />)
+                        ) : (
+                            <div className="col-span-full text-center py-16 px-4">
+                                <Icon path={ICONS.search} className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto" />
+                                <h3 className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-300">No Results Found</h3>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Try adjusting your filter criteria.</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
@@ -4071,16 +4071,18 @@ React.useEffect(() => {
                     return limitedHistory;
                 });
             }
+
 const handleNuclideSelection = (nuclide) => {
     setNuclideName(nuclide.name);
     setResult(nuclide);
     setSuggestions([]);
     setErrorMessage('');
-    window.location.hash = 'home'; // Changed this line
+    // The line that forced navigation to '#home' is now removed.
     setCurrentDecaySeriesId(null);
     setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
     updateSearchHistory(nuclide);
 };
+
             const handleNuclideNameChange = (e) => {
                 const value = e.target.value;
                 setNuclideName(value);
@@ -4149,18 +4151,42 @@ const handleNuclideSelection = (nuclide) => {
             };
 
 const renderActiveView = () => {
-    const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit };
+    // If a nuclide is selected (result is not null), ALWAYS show the detail card.
+    // This takes priority over the activeView hash.
+    if (result) {
+        return (
+            <div className="p-4">
+                <NuclideCard
+                    nuclide={result}
+                    radionuclides={radionuclides}
+                    onDecaySeriesClick={handleDecaySeriesClick}
+                    displayHalfLifeUnit={displayHalfLifeUnit}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    onSendToCalculator={handleSendToCalculator}
+                    onAddToCompare={handleAddToCompare}
+                    onNuclideClick={handleNuclideSelection}
+                    showBackButton={true}
+                    // The back button now simply clears the selection, returning to the previous view.
+                    onBackClick={() => setResult(null)}
+                />
+            </div>
+        );
+    }
+
+    // If no nuclide is selected, proceed with the normal view routing based on the hash.
+    const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
 
     switch (activeView) {
         case 'database': 
             return <DatabaseView 
                 filteredList={filteredList} 
                 onNuclideClick={handleNuclideSelection} 
-                filterProps={filterProps} 
+                filterProps={filterProps}
                 isFiltersVisible={isFiltersVisible} 
                 setIsFiltersVisible={setIsFiltersVisible} 
-                scrollPositionRef={scrollPositionRef} 
-                handleClearFilters={handleClearFilters} // <-- This is the crucial line
+                scrollPositionRef={scrollPositionRef}
+                handleClearFilters={handleClearFilters}
             />;
         case 'calculator': return <DecayCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'mda': return <MDACalculator />;
@@ -4187,29 +4213,10 @@ const renderActiveView = () => {
         case 'transportation': return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
         case 'converter': return <UnitConverter />;
         case 'settings': return <SettingsPanel />;
-        case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setActiveView('home')} onNuclideClick={handleNuclideSelection} />;
+        case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
         case 'home':
-            default:
-                if (result) {
-                    return <div className="p-4">
-                        <NuclideCard
-                        nuclide={result}
-                        radionuclides={radionuclides}
-                        onDecaySeriesClick={handleDecaySeriesClick}
-                        displayHalfLifeUnit={displayHalfLifeUnit}
-                        favorites={favorites}
-                        toggleFavorite={toggleFavorite}
-                        onSendToCalculator={handleSendToCalculator}
-                        onAddToCompare={handleAddToCompare}
-                        onNuclideClick={handleNuclideSelection}
-                        showBackButton={true}
-                            onBackClick={() => {
-                            window.history.back();
-                        
-}}
-                    />
-                </div>;
-            }
+        default:
+            // This now ONLY renders when no nuclide is selected.
             return <HomePage
                 errorMessage={errorMessage}
                 randomSuggestions={randomSuggestions}
@@ -4406,8 +4413,26 @@ const SearchableSelect = ({ options, onSelect, placeholder }) => {
 
 const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddToCompare, onRemoveFromCompare, onClearCompare }) => {
     
-    // 1. Add state to manage the modal's visibility
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+
+    // This array MUST be defined INSIDE the component to access its props.
+    const propertiesToCompare = [
+        { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
+        { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
+        { label: 'Alpha Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.alpha) },
+        { label: 'Beta Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.beta) },
+        { label: 'Gamma Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.gamma) },
+        { label: 'Specific Activity (Bq/g)', key: 'specificActivity', type: 'numeric', format: (val) => parseSpecificActivity(val) },
+        { label: 'Gamma Constant', key: 'gammaConstant', type: 'numeric', format: (val) => parseFloat(val) },
+        { label: 'ALI (Ingestion, µCi)', key: 'dosimetry', type: 'numeric', format: (val) => val?.ALI?.ingestion },
+        { label: 'ALI (Inh. Class W, µCi)', key: 'dosimetry', type: 'numeric', format: (val) => val?.ALI?.inhalation_W },
+        { label: 'DAC (Inh. Class W, µCi/mL)', key: 'dosimetry', type: 'numeric', format: (val) => val?.DAC?.inhalation_W },
+        { label: 'A₁ Limit (TBq)', key: 'shipping', type: 'numeric', format: (val) => val?.A1 },
+        { label: 'A₂ Limit (TBq)', key: 'shipping', type: 'numeric', format: (val) => val?.A2 },
+        // The 'render' functions now have access to the 'radionuclides' and 'onNuclideClick' props.
+        { label: 'Parent', key: 'parent', type: 'categorical', render: (nuclide) => <ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} /> },
+        { label: 'Daughter', key: 'daughter', type: 'categorical', render: (nuclide) => <ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} /> },
+    ];
 
     const sortedNuclides = React.useMemo(() =>
         [...radionuclides].sort((a, b) => a.name.localeCompare(b.name)),
@@ -4418,28 +4443,20 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
         onAddToCompare(symbol);
     };
     
-    // (This propertiesToCompare array is unchanged)
-    const propertiesToCompare = [
-        { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
-        { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
-        { label: 'Alpha Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.alpha) },
-        { label: 'Beta Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.beta) },
-        { label: 'Gamma Energy (MeV)', key: 'emissionEnergies', type: 'numeric', format: (val) => parseEnergyToMeV(val?.gamma) },
-        { label: 'Specific Activity (Bq/g)', key: 'specificActivity', type: 'numeric', format: (val) => parseSpecificActivity(val) },
-        { label: 'Gamma Constant', key: 'gammaConstant', type: 'numeric', format: (val) => parseFloat(val) },
-        { label: 'Parent', key: 'parent', type: 'categorical' },
-        { label: 'Daughter', key: 'daughter', type: 'categorical' },
-    ];
-    
-    // (This handleExportToCSV function is unchanged)
     const handleExportToCSV = (properties, nuclides) => {
         const headers = ['Property', ...nuclides.map(n => n.name)];
         
         const rows = properties.map(prop => {
             const rowData = [prop.label];
             nuclides.forEach(nuclide => {
-                const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
-                const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+                let formattedValue;
+                // Handle renderable props differently for CSV export
+                if (prop.render) {
+                    formattedValue = nuclide[prop.key] || 'N/A';
+                } else {
+                    const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
+                    formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+                }
                 
                 if (typeof formattedValue === 'number' && !isNaN(formattedValue) && formattedValue !== Infinity) {
                     rowData.push(formattedValue.toExponential(3));
@@ -4477,9 +4494,8 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Compare Radionuclides</h2>
                     <div className="flex items-center gap-2">
-                        {comparisonList.length > 1 && (
+                        {comparisonList.length > 0 && (
                             <button 
-                                // 2. Update the button to open the modal
                                 onClick={() => setIsModalOpen(true)}
                                 className="px-3 py-2 text-sm bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition flex items-center gap-2"
                             >
@@ -4512,14 +4528,13 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                         <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box or a nuclide's detail card to add to the comparison.</p>
                     </div>
                 ) : (
-                    // (The table structure itself is unchanged)
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[600px] text-left border-collapse">
                             <thead>
                                 <tr>
                                     <th className="sticky left-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold z-10 border-b border-r border-slate-200 dark:border-slate-600">Property</th>
                                     {comparisonList.map(nuclide => (
-                                        <th key={nuclide.symbol} className="sticky top-0 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
+                                        <th key={nuclide.symbol} className="sticky top-0 bg-slate-100 dark:bg-slate-800 p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600">
                                             <div className="flex justify-between items-center">
                                                 <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>{nuclide.name}</span>
                                                 <button onClick={() => onRemoveFromCompare(nuclide.symbol)} className="ml-2 text-red-400 hover:text-red-600 font-bold">✕</button>
@@ -4549,38 +4564,50 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                                             <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 p-3 font-medium text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-slate-600 z-10">{prop.label}</td>
                                             
                                             {comparisonList.map((nuclide, nuclideIndex) => {
-                                                const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
-                                                const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+                                                let cellContent;
                                                 let cellClass = 'border-b border-slate-200 dark:border-slate-600';
-                                                let displayValue = formattedValue;
-                                                
-                                                if(prop.type === 'numeric') {
-                                                    const numericVal = parseFloat(formattedValue);
-                                                    displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toExponential(2);
-                                                    if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
-                                                    if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
-                                                }
-                                                const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
 
-                                                let differenceTag = null;
-                                                if (comparisonList.length === 2 && nuclideIndex === 1 && prop.type === 'numeric') {
-                                                    const val1 = values[0];
-                                                    const val2 = values[1];
-                                                    if (val1 !== null && val2 !== null && !isNaN(val1) && !isNaN(val2) && val1 !== 0) {
-                                                        const diff = ((val2 - val1) / val1) * 100;
-                                                        const diffColor = diff >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-                                                        const sign = diff >= 0 ? '+' : '';
-                                                        differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
+                                                if (prop.render) {
+                                                    cellContent = prop.render(nuclide);
+                                                } else {
+                                                    const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
+                                                    const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+                                                    let displayValue = formattedValue;
+                                                    
+                                                    if(prop.type === 'numeric') {
+                                                        const numericVal = parseFloat(formattedValue);
+                                                        displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toExponential(2);
+                                                        if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
+                                                        if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
                                                     }
+                                                    const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
+
+                                                    let differenceTag = null;
+                                                    if (comparisonList.length === 2 && nuclideIndex === 1 && prop.type === 'numeric') {
+                                                        const val1 = values[0];
+                                                        const val2 = values[1];
+                                                        if (val1 !== null && val2 !== null && !isNaN(val1) && !isNaN(val2) && val1 !== 0) {
+                                                            const diff = ((val2 - val1) / val1) * 100;
+                                                            const diffColor = diff >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                                                            const sign = diff >= 0 ? '+' : '';
+                                                            differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
+                                                        }
+                                                    }
+                                                    
+                                                    cellContent = (
+                                                        <>
+                                                            {prop.type === 'numeric' && barWidth > 0 && <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>}
+                                                            <div className="relative">
+                                                                <span>{displayValue}</span>
+                                                                {differenceTag}
+                                                            </div>
+                                                        </>
+                                                    );
                                                 }
 
                                                 return (
                                                     <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
-                                                        {prop.type === 'numeric' && barWidth > 0 && <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>}
-                                                        <div className="relative">
-                                                            <span>{displayValue}</span>
-                                                            {differenceTag}
-                                                        </div>
+                                                        {cellContent}
                                                     </td>
                                                 );
                                             })}
@@ -4593,7 +4620,6 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                 )}
             </div>
 
-            {/* 3. Add the modal component to the JSX */}
             <ConfirmationModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -5979,9 +6005,37 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
  
         const [confidence, setConfidence] = React.useState('1.645'); // Corresponds to 95%
     
-        const [probeArea, setProbeArea] = React.useState('126');
+          const [probeWidth, setProbeWidth] = React.useState('10');
+	const [probeLength, setProbeLength] = React.useState('12.6');
+	const [probeShape, setProbeShape] = React.useState('rectangle'); // 'rectangle' or 'circle'
+	const [probeDiameter, setProbeDiameter] = React.useState('4.5'); // Common pancake GM diameter in cm
+	const [probeArea, setProbeArea] = React.useState('126');
         const [instrumentEff, setInstrumentEff] = React.useState('22');
         const [surfaceEff, setSurfaceEff] = React.useState('50');
+
+// --- STATE & CONFIG FOR DYNAMIC MDA UNITS ---
+    const [outputUnit, setOutputUnit] = React.useState('dpm');
+    const [sampleVolume, setSampleVolume] = React.useState('1');
+    const [sampleMass, setSampleMass] = React.useState('100');
+
+    // This configuration object drives the logic for the entire calculator
+    const MDA_UNIT_CONFIG = {
+        'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] },
+   'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] }, // ADD THIS LINE
+        'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] },
+        'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] },
+        'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] },
+        'mCi': { label: 'Activity (mCi)', category: 'Activity', requires: ['efficiency'] },
+        'Ci': { label: 'Activity (Ci)', category: 'Activity', requires: ['efficiency'] },
+        'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] },
+        'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] },
+        'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] }
+    };
+    
+    // Conversion factors from a base unit of DPM
+    const dpmFactors = {
+        'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6, 'mCi': 1 / 2.22e9, 'Ci': 1 / 2.22e12
+    };
 
     // --- State for Scan MDC ---
     
@@ -6001,86 +6055,174 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         { value: '1.645', label: '95%' },
         { value: '2.326', label: '99%' }
     ];
-    const dprimeOptions = [
-        { value: '1.04', label: '1.04 (85% detection prob.)' },
-        { value: '1.28', label: '1.28 (90% detection prob.)' },
-        { value: '1.38', label: '1.38 (95% detection prob.)' }
-    ];
-    const surveyorEffOptions = [
-        { value: '0.5', label: '0.5 (Realistic default)' },
-        { value: '0.75', label: '0.75 (Highly trained/attentive)' }
-    ];
+const dprimeOptions = [
+    { value: '0.4', label: '0.4 (Conservative)' },
+    { value: '1.0', label: '1.0 (Computer-aided GWS)' },
+    { value: '1.04', label: '1.04 (85% detection prob.)' },
+    { value: '1.28', label: '1.28 (90% detection prob.)' },
+    { value: '1.38', label: '1.38 (95% detection prob.)' }
+];
+const surveyorEffOptions = [
+    { value: '0.25', label: '0.25 (Very conservative)' },
+    { value: '0.5', label: '0.5 (Realistic default)' },
+    { value: '0.75', label: '0.75 (Highly trained/attentive)' },
+    { value: '1.0', label: '1.0 (Computer-aided scan)' }
+];
 
  // --- REVISED: Calculation Logic for detailed Static MDA ---
-    const handleStaticCalculate = () => {
+
+const handleStaticCalculate = () => {
         const params = {
             Cb: parseFloat(backgroundCounts), tb: parseFloat(backgroundTime),
-            Cg: parseFloat(grossCounts), tg: parseFloat(grossTime),
-            k: parseFloat(confidence), A: parseFloat(probeArea),
-            ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff)
+            tg: parseFloat(grossTime),
+            ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff),
+            A: parseFloat(probeArea), V: parseFloat(sampleVolume), M: parseFloat(sampleMass)
         };
 
-        if (Object.values(params).some(isNaN) || params.tb <= 0 || params.tg <= 0 || params.A <= 0 || params.ei <= 0 || params.es <= 0 ) {
-            setError('Please enter valid, positive numbers for all fields.');
-            setResult(null); return;
+        if (isNaN(params.Cb) || isNaN(params.tb) || isNaN(params.tg) || params.tb <= 0 || params.tg <= 0) {
+            throw new Error('Please enter valid, positive numbers for counts and times.');
         }
-        setError('');
 
-        const rb = params.Cb / params.tb; // Background RATE in cpm or cps
-        
-        // --- CORRECTED EFFICIENCY HANDLING ---
-        // Efficiencies are now handled as decimals throughout, as required by the formula.
-        const ei_dec = params.ei / 100.0;
-        const es_dec = params.es / 100.0;
-        const E_total = ei_dec * es_dec;
+        const rb = params.Cb / params.tb;
+        const LLD = 3.29 * Math.sqrt(rb * params.tg * (1 + params.tg / params.tb)) + 3;
 
-        const sigma = Math.sqrt(rb * params.tg * (1 + params.tg / params.tb));
-        const Lc = params.k * sigma;
-        const LLD = 2 * Lc + 3;
+        if (outputUnit === 'counts') {
+            setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: LLD.toPrecision(3), unit: 'counts', backgroundActivity: rb.toPrecision(3) });
+            return;
+        }
+
+        if (isNaN(params.ei) || isNaN(params.es) || params.ei <= 0 || params.es <= 0) {
+            throw new Error('Valid efficiencies are required for this unit.');
+        }
+        const E_total = (params.ei / 100.0) * (params.es / 100.0);
+        const mda_dpm = (LLD / params.tg) / E_total;
+        const background_dpm = rb / E_total;
         
-        // --- CORRECTED FORMULAS ---
-        // Now implementing your formula exactly: Rate * (100/Area) / Efficiencies
-        const net_rate_cpm = LLD / params.tg;
-        const MDA = net_rate_cpm * (100 / params.A) / E_total;
-        const backgroundActivity = rb * (100 / params.A) / E_total;
-        
+        let finalMDA, finalBackground, finalUnit = outputUnit;
+
+        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
+            finalMDA = mda_dpm / dpmFactors[outputUnit];
+            finalBackground = background_dpm / dpmFactors[outputUnit];
+        } else if (outputUnit === 'dpm/100cm²') {
+            if (isNaN(params.A) || params.A <= 0) throw new Error('Probe Area is required for this unit.');
+            finalMDA = mda_dpm * (100 / params.A);
+            finalBackground = background_dpm * (100 / params.A);
+        } else if (outputUnit === 'Bq/L') {
+            if (isNaN(params.V) || params.V <= 0) throw new Error('Sample Volume is required for this unit.');
+            finalMDA = (mda_dpm / 60) / params.V;
+            finalBackground = (background_dpm / 60) / params.V;
+        } else if (outputUnit === 'pCi/g') {
+            if (isNaN(params.M) || params.M <= 0) throw new Error('Sample Mass is required for this unit.');
+            finalMDA = (mda_dpm / 2.22) / params.M;
+            finalBackground = (background_dpm / 2.22) / params.M;
+        } else if (outputUnit === 'cpm') {
+            finalMDA = LLD / params.tg;
+            finalBackground = rb;
+        } else {
+            throw new Error('Selected unit calculation not implemented.');
+        }
+
         setResult({
             type: 'static',
-            Lc: Lc.toPrecision(3),
             LLD: LLD.toPrecision(3),
-            MDA: MDA.toPrecision(3),
-            backgroundActivity: backgroundActivity.toPrecision(3)
+            MDA: finalMDA.toPrecision(3),
+            backgroundActivity: finalBackground.toPrecision(3),
+            unit: finalUnit
         });
     };
     
-    // --- Calculation Logic for Scan MDC (Unchanged) ---
-    const handleScanCalculate = () => {
-        const params = {
-            b_cpm: parseFloat(scanBackground), area_cm2: parseFloat(probeArea),
-            eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff),
-            hs_diam_cm: parseFloat(hotspotDiameter), speed_cms: parseFloat(scanSpeed),
-            dp: parseFloat(dprime), p: parseFloat(surveyorEff)
-        };
-        if (Object.values(params).some(isNaN) || params.b_cpm < 0 || params.area_cm2 <= 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) {
-            setError('Please enter valid, positive numbers for all required fields.');
-            setResult(null); return;
-        }
-        setError('');
-        const b_cps = params.b_cpm / 60.0;
-        const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
-        const detector_width_cm = Math.sqrt(params.area_cm2);
-        const t_i = detector_width_cm / params.speed_cms;
-        const B_i = b_cps * t_i;
-        const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / t_i);
-        const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (params.area_cm2 / 100.0));
-        const background_activity = params.b_cpm / (E_total * (params.area_cm2 / 100.0));
-        
-        setResult({
-            type: 'scan', obs_interval: t_i.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3),
-            mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3),
-            background_activity: background_activity.toPrecision(3)
-        });
+const handleScanCalculate = () => {
+    const params = {
+        b_cpm: parseFloat(scanBackground),
+        width_cm: parseFloat(probeWidth),
+        length_cm: parseFloat(probeLength),
+        diameter_cm: parseFloat(probeDiameter),
+        eff_i: parseFloat(instrumentEff),
+        eff_s: parseFloat(surfaceEff),
+        speed_cms: parseFloat(scanSpeed),
+        dp: parseFloat(dprime),
+        p: parseFloat(surveyorEff)
     };
+
+    if (isNaN(params.b_cpm) || isNaN(params.eff_i) || isNaN(params.eff_s) || isNaN(params.speed_cms) || params.b_cpm < 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) {
+        throw new Error('Please enter valid, positive numbers for all required fields.');
+    }
+
+let residence_time_s;
+let total_area_cm2;
+const hotspot_diam_cm = parseFloat(hotspotDiameter); // Get the hotspot diameter
+
+if (probeShape === 'rectangle') {
+    if (isNaN(params.width_cm) || isNaN(params.length_cm) || params.width_cm <= 0 || params.length_cm <= 0) {
+        throw new Error('Probe Width and Length must be positive numbers for a rectangle.');
+    }
+    
+    // Determine the effective dimension for the observation interval
+    let effective_dimension_cm = params.width_cm;
+    if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) {
+        effective_dimension_cm = hotspot_diam_cm; // Use hotspot diameter if it's smaller
+    }
+    
+    residence_time_s = effective_dimension_cm / params.speed_cms;
+    total_area_cm2 = params.width_cm * params.length_cm;
+
+} else { // 'circle'
+    if (isNaN(params.diameter_cm) || params.diameter_cm <= 0) {
+        throw new Error('Probe Diameter must be a positive number for a circle.');
+    }
+
+    // Determine the effective dimension for the observation interval
+    let effective_dimension_cm = params.diameter_cm;
+    if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) {
+        effective_dimension_cm = hotspot_diam_cm; // Use hotspot diameter if it's smaller
+    }
+
+    residence_time_s = effective_dimension_cm / params.speed_cms;
+    total_area_cm2 = Math.PI * Math.pow(params.diameter_cm / 2, 2);
+}
+
+    const b_cps = params.b_cpm / 60.0;
+    const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
+    const B_i = b_cps * residence_time_s;
+    const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / residence_time_s);
+
+    const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (total_area_cm2 / 100.0));
+    const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
+
+    setResult({
+        type: 'scan',
+        obs_interval: residence_time_s.toPrecision(3),
+        bg_counts_in_interval: B_i.toPrecision(3),
+        mdcr: mdcr_surveyor_cpm.toPrecision(3),
+        scan_mda: scan_mda.toPrecision(3),
+        background_activity: background_activity.toPrecision(3)
+    });
+};
+
+React.useEffect(() => {
+        try {
+            // Clear previous state on every input change
+            setError('');
+            setResult(null);
+
+            if (mdaMode === 'static') {
+                handleStaticCalculate();
+            } else { // 'scan' mode
+                handleScanCalculate();
+            }
+        } catch (e) {
+            // If any calculation function throws an error, display it
+            setError(e.message);
+            setResult(null);
+        }
+    }, [
+        // List of all state variables that should trigger a re-calculation
+    mdaMode,
+    backgroundCounts, backgroundTime, grossTime, outputUnit, sampleVolume, sampleMass,
+    scanBackground, scanSpeed, dprime, surveyorEff,
+    probeArea, instrumentEff, surfaceEff, 
+    probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter
+]);
 
     return (
         <div className="p-4 animate-fade-in">
@@ -6093,61 +6235,136 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
 
                 {mdaMode === 'static' ? (
                     // --- REVISED: Static MDA Form ---
-                    <div className="space-y-4 animate-fade-in">
+<div className="space-y-4 animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Core Inputs */}
                             <div><label className="block text-sm font-medium">Background Counts</label><input type="number" value={backgroundCounts} onChange={e => setBackgroundCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                             <div><label className="block text-sm font-medium">Bkg. Count Time (min)</label><input type="number" value={backgroundTime} onChange={e => setBackgroundTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Gross Count Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div>
-                                <label className="block text-sm font-medium">Confidence Interval</label>
-                                <div className="flex items-center gap-2">
-                                    <select value={confidence} onChange={e => setConfidence(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{confidenceOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
-                                    <input type="text" value={confidence} readOnly className="w-24 mt-1 p-2 rounded-md bg-slate-200 dark:bg-slate-800 text-center font-mono" title="k-value / z-score"/>
-                                </div>
+                            <div><label className="block text-sm font-medium">Sample Count Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+
+                            {/* New Dynamic Unit Selector */}
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium">Desired Output Unit</label>
+	<select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                    <optgroup label="Counts">
+                                        <option value="counts">{MDA_UNIT_CONFIG['counts'].label}</option>
+                                    </optgroup>
+                                    {/* ADD THIS NEW OPTGROUP */}
+                                    <optgroup label="Rate">
+                                        <option value="cpm">{MDA_UNIT_CONFIG['cpm'].label}</option>
+                                    </optgroup>
+                                    <optgroup label="Activity">
+                                        {Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Activity').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Concentration">
+                                        {Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Concentration').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}
+                                    </optgroup>
+                                </select>
                             </div>
-                            <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+
+                            {/* Conditionally Rendered Inputs */}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('efficiency') && (
+                                <>
+                                    <div className="animate-fade-in"><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                    <div className="animate-fade-in"><label className="block text-sm font-medium">Source/Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                </>
+                            )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('area') && (
+                                <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
+                                <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
+                                <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            )}
                         </div>
-                        <button onClick={handleStaticCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Static MDA</button>
+                        
+	</div>
+
+
+
+
+
+) : (
+    // --- Scan MDC Form ---
+    <div className="space-y-4 animate-fade-in">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={scanBackground} onChange={e => setScanBackground(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            
+            {/* Probe Shape Toggle */}
+            <div className="md:col-span-2">
+                <label className="block text-sm font-medium">Probe Shape</label>
+                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1">
+                    <button onClick={() => setProbeShape('rectangle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'rectangle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Rectangle</button>
+                    <button onClick={() => setProbeShape('circle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'circle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Circle</button>
+                </div>
+            </div>
+
+            {/* Conditional Probe Dimension Inputs */}
+            {probeShape === 'rectangle' ? (
+                <>
+                    <div className="animate-fade-in">
+                        <Tooltip text="The probe dimension perpendicular to the direction of scan.">
+                            <label className="block text-sm font-medium">Probe Width (cm)</label>
+                        </Tooltip>
+                        <input type="number" value={probeWidth} onChange={e => setProbeWidth(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                     </div>
-                ) : (
-                    // --- Scan MDC Form ---
-                    <div className="space-y-4 animate-fade-in">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={scanBackground} onChange={e => setScanBackground(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Hot Spot Diameter (cm)</label><input type="number" value={hotspotDiameter} onChange={e => setHotspotDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                        </div>
-                        <details className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50"><summary className="cursor-pointer text-sm font-semibold">Advanced Factors</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700"><div><label className="block text-sm font-medium">Detectability Index (d')</label><Tooltip text="Guidance from MARSSIM 6.7.2.1. Relates the desired probability of detecting a hot spot."><select value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{dprimeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div><div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><Tooltip text="Guidance from NUREG-1507, Sec. 6.6. Accounts for the human factor of the surveyor noticing an audible signal."><select value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{surveyorEffOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div></div></details>
-                        <button onClick={handleScanCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Scan MDC</button>
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium">Probe Length (cm)</label>
+                        <input type="number" value={probeLength} onChange={e => setProbeLength(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                     </div>
-                )}
+                </>
+            ) : (
+                <div className="animate-fade-in md:col-span-2">
+                    <label className="block text-sm font-medium">Probe Diameter (cm)</label>
+                    <input type="number" value={probeDiameter} onChange={e => setProbeDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                </div>
+            )}
+
+            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div className="md:col-span-2"><label className="block text-sm font-medium">Hot Spot Diameter (cm)</label><input type="number" value={hotspotDiameter} onChange={e => setHotspotDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+        </div>
+        <details className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50"><summary className="cursor-pointer text-sm font-semibold">Advanced Factors</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700"><div><label className="block text-sm font-medium">Detectability Index (d')</label><Tooltip text="Guidance from MARSSIM 6.7.2.1. Relates the desired probability of detecting a hot spot."><select value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{dprimeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div><div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><Tooltip text="Guidance from NUREG-1507, Sec. 6.6. Accounts for the human factor of the surveyor noticing an audible signal."><select value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{surveyorEffOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div></div></details>
+    </div>
+)}
                 
+
+
+
                 {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
                 
                 {/* --- Unified Results Display --- */}
                 {result && (
                     <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
+
                         {result.type === 'static' ? (
-                            <div className="space-y-3">
-                                <h3 className="text-lg font-bold text-center mb-2">Static Count Results</h3>
+                            <>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600">
-                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Critical Level (Lc):</span><span className="font-mono text-right">{result.Lc} net counts</span>
-                                    <span className="font-semibold text-slate-600 dark:text-slate-300">LLD / Ld:</span><span className="font-mono text-right">{result.LLD} net counts</span>
-                                    <span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.backgroundActivity} dpm/100cm²</span>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-300">LLD:</span><span className="font-mono text-right">{result.LLD} net counts</span>
+                                    {result.unit !== 'counts' && (
+                                        <span className="font-semibold text-slate-600 dark:text-slate-300">Background Equiv. Activity:</span>
+                                    )}
+                                    {result.unit !== 'counts' && (
+                                        <span className="font-mono text-right">{result.backgroundActivity} {result.unit}</span>
+                                    )}
                                 </div>
                                 <div className="text-center pt-2">
-                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Minimum Detectable Activity (MDA)</p>
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">
+                                        {
+                                            result.unit === 'counts' ? 'Lower Limit of Detection (LLD)' :
+                                            result.unit === 'cpm' ? 'Minimum Detectable Count Rate (MDCR)' :
+                                            'Minimum Detectable Activity/Conc.'
+                                        }
+                                    </p>
                                     <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p>
-                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p>
                                 </div>
-                            </div>
+                            </>
                         ) : (
+
                             <div className="space-y-3">
                                 <h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3>
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600">
@@ -6174,7 +6391,9 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
  * @description A calculator to determine the required number of statistical samples for a
  * survey unit based on the more precise MARSSIM Equation 5-2.
  */
+
 const MARSSIM_SampleCalculator = () => {
+
     // --- STATE MANAGEMENT ---
     const [alpha, setAlpha] = React.useState('0.05'); // Type I Error Rate (False Positive)
     const [beta, setBeta] = React.useState('0.05');  // Type II Error Rate (False Negative)
@@ -6186,12 +6405,14 @@ const MARSSIM_SampleCalculator = () => {
     const [error, setError] = React.useState('');
 
     // Z-scores for common one-sided confidence levels (from MARSSIM Table 5.2 notes)
+
     const zScores = {
         '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
         '0.10': 1.282, '0.20': 0.841,
     };
 
     // Data from MARSSIM Table 5.2: Pr vs. Relative Shift
+
     const prValues = {
         0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
         0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
@@ -6244,6 +6465,7 @@ const MARSSIM_SampleCalculator = () => {
         }
         
         // --- MARSSIM Equation 5-2 ---
+
         const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
         const N_base = Math.ceil(N_base_raw); 
 
@@ -6329,11 +6551,11 @@ const MARSSIM_SampleCalculator = () => {
         </div>
     );
 };
-
 /**
  * @description A calculator that performs the MARSSIM Wilcoxon Rank Sum (WRS) test
  * to compare a survey unit to a reference area, with large sample approximation and EMC logic.
  */
+
 const WRS_Calculator = () => {
     // --- STATE MANAGEMENT ---
     const [dcgl, setDcgl] = React.useState('5');
@@ -6415,56 +6637,53 @@ const WRS_Calculator = () => {
         if (tableVal) {
             C_w = tableVal;
         } else {
+            // Large Sample Approximation (with Tie Correction)
             const zAlpha = zScores[alpha];
             const N = n + m;
             const mean_W = (n * (N + 1)) / 2;
-            const stdDev_W = Math.sqrt((n * m * (N + 1)) / 12);
-            C_w = Math.round(mean_W + (zAlpha * stdDev_W) + 0.5);
+
+            const tieGroups = {};
+            combined.forEach(item => {
+                tieGroups[item.value] = (tieGroups[item.value] || 0) + 1;
+            });
+            const tieCorrection = Object.values(tieGroups)
+                .filter(t => t > 1)
+                .reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
+            
+            const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
+            const stdDev_W_corrected = Math.sqrt(variance_W);
+
+            C_w = Math.round(mean_W + (zAlpha * stdDev_W_corrected) + 0.5);
         }
 
         const wrsTestPassed = W_rs >= C_w;
         
-        // --- NEW LOGIC: Determine a three-tiered conclusion ---
-        let finalConclusion = 'FAIL'; // Default to FAIL
+        let finalConclusion = 'FAIL';
         let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
 
         if (wrsTestPassed) {
             if (dcglExceeded) {
-                finalConclusion = 'PASS_EMC'; // Pass, but with a condition
+                finalConclusion = 'PASS_EMC';
                 finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`;
             } else {
-                finalConclusion = 'PASS'; // A clear pass
+                finalConclusion = 'PASS';
                 finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`;
             }
         }
         
+        // --- CORRECTED STEP 1: Add rankedData to the result state ---
         setResult({
             conclusion: finalConclusion,
             reason: finalReason,
-            n, m, W_rs, C_w
+            n, m, W_rs, C_w,
+            rankedData: combined
         });
     };
 
-    // Helper object for styling the results box based on the conclusion
     const resultStyles = {
-        PASS: {
-            container: 'bg-green-100 dark:bg-green-900/50',
-            title: 'text-green-600 dark:text-green-400',
-            text: 'text-green-800 dark:text-green-200',
-            display: 'SURVEY UNIT PASSES'
-        },
-        PASS_EMC: {
-            container: 'bg-yellow-100 dark:bg-yellow-900/50',
-            title: 'text-yellow-600 dark:text-yellow-400',
-            text: 'text-yellow-800 dark:text-yellow-200',
-            display: 'PASS (EMC Required)'
-        },
-        FAIL: {
-            container: 'bg-red-100 dark:bg-red-900/50',
-            title: 'text-red-600 dark:text-red-400',
-            text: 'text-red-800 dark:text-red-200',
-            display: 'SURVEY UNIT FAILS'
-        }
+        PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200', display: 'SURVEY UNIT PASSES' },
+        PASS_EMC: { container: 'bg-yellow-100 dark:bg-yellow-900/50', title: 'text-yellow-600 dark:text-yellow-400', text: 'text-yellow-800 dark:text-yellow-200', display: 'PASS (EMC Required)' },
+        FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200', display: 'SURVEY UNIT FAILS' }
     };
 
     return (
@@ -6472,23 +6691,28 @@ const WRS_Calculator = () => {
             <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM WRS Test Calculator</h2>
                 <div className="space-y-4">
-                    {/* ... (Input fields are unchanged) ... */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div>
+    <div className="flex justify-between items-center">
         <label className="block text-sm font-medium">Reference Area Data</label>
-        <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-        <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
-            Samples (n): {parseData(referenceData).length}
-        </p>
+        <button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button>
     </div>
-    <div>
-        <label className="block text-sm font-medium">Survey Unit Data</label>
-        <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-        <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
-            Samples (m): {parseData(surveyData).length}
-        </p>
-    </div>
+    <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+    <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
+        Samples (n): {parseData(referenceData).length}
+    </p>
 </div>
+<div>
+    <div className="flex justify-between items-center">
+        <label className="block text-sm font-medium">Survey Unit Data</label>
+        <button onClick={() => setSurveyData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button>
+    </div>
+    <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+    <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">
+        Samples (m): {parseData(surveyData).length}
+    </p>
+</div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium">DCGL</label>
@@ -6503,18 +6727,42 @@ const WRS_Calculator = () => {
                                 <option value="0.10">0.10</option>
                             </select>
                         </div>
-                        
                     </div>
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Perform WRS Test</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     
-                    {/* --- UPDATED Results Display with 3-Color Logic --- */}
                     {result && (
                         <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
                             <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>
                                 {resultStyles[result.conclusion].display}
                             </p>
                             <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>{result.reason}</p>
+                            
+                            {/* --- CORRECTED STEP 2: Add the collapsible JSX block here --- */}
+                            <details className="mt-4 text-left text-xs">
+                                <summary className="cursor-pointer font-semibold">Show Ranked Data Table</summary>
+                                <div className="mt-2 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 p-2 rounded">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="font-bold">
+                                                <td className="p-1">Value</td>
+                                                <td className="p-1">Group</td>
+                                                <td className="p-1">Rank</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {result.rankedData.map((item, i) => (
+                                                <tr key={i} className={item.group === 'ref' ? 'text-sky-600 dark:text-sky-400' : ''}>
+                                                    <td className="p-1 font-mono">{item.value.toFixed(3)}</td>
+                                                    <td className="p-1">{item.group.toUpperCase()}</td>
+                                                    <td className="p-1">{item.rank}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+
                             <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
                                 <p>Reference Samples (n): <span className="font-bold">{result.n}</span></p>
                                 <p>Survey Samples (m): <span className="font-bold">{result.m}</span></p>
@@ -6538,12 +6786,11 @@ const EMC_Calculator = () => {
     const [dcglw, setDcglw] = React.useState('100');
     const [areaFactor, setAreaFactor] = React.useState('3');
     const [emcData, setEmcData] = React.useState('120, 150, 95, 250, 180, 210, 190, 280');
-    const [alpha, setAlpha] = React.useState('0.05'); // Default alpha
+    const [alpha, setAlpha] = React.useState('0.05');
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
     // MARSSIM Table I.3: Critical Values for the Sign Test
-    // Keyed by alpha level, then by sample size N
     const signTestCriticalValues = {
         '0.05': {
             5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12,
@@ -6566,6 +6813,9 @@ const EMC_Calculator = () => {
             25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20
         }
     };
+    
+    // Z-scores for one-sided confidence levels
+    const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
 
     const parseData = (dataString) => {
         return dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
@@ -6575,49 +6825,55 @@ const EMC_Calculator = () => {
         setResult(null);
         setError('');
 
-        const data = parseData(emcData);
+        const initialData = parseData(emcData);
         const dcglw_val = parseFloat(dcglw);
         const af_val = parseFloat(areaFactor);
 
-        // --- Validation ---
         if (isNaN(dcglw_val) || isNaN(af_val) || dcglw_val <= 0 || af_val <= 1) {
-            setError('DCGL and Area Factor must be valid numbers (AF > 1).');
-            return;
+            setError('DCGL and Area Factor must be valid numbers (AF > 1).'); return;
         }
-        if (data.length === 0) {
-            setError('Please enter measurement data.');
-            return;
-        }
+        if (initialData.length === 0) { setError('Please enter measurement data.'); return; }
 
-        // --- MARSSIM EMC Calculations ---
-        const n = data.length;
         const dcgl_emc = dcglw_val * af_val;
+        const epsilon = 1e-9; // Tolerance for floating point comparison
 
-        // Count the number of positive differences (DCGLEMC - measurement > 0)
-        // Note: Sign Test is for non-parametric data, so we don't assume normality.
-        // We compare each measurement to DCGL_EMC. If meas < DCGL_EMC, then (DCGL_EMC - meas) > 0.
-        // MARSSIM convention for S+ is the number of values where the null hypothesis (contamination) is true,
-        // so for EMC it's values *less than* the DCGL_EMC.
+        // --- BUG FIX: Filter out "ties" with the DCGL_EMC before getting sample size N ---
+        const data = initialData.filter(val => Math.abs(dcgl_emc - val) > epsilon);
+        const n_adjusted = data.length;
+        const ties = initialData.length - n_adjusted;
+        
+        if (n_adjusted === 0) { setError('All data points are equal to the DCGL_EMC; the test cannot be performed.'); return; }
+
         const S_plus = data.filter(val => (dcgl_emc - val) > 0).length;
+        
+        let Cs;
+        let note = '';
 
-        // Look up the critical value from the table
-        const Cs = signTestCriticalValues[alpha]?.[n];
-
-        if (Cs === undefined) {
-            setError(`A critical value is not available for a sample size of ${n} at alpha ${alpha}. Please use a sample size between 5 and 30.`);
-            return;
+        // --- IMPROVEMENT: Use table for N<=30, otherwise use Large Sample Approximation ---
+        const tableValue = signTestCriticalValues[alpha]?.[n_adjusted];
+        if (tableValue !== undefined) {
+            Cs = tableValue;
+            note = `Used MARSSIM Table I.3 for N=${n_adjusted}.`;
+        } else {
+            const zAlpha = zScores[alpha];
+            if (!zAlpha) { setError(`Z-score for alpha=${alpha} not available.`); return; }
+            // Per NUREG-1505, Eq. 3.12 (with continuity correction)
+            Cs = Math.ceil((n_adjusted / 2) - 0.5 - (zAlpha * Math.sqrt(n_adjusted) / 2));
+            note = `Used Large Sample Approximation for N=${n_adjusted}.`;
         }
 
-        // --- Make a decision ---
         const testPassed = S_plus >= Cs;
 
         setResult({
             conclusion: testPassed ? 'PASS' : 'FAIL',
             reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`,
-            n,
+            n: initialData.length,
+            n_adjusted,
+            ties,
             dcgl_emc: dcgl_emc.toPrecision(4),
             S_plus,
-            Cs
+            Cs,
+            note
         });
     };
 
@@ -6661,10 +6917,13 @@ const EMC_Calculator = () => {
                             <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
                             <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
                                 <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p>
-                                <p>Samples (N): <span className="font-bold">{result.n}</span></p>
+                                <p>Initial Samples (N): <span className="font-bold">{result.n}</span></p>
+                                <p>Ties Discarded: <span className="font-bold">{result.ties}</span></p>
+                                <p>Adjusted N': <span className="font-bold">{result.n_adjusted}</span></p>
                                 <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p>
                                 <p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
                             </div>
+                             <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
                         </div>
                     )}
                 </div>
@@ -6672,7 +6931,6 @@ const EMC_Calculator = () => {
         </div>
     );
 };
-
      /**
       * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
       * It can display the decay of a parent nuclide and the in-growth and decay of a single daughter nuclide.
