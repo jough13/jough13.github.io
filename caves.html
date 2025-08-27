@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
@@ -24,37 +25,60 @@
         .highlight-text { color: var(--text-highlight); }
         .muted-text { color: var(--text-muted); }
         canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-border); box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-        #messageLog { background-color: color-mix(in srgb, var(--bg-panel) 90%, transparent); border-top: 2px solid var(--border-color); color: var(--text-muted); }
+        
+        #messageLog { 
+            height: 5rem; /* Sets a fixed height of about 3-4 lines */
+            overflow-y: scroll; /* Adds a scrollbar if content overflows */
+            background-color: color-mix(in srgb, var(--bg-panel) 85%, transparent);
+            backdrop-filter: blur(2px); /* Adds a nice frosted glass effect */
+        }
+
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
-    <div class="game-container container mx-auto max-w-2xl p-6 rounded-2xl shadow-xl border-2">
+    <div class="game-container container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2">
         <div class="relative">
             <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
             <button id="darkModeToggle" class="absolute top-0 right-0 p-2 text-2xl" title="Toggle Dark Mode">🌙</button>
         </div>
-        <div class="flex flex-col sm:flex-row justify-between items-center text-sm mb-4 gap-4">
-            <div id="statusPanel" class="panel flex flex-col justify-between items-start w-full sm:w-1/3 p-2 rounded-lg border gap-y-1">
-                <span id="healthDisplay" class="font-bold text-red-500">Health: 10</span>
-                <span id="manaDisplay" class="font-bold text-blue-500">Mana: 10</span>
-                <span id="staminaDisplay" class="font-bold text-green-500">Stamina: 10</span>
-                <span id="psycheDisplay" class="font-bold text-indigo-500">Psyche: 10</span>
-            </div>
-            <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full sm:w-2/3 p-2 rounded-lg border">
-                <span id="strengthDisplay" class="font-bold">Strength: 1</span><span id="witsDisplay" class="font-bold">Wits: 1</span>
-                <span id="constitutionDisplay" class="font-bold">Constitution: 1</span><span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
-                <span id="charismaDisplay" class="font-bold">Charisma: 1</span><span id="luckDisplay" class="font-bold">Luck: 1</span>
-                <span id="willpowerDisplay" class="font-bold">Willpower: 1</span><span id="perceptionDisplay" class="font-bold">Perception: 1</span>
-                <span id="enduranceDisplay" class="font-bold">Endurance: 1</span><span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
-            </div>
+        <div class="lg:grid lg:grid-cols-3 lg:gap-6">
+        <div id="timePanel" class="panel text-center p-2 mb-4 rounded-lg border lg:col-span-3">
+            <span id="timeDisplay" class="font-bold text-lg highlight-text"></span>
         </div>
-        <div class="relative w-full rounded-xl overflow-hidden flex items-center justify-center">
-            <canvas id="gameCanvas" class="w-full h-full"></canvas>
-            <div id="messageLog" class="absolute bottom-0 left-0 w-full p-2 text-sm hidden"></div>
-        </div>
-        <div id="inventoryPanel" class="panel mt-4 p-4 w-full rounded-2xl border-2">
-            <h2 class="text-xl font-bold mb-2">Inventory</h2>
-            <div id="inventoryList" class="flex flex-wrap gap-2"><span class="muted-text italic">Inventory is empty.</span></div>
+
+        <div class="lg:col-span-2">
+            </div>
+
+        <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
+            </div>    
+            <div class="lg:col-span-2">
+                <div class="relative w-full rounded-xl overflow-hidden flex items-center justify-center">
+                    <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                    <div id="messageLog" class="absolute bottom-0 left-0 w-full p-2 text-sm"></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
+                
+                <div id="statusPanel" class="panel flex flex-col justify-between items-start w-full p-2 rounded-lg border gap-y-1">
+                    <span id="healthDisplay" class="font-bold text-red-500">Health: 10</span>
+                    <span id="manaDisplay" class="font-bold text-blue-500">Mana: 10</span>
+                    <span id="staminaDisplay" class="font-bold text-green-500">Stamina: 10</span>
+                    <span id="psycheDisplay" class="font-bold text-indigo-500">Psyche: 10</span>
+                </div>
+                <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-2 rounded-lg border text-xs">
+                    <span id="strengthDisplay" class="font-bold">Strength: 1</span><span id="witsDisplay" class="font-bold">Wits: 1</span>
+                    <span id="constitutionDisplay" class="font-bold">Constitution: 1</span><span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
+                    <span id="charismaDisplay" class="font-bold">Charisma: 1</span><span id="luckDisplay" class="font-bold">Luck: 1</span>
+                    <span id="willpowerDisplay" class="font-bold">Willpower: 1</span><span id="perceptionDisplay" class="font-bold">Perception: 1</span>
+                    <span id="enduranceDisplay" class="font-bold">Endurance: 1</span><span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
+                </div>
+                <div id="inventoryPanel" class="panel p-4 w-full rounded-2xl border-2">
+                    <h2 class="text-xl font-bold mb-2">Inventory</h2>
+                    <div id="inventoryList" class="flex flex-wrap gap-2"><span class="muted-text italic">Inventory is empty.</span></div>
+                </div>
+            </div>
+
         </div>
         <div id="controls" class="mt-4 text-center">
             <p class="text-lg">Use <span class="highlight-text font-bold">W, A, S, D</span> or <span class="highlight-text font-bold">Arrow Keys</span> to move.</p>
@@ -73,6 +97,67 @@
         const STAMINA_RESTORE_AMOUNT = 4;
         const PSYCHE_RESTORE_AMOUNT = 2;
         const STAT_INCREASE_AMOUNT = 1;
+        const TURN_DURATION_MINUTES = 10;
+        const timeDisplay = document.getElementById('timeDisplay');
+
+const DAY_CYCLE_STOPS = [
+            { time: 0,    color: [10, 10, 40], opacity: 0.3 },    // Midnight
+            { time: 350,  color: [20, 20, 80], opacity: 0.35 },   // 5:50 AM (End of Night)
+            { time: 390,  color: [255, 150, 80], opacity: 0.2 },   // 6:30 AM (Sunrise Peak)
+            { time: 430,  color: [240, 255, 255], opacity: 0.0 },  // 7:10 AM (Full Day)
+            { time: 1070, color: [240, 255, 255], opacity: 0.0 },  // 5:50 PM (Start of Sunset)
+            { time: 1110, color: [255, 150, 80], opacity: 0.2 },   // 6:30 PM (Sunset Peak)
+            { time: 1150, color: [20, 20, 80], opacity: 0.35 },   // 7:10 PM (Full Night)
+            { time: 1440, color: [10, 10, 40], opacity: 0.3 }     // Midnight
+        ];
+
+function getInterpolatedDayCycleColor(hour, minute) {
+            const currentTimeInMinutes = hour * 60 + minute;
+            let prevStop = DAY_CYCLE_STOPS[0];
+            let nextStop = DAY_CYCLE_STOPS[DAY_CYCLE_STOPS.length - 1];
+
+            for (let i = 0; i < DAY_CYCLE_STOPS.length; i++) {
+                if (DAY_CYCLE_STOPS[i].time >= currentTimeInMinutes) {
+                    nextStop = DAY_CYCLE_STOPS[i];
+                    prevStop = DAY_CYCLE_STOPS[i - 1] || DAY_CYCLE_STOPS[0];
+                    break;
+                }
+            }
+            
+            const timeRange = nextStop.time - prevStop.time;
+            // Handle the wrap-around case for midnight
+            const timeProgress = (timeRange === 0) ? 1 : (currentTimeInMinutes - prevStop.time) / timeRange;
+
+            const lerp = (a, b, t) => a * (1 - t) + b * t;
+
+            const r = Math.round(lerp(prevStop.color[0], nextStop.color[0], timeProgress));
+            const g = Math.round(lerp(prevStop.color[1], nextStop.color[1], timeProgress));
+            const b = Math.round(lerp(prevStop.color[2], nextStop.color[2], timeProgress));
+            const opacity = lerp(prevStop.opacity, nextStop.opacity, timeProgress);
+
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
+
+        const advanceTime = () => {
+            let time = gameState.time;
+            time.minute += TURN_DURATION_MINUTES;
+            while (time.minute >= 60) {
+                time.minute -= 60;
+                time.hour++;
+                if (time.hour >= 24) {
+                    time.hour = 0;
+                    time.day++;
+                }
+            }
+        };
+
+        const renderTime = () => {
+            const time = gameState.time;
+            const hour12 = time.hour % 12 === 0 ? 12 : time.hour % 12;
+            const ampm = time.hour < 12 ? 'AM' : 'PM';
+            const minutePadded = String(time.minute).padStart(2, '0');
+            timeDisplay.textContent = `Day ${time.day}, ${hour12}:${minutePadded} ${ampm}`;
+        };
 
         // --- GENERATION & UTILITIES ---
 
@@ -129,24 +214,25 @@
         // --- GAME DATA & STATE ---
 
         const TERRAIN_COST = {
-            '.': 0, '^': 3, '~': Infinity, 'F': 2, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0, '?': 0,
+            '.': 0, '^': 3, '~': Infinity, 'F': 1, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0, '?': 0,
             'E': 0, 'D': 0, 'C': 0, 'W': 0, 'P': 0, '&': 0, '>': 0,
         };
+        
         const ITEM_DATA = {
-            '+': { name: 'Healing Potion', effect: (state) => { state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); logMessage(`Restored ${HEALING_AMOUNT} health!`); } },
-            'o': { name: 'Mana Orb', effect: (state) => { state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); logMessage('Restored mana!'); } },
-            'S': { name: 'Stamina Crystal', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
-            'Y': { name: 'Psyche Shard', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Restored psyche.'); } },
-            '$': { name: 'Gold Coin', effect: (state) => { state.player.health -= DAMAGE_AMOUNT; logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`); } },
-            '!': { name: 'Wit Elixir', effect: (state) => { state.player.wits += STAT_INCREASE_AMOUNT; logMessage('Wits increased!'); } },
-            '?': { name: 'Lucky Charm', effect: (state) => { state.player.luck += STAT_INCREASE_AMOUNT; logMessage('Luck increased!'); } },
-            'E': { name: 'Constitution Stone', effect: (state) => { state.player.constitution += STAT_INCREASE_AMOUNT; logMessage('Constitution increased!'); } },
-            'D': { name: 'Dexterity Token', effect: (state) => { state.player.dexterity += STAT_INCREASE_AMOUNT; logMessage('Dexterity increased!'); } },
-            'C': { name: 'Charisma Emblem', effect: (state) => { state.player.charisma += STAT_INCREASE_AMOUNT; logMessage('Charisma increased!'); } },
-            'W': { name: 'Willpower Shard', effect: (state) => { state.player.willpower += STAT_INCREASE_AMOUNT; logMessage('Willpower increased!'); } },
-            'P': { name: 'Perception Gem', effect: (state) => { state.player.perception += STAT_INCREASE_AMOUNT; logMessage('Perception increased!'); } },
-            '&': { name: 'Endurance Rune', effect: (state) => { state.player.endurance += STAT_INCREASE_AMOUNT; logMessage('Endurance increased!'); } },
-            '>': { name: 'Intuition Crystal', effect: (state) => { state.player.intuition += STAT_INCREASE_AMOUNT; logMessage('Intuition increased!'); } },
+            '+': { name: 'Healing Potion', type: 'consumable', effect: (state) => { state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); } },
+            'o': { name: 'Mana Orb', type: 'consumable', effect: (state) => { state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); logMessage('Used a Mana Orb. Restored mana!'); } },
+            'S': { name: 'Stamina Crystal', type: 'consumable', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
+            'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
+            '$': { name: 'Gold Coin', type: 'instant', effect: (state) => { state.player.health -= DAMAGE_AMOUNT; logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`); } },
+            '!': { name: 'Wit Elixir', type: 'instant', effect: (state) => { state.player.wits += STAT_INCREASE_AMOUNT; logMessage('Wits increased!'); } },
+            '?': { name: 'Lucky Charm', type: 'instant', effect: (state) => { state.player.luck += STAT_INCREASE_AMOUNT; logMessage('Luck increased!'); } },
+            'E': { name: 'Constitution Stone', type: 'instant', effect: (state) => { state.player.constitution += STAT_INCREASE_AMOUNT; logMessage('Constitution increased!'); } },
+            'D': { name: 'Dexterity Token', type: 'instant', effect: (state) => { state.player.dexterity += STAT_INCREASE_AMOUNT; logMessage('Dexterity increased!'); } },
+            'C': { name: 'Charisma Emblem', type: 'instant', effect: (state) => { state.player.charisma += STAT_INCREASE_AMOUNT; logMessage('Charisma increased!'); } },
+            'W': { name: 'Willpower Shard', type: 'instant', effect: (state) => { state.player.willpower += STAT_INCREASE_AMOUNT; logMessage('Willpower increased!'); } },
+            'P': { name: 'Perception Gem', type: 'instant', effect: (state) => { state.player.perception += STAT_INCREASE_AMOUNT; logMessage('Perception increased!'); } },
+            '&': { name: 'Endurance Rune', type: 'instant', effect: (state) => { state.player.endurance += STAT_INCREASE_AMOUNT; logMessage('Endurance increased!'); } },
+            '>': { name: 'Intuition Crystal', type: 'instant', effect: (state) => { state.player.intuition += STAT_INCREASE_AMOUNT; logMessage('Intuition increased!'); } },
         };
         
         const canvas = document.getElementById('gameCanvas');
@@ -229,7 +315,15 @@
                 strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
                 inventory: []
             },
-            messages: []
+            messages: [],
+            flags: {
+                hasSeenForestWarning: false
+            },
+            time: {
+                day: 1,
+                hour: 6,
+                minute: 0
+            }
         };
         
         ctx.font = `${TILE_SIZE}px monospace`;
@@ -238,9 +332,11 @@
 
         // --- CORE GAME LOOP FUNCTIONS ---
 
-        const logMessage = (text) => {
-            messageLog.innerHTML = text;
-            messageLog.classList.remove('hidden');
+            const logMessage = (text) => {
+            const messageElement = document.createElement('p');
+            messageElement.textContent = `> ${text}`;
+            messageLog.prepend(messageElement); // Adds the new message to the top
+            messageLog.scrollTop = 0; // Automatically scrolls to the top
         };
 
         const renderStats = () => {
@@ -251,21 +347,31 @@
             enduranceDisplay.textContent = `Endurance: ${gameState.player.endurance}`; intuitionDisplay.textContent = `Intuition: ${gameState.player.intuition}`;
         };
 
-        const renderInventory = () => {
+const renderInventory = () => {
             inventoryList.innerHTML = '';
             if (gameState.player.inventory.length === 0) {
                 inventoryList.innerHTML = '<span class="muted-text italic">Inventory is empty.</span>';
             } else {
                 gameState.player.inventory.forEach(item => {
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = 'p-1 rounded-md bg-gray-200 text-gray-800';
-                    itemDiv.textContent = `${item.name}`;
+                    // Added dark mode classes for better visuals
+                    itemDiv.className = 'p-2 rounded-md bg-gray-200 dark:bg-gray-700 dark:text-gray-200 text-gray-800 flex items-center gap-2';
+                    
+                    const itemCharSpan = document.createElement('span');
+                    itemCharSpan.className = 'font-bold text-lg';
+                    itemCharSpan.textContent = item.tile; // Display the original tile character, e.g., '+'
+                    
+                    const itemNameSpan = document.createElement('span');
+                    itemNameSpan.textContent = `${item.name} (x${item.quantity})`;
+
+                    itemDiv.appendChild(itemCharSpan);
+                    itemDiv.appendChild(itemNameSpan);
                     inventoryList.appendChild(itemDiv);
                 });
             }
         };
 
-        const render = () => {
+const render = () => {
             const style = getComputedStyle(document.documentElement);
             const canvasBg = style.getPropertyValue('--canvas-bg');
             const playerColor = style.getPropertyValue('--player-color');
@@ -297,45 +403,114 @@
             ctx.fillStyle = playerColor;
             gameState.player.color = playerColor;
             ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+
+            // NEW: Add smooth, interpolated day/night cycle overlay
+            const { hour, minute } = gameState.time;
+            const overlayColor = getInterpolatedDayCycleColor(hour, minute);
+            ctx.fillStyle = overlayColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         };
 
-        document.addEventListener('keydown', (event) => {
+document.addEventListener('keydown', (event) => {
             if (gameState.player.health <= 0) return;
             let newX = gameState.player.x; let newY = gameState.player.y;
+            
             switch (event.key) {
                 case 'ArrowUp': case 'w': case 'W': newY--; break;
                 case 'ArrowDown': case 's': case 'S': newY++; break;
                 case 'ArrowLeft': case 'a': case 'A': newX--; break;
                 case 'ArrowRight': case 'd': case 'D': newX++; break;
+                
+                case 'i': case 'I': // I for Inventory
+                    if (gameState.player.inventory.length > 0) {
+                        const itemToUse = gameState.player.inventory[0];
+                        itemToUse.effect(gameState);
+                        itemToUse.quantity--;
+                        if (itemToUse.quantity <= 0) {
+                            gameState.player.inventory.shift();
+                        }
+                    } else {
+                        logMessage("Your inventory is empty.");
+                    }
+                    renderStats();
+                    advanceTime(); renderTime();
+                    renderInventory();
+                    event.preventDefault();
+                    return;
+
+                case 'r': case 'R': // R is for Rest
+                    if (gameState.player.stamina < gameState.player.maxStamina) {
+                        gameState.player.stamina++;
+                        logMessage("You rest for a moment, recovering 1 stamina.");
+                    } else {
+                        logMessage("You are already at full stamina.");
+                    }
+                    renderStats();
+                    advanceTime(); renderTime(); 
+                    event.preventDefault();
+                    return;
+
                 default: return;
             }
             event.preventDefault();
+
             const newTile = chunkManager.getTile(newX, newY);
             if (newTile === ' ') { logMessage("You've reached the edge of the known world."); return; }
             const moveCost = TERRAIN_COST[newTile] ?? 0;
             if (moveCost === Infinity) { logMessage("That way is blocked."); return; }
-            if (gameState.player.stamina >= moveCost) {
-                gameState.player.stamina -= moveCost;
-                const itemData = ITEM_DATA[newTile];
-                if (itemData) {
-                    itemData.effect(gameState);
-                    chunkManager.setTile(newX, newY, '.');
-                } else if (moveCost > 0) {
-                    logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+            
+            const staminaDeficit = moveCost - gameState.player.stamina;
+            if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
+                logMessage("You're too tired, and pushing on would be fatal!");
+            } else {
+                if (gameState.player.stamina >= moveCost) {
+                    gameState.player.stamina -= moveCost;
                 } else {
-                    logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
+                    gameState.player.stamina = 0;
+                    gameState.player.health -= staminaDeficit;
+                    logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
                 }
+                
+                // First, check for the one-time forest warning.
+
+                if (newTile === 'F' && !gameState.flags.hasSeenForestWarning) {
+                    logMessage("Be careful! Moving through forests costs stamina.");
+                    gameState.flags.hasSeenForestWarning = true;
+                } else {
+                    const itemData = ITEM_DATA[newTile];
+                    if (itemData) {
+                        if (itemData.type === 'consumable') {
+                            const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                            if (existingItem) {
+                                existingItem.quantity++;
+                            } else {
+                                gameState.player.inventory.push({ ...itemData, quantity: 1, tile: newTile });
+                            }
+                            logMessage(`You picked up a ${itemData.name}.`);
+                        } else {
+                            itemData.effect(gameState);
+                        }
+                        chunkManager.setTile(newX, newY, '.');
+                    } else if (moveCost > 0) {
+                        // THIS LINE IS THE FIX:
+                        logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+                    } else {
+                        logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
+                    }
+                }
+                
                 gameState.player.x = newX;
                 gameState.player.y = newY;
-            } else {
-                logMessage("You're too tired to move there!");
             }
+            
             if (gameState.player.health <= 0) {
                 gameState.player.health = 0;
                 logMessage("You have perished! Game Over.");
             }
+            
             render();
             renderStats();
+            advanceTime(); renderTime(); 
             renderInventory();
         });
 
@@ -358,6 +533,7 @@
             if (savedTheme) { applyTheme(savedTheme); } 
             else if (prefersDark) { applyTheme('dark'); } 
             else { applyTheme('light'); }
+            renderTime(); 
             renderStats();
             renderInventory();
             logMessage('Welcome to Caves and Castles! Find your way.');
