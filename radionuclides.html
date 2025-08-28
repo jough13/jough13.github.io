@@ -590,7 +590,7 @@
                               // --- APPLICATION METADATA & CONSTANTS
                               //==============================================================================
 
-                              const VERSION = '3.3';
+                              const VERSION = '3.3.1';
                               const LAST_UPDATED = 'August 28, 2025';
 
                               /**
@@ -1922,9 +1922,10 @@ const defaultSettings = {
                               { id: 'compare', label: 'Compare', icon: ICONS.compare },
                               { id: 'calculator', label: 'Decay', icon: ICONS.calculator },
                               { id: 'mda', label: 'MDA', icon: ICONS.search },
-                      	      { id: 'marssim', label: 'MARSSIM Samples', icon: ICONS.calculator },
-                              { id: 'wrs', label: 'WRS Test', icon: ICONS.database },
-                              { id: 'emc', label: 'EMC Sign Test', icon: ICONS.search },
+                      	      { id: 'marssim', label: 'MARSSIM Sample Design', icon: ICONS.calculator },
+
+{ id: 'marssimTests', label: 'MARSSIM Tests', icon: ICONS.database },
+
                               { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series },
                               { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
 			      {   id:     'radon', label: 'Radon', icon: ICONS.radon },
@@ -4079,7 +4080,8 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
 
                               // An array of all valid views your app can be in
 
-				const validViews = ['home', 'database', 'compare', 'calculator', 'mda', 'marssim', 'wrs', 'emc', 'seriesCalculator', 'equilibrium', 'radon', 'activityMassTools', 'doseRate', 'shielding', 'stayTime', 'transportation', 'converter', 'settings', 'decaySeries'];                              
+			        const validViews = ['home', 'database', 'compare', 'calculator', 'mda', 'marssim', 'wrs', 'emc', 'seriesCalculator', 'equilibrium', 'radon', 'activityMassTools', 'doseRate', 'shielding', 'stayTime', 'transportation', 'converter', 'settings', 'decaySeries', 'marssimTests'];
+
 
                               let targetView = 'home'; // Default to home view
                               if (hash && validViews.includes(hash)) {
@@ -4473,6 +4475,9 @@ React.useEffect(() => {
                               case 'transportation': return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                               case 'converter': return <UnitConverter />;
                               case 'settings': return <SettingsPanel />;
+			      
+                              case 'marssimTests': return <MARSSIM_Statistical_Tests />;
+
                               case 'decaySeries': return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
                               case 'home':
                               default:
@@ -6901,6 +6906,39 @@ React.useEffect(() => {
                               </div>
                           );
                       };
+
+/**
+ * @description A container component to house both the WRS and EMC test calculators
+ * under a single view, selectable by a toggle.
+ */
+const MARSSIM_Statistical_Tests = () => {
+    const [activeTest, setActiveTest] = React.useState('wrs');
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto">
+                {/* This is the toggle button group */}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button 
+                        onClick={() => setActiveTest('wrs')} 
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === 'wrs' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                        WRS Test
+                    </button>
+                    <button 
+                        onClick={() => setActiveTest('emc')} 
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === 'emc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                        EMC Sign Test
+                    </button>
+                </div>
+
+                {/* Conditionally render the correct calculator */}
+                {activeTest === 'wrs' ? <WRS_Calculator /> : <EMC_Calculator />}
+            </div>
+        </div>
+    );
+};
 
                       /*
                       * @description A calculator that performs the MARSSIM Sign Test for an
