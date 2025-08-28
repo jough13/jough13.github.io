@@ -590,7 +590,7 @@
                               // --- APPLICATION METADATA & CONSTANTS
                               //==============================================================================
 
-                              const VERSION = '3.2.0';
+                              const VERSION = '3.2.1';
                               const LAST_UPDATED = 'August 27, 2025';
 
                               /**
@@ -1340,11 +1340,13 @@
 
                       const SettingsContext = React.createContext();
 
-                      const defaultSettings = {
-                          activity: 'mCi',
-                          doseRate: 'mrem/hr',
-                          distance: 'm',
-                      };
+const defaultSettings = {
+    activity: 'mCi',
+    doseRate: 'mrem/hr',
+    distance: 'm',
+    chartScale: 'Linear',
+    defaultDoseMode: 'gamma',
+};
 
                       const SettingsProvider = ({ children }) => {
                           const [settings, setSettings] = React.useState(() => {
@@ -1760,11 +1762,11 @@
                                   </a>
                                   {/* 5. A new flex-col div to stack the icons vertically */}
                                   <div className="flex flex-col">
-                                      <Tooltip text="Settings" widthClass="w-auto">
-                                          <button onClick={() => onNavClick('settings')} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
-                                              <Icon path={ICONS.settings} className="w-5 h-5" />
-                                          </button>
-                                      </Tooltip>
+                                    <Tooltip text="Settings" widthClass="w-auto">
+                                        <button onClick={() => onNavClick('settings')} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+                                            <Icon path={ICONS.settings} className="w-5 h-5" />
+                                        </button>
+                                    </Tooltip>
                                       <Tooltip text="Open User Manual" widthClass="w-auto">
                                           <button onClick={onHelpClick} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
                                               <Icon path={ICONS.help} className="w-5 h-5" />
@@ -2223,12 +2225,12 @@
                                   <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
                                       <div className="divide-y divide-slate-200 dark:divide-slate-700">
                                           <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
-                                          <DataPoint
-                                              label="Half-life"
-                                              value={<>{formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
-                                              sourceKey={nuclide.sourceRef?.halfLife}
-                                              iconPath={ICONS.hourglass}
-                                          />
+    <DataPoint
+        label="Half-life"
+        value={<>{formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
+        sourceKey={nuclide.sourceRef?.halfLife}
+        iconPath={ICONS.hourglass}
+    />
                                           <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
                                       </div>
                                       <div className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -2946,316 +2948,322 @@
 
                       const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
 
-                          // --- STATE & CONSTANTS ---
+    // --- STATE & CONSTANTS ---
+    const { settings } = React.useContext(SettingsContext);
+    const [selectedNuclide, setSelectedNuclide] = React.useState(null);
+    const [calculationMode, setCalculationMode] = React.useState('findRemaining');
+    const [initialActivity, setInitialActivity] = React.useState('100');
+    const [initialDaughterActivity, setInitialDaughterActivity] = React.useState('0');
+    const [remainingActivity, setRemainingActivity] = React.useState('');
+    const [timeElapsed, setTimeElapsed] = React.useState('1');
+    const [timeUnit, setTimeUnit] = React.useState('days');
+    const [result, setResult] = React.useState(null);
+    const [chartData, setChartData] = React.useState(null);
+    const [error, setError] = React.useState('');
+    const [useLogScale, setUseLogScale] = React.useState(settings.chartScale === 'Logarithmic'); // Correct location for state
 
-                          const [selectedNuclide, setSelectedNuclide] = React.useState(null);
-                          const [calculationMode, setCalculationMode] = React.useState('findRemaining');
-                          const [initialActivity, setInitialActivity] = React.useState('100');
-                          const [initialDaughterActivity, setInitialDaughterActivity] = React.useState('0');
-                          const [remainingActivity, setRemainingActivity] = React.useState('');
-                          const [timeElapsed, setTimeElapsed] = React.useState('1');
-                          const [timeUnit, setTimeUnit] = React.useState('days');
-                          const [result, setResult] = React.useState(null);
-                          const [chartData, setChartData] = React.useState(null);
-                          const [error, setError] = React.useState('');
+    const timeUnits = longTimeUnits_ordered;
+    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
 
-                          const timeUnits = longTimeUnits_ordered; // Corrected line
-                          const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+    const sortedRadionuclides = React.useMemo(() => {
+        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
+        return [...radionuclides]
+            .filter(r => r.halfLife !== 'Stable')
+            .sort((a, b) => {
+                const orderA = commonalityOrder[a.commonality] || 0;
+                const orderB = commonalityOrder[b.commonality] || 0;
+                if (orderA !== orderB) {
+                    return orderB - orderA;
+                }
+                return a.name.localeCompare(b.name);
+            });
+    }, [radionuclides]);
 
-                          const sortedRadionuclides = React.useMemo(() => {
-                              const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
-                              return [...radionuclides]
-                                  .filter(r => r.halfLife !== 'Stable')
-                                  .sort((a, b) => {
-                                      const orderA = commonalityOrder[a.commonality] || 0;
-                                      const orderB = commonalityOrder[b.commonality] || 0;
-                                      if (orderA !== orderB) {
-                                          return orderB - orderA;
-                                      }
-                                      return a.name.localeCompare(b.name);
-                                  });
-                          }, [radionuclides]);
+    const handleNuclideSelect = React.useCallback((symbol) => {
+        const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol);
+        if (nuclideToSet) {
+            setSelectedNuclide(nuclideToSet);
+            const hl_seconds = parseHalfLifeToSeconds(nuclideToSet.halfLife);
+            if (hl_seconds !== Infinity) {
+                const bestUnit = getBestHalfLifeUnit(hl_seconds);
+                const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+                const hl_in_best_unit = hl_seconds / unitConversions[bestUnit];
+                setTimeUnit(bestUnit);
+                setTimeElapsed(parseFloat(hl_in_best_unit.toPrecision(2)).toString());
+            }
+        }
+    }, [sortedRadionuclides]);
 
-                          const handleNuclideSelect = React.useCallback((symbol) => {
-                              const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol);
-                              if (nuclideToSet) {
-                                  setSelectedNuclide(nuclideToSet);
-                                  const hl_seconds = parseHalfLifeToSeconds(nuclideToSet.halfLife);
-                                  if (hl_seconds !== Infinity) {
-                                      const bestUnit = getBestHalfLifeUnit(hl_seconds);
-                                      const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-                                      const hl_in_best_unit = hl_seconds / unitConversions[bestUnit];
-                                      setTimeUnit(bestUnit);
-                                      setTimeElapsed(parseFloat(hl_in_best_unit.toPrecision(2)).toString());
-                                  }
-                              }
-                          }, [sortedRadionuclides]);
+    React.useEffect(() => {
+        if (preselectedNuclide) {
+            handleNuclideSelect(preselectedNuclide);
+        }
+    }, [preselectedNuclide, handleNuclideSelect]);
 
-                          React.useEffect(() => {
-                              if (preselectedNuclide) {
-                                  handleNuclideSelect(preselectedNuclide);
-                              }
-                          }, [preselectedNuclide, handleNuclideSelect]);
+    React.useEffect(() => {
+        setResult(null);
+        setChartData(null);
+        setError('');
+    }, [calculationMode]);
 
-                          React.useEffect(() => {
-                              setResult(null);
-                              setChartData(null);
-                              setError('');
-                          }, [calculationMode]);
+    const handleCalculate = () => {
+        if (!selectedNuclide) {
+            setError('Please select a radionuclide.');
+            setResult(null);
+            setChartData(null);
+            return;
+        }
+        const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
 
-                          const handleCalculate = () => {
-                              if (!selectedNuclide) {
-                                  setError('Please select a radionuclide.');
-                                  setResult(null);
-                                  setChartData(null);
-                                  return;
-                              }
-                              const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+        let lambda1;
+        if (selectedNuclide.decayConstant) {
+            lambda1 = parseFloat(selectedNuclide.decayConstant);
+            if (isNaN(lambda1)) {
+                const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+                lambda1 = Math.log(2) / T1_seconds;
+            }
+        } else {
+            const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+            lambda1 = Math.log(2) / T1_seconds;
+        }
 
-                      let lambda1;
-                      if (selectedNuclide.decayConstant) {
+        if (T1_seconds === Infinity) {
+            setError('Cannot calculate decay for a stable nuclide.');
+            setResult(null);
+            setChartData(null);
+            return;
+        }
 
-                          // Assuming decayConstant is in per-second units
-                          // You might need to parse it if the unit is part of the string
+        const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+        setError('');
+        setResult(null);
+        setChartData(null);
 
-                          lambda1 = parseFloat(selectedNuclide.decayConstant);
-                          if (isNaN(lambda1)) {
-                              // Fallback calculation if parsing fails
-                              const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-                              lambda1 = Math.log(2) / T1_seconds;
-                          }
-                      } else {
-                          const T1_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-                          lambda1 = Math.log(2) / T1_seconds;
-                      }
+        try {
+            const t_input = parseFloat(timeElapsed);
+            if (isNaN(t_input) || t_input < 0) { throw new Error('Time elapsed must be a non-negative number.'); }
+            const t_seconds = t_input * unitConversions[timeUnit];
+            const lambda1 = Math.log(2) / T1_seconds;
 
-                              if (T1_seconds === Infinity) {
-                                  setError('Cannot calculate decay for a stable nuclide.');
-                                  setResult(null);
-                                  setChartData(null);
-                                  return;
-                              }
+            const generateSingleNuclideChart = (N0) => {
+                const labels = [], parentData = [];
+                const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
+                const steps = 100;
+                for (let i = 0; i <= steps; i++) {
+                    const timePoint = (totalTime / steps) * i;
+                    const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                    labels.push(timePoint.toFixed(2));
+                    parentData.push(N0 * Math.exp(-lambda1 * timePoint_seconds));
+                }
+                setChartData({ labels, parentData, parentName: selectedNuclide.name, timeUnit });
+            };
 
-                              const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
-                              setError('');
-                              setResult(null);
-                              setChartData(null);
+            switch (calculationMode) {
+                case 'findRemaining': {
+                    const N0 = parseFloat(initialActivity);
+                    if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
+                    const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
+                    setRemainingActivity(Nt.toPrecision(4));
+                    setResult(null);
+                    generateSingleNuclideChart(N0);
+                    break;
+                }
+                case 'findTime': {
+                    const N0 = parseFloat(initialActivity);
+                    const Nt = parseFloat(remainingActivity);
+                    if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
+                    if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
+                    if (Nt === 0) {
+                        setTimeElapsed('Infinite');
+                        setResult(null);
+                        break;
+                    }
+                    const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
+                    const t_final = t_seconds_calc / unitConversions[timeUnit];
+                    setTimeElapsed(t_final.toPrecision(4));
+                    setResult(null);
+                    setChartData(null);
+                    break;
+                }
+                case 'findInitial': {
+                    const Nt = parseFloat(remainingActivity);
+                    if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
+                    const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
+                    setInitialActivity(N0.toPrecision(4));
+                    setResult(null);
+                    generateSingleNuclideChart(N0);
+                    break;
+                }
+                case 'findDaughterActivity': {
+                    const N0_parent = parseFloat(initialActivity);
+                    const N0_daughter = parseFloat(initialDaughterActivity);
+                    if (isNaN(N0_parent) || N0_parent < 0 || isNaN(N0_daughter) || N0_daughter < 0) {
+                        throw new Error('Initial activities must be non-negative numbers.');
+                    }
+                    if (selectedNuclide.daughter.includes('/') || selectedNuclide.daughter.includes(' or ')) {
+                        throw new Error(`Cannot calculate daughter activity for "${selectedNuclide.name}" due to branching decay. Please use the Series Decay calculator.`);
+                    }
+                    const daughterName = selectedNuclide.daughter.split('(')[0].trim();
+                    const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
 
-                              try {
-                                  const t_input = parseFloat(timeElapsed);
-                                  if (isNaN(t_input) || t_input < 0) { throw new Error('Time elapsed must be a non-negative number.'); }
-                                  const t_seconds = t_input * unitConversions[timeUnit];
-                                  const lambda1 = Math.log(2) / T1_seconds;
+                    if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
+                    const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+                    const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
+                    let A_daughter;
+                    if (T2_seconds === Infinity) {
+                        A_daughter = 0;
+                    } else {
+                        const lambda2 = Math.log(2) / T2_seconds;
+                        const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
+                        let daughterIngrowth;
+                        if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                            daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
+                        } else {
+                            daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent* (Math.exp(-lambda1* t_seconds) - Math.exp(-lambda2 * t_seconds));
+                        }
+                        A_daughter = initialDaughterDecay + daughterIngrowth;
+                    }
+                    setResult({ parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name }, daughter: { value: A_daughter.toPrecision(4), name: daughterNuclide.name, isStable: T2_seconds === Infinity } });
+                    const labels = [], parentData = [], daughterData = [];
+                    const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
+                    const steps = 100;
+                    for (let i = 0; i <= steps; i++) {
+                        const timePoint = (totalTime / steps) * i;
+                        const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                        labels.push(timePoint.toFixed(2));
+                        parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
+                        if (T2_seconds === Infinity) {
+                            daughterData.push(0);
+                        } else {
+                            const lambda2 = Math.log(2) / T2_seconds;
+                            const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
+                            let current_daughterIngrowth;
+                            if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                                current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds);
+                            } else {
+                                current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds));
+                            }
+                            daughterData.push(current_initialDaughterDecay + current_daughterIngrowth);
+                        }
+                    }
+                    setChartData({ labels, parentData, daughterData, parentName: selectedNuclide.name, daughterName: daughterNuclide.name, timeUnit });
+                    break;
+                }
+                default:
+                    throw new Error('Invalid calculation mode.');
+            }
+        } catch (e) {
+            setError(e.message);
+        }
+    };
 
-                                  const generateSingleNuclideChart = (N0) => {
-                                      const labels = [], parentData = [];
-                                      const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
-                                      const steps = 100;
-                                      for (let i = 0; i <= steps; i++) {
-                                          const timePoint = (totalTime / steps) * i;
-                                          const timePoint_seconds = timePoint * unitConversions[timeUnit];
-                                          labels.push(timePoint.toFixed(2));
-                                          parentData.push(N0 * Math.exp(-lambda1 * timePoint_seconds));
-                                      }
-                                      setChartData({ labels, parentData, parentName: selectedNuclide.name, timeUnit });
-                                  };
+    React.useEffect(() => {
+        if (selectedNuclide) {
+            handleCalculate();
+        }
+    }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity]);
 
-                                  switch (calculationMode) {
-                                      case 'findRemaining': {
-                                          const N0 = parseFloat(initialActivity);
-                                          if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
-                                          const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
-                                          setRemainingActivity(Nt.toPrecision(4));
-                                          setResult(null);
-                                          generateSingleNuclideChart(N0);
-                                          break;
-                                      }
-                                      case 'findTime': {
-                                          const N0 = parseFloat(initialActivity);
-                                          const Nt = parseFloat(remainingActivity);
-                                          if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); }
-                                          if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); }
-                                          if (Nt === 0) {
-                                              setTimeElapsed('Infinite');
-                                              setResult(null);
-                                              break;
-                                          }
-                                          const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2));
-                                          const t_final = t_seconds_calc / unitConversions[timeUnit];
-                                          setTimeElapsed(t_final.toPrecision(4));
-                                          setResult(null);
-                                          setChartData(null);
-                                          break;
-                                      }
-                                      case 'findInitial': {
-                                          const Nt = parseFloat(remainingActivity);
-                                          if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); }
-                                          const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds);
-                                          setInitialActivity(N0.toPrecision(4));
-                                          setResult(null);
-                                          generateSingleNuclideChart(N0);
-                                          break;
-                                      }
-                                      case 'findDaughterActivity': {
-                                          const N0_parent = parseFloat(initialActivity);
-                                          const N0_daughter = parseFloat(initialDaughterActivity);
-                                          if (isNaN(N0_parent) || N0_parent < 0 || isNaN(N0_daughter) || N0_daughter < 0) {
-                                              throw new Error('Initial activities must be non-negative numbers.');
-                                          }
-                                          if (selectedNuclide.daughter.includes('/') || selectedNuclide.daughter.includes(' or ')) {
-                                              throw new Error(`Cannot calculate daughter activity for "${selectedNuclide.name}" due to branching decay. Please use the Series Decay calculator.`);
-                                          }
-                                          const daughterName = selectedNuclide.daughter.split('(')[0].trim();
-                                          const daughterNuclide = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+    const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
+        <div>
+            <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
+            <div className="flex gap-2 mt-1">
+                <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
+                {unitOptions && (
+                    <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
+                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                )}
+            </div>
+        </div>
+    );
 
-                                          if (!daughterNuclide) { throw new Error(`Daughter nuclide "${daughterName}" not found in the database.`); }
-                                          const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
-                                          const Nt_parent_activity = N0_parent * Math.exp(-lambda1 * t_seconds);
-                                          let A_daughter;
-                                          if (T2_seconds === Infinity) {
-                                              A_daughter = 0;
-                                          } else {
-                                              const lambda2 = Math.log(2) / T2_seconds;
-                                              const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
-                                              let daughterIngrowth;
-                                              if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                                                  daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
-                                              } else {
-                                                  daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent* (Math.exp(-lambda1* t_seconds) - Math.exp(-lambda2 * t_seconds));
-                                              }
-                                              A_daughter = initialDaughterDecay + daughterIngrowth;
-                                          }
-                                          setResult({ parent: { value: Nt_parent_activity.toPrecision(4), name: selectedNuclide.name }, daughter: { value: A_daughter.toPrecision(4), name: daughterNuclide.name, isStable: T2_seconds === Infinity } });
-                                          const labels = [], parentData = [], daughterData = [];
-                                          const totalTime = t_input * 2 > 0 ? t_input * 2 : 1;
-                                          const steps = 100;
-                                          for (let i = 0; i <= steps; i++) {
-                                              const timePoint = (totalTime / steps) * i;
-                                              const timePoint_seconds = timePoint * unitConversions[timeUnit];
-                                              labels.push(timePoint.toFixed(2));
-                                              parentData.push(N0_parent * Math.exp(-lambda1 * timePoint_seconds));
-                                              if (T2_seconds === Infinity) {
-                                                  daughterData.push(0);
-                                              } else {
-                                                  const lambda2 = Math.log(2) / T2_seconds;
-                                                  const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
-                                                  let current_daughterIngrowth;
-                                                  if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                                                      current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds);
-                                                  } else {
-                                                      current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds));
-                                                  }
-                                                  daughterData.push(current_initialDaughterDecay + current_daughterIngrowth);
-                                              }
-                                          }
-                                          setChartData({ labels, parentData, daughterData, parentName: selectedNuclide.name, daughterName: daughterNuclide.name, timeUnit });
-                                          break;
-                                      }
-                                      default:
-                                          throw new Error('Invalid calculation mode.');
-                                  }
-                              } catch (e) {
-                                  setError(e.message);
-                              }
-                          };
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo
+                                    nuclide={selectedNuclide}
+                                    onClear={() => { setSelectedNuclide(null); }}
+                                />
+                            ) : (
+                                <SearchableSelect options={sortedRadionuclides} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                            {['findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'].map(mode => (
+                                <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
+                                    <span className="text-sm">{
+                                        { 'findRemaining': 'Remaining Activity', 'findTime': 'Time Elapsed', 'findInitial': 'Initial Activity', 'findDaughterActivity': 'Daughter Activity' }[mode]
+                                    }</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
+                        {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
+                        {calculationMode === 'findDaughterActivity' &&
+                            renderInputField("Initial Daughter Activity", initialDaughterActivity, setInitialDaughterActivity, true)
+                        }
+                        {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits_ordered)}
+                    </div>
 
-                          React.useEffect(() => {
-                              if (selectedNuclide) {
-                                  handleCalculate();
-                              }
-                          }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity]);
-
-                          const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
-                              <div>
-                                  <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
-                                  <div className="flex gap-2 mt-1">
-                                      <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
-                                      {unitOptions && (
-                                          <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
-                                              {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                                          </select>
-                                      )}
-                                  </div>
-                              </div>
-                          );
-
-                          return (
-                              <div className="p-4 animate-fade-in">
-                                  <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Radioactive Decay Calculator</h2>
-                                      <div className="space-y-4">
-                                          <div>
-                                              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                                              <div className="mt-1 min-h-[42px]">
-                                                  {selectedNuclide ? (
-                                                      <CalculatorNuclideInfo
-                                                          nuclide={selectedNuclide}
-                                                          onClear={() => { setSelectedNuclide(null); }}
-                                                      />
-                                                  ) : (
-                                                      <SearchableSelect options={sortedRadionuclides} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/>
-                                                  )}
-                                              </div>
-                                          </div>
-                                          <div>
-                                              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Calculate</label>
-                                              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
-                                                  {['findRemaining', 'findTime', 'findInitial', 'findDaughterActivity'].map(mode => (
-                                                      <label key={mode} className="flex items-center gap-2 cursor-pointer">
-                                                          <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600"/>
-                                                          <span className="text-sm">{
-                                                              { 'findRemaining': 'Remaining Activity', 'findTime': 'Time Elapsed', 'findInitial': 'Initial Activity', 'findDaughterActivity': 'Daughter Activity' }[mode]
-                                                          }</span>
-                                                      </label>
-                                                  ))}
-                                              </div>
-                                          </div>
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                                              {renderInputField("Initial Activity", initialActivity, setInitialActivity, calculationMode !== 'findInitial')}
-                                              {renderInputField("Remaining Activity", remainingActivity, setRemainingActivity, calculationMode === 'findTime' || calculationMode === 'findInitial')}
-                                              {calculationMode === 'findDaughterActivity' &&
-                                                  renderInputField("Initial Daughter Activity", initialDaughterActivity, setInitialDaughterActivity, true)
-                                              }
-                                              {renderInputField("Time Elapsed", timeElapsed, setTimeElapsed, calculationMode !== 'findTime', timeUnit, setTimeUnit, timeUnits_ordered)}
-                                          </div>
-
-                                          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                                          {result && (
-                                              <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
-                                                  {result.label ? (
-                                                      <div className="flex items-center justify-center">
-                                                          <div className="text-lg font-bold text-center flex-grow">
-                                                              <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
-                                                              <span>{result.value} {result.unit}</span>
-                                                          </div>
-                                                          <CopyButton textToCopy={result.value} />
-                                                      </div>
-                                                  ) : (
-                                                      <div className="space-y-2">
-                                                          <div className="flex items-center justify-between">
-                                                              <div className="text-lg font-bold text-left">
-                                                                  <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
-                                                                  <span>{result.parent.value}</span>
-                                                              </div>
-                                                              <CopyButton textToCopy={result.parent.value} />
-                                                          </div>
-                                                          <div className="flex items-center justify-between">
-                                                              <div className="text-lg font-bold text-left">
-                                                                  <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
-                                                                  <span>{result.daughter.value}</span>
-                                                              </div>
-                                                              <CopyButton textToCopy={result.daughter.value} />
-                                                          </div>
-                                                      </div>
-                                                  )}
-                                              </div>
-                                          )}
-                                          {chartData && <DecayChart chartData={chartData} />}
-                                      </div>
-                                  </div>
-                              </div>
-                          );
-                      };
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                            {result.label ? (
+                                <div className="flex items-center justify-center">
+                                    <div className="text-lg font-bold text-center flex-grow">
+                                        <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.label}</span>
+                                        <span>{result.value} {result.unit}</span>
+                                    </div>
+                                    <CopyButton textToCopy={result.value} />
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-left">
+                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Remaining {result.parent.name} Activity</span>
+                                            <span>{result.parent.value}</span>
+                                        </div>
+                                        <CopyButton textToCopy={result.parent.value} />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-lg font-bold text-left">
+                                            <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} Activity {result.daughter.isStable ? "(Stable Daughter)" : ""}</span>
+                                            <span>{result.daughter.value}</span>
+                                        </div>
+                                        <CopyButton textToCopy={result.daughter.value} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {chartData && (
+                        <>
+                            <div className="flex justify-end mt-4">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                    Use Logarithmic Scale
+                                </label>
+                            </div>
+                            <DecayChart chartData={chartData} useLogScale={useLogScale} />
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
                       /**
                        * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
@@ -3423,177 +3431,152 @@
                                * @param {{radionuclides: Array<object>, decaySeriesData: Array<object>}} props
                                */
 
-                              const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
+const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
+    const { settings } = React.useContext(SettingsContext);
+    const [selectedSeriesId, setSelectedSeriesId] = React.useState(decaySeriesData[0].id);
+    const [initialActivity, setInitialActivity] = React.useState('100');
+    const [timeElapsed, setTimeElapsed] = React.useState('1000');
+    const [timeUnit, setTimeUnit] = React.useState('years');
+    const [results, setResults] = React.useState([]);
+    const [chartData, setChartData] = React.useState(null);
+    const [error, setError] = React.useState('');
+    const [isLoading, setIsLoading] = React.useState(false);
 
-                                  // --- STATE & CONFIGURATION ---
+    const timeUnits = longTimeUnits_ordered;
+    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
 
-                                  const [selectedSeriesId, setSelectedSeriesId] = React.useState(decaySeriesData[0].id);
-                                  const [initialActivity, setInitialActivity] = React.useState('100');
-                                  const [timeElapsed, setTimeElapsed] = React.useState('1000');
-                                  const [timeUnit, setTimeUnit] = React.useState('years');
-                                  const [results, setResults] = React.useState([]); // For the results table
-                                  const [chartData, setChartData] = React.useState(null); // For the chart component
-                                  const [error, setError] = React.useState('');
-                                  const [isLoading, setIsLoading] = React.useState(false); // To manage UI during long calculations
+    const handleCalculate = () => {
+        const series = decaySeriesData.find(s => s.id === selectedSeriesId);
+        if (!series) {
+            setError('Please select a decay series.');
+            return;
+        }
 
-                                  const timeUnits = longTimeUnits_ordered;
-                                  const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+        const A0 = parseFloat(initialActivity);
+        const t_input = parseFloat(timeElapsed);
+        if (isNaN(A0) || A0 < 0 || isNaN(t_input) || t_input < 0) {
+            setError('Initial activity and time must be non-negative numbers.');
+            setResults([]);
+            setChartData(null);
+            return;
+        }
 
-                                  // --- UI HANDLERS & ORCHESTRATION ---
+        setError('');
+        setIsLoading(true);
 
-                                  /**
-                                   * Main handler to orchestrate the calculation process, including validation,
-                                   * calling the Bateman engine, and generating data for the UI.
-                                   */
+        setTimeout(() => {
+            try {
+                const t_seconds = t_input * unitConversions[timeUnit];
+                const flatChain = flattenChainForCalculator(series.chain);
+                const calculatedActivities = runBatemanWithBranching(flatChain, A0, t_seconds);
+                const finalResults = flatChain.map((step, i) => ({
+                    name: step.nuclide,
+                    activity: calculatedActivities[i]
+                }));
+                setResults(finalResults);
 
-                                  const handleCalculate = () => {
-                                      const series = decaySeriesData.find(s => s.id === selectedSeriesId);
-                                      if (!series) {
-                                          setError('Please select a decay series.');
-                                          return;
-                                      }
+                const chartLabels = [];
+                const datasets = flatChain.map((step, i) => ({
+                    label: step.nuclide,
+                    data: [],
+                    borderColor: `hsl(${(i * 360 / Math.min(series.chain.length, 15)) % 360}, 70%, 50%)`,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    hidden: i > 5
+                }));
 
-                                      // Validate all numerical inputs
+                const steps = 100;
+                for (let i = 0; i <= steps; i++) {
+                    const timePoint = (t_input / steps) * i;
+                    chartLabels.push(timePoint.toPrecision(2));
+                    const timePoint_seconds = timePoint * unitConversions[timeUnit];
+                    const activitiesAtTimePoint = runBatemanWithBranching(flatChain, A0, timePoint_seconds);
+                    activitiesAtTimePoint.forEach((act, j) => {
+                        datasets[j].data.push(act);
+                    });
+                }
+                setChartData({ labels: chartLabels, datasets, timeUnit });
+            } catch (e) {
+                setError('An error occurred. Inputs may be too large or small for a stable result.');
+                console.error(e);
+            } finally {
+                setIsLoading(false);
+            }
+        }, 50);
+    };
 
-                                      const A0 = parseFloat(initialActivity);
-                                      const t_input = parseFloat(timeElapsed);
-                                      if (isNaN(A0) || A0 < 0 || isNaN(t_input) || t_input < 0) {
-                                          setError('Initial activity and time must be non-negative numbers.');
-                                          setResults([]);
-                                          setChartData(null);
-                                          return;
-                                      }
+    React.useEffect(() => {
+        if (selectedSeriesId) {
+            handleCalculate();
+        }
+    }, [selectedSeriesId, initialActivity, timeElapsed, timeUnit]);
 
-                                      setError('');
-                                      setIsLoading(true);
-
-                                      // Use a short timeout to allow the UI to update to the 'loading' state
-                                      // before starting the potentially blocking, intensive calculation.
-
-                                      setTimeout(() => {
-                                          try {
-                                              const t_seconds = t_input * unitConversions[timeUnit];
-
-                                              // 1. Run the calculation once for the final time point for the results table.
-
-                      			const flatChain = flattenChainForCalculator(series.chain);
-
-                       			const calculatedActivities = runBatemanWithBranching(flatChain, A0, t_seconds);
-
-                                              const finalResults = flatChain.map((step, i) => ({
-                                                  name: step.nuclide,
-                                                  activity: calculatedActivities[i]
-                                              }));
-                                              setResults(finalResults);
-
-                                              // 2. Generate data for the activity-vs-time chart.
-
-                                              const chartLabels = [];
-                                              const datasets = flatChain.map((step, i) => ({
-                                                  label: step.nuclide,
-                                                  data: [],
-                                                  borderColor: `hsl(${(i * 360 / Math.min(series.chain.length, 15)) % 360}, 70%, 50%)`,
-                                                  borderWidth: 2,
-                                                  pointRadius: 0,
-                                                  tension: 0.4,
-                                                  hidden: i > 5 // Hide less significant progeny by default for chart clarity
-                                              }));
-
-                                              const steps = 100; // Number of points on the chart
-                                              for (let i = 0; i <= steps; i++) {
-                                                  const timePoint = (t_input / steps) * i;
-                                                  chartLabels.push(timePoint.toPrecision(2));
-                                                  const timePoint_seconds = timePoint * unitConversions[timeUnit];
-
-                                                  // This is computationally intensive: must run the full Bateman calculation for each point.
-
-                                                  const activitiesAtTimePoint = runBatemanWithBranching(flatChain, A0, timePoint_seconds);
-                                                  activitiesAtTimePoint.forEach((act, j) => {
-                                                      datasets[j].data.push(act);
-                                                  });
-                                              }
-                                              setChartData({ labels: chartLabels, datasets, timeUnit });
-                                          } catch (e) {
-                                              setError('An error occurred. Inputs may be too large or small for a stable result.');
-                                              console.error(e);
-                                          } finally {
-                                              setIsLoading(false); // Ensure loading is turned off even if errors occur.
-                                          }
-                                      }, 50);
-                                  };
-
-                                  // --- JSX RENDERING ---
-
-                                  return (
-                                      <div className="p-4 animate-fade-in">
-                                          <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Decay Series Calculator (Bateman)</h2>
-
-                                              {/* Input Controls */}
-
-                                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                                                  <div>
-                                                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Decay Series</label>
-                                                      <select value={selectedSeriesId} onChange={e => setSelectedSeriesId(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                                          {decaySeriesData.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                      </select>
-                                                  </div>
-                                                  <div>
-                                                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Parent Activity</label>
-                                                      <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                                                  </div>
-                                                  <div>
-                                                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
-                                                      <div className="flex gap-2 mt-1">
-                                                          <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                                                          <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                                              {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                                                          </select>
-                                                      </div>
-                                                  </div>
-                                                  <button onClick={handleCalculate} disabled={isLoading} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:bg-sky-800 disabled:cursor-wait">
-                                                      {isLoading ? 'Calculating...' : 'Calculate'}
-                                                  </button>
-                                              </div>
-
-                                              {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-
-                                              {/* Results Display Area */}
-
-                                              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                  {/* Results Table */}
-                                                  <div className="max-h-[400px] overflow-y-auto pr-2">
-                                                      <h3 className="text-lg font-semibold mb-2">Results at {timeElapsed} {timeUnit}</h3>
-                                                      {results.length > 0 ? (
-                                                          <table className="w-full text-sm text-left">
-                                                              <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
-                                                                  <tr>
-                                                                      <th className="p-2">Nuclide</th>
-                                                                      <th className="p-2">Activity</th>
-                                                                  </tr>
-                                                              </thead>
-                                                              <tbody>
-                                                                  {results.map(r => (
-                                                                      <tr key={r.name} className="border-b border-slate-200 dark:border-slate-700">
-                                                                          <td className="p-2 font-medium">{r.name}</td>
-                                                                          <td className="p-2">{r.activity.toPrecision(4)}</td>
-                                                                      </tr>
-                                                                  ))}
-                                                              </tbody>
-                                                          </table>
-                                                      ) : <p className="text-slate-500 text-center py-4">No results to display.</p>}
-                                                  </div>
-
-                                                  {/* Chart Area */}
-
-                                                  <div className="min-h-[300px]">
-                                                      {chartData ? <SeriesDecayChart chartData={chartData} /> : <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg"><p className="text-slate-500">Chart will be displayed here.</p></div>}
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  );
-                              };
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Decay Series Calculator (Bateman)</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Decay Series</label>
+                        <select value={selectedSeriesId} onChange={e => setSelectedSeriesId(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                            {decaySeriesData.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Parent Activity</label>
+                        <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {timeUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <button onClick={handleCalculate} disabled={isLoading} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:bg-sky-800 disabled:cursor-wait">
+                        {isLoading ? 'Calculating...' : 'Calculate'}
+                    </button>
+                </div>
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="max-h-[400px] overflow-y-auto pr-2">
+                        <h3 className="text-lg font-semibold mb-2">Results at {timeElapsed} {timeUnit}</h3>
+                        {results.length > 0 ? (
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                                    <tr>
+                                        <th className="p-2">Nuclide</th>
+                                        <th className="p-2">Activity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {results.map(r => (
+                                        <tr key={r.name} className="border-b border-slate-200 dark:border-slate-700">
+                                            <td className="p-2 font-medium">{r.name}</td>
+                                            <td className="p-2">{r.activity.toPrecision(4)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : <p className="text-slate-500 text-center py-4">No results to display.</p>}
+                    </div>
+                    <div className="min-h-[300px]">
+                        {chartData ? (
+                            <SeriesDecayChart chartData={chartData} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                                <p className="text-slate-500">Chart will be displayed here.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
                               /**
                                * @description A React component that renders a line chart for a decay series using Chart.js.
@@ -4190,9 +4173,9 @@
 
                           // The line that forced navigation to '#home' is now removed.
 
-                          setCurrentDecaySeriesId(null);
-                          setDisplayHalfLifeUnit(getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)));
-                          updateSearchHistory(nuclide);
+                           setCurrentDecaySeriesId(null);
+                           setDisplayHalfLifeUnit(settings.halfLifeUnit);
+                           updateSearchHistory(nuclide);
                       };
 
                                   const handleNuclideNameChange = (e) => {
@@ -4352,7 +4335,7 @@
                           <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
                               <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
 
-                                  <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
+                                <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
 
                                       <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
 
@@ -4760,11 +4743,13 @@
                            */
 
                       const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-                          const { settings } = React.useContext(SettingsContext);
 
                           // --- STATE MANAGEMENT ---
 
-                          const [calcMode, setCalcMode] = React.useState('gamma');
+                          const { settings } = React.useContext(SettingsContext);
+                          const [useLogScale, setUseLogScale] = React.useState(settings.chartScale === 'Logarithmic'); // <-- Add this line
+
+                          const [calcMode, setCalcMode] = React.useState(settings.defaultDoseMode);
                           const [inputMode, setInputMode] = React.useState('fromSource'); // 'fromSource' or 'manual'
                           const [geometryMode, setGeometryMode] = React.useState('point');
                           const [activity, setActivity] = React.useState('1');
@@ -5144,8 +5129,8 @@
                                               </>
                                           )}
 
-                                          {selectedNuclide?.dosimetry && (
-                                              <div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs">
+                                          {inputMode === 'fromSource' && selectedNuclide?.dosimetry && (
+                                                <div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs">
                                                    <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">
                                                       10 CFR 20 Appendix B Values:
                                                    </h4>
@@ -5634,17 +5619,17 @@
                                               </div>
                                           )}
 
-                                          {chartData && (
-                                              <>
-                                                  <div className="flex justify-end mt-4">
-                                                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                                          <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                                                          Use Logarithmic Scale
-                                                      </label>
-                                                  </div>
-                                                  <DecayChart chartData={chartData} useLogScale={useLogScale} />
-                                              </>
-                                          )}
+{chartData && (
+    <>
+        <div className="flex justify-end mt-4">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                Use Logarithmic Scale
+            </label>
+        </div>
+        <DecayChart chartData={chartData} useLogScale={useLogScale} />
+    </>
+)}
                                       </div>
                                   </div>
                               </div>
@@ -7080,60 +7065,65 @@
                             * @param {{chartData: object}} props - The data object for the chart, including labels and datasets for parent and optional daughter.
                             */
 
-                              const DecayChart = ({ chartData }) => {
-                                  const chartRef = React.useRef(null);
-                                  const chartInstance = React.useRef(null);
 
-                                  React.useEffect(() => {
-                                      if (chartInstance.current) {
-                                          chartInstance.current.destroy();
-                                      }
 
-                                      if (chartRef.current && chartData) {
-                                          const ctx = chartRef.current.getContext('2d');
-                                          chartInstance.current = new Chart(ctx, {
-                                              type: 'line',
-                                              data: {
-                                                  labels: chartData.labels,
-                                                  datasets: [
-                                                      {
-                                                          label: chartData.parentName,
-                                                          data: chartData.parentData,
-                                                          borderColor: '#0284c7', // sky-600
-                                                          tension: 0.1
-                                                      },
-                                                      ...(chartData.daughterData ? [{
-                                                          label: chartData.daughterName,
-                                                          data: chartData.daughterData,
-                                                          borderColor: '#e11d48', // rose-600
-                                                          tension: 0.1
-                                                      }] : [])
-                                                  ]
-                                              },
-                                              options: {
-                                                  responsive: true,
-                                                  maintainAspectRatio: false,
-                                                  scales: {
-                                                      y: {
-                                                          beginAtZero: true,
-                                                          title: { display: true, text: 'Activity' }
-                                                      },
-                                                      x: {
-                                                          title: { display: true, text: `Time (${chartData.timeUnit})` }
-                                                      }
-                                                  }
-                                              }
-                                          });
-                                      }
-                                      return () => {
-                                          if (chartInstance.current) {
-                                              chartInstance.current.destroy();
-                                          }
-                                      };
-                                  }, [chartData]);
+const DecayChart = ({ chartData, useLogScale }) => {
+    const chartRef = React.useRef(null);
+    const chartInstance = React.useRef(null);
 
-                                  return <div className="mt-4 h-64"><canvas ref={chartRef}></canvas></div>;
-                              };
+    React.useEffect(() => {
+        // Destroy the previous chart instance if it exists
+        if (chartInstance.current) {
+            chartInstance.current.destroy();
+        }
+
+        if (chartRef.current && chartData) {
+            const ctx = chartRef.current.getContext('2d');
+            chartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: chartData.parentName,
+                            data: chartData.parentData,
+                            borderColor: '#0284c7',
+                            tension: 0.1
+                        },
+                        ...(chartData.daughterData ? [{
+                            label: chartData.daughterName,
+                            data: chartData.daughterData,
+                            borderColor: '#e11d48',
+                            tension: 0.1
+                        }] : [])
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+            y: {
+                type: 'logarithmic',
+                title: { display: true, text: 'Activity (Log Scale)' },
+                        },
+                        x: {
+                            title: { display: true, text: `Time (${chartData.timeUnit})` }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // The cleanup function is the key to preventing the memory leak
+        return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [chartData, useLogScale]); // Re-run effect when chartData or useLogScale changes
+
+    return <div className="mt-4 h-64"><canvas ref={chartRef}></canvas></div>;
+};
 
                       const ManualModal = ({ isOpen, onClose }) => {
                           if (!isOpen) return null;
@@ -7432,70 +7422,65 @@
                               loader.classList.add('hidden');
                           }, 100); // 100ms delay
                       }
+const SettingsPanel = () => {
+    const { settings, updateSettings } = React.useContext(SettingsContext);
+    const { addToast } = useToast();
 
-                      const SettingsPanel = () => {
-                          const { settings, updateSettings } = React.useContext(SettingsContext);
-                          const { addToast } = useToast();
+    const handleSettingChange = (key, value) => {
+        updateSettings({ [key]: value });
+        addToast(`Default setting for ${key} changed.`);
+    };
 
-                          // Updated data for the dropdown options
-                          const activityUnits = activityUnits_ordered;
-                          const doseRateUnits = doseRateUnits_ordered;
-                          const distanceUnits = distanceUnits_ordered;
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Default Settings</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    These are the default units and modes used across the toolbox.
+                </p>
+                <div className="space-y-4">
+                    {/* Existing settings */}
+                    <div>
+                        <label className="block text-sm font-medium">Activity</label>
+                        <select value={settings.activity} onChange={e => handleSettingChange('activity', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                            {activityUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Dose Rate</label>
+                        <select value={settings.doseRate} onChange={e => handleSettingChange('doseRate', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                            {doseRateUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Distance</label>
+                        <select value={settings.distance} onChange={e => handleSettingChange('distance', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                            {distanceUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                        </select>
+                    </div>
+                    {/* New settings */}
 
-                          const handleSettingChange = (key, value) => {
-                              updateSettings({ [key]: value });
-                              addToast(`Default unit for ${key} set to ${value}.`);
-                          };
-
-                          return (
-                              <div className="p-4 animate-fade-in">
-                                  <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Default Settings</h2>
-                                      <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-                                          These are the default units used by the Dose Rate, Shielding, and Stay Time calculators.
-                                      </p>
-                                      <div className="space-y-4">
-                                          <div>
-                                              <label className="block text-sm font-medium">Activity</label>
-                                              <select
-                                                  value={settings.activity}
-                                                  onChange={e => handleSettingChange('activity', e.target.value)}
-                                                  className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
-                                              >
-                                                  {activityUnits.map(unit => (
-                                                      <option key={unit} value={unit}>{unit}</option>
-                                                  ))}
-                                              </select>
-                                          </div>
-                                          <div>
-                                              <label className="block text-sm font-medium">Dose Rate</label>
-                                              <select
-                                                  value={settings.doseRate}
-                                                  onChange={e => handleSettingChange('doseRate', e.target.value)}
-                                                  className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
-                                              >
-                                                  {doseRateUnits.map(unit => (
-                                                      <option key={unit} value={unit}>{unit}</option>
-                                                  ))}
-                                              </select>
-                                          </div>
-                                          <div>
-                                              <label className="block text-sm font-medium">Distance</label>
-                                              <select
-                                                  value={settings.distance}
-                                                  onChange={e => handleSettingChange('distance', e.target.value)}
-                                                  className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"
-                                              >
-                                                  {distanceUnits.map(unit => (
-                                                      <option key={unit} value={unit}>{unit}</option>
-                                                  ))}
-                                              </select>
-                                          </div>
-                                      </div>
-                                  </div>
-                              </div>
-                          );
-                      };
+                    <div>
+                <label className="block text-sm font-medium">Default Chart Scale</label>
+                <select value={settings.chartScale} onChange={e => handleSettingChange('chartScale', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                    <option value="Linear">Linear</option>
+                    <option value="Logarithmic">Logarithmic</option>
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm font-medium">Default Dose Calculator Mode</label>
+                <select value={settings.defaultDoseMode} onChange={e => handleSettingChange('defaultDoseMode', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                    <option value="gamma">Gamma</option>
+                    <option value="beta">Beta</option>
+                    <option value="bremsstrahlung">Bremsstrahlung</option>
+                    <option value="internal">Internal</option>
+                </select>
+            </div>
+        </div>
+            </div>
+        </div>
+    );
+};
         </script>
     </body>
 </html>
