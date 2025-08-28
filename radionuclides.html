@@ -4161,20 +4161,18 @@ React.useEffect(() => {
                                       inputRef.current?.focus(); // Re-focus the input after clearing
                                   };
 
-                      const handleNavClick = (view) => {
+                   const handleNavClick = (view) => {
+                      // This function now simply changes the URL hash.
+                      setResult(null); // THIS IS THE FIX: Clear the nuclide result
+                      window.location.hash = view;
+                      scrollToMainContent();
 
-                          // This function now simply changes the URL hash.
-
-                          window.location.hash = view;
-                          scrollToMainContent();
-
-                          // If navigating to the main home view, explicitly blur the search input
-                          // to prevent the keyboard from opening on mobile devices.
-
-                          if (view === 'home') {
-                              inputRef.current?.blur();
-                          }
-                      };
+                      // If navigating to the main home view, explicitly blur the search input
+                      // to prevent the keyboard from opening on mobile devices.
+                      if (view === 'home') {
+                          inputRef.current?.blur();
+                      }
+                  };
 
                       const handleSendToCalculator = (viewId, nuclideSymbol) => {
                           setPreselectedNuclide(nuclideSymbol);
@@ -7017,59 +7015,62 @@ React.useEffect(() => {
                           };
 
                           return (
-                              <div className="p-4 animate-fade-in">
-                                  <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM EMC Sign Test Calculator</h2>
-                                      <div className="space-y-4">
-                                          <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                  <div>
-                                                      <label className="block text-sm font-medium">Widespread DCGL (DCGLw)</label>
-                                                      <input type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                                  </div>
-                                                  <div>
-                                                      <label className="block text-sm font-medium">Area Factor (AF)</label>
-                                                      <input type="number" value={areaFactor} onChange={e => setAreaFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                                  </div>
+                          <div className="p-4 animate-fade-in">
+                              <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                                  <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">MARSSIM EMC Sign Test Calculator</h2>
+                                  <div className="space-y-4">
+                                      <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                              <div>
+                                                  <label htmlFor="emc-dcglw" className="block text-sm font-medium">Widespread DCGL (DCGLw)</label>
+                                                  <input id="emc-dcglw" type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                                               </div>
                                               <div>
-                                                 <label className="block text-sm font-medium">Elevated Area Measurements</label>
-                                                 <textarea value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                                              </div>
-                                              <div>
-                                                  <label className="block text-sm font-medium">Significance Level (&alpha;)</label>
-                                                  <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                                      <option value="0.05">0.05</option>
-                                                      <option value="0.025">0.025</option>
-                                                      <option value="0.01">0.01</option>
-                                                      <option value="0.10">0.10</option>
-                                                  </select>
+                                                  <label htmlFor="emc-af" className="block text-sm font-medium">Area Factor (AF)</label>
+                                                  <input id="emc-af" type="number" value={areaFactor} onChange={e => setAreaFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                                               </div>
                                           </div>
-                                          <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Sign Test</button>
-                                          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                                          {result && (
-                                              <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                                                  <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                      EMC AREA {result.conclusion}ES
-                                                  </p>
-                                                  <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
-                                                  <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                                                      <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p>
-                                                      <p>Initial Samples (N): <span className="font-bold">{result.n}</span></p>
-                                                      <p>Ties Discarded: <span className="font-bold">{result.ties}</span></p>
-                                                      <p>Adjusted N': <span className="font-bold">{result.n_adjusted}</span></p>
-                                                      <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p>
-                                                      <p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
-                                                  </div>
-                                                   <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
-                                              </div>
-                                          )}
+                                          <div>
+                                             <div className="flex justify-between items-center">
+                                                 <label htmlFor="emc-data" className="block text-sm font-medium">Elevated Area Measurements</label>
+                                                 <button onClick={() => setEmcData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button>
+                                             </div>
+                                             <textarea id="emc-data" value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+                                          </div>
+                                          <div>
+                                              <label htmlFor="emc-alpha" className="block text-sm font-medium">Significance Level (&alpha;)</label>
+                                              <select id="emc-alpha" value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                                  <option value="0.05">0.05</option>
+                                                  <option value="0.025">0.025</option>
+                                                  <option value="0.01">0.01</option>
+                                                  <option value="0.10">0.10</option>
+                                              </select>
+                                          </div>
                                       </div>
+                                      <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Sign Test</button>
+                                      {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                      {result && (
+                                          <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                                              <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                                  EMC AREA {result.conclusion}ES
+                                              </p>
+                                              <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
+                                              <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                                                  <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p>
+                                                  <p>Initial Samples (N): <span className="font-bold">{result.n}</span></p>
+                                                  <p>Ties Discarded: <span className="font-bold">{result.ties}</span></p>
+                                                  <p>Adjusted N': <span className="font-bold">{result.n_adjusted}</span></p>
+                                                  <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p>
+                                                  <p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
+                                              </div>
+                                               <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
+                                          </div>
+                                      )}
                                   </div>
                               </div>
-                          );
-                      };
+                          </div>
+                      );
+                  };
 
                            /**
                             * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
