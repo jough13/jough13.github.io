@@ -3280,6 +3280,153 @@ const DecayCalculator = ({ radionuclides, preselectedNuclide }) => {
                               </div>
                           );
                       };
+const MedicalCalculator = () => {
+    const [activeTab, setActiveTab] = React.useState('xrayShielding');
+
+    const XRayShieldingCalculator = () => {
+        // Data from NCRP Report No. 147, Tables B.1, B.2, B.5
+        const TVL_DATA = {
+            'Lead': {
+                50: { TVL1: 0.06, TVLe: 0.06 }, 70: { TVL1: 0.17, TVLe: 0.17 }, 100: { TVL1: 0.27, TVLe: 0.27 },
+                125: { TVL1: 0.28, TVLe: 0.28 }, 150: { TVL1: 0.30, TVLe: 0.30 }
+            },
+            'Concrete': {
+                50: { TVL1: 4.3, TVLe: 4.3 }, 70: { TVL1: 5.0, TVLe: 5.0 }, 100: { TVL1: 5.7, TVLe: 5.7 },
+                125: { TVL1: 6.1, TVLe: 6.1 }, 150: { TVL1: 6.4, TVLe: 6.4 }
+            },
+            'Drywall': {
+                50: { TVL1: 2.1, TVLe: 2.1 }, 70: { TVL1: 2.6, TVLe: 2.6 }, 100: { TVL1: 3.3, TVLe: 3.2 },
+                125: { TVL1: 3.8, TVLe: 3.6 }, 150: { TVL1: 4.1, TVLe: 3.8 }
+            }
+        };
+        const K_FACTORS_R_PER_mA_min_at_1m = { 50: 0.034, 70: 0.075, 100: 0.165, 125: 0.26, 150: 0.37 };
+
+        // State Management
+        const [kvp, setKvp] = React.useState('100');
+        const [workload, setWorkload] = React.useState('200');
+        const [useFactor, setUseFactor] = React.useState('1');
+        const [occupancyFactor, setOccupancyFactor] = React.useState('1');
+        const [distance, setDistance] = React.useState('2.1');
+        const [doseLimit, setDoseLimit] = React.useState('2');
+        const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
+        const [result, setResult] = React.useState(null);
+        const [error, setError] = React.useState('');
+
+        React.useEffect(() => {
+            try {
+                setError('');
+                const W = parseFloat(workload);
+                const U = parseFloat(useFactor);
+                const T = parseFloat(occupancyFactor);
+                const d = parseFloat(distance);
+                const P = parseFloat(doseLimit) / 1000; // Convert mR/wk to R/wk
+
+                if ([W, U, T, d, P].some(isNaN) || W <= 0 || d <= 0) {
+                    throw new Error("All inputs must be valid, positive numbers.");
+                }
+
+                const B = (P * Math.pow(d, 2)) / (W * U * T);
+                const n_tvl = -Math.log10(B);
+
+                if (n_tvl <= 0) {
+                    setResult({ thickness: 0, tvls: 0, transmission: B.toExponential(2) });
+                    return;
+                }
+                
+                const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
+                const thickness = TVL1 + (n_tvl - 1) * TVLe;
+
+                setResult({
+                    transmission: B.toExponential(2),
+                    tvls: n_tvl.toFixed(2),
+                    thickness: thickness.toFixed(2),
+                });
+
+            } catch (e) {
+                setResult(null);
+                setError(e.message);
+            }
+        }, [kvp, workload, useFactor, occupancyFactor, distance, doseLimit, shieldMaterial]);
+        
+        const useFactorOptions = [ { value: 1, label: '1 (Floors, full-time control rooms)' }, { value: 0.25, label: '1/4 (Doors, walls)' }, { value: 0.0625, label: '1/16 (Ceilings)' } ];
+        const occupancyOptions = [ { value: 1, label: '1 (Work areas, offices, labs)' }, { value: 0.2, label: '1/5 (Corridors, patient rooms)' }, { value: 0.05, label: '1/20 (Public restrooms, waiting rooms)' } ];
+        const doseLimitOptions = [ { value: 100, label: '100 mR/wk (Controlled Area)' }, { value: 2, label: '2 mR/wk (Uncontrolled Area)' } ];
+
+        return (
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium">Tube Potential (kVp)</label>
+                        <select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(K_FACTORS_R_PER_mA_min_at_1m).map(k => <option key={k} value={k}>{k} kVp</option>)}</select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Workload (mA-min/week)</label>
+                        <input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Use Factor (U)</label>
+                        <select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Occupancy Factor (T)</label>
+                        <select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Distance from Source (m)</label>
+                        <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Weekly Dose Limit (P)</label>
+                        <select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium">Shielding Material</label>
+                        <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                            <option value="Lead">Lead</option>
+                            <option value="Concrete">Concrete</option>
+                            <option value="Drywall">Drywall</option>
+                        </select>
+                    </div>
+                </div>
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                {result && (
+                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                            <p>Required Transmission (B):</p><p className="font-mono">{result.transmission}</p>
+                            <p>Required TVLs:</p><p className="font-mono">{result.tvls}</p>
+                        </div>
+                        <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Shield Thickness</p>
+                            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">
+                                {result.thickness}
+                                <span className="text-2xl ml-2 opacity-75">
+                                    {shieldMaterial === 'Lead' ? 'mm' : 'cm'}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Medical Physics Tools</h2>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
+                    <button
+                        onClick={() => setActiveTab('xrayShielding')}
+                        className={`w-full p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                        X-Ray Shielding
+                    </button>
+                </div>
+                {activeTab === 'xrayShielding' && <XRayShieldingCalculator />}
+            </div>
+        </div>
+    );
+};
 
                               /**
                                * @description A calculator that uses the Bateman equations to model the activity of every
@@ -5712,37 +5859,137 @@ const NeutronShieldingCalculator = () => {
                           );
                       };
 
+const XRayShieldingCalculator = () => {
+    // Data from NCRP Report No. 147, Tables B.1, B.2, B.5
+    const TVL_DATA = {
+        'Lead': {
+            50: { TVL1: 0.06, TVLe: 0.06 }, 70: { TVL1: 0.17, TVLe: 0.17 }, 100: { TVL1: 0.27, TVLe: 0.27 },
+            125: { TVL1: 0.28, TVLe: 0.28 }, 150: { TVL1: 0.30, TVLe: 0.30 }
+        },
+        'Concrete': {
+            50: { TVL1: 4.3, TVLe: 4.3 }, 70: { TVL1: 5.0, TVLe: 5.0 }, 100: { TVL1: 5.7, TVLe: 5.7 },
+            125: { TVL1: 6.1, TVLe: 6.1 }, 150: { TVL1: 6.4, TVLe: 6.4 }
+        },
+        // --- NEW DATA ADDED HERE --- 🧱
+        'Drywall': {
+            50: { TVL1: 2.1, TVLe: 2.1 }, 70: { TVL1: 2.6, TVLe: 2.6 }, 100: { TVL1: 3.3, TVLe: 3.2 },
+            125: { TVL1: 3.8, TVLe: 3.6 }, 150: { TVL1: 4.1, TVLe: 3.8 }
+        }
+    };
+    const K_FACTORS_R_PER_mA_min_at_1m = { 50: 0.034, 70: 0.075, 100: 0.165, 125: 0.26, 150: 0.37 };
 
-const MedicalCalculator = () => {
-                          const [activeTab, setActiveTab] = React.useState('xrayShielding');
+    // State Management
+    const [kvp, setKvp] = React.useState('100');
+    const [workload, setWorkload] = React.useState('200');
+    const [useFactor, setUseFactor] = React.useState('1');
+    const [occupancyFactor, setOccupancyFactor] = React.useState('1');
+    const [distance, setDistance] = React.useState('2.1');
+    const [doseLimit, setDoseLimit] = React.useState('2');
+    const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
-                          const XRayShieldingCalculator = () => {
-                              return (
-                                  <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
-                                      <p className="text-slate-500 dark:text-slate-400">X-Ray Room Shielding calculator coming soon!</p>
-                                  </div>
-                              );
-                          };
-                          
-                          return (
-                              <div className="p-4 animate-fade-in">
-                                  <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Medical Physics Tools</h2>
-                                      <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                                          <button 
-                                              onClick={() => setActiveTab('xrayShielding')} 
-                                              className={`w-full p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
-                                          >
-                                              X-Ray Shielding
-                                          </button>
-                                          {/* We can add more tabs like "Patient Release" here later */}
-                                      </div>
-                                      
-                                      {activeTab === 'xrayShielding' && <XRayShieldingCalculator />}
-                                  </div>
-                              </div>
-                          );
-                      };
+    React.useEffect(() => {
+        try {
+            setError('');
+            const W = parseFloat(workload);
+            const U = parseFloat(useFactor);
+            const T = parseFloat(occupancyFactor);
+            const d = parseFloat(distance);
+            const P = parseFloat(doseLimit) / 1000; // Convert mR/wk to R/wk
+
+            if ([W, U, T, d, P].some(isNaN) || W <= 0 || d <= 0) {
+                throw new Error("All inputs must be valid, positive numbers.");
+            }
+
+            const B = (P * Math.pow(d, 2)) / (W * U * T);
+            const n_tvl = -Math.log10(B);
+
+            if (n_tvl <= 0) {
+                setResult({ thickness: 0, tvls: 0, transmission: B.toExponential(2) });
+                return;
+            }
+            
+            const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
+            const thickness = TVL1 + (n_tvl - 1) * TVLe;
+
+            setResult({
+                transmission: B.toExponential(2),
+                tvls: n_tvl.toFixed(2),
+                thickness: thickness.toFixed(2),
+            });
+
+        } catch (e) {
+            setResult(null);
+            setError(e.message);
+        }
+    }, [kvp, workload, useFactor, occupancyFactor, distance, doseLimit, shieldMaterial]);
+    
+    const useFactorOptions = [ { value: 1, label: '1 (Floors, full-time control rooms)' }, { value: 0.25, label: '1/4 (Doors, walls)' }, { value: 0.0625, label: '1/16 (Ceilings)' } ];
+    const occupancyOptions = [ { value: 1, label: '1 (Work areas, offices, labs)' }, { value: 0.2, label: '1/5 (Corridors, patient rooms)' }, { value: 0.05, label: '1/20 (Public restrooms, waiting rooms)' } ];
+    const doseLimitOptions = [ { value: 100, label: '100 mR/wk (Controlled Area)' }, { value: 2, label: '2 mR/wk (Uncontrolled Area)' } ];
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium">Tube Potential (kVp)</label>
+                    <select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(K_FACTORS_R_PER_mA_min_at_1m).map(k => <option key={k} value={k}>{k} kVp</option>)}</select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Workload (mA-min/week)</label>
+                    <input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Use Factor (U)</label>
+                    <select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Occupancy Factor (T)</label>
+                    <select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Distance from Source (m)</label>
+                    <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Weekly Dose Limit (P)</label>
+                    <select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium">Shielding Material</label>
+                    <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                        <option value="Lead">Lead</option>
+                        <option value="Concrete">Concrete</option>
+                        {/* --- NEW OPTION ADDED HERE --- ✅ */}
+                        <option value="Drywall">Drywall</option>
+                    </select>
+                </div>
+            </div>
+
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                        <p>Required Transmission (B):</p><p className="font-mono">{result.transmission}</p>
+                        <p>Required TVLs:</p><p className="font-mono">{result.tvls}</p>
+                    </div>
+                    <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Shield Thickness</p>
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">
+                            {result.thickness}
+                            <span className="text-2xl ml-2 opacity-75">
+                                {/* This logic correctly handles the units for drywall */}
+                                {shieldMaterial === 'Lead' ? 'mm' : 'cm'}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
                       /**
                        * @description A unified calculator for determining detection limits for both
