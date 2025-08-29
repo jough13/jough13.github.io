@@ -576,7 +576,8 @@
                           TRANSPORTATION: 'transportation',
                           CONVERTER: 'converter',
                           SETTINGS: 'settings',
-                          DECAY_SERIES: 'decaySeries'
+                          DECAY_SERIES: 'decaySeries',
+                          MEDICAL: 'medical'
                       };
 
                               /**
@@ -1326,8 +1327,9 @@ const ICONS = {
                           stopwatch: "M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.98-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-1.68-.46-3.24-1.25-4.55l.22-.16zm-1.07-1.01A6.995 6.995 0 115.34 19.66 6.995 6.995 0 0117.96 6.38z",
                           transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
                           internalDose: "M12 5.9c1.16 0 2.1.94 2.1 2.1s-.94 2.1-2.1 2.1S9.9 9.16 9.9 8s.94-2.1 2.1-2.1m0 9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z",
-                          neutron: "M21 10.78V8c0-1.65-1.35-3-3-3h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v2h-4V3c0-.55-.45-1-1-1s-1 .45-1 1v2H8c-1.65 0-3 1.35-3 3v2.78c-.61.55-1 1.34-1 2.22v6c0 1.65 1.35 3 3 3h10c1.65 0 3-1.35 3-3v-6c0-.88-.39-1.67-1-2.22zM9 19H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v-2h2v2z"
-                      };
+                          neutron: "M21 10.78V8c0-1.65-1.35-3-3-3h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v2h-4V3c0-.55-.45-1-1-1s-1 .45-1 1v2H8c-1.65 0-3 1.35-3 3v2.78c-.61.55-1 1.34-1 2.22v6c0 1.65 1.35 3 3 3h10c1.65 0 3-1.35 3-3v-6c0-.88-.39-1.67-1-2.22zM9 19H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v-2h2v2z",
+                          medical: "M18 10.5V6H6v4.5c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h1v3h2v-3h8v3h2v-3h1c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2zM8 8h8v2H8V8zm10 7.5H6v-3h12v3zM11 2h2v2h-2z"
+                        };
 
                               //==============================================================================
                               // --- GLOBAL SETTINGS & CONTEXT
@@ -1926,7 +1928,8 @@ const defaultSettings = {
                               { id: VIEWS.STAY_TIME, label: 'Stay Time', icon: ICONS.stopwatch },
                               { id: VIEWS.NEUTRON, label: 'Neutron Tools', icon: ICONS.neutron },
                       	      { id: VIEWS.TRANSPORTATION, label: 'Transportation', icon: ICONS.transport },
-                              { id: VIEWS.CONVERTER, label: 'Converter', icon: ICONS.converter }
+                              { id: VIEWS.CONVERTER, label: 'Converter', icon: ICONS.converter },
+                              { id: VIEWS.MEDICAL, label: 'Medical', icon: ICONS.medical }
                           ];
 
                           const NavButton = ({ item }) => (
@@ -4289,6 +4292,7 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
                                   case VIEWS.SETTINGS: return <SettingsPanel />;
                                   case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
                                   case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
+                                  case VIEWS.MEDICAL: return <MedicalCalculator />;
                                   case VIEWS.HOME:
                                   default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} />;
                               }
@@ -5703,6 +5707,38 @@ const NeutronShieldingCalculator = () => {
                                       {activeTab === TAB_ACTIVATION && <ActivationCalculator />}
                                       {activeTab === TAB_COMPOSITE && <CompositeActivationCalculator />}
                                       {activeTab === TAB_SHIELDING && <NeutronShieldingCalculator />}
+                                  </div>
+                              </div>
+                          );
+                      };
+
+
+const MedicalCalculator = () => {
+                          const [activeTab, setActiveTab] = React.useState('xrayShielding');
+
+                          const XRayShieldingCalculator = () => {
+                              return (
+                                  <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+                                      <p className="text-slate-500 dark:text-slate-400">X-Ray Room Shielding calculator coming soon!</p>
+                                  </div>
+                              );
+                          };
+                          
+                          return (
+                              <div className="p-4 animate-fade-in">
+                                  <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Medical Physics Tools</h2>
+                                      <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                                          <button 
+                                              onClick={() => setActiveTab('xrayShielding')} 
+                                              className={`w-full p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                                          >
+                                              X-Ray Shielding
+                                          </button>
+                                          {/* We can add more tabs like "Patient Release" here later */}
+                                      </div>
+                                      
+                                      {activeTab === 'xrayShielding' && <XRayShieldingCalculator />}
                                   </div>
                               </div>
                           );
