@@ -1758,7 +1758,8 @@ const defaultSettings = {
                                   {/* 5. A new flex-col div to stack the icons vertically */}
                                   <div className="flex flex-col">
                                     <Tooltip text="Settings" widthClass="w-auto">
-                                        <button onClick={() => onNavClick('settings')} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+
+                                        <button onClick={() => onNavClick(VIEWS.SETTINGS)} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
                                             <Icon path={ICONS.settings} className="w-5 h-5" />
                                         </button>
                                     </Tooltip>
@@ -1907,38 +1908,32 @@ const defaultSettings = {
                                * @param {{activeView: string, onNavClick: (view: string) => void}} props - The currently active view and the click handler.
                                */
 
-const MainNav = ({ activeView, onNavClick }) => {
+                        const MainNav = ({ activeView, onNavClick }) => {
                           const navItems = [
-                              { id: 'home', label: 'Home', icon: ICONS.home },
-                              { id: 'database', label: 'Database', icon: ICONS.database },
-                              { id: 'compare', label: 'Compare', icon: ICONS.compare },
-                              { id: 'calculator', label: 'Decay', icon: ICONS.calculator },
-                              { id: 'mda', label: 'MDA', icon: ICONS.search },
-                      	      { id: 'marssim', label: 'MARSSIM Sample Design', icon: ICONS.calculator },
-                              { id: 'marssimTests', label: 'MARSSIM Tests', icon: ICONS.database },
-                              { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series },
-                              { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
-			                  { id: 'radon', label: 'Radon', icon: ICONS.radon },
-                              { id: 'activityMassTools', label: 'Activity/Mass', icon: ICONS.mass },
-                              { id: 'doseRate', label: 'Dose & Dose Rate', icon: ICONS.doseRate },
-                              { id: 'shielding', label: 'Shielding', icon: ICONS.shield },
-                              { id: 'stayTime', label: 'Stay Time', icon: ICONS.stopwatch },
-                              { id: 'neutron', label: 'Neutron Tools', icon: ICONS.neutron },
-                      	      { id: 'transportation', label: 'Transportation', icon: ICONS.transport },
-                              { id: 'converter', label: 'Converter', icon: ICONS.converter }
+                              { id: VIEWS.HOME, label: 'Home', icon: ICONS.home },
+                              { id: VIEWS.DATABASE, label: 'Database', icon: ICONS.database },
+                              { id: VIEWS.COMPARE, label: 'Compare', icon: ICONS.compare },
+                              { id: VIEWS.CALCULATOR, label: 'Decay', icon: ICONS.calculator },
+                              { id: VIEWS.MDA, label: 'MDA', icon: ICONS.search },
+                      	      { id: VIEWS.MARSSIM_SAMPLES, label: 'MARSSIM Sample Design', icon: ICONS.calculator },
+                              { id: VIEWS.MARSSIM_TESTS, label: 'MARSSIM Tests', icon: ICONS.database },
+                              { id: VIEWS.SERIES_CALCULATOR, label: 'Series Decay', icon: ICONS.series },
+                              { id: VIEWS.EQUILIBRIUM, label: 'Equilibrium', icon: ICONS.activity },
+			                  { id: VIEWS.RADON, label: 'Radon', icon: ICONS.radon },
+                              { id: VIEWS.ACTIVITY_MASS, label: 'Activity/Mass', icon: ICONS.mass },
+                              { id: VIEWS.DOSE_RATE, label: 'Dose & Dose Rate', icon: ICONS.doseRate },
+                              { id: VIEWS.SHIELDING, label: 'Shielding', icon: ICONS.shield },
+                              { id: VIEWS.STAY_TIME, label: 'Stay Time', icon: ICONS.stopwatch },
+                              { id: VIEWS.NEUTRON, label: 'Neutron Tools', icon: ICONS.neutron },
+                      	      { id: VIEWS.TRANSPORTATION, label: 'Transportation', icon: ICONS.transport },
+                              { id: VIEWS.CONVERTER, label: 'Converter', icon: ICONS.converter }
                           ];
 
                           const NavButton = ({ item }) => (
-
-                              // The outer button is the full-width clickable area
-
                               <button
                                   onClick={() => onNavClick(item.id)}
                                   className="flex-shrink-0 w-full"
                               >
-
-                                  {/* This inner span contains the visual styles */}
-
                                   <span
                                        className={`mx-auto flex items-center justify-center gap-2 px-2 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
                                           activeView === item.id
@@ -1954,34 +1949,27 @@ const MainNav = ({ activeView, onNavClick }) => {
 
                           return (
                               <div className="px-4 pb-2">
-
-                                  {/* Mobile: Grid Menu. */}
-
-                      <div className="md:hidden">
-                          <div className="grid grid-cols-2 gap-4">
-                              {navItems.map(item => (
-                                  <button
-                                      key={item.id}
-                                      onClick={() => onNavClick(item.id)}
-                                      
-                                      className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-all duration-150 ease-in-out ${
-                                          activeView === item.id
-                                              ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
-                                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 active:scale-95'
-                                      } ${item.id === 'home' ? 'col-span-2' : ''}`}
-                                  >
-                                      <Icon path={item.icon} className="w-8 h-8 mb-2" />
-                                      <span className="text-sm font-semibold">{item.label}</span>
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
-
-                      {/* Desktop: Grid */}
-
-                      <div className="hidden md:grid grid-cols-4 gap-2">
-                          {navItems.filter(item => item.id !== 'home').map(item => <NavButton key={item.id} item={item} />)}
-                      </div>
+                                  <div className="md:hidden">
+                                      <div className="grid grid-cols-2 gap-4">
+                                          {navItems.map(item => (
+                                              <button
+                                                  key={item.id}
+                                                  onClick={() => onNavClick(item.id)}
+                                                  className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-all duration-150 ease-in-out ${
+                                                      activeView === item.id
+                                                          ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
+                                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 active:scale-95'
+                                                  } ${item.id === VIEWS.HOME ? 'col-span-2' : ''}`}
+                                              >
+                                                  <Icon path={item.icon} className="w-8 h-8 mb-2" />
+                                                  <span className="text-sm font-semibold">{item.label}</span>
+                                              </button>
+                                          ))}
+                                      </div>
+                                  </div>
+                                  <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-2">
+                                    {navItems.map(item => <NavButton key={item.id} item={item} />)}
+                                  </div>
                               </div>
                           );
                       };
@@ -4245,7 +4233,24 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
                           const toggleFavorite = (symbol) => { const nuclide = radionuclides.find(n => n.symbol === symbol); const isCurrentlyFavorite = favorites.includes(symbol); const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol]; setFavorites(newFavorites); localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites)); if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); } };
                           const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
                           const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
-                          const handleNuclideSelection = (nuclide) => { setNuclideName(nuclide.name); setResult(nuclide); setSuggestions([]); setErrorMessage(''); setCurrentDecaySeriesId(null); setDisplayHalfLifeUnit(settings.halfLifeUnit); updateSearchHistory(nuclide); };
+                          
+                          const handleNuclideSelection = (nuclide) => {
+                          setNuclideName(nuclide.name);
+                          // Update the history first.
+                          updateSearchHistory(nuclide);
+
+                          // Then, schedule the view switch. A tiny delay allows the history state
+                          // update to process before the HomePage disappears.
+                          setTimeout(() => {
+                              setResult(nuclide);
+                          }, 0);
+
+                          setSuggestions([]);
+                          setErrorMessage('');
+                          setCurrentDecaySeriesId(null);
+                          setDisplayHalfLifeUnit(settings.halfLifeUnit);
+                      };
+
                           const handleNuclideNameChange = (e) => {
                               const value = e.target.value; setNuclideName(value);
                               if (value.length > 0) {
