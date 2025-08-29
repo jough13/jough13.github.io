@@ -550,7 +550,7 @@
                               // --- APPLICATION METADATA & CONSTANTS
                               //==============================================================================
 
-                              const VERSION = '3.3.2';
+                              const VERSION = '3.3.3';
                               const LAST_UPDATED = 'August 29, 2025';
 
                       // NEW: A global constant for all navigation views
@@ -693,6 +693,8 @@
                               unit: largestUnit.unit
                           };
                       };
+
+                        const THERAPY_NUCLIDES = ['I-131', 'Lu-177', 'Sm-153', 'Ra-223', 'Ho-166', 'Re-186'];
 
                               /**
                                * Half-Value Layer (HVL) data in cm for common gamma emitters and materials.
@@ -3299,6 +3301,7 @@ const MedicalCalculator = () => {
                 125: { TVL1: 3.8, TVLe: 3.6 }, 150: { TVL1: 4.1, TVLe: 3.8 }
             }
         };
+        
         const K_FACTORS_R_PER_mA_min_at_1m = { 50: 0.034, 70: 0.075, 100: 0.165, 125: 0.26, 150: 0.37 };
 
         // State Management
@@ -3325,13 +3328,15 @@ const MedicalCalculator = () => {
                     throw new Error("All inputs must be valid, positive numbers.");
                 }
 
-                const B = (P * Math.pow(d, 2)) / (W * U * T);
-                const n_tvl = -Math.log10(B);
+                const K = K_FACTORS_R_PER_mA_min_at_1m[kvp] || 0;
+                const B = (P * Math.pow(d, 2)) / (K * W * U * T);
 
-                if (n_tvl <= 0) {
-                    setResult({ thickness: 0, tvls: 0, transmission: B.toExponential(2) });
-                    return;
+                if (B >= 1) {
+                     setResult({ thickness: 0, tvls: 0, transmission: B > 1 ? '>1' : B.toExponential(2) });
+                     return;
                 }
+
+                const n_tvl = -Math.log10(B);
                 
                 const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
                 const thickness = TVL1 + (n_tvl - 1) * TVLe;
@@ -3410,6 +3415,201 @@ const MedicalCalculator = () => {
         );
     };
 
+const PatientReleaseCalculator = () => {
+        // --- State Management ---
+        const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+        const [activity, setActivity] = React.useState('30');
+        const [activityUnit, setActivityUnit] = React.useState('mCi');
+        const [measuredDoseRate, setMeasuredDoseRate] = React.useState(''); // New state for I-131
+        const [scenarios, setScenarios] = React.useState([
+            { id: 1, name: 'Primary Scenario', hours: 8, distance: 1, distUnit: 'm' },
+        ]);
+        const [result, setResult] = React.useState(null);
+        const [error, setError] = React.useState('');
+
+        // --- Data and Logic ---
+        const therapyNuclides = React.useMemo(() => 
+            radionuclides.filter(n => THERAPY_NUCLIDES.includes(n.symbol) && n.gammaConstant)
+            .sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]
+        );
+        const selectedNuclide = React.useMemo(() => 
+            therapyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, therapyNuclides]
+        );
+        
+        // --- Handlers for Occupancy Scenarios ---
+        const handleScenarioChange = (id, field, value) => {
+            setScenarios(scenarios.map(s => s.id === id ? { ...s, [field]: value } : s));
+        };
+        const addScenario = () => {
+            setScenarios([...scenarios, { id: Date.now(), name: '', hours: 1, distance: 3, distUnit: 'm' }]);
+        };
+        const removeScenario = (id) => {
+            setScenarios(scenarios.filter(s => s.id !== id));
+        };
+
+        // --- Core Calculation ---
+        React.useEffect(() => {
+            if (!selectedNuclide) {
+                setResult(null);
+                setError('Please select a radionuclide.');
+                return;
+            }
+
+            try {
+                setError('');
+                const A0_mCi = parseFloat(activity) * ({'µCi': 1e-3, 'mCi': 1, 'Ci': 1000}[activityUnit]);
+                if (isNaN(A0_mCi)) throw new Error("Invalid administered activity.");
+
+                // --- NEW I-131 SPECIFIC LOGIC ---
+                if (selectedNuclide.symbol === 'I-131') {
+                    // 1. Check Activity-Based Limit
+                    if (A0_mCi <= 33) {
+                        setResult({
+                            title: 'PASS (Activity Limit Met)',
+                            pass: true,
+                            details: [`Administered activity of ${A0_mCi.toFixed(1)} mCi is at or below the 33 mCi release limit.`]
+                        });
+                        return; // Stop further calculation
+                    }
+                    
+                    // 2. Check Dose Rate-Based Limit
+                    const measuredRate = parseFloat(measuredDoseRate);
+                    if (!isNaN(measuredRate)) {
+                        if (measuredRate <= 7) {
+                            setResult({
+                                title: 'PASS (Dose Rate Met)',
+                                pass: true,
+                                details: [`Measured dose rate of ${measuredRate} mrem/hr is at or below the 7 mrem/hr limit.`]
+                            });
+                            return; // Stop further calculation
+                        }
+                    }
+                }
+                
+                // 3. Fallback to Dose Calculation (for all nuclides, including I-131 if above limits)
+                const T_half_hours = parseHalfLifeToSeconds(selectedNuclide.halfLife) / 3600;
+                const gammaConstant_R_m2_per_Ci_hr = parseFloat(selectedNuclide.gammaConstant);
+                const lambda_per_hr = Math.log(2) / T_half_hours;
+                
+                if (isNaN(T_half_hours) || isNaN(gammaConstant_R_m2_per_Ci_hr)) {
+                    throw new Error("Invalid nuclide data for dose calculation.");
+                }
+
+                let totalDose_mrem = 0;
+                let effectiveDoseRateFactor = 0;
+
+                scenarios.forEach(s => {
+                    const hours = parseFloat(s.hours);
+                    const dist = parseFloat(s.distance);
+                    const dist_m = dist * ({'cm': 0.01, 'm': 1, 'ft': 0.3048}[s.distUnit]);
+                    if (isNaN(hours) || isNaN(dist) || dist <= 0) throw new Error("Occupancy inputs are invalid.");
+                    const totalDoseForScenario = (1.443 * gammaConstant_R_m2_per_Ci_hr * (A0_mCi/1000) * T_half_hours * (hours/24)) / Math.pow(dist_m, 2);
+                    totalDose_mrem += totalDoseForScenario * 1000;
+                    effectiveDoseRateFactor += ( (hours/24) / Math.pow(dist_m, 2) );
+                });
+
+                const initialTotalDose = (1.443 * gammaConstant_R_m2_per_Ci_hr * (A0_mCi/1000) * T_half_hours * effectiveDoseRateFactor) * 1000;
+                let timeToRelease_hours = 0;
+                if (initialTotalDose > 500) {
+                     timeToRelease_hours = (-T_half_hours / Math.log(2)) * Math.log(500 / initialTotalDose);
+                }
+                
+                const passesTede = totalDose_mrem <= 500;
+                setResult({
+                    title: passesTede ? 'PASS (Dose Calculation)' : 'FAIL (Dose Calculation)',
+                    pass: passesTede,
+                    details: [
+                        `Total Integrated Dose (TEDE): ${totalDose_mrem.toFixed(1)} mrem`,
+                        `(Limit: 500 mrem)`,
+                        `Time to Meet Criteria: ${timeToRelease_hours.toFixed(1)} hours`
+                    ]
+                });
+
+            } catch (e) {
+                setResult(null);
+                setError(e.message);
+            }
+        }, [selectedNuclide, activity, activityUnit, scenarios, measuredDoseRate]);
+
+        return (
+            <div className="space-y-4">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                    This tool evaluates patient release criteria based on 10 CFR 35.75 guidance. It checks against activity, dose rate, and integrated dose limits.
+                </p>
+                <div>
+                    <label className="text-sm font-medium">Radionuclide</label>
+                    <div className="mt-1">
+                        {selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select a therapy nuclide..."/>}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-2">
+                         <label className="text-sm font-medium">Administered Activity</label>
+                        <div className="flex">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                <option>µCi</option><option>mCi</option><option>Ci</option>
+                            </select>
+                        </div>
+                        {/* --- NEW I-131 INPUT --- */}
+                        {selectedNuclide?.symbol === 'I-131' && (
+                            <div className="animate-fade-in pt-2">
+                                <label className="text-sm font-medium">Measured Dose Rate @ 1m (Optional)</label>
+                                <div className="flex">
+                                    <input type="number" value={measuredDoseRate} onChange={e => setMeasuredDoseRate(e.target.value)} placeholder="e.g., 5.2" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                    <span className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm flex items-center">mrem/hr</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                        <label className="text-sm font-medium">Occupancy Scenarios (for TEDE)</label>
+                        <div className="hidden sm:flex gap-2 items-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            <div className="flex-grow">Scenario Name</div>
+                            <div className="w-1/4">Hours/Day</div>
+                            <div className="w-1/3">Distance</div>
+                            <div className="w-[28px] flex-shrink-0"></div>
+                        </div>
+
+                        {scenarios.map((s, index) => (
+                            <div key={s.id} className="space-y-2">
+                                <input type="text" placeholder={`Scenario #${index + 1}`} value={s.name} onChange={e => handleScenarioChange(s.id, 'name', e.target.value)} className="p-1 rounded bg-slate-100 dark:bg-slate-700 w-full text-sm" />
+                                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                                    <input type="number" value={s.hours} onChange={e => handleScenarioChange(s.id, 'hours', e.target.value)} className="p-1 rounded bg-slate-100 dark:bg-slate-700 w-full sm:w-1/4" title="Hours per day"/>
+                                    <div className="flex w-full sm:w-1/3 flex-grow">
+                                        <input type="number" value={s.distance} onChange={e => handleScenarioChange(s.id, 'distance', e.target.value)} className="p-1 rounded-l bg-slate-100 dark:bg-slate-700 w-full" title="Distance"/>
+                                        <select value={s.distUnit} onChange={e => handleScenarioChange(s.id, 'distUnit', e.target.value)} className="p-1 rounded-r bg-slate-200 dark:bg-slate-600 text-xs">
+                                            <option>m</option><option>cm</option><option>ft</option>
+                                        </select>
+                                    </div>
+                                    <button onClick={() => removeScenario(s.id)} disabled={scenarios.length <= 1} className="p-1 text-red-500 disabled:opacity-30">
+                                        <Icon path={ICONS.clear} className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        <button onClick={addScenario} className="text-sm font-semibold text-sky-600 hover:underline pt-2">+ Add Scenario</button>
+                    </div>
+                </div>
+
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                
+                {/* --- NEW DYNAMIC RESULTS BOX --- */}
+                {result && (
+                    <div className={`p-4 rounded-lg text-center ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                        <p className={`text-2xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {result.title}
+                        </p>
+                        <div className="mt-2 text-sm">
+                            {result.details.map((line, i) => <p key={i} className={result.pass ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>{line}</p>)}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -3417,12 +3617,19 @@ const MedicalCalculator = () => {
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
                     <button
                         onClick={() => setActiveTab('xrayShielding')}
-                        className={`w-full p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
                     >
                         X-Ray Shielding
                     </button>
+                    <button
+                        onClick={() => setActiveTab('patientRelease')}
+                        className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'patientRelease' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                        Patient Release
+                    </button>
                 </div>
                 {activeTab === 'xrayShielding' && <XRayShieldingCalculator />}
+                {activeTab === 'patientRelease' && <PatientReleaseCalculator />}
             </div>
         </div>
     );
@@ -5859,144 +6066,12 @@ const NeutronShieldingCalculator = () => {
                           );
                       };
 
-const XRayShieldingCalculator = () => {
-    // Data from NCRP Report No. 147, Tables B.1, B.2, B.5
-    const TVL_DATA = {
-        'Lead': {
-            50: { TVL1: 0.06, TVLe: 0.06 }, 70: { TVL1: 0.17, TVLe: 0.17 }, 100: { TVL1: 0.27, TVLe: 0.27 },
-            125: { TVL1: 0.28, TVLe: 0.28 }, 150: { TVL1: 0.30, TVLe: 0.30 }
-        },
-        'Concrete': {
-            50: { TVL1: 4.3, TVLe: 4.3 }, 70: { TVL1: 5.0, TVLe: 5.0 }, 100: { TVL1: 5.7, TVLe: 5.7 },
-            125: { TVL1: 6.1, TVLe: 6.1 }, 150: { TVL1: 6.4, TVLe: 6.4 }
-        },
-        // --- NEW DATA ADDED HERE --- 🧱
-        'Drywall': {
-            50: { TVL1: 2.1, TVLe: 2.1 }, 70: { TVL1: 2.6, TVLe: 2.6 }, 100: { TVL1: 3.3, TVLe: 3.2 },
-            125: { TVL1: 3.8, TVLe: 3.6 }, 150: { TVL1: 4.1, TVLe: 3.8 }
-        }
-    };
-    const K_FACTORS_R_PER_mA_min_at_1m = { 50: 0.034, 70: 0.075, 100: 0.165, 125: 0.26, 150: 0.37 };
-
-    // State Management
-    const [kvp, setKvp] = React.useState('100');
-    const [workload, setWorkload] = React.useState('200');
-    const [useFactor, setUseFactor] = React.useState('1');
-    const [occupancyFactor, setOccupancyFactor] = React.useState('1');
-    const [distance, setDistance] = React.useState('2.1');
-    const [doseLimit, setDoseLimit] = React.useState('2');
-    const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
-    const [result, setResult] = React.useState(null);
-    const [error, setError] = React.useState('');
-
-    React.useEffect(() => {
-        try {
-            setError('');
-            const W = parseFloat(workload);
-            const U = parseFloat(useFactor);
-            const T = parseFloat(occupancyFactor);
-            const d = parseFloat(distance);
-            const P = parseFloat(doseLimit) / 1000; // Convert mR/wk to R/wk
-
-            if ([W, U, T, d, P].some(isNaN) || W <= 0 || d <= 0) {
-                throw new Error("All inputs must be valid, positive numbers.");
-            }
-
-            const B = (P * Math.pow(d, 2)) / (W * U * T);
-            const n_tvl = -Math.log10(B);
-
-            if (n_tvl <= 0) {
-                setResult({ thickness: 0, tvls: 0, transmission: B.toExponential(2) });
-                return;
-            }
-            
-            const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
-            const thickness = TVL1 + (n_tvl - 1) * TVLe;
-
-            setResult({
-                transmission: B.toExponential(2),
-                tvls: n_tvl.toFixed(2),
-                thickness: thickness.toFixed(2),
-            });
-
-        } catch (e) {
-            setResult(null);
-            setError(e.message);
-        }
-    }, [kvp, workload, useFactor, occupancyFactor, distance, doseLimit, shieldMaterial]);
-    
-    const useFactorOptions = [ { value: 1, label: '1 (Floors, full-time control rooms)' }, { value: 0.25, label: '1/4 (Doors, walls)' }, { value: 0.0625, label: '1/16 (Ceilings)' } ];
-    const occupancyOptions = [ { value: 1, label: '1 (Work areas, offices, labs)' }, { value: 0.2, label: '1/5 (Corridors, patient rooms)' }, { value: 0.05, label: '1/20 (Public restrooms, waiting rooms)' } ];
-    const doseLimitOptions = [ { value: 100, label: '100 mR/wk (Controlled Area)' }, { value: 2, label: '2 mR/wk (Uncontrolled Area)' } ];
-
-    return (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium">Tube Potential (kVp)</label>
-                    <select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(K_FACTORS_R_PER_mA_min_at_1m).map(k => <option key={k} value={k}>{k} kVp</option>)}</select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Workload (mA-min/week)</label>
-                    <input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Use Factor (U)</label>
-                    <select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Occupancy Factor (T)</label>
-                    <select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Distance from Source (m)</label>
-                    <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Weekly Dose Limit (P)</label>
-                    <select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select>
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium">Shielding Material</label>
-                    <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                        <option value="Lead">Lead</option>
-                        <option value="Concrete">Concrete</option>
-                        {/* --- NEW OPTION ADDED HERE --- ✅ */}
-                        <option value="Drywall">Drywall</option>
-                    </select>
-                </div>
-            </div>
-
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                        <p>Required Transmission (B):</p><p className="font-mono">{result.transmission}</p>
-                        <p>Required TVLs:</p><p className="font-mono">{result.tvls}</p>
-                    </div>
-                    <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Shield Thickness</p>
-                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">
-                            {result.thickness}
-                            <span className="text-2xl ml-2 opacity-75">
-                                {/* This logic correctly handles the units for drywall */}
-                                {shieldMaterial === 'Lead' ? 'mm' : 'cm'}
-                            </span>
-                        </p>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
                       /**
                        * @description A unified calculator for determining detection limits for both
                        * MARSSIM-compliant static counts and scanning surveys.
                        */
 
-const MDACalculator = () => {
+                    const MDACalculator = () => {
                           // NEW: Constants for the calculator modes.
                           const MDA_MODE_STATIC = 'static';
                           const MDA_MODE_SCAN = 'scan';
