@@ -1308,33 +1308,39 @@
                                * A mapping of icon names to their corresponding SVG path data.
                                */
 
-                              const ICONS = {
-
+const ICONS = {
+                          // Standard UI Icons
                           copy: "M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-2-.9-2-2-2zm0 16H8V7h11v14z",
                           check: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
-                          specificActivity: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 12.5l-4-4 1.41-1.41L10 12.67l4.59-4.59L16 9.5l-6 6z",
                           search: "M10 18a7.952 7.952 0 0 0 4.897-1.688l4.396 4.396 1.414-1.414-4.396-4.396A8 8 0 1 0 10 18zm0-14a6 6 0 1 1-6 6 6 6 0 0 1 6-6z",
-                          database: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
-                          converter: "M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z",
-                          calculator: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-2-.9-2-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm4 8H10v-2h2v2zm0-4H10v-2h2v2zm0-4H10V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z",
-                          home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z",
-                          hourglass: "M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z",
-                          radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z",
                           help: "M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z",
                           clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
                           filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
+                          settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
+                          
+                          // Theme Icons
                           sun: "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zm-9-8c.55 0 1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm0 16c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zM5.64 6.36c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.64 3.54c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41L5.64 6.36zm12.72 12.72c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l1.41 1.41zM4.22 18.36c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.41-1.41c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.41 1.41zM18.36 4.22c-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0z",
                           moon: "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.64-.11 2.41-.31-3.26-1.46-5.41-4.56-5.41-8.19 0-3.63 2.15-6.73 5.41-8.19A8.96 8.96 0 0012 3z",
+
+                          // Thematic Tool Icons
+                          home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z",
+                          database: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
                           compare: "M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-12H22v2h-7.01v3L11 3l3.99 4V4z",
-                          activity: "M12 6.5c2.49 0 4.5 2.01 4.5 4.5s-2.01 4.5-4.5 4.5S7.5 13.49 7.5 11 9.51 6.5 12 6.5M12 5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0-2c4.42 0 8 3.58 8 8s-3.58 8-8 8-8-3.58-8-8 3.58-8 8-8z",
-			  radon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-4H9V8h4V4h2v4h4v4h-4v4zm-1-8V4h-2v4h-2v2h2v4h2v-4h2v-2h-4z",
-                          doseRate: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z",
+                          calculator: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-2-.9-2-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm4 8H10v-2h2v2zm0-4H10v-2h2v2zm0-4H10V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z",
+                          converter: "M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z",
+                          hourglass: "M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6z", // Half-life
+                          radioactive: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z",
+                          activity: "M12 2a9.97 9.97 0 0 0-5.49 1.76L12 15.35l5.49-11.59A9.97 9.97 0 0 0 12 2zm-9.24 9a10.016 10.016 0 0 0 14.48 0L12 17.65l-9.24-6.65zM4.93 16.24l-2.17-1.45A10.003 10.003 0 0 0 12 22a10.003 10.003 0 0 0 9.24-7.21l-2.17 1.45L12 19.35l-7.07-3.11z", // Using trefoil for activity
+                          specificActivity: "M10 12c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM6 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 2c0-1.1-.9-2-2-2s-2 .9-2 2 .9 2 2 2 2-.9 2-2zm4-5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 12H4V7h16v10z", // Icon representing branching paths/emissions
+			              radon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-4H9V8h4V4h2v4h4v4h-4v4zm-1-8V4h-2v4h-2v2h2v4h2v-4h2v-2h-4z",
+                          doseRate: "M19.35 10.04C18.67 6.59 15.64 4 12 4c-1.48 0-2.85.43-4.01 1.17l1.46 1.46C10.21 6.23 11.08 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H12v-2l-4 4 4 4v-2h9.5c.28 0 .5-.22.5-.5.01-2.09-1.26-3.87-3.15-4.96z", // Gauge icon
+                          shield: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z", // Renamed from doseRate
                           mass: "M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 16H4V8h16v12z",
                           series: "M21 8H3V6h18v2zm0 4H3v2h18v-2zm0 6H3v2h18v-2z",
-                          settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
                           stopwatch: "M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.98-1.41-1.41l-1.42 1.42A8.962 8.962 0 0012 4c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-1.68-.46-3.24-1.25-4.55l.22-.16zm-1.07-1.01A6.995 6.995 0 115.34 19.66 6.995 6.995 0 0117.96 6.38z",
                           transport: "M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z",
-                          internalDose: "M12 5.9c1.16 0 2.1.94 2.1 2.1s-.94 2.1-2.1 2.1S9.9 9.16 9.9 8s.94-2.1 2.1-2.1m0 9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z"
+                          internalDose: "M12 5.9c1.16 0 2.1.94 2.1 2.1s-.94 2.1-2.1 2.1S9.9 9.16 9.9 8s.94-2.1 2.1-2.1m0 9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z",
+                          neutron: "M21 10.78V8c0-1.65-1.35-3-3-3h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v2h-4V3c0-.55-.45-1-1-1s-1 .45-1 1v2H8c-1.65 0-3 1.35-3 3v2.78c-.61.55-1 1.34-1 2.22v6c0 1.65 1.35 3 3 3h10c1.65 0 3-1.35 3-3v-6c0-.88-.39-1.67-1-2.22zM9 19H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm2-7h-2v-2h2v2z"
                       };
 
                               //==============================================================================
@@ -1915,7 +1921,7 @@ const defaultSettings = {
                                * @param {{activeView: string, onNavClick: (view: string) => void}} props - The currently active view and the click handler.
                                */
 
-                      const MainNav = ({ activeView, onNavClick }) => {
+const MainNav = ({ activeView, onNavClick }) => {
                           const navItems = [
                               { id: 'home', label: 'Home', icon: ICONS.home },
                               { id: 'database', label: 'Database', icon: ICONS.database },
@@ -1923,16 +1929,15 @@ const defaultSettings = {
                               { id: 'calculator', label: 'Decay', icon: ICONS.calculator },
                               { id: 'mda', label: 'MDA', icon: ICONS.search },
                       	      { id: 'marssim', label: 'MARSSIM Sample Design', icon: ICONS.calculator },
-
-{ id: 'marssimTests', label: 'MARSSIM Tests', icon: ICONS.database },
-
+                              { id: 'marssimTests', label: 'MARSSIM Tests', icon: ICONS.database },
                               { id: 'seriesCalculator', label: 'Series Decay', icon: ICONS.series },
                               { id: 'equilibrium', label: 'Equilibrium', icon: ICONS.activity },
-			      {   id:     'radon', label: 'Radon', icon: ICONS.radon },
-                              {   id:    'activityMassTools', label: 'Activity/Mass', icon: ICONS.mass },
+			                  { id: 'radon', label: 'Radon', icon: ICONS.radon },
+                              { id: 'activityMassTools', label: 'Activity/Mass', icon: ICONS.mass },
                               { id: 'doseRate', label: 'Dose & Dose Rate', icon: ICONS.doseRate },
-                              { id: 'shielding', label: 'Shielding', icon: ICONS.doseRate },
+                              { id: 'shielding', label: 'Shielding', icon: ICONS.shield },
                               { id: 'stayTime', label: 'Stay Time', icon: ICONS.stopwatch },
+                              { id: 'neutron', label: 'Neutron Tools', icon: ICONS.neutron },
                       	      { id: 'transportation', label: 'Transportation', icon: ICONS.transport },
                               { id: 'converter', label: 'Converter', icon: ICONS.converter }
                           ];
@@ -4080,8 +4085,7 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData }) => {
 
                               // An array of all valid views your app can be in
 
-			        const validViews = ['home', 'database', 'compare', 'calculator', 'mda', 'marssim', 'wrs', 'emc', 'seriesCalculator', 'equilibrium', 'radon', 'activityMassTools', 'doseRate', 'shielding', 'stayTime', 'transportation', 'converter', 'settings', 'decaySeries', 'marssimTests'];
-
+			        const validViews = ['home', 'database', 'compare', 'calculator', 'mda', 'marssim', 'wrs', 'emc', 'seriesCalculator', 'equilibrium', 'radon', 'activityMassTools', 'doseRate', 'shielding', 'stayTime', 'neutron', 'transportation', 'converter', 'settings', 'decaySeries', 'marssimTests'];
 
                               let targetView = 'home'; // Default to home view
                               if (hash && validViews.includes(hash)) {
@@ -4472,6 +4476,7 @@ React.useEffect(() => {
                               case 'doseRate': return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                               case 'shielding': return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                               case 'stayTime': return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                              case 'neutron': return <NeutronCalculator />;
                               case 'transportation': return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
                               case 'converter': return <UnitConverter />;
                               case 'settings': return <SettingsPanel />;
@@ -6062,6 +6067,320 @@ React.useEffect(() => {
                           );
                       };
 
+/**
+                       * Data and components for the Neutron Tools module.
+                       */
+
+                      // --- Data from 10 CFR 20.1004 for Fluence/Dose Conversion ---
+                      const NEUTRON_CONVERSION_FACTORS = [
+                          { energyMeV: 2.5e-8, fluencePerRem: 980e6, q: 2, label: 'Thermal (0.025 eV)' },
+                          { energyMeV: 1e-7, fluencePerRem: 980e6, q: 2, label: '0.1 eV' },
+                          { energyMeV: 1e-6, fluencePerRem: 810e6, q: 2, label: '1 eV' },
+                          { energyMeV: 1e-5, fluencePerRem: 810e6, q: 2, label: '10 eV' },
+                          { energyMeV: 1e-4, fluencePerRem: 840e6, q: 2, label: '100 eV' },
+                          { energyMeV: 1e-3, fluencePerRem: 980e6, q: 2, label: '1 keV' },
+                          { energyMeV: 1e-2, fluencePerRem: 1000e6, q: 2.5, label: '10 keV' },
+                          { energyMeV: 1e-1, fluencePerRem: 170e6, q: 7.5, label: '100 keV' },
+                          { energyMeV: 5e-1, fluencePerRem: 39e6, q: 11, label: '0.5 MeV' },
+                          { energyMeV: 1, fluencePerRem: 27e6, q: 11, label: '1 MeV' },
+                          { energyMeV: 2.5, fluencePerRem: 29e6, q: 9, label: '2.5 MeV' },
+                          { energyMeV: 5, fluencePerRem: 23e6, q: 8, label: '5 MeV' },
+                          { energyMeV: 7, fluencePerRem: 24e6, q: 7, label: '7 MeV' },
+                          { energyMeV: 10, fluencePerRem: 24e6, q: 6.5, label: '10 MeV' },
+                          { energyMeV: 14, fluencePerRem: 17e6, q: 7.5, label: '14 MeV' },
+                          { energyMeV: 20, fluencePerRem: 16e6, q: 8, label: '20 MeV' },
+                          { energyMeV: 40, fluencePerRem: 14e6, q: 7, label: '40 MeV' },
+                          { energyMeV: 60, fluencePerRem: 16e6, q: 5.5, label: '60 MeV' },
+                          { energyMeV: 100, fluencePerRem: 20e6, q: 4, label: '100 MeV' },
+                          { energyMeV: 200, fluencePerRem: 19e6, q: 3.5, label: '200 MeV' },
+                          { energyMeV: 300, fluencePerRem: 19e6, q: 3.5, label: '300 MeV' },
+                          { energyMeV: 400, fluencePerRem: 20e6, q: 3.5, label: '400 MeV' }
+                      ];
+                      
+                      // --- Data for Neutron Activation (Thermal n,γ reactions) ---
+                      const NEUTRON_ACTIVATION_DATA = [
+                          { targetSymbol: 'Co-59', name: 'Cobalt-59', atomicWeight: 58.933, thermalCrossSection_barns: 37.2, productSymbol: 'Co-60' },
+                          { targetSymbol: 'Na-23', name: 'Sodium-23', atomicWeight: 22.990, thermalCrossSection_barns: 0.53, productSymbol: 'Na-24' },
+                          { targetSymbol: 'Au-197', name: 'Gold-197', atomicWeight: 196.967, thermalCrossSection_barns: 98.65, productSymbol: 'Au-198' },
+                          { targetSymbol: 'Ir-191', name: 'Iridium-191', atomicWeight: 190.960, thermalCrossSection_barns: 954, productSymbol: 'Ir-192' },
+                          { targetSymbol: 'Ho-165', name: 'Holmium-165', atomicWeight: 164.930, thermalCrossSection_barns: 64.7, productSymbol: 'Ho-166' },
+                          { targetSymbol: 'Fe-58', name: 'Iron-58', atomicWeight: 57.933, thermalCrossSection_barns: 1.3, productSymbol: 'Fe-59' },
+                          { targetSymbol: 'Lu-176', name: 'Lutetium-176', atomicWeight: 175.942, thermalCrossSection_barns: 2090, productSymbol: 'Lu-177' },
+                          { targetSymbol: 'Ta-181', name: 'Tantalum-181', atomicWeight: 180.948, thermalCrossSection_barns: 20.6, productSymbol: 'Ta-182' },
+                          { targetSymbol: 'Sc-45', name: 'Scandium-45', atomicWeight: 44.956, thermalCrossSection_barns: 27.5, productSymbol: 'Sc-46' },
+                          { targetSymbol: 'Cu-63', name: 'Copper-63', atomicWeight: 62.929, thermalCrossSection_barns: 4.5, productSymbol: 'Cu-64' },
+                          { targetSymbol: 'Ag-109', name: 'Silver-109', atomicWeight: 108.905, thermalCrossSection_barns: 89, productSymbol: 'Ag-110m' },
+                          { targetSymbol: 'Sb-123', name: 'Antimony-123', atomicWeight: 122.904, thermalCrossSection_barns: 4.1, productSymbol: 'Sb-124' },
+                          { targetSymbol: 'Eu-151', name: 'Europium-151', atomicWeight: 150.920, thermalCrossSection_barns: 9200, productSymbol: 'Eu-152' },
+                          { targetSymbol: 'Ca-44', name: 'Calcium-44', atomicWeight: 43.955, thermalCrossSection_barns: 1.0, productSymbol: 'Ca-45' },
+                      ].sort((a,b) => a.name.localeCompare(b.name));
+
+                      // --- Data for Composite Material Activation ---
+                      const COMPOSITE_MATERIALS_DATA = {
+                          'Ordinary Concrete': {
+                              density_g_cm3: 2.3,
+                              composition: [ { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.01 }, { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.015 * 0.0028 }, { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.00001 }, { element: 'Europium-151', targetSymbol: 'Eu-151', massFraction: 0.000001 }, { element: 'Calcium-44', targetSymbol: 'Ca-44', massFraction: 0.08 * 0.02086 }, ]
+                          },
+                          'Standard Human Tissue': {
+                              density_g_cm3: 1.0,
+                              composition: [ { element: 'Sodium-23', targetSymbol: 'Na-23', massFraction: 0.0015 } ]
+                          },
+                          'Stainless Steel 304': {
+                              density_g_cm3: 8.0,
+                              composition: [ { element: 'Iron-58', targetSymbol: 'Fe-58', massFraction: 0.70 * 0.0028 }, { element: 'Cobalt-59', targetSymbol: 'Co-59', massFraction: 0.001 }, ]
+                          }
+                      };
+
+                      // --- Data for Neutron Shielding ---
+                      const FAST_NEUTRON_SHIELDING_DATA = {
+                          'Water': { hvl_cm: 6.1 },
+                          'Polyethylene': { hvl_cm: 5.3 },
+                          'Concrete': { hvl_cm: 10.7 },
+                          'Borated Poly (5%)': { hvl_cm: 5.1 },
+                          'Steel': { hvl_cm: 7.9 },
+                          'Lead': { hvl_cm: 15.0 },
+                      };
+                      const THERMAL_NEUTRON_SHIELDING_DATA = {
+                          'Cadmium': { hvl_cm: 0.02 },
+                          'Borated Poly (5%)': { hvl_cm: 0.1 },
+                          'Water': { hvl_cm: 2.8 },
+                          'Polyethylene': { hvl_cm: 3.5 },
+                          'Concrete': { hvl_cm: 4.8 },
+                          'Lead': { hvl_cm: 4.5 },
+                      };
+
+                      const FluenceDoseConverter = () => {
+                          const [calcMode, setCalcMode] = React.useState('fluenceToDose');
+                          const [energy, setEnergy] = React.useState('1');
+                          const [inputValue, setInputValue] = React.useState('1e6');
+                          const [result, setResult] = React.useState(null);
+                          const [error, setError] = React.useState('');
+                          React.useEffect(() => {
+                              if (calcMode === 'fluenceToDose') { setInputValue('1e6'); } else { setInputValue('100'); }
+                          }, [calcMode]);
+                          const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
+                          React.useEffect(() => {
+                              try {
+                                  setError('');
+                                  const inputVal = parseFloat(inputValue);
+                                  const energyVal = parseFloat(energy);
+                                  if (isNaN(inputVal) || isNaN(energyVal) || inputVal < 0 || energyVal <= 0) { if (inputValue && energy) setError('Inputs must be positive numbers.'); setResult(null); return; }
+                                  let p1 = NEUTRON_CONVERSION_FACTORS[0], p2 = NEUTRON_CONVERSION_FACTORS[NEUTRON_CONVERSION_FACTORS.length - 1];
+                                  if (energyVal < p1.energyMeV) { p2 = p1; } else if (energyVal > p2.energyMeV) { p1 = p2; } else {
+                                      for (let i = 0; i < NEUTRON_CONVERSION_FACTORS.length - 1; i++) {
+                                          if (energyVal >= NEUTRON_CONVERSION_FACTORS[i].energyMeV && energyVal <= NEUTRON_CONVERSION_FACTORS[i + 1].energyMeV) { p1 = NEUTRON_CONVERSION_FACTORS[i]; p2 = NEUTRON_CONVERSION_FACTORS[i + 1]; break; }
+                                      }
+                                  }
+                                  const fluencePerRem = (p1.energyMeV === p2.energyMeV) ? p1.fluencePerRem : logLogInterpolate(energyVal, p1.energyMeV, p1.fluencePerRem, p2.energyMeV, p2.fluencePerRem);
+                                  const doseConvFactor = 1 / fluencePerRem;
+                                  if (calcMode === 'fluenceToDose') {
+                                      const dose_rem = inputVal * doseConvFactor;
+                                      const formattedDose = formatSensibleUnit(dose_rem * 1000, 'dose');
+                                      setResult({ title: 'Resulting Dose (or Dose Rate)', displayValue: formattedDose.value, unit: formattedDose.unit, factor: doseConvFactor.toExponential(3), factorUnit: 'rem per n/cm²' });
+                                  } else {
+                                      const fluence_n_cm2 = inputVal / doseConvFactor;
+                                      setResult({ title: 'Required Fluence (or Fluence Rate)', displayValue: fluence_n_cm2.toExponential(3), unit: 'n/cm²', factor: fluencePerRem.toExponential(3), factorUnit: 'n/cm² per rem' });
+                                  }
+                              } catch (e) { setError('Calculation error.'); setResult(null); }
+                          }, [calcMode, energy, inputValue]);
+                          return (
+                              <div className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                                      <button onClick={() => setCalcMode('fluenceToDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'fluenceToDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence to Dose</button>
+                                      <button onClick={() => setCalcMode('doseToFluence')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseToFluence' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose to Fluence</button>
+                                  </div>
+                                  <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                                      <div><label className="block text-sm font-medium">Neutron Energy</label><select value={energy} onChange={e => setEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select></div>
+                                      <div><label className="block text-sm font-medium">{calcMode === 'fluenceToDose' ? 'Fluence (n/cm²)' : 'Dose (rem)'}</label><input type="text" value={inputValue} onChange={e => setInputValue(e.target.value)} placeholder={calcMode === 'fluenceToDose' ? 'e.g., 1e7' : 'e.g., 100'} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /><p className="text-xs text-slate-500 dark:text-slate-400 mt-1">For rates, use fluence rate (n/cm²·s) and dose rate (rem/s).</p></div>
+                                  </div>
+                                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                  {result && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.title}</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.displayValue} <span className="text-xl opacity-75">{result.unit}</span></p><p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Conversion Factor: {result.factor} {result.factorUnit}</p></div>)}
+                              </div>
+                          );
+                      };
+                      
+                      const ActivationCalculator = () => {
+                          const [inputMode, setInputMode] = React.useState('fromDB');
+                          const [targetMass, setTargetMass] = React.useState('1');
+                          const [massUnit, setMassUnit] = React.useState('g');
+                          const [neutronFlux, setNeutronFlux] = React.useState('1e12');
+                          const [irradiationTime, setIrradiationTime] = React.useState('1');
+                          const [timeUnit, setTimeUnit] = React.useState('hours');
+                          const [result, setResult] = React.useState(null);
+                          const [error, setError] = React.useState('');
+                          const [targetSymbol, setTargetSymbol] = React.useState('Co-59');
+                          const [manualAW, setManualAW] = React.useState('58.933');
+                          const [manualCS, setManualCS] = React.useState('37.2');
+                          const [manualHL, setManualHL] = React.useState('5.27');
+                          const [manualHLUnit, setManualHLUnit] = React.useState('years');
+                          const [manualProductName, setManualProductName] = React.useState('Co-60');
+                          const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
+                          const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
+                          React.useEffect(() => {
+                              try {
+                                  setError('');
+                                  let atomicWeight, crossSection, halfLife_s, productName;
+                                  if (inputMode === 'fromDB') {
+                                      const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === targetSymbol);
+                                      if (!targetData) throw new Error('Target material data not found.');
+                                      const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
+                                      if (!productData) throw new Error(`Product nuclide ${targetData.productSymbol} not found in the main database.`);
+                                      atomicWeight = targetData.atomicWeight; crossSection = targetData.thermalCrossSection_barns; halfLife_s = parseHalfLifeToSeconds(productData.halfLife); productName = `${productData.name} (${productData.symbol})`;
+                                  } else {
+                                      atomicWeight = parseFloat(manualAW); crossSection = parseFloat(manualCS); const hl_val = parseFloat(manualHL); halfLife_s = hl_val * (parseHalfLifeToSeconds(`1 ${manualHLUnit}`)); productName = manualProductName || 'Product';
+                                      if (isNaN(atomicWeight) || isNaN(crossSection) || isNaN(hl_val)) { if(manualAW && manualCS && manualHL) setError('Manual inputs must be valid numbers.'); setResult(null); return; }
+                                  }
+                                  const mass_g = parseFloat(targetMass) * massUnits[massUnit];
+                                  const flux_n_cm2_s = parseFloat(neutronFlux);
+                                  const time_s = parseFloat(irradiationTime) * timeUnits[timeUnit];
+                                  if (isNaN(mass_g) || isNaN(flux_n_cm2_s) || isNaN(time_s) || mass_g <= 0 || flux_n_cm2_s < 0 || time_s < 0) { if (targetMass && neutronFlux && irradiationTime) setError('Mass, flux, and time must be positive numbers.'); setResult(null); return; }
+                                  if (halfLife_s === Infinity) throw new Error('Product nuclide cannot be stable.');
+                                  const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
+                                  const num_target_atoms = (mass_g / atomicWeight) * AVOGADRO;
+                                  const product_lambda = Math.log(2) / halfLife_s;
+                                  const cross_section_cm2 = crossSection * BARN_TO_CM2;
+                                  const saturation_factor = 1 - Math.exp(-product_lambda * time_s);
+                                  const activity_Bq = num_target_atoms * cross_section_cm2 * flux_n_cm2_s * saturation_factor;
+                                  setResult({ productName: productName, activity_Bq: activity_Bq.toExponential(3), activity_Ci: (activity_Bq / 3.7e10).toExponential(3), saturation: (saturation_factor * 100).toFixed(2) });
+                              } catch (e) { setError(e.message); setResult(null); }
+                          }, [inputMode, targetSymbol, targetMass, massUnit, neutronFlux, irradiationTime, timeUnit, manualAW, manualCS, manualHL, manualHLUnit, manualProductName]);
+                          return (
+                              <div className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                                      <button onClick={() => setInputMode('fromDB')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'fromDB' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>From Database</button>
+                                      <button onClick={() => setInputMode('manual')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === 'manual' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Manual Input</button>
+                                  </div>
+                                  {inputMode === 'fromDB' ? (<div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in"><div><label className="block text-sm font-medium">Target Material</label><select value={targetSymbol} onChange={e => setTargetSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_ACTIVATION_DATA.map(t => <option key={t.targetSymbol} value={t.targetSymbol}>{t.name}</option>)}</select></div></div>) : (<div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in"><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium">Atomic Weight (g/mol)</label><input type="number" value={manualAW} onChange={e => setManualAW(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div><label className="block text-sm font-medium">Cross-Section (barns)</label><input type="number" value={manualCS} onChange={e => setManualCS(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div></div><div><label className="block text-sm font-medium">Product Nuclide Name</label><input type="text" value={manualProductName} onChange={e => setManualProductName(e.target.value)} placeholder="For display only" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div><label className="block text-sm font-medium">Product Half-Life</label><div className="flex"><input type="number" value={manualHL} onChange={e => setManualHL(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualHLUnit} onChange={e => setManualHLUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{longTimeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
+                                  <div className="space-y-4">
+                                      <div><label className="block text-sm font-medium">Target Mass</label><div className="flex"><input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                      <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} placeholder="e.g., 1e12" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                      <div><label className="block text-sm font-medium">Irradiation Time</label><div className="flex"><input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                  </div>
+                                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                  {result && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Activity of Produced {result.productName}</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.activity_Ci} Ci</p><p className="text-md text-slate-600 dark:text-slate-300">({result.activity_Bq} Bq)</p><p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Saturation: {result.saturation}% of maximum possible activity</p></div>)}
+                              </div>
+                          );
+                      };
+                      
+                      const CompositeActivationCalculator = () => {
+                          const [material, setMaterial] = React.useState('Ordinary Concrete');
+                          const [totalMass, setTotalMass] = React.useState('100');
+                          const [massUnit, setMassUnit] = React.useState('kg');
+                          const [neutronFlux, setNeutronFlux] = React.useState('1e12');
+                          const [irradiationTime, setIrradiationTime] = React.useState('8');
+                          const [timeUnit, setTimeUnit] = React.useState('hours');
+                          const [result, setResult] = React.useState(null);
+                          const [error, setError] = React.useState('');
+                          const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
+                          const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
+                          React.useEffect(() => {
+                              try {
+                                  setError('');
+                                  const materialData = COMPOSITE_MATERIALS_DATA[material];
+                                  if (!materialData) throw new Error("Selected material data not found.");
+                                  const total_mass_g = parseFloat(totalMass) * massUnits[massUnit];
+                                  const flux_n_cm2_s = parseFloat(neutronFlux);
+                                  const time_s = parseFloat(irradiationTime) * timeUnits[timeUnit];
+                                  if (isNaN(total_mass_g) || isNaN(flux_n_cm2_s) || isNaN(time_s)) { if(totalMass && neutronFlux && irradiationTime) setError("Inputs must be valid numbers."); setResult(null); return; }
+                                  const activationProducts = [];
+                                  for (const component of materialData.composition) {
+                                      const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === component.targetSymbol);
+                                      if (!targetData) continue;
+                                      const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
+                                      if (!productData || productData.halfLife === 'Stable') continue;
+                                      const component_mass_g = total_mass_g * component.massFraction;
+                                      const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
+                                      const num_target_atoms = (component_mass_g / targetData.atomicWeight) * AVOGADRO;
+                                      const product_half_life_s = parseHalfLifeToSeconds(productData.halfLife);
+                                      const product_lambda = Math.log(2) / product_half_life_s;
+                                      const cross_section_cm2 = targetData.thermalCrossSection_barns * BARN_TO_CM2;
+                                      const saturation_factor = 1 - Math.exp(-product_lambda * time_s);
+                                      const activity_Bq = num_target_atoms * cross_section_cm2 * flux_n_cm2_s * saturation_factor;
+                                      if (activity_Bq > 1e-3) { activationProducts.push({ product: productData, targetElement: component.element, activity_Bq: activity_Bq, activity_Ci: activity_Bq / 3.7e10 }); }
+                                  }
+                                  activationProducts.sort((a, b) => b.activity_Bq - a.activity_Bq);
+                                  setResult(activationProducts);
+                              } catch (e) { setError(e.message); setResult(null); }
+                          }, [material, totalMass, massUnit, neutronFlux, irradiationTime, timeUnit]);
+                          return (
+                              <div className="space-y-4">
+                                  <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                                      <div><label className="block text-sm font-medium">Composite Material</label><select value={material} onChange={e => setMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(COMPOSITE_MATERIALS_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                                      <div><label className="block text-sm font-medium">Total Mass of Material</label><div className="flex"><input type="number" value={totalMass} onChange={e => setTotalMass(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                      <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} placeholder="e.g., 1e12" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                      <div><label className="block text-sm font-medium">Irradiation Time</label><div className="flex"><input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                  </div>
+                                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                  {result && (<div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in"><h3 className="text-lg font-bold text-center text-slate-700 dark:text-slate-200 mb-2">Principal Activation Products</h3><div className="space-y-2">{result.length > 0 ? result.map(p => (<div key={p.product.symbol} className="grid grid-cols-3 items-center text-sm"><span className="font-semibold text-sky-600 dark:text-sky-400">{p.product.name}</span><span className="text-xs text-center text-slate-500 dark:text-slate-400">(from {p.targetElement})</span><span className="font-mono text-right">{p.activity_Ci.toExponential(2)} Ci</span></div>)) : <p className="text-center text-sm text-slate-500 dark:text-slate-400">No significant activation products found with available data.</p>}</div><p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3 text-center">Note: Results based on typical compositions and available data. Actual activation may vary.</p></div>)}
+                              </div>
+                          );
+                      };
+                      
+                      const NeutronShieldingCalculator = () => {
+                          const [neutronType, setNeutronType] = React.useState('fast');
+                          const [initialFlux, setInitialFlux] = React.useState('1e6');
+                          const [shieldMaterial, setShieldMaterial] = React.useState('Polyethylene');
+                          const [shieldThickness, setShieldThickness] = React.useState('10');
+                          const [thicknessUnit, setThicknessUnit] = React.useState('cm');
+                          const [result, setResult] = React.useState(null);
+                          const [error, setError] = React.useState('');
+                          const thicknessFactors_cm = { 'mm': 0.1, 'cm': 1, 'in': 2.54, 'ft': 30.48 };
+                          const currentShieldingData = neutronType === 'fast' ? FAST_NEUTRON_SHIELDING_DATA : THERMAL_NEUTRON_SHIELDING_DATA;
+                          React.useEffect(() => {
+                              if (!Object.keys(currentShieldingData).includes(shieldMaterial)) {
+                                  setShieldMaterial(Object.keys(currentShieldingData)[0]);
+                              }
+                          }, [neutronType, currentShieldingData, shieldMaterial]);
+                          React.useEffect(() => {
+                              try {
+                                  setError('');
+                                  const flux_val = parseFloat(initialFlux);
+                                  const thickness_val = parseFloat(shieldThickness);
+                                  const hvl_cm = currentShieldingData[shieldMaterial].hvl_cm;
+                                  if (isNaN(flux_val) || isNaN(thickness_val) || flux_val < 0 || thickness_val < 0 || !hvl_cm) { if(initialFlux && shieldThickness) setError("Please enter valid positive numbers for inputs."); setResult(null); return; }
+                                  const thickness_cm = thickness_val * thicknessFactors_cm[thicknessUnit];
+                                  const final_flux = flux_val * Math.pow(0.5, thickness_cm / hvl_cm);
+                                  const FLUX_TO_DOSE_RATE_FACTOR = neutronType === 'fast' ? ((1 / 29e6) * 1000 * 3600) : ((1 / 980e6) * 1000 * 3600);
+                                  const initial_dose_rate_mrem_hr = flux_val * FLUX_TO_DOSE_RATE_FACTOR;
+                                  const final_dose_rate_mrem_hr = final_flux * FLUX_TO_DOSE_RATE_FACTOR;
+                                  setResult({ initialFlux: flux_val.toExponential(3), finalFlux: final_flux.toExponential(3), initialDose: formatSensibleUnit(initial_dose_rate_mrem_hr, 'doseRate'), finalDose: formatSensibleUnit(final_dose_rate_mrem_hr, 'doseRate'), });
+                              } catch(e) { setError("Calculation error."); setResult(null); }
+                          }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, neutronType, currentShieldingData]);
+                          return (
+                              <div className="space-y-4">
+                                  <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                                      <div><label className="block text-sm font-medium">Neutron Type</label><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setNeutronType('fast')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${neutronType === 'fast' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fast</button><button onClick={() => setNeutronType('thermal')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${neutronType === 'thermal' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Thermal</button></div></div>
+                                      <div><label className="block text-sm font-medium">Initial Neutron Flux (n/cm²·s)</label><input type="text" value={initialFlux} onChange={e => setInitialFlux(e.target.value)} placeholder="e.g., 1e6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                      <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(currentShieldingData).map(m => <option key={m} value={m}>{m} (HVL: {currentShieldingData[m].hvl_cm} cm)</option>)}</select></div>
+                                      <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(thicknessFactors_cm).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                  </div>
+                                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                                  {result && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2 animate-fade-in"><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initialDose.value} {result.initialDose.unit}</p><p className="text-xs font-mono">({result.initialFlux} n/cm²·s)</p></div><div className="font-bold text-2xl">↓</div><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.finalDose.value} {result.finalDose.unit}</p><p className="text-xs font-mono">({result.finalFlux} n/cm²·s)</p></div></div>)}
+                              </div>
+                          );
+                      };
+
+                      const NeutronCalculator = () => {
+                          const [activeTab, setActiveTab] = React.useState('fluenceDose');
+                          return (
+                              <div className="p-4 animate-fade-in">
+                                  <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Neutron Tools</h2>
+                                      <div className="grid grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                                          <button onClick={() => setActiveTab('fluenceDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'fluenceDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence</button>
+                                          <button onClick={() => setActiveTab('activation')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'activation' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Activation</button>
+                                          <button onClick={() => setActiveTab('composite')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'composite' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Composite</button>
+                                          <button onClick={() => setActiveTab('shielding')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'shielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Shielding</button>
+                                      </div>
+                                      {activeTab === 'fluenceDose' && <FluenceDoseConverter />}
+                                      {activeTab === 'activation' && <ActivationCalculator />}
+                                      {activeTab === 'composite' && <CompositeActivationCalculator />}
+                                      {activeTab === 'shielding' && <NeutronShieldingCalculator />}
+                                  </div>
+                              </div>
+                          );
+                      };
+
                       /**
                        * @description A unified calculator for determining detection limits for both
                        * MARSSIM-compliant static counts and scanning surveys.
@@ -6069,10 +6388,12 @@ React.useEffect(() => {
 
                           const MDACalculator = () => {
 
-// --- State to toggle between the two calculator modes ---
+                      // --- State to toggle between the two calculator modes ---
+                      
                       const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || 'static');
 
                       // --- State for Static MDA ---
+                      
                       const [backgroundCounts, setBackgroundCounts] = React.useState(() => localStorage.getItem('mda_backgroundCounts') || '1000');
                       const [backgroundTime, setBackgroundTime] = React.useState(() => localStorage.getItem('mda_backgroundTime') || '10');
                       const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
