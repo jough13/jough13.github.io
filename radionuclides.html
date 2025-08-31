@@ -476,8 +476,8 @@
              { name: 'Protactinium-233', symbol: 'Pa-233', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.571 MeV (max)'], gamma: ['0.312 MeV'], alpha: [] }, avgBetaEnergy: '0.190 MeV', halfLife: '27.0 days', decayConstant: '0.0257 day⁻¹', specificActivity: '7.5 x 10^14 Bq/g', parent: 'Thorium-233 (β)', daughter: 'Uranium-233', commonUses: ['Intermediate in Th-232 to U-233 fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An important intermediate in the process of breeding U-233 fuel from Thorium-232.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 0.7, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 100, ingestion: 200 }, DAC: { inhalation_W: 1e-7, inhalation_Y: 6e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             
              { name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
-{ name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
 
              { name: 'Radium-220', symbol: 'Ra-220', emissionType: ['Alpha'], emissionEnergies: { alpha: ['6.818 MeV'], beta: [], gamma: [] }, halfLife: '27.4 seconds', decayConstant: '0.0253 s⁻¹', specificActivity: '1.8 x 10^18 Bq/g', parent: 'Thorium-224', daughter: 'Radon-216 (α)', commonUses: ['Intermediate in Thorium-232 decay series'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
@@ -2520,12 +2520,13 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                               <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
                              <div>
                                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
-                                 <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-                                     {nuclide.dosimetry.ALI.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
-                                     {nuclide.dosimetry.ALI.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
-                                     {nuclide.dosimetry.ALI.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
-                                     {nuclide.dosimetry.ALI.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
-                                 </ul>
+
+<ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+    {nuclide.dosimetry.ALI?.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
+    {nuclide.dosimetry.ALI?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
+    {nuclide.dosimetry.ALI?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
+    {nuclide.dosimetry.ALI?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
+</ul>
                              </div>
                          </div>
                          <div className="flex items-start py-2">
@@ -2959,6 +2960,15 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [result, setResult] = React.useState('');
          const [error, setError] = React.useState('');
          
+         // ADDED: Function to clear all inputs and results
+         const handleClearInputs = () => {
+             setValue('');
+             setFromUnit('Gy');
+             setToUnit('rad');
+             setResult('');
+             setError('');
+         };
+
          const units = {
          'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'],
          'Radiation Dose': ['mrem', 'rem', 'µSv', 'mSv', 'Sv', 'rad', 'cGy', 'Gy', 'R'],
@@ -2969,8 +2979,6 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          'Area': ['cm²', 'm²', 'in²', 'ft²', 'barn'],
          'Mass': ['µg', 'mg', 'g', 'kg', 'oz', 'lb'],
          };
-         
-         // Corrected factors object with a single base unit for each category
          
          const factors = {
          // Base units: dose(rem), doseRate(mrem/hr), activity(Bq)
@@ -3061,8 +3069,6 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
              return;
          }
          
-         // The conversion is now simpler: just multiply by the ratio of factors
-         
          const convertedVal = val * (from.factor / to.factor);
          setError('');
          setResult(convertedVal.toPrecision(4));
@@ -3096,7 +3102,13 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          return (
          <div className="p-4 animate-fade-in">
              <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Unit Converter</h2>
+                {/* ADDED: A flex container for the header and the new button */}
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Unit Converter</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                    </button>
+                </div>
                  <div className="space-y-4">
                      <div>
                          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Value</label>
@@ -3425,9 +3437,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          );
          };
          
-         const OperationalHPCalculators = ({ radionuclides }) => {
-         // -- Sub-Component Definitions --
-         
+// -- Sub-Component Definitions moved outside --
+
+// -- Sub-Component Definitions moved outside --
          const StaticSurveyCalculator = ({ radionuclides }) => {
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
          const [surveyData, setSurveyData] = React.useState('');
@@ -3440,6 +3452,17 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
          
+         // ADDED: Function to clear all inputs for this calculator
+         const handleClearInputs = () => {
+             setNuclideSymbol('');
+             setSurveyData('');
+             setAvgLimit('');
+             setMaxLimit('');
+             setUnit('dpm/100cm²');
+             setResult(null);
+             setError('');
+         };
+
          // Auto-populate limits when a nuclide is selected
          React.useEffect(() => {
          if (selectedNuclide) {
@@ -3469,38 +3492,44 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          return (
          <div className="space-y-4 max-w-md mx-auto">
-         <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
-         <div>
-         <label className="block text-sm font-medium">Survey Data</label>
-         <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-         </div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         <div><label className="block text-sm font-medium">Max Limit</label><input type="number" value={maxLimit} onChange={e => setMaxLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         </div>
-         <div><label className="block text-sm font-medium">Units</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g., mrem/hr, dpm/100cm²" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-         {result && (
-         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-         <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
-         <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-         <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-           <p className="text-xs font-bold">Average</p>
-           <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
-           <p className="text-sm">{result.average.toPrecision(3)}</p>
-         </div>
-         <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-           <p className="text-xs font-bold">Maximum</p>
-           <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
-           <p className="text-sm">{result.max.toPrecision(3)}</p>
-         </div>
-         </div>
-         </div>
-         )}
-         </div>
+            {/* ADDED: The "Clear Inputs" button */}
+            <div className="text-right -mb-2">
+                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                </button>
+            </div>
+            <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
+            <div>
+            <label className="block text-sm font-medium">Survey Data</label>
+            <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><label className="block text-sm font-medium">Max Limit</label><input type="number" value={maxLimit} onChange={e => setMaxLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            <div><label className="block text-sm font-medium">Units</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g., mrem/hr, dpm/100cm²" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
+            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
+            <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+              <p className="text-xs font-bold">Average</p>
+              <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
+              <p className="text-sm">{result.average.toPrecision(3)}</p>
+            </div>
+            <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+              <p className="text-xs font-bold">Maximum</p>
+              <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
+              <p className="text-sm">{result.max.toPrecision(3)}</p>
+            </div>
+            </div>
+            </div>
+            )}
+            </div>
          );
          };
-         
+                  
          const ContaminationSurveyCalculator = ({ radionuclides }) => {
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
          const [grossCpm, setGrossCpm] = React.useState('1500');
@@ -3512,6 +3541,17 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+
+         // ADDED: Function to clear all inputs for this calculator
+         const handleClearInputs = () => {
+             setNuclideSymbol('');
+             setGrossCpm('1500');
+             setBackgroundCpm('50');
+             setInstrumentEff('25');
+             setRemovableFraction('0.1');
+             setResult(null);
+             setError('');
+         };
          
          React.useEffect(() => {
          try {
@@ -3537,36 +3577,42 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          return (
          <div className="space-y-4 max-w-md mx-auto">
-         <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide to find limits..."/>}</div></div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         </div>
-         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-         {result && (
-         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-         <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
-         <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
-         <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-         <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-           <p className="text-xs font-bold">Reg. Guide 1.86</p>
-           <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
-           <p className="text-xs">(Limit: {result.rgLimit})</p>
-         </div>
-         <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-           <p className="text-xs font-bold">ANSI N13.12</p>
-           <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
-           <p className="text-xs">(Limit: {result.ansiLimit})</p>
-         </div>
-         </div>
-         </div>
-         )}
-         </div>
+            {/* ADDED: The "Clear Inputs" button */}
+            <div className="text-right -mb-2">
+                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                </button>
+            </div>
+            <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide to find limits..."/>}</div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
+            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
+            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
+            <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+              <p className="text-xs font-bold">Reg. Guide 1.86</p>
+              <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
+              <p className="text-xs">(Limit: {result.rgLimit})</p>
+            </div>
+            <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+              <p className="text-xs font-bold">ANSI N13.12</p>
+              <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
+              <p className="text-xs">(Limit: {result.ansiLimit})</p>
+            </div>
+            </div>
+            </div>
+            )}
+            </div>
          );
          };
-         
+                  
          const AirborneCalculator = ({ radionuclides }) => {
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
          const [releaseActivity, setReleaseActivity] = React.useState('1');
@@ -3578,6 +3624,18 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [error, setError] = React.useState('');
          const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
+
+         // ADDED: Function to clear all inputs for this calculator
+         const handleClearInputs = () => {
+             setNuclideSymbol('');
+             setReleaseActivity('1');
+             setActivityUnit('mCi');
+             setRoomVolume('100');
+             setVolumeUnit('m³');
+             setVentilationRate('2');
+             setResult(null);
+             setError('');
+         };
          
          React.useEffect(() => {
          if (!selectedNuclide) { setResult(null); return; }
@@ -3598,24 +3656,31 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          return (
          <div className="space-y-4 max-w-md mx-auto">
-         <div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide with a DAC..."/>}</div></div>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>pCi</option><option>nCi</option><option>µCi</option><option>mCi</option><option>Ci</option></select></div></div>
-         <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
-         <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         </div>
-         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-         {result && (
-         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-         <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
-         <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
-         <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
-         </div>
-         )}
-         </div>
+            {/* ADDED: The "Clear Inputs" button */}
+            <div className="text-right -mb-2">
+                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                </button>
+            </div>
+            <div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide with a DAC..."/>}</div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>pCi</option><option>nCi</option><option>µCi</option><option>mCi</option><option>Ci</option></select></div></div>
+            <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
+            <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+            <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
+            <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
+            <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
+            </div>
+            )}
+            </div>
          );
          };
-         
+
+         const OperationalHPCalculators = ({ radionuclides }) => {
          // -- Main Component Logic --
          
          const calculatorViews = {
@@ -3649,7 +3714,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          </div>
          );
          };
-         
+
          /**
          * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
          * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
@@ -4271,7 +4336,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [chartData, setChartData] = React.useState(null);
          const [error, setError] = React.useState('');
          const [isLoading, setIsLoading] = React.useState(false);
-         
+         // ADDED: State for the log scale toggle, defaulting to your settings
+         const [useLogScale, setUseLogScale] = React.useState(settings.chartScale === 'Logarithmic');
+
          const timeUnits = longTimeUnits_ordered;
          const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
          
@@ -4336,7 +4403,6 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
              <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                  <div className="flex justify-between items-center mb-4">
                      <h2 className="text-xl font-bold text-slate-800 dark:text-white">Decay Series Calculator (Bateman)</h2>
-                      {/* <-- ADDED THIS BUTTON --> */}
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
                      </button>
@@ -4387,7 +4453,17 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                      </div>
                      <div className="min-h-[300px]">
                          {chartData ? (
-                             <SeriesDecayChart chartData={chartData} />
+                             <>
+                                {/* ADDED: The log scale checkbox */}
+                                <div className="flex justify-end mb-2">
+                                     <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                         <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                         Use Logarithmic Scale
+                                     </label>
+                                 </div>
+                                {/* MODIFIED: Pass the useLogScale prop to the chart component */}
+                                <SeriesDecayChart chartData={chartData} useLogScale={useLogScale} />
+                             </>
                          ) : (
                              <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg">
                                  <p className="text-slate-500">Chart will be displayed here.</p>
@@ -4406,14 +4482,11 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
           * @param {{chartData: object}} props - The data object for the chart, including labels and datasets.
           */
          
-         	const SeriesDecayChart = ({ chartData }) => {
+         	 const SeriesDecayChart = ({ chartData, useLogScale }) => { // MODIFIED: Added useLogScale prop
              const chartRef = React.useRef(null);
              const chartInstance = React.useRef(null);
          
              React.useEffect(() => {
-         
-                 // Destroy the previous chart instance before creating a new one to prevent memory leaks.
-         
                  if (chartInstance.current) {
                      chartInstance.current.destroy();
                  }
@@ -4436,7 +4509,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                                      text: 'Decay Series Activity Over Time'
                                  },
                                  tooltip: {
-                                     mode: 'index', // Show tooltips for all datasets at a given x-index.
+                                     mode: 'index',
                                      intersect: false,
                                  }
                              },
@@ -4445,53 +4518,49 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                                      title: { display: true, text: `Time (${chartData.timeUnit})` },
                                      ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 20 }
                                  },
+                                 // MODIFIED: This whole 'y' section is now dynamic
                                  y: {
-                                     type: 'logarithmic', // Log scale is essential for viewing wide ranges of activity.
-                                     title: { display: true, text: 'Activity (Log Scale)' },
-                                     beginAtZero: true,
-         
-                                     // Set a very small minimum to prevent log(0) errors, but only if data exists.
-         
-                                     min: Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0,
+                                     type: useLogScale ? 'logarithmic' : 'linear',
+                                     title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
+                                     beginAtZero: !useLogScale,
+                                     min: useLogScale ? (Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0) : undefined,
                                  }
                              }
                          }
                      });
                  }
          
-                 // Cleanup function to destroy the chart when the component unmounts.
-         
                  return () => {
                      if (chartInstance.current) {
                          chartInstance.current.destroy();
                      }
                  };
-             }, [chartData]); // Re-render the chart whenever chartData changes.
+             }, [chartData, useLogScale]); // MODIFIED: Added useLogScale dependency
          
              const handleExport = () => {
-    if (chartInstance.current) {
-        const link = document.createElement('a');
-        link.href = chartInstance.current.toBase64Image();
-        link.download = 'decay-chart.png';
-        link.click();
-    }
-};
+                if (chartInstance.current) {
+                    const link = document.createElement('a');
+                    link.href = chartInstance.current.toBase64Image();
+                    link.download = 'decay-chart.png';
+                    link.click();
+                }
+            };
 
-return (
-    <div className="mt-4">
-        <div className="h-64">
-            <canvas ref={chartRef}></canvas>
-        </div>
-        <div className="text-center mt-2">
-            <button
-                onClick={handleExport}
-                className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
-            >
-                Export as PNG
-            </button>
-        </div>
-    </div>
-);
+            return (
+                <div className="mt-4">
+                    <div className="h-64">
+                        <canvas ref={chartRef}></canvas>
+                    </div>
+                    <div className="text-center mt-2">
+                        <button
+                            onClick={handleExport}
+                            className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
+                        >
+                            Export as PNG
+                        </button>
+                    </div>
+                </div>
+            );
          };
          
          /**
@@ -5970,18 +6039,45 @@ return (
                              const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
                              const doseRate_rad_hr = 5.35 * concentration_uCi_per_cm2 * E_avg;
                              const doseRate_mrem_hr = doseRate_rad_hr * 1000;
-                             setResult({ type: 'beta_skin', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max });
+                             const newResult = { type: 'beta_skin', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max }; // Store result first
+                             setResult(newResult);
+                             // ADDED: History tracking for Beta Skin Dose
+                             addHistory({
+                                 id: Date.now(),
+                                 type: 'Beta Skin Dose',
+                                 inputs: `${activity} ${activityUnit}`,
+                                 result: `${newResult.dose.value} ${newResult.dose.unit}`,
+                                 view: VIEWS.DOSE_RATE
+                             });
                          } else {
                              const activityInCi = activityValue * activityFactorsCi[activityUnit]; const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
                              let range_m; if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } else { const range_mg_cm2 = 407 * Math.pow(E_max, 1.38); range_m = (range_mg_cm2 / 1.225) / 100; }
                              const range_cm = range_m * 100; let doseRate_mrem_hr = 0; if (distance_cm < range_cm) { const doseRate_rad_hr = (400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2); doseRate_mrem_hr = doseRate_rad_hr * 1000; }
-                             setResult({ type: 'beta_air', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max, isBeyondRange: distance_cm >= range_cm, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2) });
+                             const newResult = { type: 'beta_air', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max, isBeyondRange: distance_cm >= range_cm, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2) }; // Store result first
+                             setResult(newResult);
+                             // ADDED: History tracking for Beta Air Dose
+                             addHistory({
+                                 id: Date.now(),
+                                 type: 'Beta Air Dose',
+                                 inputs: `${activity} ${activityUnit} at ${distance} ${distanceUnit}`,
+                                 result: `${newResult.dose.value} ${newResult.dose.unit}`,
+                                 view: VIEWS.DOSE_RATE
+                             });
                          }
                      } else { // Bremsstrahlung
                          const activityInCi = activityValue * activityFactorsCi[activityUnit]; const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
                          const Z = SHIELDING_MATERIALS[shieldMaterial].Z; const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
                          const doseRate_rad_hr = doseRate_rad_hr_at_1m / Math.pow(distanceInM, 2); const doseRate_mrem_hr = doseRate_rad_hr * 1000; const f = 3.5e-4 * Z * E_max;
-                         setResult({ type: 'bremsstrahlung', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), bremsstrahlungFraction: (f * 100).toPrecision(2) });
+                         const newResult = { type: 'bremsstrahlung', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), bremsstrahlungFraction: (f * 100).toPrecision(2) }; // Store result first
+                         setResult(newResult);
+                         // ADDED: History tracking for Bremsstrahlung
+                         addHistory({
+                             id: Date.now(),
+                             type: 'Bremsstrahlung Dose',
+                             inputs: `${activity} ${activityUnit} behind ${shieldMaterial}`,
+                             result: `${newResult.dose.value} ${newResult.dose.unit}`,
+                             view: VIEWS.DOSE_RATE
+                         });
                      }
                      break;
                  }
@@ -5990,7 +6086,17 @@ return (
                      const intake = parseFloat(intakeAmount); if (isNaN(intake) || intake < 0) throw new Error('Invalid intake amount.');
                      const intakeInMuCi = intake * intakeUnitFactors[intakeUnit]; let aliKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
                      const ALI = selectedNuclide.dosimetry.ALI[aliKey]; if (!ALI) throw new Error(`ALI value for ${aliKey} not found for this nuclide.`);
-                     const cede_mrem = (intakeInMuCi / ALI) * 5000; setResult({ type: 'internal', dose: formatSensibleUnit(cede_mrem, 'dose') });
+                     const cede_mrem = (intakeInMuCi / ALI) * 5000;
+                     const newResult = { type: 'internal', dose: formatSensibleUnit(cede_mrem, 'dose') }; // Store result first
+                     setResult(newResult);
+                     // ADDED: History tracking for Internal Dose
+                     addHistory({
+                         id: Date.now(),
+                         type: 'Internal Dose (CEDE)',
+                         inputs: `${intakeAmount} ${intakeUnit} via ${intakeRoute}`,
+                         result: `${newResult.dose.value} ${newResult.dose.unit}`,
+                         view: VIEWS.DOSE_RATE
+                     });
                      break;
                  }
                  default: throw new Error("Calculation mode not implemented.");
@@ -6314,7 +6420,8 @@ return (
          * @description A calculator for determining allowable stay time and total dose received.
          * The dose rate can be calculated from a specific source or entered manually.
          */
-         const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
+
+        const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
          const INPUT_MODE_SOURCE = 'fromSource';
          const INPUT_MODE_MANUAL = 'manualRate';
          
@@ -6370,7 +6477,6 @@ return (
          }
          }, [preselectedNuclide, gammaNuclides]);
          
-         // This is the main calculation logic, wrapped in its own function
          const handleCalculate = () => {
          let doseRate_mrem_hr = 0;
          try {
@@ -6406,7 +6512,6 @@ return (
              const isSafe = totalDoseReceived <= limit;
              setResult({ doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), stayTime: `${minutes} min ${seconds} sec`, totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'), isSafe: isSafe });
              
-             // Add the successful calculation to the history
              addHistory({
                  id: Date.now(),
                  type: 'Stay Time',
@@ -6420,7 +6525,6 @@ return (
          }
          };
          
-         // This useEffect now calls the handleCalculate function
          React.useEffect(() => {
          setResult(null);
          setError('');
@@ -6428,26 +6532,33 @@ return (
          handleCalculate();
          }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
          
+         // ADDED: This function to clear all inputs
          const handleClearInputs = () => {
-         setInputMode(INPUT_MODE_SOURCE);
-         setNuclideSymbol('');
-         setActivity('1');
-         setActivityUnit(settings.activity);
-         setDistance('1');
-         setDistanceUnit(settings.distance);
-         setManualDoseRate('10');
-         setManualDoseRateUnit(settings.doseRate);
-         setDoseLimit('2');
-         setPlannedTime('10');
-         setPlannedTimeUnit('minutes');
-         setError('');
-         setResult(null);
+             setInputMode(INPUT_MODE_SOURCE);
+             setNuclideSymbol('');
+             setActivity('1');
+             setActivityUnit(settings.activity);
+             setDistance('1');
+             setDistanceUnit(settings.distance);
+             setManualDoseRate('10');
+             setManualDoseRateUnit(settings.doseRate);
+             setDoseLimit('2');
+             setPlannedTime('10');
+             setPlannedTimeUnit('minutes');
+             setError('');
+             setResult(null);
          };
          
          return (
          <div className="p-4 animate-fade-in">
              <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Stay Time & Dose Calculator</h2>
+                {/* MODIFIED: This header section to include the new button */}
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time & Dose Calculator</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                    </button>
+                </div>
                  <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
                      <button onClick={() => setInputMode(INPUT_MODE_SOURCE)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_SOURCE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Calculate from Source</button>
                      <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Enter Dose Rate</button>
@@ -6471,9 +6582,6 @@ return (
                      <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                          <div className="flex justify-between items-center">
                              <label className="block text-sm font-semibold">Planning</label>
-                             <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                                 <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                             </button>
                          </div>
                          <div className="grid grid-cols-2 gap-4">
                              <div><label className="block text-xs font-medium">Dose Limit (mrem)</label><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
