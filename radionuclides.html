@@ -189,6 +189,9 @@
       <!--The root element where the React application will be mounted.-->
       <div id="root"></div>
       <div id="back-to-top-root"></div>
+
+      <div id="modal-root"></div>
+
       <!--The primary dataset for all radionuclides.
          Keeping this in a separate script tag makes the main application logic cleaner and easier to manage.
          Each object conforms to a consistent structure for properties like name, symbol, halfLife, etc.-->
@@ -242,10 +245,10 @@
              { name: 'Bismuth-212', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-212', emissionEnergies: { beta: ['2.25 MeV (max)'], alpha: ['6.09 MeV'], gamma: ['0.727 MeV', '1.621 MeV'] }, avgBetaEnergy: '0.750 MeV', halfLife: '60.55 minutes', decayConstant: '0.0114 min⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Lead-212', daughter: 'Polonium-212 (β-) or Thallium-208 (α)', commonUses: ['Research in targeted alpha/beta therapy'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A short-lived nuclide in the Th-232 decay series, notable for its high-energy gamma daughter (Tl-208).', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.2, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 90, ingestion: 70 }, DAC: { inhalation_D: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Bismuth-213', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-213', emissionEnergies: { beta: ['1.42 MeV (max)'], alpha: ['5.87 MeV'], gamma: ['0.440 MeV'] }, avgBetaEnergy: '0.473 MeV', halfLife: '45.6 minutes', decayConstant: '0.0152 min⁻¹', specificActivity: '1.09 x 10^17 Bq/g', parent: 'Actinium-225', daughter: 'Polonium-213 (β) or Thallium-209 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for various cancers.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived daughter of Ac-225, used in targeted alpha therapy research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.6, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Bismuth-214', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-214', emissionEnergies: { beta: ['3.27 MeV (max)'], gamma: ['0.609 MeV', '1.120 MeV', '1.764 MeV'], alpha: ['5.62 MeV'] }, avgBetaEnergy: '1.090 MeV', halfLife: '19.9 minutes', decayConstant: '0.0348 min⁻¹', specificActivity: '3.6 x 10^17 Bq/g', parent: 'Lead-214', daughter: 'Polonium-214 (β-) / Thallium-210 (α)', commonUses: ['Source of natural background gamma radiation (from Radon decay products)'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A prominent gamma-emitter in the Radon-222 decay chain, contributing to natural background radiation.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.2, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Bismuth-213', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-213', emissionEnergies: { beta: ['1.42 MeV (max)'], alpha: ['5.87 MeV'], gamma: ['0.440 MeV'] }, avgBetaEnergy: '0.473 MeV', halfLife: '45.6 minutes', decayConstant: '0.0152 min⁻¹', specificActivity: '1.09 x 10^17 Bq/g', parent: 'Actinium-225', daughter: 'Polonium-213 (β) or Thallium-209 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for various cancers.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived daughter of Ac-225, used in targeted alpha therapy research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 800, ingestion: 600 }, DAC: { inhalation_D: 4e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
+             { name: 'Bismuth-214', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-214', emissionEnergies: { beta: ['3.27 MeV (max)'], gamma: ['0.609 MeV', '1.120 MeV', '1.764 MeV'], alpha: ['5.62 MeV'] }, avgBetaEnergy: '1.090 MeV', halfLife: '19.9 minutes', decayConstant: '0.0348 min⁻¹', specificActivity: '3.6 x 10^17 Bq/g', parent: 'Lead-214', daughter: 'Polonium-214 (β-) / Thallium-210 (α)', commonUses: ['Source of natural background gamma radiation (from Radon decay products)'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A prominent gamma-emitter in the Radon-222 decay chain, contributing to natural background radiation.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 400, ingestion: 200 }, DAC: { inhalation_D: 2e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
              { name: 'Bromine-77', symbol: 'Br-77', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.239 MeV', '0.297 MeV'], alpha: [] }, halfLife: '57.04 hours', decayConstant: '0.0121 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Krypton-77', daughter: 'Selenium-77 (stable)', commonUses: ['PET imaging research', 'Antibody labeling'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used for specialized medical research applications like antibody labeling.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 3, A2: 3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2000, ingestion: 1000 }, DAC: { inhalation_D: 8e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -292,8 +295,7 @@
              { name: 'Copper-64', symbol: 'Cu-64', emissionType: ['Positron Emission', 'Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.653 MeV (β+ max)', '0.579 MeV (β- max)'], gamma: ['1.345 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.193 MeV (β-)', halfLife: '12.7 hours', decayConstant: '0.0546 hour⁻¹', specificActivity: '1.74 x 10^17 Bq/g', parent: 'Nickel-64 (p,n)', daughter: 'Nickel-64 (stable) or Zinc-64 (stable)', commonUses: ['PET imaging (various applications)', 'Targeted radionuclide therapy research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A versatile medical isotope for PET imaging and therapy research, but not as widespread as F-18.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 300, ingestion: 2000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 2e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+{ name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Curium-244', symbol: 'Cm-244', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.805 MeV'], gamma: ['0.043 MeV'], beta: [] }, halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', specificActivity: '3.0 x 10^12 Bq/g', parent: 'Americium-244 (β-)', daughter: 'Plutonium-240', commonUses: ['Alpha particle X-ray spectrometers (APXS) for space exploration', 'Neutron sources'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'Used in specialized applications like space exploration instruments due to its alpha emissions.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 0.002, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 0.2, inhalation_Y: 0.3, ingestion: 3 }, DAC: { inhalation_W: 1e-10, inhalation_Y: 1e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
@@ -327,8 +329,8 @@
          { name: 'Germanium-68', symbol: 'Ge-68', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, daughterEmissions: { from: 'Ga-68', beta: ['1.90 MeV (max)'], gamma: ['0.511 MeV (annihilation)'] }, halfLife: '270.95 days', decayConstant: '0.00256 day⁻¹', specificActivity: '2.8 x 10^14 Bq/g', parent: 'Arsenic-68', daughter: 'Gallium-68 (EC, β+)', commonUses: ['Generator for Ga-68 (PET imaging)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'The long-lived parent used in generators to produce the short-lived PET isotope Ga-68.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 20, ingestion: 2000 }, DAC: { inhalation_D: 7e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Gold-195m', symbol: 'Au-195m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.262 MeV'], alpha: [] }, halfLife: '30.5 seconds', decayConstant: '0.0227 s⁻¹', specificActivity: '1.5 x 10^18 Bq/g', parent: 'Mercury-195m', daughter: 'Gold-195', commonUses: ['Cardiac blood flow imaging (historical)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used historically in medicine but has been replaced by other isotopes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Gold-195m', symbol: 'Au-195m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.262 MeV'], alpha: [] }, halfLife: '30.5 seconds', decayConstant: '0.0227 s⁻¹', specificActivity: '1.5 x 10^18 Bq/g', parent: 'Mercury-195m', daughter: 'Gold-195', commonUses: ['Cardiac blood flow imaging (historical)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used historically in medicine but has been replaced by other isotopes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 10000, ingestion: 10000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
              { name: 'Gold-198', symbol: 'Au-198', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.961 MeV (max)'], gamma: ['0.412 MeV'], alpha: [] }, avgBetaEnergy: '0.320 MeV', halfLife: '2.695 days', decayConstant: '0.257 day⁻¹', specificActivity: '9.3 x 10^15 Bq/g', parent: 'Gold-197 (n,γ)', daughter: 'Mercury-198 (stable)', commonUses: ['Radiotherapy (brachytherapy)', 'Tracers', 'Industrial applications'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'Used in specific brachytherapy applications and as an industrial tracer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.23 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 20, ingestion: 200 }, DAC: { inhalation_W: 9e-8, inhalation_Y: 1e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -358,18 +360,17 @@
              { name: 'Iridium-192', symbol: 'Ir-192', emissionType: ['Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.672 MeV (max)'], gamma: ['0.317 MeV', '0.468 MeV'], alpha: [] }, avgBetaEnergy: '0.224 MeV', halfLife: '73.83 days', decayConstant: '0.00939 day⁻¹', gammaConstant: '0.48 R·m²/hr·Ci', specificActivity: '3.41 x 10^14 Bq/g', parent: 'Iridium-191 (n,γ)', daughter: 'Platinum-192 (stable) / Osmium-192 (stable)', commonUses: ['High-dose-rate (HDR) brachytherapy', 'Industrial gamma radiography'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A primary source for industrial radiography and high-dose-rate (HDR) brachytherapy cancer treatment.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 1, A2: 0.5, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_Y: 8, ingestion: 60 }, DAC: { inhalation_Y: 4e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Iron-52', symbol: 'Fe-52', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.804 MeV (max)'], gamma: ['0.169 MeV'], alpha: [] }, avgBetaEnergy: '0.268 MeV', halfLife: '8.275 hours', decayConstant: '0.0838 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Manganese-52m', daughter: 'Manganese-52', commonUses: ['PET imaging research (bone marrow imaging, iron metabolism)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived PET isotope used in specialized research to study iron metabolism and bone marrow.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.3, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Iron-52', symbol: 'Fe-52', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.804 MeV (max)'], gamma: ['0.169 MeV'], alpha: [] }, avgBetaEnergy: '0.268 MeV', halfLife: '8.275 hours', decayConstant: '0.0838 hour⁻¹', specificActivity: '1.2 x 10^17 Bq/g', parent: 'Manganese-52m', daughter: 'Manganese-52', commonUses: ['PET imaging research (bone marrow imaging, iron metabolism)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived PET isotope used in specialized research to study iron metabolism and bone marrow.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 400, inhalation_W: 200, ingestion: 500 }, DAC: { inhalation_D: 2e-7, inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Iron-55', symbol: 'Fe-55', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.0059 MeV (X-ray)'], alpha: [] }, halfLife: '2.73 years', decayConstant: '0.254 year⁻¹', specificActivity: '8.4 x 10^13 Bq/g', parent: 'Manganese-55 (p,n)', daughter: 'Manganese-55 (stable)', commonUses: ['X-ray fluorescence sources', 'Electron capture detectors', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'Used as a low-energy X-ray source for analytical techniques like X-ray fluorescence.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 800 }, DAC: { inhalation_W: 5e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Iron-59', symbol: 'Fe-59', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.475 MeV (max)'], gamma: ['1.099 MeV', '1.292 MeV'], alpha: [] }, avgBetaEnergy: '0.158 MeV', halfLife: '44.5 days', decayConstant: '0.0156 day⁻¹', specificActivity: '1.87 x 10^15 Bq/g', parent: 'Iron-58 (n,γ)', daughter: 'Cobalt-59 (stable)', commonUses: ['Red blood cell studies', 'Iron metabolism research', 'Industrial tracers'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A gamma-emitting tracer used in medical research to study iron metabolism and red blood cells.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.9, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 80 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Krypton-79', symbol: 'Kr-79', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.604 MeV (max)'], gamma: ['0.261 MeV', '0.398 MeV'], alpha: [] }, avgBetaEnergy: '0.201 MeV', halfLife: '35.04 hours', decayConstant: '0.0198 hour⁻¹', specificActivity: '1.7 x 10^16 Bq/g', parent: 'Bromine-79', daughter: 'Bromine-79 (stable)', commonUses: ['Lung ventilation studies (PET)', 'Research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used in medical research, particularly for PET-based lung ventilation studies.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 2, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Krypton-81m', symbol: 'Kr-81m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.190 MeV'], alpha: [] }, halfLife: '13.1 seconds', decayConstant: '0.0529 s⁻¹', specificActivity: '4.85 x 10^18 Bq/g', parent: 'Rubidium-81', daughter: 'Krypton-81', commonUses: ['Lung ventilation studies (very short half-life allows for repeated scans)'], category: 'Medical', commonality: 'Common', commonalityReason: 'A very short-lived gas used for lung ventilation scans, typically produced from a Rb-81 generator.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Krypton-79', symbol: 'Kr-79', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.604 MeV (max)'], gamma: ['0.261 MeV', '0.398 MeV'], alpha: [] }, avgBetaEnergy: '0.201 MeV', halfLife: '35.04 hours', decayConstant: '0.0198 hour⁻¹', specificActivity: '1.7 x 10^16 Bq/g', parent: 'Bromine-79', daughter: 'Bromine-79 (stable)', commonUses: ['Lung ventilation studies (PET)', 'Research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used in medical research, particularly for PET-based lung ventilation studies.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 20000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
+             { name: 'Krypton-81m', symbol: 'Kr-81m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.190 MeV'], alpha: [] }, halfLife: '13.1 seconds', decayConstant: '0.0529 s⁻¹', specificActivity: '4.85 x 10^18 Bq/g', parent: 'Rubidium-81', daughter: 'Krypton-81', commonUses: ['Lung ventilation studies (very short half-life allows for repeated scans)'], category: 'Medical', commonality: 'Common', commonalityReason: 'A very short-lived gas used for lung ventilation scans, typically produced from a Rb-81 generator.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 500000, ingestion: 500000 }, DAC: { inhalation_D: 2e-4 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
              { name: 'Krypton-85', symbol: 'Kr-85', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.687 MeV (max)'], gamma: ['0.514 MeV'], alpha: [] }, avgBetaEnergy: '0.229 MeV', halfLife: '10.76 years', decayConstant: '0.0644 year⁻¹', specificActivity: '1.45 x 10^13 Bq/g', parent: 'Uranium Fission', daughter: 'Rubidium-85 (stable)', commonUses: ['Atmospheric tracer', 'Industrial applications (leak detection, gauging)'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A fission product gas used in industrial applications like leak detection and thickness gauging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 40000 }, DAC: { inhalation_D: 1e-5 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -475,8 +476,9 @@
              { name: 'Protactinium-233', symbol: 'Pa-233', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.571 MeV (max)'], gamma: ['0.312 MeV'], alpha: [] }, avgBetaEnergy: '0.190 MeV', halfLife: '27.0 days', decayConstant: '0.0257 day⁻¹', specificActivity: '7.5 x 10^14 Bq/g', parent: 'Thorium-233 (β)', daughter: 'Uranium-233', commonUses: ['Intermediate in Th-232 to U-233 fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An important intermediate in the process of breeding U-233 fuel from Thorium-232.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 0.7, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 100, ingestion: 200 }, DAC: { inhalation_W: 1e-7, inhalation_Y: 6e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' },
-                 regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
+             { name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
+{ name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
+
              { name: 'Radium-220', symbol: 'Ra-220', emissionType: ['Alpha'], emissionEnergies: { alpha: ['6.818 MeV'], beta: [], gamma: [] }, halfLife: '27.4 seconds', decayConstant: '0.0253 s⁻¹', specificActivity: '1.8 x 10^18 Bq/g', parent: 'Thorium-224', daughter: 'Radon-216 (α)', commonUses: ['Intermediate in Thorium-232 decay series'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
              { name: 'Radium-223', symbol: 'Ra-223', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.71 MeV (dominant)'], beta: [], gamma: ['0.269 MeV'] }, halfLife: '11.43 days', decayConstant: '0.0606 day⁻¹', specificActivity: '1.9 x 10^15 Bq/g', parent: 'Thorium-227', daughter: 'Radon-219 (α)', commonUses: ['Alpha-emitter for targeted alpha therapy (e.g., Xofigo for prostate cancer)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A clinically approved alpha-emitter for treating bone metastases from prostate cancer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.005, unit: 'TBq' },
@@ -497,9 +499,10 @@
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Radon-221', symbol: 'Rn-221', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.19 MeV (max)'], gamma: ['0.078 MeV'], alpha: [] }, avgBetaEnergy: '0.397 MeV', halfLife: '25 minutes', decayConstant: '0.0277 min⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Francium-221', daughter: 'Francium-221', commonUses: ['Research (intermediate in artificial decay series)'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A short-lived intermediate in an artificial decay series with no practical applications.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' },
-                 regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-             { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
+                 
+                 { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' }, dosimetry: { DAC: { inhalation_D: 3e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+
+                 { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_W: 5e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Rhenium-187', symbol: 'Re-187', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.0025 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.001 MeV', halfLife: '4.33 x 10¹⁰ years', decayConstant: '1.60 x 10⁻¹¹ year⁻¹', specificActivity: '1.03 x 10^6 Bq/g', parent: 'Primordial', daughter: 'Osmium-187 (stable)', commonUses: ['Rhenium-Osmium dating (geological)', 'Neutrino mass experiments'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A very long-lived primordial nuclide used for geological dating (Re-Os system).', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' },
@@ -513,8 +516,8 @@
              { name: 'Rubidium-81', symbol: 'Rb-81', emissionType: ['Electron Capture', 'Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.05 MeV (max)'], gamma: ['0.446 MeV'], alpha: [] }, avgBetaEnergy: '0.350 MeV', daughterEmissions: { from: 'Kr-81m', gamma: ['0.190 MeV'] }, halfLife: '4.57 hours', decayConstant: '0.152 hour⁻¹', specificActivity: '1.3 x 10^17 Bq/g', parent: 'Strontium-81', daughter: 'Krypton-81m (IT) -> Krypton-81 (stable)', commonUses: ['Generator for Kr-81m (lung ventilation PET imaging)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'The parent isotope used in generators to produce the short-lived gas Kr-81m for lung scans.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 10000, ingestion: 3000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Rubidium-82', symbol: 'Rb-82', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['3.38 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '1.127 MeV', halfLife: '76 seconds', decayConstant: '0.00912 s⁻¹', specificActivity: '8.3 x 10^17 Bq/g', parent: 'Strontium-82', daughter: 'Krypton-82 (stable)', commonUses: ['Cardiac PET imaging for myocardial perfusion'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'An extremely short-lived PET isotope produced from a Sr-82 generator for cardiac perfusion imaging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.4, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Rubidium-82', symbol: 'Rb-82', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['3.38 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '1.127 MeV', halfLife: '76 seconds', decayConstant: '0.00912 s⁻¹', specificActivity: '8.3 x 10^17 Bq/g', parent: 'Strontium-82', daughter: 'Krypton-82 (stable)', commonUses: ['Cardiac PET imaging for myocardial perfusion'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'An extremely short-lived PET isotope produced from a Sr-82 generator for cardiac perfusion imaging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.4, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 10000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+ 
              { name: 'Rubidium-84', symbol: 'Rb-84', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['1.65 MeV (max)'], gamma: ['0.882 MeV'], alpha: [] }, avgBetaEnergy: '0.550 MeV', halfLife: '32.8 days', decayConstant: '0.0211 day⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Krypton-84', daughter: 'Krypton-84 (stable)', commonUses: ['Cardiac blood flow research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope used in studies of cardiac blood flow.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 200, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -527,8 +530,8 @@
              { name: 'Samarium-153', symbol: 'Sm-153', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.808 MeV (max)'], gamma: ['0.103 MeV'], alpha: [] }, avgBetaEnergy: '0.269 MeV', halfLife: '46.28 hours', decayConstant: '0.0150 hour⁻¹', specificActivity: '3.5 x 10^15 Bq/g', parent: 'Samarium-152 (n,γ)', daughter: 'Europium-153 (stable)', commonUses: ['Palliative bone pain therapy (metastatic cancer)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A clinically used therapeutic isotope for palliative treatment of bone pain from cancer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 0.6, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 300, ingestion: 800 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.490 MeV', halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research PET isotope, often explored as a "theranostic" partner to the therapeutic isotope Sc-47.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.5, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.490 MeV', halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research PET isotope, often explored as a "theranostic" partner to the therapeutic isotope Sc-47.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.5, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 500 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
              { name: 'Scandium-46', symbol: 'Sc-46', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.357 MeV (max)'], gamma: ['0.889 MeV', '1.121 MeV'], alpha: [] }, avgBetaEnergy: '0.119 MeV', halfLife: '83.79 days', decayConstant: '0.00827 day⁻¹', specificActivity: '1.24 x 10^15 Bq/g', parent: 'Calcium-46 (n,p)', daughter: 'Titanium-46 (stable)', commonUses: ['Tracer in hydrology and industrial processes', 'Calibration source'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A long-lived gamma-emitter used as a tracer in specialized industrial processes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' }, gammaConstant: '1.17 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 200 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -582,9 +585,10 @@
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Tellurium-130', symbol: 'Te-130', emissionType: ['Double Beta-minus'], emissionEnergies: { beta: ['2.528 MeV (total)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.843 MeV', halfLife: '2.5 x 10²¹ years', decayConstant: '2.77 x 10⁻²² year⁻¹', specificActivity: '1.6 x 10^-5 Bq/g', parent: 'Primordial', daughter: 'Xenon-130 (stable)', commonUses: ['Double beta decay research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An isotope with an extremely long half-life used in fundamental physics research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Terbium-161', symbol: 'Tb-161', emissionType: ['Beta-minus', 'Gamma', 'Auger electron'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.049 MeV', '0.075 MeV'], alpha: [] }, avgBetaEnergy: '0.198 MeV', halfLife: '6.89 days', decayConstant: '0.101 day⁻¹', specificActivity: '4.4 x 10^14 Bq/g', commonUses: ['Theranostics (combined therapy and diagnostics), particularly for cancer treatment research.'], parent: 'Gadolinium-160 (n,γ)', daughter: 'Dysprosium-161 (stable)', category: 'Medical', commonality: 'Rare', commonalityReason: 'A promising research isotope for targeted radionuclide therapy due to its ideal decay properties.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.6, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Thallium-201', symbol: 'Tl-201', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.167 MeV', '0.135 MeV'], alpha: [] }, halfLife: '73.1 hours', decayConstant: '0.00948 hour⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Lead-201', daughter: 'Mercury-201 (stable)', commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A once-common SPECT agent for cardiac imaging, still used for certain applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 4, unit: 'TBq' },
+             { name: 'Terbium-161', symbol: 'Tb-161', emissionType: ['Beta-minus', 'Gamma', 'Auger electron'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.049 MeV', '0.075 MeV'], alpha: [] }, avgBetaEnergy: '0.198 MeV', halfLife: '6.89 days', decayConstant: '0.101 day⁻¹', specificActivity: '4.4 x 10^14 Bq/g', commonUses: ['Theranostics (combined therapy and diagnostics), particularly for cancer treatment research.'], parent: 'Gadolinium-160 (n,γ)', daughter: 'Dysprosium-161 (stable)', category: 'Medical', commonality: 'Rare', commonalityReason: 'A promising research isotope for targeted radionuclide therapy due to its ideal decay properties.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 600 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+
+             
+                 { name: 'Thallium-201', symbol: 'Tl-201', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.167 MeV', '0.135 MeV'], alpha: [] }, halfLife: '73.1 hours', decayConstant: '0.00948 hour⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Lead-201', daughter: 'Mercury-201 (stable)', commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A once-common SPECT agent for cardiac imaging, still used for certain applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 4, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 700 }, DAC: { inhalation_W: 6e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Thallium-204', symbol: 'Tl-204', emissionType: ['Beta-minus', 'Electron Capture'], emissionEnergies: { beta: ['0.763 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.254 MeV', halfLife: '3.78 years', decayConstant: '0.183 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Lead-204 (d,2n)', daughter: 'Lead-204 (stable) or Mercury-204 (stable)', commonUses: ['Calibration sources (beta)', 'Thickness gauging'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A long-lived pure beta-emitter used in specialized industrial gauges.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 1, unit: 'TBq' },
@@ -635,8 +639,8 @@
              { name: 'Uranium-230', symbol: 'U-230', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.888 MeV'], beta: [], gamma: ['0.053 MeV'] }, halfLife: '20.8 days', decayConstant: '0.0333 day⁻¹', specificActivity: '1.87 x 10^15 Bq/g', parent: 'Plutonium-234 (α)', daughter: 'Thorium-226', commonUses: ['Medical isotope production (e.g., Ra-223 from Th-226 generator)', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A research isotope sometimes used in generators to produce medical alpha-emitters.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-             { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Neptunium-231 (EC)', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived isotope encountered only in specialized nuclear research.', sourceRef: { halfLife: 'nndc' },
-                 regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+             { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Neptunium-231 (EC)', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived isotope encountered only in specialized nuclear research.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+
              { name: 'Uranium-232', symbol: 'U-232', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.320 MeV'], beta: [], gamma: ['0.058 MeV'] }, daughterEmissions: { from: 'Th-228', alpha: ['5.423 MeV'], gamma: ['0.084 MeV'] }, halfLife: '68.9 years', decayConstant: '0.0101 year⁻¹', specificActivity: '8.1 x 10^11 Bq/g', parent: 'Plutonium-236 (α)', daughter: 'Thorium-228 (α)', commonUses: ['Contaminant in U-233 from thorium fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An isotope primarily known as a problematic contaminant in the thorium fuel cycle due to its high-energy gamma daughters.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2, inhalation_W: 2, ingestion: 0.9 }, DAC: { inhalation_D: 1e-9, inhalation_W: 8e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
@@ -666,8 +670,7 @@
              { name: 'Zinc-69m', symbol: 'Zn-69m', emissionType: ['Isomeric Transition', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.439 MeV'], alpha: [] }, halfLife: '13.76 hours', decayConstant: '0.0504 hour⁻¹', specificActivity: '4.8 x 10^16 Bq/g', parent: 'Zinc-69', daughter: 'Zinc-69', commonUses: ['Zinc metabolism studies (historical)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used historically as a tracer for zinc metabolism but has been replaced by other methods.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 2, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 4000, inhalation_W: 3000, ingestion: 3000 }, DAC: { inhalation_D: 2e-6, inhalation_W: 1e-6 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Zirconium-89', symbol: 'Zr-89', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.902 MeV (max)'], gamma: ['0.909 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.301 MeV', halfLife: '78.41 hours', decayConstant: '0.00884 hour⁻¹', specificActivity: '1.18 x 10^16 Bq/g', parent: 'Yttrium-89 (p,n)', daughter: 'Yttrium-89 (stable)', commonUses: ['PET imaging, particularly for antibody-based imaging (immuno-PET) due to its longer half-life.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A PET isotope with a relatively long half-life, making it ideal for antibody-based imaging (immuno-PET).', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             { name: 'Zirconium-89', symbol: 'Zr-89', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.902 MeV (max)'], gamma: ['0.909 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.301 MeV', halfLife: '78.41 hours', decayConstant: '0.00884 hour⁻¹', specificActivity: '1.18 x 10^16 Bq/g', parent: 'Yttrium-89 (p,n)', daughter: 'Yttrium-89 (stable)', commonUses: ['PET imaging, particularly for antibody-based imaging (immuno-PET) due to its longer half-life.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A PET isotope with a relatively long half-life, making it ideal for antibody-based imaging (immuno-PET).', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 100, inhalation_Y: 20, ingestion: 300 }, DAC: { inhalation_W: 5e-8, inhalation_Y: 9e-9 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Zirconium-95', symbol: 'Zr-95', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.399 MeV (max)'], gamma: ['0.724 MeV', '0.757 MeV'], alpha: [] }, avgBetaEnergy: '0.133 MeV', daughterEmissions: { from: 'Nb-95', beta: ['0.160 MeV (max)'], gamma: ['0.766 MeV'] }, halfLife: '64.03 days', decayConstant: '0.0108 day⁻¹', specificActivity: '8.8 x 10^14 Bq/g', parent: 'Uranium Fission', daughter: 'Niobium-95', commonUses: ['Fission product', 'Environmental tracer'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A common fission product used as a tracer in environmental and fallout studies.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.8, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 100, inhalation_Y: 70, ingestion: 200 }, DAC: { inhalation_W: 6e-8, inhalation_Y: 3e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' }
@@ -688,8 +691,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.3.3';
-         const LAST_UPDATED = 'August 29, 2025';
+         const VERSION = '3.3.4';
+         const LAST_UPDATED = 'August 31, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -1850,49 +1853,48 @@
          * @param {{isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, children: React.ReactNode}} props
          */
          
-         const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
-         if (!isOpen) return null;
-         
-         return (
-         // Backdrop
-         <div
-             className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
-             onClick={onClose} // Close modal if backdrop is clicked
-         >
-         
-             {/* Modal Panel */}
-         
-             <div
-                 className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
-                 onClick={e => e.stopPropagation()} // Prevent click inside from closing modal
-             >
-                 <div className="p-6">
-                     <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
-                     <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                         {children}
-                     </div>
-                 </div>
-         
-                 {/* Action Buttons */}
-         
-                 <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
-                     <button
-                         onClick={onClose}
-                         className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                     >
-                         Cancel
-                     </button>
-                     <button
-                         onClick={onConfirm}
-                         className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-                     >
-                         Confirm
-                     </button>
-                 </div>
-             </div>
-         </div>
-         );
-         };
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
+    if (!isOpen) return null;
+
+    // The modal's JSX is now wrapped in ReactDOM.createPortal()
+    return ReactDOM.createPortal(
+        // Backdrop
+        <div
+            className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
+            onClick={onClose} // Close modal if backdrop is clicked
+        >
+            {/* Modal Panel */}
+            <div
+                className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
+                onClick={e => e.stopPropagation()} // Prevent click inside from closing modal
+            >
+                <div className="p-6">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        {children}
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                    >
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.getElementById('modal-root') // This tells React where to render the modal
+    );
+};
          
          /**
           * @description A button that copies a given text string to the clipboard and shows a confirmation.
@@ -2182,127 +2184,189 @@
          // These components represent the main content areas of the application.
          //==============================================================================
          
+const CalculationHistoryPanel = ({ onNavClick }) => {
+    const [history, setHistory] = React.useState([]);
+    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+        if (savedHistory) {
+            setHistory(JSON.parse(savedHistory));
+        }
+    }, []);
+
+    const handleClearHistory = () => {
+        localStorage.removeItem('rad_tool_calculation_history');
+        setHistory([]);
+        setIsClearModalOpen(false);
+    };
+
+    const handleItemClick = (view) => {
+        if (view && onNavClick) {
+            onNavClick(view);
+        }
+    };
+
+    if (history.length === 0) {
+        return null; // Don't render anything if there's no history
+    }
+
+    return (
+        <>
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
+                    <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                        Clear History
+                    </button>
+                </div>
+                <div className="space-y-3">
+                    {history.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => handleItemClick(item.view)}
+                            className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:ring-2 hover:ring-sky-500 transition-all duration-150"
+                        >
+                            <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                                <span className="font-semibold">Inputs:</span> {item.inputs}
+                            </p>
+                            <p className="text-sm text-slate-800 dark:text-slate-100">
+                                <span className="font-semibold">Result:</span> {item.result}
+                            </p>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <ConfirmationModal
+                isOpen={isClearModalOpen}
+                onClose={() => setIsClearModalOpen(false)}
+                onConfirm={handleClearHistory}
+                title="Clear Calculation History"
+            >
+                <p>Are you sure you want to clear your five most recent calculations?</p>
+            </ConfirmationModal>
+        </>
+    );
+};
+
          /**
          * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
          * @param {object} props - Contains data and handlers for the home page.
          */
          
-         const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites }) => {
-         
-         // --- NEW: State to manage the confirmation modals ---
-         
-         const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
-         const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
-         
-         const favoriteNuclides = React.useMemo(() =>
-         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [favorites, radionuclides]
-         );
-         
-         const searchHistoryNuclides = React.useMemo(() =>
-         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [searchHistory, radionuclides]
-         );
-         
-         // --- NEW: Handlers to confirm clearing ---
-         
-         const confirmClearFavorites = () => {
-         handleClearFavorites();
-         setIsFavoritesModalOpen(false);
-         };
-         
-         const confirmClearHistory = () => {
-         handleClearHistory();
-         setIsHistoryModalOpen(false);
-         };
-         
-         return (
-         <div className="p-4 sm:p-6 space-y-6">
-             {errorMessage && (
-                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-                     <p className="font-bold">Error</p><p>{errorMessage}</p>
-                 </div>
-             )}
-         
-             {favoriteNuclides.length > 0 && (
-                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-                     <div className="flex justify-between items-center mb-4">
-                         <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
-                         {/* UPDATED: Button now opens the modal */}
-                         <button onClick={() => setIsFavoritesModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
-                             Clear Favorites
-                         </button>
-                     </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                         {favoriteNuclides.map(n => (
-                             <NuclideCard
-                                 key={n.symbol}
-                                 nuclide={n}
-                                 isCompact={true}
-                                 onNuclideClick={handleNuclideSelection}
-                             />
-                         ))}
-                     </div>
-                 </div>
-             )}
-         
-             {searchHistoryNuclides.length > 0 && (
-                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-                     <div className="flex justify-between items-center mb-4">
-                         <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
-                         {/* UPDATED: Button now opens the modal */}
-                         <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
-                             Clear History
-                         </button>
-                     </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                         {searchHistoryNuclides.map(n => (
-                             <NuclideCard
-                                 key={n.symbol}
-                                 nuclide={n}
-                                 isCompact={true}
-                                 onNuclideClick={handleNuclideSelection}
-                             />
-                         ))}
-                     </div>
-                 </div>
-             )}
-         
-             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
-                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                     {randomSuggestions.map(n => (
-                         <NuclideCard
-                             key={n.symbol}
-                             nuclide={n}
-                             isCompact={true}
-                             onNuclideClick={handleNuclideSelection}
-                         />
-                     ))}
-                 </div>
-             </div>
-         
-             <ConfirmationModal
-                 isOpen={isFavoritesModalOpen}
-                 onClose={() => setIsFavoritesModalOpen(false)}
-                 onConfirm={confirmClearFavorites}
-                 title="Clear All Favorites"
-             >
-                 <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
-             </ConfirmationModal>
-         
-             <ConfirmationModal
-                 isOpen={isHistoryModalOpen}
-                 onClose={() => setIsHistoryModalOpen(false)}
-                 onConfirm={confirmClearHistory}
-                 title="Clear Search History"
-             >
-                 <p>Are you sure you want to clear your recent search history?</p>
-             </ConfirmationModal>
-         
-         </div>
-         );
-         };
+         const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
+    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
+
+    const favoriteNuclides = React.useMemo(() =>
+        favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [favorites, radionuclides]
+    );
+
+    const searchHistoryNuclides = React.useMemo(() =>
+        searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [searchHistory, radionuclides]
+    );
+
+    const confirmClearFavorites = () => {
+        handleClearFavorites();
+        setIsFavoritesModalOpen(false);
+    };
+
+    const confirmClearHistory = () => {
+        handleClearHistory();
+        setIsHistoryModalOpen(false);
+    };
+
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            {errorMessage && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                    <p className="font-bold">Error</p><p>{errorMessage}</p>
+                </div>
+            )}
+            
+            <CalculationHistoryPanel onNavClick={onNavClick} />
+
+            {favoriteNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
+                        <button onClick={() => setIsFavoritesModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear Favorites
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {favoriteNuclides.map(n => (
+                            <NuclideCard
+                                key={n.symbol}
+                                nuclide={n}
+                                isCompact={true}
+                                onNuclideClick={handleNuclideSelection}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {searchHistoryNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
+                        <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear History
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {searchHistoryNuclides.map(n => (
+                            <NuclideCard
+                                key={n.symbol}
+                                nuclide={n}
+                                isCompact={true}
+                                onNuclideClick={handleNuclideSelection}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
+                <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {randomSuggestions.map(n => (
+                        <NuclideCard
+                            key={n.symbol}
+                            nuclide={n}
+                            isCompact={true}
+                            onNuclideClick={handleNuclideSelection}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <ConfirmationModal
+                isOpen={isFavoritesModalOpen}
+                onClose={() => setIsFavoritesModalOpen(false)}
+                onConfirm={confirmClearFavorites}
+                title="Clear All Favorites"
+            >
+                <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
+            </ConfirmationModal>
+
+            <ConfirmationModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                onConfirm={confirmClearHistory}
+                title="Clear Search History"
+            >
+                <p>Are you sure you want to clear your recent search history?</p>
+            </ConfirmationModal>
+
+        </div>
+    );
+};
          
          /**
           * @description Displays information about a single radionuclide. Can be a full detailed card or a compact version for lists.
@@ -3141,6 +3205,9 @@
          const MODE_DAUGHTER = 'findDaughterActivity';
          
          const { settings } = React.useContext(SettingsContext);
+
+         const { addHistory } = useCalculationHistory();
+
          const [selectedNuclide, setSelectedNuclide] = React.useState(() => {
          const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol');
          if (!savedSymbol) return null;
@@ -3224,7 +3291,25 @@
                  setChartData({ labels, parentData, parentName: selectedNuclide.name, timeUnit });
              };
              switch (calculationMode) {
-                 case MODE_REMAINING: { const N0 = parseFloat(initialActivity); if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); } const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds); setRemainingActivity(Nt.toPrecision(4)); setResult(null); generateSingleNuclideChart(N0); break; }
+                 
+                case MODE_REMAINING: {
+                    const N0 = parseFloat(initialActivity);
+                    if (isNaN(N0) || N0 < 0) { throw new Error('Initial activity must be a non-negative number.'); }
+                    const Nt = N0 * Math.pow(0.5, t_seconds / T1_seconds);
+                    setRemainingActivity(Nt.toPrecision(4));
+                    setResult(null);
+                    generateSingleNuclideChart(N0);
+                    addHistory({
+                        id: Date.now(),
+                        type: 'Decay',
+                        inputs: `${selectedNuclide.symbol} | A₀: ${N0}, t: ${timeElapsed} ${timeUnit}`,
+                        result: `A(t): ${Nt.toPrecision(4)}`,
+                        view: VIEWS.CALCULATOR
+                    });
+
+                    break;
+                } 
+
                  case MODE_TIME: { const N0 = parseFloat(initialActivity); const Nt = parseFloat(remainingActivity); if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); } if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); } if (Nt === 0) { setTimeElapsed('Infinite'); setResult(null); break; } const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2)); const t_final = t_seconds_calc / unitConversions[timeUnit]; setTimeElapsed(t_final.toPrecision(4)); setResult(null); setChartData(null); break; }
                  case MODE_INITIAL: { const Nt = parseFloat(remainingActivity); if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); } const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds); setInitialActivity(N0.toPrecision(4)); setResult(null); generateSingleNuclideChart(N0); break; }
                  case MODE_DAUGHTER: {
@@ -3813,6 +3898,11 @@
          };
          
          const PatientReleaseCalculator = () => {
+
+         const I131_ACTIVITY_RELEASE_LIMIT_MCI = 33;
+         const I131_DOSE_RATE_RELEASE_LIMIT_MREM_HR = 7;
+         const TEDE_RELEASE_LIMIT_MREM = 500;
+            
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
          const [activity, setActivity] = React.useState('30');
          const [activityUnit, setActivityUnit] = React.useState('mCi');
@@ -3837,9 +3927,9 @@
                  const A0_mCi = parseFloat(activity) * ({'µCi': 1e-3, 'mCi': 1, 'Ci': 1000}[activityUnit]);
                  if (isNaN(A0_mCi)) throw new Error("Invalid administered activity.");
                  if (selectedNuclide.symbol === 'I-131') {
-                     if (A0_mCi <= 33) { setResult({ title: 'PASS (Activity Limit Met)', pass: true, details: [`Administered activity of ${A0_mCi.toFixed(1)} mCi is at or below the 33 mCi release limit.`] }); return; }
+                     if (A0_mCi <= I131_ACTIVITY_RELEASE_LIMIT_MCI) { setResult({ title: 'PASS (Activity Limit Met)', pass: true, details: [`Administered activity of ${A0_mCi.toFixed(1)} mCi is at or below the 33 mCi release limit.`] }); return; }
                      const measuredRate = parseFloat(measuredDoseRate);
-                     if (!isNaN(measuredRate)) { if (measuredRate <= 7) { setResult({ title: 'PASS (Dose Rate Met)', pass: true, details: [`Measured dose rate of ${measuredRate} mrem/hr is at or below the 7 mrem/hr limit.`] }); return; } }
+                     if (!isNaN(measuredRate)) { if (measuredRate <= I131_DOSE_RATE_RELEASE_LIMIT_MREM_HR) { setResult({ title: 'PASS (Dose Rate Met)', pass: true, details: [`Measured dose rate of ${measuredRate} mrem/hr is at or below the 7 mrem/hr limit.`] }); return; } }
                  }
                  let T_half_hours_eff;
                  const T_half_hours_phys = parseHalfLifeToSeconds(selectedNuclide.halfLife) / 3600;
@@ -3862,13 +3952,12 @@
                  });
                  const initialTotalDose = (1.443 * gammaConstant_R_m2_per_Ci_hr * (A0_mCi/1000) * T_half_hours_eff * effectiveDoseRateFactor) * 1000;
                  let timeToRelease_hours = 0;
-                 if (initialTotalDose > 500) { timeToRelease_hours = (-T_half_hours_eff / Math.log(2)) * Math.log(500 / initialTotalDose); }
+                 if (initialTotalDose > TEDE_RELEASE_LIMIT_MREM) { timeToRelease_hours = (-T_half_hours_eff / Math.log(2)) * Math.log(500 / initialTotalDose); }
                  const passesTede = totalDose_mrem <= 500;
-                 setResult({ title: passesTede ? 'PASS (Dose Calculation)' : 'FAIL (Dose Calculation)', pass: passesTede, details: [ `Total Integrated Dose (TEDE): ${totalDose_mrem.toFixed(1)} mrem`, `(Limit: 500 mrem)`, `Time to Meet Criteria: ${timeToRelease_hours.toFixed(1)} hours` ], halfLifeUsed_hr: T_half_hours_eff.toFixed(2), isEffective: T_half_hours_eff !== T_half_hours_phys, });
+                 setResult({ title: passesTede ? 'PASS (Dose Calculation)' : 'FAIL (Dose Calculation)', pass: passesTede, details: [ `Total Integrated Dose (TEDE): ${totalDose_mrem.toFixed(1)} mrem`, `(Limit: ${TEDE_RELEASE_LIMIT_MREM} mrem)`, `Time to Meet Criteria: ${timeToRelease_hours.toFixed(1)} hours` ], halfLifeUsed_hr: T_half_hours_eff.toFixed(2), isEffective: T_half_hours_eff !== T_half_hours_phys, });
              } catch (e) { setResult(null); setError(e.message); }
          }, [selectedNuclide, activity, activityUnit, scenarios, measuredDoseRate, effectiveHalfLife, effectiveHalfLifeUnit]);
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
              setNuclideSymbol('');
              setActivity('30');
@@ -3883,7 +3972,7 @@
          
          return (
              <div className="space-y-4">
-                 {/* <-- ADDED THIS BUTTON --> */}
+
                  <div className="text-right">
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
@@ -3973,6 +4062,16 @@
          return value; // Assume MeV if no unit or MeV is present
          };
          
+        const handleClearInputs = () => {
+            setSearchMode('gamma');
+            setTargetEnergy('662');
+            setTolerance('2');
+            setEnergyUnit('keV');
+            setResults([]);
+            setAnalysis(null);
+            setError('');
+        };
+
          // Effect to switch defaults when changing modes
          React.useEffect(() => {
          if (searchMode === 'gamma') {
@@ -4006,7 +4105,7 @@
              const minEnergy = targetMeV - toleranceMeV;
              const maxEnergy = targetMeV + toleranceMeV;
          
-             // --- Radionuclide Matching Logic (unchanged) ---
+             // --- Radionuclide Matching Logic ---
              const matches = [];
              const emissionKey = searchMode === 'gamma' ? 'gamma' : 'alpha';
              radionuclides.forEach(nuclide => {
@@ -4060,7 +4159,12 @@
          return (
          <div className="p-4 animate-fade-in">
              <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Peak Identifier</h2>
+                 <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
+    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+    </button>
+</div>
                  <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
                      <button onClick={() => setSearchMode('gamma')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Spec</button>
                      <button onClick={() => setSearchMode('alpha')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'alpha' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Alpha Spec</button>
@@ -4216,7 +4320,6 @@
          if (selectedSeriesId) { handleCalculate(); }
          }, [selectedSeriesId, initialActivity, timeElapsed, timeUnit]);
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
          setSelectedSeriesId(decaySeriesData[0].id);
          setInitialActivity('100');
@@ -4365,7 +4468,30 @@
                  };
              }, [chartData]); // Re-render the chart whenever chartData changes.
          
-             return <div className="relative h-full"><canvas ref={chartRef}></canvas></div>;
+             const handleExport = () => {
+    if (chartInstance.current) {
+        const link = document.createElement('a');
+        link.href = chartInstance.current.toBase64Image();
+        link.download = 'decay-chart.png';
+        link.click();
+    }
+};
+
+return (
+    <div className="mt-4">
+        <div className="h-64">
+            <canvas ref={chartRef}></canvas>
+        </div>
+        <div className="text-center mt-2">
+            <button
+                onClick={handleExport}
+                className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
+            >
+                Export as PNG
+            </button>
+        </div>
+    </div>
+);
          };
          
          /**
@@ -4379,23 +4505,7 @@
          const MODE_SPECIFIC_ACTIVITY = 'specificActivity';
          
          const [calcMode, setCalcMode] = React.useState(MODE_MASS_ACTIVITY);
-         
-         // <-- ADDED THIS FUNCTION -->
-         // Note: A single clear function can reset the state for BOTH tabs.
-         const handleClearInputs = () => {
-         // Reset state for Mass <=> Activity tab
-         // We can't clear the selected nuclide here as it's in the child component,
-         // but we can pass down a function to do it. For now, we'll clear the inputs.
-         // This will be handled inside the child component.
-         
-         // Reset state for Specific Activity tab
-         // This will also be handled in the child component.
-         
-         // A better approach is to manage the clear from the child.
-         // Let's modify the children instead. This parent will stay the same.
-         // This comment is for my thought process. I will provide the updated children.
-         };
-         
+                 
          // --- Component for the Mass <=> Activity Module ---
          const MassActivityModule = () => {
          const [selectedNuclide, setSelectedNuclide] = React.useState(() => {
@@ -4455,7 +4565,6 @@
          const handleActivityChange = (e) => { setActivity(e.target.value); calculateMass(parseFloat(e.target.value), activityUnit); };
          const handleActivityUnitChange = (e) => { setActivityUnit(e.target.value); calculateMass(parseFloat(activity), e.target.value); };
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
              setSelectedNuclide(null);
              setMass('');
@@ -4467,7 +4576,7 @@
          
          return (
              <div className="space-y-4">
-                 {/* <-- ADDED THIS BUTTON WRAPPER --> */}
+
                  <div className="flex justify-between items-center">
                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
@@ -4523,7 +4632,7 @@
              setResult({ bq: sa_bq_per_g.toPrecision(4), ci: sa_ci_per_g.toPrecision(4) });
          }, [atomicWeight, halfLifeValue, halfLifeUnit]);
          
-         // <-- ADDED THIS FUNCTION -->
+         
          const handleClearInputs = () => {
              setAtomicWeight('');
              setHalfLifeValue('');
@@ -4534,7 +4643,7 @@
          
          return (
              <div className="space-y-4">
-                 {/* <-- ADDED THIS BUTTON --> */}
+                
                  <div className="text-right">
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
@@ -4579,7 +4688,6 @@
          * and to analyze the type of equilibrium present based on their half-lives.
          * @param {{radionuclides: Array<object>}} props
          */
-         
          
          const EquilibriumCalculator = ({ radionuclides }) => {
          const [parentNuclide, setParentNuclide] = React.useState(() => {
@@ -4708,7 +4816,6 @@
          setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
          };
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
          setParentNuclide(null);
          setDaughterNuclide(null);
@@ -4728,7 +4835,7 @@
              <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                  <div className="flex justify-between items-center mb-4">
                      <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parent-Daughter Equilibrium Analyzer</h2>
-                      {/* <-- ADDED THIS BUTTON --> */}
+
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
                      </button>
@@ -4839,7 +4946,6 @@
          } catch (e) { setError("Calculation error."); setResult(null); }
          }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
          setFlowRate('10');
          setSampleTime('5');
@@ -4858,7 +4964,7 @@
                  <p className="text-sm text-slate-600 dark:text-slate-400">
                      Determine the Working Level (WL) of radon progeny.
                  </p>
-                 {/* <-- ADDED THIS BUTTON --> */}
+
                  <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 flex-shrink-0">
                      <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
                  </button>
@@ -5287,8 +5393,7 @@
              case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
              case VIEWS.MEDICAL: return <MedicalCalculator />;
              case VIEWS.HOME:
-             default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} />;
-         }
+             default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;         }
          };
          
          return (
@@ -5695,6 +5800,8 @@
          const BETA_MODE_AIR = 'air';
          
          const { settings } = React.useContext(SettingsContext);
+
+         const { addHistory } = useCalculationHistory();
          
          const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || settings.defaultDoseMode);
          const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('doseRate_inputMode') || INPUT_MODE_DB);
@@ -5833,9 +5940,21 @@
                          case GEOMETRY_LINE: { const len_val = parseFloat(lineLength); if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.'); const len_m = len_val * distanceFactorsM[lineLengthUnit]; const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit]; doseRateR_hr = ((2 * gammaConstant * linearActivityCi_per_m) / distanceInM) * Math.atan(len_m / (2 * distanceInM)); break; }
                          case GEOMETRY_AREA: { const rad_val = parseFloat(diskRadius); if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.'); const rad_m = rad_val * distanceFactorsM[diskRadiusUnit]; const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit]; doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + Math.pow(rad_m / distanceInM, 2)); break; }
                      }
-                     const doseRate_mrem_hr = doseRateR_hr * 1000;
-                     setResult({ type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') });
-                     break;
+
+                    const doseRate_mrem_hr = doseRateR_hr * 1000;
+                    const newResult = { type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') };
+                    setResult(newResult);
+
+                    addHistory({
+                        id: Date.now(),
+                        type: 'Dose Rate',
+                        inputs: `${activity} ${activityUnit} at ${distance} ${distanceUnit}`,
+                        result: `${newResult.dose.value} ${newResult.dose.unit}`,
+                        view: VIEWS.DOSE_RATE
+                    });
+
+                    break;
+
                  }
                  case CALC_MODE_BETA:
                  case CALC_MODE_BREMS: {
@@ -5968,6 +6087,8 @@
          const MODE_GENERIC = 'genericRate';
          
          const { settings } = React.useContext(SettingsContext);
+
+         const { addHistory } = useCalculationHistory();
          
          const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_FROM_SOURCE);
          const [useManualHVL, setUseManualHVL] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useManualHVL')) || false);
@@ -6075,10 +6196,20 @@
                  const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
                  
                  if (calcMode === MODE_FROM_SOURCE) {
-                     const shieldedRateR_hr = unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
-                     const shielded_mrem_hr = shieldedRateR_hr * 1000;
-                     setResult({ type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate') });
-                 } else { // findThickness
+                    const shieldedRateR_hr = unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
+                    const shielded_mrem_hr = shieldedRateR_hr * 1000;
+                    const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate') };
+                    setResult(newResult);
+
+                    addHistory({
+                        id: Date.now(),
+                        type: 'Shielding',
+                        inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`,
+                        result: `${newResult.shielded.value} ${newResult.shielded.unit}`,
+                        view: VIEWS.SHIELDING
+                    });
+                
+                    } else { // findThickness
                      const targetRateValue = parseFloat(targetDoseRate);
                      if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
                      const targetRateR_hr = targetRateValue * (doseRateFactors[targetDoseRateUnit] / 1000);
@@ -7443,82 +7574,103 @@
          */
          
          
-         const DecayChart = ({ chartData, useLogScale }) => {
-         const chartRef = React.useRef(null);
-         const chartInstance = React.useRef(null);
-         
-         React.useEffect(() => {
-         // Destroy the previous chart instance if it exists
-         if (chartInstance.current) {
-             chartInstance.current.destroy();
-         }
-         
-         if (chartRef.current && chartData) {
-             const ctx = chartRef.current.getContext('2d');
-             chartInstance.current = new Chart(ctx, {
-                 type: 'line',
-                 data: {
-                     labels: chartData.labels,
-                     datasets: [
-                         {
-                             label: chartData.parentName,
-                             data: chartData.parentData,
-                             borderColor: '#0284c7', // Sky-600
-                             backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                             fill: true,
-                             tension: 0.1,
-                             pointRadius: 0
-                         },
-                         ...(chartData.daughterData ? [{
-                             label: chartData.daughterName,
-                             data: chartData.daughterData,
-                             borderColor: '#e11d48', // Rose-600
-                             backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                             fill: true,
-                             tension: 0.1,
-                             pointRadius: 0
-                         }] : [])
-                     ]
-                 },
-                 options: {
-                     responsive: true,
-                     maintainAspectRatio: false,
-                     scales: {
-                         x: {
-                             title: { display: true, text: `Time (${chartData.timeUnit})` },
-                             ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
-                             grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
-                         },
-                         
-                         y: {
-                             type: useLogScale ? 'logarithmic' : 'linear',
-                             title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
-                             beginAtZero: !useLogScale, // Only begin at zero for linear scale
-                             ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
-                             grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
-                         }
-                         // ------------------------------------
-                     },
-                     plugins: {
-                         legend: {
-                             labels: {
-                                 color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155'
-                             }
-                         }
-                     }
-                 }
-             });
-         }
-         
-         return () => {
-             if (chartInstance.current) {
-                 chartInstance.current.destroy();
-             }
-         };
-         }, [chartData, useLogScale]); // This dependency array is correct
-         
-         return <div className="mt-4 h-64"><canvas ref={chartRef}></canvas></div>;
-         };
+const DecayChart = ({ chartData, useLogScale }) => {
+    const chartRef = React.useRef(null);
+    const chartInstance = React.useRef(null);
+
+    React.useEffect(() => {
+        // Destroy the previous chart instance if it exists
+        if (chartInstance.current) {
+            chartInstance.current.destroy();
+        }
+
+        if (chartRef.current && chartData) {
+            const ctx = chartRef.current.getContext('2d');
+            chartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: chartData.parentName,
+                            data: chartData.parentData,
+                            borderColor: '#0284c7', // Sky-600
+                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        },
+                        ...(chartData.daughterData ? [{
+                            label: chartData.daughterName,
+                            data: chartData.daughterData,
+                            borderColor: '#e11d48', // Rose-600
+                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }] : [])
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: `Time (${chartData.timeUnit})` },
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
+                        },
+                        y: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
+                            beginAtZero: !useLogScale,
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [chartData, useLogScale]);
+
+    const handleExport = () => {
+        if (chartInstance.current) {
+            const link = document.createElement('a');
+            link.href = chartInstance.current.toBase64Image();
+            link.download = 'decay-chart.png';
+            link.click();
+        }
+    };
+
+    return (
+        <div className="mt-4">
+            <div className="h-64">
+                <canvas ref={chartRef}></canvas>
+            </div>
+            <div className="text-center mt-2">
+                <button
+                    onClick={handleExport}
+                    className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
+                >
+                    Export as PNG
+                </button>
+            </div>
+        </div>
+    );
+};
          
          const ManualModal = ({ isOpen, onClose }) => {
          if (!isOpen) return null;
