@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hooked by Emmy - Handmade Crochet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .font-playfair {
+            font-family: 'Playfair Display', serif;
+        }
+        .bg-seafoam { background-color: #e0f2f1; }
+        .bg-pastel-purple { background-color: #e1bee7; }
+        .bg-pastel-aqua { background-color: #d0ece7; }
+        .text-brand-purple { color: #5c4b5d; }
+        .text-brand-green { color: #6e8b7d; }
+        .btn-primary {
+            background-color: #6e8b7d;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #5c776a;
+        }
+        .hero-bg {
+            background-color: #f7f9f9;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="logo1.png" alt="Hooked by Emmy Logo" class="h-12 w-auto mr-4">
+                <a href="#" class="text-2xl font-bold text-brand-purple hidden md:block">Hooked by Emmy</a>
+            </div>
+            <div class="hidden md:flex space-x-8 items-center">
+                <a href="#home" class="text-gray-600 hover:text-brand-green">Home</a>
+                <a href="#shop" class="text-gray-600 hover:text-brand-green">Shop</a>
+                <a href="#about" class="text-gray-600 hover:text-brand-green">About</a>
+                <a href="#contact" class="text-gray-600 hover:text-brand-green">Contact</a>
+            </div>
+             <a href="#shop" class="md:hidden btn-primary py-2 px-4 rounded-full">Shop Now</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="home" class="hero-bg">
+            <div class="container mx-auto px-6 py-16 text-center">
+                <h1 class="text-4xl md:text-6xl font-playfair font-bold text-brand-purple mb-4">Handmade with Love in Williamsburg</h1>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto mb-8">Discover unique, handcrafted crochet treasures, from cozy scarves to one-of-a-kind accessories.</p>
+                <a href="#shop" class="btn-primary py-3 px-8 rounded-full text-lg font-semibold">Shop The Collection</a>
+            </div>
+        </section>
+
+        <!-- Featured Products Section -->
+        <section id="shop" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl font-bold text-center text-brand-purple mb-12">Featured Creations</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+
+                    <!-- Featured Handbag -->
+                    <div class="bg-gray-50 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <img src="handbag1.jpg" alt="Colorful Crocheted Handbag" class="w-full h-64 object-cover">
+                        <div class="p-6">
+                            <h3 class="font-bold text-xl mb-2 text-brand-purple">Sunflower Granny Square Bag</h3>
+                            <p class="text-gray-700 mb-4">A vibrant and stylish shoulder bag made from colorful granny squares. Perfect for adding a pop of color to any outfit!</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-2xl font-bold text-brand-green">$45.00</span>
+                                <a href="#contact" class="btn-primary py-2 px-4 rounded-full font-semibold">Inquire</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder Product 1 -->
+                    <div class="bg-gray-50 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <img src="https://placehold.co/600x400/e0f2f1/5c4b5d?text=Cozy+Scarf" alt="Cozy Scarf" class="w-full h-64 object-cover">
+                        <div class="p-6">
+                            <h3 class="font-bold text-xl mb-2 text-brand-purple">Chunky Knit Scarf</h3>
+                            <p class="text-gray-700 mb-4">Stay warm and stylish with this incredibly soft and cozy chunky scarf. Available in various colors.</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-2xl font-bold text-brand-green">$35.00</span>
+                                <a href="#contact" class="btn-primary py-2 px-4 rounded-full font-semibold">Inquire</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder Product 2 -->
+                    <div class="bg-gray-50 rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                        <img src="https://placehold.co/600x400/d0ece7/5c4b5d?text=Cute+Bookmarks" alt="Crocheted Bookmarks" class="w-full h-64 object-cover">
+                        <div class="p-6">
+                            <h3 class="font-bold text-xl mb-2 text-brand-purple">Floral Bookmarks</h3>
+                            <p class="text-gray-700 mb-4">Never lose your page again with these adorable and delicate floral bookmarks. The perfect gift for any book lover.</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-2xl font-bold text-brand-green">$8.00</span>
+                                <a href="#contact" class="btn-primary py-2 px-4 rounded-full font-semibold">Inquire</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="py-20 bg-seafoam">
+            <div class="container mx-auto px-6 flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-8 md:mb-0">
+                    <img src="https://placehold.co/500x500/ffffff/6e8b7d?text=Emmy" alt="Emmy, the creator" class="rounded-full shadow-2xl mx-auto">
+                </div>
+                <div class="md:w-1/2 md:pl-12 text-center md:text-left">
+                    <h2 class="text-3xl font-bold text-brand-purple mb-4">About Emmy (EmMoMiMi)</h2>
+                    <p class="text-gray-700 leading-relaxed mb-4">Hi! I'm Emmy, the hands and heart behind Hooked by Emmy. What started as a relaxing hobby has blossomed into a passion for creating beautiful, functional, and cozy crochet items. Every piece is made with meticulous care and a whole lot of love right here in Williamsburg, VA.</p>
+                    <p class="text-gray-700 leading-relaxed">I believe in the magic of handmade items to bring a little bit of joy into everyday life. Thank you for supporting my small business and dream!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="py-20 bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl font-bold text-brand-purple mb-6">Interested in a Custom Order?</h2>
+                <p class="text-gray-600 max-w-xl mx-auto mb-8">See something you like or have a unique idea? I'd love to create the perfect piece just for you. Send me a message, and let's bring your vision to life!</p>
+                <div class="max-w-lg mx-auto bg-gray-50 p-8 rounded-lg shadow-md">
+                     <form>
+                        <div class="mb-4">
+                            <input type="text" placeholder="Your Name" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-green">
+                        </div>
+                        <div class="mb-4">
+                            <input type="email" placeholder="Your Email" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-green">
+                        </div>
+                        <div class="mb-4">
+                            <textarea placeholder="Your Message" rows="4" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-green"></textarea>
+                        </div>
+                        <button type="submit" class="w-full btn-primary py-3 rounded-full text-lg font-semibold">Send Message</button>
+                    </form>
+                </div>
+                 <div class="mt-12">
+                    <p class="text-gray-700 text-lg">For direct purchases at the salon, you can pay via Venmo!</p>
+                    <p class="text-2xl font-bold text-brand-green mt-2">@EmMoMiMi</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-brand-purple text-white">
+        <div class="container mx-auto px-6 py-8 text-center">
+             <div class="flex justify-center mb-4">
+                <img src="logo1.png" alt="Hooked by Emmy Logo" class="h-16 w-auto">
+            </div>
+            <p class="mb-4">Handcrafted Crochet Goods from Williamsburg, VA</p>
+            <div class="flex justify-center space-x-6 mb-4">
+                <a href="#" class="hover:opacity-75">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" /></svg>
+                </a>
+                <a href="#" class="hover:opacity-75">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.71v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
+                </a>
+                <a href="#" class="hover:opacity-75">
+                   <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.024.06 1.378.06 3.808s-.012 2.784-.06 3.808c-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.024.048-1.378.06-3.808.06s-2.784-.013-3.808-.06c-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.048-1.024-.06-1.378-.06-3.808s.012-2.784.06-3.808c.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 016.345 2.525c.636-.247 1.363-.416 2.427-.465C9.795 2.013 10.148 2 12.315 2zm-1.161 2.043c-1.049-.047-1.352-.058-3.687-.058s-2.639.011-3.687.058a2.91 2.91 0 00-1.205.29A2.883 2.883 0 004.14 5.385a2.91 2.91 0 00-.29 1.205c-.047 1.049-.058 1.352-.058 3.687s.011 2.639.058 3.687a2.91 2.91 0 00.29 1.205 2.883 2.883 0 001.258 1.258 2.91 2.91 0 001.205.29c1.049.047 1.352.058 3.687.058s2.639-.011 3.687-.058a2.91 2.91 0 001.205-.29 2.883 2.883 0 001.258-1.258 2.91 2.91 0 00.29-1.205c.047-1.049.058-1.352.058-3.687s-.011-2.639-.058-3.687a2.91 2.91 0 00-.29-1.205A2.883 2.883 0 0018.86 5.385a2.91 2.91 0 00-1.205-.29c-1.049-.047-1.352-.058-3.687-.058z" clip-rule="evenodd" /><path d="M11.155 8.125a3.845 3.845 0 100 7.69 3.845 3.845 0 000-7.69zm-5.89 3.845a5.89 5.89 0 1111.78 0 5.89 5.89 0 01-11.78 0z" /></svg>
+                </a>
+            </div>
+            <p class="text-sm text-gray-400">&copy; 2025 Hooked by Emmy. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
+
