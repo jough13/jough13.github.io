@@ -3726,7 +3726,6 @@
          const [result, setResult] = React.useState(null);
          const [error, setError] = React.useState('');
          
-         // ADDED: Get the addHistory function
          const { addHistory } = useCalculationHistory();
          
          const transportNuclides = React.useMemo(() =>
@@ -3793,7 +3792,6 @@
          };
          setResult(newResult);
          
-         // ADDED: The call to save the calculation to history
          addHistory({
             id: Date.now(),
             type: 'Transportation',
@@ -3837,7 +3835,8 @@
                              {selectedNuclide ? (
                                  <CalculatorNuclideInfo
                                      nuclide={selectedNuclide}
-                                     onClear={handleClearInputs}
+                                     // MODIFIED: This line now only clears the selected nuclide.
+                                     onClear={() => setSelectedSymbol('')}
                                  />
                              ) : (
                                  <SearchableSelect
