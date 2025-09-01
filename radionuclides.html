@@ -189,9 +189,7 @@
       <!--The root element where the React application will be mounted.-->
       <div id="root"></div>
       <div id="back-to-top-root"></div>
-
       <div id="modal-root"></div>
-
       <!--The primary dataset for all radionuclides.
          Keeping this in a separate script tag makes the main application logic cleaner and easier to manage.
          Each object conforms to a consistent structure for properties like name, symbol, halfLife, etc.-->
@@ -246,9 +244,9 @@
                  dosimetry: { ALI: { inhalation_D: 90, ingestion: 70 }, DAC: { inhalation_D: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Bismuth-213', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-213', emissionEnergies: { beta: ['1.42 MeV (max)'], alpha: ['5.87 MeV'], gamma: ['0.440 MeV'] }, avgBetaEnergy: '0.473 MeV', halfLife: '45.6 minutes', decayConstant: '0.0152 min⁻¹', specificActivity: '1.09 x 10^17 Bq/g', parent: 'Actinium-225', daughter: 'Polonium-213 (β) or Thallium-209 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for various cancers.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived daughter of Ac-225, used in targeted alpha therapy research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 800, ingestion: 600 }, DAC: { inhalation_D: 4e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Bismuth-214', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-214', emissionEnergies: { beta: ['3.27 MeV (max)'], gamma: ['0.609 MeV', '1.120 MeV', '1.764 MeV'], alpha: ['5.62 MeV'] }, avgBetaEnergy: '1.090 MeV', halfLife: '19.9 minutes', decayConstant: '0.0348 min⁻¹', specificActivity: '3.6 x 10^17 Bq/g', parent: 'Lead-214', daughter: 'Polonium-214 (β-) / Thallium-210 (α)', commonUses: ['Source of natural background gamma radiation (from Radon decay products)'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A prominent gamma-emitter in the Radon-222 decay chain, contributing to natural background radiation.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 400, ingestion: 200 }, DAC: { inhalation_D: 2e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Bromine-77', symbol: 'Br-77', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.239 MeV', '0.297 MeV'], alpha: [] }, halfLife: '57.04 hours', decayConstant: '0.0121 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Krypton-77', daughter: 'Selenium-77 (stable)', commonUses: ['PET imaging research', 'Antibody labeling'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used for specialized medical research applications like antibody labeling.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 3, A2: 3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2000, ingestion: 1000 }, DAC: { inhalation_D: 8e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -295,7 +293,7 @@
              { name: 'Copper-64', symbol: 'Cu-64', emissionType: ['Positron Emission', 'Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.653 MeV (β+ max)', '0.579 MeV (β- max)'], gamma: ['1.345 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.193 MeV (β-)', halfLife: '12.7 hours', decayConstant: '0.0546 hour⁻¹', specificActivity: '1.74 x 10^17 Bq/g', parent: 'Nickel-64 (p,n)', daughter: 'Nickel-64 (stable) or Zinc-64 (stable)', commonUses: ['PET imaging (various applications)', 'Targeted radionuclide therapy research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A versatile medical isotope for PET imaging and therapy research, but not as widespread as F-18.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 300, ingestion: 2000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 2e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-{ name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         { name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Curium-244', symbol: 'Cm-244', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.805 MeV'], gamma: ['0.043 MeV'], beta: [] }, halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', specificActivity: '3.0 x 10^12 Bq/g', parent: 'Americium-244 (β-)', daughter: 'Plutonium-240', commonUses: ['Alpha particle X-ray spectrometers (APXS) for space exploration', 'Neutron sources'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'Used in specialized applications like space exploration instruments due to its alpha emissions.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 0.002, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 0.2, inhalation_Y: 0.3, ingestion: 3 }, DAC: { inhalation_W: 1e-10, inhalation_Y: 1e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
@@ -330,7 +328,7 @@
                  dosimetry: { ALI: { inhalation_D: 20, ingestion: 2000 }, DAC: { inhalation_D: 7e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Gold-195m', symbol: 'Au-195m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.262 MeV'], alpha: [] }, halfLife: '30.5 seconds', decayConstant: '0.0227 s⁻¹', specificActivity: '1.5 x 10^18 Bq/g', parent: 'Mercury-195m', daughter: 'Gold-195', commonUses: ['Cardiac blood flow imaging (historical)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used historically in medicine but has been replaced by other isotopes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 10000, ingestion: 10000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Gold-198', symbol: 'Au-198', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.961 MeV (max)'], gamma: ['0.412 MeV'], alpha: [] }, avgBetaEnergy: '0.320 MeV', halfLife: '2.695 days', decayConstant: '0.257 day⁻¹', specificActivity: '9.3 x 10^15 Bq/g', parent: 'Gold-197 (n,γ)', daughter: 'Mercury-198 (stable)', commonUses: ['Radiotherapy (brachytherapy)', 'Tracers', 'Industrial applications'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'Used in specific brachytherapy applications and as an industrial tracer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.23 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 20, ingestion: 200 }, DAC: { inhalation_W: 9e-8, inhalation_Y: 1e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -368,9 +366,9 @@
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 80 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Krypton-79', symbol: 'Kr-79', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.604 MeV (max)'], gamma: ['0.261 MeV', '0.398 MeV'], alpha: [] }, avgBetaEnergy: '0.201 MeV', halfLife: '35.04 hours', decayConstant: '0.0198 hour⁻¹', specificActivity: '1.7 x 10^16 Bq/g', parent: 'Bromine-79', daughter: 'Bromine-79 (stable)', commonUses: ['Lung ventilation studies (PET)', 'Research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used in medical research, particularly for PET-based lung ventilation studies.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 20000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Krypton-81m', symbol: 'Kr-81m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.190 MeV'], alpha: [] }, halfLife: '13.1 seconds', decayConstant: '0.0529 s⁻¹', specificActivity: '4.85 x 10^18 Bq/g', parent: 'Rubidium-81', daughter: 'Krypton-81', commonUses: ['Lung ventilation studies (very short half-life allows for repeated scans)'], category: 'Medical', commonality: 'Common', commonalityReason: 'A very short-lived gas used for lung ventilation scans, typically produced from a Rb-81 generator.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 500000, ingestion: 500000 }, DAC: { inhalation_D: 2e-4 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Krypton-85', symbol: 'Kr-85', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.687 MeV (max)'], gamma: ['0.514 MeV'], alpha: [] }, avgBetaEnergy: '0.229 MeV', halfLife: '10.76 years', decayConstant: '0.0644 year⁻¹', specificActivity: '1.45 x 10^13 Bq/g', parent: 'Uranium Fission', daughter: 'Rubidium-85 (stable)', commonUses: ['Atmospheric tracer', 'Industrial applications (leak detection, gauging)'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A fission product gas used in industrial applications like leak detection and thickness gauging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 40000 }, DAC: { inhalation_D: 1e-5 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -478,7 +476,7 @@
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              
              { name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Radium-220', symbol: 'Ra-220', emissionType: ['Alpha'], emissionEnergies: { alpha: ['6.818 MeV'], beta: [], gamma: [] }, halfLife: '27.4 seconds', decayConstant: '0.0253 s⁻¹', specificActivity: '1.8 x 10^18 Bq/g', parent: 'Thorium-224', daughter: 'Radon-216 (α)', commonUses: ['Intermediate in Thorium-232 decay series'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
              { name: 'Radium-223', symbol: 'Ra-223', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.71 MeV (dominant)'], beta: [], gamma: ['0.269 MeV'] }, halfLife: '11.43 days', decayConstant: '0.0606 day⁻¹', specificActivity: '1.9 x 10^15 Bq/g', parent: 'Thorium-227', daughter: 'Radon-219 (α)', commonUses: ['Alpha-emitter for targeted alpha therapy (e.g., Xofigo for prostate cancer)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A clinically approved alpha-emitter for treating bone metastases from prostate cancer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.005, unit: 'TBq' },
@@ -501,7 +499,7 @@
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
                  
                  { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' }, dosimetry: { DAC: { inhalation_D: 3e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-
+         
                  { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_W: 5e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -517,7 +515,7 @@
                  dosimetry: { ALI: { inhalation_D: 10000, ingestion: 3000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Rubidium-82', symbol: 'Rb-82', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['3.38 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '1.127 MeV', halfLife: '76 seconds', decayConstant: '0.00912 s⁻¹', specificActivity: '8.3 x 10^17 Bq/g', parent: 'Strontium-82', daughter: 'Krypton-82 (stable)', commonUses: ['Cardiac PET imaging for myocardial perfusion'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'An extremely short-lived PET isotope produced from a Sr-82 generator for cardiac perfusion imaging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.4, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 10000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
- 
+         
              { name: 'Rubidium-84', symbol: 'Rb-84', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['1.65 MeV (max)'], gamma: ['0.882 MeV'], alpha: [] }, avgBetaEnergy: '0.550 MeV', halfLife: '32.8 days', decayConstant: '0.0211 day⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Krypton-84', daughter: 'Krypton-84 (stable)', commonUses: ['Cardiac blood flow research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope used in studies of cardiac blood flow.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 200, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -531,7 +529,7 @@
                  dosimetry: { ALI: { inhalation_W: 300, ingestion: 800 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.490 MeV', halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research PET isotope, often explored as a "theranostic" partner to the therapeutic isotope Sc-47.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.5, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 500 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              { name: 'Scandium-46', symbol: 'Sc-46', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.357 MeV (max)'], gamma: ['0.889 MeV', '1.121 MeV'], alpha: [] }, avgBetaEnergy: '0.119 MeV', halfLife: '83.79 days', decayConstant: '0.00827 day⁻¹', specificActivity: '1.24 x 10^15 Bq/g', parent: 'Calcium-46 (n,p)', daughter: 'Titanium-46 (stable)', commonUses: ['Tracer in hydrology and industrial processes', 'Calibration source'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A long-lived gamma-emitter used as a tracer in specialized industrial processes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' }, gammaConstant: '1.17 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 200 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -586,7 +584,7 @@
              { name: 'Tellurium-130', symbol: 'Te-130', emissionType: ['Double Beta-minus'], emissionEnergies: { beta: ['2.528 MeV (total)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.843 MeV', halfLife: '2.5 x 10²¹ years', decayConstant: '2.77 x 10⁻²² year⁻¹', specificActivity: '1.6 x 10^-5 Bq/g', parent: 'Primordial', daughter: 'Xenon-130 (stable)', commonUses: ['Double beta decay research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An isotope with an extremely long half-life used in fundamental physics research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Terbium-161', symbol: 'Tb-161', emissionType: ['Beta-minus', 'Gamma', 'Auger electron'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.049 MeV', '0.075 MeV'], alpha: [] }, avgBetaEnergy: '0.198 MeV', halfLife: '6.89 days', decayConstant: '0.101 day⁻¹', specificActivity: '4.4 x 10^14 Bq/g', commonUses: ['Theranostics (combined therapy and diagnostics), particularly for cancer treatment research.'], parent: 'Gadolinium-160 (n,γ)', daughter: 'Dysprosium-161 (stable)', category: 'Medical', commonality: 'Rare', commonalityReason: 'A promising research isotope for targeted radionuclide therapy due to its ideal decay properties.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 600 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-
+         
              
                  { name: 'Thallium-201', symbol: 'Tl-201', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.167 MeV', '0.135 MeV'], alpha: [] }, halfLife: '73.1 hours', decayConstant: '0.00948 hour⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Lead-201', daughter: 'Mercury-201 (stable)', commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A once-common SPECT agent for cardiac imaging, still used for certain applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 4, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 700 }, DAC: { inhalation_W: 6e-7 }, sourceRef: '10CFR20' },
@@ -640,7 +638,7 @@
                  dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Neptunium-231 (EC)', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived isotope encountered only in specialized nuclear research.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-
+         
              { name: 'Uranium-232', symbol: 'U-232', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.320 MeV'], beta: [], gamma: ['0.058 MeV'] }, daughterEmissions: { from: 'Th-228', alpha: ['5.423 MeV'], gamma: ['0.084 MeV'] }, halfLife: '68.9 years', decayConstant: '0.0101 year⁻¹', specificActivity: '8.1 x 10^11 Bq/g', parent: 'Plutonium-236 (α)', daughter: 'Thorium-228 (α)', commonUses: ['Contaminant in U-233 from thorium fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An isotope primarily known as a problematic contaminant in the thorium fuel cycle due to its high-energy gamma daughters.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2, inhalation_W: 2, ingestion: 0.9 }, DAC: { inhalation_D: 1e-9, inhalation_W: 8e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
@@ -1853,16 +1851,16 @@
          * @param {{isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, children: React.ReactNode}} props
          */
          
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
-    if (!isOpen) return null;
-
-    // The modal's JSX is now wrapped in ReactDOM.createPortal()
-    return ReactDOM.createPortal(
-        // Backdrop
-        <div
+         const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
+         if (!isOpen) return null;
+         
+         // The modal's JSX is now wrapped in ReactDOM.createPortal()
+         return ReactDOM.createPortal(
+         // Backdrop
+         <div
             className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
             onClick={onClose} // Close modal if backdrop is clicked
-        >
+         >
             {/* Modal Panel */}
             <div
                 className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
@@ -1874,7 +1872,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
                         {children}
                     </div>
                 </div>
-
+         
                 {/* Action Buttons */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
                     <button
@@ -1891,10 +1889,10 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
                     </button>
                 </div>
             </div>
-        </div>,
-        document.getElementById('modal-root') // This tells React where to render the modal
-    );
-};
+         </div>,
+         document.getElementById('modal-root') // This tells React where to render the modal
+         );
+         };
          
          /**
           * @description A button that copies a given text string to the clipboard and shows a confirmation.
@@ -2184,35 +2182,35 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => {
          // These components represent the main content areas of the application.
          //==============================================================================
          
-const CalculationHistoryPanel = ({ onNavClick }) => {
-    const [history, setHistory] = React.useState([]);
-    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-
-    React.useEffect(() => {
-        const savedHistory = localStorage.getItem('rad_tool_calculation_history');
-        if (savedHistory) {
+         const CalculationHistoryPanel = ({ onNavClick }) => {
+         const [history, setHistory] = React.useState([]);
+         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+         
+         React.useEffect(() => {
+         const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+         if (savedHistory) {
             setHistory(JSON.parse(savedHistory));
-        }
-    }, []);
-
-    const handleClearHistory = () => {
-        localStorage.removeItem('rad_tool_calculation_history');
-        setHistory([]);
-        setIsClearModalOpen(false);
-    };
-
-    const handleItemClick = (view) => {
-        if (view && onNavClick) {
+         }
+         }, []);
+         
+         const handleClearHistory = () => {
+         localStorage.removeItem('rad_tool_calculation_history');
+         setHistory([]);
+         setIsClearModalOpen(false);
+         };
+         
+         const handleItemClick = (view) => {
+         if (view && onNavClick) {
             onNavClick(view);
-        }
-    };
-
-    if (history.length === 0) {
-        return null; // Don't render anything if there's no history
-    }
-
-    return (
-        <>
+         }
+         };
+         
+         if (history.length === 0) {
+         return null; // Don't render anything if there's no history
+         }
+         
+         return (
+         <>
             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                 <div className="flex justify-between items-center mb-4">
                     <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
@@ -2238,7 +2236,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     ))}
                 </div>
             </div>
-
+         
             <ConfirmationModal
                 isOpen={isClearModalOpen}
                 onClose={() => setIsClearModalOpen(false)}
@@ -2247,41 +2245,41 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             >
                 <p>Are you sure you want to clear your five most recent calculations?</p>
             </ConfirmationModal>
-        </>
-    );
-};
-
+         </>
+         );
+         };
+         
          /**
          * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
          * @param {object} props - Contains data and handlers for the home page.
          */
          
          const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
-    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
-    const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
-
-    const favoriteNuclides = React.useMemo(() =>
-        favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-        [favorites, radionuclides]
-    );
-
-    const searchHistoryNuclides = React.useMemo(() =>
-        searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-        [searchHistory, radionuclides]
-    );
-
-    const confirmClearFavorites = () => {
-        handleClearFavorites();
-        setIsFavoritesModalOpen(false);
-    };
-
-    const confirmClearHistory = () => {
-        handleClearHistory();
-        setIsHistoryModalOpen(false);
-    };
-
-    return (
-        <div className="p-4 sm:p-6 space-y-6">
+         const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
+         const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
+         
+         const favoriteNuclides = React.useMemo(() =>
+         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+         [favorites, radionuclides]
+         );
+         
+         const searchHistoryNuclides = React.useMemo(() =>
+         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+         [searchHistory, radionuclides]
+         );
+         
+         const confirmClearFavorites = () => {
+         handleClearFavorites();
+         setIsFavoritesModalOpen(false);
+         };
+         
+         const confirmClearHistory = () => {
+         handleClearHistory();
+         setIsHistoryModalOpen(false);
+         };
+         
+         return (
+         <div className="p-4 sm:p-6 space-y-6">
             {errorMessage && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                     <p className="font-bold">Error</p><p>{errorMessage}</p>
@@ -2289,7 +2287,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             )}
             
             <CalculationHistoryPanel onNavClick={onNavClick} />
-
+         
             {favoriteNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2310,7 +2308,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     </div>
                 </div>
             )}
-
+         
             {searchHistoryNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2331,7 +2329,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     </div>
                 </div>
             )}
-
+         
             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2345,7 +2343,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     ))}
                 </div>
             </div>
-
+         
             <ConfirmationModal
                 isOpen={isFavoritesModalOpen}
                 onClose={() => setIsFavoritesModalOpen(false)}
@@ -2354,7 +2352,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             >
                 <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
             </ConfirmationModal>
-
+         
             <ConfirmationModal
                 isOpen={isHistoryModalOpen}
                 onClose={() => setIsHistoryModalOpen(false)}
@@ -2363,10 +2361,10 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             >
                 <p>Are you sure you want to clear your recent search history?</p>
             </ConfirmationModal>
-
-        </div>
-    );
-};
+         
+         </div>
+         );
+         };
          
          /**
           * @description Displays information about a single radionuclide. Can be a full detailed card or a compact version for lists.
@@ -2520,13 +2518,13 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                               <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
                              <div>
                                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
-
-<ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-    {nuclide.dosimetry.ALI?.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
-    {nuclide.dosimetry.ALI?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
-    {nuclide.dosimetry.ALI?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
-    {nuclide.dosimetry.ALI?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
-</ul>
+         
+         <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+         {nuclide.dosimetry.ALI?.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
+         {nuclide.dosimetry.ALI?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
+         {nuclide.dosimetry.ALI?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
+         {nuclide.dosimetry.ALI?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
+         </ul>
                              </div>
                          </div>
                          <div className="flex items-start py-2">
@@ -2968,7 +2966,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
              setResult('');
              setError('');
          };
-
+         
          const units = {
          'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'],
          'Radiation Dose': ['mrem', 'rem', 'µSv', 'mSv', 'Sv', 'rad', 'cGy', 'Gy', 'R'],
@@ -3217,9 +3215,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const MODE_DAUGHTER = 'findDaughterActivity';
          
          const { settings } = React.useContext(SettingsContext);
-
+         
          const { addHistory } = useCalculationHistory();
-
+         
          const [selectedNuclide, setSelectedNuclide] = React.useState(() => {
          const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol');
          if (!savedSymbol) return null;
@@ -3318,10 +3316,10 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                         result: `A(t): ${Nt.toPrecision(4)}`,
                         view: VIEWS.CALCULATOR
                     });
-
+         
                     break;
                 } 
-
+         
                  case MODE_TIME: { const N0 = parseFloat(initialActivity); const Nt = parseFloat(remainingActivity); if (isNaN(N0) || isNaN(Nt) || N0 < 0 || Nt < 0) { throw new Error('Activities must be non-negative numbers.'); } if (Nt > N0) { throw new Error('Remaining activity cannot be greater than initial activity.'); } if (Nt === 0) { setTimeElapsed('Infinite'); setResult(null); break; } const t_seconds_calc = -T1_seconds * (Math.log(Nt / N0) / Math.log(2)); const t_final = t_seconds_calc / unitConversions[timeUnit]; setTimeElapsed(t_final.toPrecision(4)); setResult(null); setChartData(null); break; }
                  case MODE_INITIAL: { const Nt = parseFloat(remainingActivity); if (isNaN(Nt) || Nt < 0) { throw new Error('Remaining activity must be a non-negative number.'); } const N0 = Nt / Math.pow(0.5, t_seconds / T1_seconds); setInitialActivity(N0.toPrecision(4)); setResult(null); generateSingleNuclideChart(N0); break; }
                  case MODE_DAUGHTER: {
@@ -3437,9 +3435,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          );
          };
          
-// -- Sub-Component Definitions moved outside --
-
-// -- Sub-Component Definitions moved outside --
+         // -- Sub-Component Definitions moved outside --
+         
+         // -- Sub-Component Definitions moved outside --
          const StaticSurveyCalculator = ({ radionuclides }) => {
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
          const [surveyData, setSurveyData] = React.useState('');
@@ -3462,7 +3460,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
              setResult(null);
              setError('');
          };
-
+         
          // Auto-populate limits when a nuclide is selected
          React.useEffect(() => {
          if (selectedNuclide) {
@@ -3541,7 +3539,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
-
+         
          // ADDED: Function to clear all inputs for this calculator
          const handleClearInputs = () => {
              setNuclideSymbol('');
@@ -3624,7 +3622,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [error, setError] = React.useState('');
          const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
-
+         
          // ADDED: Function to clear all inputs for this calculator
          const handleClearInputs = () => {
              setNuclideSymbol('');
@@ -3679,7 +3677,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             </div>
          );
          };
-
+         
          const OperationalHPCalculators = ({ radionuclides }) => {
          // -- Main Component Logic --
          
@@ -3714,7 +3712,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          </div>
          );
          };
-
+         
          /**
          * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
          * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
@@ -3727,6 +3725,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [activityUnit, setActivityUnit] = React.useState('Ci');
          const [result, setResult] = React.useState(null);
          const [error, setError] = React.useState('');
+         
+         // ADDED: Get the addHistory function
+         const { addHistory } = useCalculationHistory();
          
          const transportNuclides = React.useMemo(() =>
          radionuclides.filter(n => n.shipping && (n.shipping.A1 !== null || n.shipping.A2 !== null)).sort((a,b) => a.name.localeCompare(b.name)),
@@ -3750,6 +3751,12 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          };
          
          const shippingActivityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci'];
+         
+         const resultStyles = {
+         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
+         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
+         TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
+         };
          
          const handleCalculate = () => {
          if (!selectedNuclide) {
@@ -3778,11 +3785,21 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          } else {
              classification = 'TYPE_B';
          }
-         setResult({
+         const newResult = {
              classification,
              userActivityTBq: userActivityTBq.toExponential(3),
              limitTBq,
              exceptedLimitTBq: exceptedLimitTBq.toExponential(3)
+         };
+         setResult(newResult);
+         
+         // ADDED: The call to save the calculation to history
+         addHistory({
+            id: Date.now(),
+            type: 'Transportation',
+            inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
+            result: resultStyles[newResult.classification].display,
+            view: VIEWS.TRANSPORTATION
          });
          };
          
@@ -3795,7 +3812,6 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          }
          }, [selectedNuclide, formType, activity, activityUnit]);
          
-         // <-- ADDED THIS FUNCTION -->
          const handleClearInputs = () => {
          setSelectedSymbol('');
          setFormType('A2');
@@ -3805,18 +3821,11 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          setError('');
          };
          
-         const resultStyles = {
-         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
-         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
-         TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
-         };
-         
          return (
          <div className="p-4 animate-fade-in">
              <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                  <div className="flex justify-between items-center mb-4">
                      <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
-                      {/* <-- ADDED THIS BUTTON --> */}
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
                      </button>
@@ -3877,8 +3886,6 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          </div>
          );
          };
-         
-         
          
          const MedicalCalculator = () => {
          const [activeTab, setActiveTab] = React.useState('xrayShielding');
@@ -3963,7 +3970,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          };
          
          const PatientReleaseCalculator = () => {
-
+         
          const I131_ACTIVITY_RELEASE_LIMIT_MCI = 33;
          const I131_DOSE_RATE_RELEASE_LIMIT_MREM_HR = 7;
          const TEDE_RELEASE_LIMIT_MREM = 500;
@@ -4037,7 +4044,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          return (
              <div className="space-y-4">
-
+         
                  <div className="text-right">
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
@@ -4127,7 +4134,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          return value; // Assume MeV if no unit or MeV is present
          };
          
-        const handleClearInputs = () => {
+         const handleClearInputs = () => {
             setSearchMode('gamma');
             setTargetEnergy('662');
             setTolerance('2');
@@ -4135,8 +4142,8 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
             setResults([]);
             setAnalysis(null);
             setError('');
-        };
-
+         };
+         
          // Effect to switch defaults when changing modes
          React.useEffect(() => {
          if (searchMode === 'gamma') {
@@ -4225,11 +4232,11 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          <div className="p-4 animate-fade-in">
              <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
-    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-    </button>
-</div>
+         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
+         <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+         <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+         </button>
+         </div>
                  <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
                      <button onClick={() => setSearchMode('gamma')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Spec</button>
                      <button onClick={() => setSearchMode('alpha')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'alpha' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Alpha Spec</button>
@@ -4338,7 +4345,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [isLoading, setIsLoading] = React.useState(false);
          // ADDED: State for the log scale toggle, defaulting to your settings
          const [useLogScale, setUseLogScale] = React.useState(settings.chartScale === 'Logarithmic');
-
+         
          const timeUnits = longTimeUnits_ordered;
          const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
          
@@ -4545,7 +4552,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     link.click();
                 }
             };
-
+         
             return (
                 <div className="mt-4">
                     <div className="h-64">
@@ -4645,7 +4652,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          
          return (
              <div className="space-y-4">
-
+         
                  <div className="flex justify-between items-center">
                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
@@ -4775,6 +4782,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const [analysis, setAnalysis] = React.useState(null);
          const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
          
+         // ADDED: Get the addHistory function
+         const { addHistory } = useCalculationHistory();
+         
          React.useEffect(() => {
          localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
          localStorage.setItem('equilibrium_initialActivity', initialActivity);
@@ -4855,7 +4865,19 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          if (Math.abs(lambda1 - lambda2) < 1e-12) { daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds); } 
          else { daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds)); }
          const A_daughter = initialDaughterDecay + daughterIngrowth;
-         setResult({ parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } });
+         
+         const newResult = { parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } };
+         setResult(newResult);
+         
+         // ADDED: The call to save the calculation to history
+         addHistory({
+             id: Date.now(),
+             type: 'Equilibrium',
+             inputs: `${initialActivity} of ${parentNuclide.symbol} for ${timeElapsed} ${timeUnit}`,
+             result: `Daughter: ${newResult.daughter.activity}`,
+             view: VIEWS.EQUILIBRIUM
+         });
+         
          const labels = [], parentData = [], daughterData = [], ratioData = [];
          const totalTime = t_input;
          const steps = 100;
@@ -4904,7 +4926,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
              <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                  <div className="flex justify-between items-center mb-4">
                      <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parent-Daughter Equilibrium Analyzer</h2>
-
+         
                      <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
                          <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
                      </button>
@@ -5033,7 +5055,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                  <p className="text-sm text-slate-600 dark:text-slate-400">
                      Determine the Working Level (WL) of radon progeny.
                  </p>
-
+         
                  <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 flex-shrink-0">
                      <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
                  </button>
@@ -5869,7 +5891,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const BETA_MODE_AIR = 'air';
          
          const { settings } = React.useContext(SettingsContext);
-
+         
          const { addHistory } = useCalculationHistory();
          
          const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || settings.defaultDoseMode);
@@ -6009,11 +6031,11 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                          case GEOMETRY_LINE: { const len_val = parseFloat(lineLength); if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.'); const len_m = len_val * distanceFactorsM[lineLengthUnit]; const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit]; doseRateR_hr = ((2 * gammaConstant * linearActivityCi_per_m) / distanceInM) * Math.atan(len_m / (2 * distanceInM)); break; }
                          case GEOMETRY_AREA: { const rad_val = parseFloat(diskRadius); if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.'); const rad_m = rad_val * distanceFactorsM[diskRadiusUnit]; const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit]; doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + Math.pow(rad_m / distanceInM, 2)); break; }
                      }
-
+         
                     const doseRate_mrem_hr = doseRateR_hr * 1000;
                     const newResult = { type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') };
                     setResult(newResult);
-
+         
                     addHistory({
                         id: Date.now(),
                         type: 'Dose Rate',
@@ -6021,9 +6043,9 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                         result: `${newResult.dose.value} ${newResult.dose.unit}`,
                         view: VIEWS.DOSE_RATE
                     });
-
+         
                     break;
-
+         
                  }
                  case CALC_MODE_BETA:
                  case CALC_MODE_BREMS: {
@@ -6193,7 +6215,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          const MODE_GENERIC = 'genericRate';
          
          const { settings } = React.useContext(SettingsContext);
-
+         
          const { addHistory } = useCalculationHistory();
          
          const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_FROM_SOURCE);
@@ -6306,7 +6328,7 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
                     const shielded_mrem_hr = shieldedRateR_hr * 1000;
                     const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate') };
                     setResult(newResult);
-
+         
                     addHistory({
                         id: Date.now(),
                         type: 'Shielding',
@@ -6420,8 +6442,8 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          * @description A calculator for determining allowable stay time and total dose received.
          * The dose rate can be calculated from a specific source or entered manually.
          */
-
-        const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
+         
+         const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
          const INPUT_MODE_SOURCE = 'fromSource';
          const INPUT_MODE_MANUAL = 'manualRate';
          
@@ -7682,17 +7704,17 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
          */
          
          
-const DecayChart = ({ chartData, useLogScale }) => {
-    const chartRef = React.useRef(null);
-    const chartInstance = React.useRef(null);
-
-    React.useEffect(() => {
-        // Destroy the previous chart instance if it exists
-        if (chartInstance.current) {
+         const DecayChart = ({ chartData, useLogScale }) => {
+         const chartRef = React.useRef(null);
+         const chartInstance = React.useRef(null);
+         
+         React.useEffect(() => {
+         // Destroy the previous chart instance if it exists
+         if (chartInstance.current) {
             chartInstance.current.destroy();
-        }
-
-        if (chartRef.current && chartData) {
+         }
+         
+         if (chartRef.current && chartData) {
             const ctx = chartRef.current.getContext('2d');
             chartInstance.current = new Chart(ctx, {
                 type: 'line',
@@ -7745,26 +7767,26 @@ const DecayChart = ({ chartData, useLogScale }) => {
                     }
                 }
             });
-        }
-
-        return () => {
+         }
+         
+         return () => {
             if (chartInstance.current) {
                 chartInstance.current.destroy();
             }
-        };
-    }, [chartData, useLogScale]);
-
-    const handleExport = () => {
-        if (chartInstance.current) {
+         };
+         }, [chartData, useLogScale]);
+         
+         const handleExport = () => {
+         if (chartInstance.current) {
             const link = document.createElement('a');
             link.href = chartInstance.current.toBase64Image();
             link.download = 'decay-chart.png';
             link.click();
-        }
-    };
-
-    return (
-        <div className="mt-4">
+         }
+         };
+         
+         return (
+         <div className="mt-4">
             <div className="h-64">
                 <canvas ref={chartRef}></canvas>
             </div>
@@ -7776,9 +7798,9 @@ const DecayChart = ({ chartData, useLogScale }) => {
                     Export as PNG
                 </button>
             </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
          
          const ManualModal = ({ isOpen, onClose }) => {
          if (!isOpen) return null;
