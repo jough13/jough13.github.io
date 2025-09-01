@@ -689,8 +689,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.3.4';
-         const LAST_UPDATED = 'August 31, 2025';
+         const VERSION = '3.3.5';
+         const LAST_UPDATED = 'September 01, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -1051,8 +1051,8 @@
           * @returns {string} The normalized string.
           */
          
-         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[\s-]/g, '') : '');
-         
+         const normalizeString = (str) => (typeof str === 'string' ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+
          /**
           * @description Creates a formatted string of key info for a nuclide tooltip.
           * @param {object} nuclide - The nuclide object.
@@ -2573,6 +2573,7 @@
                              </div>
                          </div>
                      )}
+                    
                  </div>
              </div>
              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
@@ -2600,38 +2601,52 @@
              )}
          
              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-                 <div className="flex flex-wrap justify-center gap-2">
-                     {showBackButton && (
-                         <Tooltip text="Go back to the previous view" widthClass="w-auto">
-                             <button
-                                 onClick={onBackClick}
-                                 className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
-                             >
-                                 <Icon path={ICONS.database} className="w-4 h-4" />
-                                 Back
+                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
+                     <div className="flex flex-wrap justify-center gap-2">
+                         {showBackButton && (
+                             <Tooltip text="Go back to the previous view" widthClass="w-auto">
+                                 <button
+                                     onClick={onBackClick}
+                                     className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
+                                 >
+                                     <Icon path={ICONS.database} className="w-4 h-4" />
+                                     Back
+                                 </button>
+                             </Tooltip>
+                         )}
+                         <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
+                             <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                 <Icon path={ICONS.compare} className="w-4 h-4" /> Add to Compare
                              </button>
                          </Tooltip>
-                     )}
-                     <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
-                         <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                             <Icon path={ICONS.compare} className="w-4 h-4" /> Add to Compare
-                         </button>
-                     </Tooltip>
-                     <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
-                         <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                             <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
-                         </button>
-                     </Tooltip>
-                     {nuclide.shipping && (
-                         <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
-                              <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                 <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
+                         <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
+                             <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                 <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
                              </button>
                          </Tooltip>
-                     )}
+                         {nuclide.gammaConstant && (
+                             <Tooltip text="Send this nuclide to the Dose Rate Calculator." widthClass="w-64">
+                                  <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                     <Icon path={ICONS.doseRate} className="w-4 h-4" /> Dose Rate
+                                 </button>
+                             </Tooltip>
+                         )}
+                         {nuclide.gammaConstant && (
+                             <Tooltip text="Send this nuclide to the Shielding Calculator." widthClass="w-64">
+                                  <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                     <Icon path={ICONS.shield} className="w-4 h-4" /> Shielding
+                                 </button>
+                             </Tooltip>
+                         )}
+                         {nuclide.shipping && (
+                             <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
+                                  <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                     <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
+                                 </button>
+                             </Tooltip>
+                         )}
+                     </div>
                  </div>
-             </div>
          
              {nuclide.decaySeriesId && (
                  <div className="mt-6 text-center">
@@ -3035,17 +3050,26 @@
          'oz': { base: 'mass', factor: 28.3495 },
          };
          
-         React.useEffect(() => {
-         const fromBase = factors[fromUnit]?.base;
-         const toBase = factors[toUnit]?.base;
-         
-         if (fromBase && fromBase !== toBase) {
-             const compatibleUnit = Object.keys(factors).find(u => factors[u]?.base === fromBase);
-             if (compatibleUnit) {
-                 setToUnit(compatibleUnit);
-             }
-         }
-         }, [fromUnit, factors, toUnit]);
+React.useEffect(() => {
+            const fromBase = factors[fromUnit]?.base;
+            const toBase = factors[toUnit]?.base;
+
+            // If the units have become incompatible...
+            if (fromBase && fromBase !== toBase) {
+                // Find the category array that contains the new `fromUnit`.
+                const newCategoryArray = Object.values(units).find(arr => arr.includes(fromUnit));
+                
+                if (newCategoryArray && newCategoryArray.length > 0) {
+                    // Set the 'to' unit to a different, compatible unit from the same category.
+                    // If the first unit in the list is the same as our new 'from' unit, pick the second.
+                    let newToUnit = newCategoryArray[0];
+                    if (newCategoryArray.length > 1 && newToUnit === fromUnit) {
+                        newToUnit = newCategoryArray[1];
+                    }
+                    setToUnit(newToUnit);
+                }
+            }
+        }, [fromUnit]); // The key is to only depend on `fromUnit`!
          
          const handleConvert = React.useCallback(() => {
          const val = parseFloat(value);
@@ -6068,7 +6092,8 @@
                      if (calcMode === CALC_MODE_BETA) {
                          if (betaMode === BETA_MODE_SKIN) {
                              const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
-                             const doseRate_rad_hr = 5.35 * concentration_uCi_per_cm2 * E_avg;
+                             // Using the standard formula constant 2.13 from (rad*g/100erg)*(1.6e-6erg/MeV)*(3.7e4dps/uCi)*(3600s/hr)
+                             const doseRate_rad_hr = 2.13 * concentration_uCi_per_cm2 * E_avg;
                              const doseRate_mrem_hr = doseRate_rad_hr * 1000;
                              const newResult = { type: 'beta_skin', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max }; // Store result first
                              setResult(newResult);
