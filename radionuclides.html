@@ -2330,40 +2330,39 @@ const useCalculationHistory = () => {
          * @param {object} props - Contains data and handlers for the home page.
          */
          
-         const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
-         const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
-         const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
-         
-         const favoriteNuclides = React.useMemo(() =>
-         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [favorites, radionuclides]
-         );
-         
-         const searchHistoryNuclides = React.useMemo(() =>
-         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [searchHistory, radionuclides]
-         );
-         
-         const confirmClearFavorites = () => {
-         handleClearFavorites();
-         setIsFavoritesModalOpen(false);
-         };
-         
-         const confirmClearHistory = () => {
-         handleClearHistory();
-         setIsHistoryModalOpen(false);
-         };
-         
-         return (
-         <div className="p-4 sm:p-6 space-y-6">
+const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
+    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
+    
+    const favoriteNuclides = React.useMemo(() =>
+        favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [favorites, radionuclides]
+    );
+    
+    const searchHistoryNuclides = React.useMemo(() =>
+        searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [searchHistory, radionuclides]
+    );
+    
+    const confirmClearFavorites = () => {
+        handleClearFavorites();
+        setIsFavoritesModalOpen(false);
+    };
+    
+    const confirmClearHistory = () => {
+        handleClearHistory();
+        setIsHistoryModalOpen(false);
+    };
+    
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
             {errorMessage && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                     <p className="font-bold">Error</p><p>{errorMessage}</p>
                 </div>
             )}
             
-            <CalculationHistoryPanel onNavClick={onNavClick} />
-         
+            {/* --- 1. FAVORITES (Moved to the top) --- */}
             {favoriteNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2385,6 +2384,7 @@ const useCalculationHistory = () => {
                 </div>
             )}
          
+            {/* --- 2. RECENT SEARCHES --- */}
             {searchHistoryNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2405,7 +2405,11 @@ const useCalculationHistory = () => {
                     </div>
                 </div>
             )}
+            
+            {/* --- 3. RECENT CALCULATIONS --- */}
+            <CalculationHistoryPanel onNavClick={onNavClick} />
          
+            {/* --- 4. QUICK SUGGESTIONS --- */}
             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2438,9 +2442,9 @@ const useCalculationHistory = () => {
                 <p>Are you sure you want to clear your recent search history?</p>
             </ConfirmationModal>
          
-         </div>
-         );
-         };
+        </div>
+    );
+};
     
 const Scratchpad = () => {
     const [notes, setNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
