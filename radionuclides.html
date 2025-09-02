@@ -3500,404 +3500,107 @@ addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A
          };
          
          
-         
-         
-         
-         
-         // -- Sub-Component Definitions moved outside --
-         const StaticSurveyCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [surveyData, setSurveyData] = React.useState('');
-         const [avgLimit, setAvgLimit] = React.useState('');
-         const [maxLimit, setMaxLimit] = React.useState('');
-         const [unit, setUnit] = React.useState('dpm/100cm²');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
-         
-         // ADDED: Function to clear all inputs for this calculator
 
-         const handleClearInputs = () => {
-             setNuclideSymbol('');
-             setSurveyData('');
-             setAvgLimit('');
-             setMaxLimit('');
-             setUnit('dpm/100cm²');
-             setResult(null);
-             setError('');
-         };
-         
-         // Auto-populate limits when a nuclide is selected
-         
-         React.useEffect(() => {
-         if (selectedNuclide) {
-         const limits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
-         if (limits) {
-         setAvgLimit(limits.total);
-         setMaxLimit(limits.total * 3); // Allows 3x the average limit for max
-         setUnit('dpm/100cm²');
-         }
-         }
-         }, [selectedNuclide]);
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         if (!surveyData.trim()) { setResult(null); return; }
-         const dataPoints = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         if (dataPoints.length === 0) throw new Error("No valid numeric data found.");
-         const avg = dataPoints.reduce((sum, val) => sum + val, 0) / dataPoints.length;
-         const max = Math.max(...dataPoints);
-         const avgL = parseFloat(avgLimit);
-         const maxL = parseFloat(maxLimit);
-         if (isNaN(avgL) || isNaN(maxL)) { if (avgLimit && maxLimit) { throw new Error("Limits must be valid numbers."); } else { return; } }
-         setResult({ count: dataPoints.length, average: avg, max: max, avgPass: avg <= avgL, maxPass: max <= maxL });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [surveyData, avgLimit, maxLimit]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-            
-            <div className="text-right -mb-2">
-                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                </button>
-            </div>
-            <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
-            <div>
-            <label className="block text-sm font-medium">Survey Data</label>
-            <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><label className="block text-sm font-medium">Max Limit</label><input type="number" value={maxLimit} onChange={e => setMaxLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            <div><label className="block text-sm font-medium">Units</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g., mrem/hr, dpm/100cm²" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
-            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-            <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-              <p className="text-xs font-bold">Average</p>
-              <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
-              <p className="text-sm">{result.average.toPrecision(3)}</p>
-            </div>
-            <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-              <p className="text-xs font-bold">Maximum</p>
-              <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
-              <p className="text-sm">{result.max.toPrecision(3)}</p>
-            </div>
-            </div>
-            </div>
-            )}
-            </div>
-         );
-         };
-                  
-         const ContaminationSurveyCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [grossCpm, setGrossCpm] = React.useState('1500');
-         const [backgroundCpm, setBackgroundCpm] = React.useState('50');
-         const [instrumentEff, setInstrumentEff] = React.useState('25');
-         const [removableFraction, setRemovableFraction] = React.useState('0.1');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
-         
-         // ADDED: Function to clear all inputs for this calculator
-         
-         const handleClearInputs = () => {
-             setNuclideSymbol('');
-             setGrossCpm('1500');
-             setBackgroundCpm('50');
-             setInstrumentEff('25');
-             setRemovableFraction('0.1');
-             setResult(null);
-             setError('');
-         };
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         if (!selectedNuclide) { setResult(null); return; }
-         
-         const gross = parseFloat(grossCpm); const bkg = parseFloat(backgroundCpm);
-         const eff = parseFloat(instrumentEff) / 100; const frac = parseFloat(removableFraction);
-         
-         if ([gross, bkg, eff, frac].some(isNaN) || eff <= 0 || frac <= 0) throw new Error("All inputs must be valid, positive numbers.");
-         if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
-         
-         const netCpm = gross - bkg;
-         const dpm = netCpm / eff;
-         const contamination = dpm / frac;
-         
-         const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
-         const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
-         
-         setResult({ contamination: contamination.toFixed(0), rgPass: contamination <= rgLimit, ansiPass: contamination <= ansiLimit, rgLimit, ansiLimit });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [selectedNuclide, grossCpm, backgroundCpm, instrumentEff, removableFraction]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-         
-            <div className="text-right -mb-2">
-                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                </button>
-         
-            </div>
-            <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide to find limits..."/>}</div></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
-            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
-            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-            <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-              <p className="text-xs font-bold">Reg. Guide 1.86</p>
-              <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
-              <p className="text-xs">(Limit: {result.rgLimit})</p>
-            </div>
-            <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-              <p className="text-xs font-bold">ANSI N13.12</p>
-              <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
-              <p className="text-xs">(Limit: {result.ansiLimit})</p>
-            </div>
-            </div>
-            </div>
-            )}
-            </div>
-         );
-         };
-                  
-         const AirborneCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [releaseActivity, setReleaseActivity] = React.useState('1');
-         const [activityUnit, setActivityUnit] = React.useState('mCi');
-         const [roomVolume, setRoomVolume] = React.useState('100');
-         const [volumeUnit, setVolumeUnit] = React.useState('m³');
-         const [ventilationRate, setVentilationRate] = React.useState('2');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
-         
-         // ADDED: Function to clear all inputs for this calculator
-         
-         const handleClearInputs = () => {
-             setNuclideSymbol('');
-             setReleaseActivity('1');
-             setActivityUnit('mCi');
-             setRoomVolume('100');
-             setVolumeUnit('m³');
-             setVentilationRate('2');
-             setResult(null);
-             setError('');
-         };
-         
-         React.useEffect(() => {
-         if (!selectedNuclide) { setResult(null); return; }
-         try {
-         setError('');
-         const act = parseFloat(releaseActivity); const vol = parseFloat(roomVolume); const vent = parseFloat(ventilationRate);
-         if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) throw new Error("Inputs must be valid numbers.");
-         const act_uCi = act * ({ 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6 }[activityUnit]);
-         const vol_mL = vol * ({ 'm³': 1e6, 'L': 1000, 'ft³': 28316.8 }[volumeUnit]);
-         const dac_uCi_mL = selectedNuclide.dosimetry.DAC.inhalation_W || selectedNuclide.dosimetry.DAC.inhalation_D || selectedNuclide.dosimetry.DAC.inhalation_Y;
-         if (!dac_uCi_mL) throw new Error(`DAC value not found for ${selectedNuclide.name}.`);
-         const initialConc_uCi_mL = act_uCi / vol_mL;
-         const lambda_eff_per_hr = vent;
-         const time_to_1_dac_hr = lambda_eff_per_hr > 0 ? (-1 / lambda_eff_per_hr) * Math.log(dac_uCi_mL / initialConc_uCi_mL) : Infinity;
-         setResult({ initialConc: initialConc_uCi_mL.toExponential(3), dacValue: dac_uCi_mL.toExponential(2), dacMultiple: (initialConc_uCi_mL / dac_uCi_mL).toPrecision(3), time_to_1_dac_hr: time_to_1_dac_hr > 0 ? time_to_1_dac_hr.toPrecision(3) : 0 });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [selectedNuclide, releaseActivity, activityUnit, roomVolume, volumeUnit, ventilationRate]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-         
-            {/* ADDED: The "Clear Inputs" button */}
-         
-            <div className="text-right -mb-2">
-                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                </button>
-            </div>
-            <div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide with a DAC..."/>}</div></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>pCi</option><option>nCi</option><option>µCi</option><option>mCi</option><option>Ci</option></select></div></div>
-            <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
-            <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-            <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
-            <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
-            <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
-            </div>
-            )}
-            </div>
-         );
-         };
-         
-         const OperationalHPCalculators = ({ radionuclides }) => {
-         
-         const LeakTestCalculator = () => {
-         const [grossCpm, setGrossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
-         const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
-         const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const LEAK_TEST_LIMIT_UCI = 0.005;
-         const DPM_PER_UCI = 2.22e6;
-         
-         React.useEffect(() => {
-            localStorage.setItem('leakTest_grossCpm', grossCpm);
-            localStorage.setItem('leakTest_backgroundCpm', backgroundCpm);
-            localStorage.setItem('leakTest_instrumentEff', instrumentEff);
-         }, [grossCpm, backgroundCpm, instrumentEff]);
-         
-         React.useEffect(() => {
-            try {
-                setError('');
-                const gross = parseFloat(grossCpm);
-                const bkg = parseFloat(backgroundCpm);
-                const eff = parseFloat(instrumentEff);
-         
-                if (isNaN(gross) || isNaN(bkg) || isNaN(eff)) {
-                    if (grossCpm || backgroundCpm || instrumentEff) setError("All inputs must be valid numbers.");
-                    setResult(null); return;
-                }
-                if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
-                if (eff <= 0 || eff > 100) throw new Error("Efficiency must be between 0 and 100.");
-         
-                const netCpm = gross - bkg;
-                const dpm = netCpm / (eff / 100.0);
-                const activity_uCi = dpm / DPM_PER_UCI;
-                const pass = activity_uCi < LEAK_TEST_LIMIT_UCI;
-         
-                setResult({ activity: activity_uCi.toExponential(2), pass: pass });
-            } catch (e) {
-                setError(e.message);
-                setResult(null);
+
+const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
+    const LEAK_TEST_LIMIT_UCI = 0.005;
+    const DPM_PER_UCI = 2.22e6;
+
+    React.useEffect(() => {
+        localStorage.setItem('leakTest_grossCpm', grossCpm);
+        localStorage.setItem('leakTest_backgroundCpm', backgroundCpm);
+        localStorage.setItem('leakTest_instrumentEff', instrumentEff);
+    }, [grossCpm, backgroundCpm, instrumentEff]);
+
+    React.useEffect(() => {
+        try {
+            setError('');
+            const gross = parseFloat(grossCpm);
+            const bkg = parseFloat(backgroundCpm);
+            const eff = parseFloat(instrumentEff);
+
+            if (isNaN(gross) || isNaN(bkg) || isNaN(eff)) {
+                if (grossCpm || backgroundCpm || instrumentEff) setError("All inputs must be valid numbers.");
+                setResult(null); return;
             }
-         }, [grossCpm, backgroundCpm, instrumentEff]);
-         
-         const handleClearInputs = () => {
-            setGrossCpm('150');
-            setBackgroundCpm('50');
-            setInstrumentEff('25');
+            if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
+            if (eff <= 0 || eff > 100) throw new Error("Efficiency must be between 0 and 100.");
+
+            const netCpm = gross - bkg;
+            const dpm = netCpm / (eff / 100.0);
+            const activity_uCi = dpm / DPM_PER_UCI;
+            const pass = activity_uCi < LEAK_TEST_LIMIT_UCI;
+
+            setResult({ activity: activity_uCi.toExponential(2), pass: pass });
+        } catch (e) {
+            setError(e.message);
             setResult(null);
-            setError('');
-         };
-         
-         return (
-            <div className="space-y-4 max-w-md mx-auto">
-                <div className="flex justify-between items-center">
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Evaluates a sealed source wipe against the 0.005 µCi limit.
-                    </p>
-                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                    </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                </div>
-                <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-         
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                {result && (
-                    <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                        <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.pass ? 'PASS' : 'FAIL'}</p>
-                        <p className="text-xl font-bold mt-2">{result.activity} µCi</p>
-                        <p className={`text-xs font-semibold ${result.pass ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>(Limit: {LEAK_TEST_LIMIT_UCI} µCi)</p>
-                    </div>
-                )}
+        }
+    }, [grossCpm, backgroundCpm, instrumentEff, setResult, setError]);
+
+    return (
+        <div className="space-y-4 max-w-md mx-auto">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+                Evaluates a sealed source wipe against the 0.005 µCi limit.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
-         );
-         };
-         
-         const StaticSurveyCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [surveyData, setSurveyData] = React.useState('');
-         const [avgLimit, setAvgLimit] = React.useState('');
-         const [maxLimit, setMaxLimit] = React.useState('');
-         const [unit, setUnit] = React.useState('dpm/100cm²');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
-         
-         const handleClearInputs = () => {
-            setNuclideSymbol('');
-            setSurveyData('');
-            setAvgLimit('');
-            setMaxLimit('');
-            setUnit('dpm/100cm²');
-            setResult(null);
+            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                    <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.pass ? 'PASS' : 'FAIL'}</p>
+                    <p className="text-xl font-bold mt-2">{result.activity} µCi</p>
+                    <p className={`text-xs font-semibold ${result.pass ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>(Limit: {LEAK_TEST_LIMIT_UCI} µCi)</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const StaticSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, surveyData, setSurveyData, avgLimit, setAvgLimit, maxLimit, setMaxLimit, unit, setUnit, result, setResult, error, setError }) => {
+    const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+
+    React.useEffect(() => {
+        if (selectedNuclide) {
+            const limits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
+            if (limits) {
+                setAvgLimit(limits.total);
+                setMaxLimit(limits.total * 3);
+                setUnit('dpm/100cm²');
+            }
+        }
+    }, [selectedNuclide, setAvgLimit, setMaxLimit, setUnit]);
+
+    React.useEffect(() => {
+        try {
             setError('');
-         };
-         
-         React.useEffect(() => {
-         if (selectedNuclide) {
-         const limits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
-         if (limits) {
-         setAvgLimit(limits.total);
-         setMaxLimit(limits.total * 3);
-         setUnit('dpm/100cm²');
-         }
-         }
-         }, [selectedNuclide]);
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         if (!surveyData.trim()) { setResult(null); return; }
-         const dataPoints = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         if (dataPoints.length === 0) throw new Error("No valid numeric data found.");
-         const avg = dataPoints.reduce((sum, val) => sum + val, 0) / dataPoints.length;
-         const max = Math.max(...dataPoints);
-         const avgL = parseFloat(avgLimit);
-         const maxL = parseFloat(maxLimit);
-         if (isNaN(avgL) || isNaN(maxL)) { if (avgLimit && maxLimit) { throw new Error("Limits must be valid numbers."); } else { return; } }
-         setResult({ count: dataPoints.length, average: avg, max: max, avgPass: avg <= avgL, maxPass: max <= maxL });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [surveyData, avgLimit, maxLimit]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-           <div className="text-right -mb-2">
-               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-               </button>
-           </div>
+            if (!surveyData.trim()) { setResult(null); return; }
+            const dataPoints = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+            if (dataPoints.length === 0) throw new Error("No valid numeric data found.");
+            const avg = dataPoints.reduce((sum, val) => sum + val, 0) / dataPoints.length;
+            const max = Math.max(...dataPoints);
+            const avgL = parseFloat(avgLimit);
+            const maxL = parseFloat(maxLimit);
+            if (isNaN(avgL) || isNaN(maxL)) { if (avgLimit && maxLimit) { throw new Error("Limits must be valid numbers."); } else { return; } }
+            setResult({ count: dataPoints.length, average: avg, max: max, avgPass: avg <= avgL, maxPass: max <= maxL });
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [surveyData, avgLimit, maxLimit, setResult, setError]);
+
+    return (
+        <div className="space-y-4 max-w-md mx-auto">
            <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
            <div>
-           <label className="block text-sm font-medium">Survey Data</label>
-           <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+               <label className="block text-sm font-medium">Survey Data</label>
+               <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                <div>
-         
-                    {/* <-- MODIFIED: Tooltip added around the label --> */}
-         
                     <Tooltip text="This is a common rule of thumb for routine surveys where an occasional higher-than-average reading is acceptable. Always refer to your specific license conditions or survey procedures.">
                         <label className="block text-sm font-medium">Max Limit</label>
                     </Tooltip>
@@ -3907,21 +3610,21 @@ addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A
            <div><label className="block text-sm font-medium">Units</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g., mrem/hr, dpm/100cm²" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
            {result && (
-           <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-           <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
-           <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-           <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-             <p className="text-xs font-bold">Average</p>
-             <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
-             <p className="text-sm">{result.average.toPrecision(3)}</p>
-           </div>
-           <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-             <p className="text-xs font-bold">Maximum</p>
-             <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
-             <p className="text-sm">{result.max.toPrecision(3)}</p>
-           </div>
-           </div>
-           </div>
+               <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                   <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
+                   <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
+                       <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                         <p className="text-xs font-bold">Average</p>
+                         <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
+                         <p className="text-sm">{result.average.toPrecision(3)}</p>
+                       </div>
+                       <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                         <p className="text-xs font-bold">Maximum</p>
+                         <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
+                         <p className="text-sm">{result.max.toPrecision(3)}</p>
+                       </div>
+                   </div>
+               </div>
            )}
             {!result && !error && (
                 <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
@@ -3931,166 +3634,244 @@ addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A
         </div>
     );
 };
-             
-         const ContaminationSurveyCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [grossCpm, setGrossCpm] = React.useState('1500');
-         const [backgroundCpm, setBackgroundCpm] = React.useState('50');
-         const [instrumentEff, setInstrumentEff] = React.useState('25');
-         const [removableFraction, setRemovableFraction] = React.useState('0.1');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
-         
-         const handleClearInputs = () => {
-            setNuclideSymbol('');
-            setGrossCpm('1500');
-            setBackgroundCpm('50');
-            setInstrumentEff('25');
-            setRemovableFraction('0.1');
-            setResult(null);
+
+const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, removableFraction, setRemovableFraction, result, setResult, error, setError }) => {
+    const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+    
+    React.useEffect(() => {
+        try {
             setError('');
-         };
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         if (!selectedNuclide) { setResult(null); return; }
-         
-         const gross = parseFloat(grossCpm); const bkg = parseFloat(backgroundCpm);
-         const eff = parseFloat(instrumentEff) / 100; const frac = parseFloat(removableFraction);
-         
-         if ([gross, bkg, eff, frac].some(isNaN) || eff <= 0 || frac <= 0) throw new Error("All inputs must be valid, positive numbers.");
-         if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
-         
-         const netCpm = gross - bkg;
-         const dpm = netCpm / eff;
-         const contamination = dpm / frac;
-         
-         const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
-         const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
-         
-         setResult({ contamination: contamination.toFixed(0), rgPass: contamination <= rgLimit, ansiPass: contamination <= ansiLimit, rgLimit, ansiLimit });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [selectedNuclide, grossCpm, backgroundCpm, instrumentEff, removableFraction]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-           <div className="text-right -mb-2">
-               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-               </button>
-           </div>
+            if (!selectedNuclide) { setResult(null); return; }
+            const gross = parseFloat(grossCpm); const bkg = parseFloat(backgroundCpm);
+            const eff = parseFloat(instrumentEff) / 100; const frac = parseFloat(removableFraction);
+            if ([gross, bkg, eff, frac].some(isNaN) || eff <= 0 || frac <= 0) throw new Error("All inputs must be valid, positive numbers.");
+            if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
+            const netCpm = gross - bkg;
+            const dpm = netCpm / eff;
+            const contamination = dpm / frac;
+            const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
+            const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
+            setResult({ contamination: contamination.toFixed(0), rgPass: contamination <= rgLimit, ansiPass: contamination <= ansiLimit, rgLimit, ansiLimit });
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [selectedNuclide, grossCpm, backgroundCpm, instrumentEff, removableFraction, setResult, setError]);
+    
+    return (
+        <div className="space-y-4 max-w-md mx-auto">
            <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide to find limits..."/>}</div></div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-           <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-           <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-           <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
            </div>
            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
            {result && (
-           <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-           <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
-           <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
-           <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-           <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-             <p className="text-xs font-bold">Reg. Guide 1.86</p>
-             <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
-             <p className="text-xs">(Limit: {result.rgLimit})</p>
-           </div>
-           <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-             <p className="text-xs font-bold">ANSI N13.12</p>
-             <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
-             <p className="text-xs">(Limit: {result.ansiLimit})</p>
-           </div>
-           </div>
-           </div>
+               <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                   <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
+                   <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
+                   <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
+                       <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                         <p className="text-xs font-bold">Reg. Guide 1.86</p>
+                         <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
+                         <p className="text-xs">(Limit: {result.rgLimit})</p>
+                       </div>
+                       <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                         <p className="text-xs font-bold">ANSI N13.12</p>
+                         <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
+                         <p className="text-xs">(Limit: {result.ansiLimit})</p>
+                       </div>
+                   </div>
+               </div>
            )}
-           </div>
-         );
-         };
-             
-         const AirborneCalculator = ({ radionuclides }) => {
-         const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-         const [releaseActivity, setReleaseActivity] = React.useState('1');
-         const [activityUnit, setActivityUnit] = React.useState('mCi');
-         const [roomVolume, setRoomVolume] = React.useState('100');
-         const [volumeUnit, setVolumeUnit] = React.useState('m³');
-         const [ventilationRate, setVentilationRate] = React.useState('2');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
+        </div>
+    );
+};
          
-         const handleClearInputs = () => {
-            setNuclideSymbol('');
-            setReleaseActivity('1');
-            setActivityUnit('mCi');
-            setRoomVolume('100');
-            setVolumeUnit('m³');
-            setVentilationRate('2');
-            setResult(null);
+const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, releaseActivity, setReleaseActivity, activityUnit, setActivityUnit, roomVolume, setRoomVolume, volumeUnit, setVolumeUnit, ventilationRate, setVentilationRate, result, setResult, error, setError }) => {
+    const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
+    
+    React.useEffect(() => {
+        if (!selectedNuclide) { setResult(null); return; }
+        try {
             setError('');
-         };
-         
-         React.useEffect(() => {
-         if (!selectedNuclide) { setResult(null); return; }
-         try {
-         setError('');
-         const act = parseFloat(releaseActivity); const vol = parseFloat(roomVolume); const vent = parseFloat(ventilationRate);
-         if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) throw new Error("Inputs must be valid numbers.");
-         const act_uCi = act * ({ 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6 }[activityUnit]);
-         const vol_mL = vol * ({ 'm³': 1e6, 'L': 1000, 'ft³': 28316.8 }[volumeUnit]);
-         const dac_uCi_mL = selectedNuclide.dosimetry.DAC.inhalation_W || selectedNuclide.dosimetry.DAC.inhalation_D || selectedNuclide.dosimetry.DAC.inhalation_Y;
-         if (!dac_uCi_mL) throw new Error(`DAC value not found for ${selectedNuclide.name}.`);
-         const initialConc_uCi_mL = act_uCi / vol_mL;
-         const lambda_eff_per_hr = vent;
-         const time_to_1_dac_hr = lambda_eff_per_hr > 0 ? (-1 / lambda_eff_per_hr) * Math.log(dac_uCi_mL / initialConc_uCi_mL) : Infinity;
-         setResult({ initialConc: initialConc_uCi_mL.toExponential(3), dacValue: dac_uCi_mL.toExponential(2), dacMultiple: (initialConc_uCi_mL / dac_uCi_mL).toPrecision(3), time_to_1_dac_hr: time_to_1_dac_hr > 0 ? time_to_1_dac_hr.toPrecision(3) : 0 });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [selectedNuclide, releaseActivity, activityUnit, roomVolume, volumeUnit, ventilationRate]);
-         
-         return (
-         <div className="space-y-4 max-w-md mx-auto">
-           <div className="text-right -mb-2">
-               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1 ml-auto">
-                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-               </button>
-           </div>
+            const act = parseFloat(releaseActivity); const vol = parseFloat(roomVolume); const vent = parseFloat(ventilationRate);
+            if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) throw new Error("Inputs must be valid numbers.");
+            const act_uCi = act * ({ 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6 }[activityUnit]);
+            const vol_mL = vol * ({ 'm³': 1e6, 'L': 1000, 'ft³': 28316.8 }[volumeUnit]);
+            const dac_uCi_mL = selectedNuclide.dosimetry.DAC.inhalation_W || selectedNuclide.dosimetry.DAC.inhalation_D || selectedNuclide.dosimetry.DAC.inhalation_Y;
+            if (!dac_uCi_mL) throw new Error(`DAC value not found for ${selectedNuclide.name}.`);
+            const initialConc_uCi_mL = act_uCi / vol_mL;
+            const lambda_eff_per_hr = vent;
+            const time_to_1_dac_hr = lambda_eff_per_hr > 0 ? (-1 / lambda_eff_per_hr) * Math.log(dac_uCi_mL / initialConc_uCi_mL) : Infinity;
+            setResult({ initialConc: initialConc_uCi_mL.toExponential(3), dacValue: dac_uCi_mL.toExponential(2), dacMultiple: (initialConc_uCi_mL / dac_uCi_mL).toPrecision(3), time_to_1_dac_hr: time_to_1_dac_hr > 0 ? time_to_1_dac_hr.toPrecision(3) : 0 });
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [selectedNuclide, releaseActivity, activityUnit, roomVolume, volumeUnit, ventilationRate, setResult, setError]);
+    
+    return (
+        <div className="space-y-4 max-w-md mx-auto">
            <div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide with a DAC..."/>}</div></div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>pCi</option><option>nCi</option><option>µCi</option><option>mCi</option><option>Ci</option></select></div></div>
-           <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
-           <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>pCi</option><option>nCi</option><option>µCi</option><option>mCi</option><option>Ci</option></select></div></div>
+               <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
+               <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
            </div>
            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
            {result && (
-           <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-           <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
-           <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
-           <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
-           </div>
+               <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                   <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
+                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
+                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
+               </div>
            )}
-           </div>
-         );
-         };
-         
-         const calculatorViews = {
-         staticSurvey: { label: 'Static Survey', icon: ICONS.gammaSpec, component: <StaticSurveyCalculator radionuclides={radionuclides} /> },
-         contamination: { label: 'Wipe Survey', icon: ICONS.check, component: <ContaminationSurveyCalculator radionuclides={radionuclides} /> },
-         leakTest: { label: 'Leak Test', icon: ICONS.check, component: <LeakTestCalculator /> },
-         airborne: { label: 'Airborne', icon: ICONS.radon, component: <AirborneCalculator radionuclides={radionuclides} /> }
-         };
-         
-         const [activeCalculator, setActiveCalculator] = React.useState('staticSurvey');
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        </div>
+    );
+};
+
+// ## The New Parent Component ##
+
+const OperationalHPCalculators = ({ radionuclides }) => {
+    const [activeCalculator, setActiveCalculator] = React.useState('staticSurvey');
+    const { addHistory } = useCalculationHistory();
+
+    // State for LeakTestCalculator
+    const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
+    const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
+    const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
+    const [lt_result, setLt_result] = React.useState(null);
+    const [lt_error, setLt_error] = React.useState('');
+
+    // State for StaticSurveyCalculator
+    const [ss_nuclideSymbol, setSs_nuclideSymbol] = React.useState('');
+    const [ss_surveyData, setSs_surveyData] = React.useState('');
+    const [ss_avgLimit, setSs_avgLimit] = React.useState('');
+    const [ss_maxLimit, setSs_maxLimit] = React.useState('');
+    const [ss_unit, setSs_unit] = React.useState('dpm/100cm²');
+    const [ss_result, setSs_result] = React.useState(null);
+    const [ss_error, setSs_error] = React.useState('');
+
+    // State for ContaminationSurveyCalculator
+    const [cs_nuclideSymbol, setCs_nuclideSymbol] = React.useState('');
+    const [cs_grossCpm, setCs_grossCpm] = React.useState('1500');
+    const [cs_backgroundCpm, setCs_backgroundCpm] = React.useState('50');
+    const [cs_instrumentEff, setCs_instrumentEff] = React.useState('25');
+    const [cs_removableFraction, setCs_removableFraction] = React.useState('0.1');
+    const [cs_result, setCs_result] = React.useState(null);
+    const [cs_error, setCs_error] = React.useState('');
+
+    // State for AirborneCalculator
+    const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
+    const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
+    const [ac_activityUnit, setAc_activityUnit] = React.useState('mCi');
+    const [ac_roomVolume, setAc_roomVolume] = React.useState('100');
+    const [ac_volumeUnit, setAc_volumeUnit] = React.useState('m³');
+    const [ac_ventilationRate, setAc_ventilationRate] = React.useState('2');
+    const [ac_result, setAc_result] = React.useState(null);
+    const [ac_error, setAc_error] = React.useState('');
+
+    // Clear Logic
+    const handleLeakTestClear = () => {
+        setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25');
+        setLt_result(null); setLt_error('');
+    };
+    const handleStaticSurveyClear = () => {
+        setSs_nuclideSymbol(''); setSs_surveyData(''); setSs_avgLimit(''); setSs_maxLimit('');
+        setSs_unit('dpm/100cm²'); setSs_result(null); setSs_error('');
+    };
+    const handleContaminationSurveyClear = () => {
+        setCs_nuclideSymbol(''); setCs_grossCpm('1500'); setCs_backgroundCpm('50');
+        setCs_instrumentEff('25'); setCs_removableFraction('0.1'); setCs_result(null); setCs_error('');
+    };
+    const handleAirborneClear = () => {
+        setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_activityUnit('mCi');
+        setAc_roomVolume('100'); setAc_volumeUnit('m³'); setAc_ventilationRate('2');
+        setAc_result(null); setAc_error('');
+    };
+    
+    const handleClearActiveCalculator = () => {
+        switch (activeCalculator) {
+            case 'leakTest': handleLeakTestClear(); break;
+            case 'staticSurvey': handleStaticSurveyClear(); break;
+            case 'contamination': handleContaminationSurveyClear(); break;
+            case 'airborne': handleAirborneClear(); break;
+            default: break;
+        }
+    };
+
+    // History Logic
+    React.useEffect(() => {
+        if (lt_result) {
+            addHistory({ id: Date.now(), type: 'Leak Test', icon: ICONS.check, inputs: `${lt_grossCpm} cpm / ${lt_backgroundCpm} cpm`, result: `${lt_result.activity} µCi`, view: VIEWS.OPERATIONAL_HP });
+        }
+    }, [lt_result]);
+    
+    React.useEffect(() => {
+        if (ss_result) {
+            addHistory({ id: Date.now(), type: 'Static Survey', icon: ICONS.gammaSpec, inputs: `${ss_result.count} data points`, result: `Avg: ${ss_result.average.toPrecision(3)} ${ss_unit}`, view: VIEWS.OPERATIONAL_HP });
+        }
+    }, [ss_result]);
+
+    React.useEffect(() => {
+        if (cs_result) {
+            addHistory({ id: Date.now(), type: 'Wipe Survey', icon: ICONS.check, inputs: `${cs_grossCpm} cpm vs ${cs_backgroundCpm} cpm`, result: `${cs_result.contamination} dpm/100cm²`, view: VIEWS.OPERATIONAL_HP });
+        }
+    }, [cs_result]);
+
+    React.useEffect(() => {
+        if (ac_result) {
+            addHistory({ id: Date.now(), type: 'Airborne Release', icon: ICONS.radon, inputs: `${ac_releaseActivity} ${ac_activityUnit} in ${ac_roomVolume} ${ac_volumeUnit}`, result: `${ac_result.dacMultiple}x DAC`, view: VIEWS.OPERATIONAL_HP });
+        }
+    }, [ac_result]);
+
+    const calculatorViews = {
+        staticSurvey: { label: 'Static Survey', icon: ICONS.gammaSpec, component: <StaticSurveyCalculator 
+            radionuclides={radionuclides}
+            nuclideSymbol={ss_nuclideSymbol} setNuclideSymbol={setSs_nuclideSymbol}
+            surveyData={ss_surveyData} setSurveyData={setSs_surveyData}
+            avgLimit={ss_avgLimit} setAvgLimit={setSs_avgLimit}
+            maxLimit={ss_maxLimit} setMaxLimit={setSs_maxLimit}
+            unit={ss_unit} setUnit={setSs_unit}
+            result={ss_result} setResult={setSs_result}
+            error={ss_error} setError={setSs_error}
+        /> },
+        contamination: { label: 'Wipe Survey', icon: ICONS.check, component: <ContaminationSurveyCalculator 
+            radionuclides={radionuclides}
+            nuclideSymbol={cs_nuclideSymbol} setNuclideSymbol={setCs_nuclideSymbol}
+            grossCpm={cs_grossCpm} setGrossCpm={setCs_grossCpm}
+            backgroundCpm={cs_backgroundCpm} setBackgroundCpm={setCs_backgroundCpm}
+            instrumentEff={cs_instrumentEff} setInstrumentEff={setCs_instrumentEff}
+            removableFraction={cs_removableFraction} setRemovableFraction={setCs_removableFraction}
+            result={cs_result} setResult={setCs_result}
+            error={cs_error} setError={setCs_error}
+        /> },
+        leakTest: { label: 'Leak Test', icon: ICONS.check, component: <LeakTestCalculator
+            grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
+            backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
+            instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
+            result={lt_result} setResult={setLt_result}
+            error={lt_error} setError={setLt_error}
+        /> },
+        airborne: { label: 'Airborne', icon: ICONS.radon, component: <AirborneCalculator 
+            radionuclides={radionuclides}
+            nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
+            releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
+            activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit}
+            roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
+            volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
+            ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
+            result={ac_result} setResult={setAc_result}
+            error={ac_error} setError={setAc_error}
+        /> }
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Operational HP Calculators</h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
+                    <ClearButton onClick={handleClearActiveCalculator} />
+                </div>
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
                     {Object.entries(calculatorViews).map(([key, { label, icon }]) => (
                         <button
@@ -4107,9 +3888,10 @@ addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A
                     {calculatorViews[activeCalculator].component}
                 </div>
             </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
+
          
          /**
          * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
@@ -5427,222 +5209,250 @@ addHistory({ id: Date.now(), type: 'Equilibrium', icon: ICONS.activity, inputs: 
          };
          
          
-         const RadonCalculator = () => {
-         const [activeTab, setActiveTab] = React.useState('concentration');
-         
-         const KusnetzCalculator = () => {
-         const [flowRate, setFlowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
-         const [sampleTime, setSampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
-         const [delayTime, setDelayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
-         const [grossCounts, setGrossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
-         const [countDuration, setCountDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
-         const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
-         const [efficiency, setEfficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const KUSNETZ_FACTORS = { 40: 150, 45: 138, 50: 128, 55: 119, 60: 112, 65: 105, 70: 100, 75: 95, 80: 90, 85: 86, 90: 82 };
-         
-         React.useEffect(() => {
-         localStorage.setItem('kusnetz_flowRate', flowRate); localStorage.setItem('kusnetz_sampleTime', sampleTime); localStorage.setItem('kusnetz_delayTime', delayTime);
-         localStorage.setItem('kusnetz_grossCounts', grossCounts); localStorage.setItem('kusnetz_countDuration', countDuration);
-         localStorage.setItem('kusnetz_backgroundCpm', backgroundCpm); localStorage.setItem('kusnetz_efficiency', efficiency);
-         }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
-         
-         const interpolate = (x, points) => {
-         const keys = Object.keys(points).map(Number).sort((a, b) => a - b);
-         if (x <= keys[0]) return points[keys[0]]; if (x >= keys[keys.length - 1]) return points[keys[keys.length - 1]];
-         const x1 = Math.max(...keys.filter(k => k <= x)); const x2 = Math.min(...keys.filter(k => k > x));
-         const y1 = points[x1]; const y2 = points[x2];
-         return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
-         };
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         const params = { V_flow: parseFloat(flowRate), T_sample: parseFloat(sampleTime), T_delay: parseFloat(delayTime), C_gross: parseFloat(grossCounts), T_count: parseFloat(countDuration), cpm_bkg: parseFloat(backgroundCpm), eff: parseFloat(efficiency) };
-         if (Object.values(params).some(isNaN) || params.V_flow <= 0 || params.T_sample <= 0 || params.T_delay < 40 || params.eff <= 0) {
-            if (Object.values(params).every(p => p || p === 0)) setError("Please enter valid positive numbers. Delay time must be ≥ 40 min.");
-            setResult(null); return;
-         }
-         const totalVolume_L = params.V_flow * params.T_sample;
-         const gross_cpm = params.C_gross / params.T_count;
-         const net_cpm = gross_cpm - params.cpm_bkg;
-         const k_factor = interpolate(params.T_delay, KUSNETZ_FACTORS);
-         const workingLevel = net_cpm / (k_factor * (params.eff / 100) * totalVolume_L);
-         setResult({ workingLevel: workingLevel.toPrecision(3), k_factor: k_factor.toFixed(1), totalVolume_L: totalVolume_L.toPrecision(3), net_cpm: net_cpm.toPrecision(3) });
-         } catch (e) { setError("Calculation error."); setResult(null); }
-         }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
-         
-         const handleClearInputs = () => {
-         setFlowRate('10');
-         setSampleTime('5');
-         setDelayTime('40');
-         setGrossCounts('5000');
-         setCountDuration('5');
-         setBackgroundCpm('0.5');
-         setEfficiency('25');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="space-y-4">
-         <div className="flex justify-between items-center">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-                Determine the Working Level (WL) of radon progeny.
-            </p>
-            <ClearButton onClick={handleClearInputs} />
-         </div>
-         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Flow Rate (LPM)</label><input type="number" value={flowRate} onChange={e => setFlowRate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={sampleTime} onChange={e => setSampleTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Count Duration (min)</label><input type="number" value={countDuration} onChange={e => setCountDuration(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Background (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Alpha Efficiency (%)</label><input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-            </div>
-            <div><Tooltip text="Time between end-of-sampling and start-of-count. Must be between 40 and 90 minutes for standard method."><label className="block text-sm font-medium">Delay Time (minutes)</label></Tooltip><input type="number" value={delayTime} onChange={e => setDelayTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-         </div>
-         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-         {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in space-y-3">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Net Count Rate:</span><span className="font-mono text-right">{result.net_cpm} cpm</span>
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Total Air Volume:</span><span className="font-mono text-right">{result.totalVolume_L} L</span>
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Interpolated K Factor:</span><span className="font-mono text-right">{result.k_factor}</span>
+const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, delayTime, setDelayTime, grossCounts, setGrossCounts, countDuration, setCountDuration, backgroundCpm, setBackgroundCpm, efficiency, setEfficiency, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const KUSNETZ_FACTORS = { 40: 150, 45: 138, 50: 128, 55: 119, 60: 112, 65: 105, 70: 100, 75: 95, 80: 90, 85: 86, 90: 82 };
+    
+    React.useEffect(() => {
+        localStorage.setItem('kusnetz_flowRate', flowRate); localStorage.setItem('kusnetz_sampleTime', sampleTime); localStorage.setItem('kusnetz_delayTime', delayTime);
+        localStorage.setItem('kusnetz_grossCounts', grossCounts); localStorage.setItem('kusnetz_countDuration', countDuration);
+        localStorage.setItem('kusnetz_backgroundCpm', backgroundCpm); localStorage.setItem('kusnetz_efficiency', efficiency);
+    }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
+    
+    const interpolate = (x, points) => {
+        const keys = Object.keys(points).map(Number).sort((a, b) => a - b);
+        if (x <= keys[0]) return points[keys[0]]; if (x >= keys[keys.length - 1]) return points[keys[keys.length - 1]];
+        const x1 = Math.max(...keys.filter(k => k <= x)); const x2 = Math.min(...keys.filter(k => k > x));
+        const y1 = points[x1]; const y2 = points[x2];
+        return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+    };
+    
+    React.useEffect(() => {
+        try {
+            setError('');
+            const params = { V_flow: parseFloat(flowRate), T_sample: parseFloat(sampleTime), T_delay: parseFloat(delayTime), C_gross: parseFloat(grossCounts), T_count: parseFloat(countDuration), cpm_bkg: parseFloat(backgroundCpm), eff: parseFloat(efficiency) };
+            if (Object.values(params).some(isNaN) || params.V_flow <= 0 || params.T_sample <= 0 || params.T_delay < 40 || params.eff <= 0) {
+                if (Object.values(params).every(p => p || p === 0)) setError("Please enter valid positive numbers. Delay time must be ≥ 40 min.");
+                setResult(null); return;
+            }
+            const totalVolume_L = params.V_flow * params.T_sample;
+            const gross_cpm = params.C_gross / params.T_count;
+            const net_cpm = gross_cpm - params.cpm_bkg;
+            const k_factor = interpolate(params.T_delay, KUSNETZ_FACTORS);
+            const workingLevel = net_cpm / (k_factor * (params.eff / 100) * totalVolume_L);
+            setResult({ workingLevel: workingLevel.toPrecision(3), k_factor: k_factor.toFixed(1), totalVolume_L: totalVolume_L.toPrecision(3), net_cpm: net_cpm.toPrecision(3) });
+        } catch (e) { setError("Calculation error."); setResult(null); }
+    }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency, setResult, setError]);
+
+    React.useEffect(() => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Kusnetz Method (WL)', icon: ICONS.radon, inputs: `Delay: ${delayTime} min, Vol: ${result.totalVolume_L} L`, result: `${result.workingLevel} WL`, view: VIEWS.RADON });
+        }
+    }, [result]);
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Determine the Working Level (WL) of radon progeny.</p>
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Flow Rate (LPM)</label><input type="number" value={flowRate} onChange={e => setFlowRate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={sampleTime} onChange={e => setSampleTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Count Duration (min)</label><input type="number" value={countDuration} onChange={e => setCountDuration(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Background (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Alpha Efficiency (%)</label><input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                 </div>
-                <div className="text-center pt-3 border-t border-slate-300 dark:border-slate-600">
-                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Progeny Concentration</p>
-                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.workingLevel}</p>
-                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">Working Levels (WL)</p>
+                <div><Tooltip text="Time between end-of-sampling and start-of-count. Must be between 40 and 90 minutes for standard method."><label className="block text-sm font-medium">Delay Time (minutes)</label></Tooltip><input type="number" value={delayTime} onChange={e => setDelayTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in space-y-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Net Count Rate:</span><span className="font-mono text-right">{result.net_cpm} cpm</span>
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Total Air Volume:</span><span className="font-mono text-right">{result.totalVolume_L} L</span>
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Interpolated K Factor:</span><span className="font-mono text-right">{result.k_factor}</span>
+                    </div>
+                    <div className="text-center pt-3 border-t border-slate-300 dark:border-slate-600">
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Progeny Concentration</p>
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.workingLevel}</p>
+                        <p className="text-md font-medium text-slate-600 dark:text-slate-300">Working Levels (WL)</p>
+                    </div>
                 </div>
+            )}
+        </div>
+    );
+};
+
+const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConcentration, unit, setUnit, equilibriumFactor, setEquilibriumFactor, workingLevel, setWorkingLevel, occupancyFactor, setOccupancyFactor, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const Bq_per_m3_in_pCi_per_L = 37; const PAEC_J_per_m3_in_WL = 2.08e-5; const dose_conversion_mrem_per_WLM = 500;
+    
+    React.useEffect(() => {
+        localStorage.setItem('radon_calcMode', calcMode); localStorage.setItem('radon_concentration', concentration); localStorage.setItem('radon_unit', unit);
+        localStorage.setItem('radon_equilibriumFactor', equilibriumFactor); localStorage.setItem('radon_workingLevel', workingLevel); localStorage.setItem('radon_occupancyFactor', occupancyFactor);
+    }, [calcMode, concentration, unit, equilibriumFactor, workingLevel, occupancyFactor]);
+    
+    React.useEffect(() => {
+        try {
+            setError('');
+            const conc_val = parseFloat(concentration); const ef_val = parseFloat(equilibriumFactor); const wl_val = parseFloat(workingLevel); const of_val = parseFloat(occupancyFactor);
+            let final_pCi_L, final_Bq_m3, final_WL, final_EF;
+            switch(calcMode) {
+                case 'doseFromConc':
+                    if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
+                    final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L; final_EF = ef_val;
+                    final_WL = (final_pCi_L / 100) * final_EF; break;
+                case 'findWL':
+                    if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
+                    final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L; final_EF = ef_val;
+                    final_WL = (final_pCi_L / 100) * final_EF; setWorkingLevel(final_WL.toPrecision(3)); break;
+                case 'findConc':
+                    if (isNaN(wl_val) || isNaN(ef_val)) throw new Error('Working Level and Equilibrium Factor must be numbers.');
+                    if (ef_val <= 0) throw new Error('Equilibrium Factor must be greater than zero.');
+                    final_WL = wl_val; final_EF = ef_val; final_pCi_L = (final_WL * 100) / final_EF;
+                    const final_conc_display = unit === 'pCi/L' ? final_pCi_L : final_pCi_L * Bq_per_m3_in_pCi_per_L;
+                    setConcentration(final_conc_display.toPrecision(3)); break;
+                case 'findEF':
+                     if (isNaN(wl_val) || isNaN(conc_val)) throw new Error('Working Level and Concentration must be numbers.');
+                     final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
+                     if (final_pCi_L <= 0) throw new Error('Concentration must be greater than zero.');
+                     final_WL = wl_val; final_EF = (final_WL * 100) / final_pCi_L;
+                     setEquilibriumFactor(final_EF.toPrecision(3)); break;
+            }
+            if (isNaN(of_val)) throw new Error('Occupancy Factor must be a number.');
+            final_Bq_m3 = final_pCi_L * Bq_per_m3_in_pCi_per_L;
+            const paec_J_m3 = final_WL * PAEC_J_per_m3_in_WL; const wlm_per_year = final_WL * (8760 * of_val) / 170;
+            const annualDose_mrem = wlm_per_year * dose_conversion_mrem_per_WLM;
+            setResult({ pCi_L: final_pCi_L.toPrecision(3), Bq_m3: final_Bq_m3.toPrecision(3), workingLevels: final_WL.toPrecision(3), equilibriumFactor: final_EF.toPrecision(3), paec_J_m3: paec_J_m3.toExponential(2), wlm_year: wlm_per_year.toPrecision(3), annualDose: formatSensibleUnit(annualDose_mrem, 'dose') });
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [concentration, unit, equilibriumFactor, workingLevel, occupancyFactor, calcMode, setConcentration, setEquilibriumFactor, setWorkingLevel, setResult, setError]);
+
+    React.useEffect(() => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Radon Dose', icon: ICONS.radon, inputs: `${result.pCi_L} pCi/L, F=${result.equilibriumFactor}`, result: `${result.annualDose.value} ${result.annualDose.unit}/yr`, view: VIEWS.RADON });
+        }
+    }, [result]);
+    
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                <button onClick={() => setCalcMode('doseFromConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseFromConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose from Conc.</button>
+                <button onClick={() => setCalcMode('findWL')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findWL' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find WL</button>
+                <button onClick={() => setCalcMode('findConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Concentration</button>
+                <button onClick={() => setCalcMode('findEF')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findEF' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Equilibrium</button>
             </div>
-         )}
-         </div>
-         );
-         };
-         
-         const ConcentrationDoseModule = () => {
-         const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
-         const [concentration, setConcentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
-         const [unit, setUnit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
-         const [equilibriumFactor, setEquilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
-         const [workingLevel, setWorkingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
-         const [occupancyFactor, setOccupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         const Bq_per_m3_in_pCi_per_L = 37; const PAEC_J_per_m3_in_WL = 2.08e-5; const dose_conversion_mrem_per_WLM = 500;
-         
-         React.useEffect(() => {
-         localStorage.setItem('radon_calcMode', calcMode); localStorage.setItem('radon_concentration', concentration); localStorage.setItem('radon_unit', unit);
-         localStorage.setItem('radon_equilibriumFactor', equilibriumFactor); localStorage.setItem('radon_workingLevel', workingLevel); localStorage.setItem('radon_occupancyFactor', occupancyFactor);
-         }, [calcMode, concentration, unit, equilibriumFactor, workingLevel, occupancyFactor]);
-         
-         React.useEffect(() => {
-         try {
-         setError('');
-         const conc_val = parseFloat(concentration); const ef_val = parseFloat(equilibriumFactor); const wl_val = parseFloat(workingLevel); const of_val = parseFloat(occupancyFactor);
-         let final_pCi_L, final_Bq_m3, final_WL, final_EF;
-         switch(calcMode) {
-            case 'doseFromConc':
-                if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
-                final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L; final_EF = ef_val;
-                final_WL = (final_pCi_L / 100) * final_EF; break;
-            case 'findWL':
-                if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
-                final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L; final_EF = ef_val;
-                final_WL = (final_pCi_L / 100) * final_EF; setWorkingLevel(final_WL.toPrecision(3)); break;
-            case 'findConc':
-                if (isNaN(wl_val) || isNaN(ef_val)) throw new Error('Working Level and Equilibrium Factor must be numbers.');
-                if (ef_val <= 0) throw new Error('Equilibrium Factor must be greater than zero.');
-                final_WL = wl_val; final_EF = ef_val; final_pCi_L = (final_WL * 100) / final_EF;
-                const final_conc_display = unit === 'pCi/L' ? final_pCi_L : final_pCi_L * Bq_per_m3_in_pCi_per_L;
-                setConcentration(final_conc_display.toPrecision(3)); break;
-            case 'findEF':
-                 if (isNaN(wl_val) || isNaN(conc_val)) throw new Error('Working Level and Concentration must be numbers.');
-                 final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
-                 if (final_pCi_L <= 0) throw new Error('Concentration must be greater than zero.');
-                 final_WL = wl_val; final_EF = (final_WL * 100) / final_pCi_L;
-                 setEquilibriumFactor(final_EF.toPrecision(3)); break;
-         }
-         if (isNaN(of_val)) throw new Error('Occupancy Factor must be a number.');
-         final_Bq_m3 = final_pCi_L * Bq_per_m3_in_pCi_per_L;
-         const paec_J_m3 = final_WL * PAEC_J_per_m3_in_WL; const wlm_per_year = final_WL * (8760 * of_val) / 170;
-         const annualDose_mrem = wlm_per_year * dose_conversion_mrem_per_WLM;
-         setResult({ pCi_L: final_pCi_L.toPrecision(3), Bq_m3: final_Bq_m3.toPrecision(3), workingLevels: final_WL.toPrecision(3), equilibriumFactor: final_EF.toPrecision(3), paec_J_m3: paec_J_m3.toExponential(2), wlm_year: wlm_per_year.toPrecision(3), annualDose: formatSensibleUnit(annualDose_mrem, 'dose') });
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [concentration, unit, equilibriumFactor, workingLevel, occupancyFactor, calcMode]);
-         
-         const handleClearInputs = () => {
-         setCalcMode('doseFromConc');
-         setConcentration('4.0');
-         setUnit('pCi/L');
-         setEquilibriumFactor('0.4');
-         setWorkingLevel('');
-         setOccupancyFactor('0.8');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="space-y-4">
-         <div className="flex justify-between items-center">
-          <div/>
-          {/* <-- MODIFIED: Using the standardized ClearButton component --> */}
-          <ClearButton onClick={handleClearInputs} />
-         </div>
-         <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-          <button onClick={() => setCalcMode('doseFromConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseFromConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose from Conc.</button>
-          <button onClick={() => setCalcMode('findWL')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findWL' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find WL</button>
-          <button onClick={() => setCalcMode('findConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Concentration</button>
-          <button onClick={() => setCalcMode('findEF')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findEF' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Equilibrium</button>
-         </div>
-         <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-          <div><label className="block text-sm font-medium">Radon Concentration</label><div className="flex"><input type="number" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /><select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 disabled:opacity-50"><option>pCi/L</option><option>Bq/m³</option></select></div></div>
-          <div><Tooltip text="The fraction of radon progeny in equilibrium with the parent radon gas. 0.4 is a standard assumption for homes."><label className="block text-sm font-medium">Equilibrium Factor (F)</label></Tooltip><input type="number" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} step="0.05" min="0" max="1" disabled={calcMode === 'findEF'} placeholder="e.g., 0.4" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /></div>
-          <div><label className="block text-sm font-medium">Working Level (WL)</label><input type="number" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} placeholder="e.g., 0.02" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /></div>
-         </div>
-         {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-         {result && (
-          <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 animate-fade-in">
-              <h3 className="text-lg font-bold text-center text-slate-700 dark:text-slate-200 mb-2">Calculation Results</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                  <span className="font-semibold text-slate-500 dark:text-slate-400">Radon Concentration:</span><p className="font-mono text-right">{result.pCi_L} pCi/L ({result.Bq_m3} Bq/m³)</p>
-                  <span className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium Factor:</span><p className="font-mono text-right">{result.equilibriumFactor}</p>
-                  <span className="font-semibold text-slate-500 dark:text-slate-400">Working Level (WL):</span><p className="font-mono text-right">{result.workingLevels}</p>
-                  <span className="font-semibold text-slate-500 dark:text-slate-400">PAEC:</span><p className="font-mono text-right">{result.paec_J_m3} J/m³</p>
-              </div>
-              <div className="border-t border-slate-300 dark:border-slate-600 pt-3 mt-3">
-                  <label className="block text-sm font-medium text-center mb-2">Annual Dose Estimation</label>
-                  <div className="flex justify-center items-center"><label className="text-sm">Occupancy:</label><input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" min="0" max="1" className="w-20 mx-2 p-1 rounded-md bg-white dark:bg-slate-800 text-center" /></div>
-                  <div className="text-center mt-2">
-                      <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Estimated Annual Dose</p>
-                      <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.annualDose.value} <span className="text-2xl opacity-75">{result.annualDose.unit}</span></p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.wlm_year} WLM/year)</p>
-                  </div>
-              </div>
-          </div>
-         )}
-         </div>
-         );
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-         <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
-            <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
-                <button onClick={() => setActiveTab('concentration')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration & Dose</button>
-                <button onClick={() => setActiveTab('kusnetz')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz Method (WL)</button>
+            <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div><label className="block text-sm font-medium">Radon Concentration</label><div className="flex"><input type="number" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /><select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 disabled:opacity-50"><option>pCi/L</option><option>Bq/m³</option></select></div></div>
+                <div><Tooltip text="The fraction of radon progeny in equilibrium with the parent radon gas. 0.4 is a standard assumption for homes."><label className="block text-sm font-medium">Equilibrium Factor (F)</label></Tooltip><input type="number" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} step="0.05" min="0" max="1" disabled={calcMode === 'findEF'} placeholder="e.g., 0.4" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /></div>
+                <div><label className="block text-sm font-medium">Working Level (WL)</label><input type="number" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} placeholder="e.g., 0.02" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" /></div>
             </div>
-            {activeTab === 'concentration' ? <ConcentrationDoseModule /> : <KusnetzCalculator />}
-         </div>
-         </div>
-         );
-         };
-         
+            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 animate-fade-in">
+                    <h3 className="text-lg font-bold text-center text-slate-700 dark:text-slate-200 mb-2">Calculation Results</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Radon Concentration:</span><p className="font-mono text-right">{result.pCi_L} pCi/L ({result.Bq_m3} Bq/m³)</p>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium Factor:</span><p className="font-mono text-right">{result.equilibriumFactor}</p>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Working Level (WL):</span><p className="font-mono text-right">{result.workingLevels}</p>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">PAEC:</span><p className="font-mono text-right">{result.paec_J_m3} J/m³</p>
+                    </div>
+                    <div className="border-t border-slate-300 dark:border-slate-600 pt-3 mt-3">
+                        <label className="block text-sm font-medium text-center mb-2">Annual Dose Estimation</label>
+                        <div className="flex justify-center items-center"><label className="text-sm">Occupancy:</label><input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" min="0" max="1" className="w-20 mx-2 p-1 rounded-md bg-white dark:bg-slate-800 text-center" /></div>
+                        <div className="text-center mt-2">
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Estimated Annual Dose</p>
+                            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.annualDose.value} <span className="text-2xl opacity-75">{result.annualDose.unit}</span></p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.wlm_year} WLM/year)</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const RadonCalculator = () => {
+    const [activeTab, setActiveTab] = React.useState('concentration');
+
+    // State for KusnetzCalculator
+    const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
+    const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
+    const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
+    const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
+    const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
+    const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
+    const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
+    const [kusnetz_result, setKusnetz_result] = React.useState(null);
+    const [kusnetz_error, setKusnetz_error] = React.useState('');
+    
+    // State for ConcentrationDoseModule
+    const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
+    const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
+    const [conc_unit, setConc_unit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
+    const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
+    const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
+    const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
+    const [conc_result, setConc_result] = React.useState(null);
+    const [conc_error, setConc_error] = React.useState('');
+
+    const handleKusnetzClear = () => {
+        setKusnetz_flowRate('10'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
+        setKusnetz_grossCounts('5000'); setKusnetz_countDuration('5'); setKusnetz_backgroundCpm('0.5');
+        setKusnetz_efficiency('25'); setKusnetz_result(null); setKusnetz_error('');
+    };
+
+    const handleConcentrationClear = () => {
+        setConc_calcMode('doseFromConc'); setConc_concentration('4.0'); setConc_unit('pCi/L');
+        setConc_equilibriumFactor('0.4'); setConc_workingLevel(''); setConc_occupancyFactor('0.8');
+        setConc_result(null); setConc_error('');
+    };
+
+    const handleClearActiveCalculator = () => {
+        if (activeTab === 'concentration') {
+            handleConcentrationClear();
+        } else {
+            handleKusnetzClear();
+        }
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
+                    <ClearButton onClick={handleClearActiveCalculator} />
+                </div>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
+                    <button onClick={() => setActiveTab('concentration')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration & Dose</button>
+                    <button onClick={() => setActiveTab('kusnetz')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz Method (WL)</button>
+                </div>
+                {activeTab === 'concentration' ? 
+                    <ConcentrationDoseModule 
+                        calcMode={conc_calcMode} setCalcMode={setConc_calcMode}
+                        concentration={conc_concentration} setConcentration={setConc_concentration}
+                        unit={conc_unit} setUnit={setConc_unit}
+                        equilibriumFactor={conc_equilibriumFactor} setEquilibriumFactor={setConc_equilibriumFactor}
+                        workingLevel={conc_workingLevel} setWorkingLevel={setConc_workingLevel}
+                        occupancyFactor={conc_occupancyFactor} setOccupancyFactor={setConc_occupancyFactor}
+                        result={conc_result} setResult={setConc_result}
+                        error={conc_error} setError={setConc_error}
+                    /> : 
+                    <KusnetzCalculator 
+                        flowRate={kusnetz_flowRate} setFlowRate={setKusnetz_flowRate}
+                        sampleTime={kusnetz_sampleTime} setSampleTime={setKusnetz_sampleTime}
+                        delayTime={kusnetz_delayTime} setDelayTime={setKusnetz_delayTime}
+                        grossCounts={kusnetz_grossCounts} setGrossCounts={setKusnetz_grossCounts}
+                        countDuration={kusnetz_countDuration} setCountDuration={setKusnetz_countDuration}
+                        backgroundCpm={kusnetz_backgroundCpm} setBackgroundCpm={setKusnetz_backgroundCpm}
+                        efficiency={kusnetz_efficiency} setEfficiency={setKusnetz_efficiency}
+                        result={kusnetz_result} setResult={setKusnetz_result}
+                        error={kusnetz_error} setError={setKusnetz_error}
+                    />
+                }
+            </div>
+        </div>
+    );
+};         
          
          /**
           * @description The root component of the entire application.
@@ -8065,71 +7875,240 @@ const MARSSIM_SampleCalculator = () => {
         </div>
     );
 };
-         
-         
-         const LabStatistics = () => {
-         const [activeCalculator, setActiveCalculator] = React.useState('chiSquared');
-         
-         // --- State for ChiSquaredCalculator (Lifted) ---
-         const [chi_chiSquaredData, setChi_chiSquaredData] = React.useState('');
-         const [chi_alpha, setChi_alpha] = React.useState('0.05');
-         const [chi_result, setChi_result] = React.useState(null);
-         const [chi_error, setChi_error] = React.useState('');
-         
-         // --- State for DeadTimeCorrector (Lifted) ---
-         const [dt_observedCpm, setDt_observedCpm] = React.useState('50000');
-         const [dt_deadTime, setDt_deadTime] = React.useState('100');
-         const [dt_result, setDt_result] = React.useState(null);
-         const [dt_error, setDt_error] = React.useState('');
-         
-         // --- State for RpdCalculator (Lifted) ---
-         const [rpd_sample1, setRpd_sample1] = React.useState('1250');
-         const [rpd_sample2, setRpd_sample2] = React.useState('1180');
-         const [rpd_result, setRpd_result] = React.useState(null);
-         
-         // --- State for FwhmCalculator (Lifted) ---
-         const [fwhm_centroid, setFwhm_centroid] = React.useState('661.7');
-         const [fwhm_lower, setFwhm_lower] = React.useState('658.2');
-         const [fwhm_upper, setFwhm_upper] = React.useState('665.2');
-         const [fwhm_result, setFwhm_result] = React.useState(null);
-         
-         // --- Clear Logic (Lifted) ---
-         const handleChiClear = () => {
-         setChi_chiSquaredData('');
-         setChi_alpha('0.05');
-         setChi_result(null);
-         setChi_error('');
-         };
-         const handleDeadTimeClear = () => {
-         setDt_observedCpm('50000');
-         setDt_deadTime('100');
-         setDt_result(null);
-         setDt_error('');
-         };
-         const handleRpdClear = () => {
-         setRpd_sample1('1250');
-         setRpd_sample2('1180');
-         setRpd_result(null);
-         };
-         const handleFwhmClear = () => {
-         setFwhm_centroid('661.7');
-         setFwhm_lower('658.2');
-         setFwhm_upper('665.2');
-         setFwhm_result(null);
-         };
-         
-         const handleClearActiveCalculator = () => {
-         switch (activeCalculator) {
+
+const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
+    const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
+    const resultStyles = { PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200' }, FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200' } };
+    
+    const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+    
+    const handleCalculate = () => {
+        setResult(null); setError('');
+        const data = parseData(chiSquaredData);
+        if (data.length < 5) { setError('At least 5 data points are required for a meaningful test.'); return; }
+        const n = data.length;
+        const mean = data.reduce((sum, val) => sum + val, 0) / n;
+        if (mean === 0) { setError('The mean of the counts cannot be zero.'); return; }
+        const sumOfSquares = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0);
+        const chiSquared = sumOfSquares / mean;
+        const df = n - 1;
+        const lowerBound = CHI_SQUARED_CRITICAL_VALUES[alpha][df];
+        const upperBound = UPPER_BOUNDS[alpha][df];
+        if (lowerBound === undefined || upperBound === undefined) { setError(`Critical values not available for N=${n} (df=${df}). Please use between 5 and 41 samples.`); return; }
+        const pass = chiSquared > lowerBound && chiSquared < upperBound;
+        const newResult = { conclusion: pass ? 'PASS' : 'FAIL', chiSquared: chiSquared.toFixed(3), df, mean: mean.toFixed(2), lowerBound: lowerBound.toFixed(3), upperBound: upperBound.toFixed(3), n };
+        setResult(newResult);
+
+        // <-- ADDED: History call -->
+        addHistory({ id: Date.now(), type: 'χ² Test', icon: ICONS.labStats, inputs: `N=${newResult.n}, α=${alpha}`, result: `χ²=${newResult.chiSquared}, ${newResult.conclusion}`, view: VIEWS.LAB_STATS });
+    };
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Checks if a counting system is statistically stable.</p>
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div>
+                    <div className="flex justify-between items-center"><label className="block text-sm font-medium">Repeated Count Data</label><button onClick={() => setChiSquaredData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
+                    <textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated count values..."></textarea>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Significance Level (α)</label>
+                    <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.10">0.10</option><option value="0.05">0.05</option><option value="0.01">0.01</option></select>
+                </div>
+            </div>
+            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Test</button>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
+                    <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>SYSTEM {result.conclusion}ES</p>
+                    <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>The observed variance is {result.conclusion === 'PASS' ? 'consistent with' : 'not consistent with'} a random Poisson distribution.</p>
+                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-sm">
+                        <p>Calculated χ² of <strong>{result.chiSquared}</strong> is {result.conclusion === 'PASS' ? 'within' : 'outside'} the acceptable range of <strong>{result.lowerBound}</strong> to <strong>{result.upperBound}</strong>.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(for N={result.n}, df={result.df}, α={alpha})</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    React.useEffect(() => {
+        try {
+            setError('');
+            const R = parseFloat(observedCpm);
+            const tau_us = parseFloat(deadTime);
+            if (isNaN(R) || isNaN(tau_us) || R < 0 || tau_us < 0) {
+                if(observedCpm || deadTime) setError("Inputs must be positive numbers.");
+                setResult(null); return;
+            }
+            const R_cps = R / 60.0;
+            const tau_s = tau_us / 1e6;
+            const denominator = 1 - (R_cps * tau_s);
+            if (denominator <= 0) { throw new Error("Count rate is too high for this dead time; detector is saturated."); }
+            const N_cps = R_cps / denominator;
+            const N_cpm = N_cps * 60;
+            const lossPercent = (1 - (R / N_cpm)) * 100;
+            setResult({ trueCpm: N_cpm, lossPercent });
+        } catch(e) { setError(e.message); setResult(null); }
+    }, [observedCpm, deadTime, setResult, setError]);
+
+    React.useEffect(() => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Dead Time Correction', icon: ICONS.stopwatch, inputs: `Obs: ${observedCpm} cpm, τ: ${deadTime} µs`, result: `True: ${Math.round(result.trueCpm)} cpm`, view: VIEWS.LAB_STATS });
+        }
+    }, [result]);
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Corrects for counts missed at high rates.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium">Observed Count Rate (CPM)</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Detector Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Corrected (True) Count Rate</p>
+                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{Math.round(result.trueCpm).toLocaleString()}</p>
+                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">CPM</p>
+                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
+                        <p className={`font-semibold text-lg ${result.lossPercent > 20 ? 'text-red-500' : result.lossPercent > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.lossPercent.toFixed(1)}% Counts Lost</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    React.useEffect(() => {
+        const s1 = parseFloat(sample1);
+        const s2 = parseFloat(sample2);
+        if (!isNaN(s1) && !isNaN(s2) && (s1 + s2 > 0)) {
+            const rpd = Math.abs(s1 - s2) / ((s1 + s2) / 2) * 100;
+            setResult({ rpd: rpd.toFixed(2), isGood: rpd <= 20 });
+        } else { setResult(null); }
+    }, [sample1, sample2, setResult]);
+
+    React.useEffect(() => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'RPD', icon: ICONS.compare, inputs: `S1: ${sample1}, S2: ${sample2}`, result: `${result.rpd}%`, view: VIEWS.LAB_STATS });
+        }
+    }, [result]);
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Compares duplicate samples for precision.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium">Sample 1 Value</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 2 (Duplicate) Value</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Relative Percent Difference (RPD)</p>
+                    <p className={`text-3xl font-bold ${result.isGood ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(A difference of ≤ 20% is often acceptable)</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    React.useEffect(() => {
+        const c = parseFloat(centroid); const l = parseFloat(lower); const u = parseFloat(upper);
+        if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0 && u > l) {
+            const fwhm = u - l; const resolution = (fwhm / c) * 100;
+            setResult({ fwhm: fwhm.toFixed(2), resolution: resolution.toFixed(2) });
+        } else { setResult(null); }
+    }, [centroid, lower, upper, setResult]);
+
+    React.useEffect(() => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'FWHM / Resolution', icon: ICONS.gammaSpec, inputs: `Centroid: ${centroid} keV`, result: `${result.resolution}% Resolution`, view: VIEWS.LAB_STATS });
+        }
+    }, [result]);
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Calculates detector energy resolution.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><label className="block text-sm font-medium">Peak Centroid (keV)</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Lower Energy @ ½ Max (keV)</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Upper Energy @ ½ Max (keV)</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in grid grid-cols-2 gap-4">
+                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">FWHM</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.fwhm} <span className="text-xl opacity-75">keV</span></p></div>
+                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.resolution}%</p></div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const LabStatistics = () => {
+    const [activeCalculator, setActiveCalculator] = React.useState('chiSquared');
+
+    // State for ChiSquaredCalculator (Lifted)
+    const [chi_chiSquaredData, setChi_chiSquaredData] = React.useState('');
+    const [chi_alpha, setChi_alpha] = React.useState('0.05');
+    const [chi_result, setChi_result] = React.useState(null);
+    const [chi_error, setChi_error] = React.useState('');
+
+    // State for DeadTimeCorrector (Lifted)
+    const [dt_observedCpm, setDt_observedCpm] = React.useState('50000');
+    const [dt_deadTime, setDt_deadTime] = React.useState('100');
+    const [dt_result, setDt_result] = React.useState(null);
+    const [dt_error, setDt_error] = React.useState('');
+
+    // State for RpdCalculator (Lifted)
+    const [rpd_sample1, setRpd_sample1] = React.useState('1250');
+    const [rpd_sample2, setRpd_sample2] = React.useState('1180');
+    const [rpd_result, setRpd_result] = React.useState(null);
+
+    // State for FwhmCalculator (Lifted)
+    const [fwhm_centroid, setFwhm_centroid] = React.useState('661.7');
+    const [fwhm_lower, setFwhm_lower] = React.useState('658.2');
+    const [fwhm_upper, setFwhm_upper] = React.useState('665.2');
+    const [fwhm_result, setFwhm_result] = React.useState(null);
+    
+    // Clear Logic (Lifted)
+    const handleChiClear = () => {
+        setChi_chiSquaredData(''); setChi_alpha('0.05');
+        setChi_result(null); setChi_error('');
+    };
+    const handleDeadTimeClear = () => {
+        setDt_observedCpm('50000'); setDt_deadTime('100');
+        setDt_result(null); setDt_error('');
+    };
+    const handleRpdClear = () => {
+        setRpd_sample1('1250'); setRpd_sample2('1180');
+        setRpd_result(null);
+    };
+    const handleFwhmClear = () => {
+        setFwhm_centroid('661.7'); setFwhm_lower('658.2'); setFwhm_upper('665.2');
+        setFwhm_result(null);
+    };
+
+    const handleClearActiveCalculator = () => {
+        switch (activeCalculator) {
             case 'chiSquared': handleChiClear(); break;
             case 'deadTime': handleDeadTimeClear(); break;
             case 'rpd': handleRpdClear(); break;
             case 'fwhm': handleFwhmClear(); break;
             default: break;
-         }
-         };
-         
-         const calculatorViews = {
-         chiSquared: { 
+        }
+    };
+    
+    const calculatorViews = {
+        chiSquared: { 
             label: 'χ² Test', 
             component: <ChiSquaredCalculator 
                 chiSquaredData={chi_chiSquaredData} setChiSquaredData={setChi_chiSquaredData}
@@ -8137,8 +8116,8 @@ const MARSSIM_SampleCalculator = () => {
                 result={chi_result} setResult={setChi_result}
                 error={chi_error} setError={setChi_error}
             /> 
-         },
-         deadTime: { 
+        },
+        deadTime: { 
             label: 'Dead Time', 
             component: <DeadTimeCorrector 
                 observedCpm={dt_observedCpm} setObservedCpm={setDt_observedCpm}
@@ -8146,16 +8125,16 @@ const MARSSIM_SampleCalculator = () => {
                 result={dt_result} setResult={setDt_result}
                 error={dt_error} setError={setDt_error}
             /> 
-         },
-         rpd: { 
+        },
+        rpd: { 
             label: 'RPD', 
             component: <RpdCalculator 
                 sample1={rpd_sample1} setSample1={setRpd_sample1}
                 sample2={rpd_sample2} setSample2={setRpd_sample2}
                 result={rpd_result} setResult={setRpd_result}
             /> 
-         },
-         fwhm: { 
+        },
+        fwhm: { 
             label: 'FWHM', 
             component: <FwhmCalculator 
                 centroid={fwhm_centroid} setCentroid={setFwhm_centroid}
@@ -8163,11 +8142,11 @@ const MARSSIM_SampleCalculator = () => {
                 upper={fwhm_upper} setUpper={setFwhm_upper}
                 result={fwhm_result} setResult={setFwhm_result}
             /> 
-         },
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        },
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Lab Statistics & QA/QC</h2>
@@ -8188,174 +8167,10 @@ const MARSSIM_SampleCalculator = () => {
                     {calculatorViews[activeCalculator].component}
                 </div>
             </div>
-         </div>
-         );
-         };
-         
-         
-         const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
-         const CHI_SQUARED_CRITICAL_VALUES = {
-         '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 },
-         '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 },
-         '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 },
-         };
-         const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
-         
-         const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         
-         const handleCalculate = () => {
-         setResult(null);
-         setError('');
-         const data = parseData(chiSquaredData);
-         if (data.length < 5) { setError('At least 5 data points are required for a meaningful test.'); return; }
-         const n = data.length;
-         const mean = data.reduce((sum, val) => sum + val, 0) / n;
-         if (mean === 0) { setError('The mean of the counts cannot be zero.'); return; }
-         const sumOfSquares = data.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0);
-         const chiSquared = sumOfSquares / mean;
-         const df = n - 1;
-         const lowerBound = CHI_SQUARED_CRITICAL_VALUES[alpha][df];
-         const upperBound = UPPER_BOUNDS[alpha][df];
-         if (lowerBound === undefined || upperBound === undefined) { setError(`Critical values not available for N=${n} (df=${df}). Please use between 5 and 41 samples.`); return; }
-         const pass = chiSquared > lowerBound && chiSquared < upperBound;
-         setResult({ conclusion: pass ? 'PASS' : 'FAIL', chiSquared: chiSquared.toFixed(3), df, mean: mean.toFixed(2), lowerBound: lowerBound.toFixed(3), upperBound: upperBound.toFixed(3), n, });
-         };
-         
-         const resultStyles = { PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200' }, FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200' } };
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Checks if a counting system is statistically stable.</p>
-            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                <div>
-                    <div className="flex justify-between items-center">
-                        <label className="block text-sm font-medium">Repeated Count Data</label>
-                        <button onClick={() => setChiSquaredData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button>
-                    </div>
-                    <textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated count values..."></textarea>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Significance Level (α)</label>
-                    <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                        <option value="0.10">0.10</option>
-                        <option value="0.05">0.05</option>
-                        <option value="0.01">0.01</option>
-                    </select>
-                </div>
-            </div>
-            <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Run Test</button>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
-                    <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>SYSTEM {result.conclusion}ES</p>
-                    <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>The observed variance is {result.conclusion === 'PASS' ? 'consistent with' : 'not consistent with'} a random Poisson distribution.</p>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-sm">
-                        <p>Calculated χ² of <strong>{result.chiSquared}</strong> is {result.conclusion === 'PASS' ? 'within' : 'outside'} the acceptable range of <strong>{result.lowerBound}</strong> to <strong>{result.upperBound}</strong>.</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(for N={result.n}, df={result.df}, α={alpha})</p>
-                    </div>
-                </div>
-            )}
-         </div>
-         );
-         };
-         
-         const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
-         React.useEffect(() => {
-         try {
-            setError('');
-            const R = parseFloat(observedCpm);
-            const tau_us = parseFloat(deadTime);
-            if (isNaN(R) || isNaN(tau_us) || R < 0 || tau_us < 0) {
-                if(observedCpm || deadTime) setError("Inputs must be positive numbers.");
-                setResult(null); return;
-            }
-            const R_cps = R / 60.0;
-            const tau_s = tau_us / 1e6;
-            const denominator = 1 - (R_cps * tau_s);
-            if (denominator <= 0) { throw new Error("Count rate is too high for this dead time; detector is saturated."); }
-            const N_cps = R_cps / denominator;
-            const N_cpm = N_cps * 60;
-            const lossPercent = (1 - (R / N_cpm)) * 100;
-            setResult({ trueCpm: N_cpm, lossPercent });
-         } catch(e) { setError(e.message); setResult(null); }
-         }, [observedCpm, deadTime, setResult, setError]);
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Corrects for counts missed at high rates.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Observed Count Rate (CPM)</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Detector Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Corrected (True) Count Rate</p>
-                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{Math.round(result.trueCpm).toLocaleString()}</p>
-                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">CPM</p>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
-                        <p className={`font-semibold text-lg ${result.lossPercent > 20 ? 'text-red-500' : result.lossPercent > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.lossPercent.toFixed(1)}% Counts Lost</p>
-                    </div>
-                </div>
-            )}
-         </div>
-         );
-         };
-         
-         const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
-         React.useEffect(() => {
-         const s1 = parseFloat(sample1);
-         const s2 = parseFloat(sample2);
-         if (!isNaN(s1) && !isNaN(s2) && (s1 + s2 > 0)) {
-            const rpd = Math.abs(s1 - s2) / ((s1 + s2) / 2) * 100;
-            setResult({ rpd: rpd.toFixed(2), isGood: rpd <= 20 });
-         } else { setResult(null); }
-         }, [sample1, sample2, setResult]);
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Compares duplicate samples for precision.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Sample 1 Value</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Sample 2 (Duplicate) Value</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Relative Percent Difference (RPD)</p>
-                    <p className={`text-3xl font-bold ${result.isGood ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(A difference of ≤ 20% is often acceptable)</p>
-                </div>
-            )}
-         </div>
-         );
-         };
-         
-         const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
-         React.useEffect(() => {
-         const c = parseFloat(centroid); const l = parseFloat(lower); const u = parseFloat(upper);
-         if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0 && u > l) {
-            const fwhm = u - l; const resolution = (fwhm / c) * 100;
-            setResult({ fwhm: fwhm.toFixed(2), resolution: resolution.toFixed(2) });
-         } else { setResult(null); }
-         }, [centroid, lower, upper, setResult]);
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Calculates detector energy resolution.</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label className="block text-sm font-medium">Peak Centroid (keV)</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Lower Energy @ ½ Max (keV)</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Upper Energy @ ½ Max (keV)</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in grid grid-cols-2 gap-4">
-                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">FWHM</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.fwhm} <span className="text-xl opacity-75">keV</span></p></div>
-                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.resolution}%</p></div>
-                </div>
-            )}
-         </div>
-         );
-         };
+        </div>
+    );
+};
+
          
          const MARSSIM_Statistical_Tests = () => {
          const TEST_WRS = 'wrs';
@@ -8437,52 +8252,64 @@ const MARSSIM_SampleCalculator = () => {
          };
          
          const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, surveyData, setSurveyData, alpha, setAlpha, result, setResult, error, setError }) => {
-         const criticalValueTable = { '0.05': { '5': { '5': 28, '6': 32, '7': 36, '8': 41, '9': 45, '10': 50 }, '6': { '5': 33, '6': 38, '7': 43, '8': 48, '9': 53, '10': 59 }, '7': { '5': 37, '6': 43, '7': 49, '8': 54, '9': 60, '10': 66 }, '8': { '5': 42, '6': 49, '7': 55, '8': 61, '9': 67, '10': 74 }, '9': { '5': 46, '6': 54, '7': 61, '8': 68, '9': 75, '10': 82 }, '10': { '5': 51, '6': 59, '7': 67, '8': 75, '9': 83, '10': 91 }, '11': { '11': 111, '12': 119, '13': 127, '14': 135, '15': 143 }, '12': { '12': 131, '13': 139, '14': 148, '15': 156, '16': 165 }, '13': { '13': 151, '14': 160, '15': 169, '16': 178, '17': 187 }, '14': { '14': 171, '15': 181, '16': 190, '17': 200, '18': 210 }, '15': { '15': 192, '16': 202, '17': 212, '18': 223, '19': 233 } } };
-         const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
-         
-         React.useEffect(() => {
-         localStorage.setItem('wrs_dcgl', dcgl);
-         localStorage.setItem('wrs_referenceData', referenceData);
-         localStorage.setItem('wrs_surveyData', surveyData);
-         localStorage.setItem('wrs_alpha', alpha);
-         }, [dcgl, referenceData, surveyData, alpha]);
-         
-         const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         
-         const handleCalculate = () => {
-         setResult(null); setError('');
-         const refData = parseData(referenceData); const suData = parseData(surveyData); const dcgl_val = parseFloat(dcgl);
-         if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
-         if (refData.length < 5 || suData.length < 5) { setError('At least 5 data points are required for each area.'); return; }
-         const dcglExceeded = suData.some(val => val > dcgl_val);
-         let combined = [...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })), ...suData.map(v => ({ value: v, group: 'su' }))].sort((a, b) => a.value - b.value);
-         for (let i = 0; i < combined.length; i++) {
+    const { addHistory } = useCalculationHistory(); // <-- MODIFIED: Add hook
+    const criticalValueTable = { '0.05': { '5': { '5': 28, '6': 32, '7': 36, '8': 41, '9': 45, '10': 50 }, '6': { '5': 33, '6': 38, '7': 43, '8': 48, '9': 53, '10': 59 }, '7': { '5': 37, '6': 43, '7': 49, '8': 54, '9': 60, '10': 66 }, '8': { '5': 42, '6': 49, '7': 55, '8': 61, '9': 67, '10': 74 }, '9': { '5': 46, '6': 54, '7': 61, '8': 68, '9': 75, '10': 82 }, '10': { '5': 51, '6': 59, '7': 67, '8': 75, '9': 83, '10': 91 }, '11': { '11': 111, '12': 119, '13': 127, '14': 135, '15': 143 }, '12': { '12': 131, '13': 139, '14': 148, '15': 156, '16': 165 }, '13': { '13': 151, '14': 160, '15': 169, '16': 178, '17': 187 }, '14': { '14': 171, '15': 181, '16': 190, '17': 200, '18': 210 }, '15': { '15': 192, '16': 202, '17': 212, '18': 223, '19': 233 } } };
+    const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
+    const resultStyles = { PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200', display: 'SURVEY UNIT PASSES' }, PASS_EMC: { container: 'bg-yellow-100 dark:bg-yellow-900/50', title: 'text-yellow-600 dark:text-yellow-400', text: 'text-yellow-800 dark:text-yellow-200', display: 'PASS (EMC Required)' }, FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200', display: 'SURVEY UNIT FAILS' } };
+
+    React.useEffect(() => {
+        localStorage.setItem('wrs_dcgl', dcgl);
+        localStorage.setItem('wrs_referenceData', referenceData);
+        localStorage.setItem('wrs_surveyData', surveyData);
+        localStorage.setItem('wrs_alpha', alpha);
+    }, [dcgl, referenceData, surveyData, alpha]);
+
+    const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+
+    const handleCalculate = () => {
+        setResult(null); setError('');
+        const refData = parseData(referenceData); const suData = parseData(surveyData); const dcgl_val = parseFloat(dcgl);
+        if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
+        if (refData.length < 5 || suData.length < 5) { setError('At least 5 data points are required for each area.'); return; }
+        const dcglExceeded = suData.some(val => val > dcgl_val);
+        let combined = [...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })), ...suData.map(v => ({ value: v, group: 'su' }))].sort((a, b) => a.value - b.value);
+        for (let i = 0; i < combined.length; i++) {
             let ties = [i]; const epsilon = 1e-9;
             while (i + 1 < combined.length && Math.abs(combined[i].value - combined[i + 1].value) < epsilon) { i++; ties.push(i); }
             if (ties.length > 1) { const avgRank = (ties[0] + 1 + ties[ties.length - 1] + 1) / 2; ties.forEach(index => { combined[index].rank = avgRank; }); } else { combined[i].rank = i + 1; }
-         }
-         const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
-         const n = refData.length; const m = suData.length; let C_w;
-         const tableVal = criticalValueTable[alpha]?.[n]?.[m] || criticalValueTable[alpha]?.[m]?.[n];
-         if (tableVal) { C_w = tableVal; } 
-         else {
+        }
+        const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
+        const n = refData.length; const m = suData.length; let C_w;
+        const tableVal = criticalValueTable[alpha]?.[n]?.[m] || criticalValueTable[alpha]?.[m]?.[n];
+        if (tableVal) { C_w = tableVal; } 
+        else {
             const zAlpha = zScores[alpha]; const N = n + m; const mean_W = (n * (N + 1)) / 2; const tieGroups = {};
             combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
             const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
             const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
             const stdDev_W_corrected = Math.sqrt(variance_W); C_w = Math.round(mean_W + (zAlpha * stdDev_W_corrected) + 0.5);
-         }
-         const wrsTestPassed = W_rs >= C_w; let finalConclusion = 'FAIL'; let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
-         if (wrsTestPassed) {
+        }
+        const wrsTestPassed = W_rs >= C_w; let finalConclusion = 'FAIL'; let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
+        if (wrsTestPassed) {
             if (dcglExceeded) { finalConclusion = 'PASS_EMC'; finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`; } 
             else { finalConclusion = 'PASS'; finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`; }
-         }
-         setResult({ conclusion: finalConclusion, reason: finalReason, n, m, W_rs, C_w, rankedData: combined });
-         };
-         const resultStyles = { PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200', display: 'SURVEY UNIT PASSES' }, PASS_EMC: { container: 'bg-yellow-100 dark:bg-yellow-900/50', title: 'text-yellow-600 dark:text-yellow-400', text: 'text-yellow-800 dark:text-yellow-200', display: 'PASS (EMC Required)' }, FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200', display: 'SURVEY UNIT FAILS' } };
-         
-         return (
-         <div className="space-y-4">
+        }
+        const newResult = { conclusion: finalConclusion, reason: finalReason, n, m, W_rs, C_w, rankedData: combined };
+        setResult(newResult);
+        
+        // <-- MODIFIED: Add history item -->
+        addHistory({
+            id: Date.now(),
+            type: 'WRS Test',
+            icon: ICONS.labStats,
+            inputs: `n=${newResult.n}, m=${newResult.m}`,
+            result: resultStyles[newResult.conclusion].display,
+            view: VIEWS.MARSSIM_TESTS
+        });
+    };
+    
+    return (
+        <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <div className="flex justify-between items-center"><label className="block text-sm font-medium">Reference Area Data</label><button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
@@ -8512,54 +8339,63 @@ const MARSSIM_SampleCalculator = () => {
                     </div>
                 </div>
             )}
-
             {!result && !error && (
                 <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
                     <p className="text-slate-500 dark:text-slate-400">Paste your reference and survey data above to perform the WRS test.</p>
                 </div>
             )}
+        </div>
+    );
+};
+  const EMC_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor, emcData, setEmcData, alpha, setAlpha, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory(); // <-- MODIFIED: Add hook
+    const signTestCriticalValues = { '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 }, '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 }, '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 }, '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 } };
+    const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
+    
+    React.useEffect(() => {
+        localStorage.setItem('emc_dcglw', dcglw);
+        localStorage.setItem('emc_areaFactor', areaFactor);
+        localStorage.setItem('emc_emcData', emcData);
+        localStorage.setItem('emc_alpha', alpha);
+    }, [dcglw, areaFactor, emcData, alpha]);
 
-         </div>
-         );
-         };
-         
-         const EMC_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor, emcData, setEmcData, alpha, setAlpha, result, setResult, error, setError }) => {
-         const signTestCriticalValues = { '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 }, '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 }, '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 }, '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 } };
-         const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
-         
-         React.useEffect(() => {
-         localStorage.setItem('emc_dcglw', dcglw);
-         localStorage.setItem('emc_areaFactor', areaFactor);
-         localStorage.setItem('emc_emcData', emcData);
-         localStorage.setItem('emc_alpha', alpha);
-         }, [dcglw, areaFactor, emcData, alpha]);
-         
-         const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         
-         const handleCalculate = () => {
-         setResult(null); setError('');
-         const initialData = parseData(emcData); const dcglw_val = parseFloat(dcglw); const af_val = parseFloat(areaFactor);
-         if (isNaN(dcglw_val) || isNaN(af_val) || dcglw_val <= 0 || af_val <= 1) { setError('DCGL and Area Factor must be valid numbers (AF > 1).'); return; }
-         if (initialData.length === 0) { setError('Please enter measurement data.'); return; }
-         const dcgl_emc = dcglw_val * af_val; const epsilon = 1e-9;
-         const data = initialData.filter(val => Math.abs(dcgl_emc - val) > epsilon); const n_adjusted = data.length; const ties = initialData.length - n_adjusted;
-         if (n_adjusted === 0) { setError('All data points are equal to the DCGL_EMC; the test cannot be performed.'); return; }
-         const S_plus = data.filter(val => (dcgl_emc - val) > 0).length;
-         let Cs; let note = '';
-         const tableValue = signTestCriticalValues[alpha]?.[n_adjusted];
-         if (tableValue !== undefined) { Cs = tableValue; note = `Used MARSSIM Table I.3 for N=${n_adjusted}.`; } 
-         else {
+    const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+    
+    const handleCalculate = () => {
+        setResult(null); setError('');
+        const initialData = parseData(emcData); const dcglw_val = parseFloat(dcglw); const af_val = parseFloat(areaFactor);
+        if (isNaN(dcglw_val) || isNaN(af_val) || dcglw_val <= 0 || af_val <= 1) { setError('DCGL and Area Factor must be valid numbers (AF > 1).'); return; }
+        if (initialData.length === 0) { setError('Please enter measurement data.'); return; }
+        const dcgl_emc = dcglw_val * af_val; const epsilon = 1e-9;
+        const data = initialData.filter(val => Math.abs(dcgl_emc - val) > epsilon); const n_adjusted = data.length; const ties = initialData.length - n_adjusted;
+        if (n_adjusted === 0) { setError('All data points are equal to the DCGL_EMC; the test cannot be performed.'); return; }
+        const S_plus = data.filter(val => (dcgl_emc - val) > 0).length;
+        let Cs; let note = '';
+        const tableValue = signTestCriticalValues[alpha]?.[n_adjusted];
+        if (tableValue !== undefined) { Cs = tableValue; note = `Used MARSSIM Table I.3 for N=${n_adjusted}.`; } 
+        else {
             const zAlpha = zScores[alpha];
             if (!zAlpha) { setError(`Z-score for alpha=${alpha} not available.`); return; }
             Cs = Math.ceil((n_adjusted / 2) - 0.5 - (zAlpha * Math.sqrt(n_adjusted) / 2));
             note = `Used Large Sample Approximation for N=${n_adjusted}.`;
-         }
-         const testPassed = S_plus >= Cs;
-         setResult({ conclusion: testPassed ? 'PASS' : 'FAIL', reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`, n: initialData.length, n_adjusted, ties, dcgl_emc: dcgl_emc.toPrecision(4), S_plus, Cs, note });
-         };
-         
-         return (
-         <div className="space-y-4">
+        }
+        const testPassed = S_plus >= Cs;
+        const newResult = { conclusion: testPassed ? 'PASS' : 'FAIL', reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`, n: initialData.length, n_adjusted, ties, dcgl_emc: dcgl_emc.toPrecision(4), S_plus, Cs, note };
+        setResult(newResult);
+
+        // <-- MODIFIED: Add history item -->
+        addHistory({
+            id: Date.now(),
+            type: 'EMC Sign Test',
+            icon: ICONS.labStats,
+            inputs: `N=${newResult.n}, DCGL_emc=${newResult.dcgl_emc}`,
+            result: `EMC AREA ${newResult.conclusion}ES`,
+            view: VIEWS.MARSSIM_TESTS
+        });
+    };
+    
+    return (
+        <div className="space-y-4">
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label htmlFor="emc-dcglw" className="block text-sm font-medium">Widespread DCGL (DCGLw)</label><input id="emc-dcglw" type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
@@ -8585,7 +8421,6 @@ const MARSSIM_SampleCalculator = () => {
                      <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
                 </div>
             )}
-
             {!result && !error && (
                 <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
                     <p className="text-slate-500 dark:text-slate-400">Enter elevated area data and parameters to perform the EMC Sign Test.</p>
@@ -8593,8 +8428,7 @@ const MARSSIM_SampleCalculator = () => {
             )}
         </div>
     );
-};
-         
+};       
          
          /**
          * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
