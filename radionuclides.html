@@ -2238,72 +2238,79 @@
          // These components represent the main content areas of the application.
          //==============================================================================
          
-         const CalculationHistoryPanel = ({ onNavClick }) => {
-         const [history, setHistory] = React.useState([]);
-         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-         
-         React.useEffect(() => {
-         const savedHistory = localStorage.getItem('rad_tool_calculation_history');
-         if (savedHistory) {
-            setHistory(JSON.parse(savedHistory));
-         }
-         }, []);
-         
-         const handleClearHistory = () => {
-         localStorage.removeItem('rad_tool_calculation_history');
-         setHistory([]);
-         setIsClearModalOpen(false);
-         };
-         
-         const handleItemClick = (view) => {
-         if (view && onNavClick) {
-            onNavClick(view);
-         }
-         };
-         
-         if (history.length === 0) {
-         return null; // Don't render anything if there's no history
-         }
-         
-         return (
-         <>
-            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-                <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
-                    <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                        Clear History
-                    </button>
-                </div>
-                <div className="space-y-3">
-                    {history.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleItemClick(item.view)}
-                            className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:ring-2 hover:ring-sky-500 transition-all duration-150"
-                        >
-                            <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
-                                <span className="font-semibold">Inputs:</span> {item.inputs}
-                            </p>
-                            <p className="text-sm text-slate-800 dark:text-slate-100">
-                                <span className="font-semibold">Result:</span> {item.result}
-                            </p>
-                        </button>
-                    ))}
-                </div>
-            </div>
-         
-            <ConfirmationModal
-                isOpen={isClearModalOpen}
-                onClose={() => setIsClearModalOpen(false)}
-                onConfirm={handleClearHistory}
-                title="Clear Calculation History"
-            >
-                <p>Are you sure you want to clear your five most recent calculations?</p>
-            </ConfirmationModal>
-         </>
-         );
-         };
+const CalculationHistoryPanel = ({ onNavClick }) => {
+    const [history, setHistory] = React.useState([]);
+    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+        if (savedHistory) {
+           setHistory(JSON.parse(savedHistory));
+        }
+    }, []);
+
+    const handleClearHistory = () => {
+        localStorage.removeItem('rad_tool_calculation_history');
+        setHistory([]);
+        setIsClearModalOpen(false);
+    };
+
+    const handleItemClick = (view) => {
+        if (view && onNavClick) {
+           onNavClick(view);
+        }
+    };
+
+    if (history.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
+           <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+               <div className="flex justify-between items-center mb-4">
+                   <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
+                   <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                       Clear History
+                   </button>
+               </div>
+               <div className="space-y-3">
+                   {history.map(item => (
+                       <button
+                           key={item.id}
+                           onClick={() => handleItemClick(item.view)}
+                           className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:ring-2 hover:ring-sky-500 transition-all duration-150"
+                       >
+                           
+                           <div className="flex items-start gap-4">
+                               {item.icon && <Icon path={item.icon} className="w-8 h-8 text-slate-400 dark:text-slate-500 mt-1 flex-shrink-0" />}
+                               <div className="flex-grow">
+                                   <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
+                                   <p className="text-sm text-slate-600 dark:text-slate-300">
+                                       <span className="font-semibold">Inputs:</span> {item.inputs}
+                                   </p>
+                                   <p className="text-sm text-slate-800 dark:text-slate-100">
+                                       <span className="font-semibold">Result:</span> {item.result}
+                                   </p>
+                               </div>
+                           </div>
+                           
+                       </button>
+                   ))}
+               </div>
+           </div>
+
+           <ConfirmationModal
+               isOpen={isClearModalOpen}
+               onClose={() => setIsClearModalOpen(false)}
+               onConfirm={handleClearHistory}
+               title="Clear Calculation History"
+           >
+               <p>Are you sure you want to clear your five most recent calculations?</p>
+           </ConfirmationModal>
+        </>
+    );
+};
          
          /**
          * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
@@ -3471,7 +3478,11 @@
           React.useEffect(() => { if (preselectedNuclide) { handleNuclideSelect(preselectedNuclide); } }, [preselectedNuclide, handleNuclideSelect]);
           React.useEffect(() => { setResult(null); setChartData(null); setError(''); }, [calculationMode]);
           
-          const handleCalculate = () => { if (!selectedNuclide) return; try { setError(''); const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife); const lambda = Math.log(2) / T_half_seconds; const A0 = parseFloat(initialActivity); const At = parseFloat(remainingActivity); const t_input = parseFloat(timeElapsed); const t_seconds = t_input * unitConversions[timeUnit]; if (calculationMode === MODE_REMAINING) { if (isNaN(A0) || isNaN(t_seconds)) throw new Error('Initial activity and time must be valid numbers.'); const finalActivity = A0 * Math.exp(-lambda * t_seconds); setResult({ label: 'Remaining Activity', value: finalActivity.toPrecision(4), unit: '' }); addHistory({ id: Date.now(), type: 'Decay', inputs: `${A0} of ${selectedNuclide.symbol} for ${t_input} ${timeUnit}`, result: `${finalActivity.toPrecision(4)}`, view: VIEWS.CALCULATOR }); } else if (calculationMode === MODE_TIME) { if (isNaN(A0) || isNaN(At) || A0 <= 0 || At < 0 || At > A0) throw new Error('Initial and remaining activities must be valid numbers, with At <= A0.'); const timeInSeconds = (-1 / lambda) * Math.log(At / A0); const bestUnit = getBestHalfLifeUnit(timeInSeconds); const timeInBestUnit = timeInSeconds / unitConversions[bestUnit]; setResult({ label: 'Time Elapsed', value: timeInBestUnit.toPrecision(4), unit: bestUnit }); } else if (calculationMode === MODE_INITIAL) { if (isNaN(At) || isNaN(t_seconds)) throw new Error('Remaining activity and time must be valid numbers.'); const initial = At / Math.exp(-lambda * t_seconds); setResult({ label: 'Initial Activity', value: initial.toPrecision(4), unit: '' }); } else if (calculationMode === MODE_DAUGHTER) { if (selectedNuclide.daughter.includes('/')) { throw new Error('This calculator does not support branching decay. Please use the Series Decay calculator.'); } const daughterName = selectedNuclide.daughter.split('(')[0].trim(); const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName)); if (!daughter) throw new Error('Daughter nuclide data not found.'); const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife); const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds; const N0_daughter = parseFloat(initialDaughterActivity); if (isNaN(A0) || isNaN(t_seconds) || isNaN(N0_daughter)) throw new Error("All inputs must be valid numbers."); const finalParentActivity = A0 * Math.exp(-lambda * t_seconds); let finalDaughterActivity; if (Math.abs(lambda - lambda2) < 1e-12 * lambda) { finalDaughterActivity = (N0_daughter * Math.exp(-lambda2 * t_seconds)) + (A0 * lambda2 * t_seconds * Math.exp(-lambda2 * t_seconds)); } else { finalDaughterActivity = (N0_daughter * Math.exp(-lambda2 * t_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds))); } setResult({ parent: { name: selectedNuclide.name, value: finalParentActivity.toPrecision(4) }, daughter: { name: daughter.name, value: finalDaughterActivity.toPrecision(4), isStable: T_half_daughter_seconds === Infinity } }); } const labels = [], parentData = [], daughterData = []; const totalTime = t_input; const steps = 100; for (let i = 0; i <= steps; i++) { const timePoint = (totalTime / steps) * i; const timePoint_seconds = timePoint * unitConversions[timeUnit]; labels.push(timePoint.toFixed(2)); parentData.push(A0 * Math.exp(-lambda * timePoint_seconds)); if (calculationMode === MODE_DAUGHTER) { const N0_daughter = parseFloat(initialDaughterActivity); const daughterName = selectedNuclide.daughter.split('(')[0].trim(); const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName)); const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife); const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds; let d_activity; if (Math.abs(lambda - lambda2) < 1e-12 * lambda) { d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + (A0 * lambda2 * timePoint_seconds * Math.exp(-lambda2 * timePoint_seconds)); } else { d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds))); } daughterData.push(d_activity); } } setChartData({ labels, parentData, daughterData: daughterData.length > 0 ? daughterData : null, timeUnit: timeUnit, parentName: selectedNuclide.name, daughterName: calculationMode === MODE_DAUGHTER ? selectedNuclide.daughter.split('(')[0].trim() : null }); } catch (e) { setError(e.message); setResult(null); setChartData(null); }};
+          const handleCalculate = () => { if (!selectedNuclide) return; try { setError(''); const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife); const lambda = Math.log(2) / T_half_seconds; const A0 = parseFloat(initialActivity); const At = parseFloat(remainingActivity); const t_input = parseFloat(timeElapsed); const t_seconds = t_input * unitConversions[timeUnit]; if (calculationMode === MODE_REMAINING) { if (isNaN(A0) || isNaN(t_seconds)) throw new Error('Initial activity and time must be valid numbers.'); const finalActivity = A0 * Math.exp(-lambda * t_seconds); setResult({ label: 'Remaining Activity', value: finalActivity.toPrecision(4), unit: '' }); 
+
+addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A0} of ${selectedNuclide.symbol} for ${t_input} ${timeUnit}`, result: `${finalActivity.toPrecision(4)}`, view: VIEWS.CALCULATOR });
+
+} else if (calculationMode === MODE_TIME) { if (isNaN(A0) || isNaN(At) || A0 <= 0 || At < 0 || At > A0) throw new Error('Initial and remaining activities must be valid numbers, with At <= A0.'); const timeInSeconds = (-1 / lambda) * Math.log(At / A0); const bestUnit = getBestHalfLifeUnit(timeInSeconds); const timeInBestUnit = timeInSeconds / unitConversions[bestUnit]; setResult({ label: 'Time Elapsed', value: timeInBestUnit.toPrecision(4), unit: bestUnit }); } else if (calculationMode === MODE_INITIAL) { if (isNaN(At) || isNaN(t_seconds)) throw new Error('Remaining activity and time must be valid numbers.'); const initial = At / Math.exp(-lambda * t_seconds); setResult({ label: 'Initial Activity', value: initial.toPrecision(4), unit: '' }); } else if (calculationMode === MODE_DAUGHTER) { if (selectedNuclide.daughter.includes('/')) { throw new Error('This calculator does not support branching decay. Please use the Series Decay calculator.'); } const daughterName = selectedNuclide.daughter.split('(')[0].trim(); const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName)); if (!daughter) throw new Error('Daughter nuclide data not found.'); const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife); const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds; const N0_daughter = parseFloat(initialDaughterActivity); if (isNaN(A0) || isNaN(t_seconds) || isNaN(N0_daughter)) throw new Error("All inputs must be valid numbers."); const finalParentActivity = A0 * Math.exp(-lambda * t_seconds); let finalDaughterActivity; if (Math.abs(lambda - lambda2) < 1e-12 * lambda) { finalDaughterActivity = (N0_daughter * Math.exp(-lambda2 * t_seconds)) + (A0 * lambda2 * t_seconds * Math.exp(-lambda2 * t_seconds)); } else { finalDaughterActivity = (N0_daughter * Math.exp(-lambda2 * t_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds))); } setResult({ parent: { name: selectedNuclide.name, value: finalParentActivity.toPrecision(4) }, daughter: { name: daughter.name, value: finalDaughterActivity.toPrecision(4), isStable: T_half_daughter_seconds === Infinity } }); } const labels = [], parentData = [], daughterData = []; const totalTime = t_input; const steps = 100; for (let i = 0; i <= steps; i++) { const timePoint = (totalTime / steps) * i; const timePoint_seconds = timePoint * unitConversions[timeUnit]; labels.push(timePoint.toFixed(2)); parentData.push(A0 * Math.exp(-lambda * timePoint_seconds)); if (calculationMode === MODE_DAUGHTER) { const N0_daughter = parseFloat(initialDaughterActivity); const daughterName = selectedNuclide.daughter.split('(')[0].trim(); const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName)); const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife); const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds; let d_activity; if (Math.abs(lambda - lambda2) < 1e-12 * lambda) { d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + (A0 * lambda2 * timePoint_seconds * Math.exp(-lambda2 * timePoint_seconds)); } else { d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds))); } daughterData.push(d_activity); } } setChartData({ labels, parentData, daughterData: daughterData.length > 0 ? daughterData : null, timeUnit: timeUnit, parentName: selectedNuclide.name, daughterName: calculationMode === MODE_DAUGHTER ? selectedNuclide.daughter.split('(')[0].trim() : null }); } catch (e) { setError(e.message); setResult(null); setChartData(null); }};
           
           React.useEffect(() => { if (selectedNuclide) { handleCalculate(); } }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity]);
           
@@ -3507,6 +3518,7 @@
          const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
          
          // ADDED: Function to clear all inputs for this calculator
+
          const handleClearInputs = () => {
              setNuclideSymbol('');
              setSurveyData('');
@@ -3911,9 +3923,14 @@
            </div>
            </div>
            )}
-           </div>
-         );
-         };
+            {!result && !error && (
+                <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
+                    <p className="text-slate-500 dark:text-slate-400">Enter survey data and limits to analyze the results.</p>
+                </div>
+            )}
+        </div>
+    );
+};
              
          const ContaminationSurveyCalculator = ({ radionuclides }) => {
          const [nuclideSymbol, setNuclideSymbol] = React.useState('');
@@ -4099,173 +4116,178 @@
          * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
          */
          
-         const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
-         const [selectedSymbol, setSelectedSymbol] = React.useState('');
-         const [formType, setFormType] = React.useState('A2'); // Default to Normal Form (more conservative)
-         const [activity, setActivity] = React.useState('1');
-         const [activityUnit, setActivityUnit] = React.useState('Ci');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const { addHistory } = useCalculationHistory();
-         
-         const transportNuclides = React.useMemo(() =>
-         radionuclides.filter(n => n.shipping && (n.shipping.A1 !== null || n.shipping.A2 !== null)).sort((a,b) => a.name.localeCompare(b.name)),
-         [radionuclides]
-         );
-         
-         const selectedNuclide = React.useMemo(() =>
-         transportNuclides.find(n => n.symbol === selectedSymbol),
-         [selectedSymbol, transportNuclides]
-         );
-         
-         React.useEffect(() => {
-         if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
-             setSelectedSymbol(preselectedNuclide);
-         }
-         }, [preselectedNuclide, transportNuclides]);
-         
-         const activityFactorsTBq = {
-         'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12,
-         'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8
-         };
-         
-         const shippingActivityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci'];
-         
-         const resultStyles = {
-         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
-         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
-         TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
-         };
-         
-         const handleCalculate = () => {
-         if (!selectedNuclide) {
-             setError('Please select a radionuclide.');
-             setResult(null); return;
-         }
-         const activityValue = parseFloat(activity);
-         if (isNaN(activityValue) || activityValue < 0) {
-             setError('Please enter a valid, non-negative activity.');
-             setResult(null); return;
-         }
-         setError('');
-         const userActivityTBq = activityValue * activityFactorsTBq[activityUnit];
-         const limitTBq = selectedNuclide.shipping[formType];
-         if (limitTBq === null) {
-             setError(`An A-value for ${formType} is not defined for this nuclide.`);
-             setResult(null);
-             return;
-         }
-         const exceptedLimitTBq = 1e-4 * limitTBq;
-         let classification = '';
-         if (userActivityTBq <= exceptedLimitTBq) {
-             classification = 'EXCEPTED';
-         } else if (userActivityTBq <= limitTBq) {
-             classification = 'TYPE_A';
-         } else {
-             classification = 'TYPE_B';
-         }
-         const newResult = {
-             classification,
-             userActivityTBq: userActivityTBq.toExponential(3),
-             limitTBq,
-             exceptedLimitTBq: exceptedLimitTBq.toExponential(3)
-         };
-         setResult(newResult);
-         
-         addHistory({
-            id: Date.now(),
-            type: 'Transportation',
-            inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
-            result: resultStyles[newResult.classification].display,
-            view: VIEWS.TRANSPORTATION
-         });
-         };
-         
-         React.useEffect(() => {
-         if (selectedNuclide && activity) {
-             handleCalculate();
-         } else {
-             setResult(null);
-             setError('');
-         }
-         }, [selectedNuclide, formType, activity, activityUnit]);
-         
-         const handleClearInputs = () => {
-         setSelectedSymbol('');
-         setFormType('A2');
-         setActivity('1');
-         setActivityUnit('Ci');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <div className="flex justify-between items-center mb-4">
-                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
-                     <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                         <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                     </button>
-                 </div>
-                 <div className="space-y-4">
-                     <div>
-                         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                         <div className="mt-1 min-h-[42px]">
-                             {selectedNuclide ? (
-                                 <CalculatorNuclideInfo
-                                     nuclide={selectedNuclide}
-                                     // MODIFIED: This line now only clears the selected nuclide.
-                                     onClear={() => setSelectedSymbol('')}
-                                 />
-                             ) : (
-                                 <SearchableSelect
-                                     options={transportNuclides}
-                                     onSelect={(symbol) => { setSelectedSymbol(symbol); }}
-                                     placeholder="Search for a radionuclide..."
-                                 />
-                             )}
-                         </div>
-                     </div>
-                     <div>
-                         <label className="block text-sm font-medium">Material Form</label>
-                         <div className="mt-2 grid grid-cols-2 gap-2">
-                              <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
-                                 <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden"/>Special Form (A1)</label>
-                             </Tooltip>
-                             <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
-                                 <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
-                             </Tooltip>
-                         </div>
-                     </div>
-                     <div>
-                         <label className="block text-sm font-medium">Source Activity</label>
-                         <div className="flex">
-                             <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                             <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                                 {shippingActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
-                             </select>
-                         </div>
-                     </div>
-         
-                     {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
-         
-                     {result && (
-                         <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.classification].container}`}>
-                             <p className={`text-3xl font-extrabold ${resultStyles[result.classification].title}`}>{resultStyles[result.classification].display}</p>
-                             <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                                 <p>Your Activity:</p><p className="font-mono">{result.userActivityTBq} TBq</p>
-                                 <p>{formType} Limit:</p><p className="font-mono">{result.limitTBq} TBq</p>
-                                 <p>Excepted Limit:</p><p className="font-mono">≤ {result.exceptedLimitTBq} TBq</p>
-                             </div>
-                         </div>
-                     )}
-                 </div>
-             </div>
-         </div>
-         );
-         };
+const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const [selectedSymbol, setSelectedSymbol] = React.useState('');
+    const [formType, setFormType] = React.useState('A2');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState('Ci');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const { addHistory } = useCalculationHistory();
+    
+    const transportNuclides = React.useMemo(() =>
+        radionuclides.filter(n => n.shipping && (n.shipping.A1 !== null || n.shipping.A2 !== null)).sort((a,b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
+    
+    const selectedNuclide = React.useMemo(() =>
+        transportNuclides.find(n => n.symbol === selectedSymbol),
+        [selectedSymbol, transportNuclides]
+    );
+    
+    React.useEffect(() => {
+        if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
+            setSelectedSymbol(preselectedNuclide);
+        }
+    }, [preselectedNuclide, transportNuclides]);
+    
+    const activityFactorsTBq = {
+        'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12,
+        'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8
+    };
+    
+    const shippingActivityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci'];
+    
+    const resultStyles = {
+        EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
+        TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
+        TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
+    };
+    
+    const handleCalculate = () => {
+        if (!selectedNuclide) {
+            setError('Please select a radionuclide.');
+            setResult(null); return;
+        }
+        const activityValue = parseFloat(activity);
+        if (isNaN(activityValue) || activityValue < 0) {
+            setError('Please enter a valid, non-negative activity.');
+            setResult(null); return;
+        }
+        setError('');
+        const userActivityTBq = activityValue * activityFactorsTBq[activityUnit];
+        const limitTBq = selectedNuclide.shipping[formType];
+        if (limitTBq === null) {
+            setError(`An A-value for ${formType} is not defined for this nuclide.`);
+            setResult(null);
+            return;
+        }
+
+        // <-- MODIFIED: Check for the Tritium special case -->
+        let exceptedLimitFactor = 1e-4; // Generic factor
+        if (selectedNuclide.symbol === 'H-3') {
+            exceptedLimitFactor = 2e-2; // Special case factor for Tritium
+        }
+        const exceptedLimitTBq = exceptedLimitFactor * limitTBq;
+
+        let classification = '';
+        if (userActivityTBq <= exceptedLimitTBq) {
+            classification = 'EXCEPTED';
+        } else if (userActivityTBq <= limitTBq) {
+            classification = 'TYPE_A';
+        } else {
+            classification = 'TYPE_B';
+        }
+        const newResult = {
+            classification,
+            userActivityTBq: userActivityTBq.toExponential(3),
+            limitTBq,
+            exceptedLimitTBq: exceptedLimitTBq.toExponential(3)
+        };
+        setResult(newResult);
+        
+        addHistory({
+           id: Date.now(),
+           type: 'Transportation',
+           icon: ICONS.transport,
+           inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
+           result: resultStyles[newResult.classification].display,
+           view: VIEWS.TRANSPORTATION
+        });
+    };
+    
+    React.useEffect(() => {
+        if (selectedNuclide && activity) {
+            handleCalculate();
+        } else {
+            setResult(null);
+            setError('');
+        }
+    }, [selectedNuclide, formType, activity, activityUnit]);
+    
+    const handleClearInputs = () => {
+        setSelectedSymbol('');
+        setFormType('A2');
+        setActivity('1');
+        setActivityUnit('Ci');
+        setResult(null);
+        setError('');
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo
+                                    nuclide={selectedNuclide}
+                                    onClear={() => setSelectedSymbol('')}
+                                />
+                            ) : (
+                                <SearchableSelect
+                                    options={transportNuclides}
+                                    onSelect={(symbol) => { setSelectedSymbol(symbol); }}
+                                    placeholder="Search for a radionuclide..."
+                                />
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Material Form</label>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                             <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden"/>Special Form (A1)</label>
+                            </Tooltip>
+                            <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
+                            </Tooltip>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Source Activity</label>
+                        <div className="flex">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                                {shippingActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+        
+                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+        
+                    {result && (
+                        <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.classification].container}`}>
+                            <p className={`text-3xl font-extrabold ${resultStyles[result.classification].title}`}>{resultStyles[result.classification].display}</p>
+                            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                                <p>Your Activity:</p><p className="font-mono">{result.userActivityTBq} TBq</p>
+                                <p>{formType} Limit:</p><p className="font-mono">{result.limitTBq} TBq</p>
+                                <p>Excepted Limit:</p><p className="font-mono">≤ {result.exceptedLimitTBq} TBq</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
          
          const MedicalCalculator = () => {
          const [activeTab, setActiveTab] = React.useState('xrayShielding');
@@ -5286,13 +5308,7 @@
          const newResult = { parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } };
          setResult(newResult);
          
-         addHistory({
-         id: Date.now(),
-         type: 'Equilibrium',
-         inputs: `${initialActivity} of ${parentNuclide.symbol} for ${timeElapsed} ${timeUnit}`,
-         result: `Daughter: ${newResult.daughter.activity}`,
-         view: VIEWS.EQUILIBRIUM
-         });
+addHistory({ id: Date.now(), type: 'Equilibrium', icon: ICONS.activity, inputs: `${initialActivity} of ${parentNuclide.symbol} for ${timeElapsed} ${timeUnit}`, result: `Daughter: ${newResult.daughter.activity}`, view: VIEWS.EQUILIBRIUM });
          
          const labels = [], parentData = [], daughterData = [], ratioData = [];
          const totalTime = t_input;
@@ -6780,7 +6796,10 @@
                        const shielded_mrem_hr = shieldedRateR_hr * 1000;
                        const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate'), buildup: buildupFactor.toFixed(2) };
                        setResult(newResult);
-                       addHistory({ id: Date.now(), type: 'Shielding', inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`, result: `${newResult.shielded.value} ${newResult.shielded.unit}`, view: VIEWS.SHIELDING });
+
+addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`, result: `${newResult.shielded.value} ${newResult.shielded.unit}`, view: VIEWS.SHIELDING });
+                    
+
                    } else {
                         const targetRateValue = parseFloat(targetDoseRate);
                         if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
@@ -7038,13 +7057,8 @@
             const isSafe = totalDoseReceived <= limit;
             setResult({ doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), stayTime: `${minutes} min ${seconds} sec`, totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'), isSafe: isSafe });
             
-            addHistory({
-                id: Date.now(),
-                type: 'Stay Time',
-                inputs: `${doseRate_mrem_hr.toPrecision(3)} mrem/hr, ${limit} mrem limit`,
-                result: `${minutes} min ${seconds} sec`,
-                view: VIEWS.STAY_TIME
-            });
+addHistory({ id: Date.now(), type: 'Stay Time', icon: ICONS.stopwatch, inputs: `${doseRate_mrem_hr.toPrecision(3)} mrem/hr, ${limit} mrem limit`, result: `${minutes} min ${seconds} sec`, view: VIEWS.STAY_TIME });
+
          } catch(e) {
             setError(e.message);
             setResult(null);
@@ -7616,284 +7630,309 @@
          * MARSSIM-compliant static counts and scanning surveys.
          */
          
-         const MDACalculator = () => {
-         const MDA_MODE_STATIC = 'static';
-         const MDA_MODE_SCAN = 'scan';
-         
-         const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
-         // State for Static MDA
-         const [backgroundCounts, setBackgroundCounts] = React.useState(() => localStorage.getItem('mda_backgroundCounts') || '1000');
-         const [backgroundTime, setBackgroundTime] = React.useState(() => localStorage.getItem('mda_backgroundTime') || '10');
-         const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
-         const [confidence, setConfidence] = React.useState(() => localStorage.getItem('mda_confidence') || '1.645');
-         const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm');
-         const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
-         const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
-         // State for Scan MDC
-         const [scanBackground, setScanBackground] = React.useState(() => localStorage.getItem('mda_scanBackground') || '300');
-         const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '12.6');
-         const [hotspotDiameter, setHotspotDiameter] = React.useState(() => localStorage.getItem('mda_hotspotDiameter') || '15');
-         const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
-         const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
-         // Shared State
-         const [probeShape, setProbeShape] = React.useState(() => localStorage.getItem('mda_probeShape') || 'rectangle');
-         const [probeWidth, setProbeWidth] = React.useState(() => localStorage.getItem('mda_probeWidth') || '10');
-         const [probeLength, setProbeLength] = React.useState(() => localStorage.getItem('mda_probeLength') || '12.6');
-         const [probeDiameter, setProbeDiameter] = React.useState(() => localStorage.getItem('mda_probeDiameter') || '4.5');
-         const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '126');
-         const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '22');
-         const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const MDA_UNIT_CONFIG = {
-         'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] },
-         'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] },
-         'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] },
-         'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] },
-         'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] },
-         'mCi': { label: 'Activity (mCi)', category: 'Activity', requires: ['efficiency'] },
-         'Ci': { label: 'Activity (Ci)', category: 'Activity', requires: ['efficiency'] },
-         'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] },
-         'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] },
-         'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] }
-         };
-         const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6, 'mCi': 1 / 2.22e9, 'Ci': 1 / 2.22e12 };
-         const confidenceOptions = [ { value: '1.282', label: '90%' }, { value: '1.645', label: '95%' }, { value: '2.326', label: '99%' } ];
-         const dprimeOptions = [ { value: '0.4', label: '0.4 (Conservative)' }, { value: '1.0', label: '1.0 (Computer-aided GWS)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.38', label: '1.38 (95% detection prob.)' } ];
-         const surveyorEffOptions = [ { value: '0.25', label: '0.25 (Very conservative)' }, { value: '0.5', label: '0.5 (Realistic default)' }, { value: '0.75', label: '0.75 (Highly trained/attentive)' }, { value: '1.0', label: '1.0 (Computer-aided scan)' } ];
-         
-         React.useEffect(() => {
-         localStorage.setItem('mda_mdaMode', mdaMode);
-         localStorage.setItem('mda_backgroundCounts', backgroundCounts);
-         localStorage.setItem('mda_backgroundTime', backgroundTime);
-         localStorage.setItem('mda_grossTime', grossTime);
-         localStorage.setItem('mda_confidence', confidence);
-         localStorage.setItem('mda_outputUnit', outputUnit);
-         localStorage.setItem('mda_sampleVolume', sampleVolume);
-         localStorage.setItem('mda_sampleMass', sampleMass);
-         localStorage.setItem('mda_scanBackground', scanBackground);
-         localStorage.setItem('mda_scanSpeed', scanSpeed);
-         localStorage.setItem('mda_hotspotDiameter', hotspotDiameter);
-         localStorage.setItem('mda_dprime', dprime);
-         localStorage.setItem('mda_surveyorEff', surveyorEff);
-         localStorage.setItem('mda_probeShape', probeShape);
-         localStorage.setItem('mda_probeWidth', probeWidth);
-         localStorage.setItem('mda_probeLength', probeLength);
-         localStorage.setItem('mda_probeDiameter', probeDiameter);
-         localStorage.setItem('mda_probeArea', probeArea);
-         localStorage.setItem('mda_instrumentEff', instrumentEff);
-         localStorage.setItem('mda_surfaceEff', surfaceEff);
-         }, [ mdaMode, backgroundCounts, backgroundTime, grossTime, confidence, outputUnit, sampleVolume, sampleMass, scanBackground, scanSpeed, hotspotDiameter, dprime, surveyorEff, probeShape, probeWidth, probeLength, probeDiameter, probeArea, instrumentEff, surfaceEff ]);
-         
-         const handleStaticCalculate = () => {
-         const params = { Cb: parseFloat(backgroundCounts), tb: parseFloat(backgroundTime), tg: parseFloat(grossTime), ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff), A: parseFloat(probeArea), V: parseFloat(sampleVolume), M: parseFloat(sampleMass) };
-         if (isNaN(params.Cb) || isNaN(params.tb) || isNaN(params.tg) || params.tb <= 0 || params.tg <= 0) { throw new Error('Please enter valid, positive numbers for counts and times.'); }
-         const rb = params.Cb / params.tb;
-         const LLD = 3.29 * Math.sqrt(rb * params.tg * (1 + params.tg / params.tb)) + 3;
-         if (outputUnit === 'counts') { setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: LLD.toPrecision(3), unit: 'counts', backgroundActivity: rb.toPrecision(3) }); return; }
-         if (isNaN(params.ei) || isNaN(params.es) || params.ei <= 0 || params.es <= 0) { throw new Error('Valid efficiencies are required for this unit.'); }
-         const E_total = (params.ei / 100.0) * (params.es / 100.0);
-         const mda_dpm = (LLD / params.tg) / E_total;
-         const background_dpm = rb / E_total;
-         let finalMDA, finalBackground, finalUnit = outputUnit;
-         if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') { finalMDA = mda_dpm / dpmFactors[outputUnit]; finalBackground = background_dpm / dpmFactors[outputUnit]; } 
-         else if (outputUnit === 'dpm/100cm²') { if (isNaN(params.A) || params.A <= 0) throw new Error('Probe Area is required for this unit.'); finalMDA = mda_dpm * (100 / params.A); finalBackground = background_dpm * (100 / params.A); } 
-         else if (outputUnit === 'Bq/L') { if (isNaN(params.V) || params.V <= 0) throw new Error('Sample Volume is required for this unit.'); finalMDA = (mda_dpm / 60) / params.V; finalBackground = (background_dpm / 60) / params.V; } 
-         else if (outputUnit === 'pCi/g') { if (isNaN(params.M) || params.M <= 0) throw new Error('Sample Mass is required for this unit.'); finalMDA = (mda_dpm / 2.22) / params.M; finalBackground = (background_dpm / 2.22) / params.M; } 
-         else if (outputUnit === 'cpm') { finalMDA = LLD / params.tg; finalBackground = rb; } 
-         else { throw new Error('Selected unit calculation not implemented.'); }
-         setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: finalMDA.toPrecision(3), backgroundActivity: finalBackground.toPrecision(3), unit: finalUnit });
-         };
-         
-         const handleScanCalculate = () => {
-         const params = { b_cpm: parseFloat(scanBackground), width_cm: parseFloat(probeWidth), length_cm: parseFloat(probeLength), diameter_cm: parseFloat(probeDiameter), eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff), speed_cms: parseFloat(scanSpeed), dp: parseFloat(dprime), p: parseFloat(surveyorEff) };
-         if (isNaN(params.b_cpm) || isNaN(params.eff_i) || isNaN(params.eff_s) || isNaN(params.speed_cms) || params.b_cpm < 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) { throw new Error('Please enter valid, positive numbers for all required fields.'); }
-         let residence_time_s; let total_area_cm2;
-         const hotspot_diam_cm = parseFloat(hotspotDiameter);
-         if (probeShape === 'rectangle') {
-             if (isNaN(params.width_cm) || isNaN(params.length_cm) || params.width_cm <= 0 || params.length_cm <= 0) { throw new Error('Probe Width and Length must be positive numbers for a rectangle.'); }
-             let effective_dimension_cm = params.width_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
-             residence_time_s = effective_dimension_cm / params.speed_cms; total_area_cm2 = params.width_cm * params.length_cm;
-         } else {
-             if (isNaN(params.diameter_cm) || params.diameter_cm <= 0) { throw new Error('Probe Diameter must be a positive number for a circle.'); }
-             let effective_dimension_cm = params.diameter_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
-             residence_time_s = effective_dimension_cm / params.speed_cms; total_area_cm2 = Math.PI * Math.pow(params.diameter_cm / 2, 2);
-         }
-         const b_cps = params.b_cpm / 60.0; const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
-         const B_i = b_cps * residence_time_s; const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / residence_time_s);
-         const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (total_area_cm2 / 100.0));
-         const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
-         setResult({ type: 'scan', obs_interval: residence_time_s.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3), mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3), background_activity: background_activity.toPrecision(3) });
-         };
-         
-         React.useEffect(() => {
-         try {
-             setError('');
-             setResult(null);
-             if (mdaMode === MDA_MODE_STATIC) {
-                 handleStaticCalculate();
-             } else {
-                 handleScanCalculate();
-             }
-         } catch (e) {
-             setError(e.message);
-             setResult(null);
-         }
-         }, [ mdaMode, backgroundCounts, backgroundTime, grossTime, confidence, outputUnit, sampleVolume, sampleMass, scanBackground, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter ]);
-         
-         // <-- ADDED THIS FUNCTION -->
-         const handleClearInputs = () => {
-         setMdaMode(MDA_MODE_STATIC);
-         setBackgroundCounts('1000');
-         setBackgroundTime('10');
-         setGrossTime('1');
-         setConfidence('1.645');
-         setOutputUnit('dpm');
-         setSampleVolume('1');
-         setSampleMass('100');
-         setScanBackground('300');
-         setScanSpeed('12.6');
-         setHotspotDiameter('15');
-         setDprime('1.38');
-         setSurveyorEff('0.5');
-         setProbeShape('rectangle');
-         setProbeWidth('10');
-         setProbeLength('12.6');
-         setProbeDiameter('4.5');
-         setProbeArea('126');
-         setInstrumentEff('22');
-         setSurfaceEff('50');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <div className="flex justify-between items-center mb-4">
-                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
-                     {/* <-- ADDED THIS BUTTON --> */}
-                     <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                         <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                     </button>
-                 </div>
-                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                     <button onClick={() => { setMdaMode(MDA_MODE_STATIC); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
-                     <button onClick={() => { setMdaMode(MDA_MODE_SCAN); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
-                 </div>
-                 {mdaMode === MDA_MODE_STATIC ? (
-                     <div className="space-y-4 animate-fade-in">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div><label className="block text-sm font-medium">Background Counts</label><input type="number" value={backgroundCounts} onChange={e => setBackgroundCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div><label className="block text-sm font-medium">Bkg. Count Time (min)</label><input type="number" value={backgroundTime} onChange={e => setBackgroundTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div><label className="block text-sm font-medium">Sample Count Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div className="md:col-span-2"><label className="block text-sm font-medium">Desired Output Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><optgroup label="Counts"><option value="counts">{MDA_UNIT_CONFIG['counts'].label}</option></optgroup><optgroup label="Rate"><option value="cpm">{MDA_UNIT_CONFIG['cpm'].label}</option></optgroup><optgroup label="Activity">{Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Activity').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</optgroup><optgroup label="Concentration">{Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Concentration').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</optgroup></select></div>
-                             {MDA_UNIT_CONFIG[outputUnit].requires.includes('efficiency') && ( <><div className="animate-fade-in"><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div className="animate-fade-in"><label className="block text-sm font-medium">Source/Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div></> )}
-                             {MDA_UNIT_CONFIG[outputUnit].requires.includes('area') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
-                             {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
-                             {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
-                         </div>
-                     </div>
-                 ) : (
-                     <div className="space-y-4 animate-fade-in">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={scanBackground} onChange={e => setScanBackground(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div className="md:col-span-2"><label className="block text-sm font-medium">Probe Shape</label><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setProbeShape('rectangle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'rectangle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Rectangle</button><button onClick={() => setProbeShape('circle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'circle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Circle</button></div></div>
-                             {probeShape === 'rectangle' ? ( <><div className="animate-fade-in"><Tooltip text="The probe dimension perpendicular to the direction of scan."><label className="block text-sm font-medium">Probe Width (cm)</label></Tooltip><input type="number" value={probeWidth} onChange={e => setProbeWidth(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div className="animate-fade-in"><label className="block text-sm font-medium">Probe Length (cm)</label><input type="number" value={probeLength} onChange={e => setProbeLength(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div></> ) : ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Probe Diameter (cm)</label><input type="number" value={probeDiameter} onChange={e => setProbeDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
-                             <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                             <div className="md:col-span-2"><label className="block text-sm font-medium">Hot Spot Diameter (cm)</label><input type="number" value={hotspotDiameter} onChange={e => setHotspotDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                         </div>
-                         <details className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50"><summary className="cursor-pointer text-sm font-semibold">Advanced Factors</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700"><div><label className="block text-sm font-medium">Detectability Index (d')</label><Tooltip text="Guidance from MARSSIM 6.7.2.1. Relates the desired probability of detecting a hot spot."><select value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{dprimeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div><div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><Tooltip text="Guidance from NUREG-1507, Sec. 6.6. Accounts for the human factor of the surveyor noticing an audible signal."><select value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{surveyorEffOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div></div></details>
-                     </div>
-                 )}
-                 {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-                 {result && (
-                     <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
-                         {result.type === 'static' ? ( <><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">LLD:</span><span className="font-mono text-right">{result.LLD} net counts</span>{result.unit !== 'counts' && ( <span className="font-semibold text-slate-600 dark:text-slate-300">Background Equiv. Activity:</span> )}{result.unit !== 'counts' && ( <span className="font-mono text-right">{result.backgroundActivity} {result.unit}</span> )}</div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">{ result.unit === 'counts' ? 'Lower Limit of Detection (LLD)' : result.unit === 'cpm' ? 'Minimum Detectable Count Rate (MDCR)' : 'Minimum Detectable Activity/Conc.' }</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p></div></> ) : ( <div className="space-y-3"><h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">Observation Interval:</span><span className="font-mono text-right">{result.obs_interval} s</span><span className="font-semibold text-slate-600 dark:text-slate-300">Bkg. Counts in Interval:</span><span className="font-mono text-right">{result.bg_counts_in_interval} counts</span><span className="font-semibold text-slate-600 dark:text-slate-300">MDCR (Surveyor):</span><span className="font-mono text-right">{result.mdcr} cpm</span><span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.background_activity} dpm/100cm²</span></div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Scan MDC</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.scan_mda}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p></div></div> )}
-                     </div>
-                 )}
-             </div>
-         </div>
-         );
-         };
+const MDACalculator = () => {
+    const MDA_MODE_STATIC = 'static';
+    const MDA_MODE_SCAN = 'scan';
+    
+    // <-- ADD THIS HOOK -->
+    const { addHistory } = useCalculationHistory();
+
+    const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
+    // State for Static MDA
+    const [backgroundCounts, setBackgroundCounts] = React.useState(() => localStorage.getItem('mda_backgroundCounts') || '1000');
+    const [backgroundTime, setBackgroundTime] = React.useState(() => localStorage.getItem('mda_backgroundTime') || '10');
+    const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
+    const [confidence, setConfidence] = React.useState(() => localStorage.getItem('mda_confidence') || '1.645');
+    const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm');
+    const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
+    const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
+    // State for Scan MDC
+    const [scanBackground, setScanBackground] = React.useState(() => localStorage.getItem('mda_scanBackground') || '300');
+    const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '12.6');
+    const [hotspotDiameter, setHotspotDiameter] = React.useState(() => localStorage.getItem('mda_hotspotDiameter') || '15');
+    const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
+    const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
+    // Shared State
+    const [probeShape, setProbeShape] = React.useState(() => localStorage.getItem('mda_probeShape') || 'rectangle');
+    const [probeWidth, setProbeWidth] = React.useState(() => localStorage.getItem('mda_probeWidth') || '10');
+    const [probeLength, setProbeLength] = React.useState(() => localStorage.getItem('mda_probeLength') || '12.6');
+    const [probeDiameter, setProbeDiameter] = React.useState(() => localStorage.getItem('mda_probeDiameter') || '4.5');
+    const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '126');
+    const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '22');
+    const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const MDA_UNIT_CONFIG = {
+        'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] },
+        'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] },
+        'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] },
+        'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] },
+        'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] },
+        'mCi': { label: 'Activity (mCi)', category: 'Activity', requires: ['efficiency'] },
+        'Ci': { label: 'Activity (Ci)', category: 'Activity', requires: ['efficiency'] },
+        'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] },
+        'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] },
+        'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] }
+    };
+    const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6, 'mCi': 1 / 2.22e9, 'Ci': 1 / 2.22e12 };
+    const confidenceOptions = [ { value: '1.282', label: '90%' }, { value: '1.645', label: '95%' }, { value: '2.326', label: '99%' } ];
+    const dprimeOptions = [ { value: '0.4', label: '0.4 (Conservative)' }, { value: '1.0', label: '1.0 (Computer-aided GWS)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.38', label: '1.38 (95% detection prob.)' } ];
+    const surveyorEffOptions = [ { value: '0.25', label: '0.25 (Very conservative)' }, { value: '0.5', label: '0.5 (Realistic default)' }, { value: '0.75', label: '0.75 (Highly trained/attentive)' }, { value: '1.0', label: '1.0 (Computer-aided scan)' } ];
+    
+    React.useEffect(() => {
+        localStorage.setItem('mda_mdaMode', mdaMode);
+        localStorage.setItem('mda_backgroundCounts', backgroundCounts);
+        localStorage.setItem('mda_backgroundTime', backgroundTime);
+        localStorage.setItem('mda_grossTime', grossTime);
+        localStorage.setItem('mda_confidence', confidence);
+        localStorage.setItem('mda_outputUnit', outputUnit);
+        localStorage.setItem('mda_sampleVolume', sampleVolume);
+        localStorage.setItem('mda_sampleMass', sampleMass);
+        localStorage.setItem('mda_scanBackground', scanBackground);
+        localStorage.setItem('mda_scanSpeed', scanSpeed);
+        localStorage.setItem('mda_hotspotDiameter', hotspotDiameter);
+        localStorage.setItem('mda_dprime', dprime);
+        localStorage.setItem('mda_surveyorEff', surveyorEff);
+        localStorage.setItem('mda_probeShape', probeShape);
+        localStorage.setItem('mda_probeWidth', probeWidth);
+        localStorage.setItem('mda_probeLength', probeLength);
+        localStorage.setItem('mda_probeDiameter', probeDiameter);
+        localStorage.setItem('mda_probeArea', probeArea);
+        localStorage.setItem('mda_instrumentEff', instrumentEff);
+        localStorage.setItem('mda_surfaceEff', surfaceEff);
+    }, [ mdaMode, backgroundCounts, backgroundTime, grossTime, confidence, outputUnit, sampleVolume, sampleMass, scanBackground, scanSpeed, hotspotDiameter, dprime, surveyorEff, probeShape, probeWidth, probeLength, probeDiameter, probeArea, instrumentEff, surfaceEff ]);
+    
+    const handleStaticCalculate = () => {
+        const params = { Cb: parseFloat(backgroundCounts), tb: parseFloat(backgroundTime), tg: parseFloat(grossTime), ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff), A: parseFloat(probeArea), V: parseFloat(sampleVolume), M: parseFloat(sampleMass) };
+        if (isNaN(params.Cb) || isNaN(params.tb) || isNaN(params.tg) || params.tb <= 0 || params.tg <= 0) { throw new Error('Please enter valid, positive numbers for counts and times.'); }
+        const rb = params.Cb / params.tb;
+        const LLD = 3.29 * Math.sqrt(rb * params.tg * (1 + params.tg / params.tb)) + 3;
+        if (outputUnit === 'counts') { setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: LLD.toPrecision(3), unit: 'counts', backgroundActivity: rb.toPrecision(3) }); return; }
+        if (isNaN(params.ei) || isNaN(params.es) || params.ei <= 0 || params.es <= 0) { throw new Error('Valid efficiencies are required for this unit.'); }
+        const E_total = (params.ei / 100.0) * (params.es / 100.0);
+        const mda_dpm = (LLD / params.tg) / E_total;
+        const background_dpm = rb / E_total;
+        let finalMDA, finalBackground, finalUnit = outputUnit;
+        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') { finalMDA = mda_dpm / dpmFactors[outputUnit]; finalBackground = background_dpm / dpmFactors[outputUnit]; } 
+        else if (outputUnit === 'dpm/100cm²') { if (isNaN(params.A) || params.A <= 0) throw new Error('Probe Area is required for this unit.'); finalMDA = mda_dpm * (100 / params.A); finalBackground = background_dpm * (100 / params.A); } 
+        else if (outputUnit === 'Bq/L') { if (isNaN(params.V) || params.V <= 0) throw new Error('Sample Volume is required for this unit.'); finalMDA = (mda_dpm / 60) / params.V; finalBackground = (background_dpm / 60) / params.V; } 
+        else if (outputUnit === 'pCi/g') { if (isNaN(params.M) || params.M <= 0) throw new Error('Sample Mass is required for this unit.'); finalMDA = (mda_dpm / 2.22) / params.M; finalBackground = (background_dpm / 2.22) / params.M; } 
+        else if (outputUnit === 'cpm') { finalMDA = LLD / params.tg; finalBackground = rb; } 
+        else { throw new Error('Selected unit calculation not implemented.'); }
+        const newResult = { type: 'static', LLD: LLD.toPrecision(3), MDA: finalMDA.toPrecision(3), backgroundActivity: finalBackground.toPrecision(3), unit: finalUnit };
+        setResult(newResult);
+        
+        // <-- ADD THIS BLOCK -->
+        addHistory({
+            id: Date.now(),
+            type: 'Static MDA',
+            icon: ICONS.search,
+            inputs: `Bkg: ${params.Cb} counts, Sample Time: ${params.tg} min`,
+            result: `${newResult.MDA} ${newResult.unit}`,
+            view: VIEWS.MDA
+        });
+    };
+    
+    const handleScanCalculate = () => {
+        const params = { b_cpm: parseFloat(scanBackground), width_cm: parseFloat(probeWidth), length_cm: parseFloat(probeLength), diameter_cm: parseFloat(probeDiameter), eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff), speed_cms: parseFloat(scanSpeed), dp: parseFloat(dprime), p: parseFloat(surveyorEff) };
+        if (isNaN(params.b_cpm) || isNaN(params.eff_i) || isNaN(params.eff_s) || isNaN(params.speed_cms) || params.b_cpm < 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) { throw new Error('Please enter valid, positive numbers for all required fields.'); }
+        let residence_time_s; let total_area_cm2;
+        const hotspot_diam_cm = parseFloat(hotspotDiameter);
+        if (probeShape === 'rectangle') {
+            if (isNaN(params.width_cm) || isNaN(params.length_cm) || params.width_cm <= 0 || params.length_cm <= 0) { throw new Error('Probe Width and Length must be positive numbers for a rectangle.'); }
+            let effective_dimension_cm = params.width_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
+            residence_time_s = effective_dimension_cm / params.speed_cms; total_area_cm2 = params.width_cm * params.length_cm;
+        } else {
+            if (isNaN(params.diameter_cm) || params.diameter_cm <= 0) { throw new Error('Probe Diameter must be a positive number for a circle.'); }
+            let effective_dimension_cm = params.diameter_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
+            residence_time_s = effective_dimension_cm / params.speed_cms; total_area_cm2 = Math.PI * Math.pow(params.diameter_cm / 2, 2);
+        }
+        const b_cps = params.b_cpm / 60.0; const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
+        const B_i = b_cps * residence_time_s; const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / residence_time_s);
+        const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (total_area_cm2 / 100.0));
+        const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
+        const newResult = { type: 'scan', obs_interval: residence_time_s.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3), mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3), background_activity: background_activity.toPrecision(3) };
+        setResult(newResult);
+
+        // <-- ADD THIS BLOCK -->
+        addHistory({
+            id: Date.now(),
+            type: 'Scan MDC',
+            icon: ICONS.search,
+            inputs: `Bkg: ${params.b_cpm} cpm, Speed: ${params.speed_cms} cm/s`,
+            result: `${newResult.scan_mda} dpm/100cm²`,
+            view: VIEWS.MDA
+        });
+    };
+    
+    React.useEffect(() => {
+        try {
+            setError('');
+            setResult(null);
+            if (mdaMode === MDA_MODE_STATIC) {
+                handleStaticCalculate();
+            } else {
+                handleScanCalculate();
+            }
+        } catch (e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [ mdaMode, backgroundCounts, backgroundTime, grossTime, confidence, outputUnit, sampleVolume, sampleMass, scanBackground, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter ]);
+    
+    const handleClearInputs = () => {
+        setMdaMode(MDA_MODE_STATIC);
+        setBackgroundCounts('1000');
+        setBackgroundTime('10');
+        setGrossTime('1');
+        setConfidence('1.645');
+        setOutputUnit('dpm');
+        setSampleVolume('1');
+        setSampleMass('100');
+        setScanBackground('300');
+        setScanSpeed('12.6');
+        setHotspotDiameter('15');
+        setDprime('1.38');
+        setSurveyorEff('0.5');
+        setProbeShape('rectangle');
+        setProbeWidth('10');
+        setProbeLength('12.6');
+        setProbeDiameter('4.5');
+        setProbeArea('126');
+        setInstrumentEff('22');
+        setSurfaceEff('50');
+        setResult(null);
+        setError('');
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => { setMdaMode(MDA_MODE_STATIC); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
+                    <button onClick={() => { setMdaMode(MDA_MODE_SCAN); setResult(null); setError(''); }} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
+                </div>
+                {mdaMode === MDA_MODE_STATIC ? (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Background Counts</label><input type="number" value={backgroundCounts} onChange={e => setBackgroundCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Bkg. Count Time (min)</label><input type="number" value={backgroundTime} onChange={e => setBackgroundTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Sample Count Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div className="md:col-span-2"><label className="block text-sm font-medium">Desired Output Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><optgroup label="Counts"><option value="counts">{MDA_UNIT_CONFIG['counts'].label}</option></optgroup><optgroup label="Rate"><option value="cpm">{MDA_UNIT_CONFIG['cpm'].label}</option></optgroup><optgroup label="Activity">{Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Activity').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</optgroup><optgroup label="Concentration">{Object.keys(MDA_UNIT_CONFIG).filter(k => MDA_UNIT_CONFIG[k].category === 'Concentration').map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</optgroup></select></div>
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('efficiency') && ( <><div className="animate-fade-in"><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div className="animate-fade-in"><label className="block text-sm font-medium">Source/Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div></> )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('area') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={scanBackground} onChange={e => setScanBackground(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div className="md:col-span-2"><label className="block text-sm font-medium">Probe Shape</label><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setProbeShape('rectangle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'rectangle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Rectangle</button><button onClick={() => setProbeShape('circle')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${probeShape === 'circle' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Circle</button></div></div>
+                            {probeShape === 'rectangle' ? ( <><div className="animate-fade-in"><Tooltip text="The probe dimension perpendicular to the direction of scan."><label className="block text-sm font-medium">Probe Width (cm)</label></Tooltip><input type="number" value={probeWidth} onChange={e => setProbeWidth(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div className="animate-fade-in"><label className="block text-sm font-medium">Probe Length (cm)</label><input type="number" value={probeLength} onChange={e => setProbeLength(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div></> ) : ( <div className="animate-fade-in md:col-span-2"><label className="block text-sm font-medium">Probe Diameter (cm)</label><input type="number" value={probeDiameter} onChange={e => setProbeDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div> )}
+                            <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div><div><label className="block text-sm font-medium">Surface Efficiency (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            <div className="md:col-span-2"><label className="block text-sm font-medium">Hot Spot Diameter (cm)</label><input type="number" value={hotspotDiameter} onChange={e => setHotspotDiameter(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        </div>
+                        <details className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/50"><summary className="cursor-pointer text-sm font-semibold">Advanced Factors</summary><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700"><div><label className="block text-sm font-medium">Detectability Index (d')</label><Tooltip text="Guidance from MARSSIM 6.7.2.1. Relates the desired probability of detecting a hot spot."><select value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{dprimeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div><div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><Tooltip text="Guidance from NUREG-1507, Sec. 6.6. Accounts for the human factor of the surveyor noticing an audible signal."><select value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{surveyorEffOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></Tooltip></div></div></details>
+                    </div>
+                )}
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                {result && (
+                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
+                        {result.type === 'static' ? ( <><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">LLD:</span><span className="font-mono text-right">{result.LLD} net counts</span>{result.unit !== 'counts' && ( <span className="font-semibold text-slate-600 dark:text-slate-300">Background Equiv. Activity:</span> )}{result.unit !== 'counts' && ( <span className="font-mono text-right">{result.backgroundActivity} {result.unit}</span> )}</div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">{ result.unit === 'counts' ? 'Lower Limit of Detection (LLD)' : result.unit === 'cpm' ? 'Minimum Detectable Count Rate (MDCR)' : 'Minimum Detectable Activity/Conc.' }</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p></div></> ) : ( <div className="space-y-3"><h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">Observation Interval:</span><span className="font-mono text-right">{result.obs_interval} s</span><span className="font-semibold text-slate-600 dark:text-slate-300">Bkg. Counts in Interval:</span><span className="font-mono text-right">{result.bg_counts_in_interval} counts</span><span className="font-semibold text-slate-600 dark:text-slate-300">MDCR (Surveyor):</span><span className="font-mono text-right">{result.mdcr} cpm</span><span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.background_activity} dpm/100cm²</span></div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Scan MDC</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.scan_mda}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p></div></div> )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
          
          /**
          * @description A calculator to determine the required number of statistical samples for a
          * survey unit based on the more precise MARSSIM Equation 5-2.
          */
          
-         const MARSSIM_SampleCalculator = () => {
-         const [alpha, setAlpha] = React.useState(() => localStorage.getItem('marssim_alpha') || '0.05');
-         const [beta, setBeta] = React.useState(() => localStorage.getItem('marssim_beta') || '0.05');
-         const [sigma, setSigma] = React.useState(() => localStorage.getItem('marssim_sigma') || '15');
-         const [dcgl, setDcgl] = React.useState(() => localStorage.getItem('marssim_dcgl') || '100');
-         const [lbgr, setLbgr] = React.useState(() => localStorage.getItem('marssim_lbgr') || '50');
-         const [cv, setCv] = React.useState(() => localStorage.getItem('marssim_cv') || '0.3');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const zScores = {
-         '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
-         '0.10': 1.282, '0.20': 0.841,
-         };
-         
-         React.useEffect(() => {
-         localStorage.setItem('marssim_alpha', alpha);
-         localStorage.setItem('marssim_beta', beta);
-         localStorage.setItem('marssim_sigma', sigma);
-         localStorage.setItem('marssim_dcgl', dcgl);
-         localStorage.setItem('marssim_lbgr', lbgr);
-         localStorage.setItem('marssim_cv', cv);
-         }, [alpha, beta, sigma, dcgl, lbgr, cv]);
-         
-         const prValues = {
-         0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
-         0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
-         1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
-         1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
-         2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
-         4: 0.997658
-         };
-         
-         const handleCalculateSigma = () => {
-         const dcgl_val = parseFloat(dcgl);
-         const cv_val = parseFloat(cv);
-         if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
+
+const MARSSIM_SampleCalculator = () => {
+    // <-- MODIFIED: Add the useCalculationHistory hook -->
+    const { addHistory } = useCalculationHistory();
+
+    const [alpha, setAlpha] = React.useState(() => localStorage.getItem('marssim_alpha') || '0.05');
+    const [beta, setBeta] = React.useState(() => localStorage.getItem('marssim_beta') || '0.05');
+    const [sigma, setSigma] = React.useState(() => localStorage.getItem('marssim_sigma') || '15');
+    const [dcgl, setDcgl] = React.useState(() => localStorage.getItem('marssim_dcgl') || '100');
+    const [lbgr, setLbgr] = React.useState(() => localStorage.getItem('marssim_lbgr') || '50');
+    const [cv, setCv] = React.useState(() => localStorage.getItem('marssim_cv') || '0.3');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const zScores = {
+        '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
+        '0.10': 1.282, '0.20': 0.841,
+    };
+
+    React.useEffect(() => {
+        localStorage.setItem('marssim_alpha', alpha);
+        localStorage.setItem('marssim_beta', beta);
+        localStorage.setItem('marssim_sigma', sigma);
+        localStorage.setItem('marssim_dcgl', dcgl);
+        localStorage.setItem('marssim_lbgr', lbgr);
+        localStorage.setItem('marssim_cv', cv);
+    }, [alpha, beta, sigma, dcgl, lbgr, cv]);
+
+    const prValues = {
+        0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
+        0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
+        1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
+        1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
+        2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
+        4: 0.997658
+    };
+    
+    const handleCalculateSigma = () => {
+        const dcgl_val = parseFloat(dcgl);
+        const cv_val = parseFloat(cv);
+        if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
             setSigma((dcgl_val * cv_val).toPrecision(3));
-         }
-         };
-         
-         const handleSetLbgr = () => {
-         const dcgl_val = parseFloat(dcgl);
-         if (!isNaN(dcgl_val)) {
+        }
+    };
+    
+    const handleSetLbgr = () => {
+        const dcgl_val = parseFloat(dcgl);
+        if (!isNaN(dcgl_val)) {
             setLbgr((dcgl_val * 0.5).toPrecision(3));
-         }
-         };
-         
-         const handleCalculate = () => {
-         const sigma_val = parseFloat(sigma);
-         const dcgl_val = parseFloat(dcgl);
-         const lbgr_val = parseFloat(lbgr);
-         if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
+        }
+    };
+
+    const handleCalculate = () => {
+        const sigma_val = parseFloat(sigma);
+        const dcgl_val = parseFloat(dcgl);
+        const lbgr_val = parseFloat(lbgr);
+        if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
             setError('Please enter valid, positive numbers for all fields.');
             setResult(null); return;
-         }
-         if (dcgl_val <= lbgr_val) {
+        }
+        if (dcgl_val <= lbgr_val) {
             setError('DCGL must be greater than the LBGR.');
             setResult(null); return;
-         }
-         setError('');
-         const z1_alpha = zScores[alpha];
-         const z1_beta = zScores[beta];
-         const delta = dcgl_val - lbgr_val;
-         const relativeShift = delta / sigma_val;
-         const shiftKeys = Object.keys(prValues).map(parseFloat);
-         let Pr;
-         if (relativeShift >= 4) {
+        }
+        setError('');
+        const z1_alpha = zScores[alpha];
+        const z1_beta = zScores[beta];
+        const delta = dcgl_val - lbgr_val;
+        const relativeShift = delta / sigma_val;
+        const shiftKeys = Object.keys(prValues).map(parseFloat);
+        let Pr;
+        if (relativeShift >= 4) {
             Pr = 1;
-         } else {
+        } else {
             const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
             const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
             if (isFinite(lowerKey) && isFinite(upperKey)) {
@@ -7905,32 +7944,44 @@
                  setError(`Relative shift (${relativeShift.toFixed(2)}) is outside the table's range.`);
                  setResult(null); return;
             }
-         }
-         const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
-         const N_base = Math.ceil(N_base_raw);
-         const N_with_overage = N_base * 1.2;
-         const final_N = Math.ceil(N_with_overage);
-         const samplesPerGroup = Math.ceil(final_N / 2);
-         setResult({ totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N });
-         };
-         
-         const handleClearInputs = () => {
-         setAlpha('0.05');
-         setBeta('0.05');
-         setSigma('15');
-         setDcgl('100');
-         setLbgr('50');
-         setCv('0.3');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        }
+        const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
+        const N_base = Math.ceil(N_base_raw);
+        const N_with_overage = N_base * 1.2;
+        const final_N = Math.ceil(N_with_overage);
+        const samplesPerGroup = Math.ceil(final_N / 2);
+        
+        // <-- MODIFIED: Create a result object first -->
+        const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
+        setResult(newResult);
+        
+        // <-- MODIFIED: Add the history item after a successful calculation -->
+        addHistory({
+            id: Date.now(),
+            type: 'MARSSIM Samples',
+            icon: ICONS.calculator,
+            inputs: `Δ/σ: ${newResult.relativeShift}, α: ${alpha}, β: ${beta}`,
+            result: `${newResult.final_N} samples`,
+            view: VIEWS.MARSSIM_SAMPLES
+        });
+    };
+
+    const handleClearInputs = () => {
+        setAlpha('0.05');
+        setBeta('0.05');
+        setSigma('15');
+        setDcgl('100');
+        setLbgr('50');
+        setCv('0.3');
+        setResult(null);
+        setError('');
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-1">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Number of Samples Calculator</h2>
-                    {/* <-- MODIFIED: Using the standardized ClearButton component --> */}
                     <ClearButton onClick={handleClearInputs} />
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Using the WRS Test and Table 5.2 Interpolation.</p>
@@ -8011,13 +8062,9 @@
                     )}
                 </div>
             </div>
-         </div>
-         );
-         };
-         
-         
-         
-         
+        </div>
+    );
+};
          
          
          const LabStatistics = () => {
@@ -8310,22 +8357,6 @@
          );
          };
          
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
-         
          const MARSSIM_Statistical_Tests = () => {
          const TEST_WRS = 'wrs';
          const TEST_EMC = 'emc';
@@ -8481,6 +8512,13 @@
                     </div>
                 </div>
             )}
+
+            {!result && !error && (
+                <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
+                    <p className="text-slate-500 dark:text-slate-400">Paste your reference and survey data above to perform the WRS test.</p>
+                </div>
+            )}
+
          </div>
          );
          };
@@ -8547,9 +8585,15 @@
                      <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
                 </div>
             )}
-         </div>
-         );
-         };
+
+            {!result && !error && (
+                <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
+                    <p className="text-slate-500 dark:text-slate-400">Enter elevated area data and parameters to perform the EMC Sign Test.</p>
+                </div>
+            )}
+        </div>
+    );
+};
          
          
          /**
@@ -8557,8 +8601,7 @@
          * It can display the decay of a parent nuclide and the in-growth and decay of a single daughter nuclide.
          * @param {{chartData: object}} props - The data object for the chart, including labels and datasets for parent and optional daughter.
          */
-         
-         
+                  
          const DecayChart = ({ chartData, useLogScale }) => {
          const chartRef = React.useRef(null);
          const chartInstance = React.useRef(null);
