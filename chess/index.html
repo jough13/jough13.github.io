@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Chess ♟️ (Complete Engine)</title>
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2c2f33;
+            color: #d1d1d1;
+            margin: 0;
+        }
+        #gameContainer { text-align: center; }
+        #myBoard {
+            width: 90vw;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        #status {
+            margin-top: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div id="myBoard"></div>
+        <div id="status"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // --- EMBEDDED SVG IMAGES ---
+            const piece_images = {
+                bB: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkgMzZjMy4zMzMgMS4zMzMgNy4xMjUgMS45ODMgMTEuMzc1IDEuOTgzQzI0Ljc5MiAzNy45ODMgMjkgMzcuMyAyOSAzNmMtMi42MjUgMi4zMzMtNC45MTcgMy45ODMtNi44NzUgNC45ODNhMTkuMiAxOS4yIDAgMCAxLTYuMjUgMGwtNC42MjUtNC45ODNaIiBmaWxsPSIjMDAwIi8+PHBhdGggZD0iTTE1IDE4YzIuNS0yLjUgNC41LTQuNSA3LTguNS0yLjUtMS41LTQtMi41LTYuNS0yLjUtMyAwLTUuNSAxLTYuNSA0LjUgMS41IDIgMyA0IDYgNi41eiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0xNy41IDE4Yy0uOTU4IDIuMzM0LTEuOTU4IDQuMzM0LTMgNi41IDEuMzM0IDEuNDE3IDIuODMzIDIuNDMyIDQuNSAzaDEuNzVjMS42NjYtLjU2OCAzLjE2Ni0xLjU4MyA0LjUtMy4wODMtMS4wNDItMi4xNjctMi4wNDItNC4xNjctMy02LjQxN2gtNC4yNXoiIGZpbGw9IiMwMDAiLz48cGF0aCBkPSJtMTcuNSAxNCAzLjUgNC41Ii8+PHBhdGggZD0iTTIyIDIwYzIgMCA0LTEgNS0zIDAtMi0yLTYtNi02LTMuNS0uNS03IC41LTcgMy41IDAgMS41IDEgMi41IDIgMy41LTEgMS0yLjY2NyAxLjUtNCAxLjVoMTBaIiBzdHJva2U9IiMwMDAiIHN0cm9rZS1saW5lY2FwPSJidXR0Ii8+PHBhdGggZD0iTTE4IDI2LjVjLTEuNSAxLjUtMi41IDMuMTY3LTIuNSA1LjUgMCAxLjUgMS4xNjcgMy4xNjcgMy41IDQuNWgxMGMxLjM3NS0uOTMzIDIuNS0yLjMzMyAyLjUtNC41IDAtMi4zMzMtMS40MTctNC4xNjctNC4yNS01LjVoLTh6IiBmaWxsPSIjMDAwIi8+PHBhdGggZD0iTTE4IDI2LjVoOW0tNC41LTguNW0uNS41LTEtMXptLTIgMi0xLTFNMTggMjYuNWwtMyA0LjVNMzAgMjYuNWwzIDQuNSIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWNhcD0iYnV0dCIvPjxwYXRoIGQ9Ik0yNS41IDNjMCAuODI4LS42NzIgMS41LTEuNSAxLjVzLTEuNS0uNjcyLTEuNS0xLjUgMC0xLjUgMS41LTEuNSAxLjUuNjcyIDEuNSAxLjV6IiBmaWxsPSIjMDAwIiBzdHJva2U9IiMwMDAiLz48L2c+PC9zdmc+',
+                bK: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyLjUgMTEuNWwxLjUgMy0xLjUgMi41TDIxIDEzLjVsMS41LTEuNS0xLjUtMS41TDIyLjUgMS41bDEuNSAxLjVMMjIuNSAzbDEuNSAxLjUtMS41IDEtMS41IDEuNUwyNCA0LjVsMS41IDEuNS0xLjUgMS41TDI3IDQuNWwxLjUgMS41LTMgMS41em0tLjUgM2wtMyAxLjVMMjEgNC41bDEuNS0xLjUtMS41LTEuNUwyMi41IDEuNW0wIDBjLS4xNzUgMy41LjgyNSAzLjU5MyAxLjUgNC41bC0xLjUgMS41IiBzdHJva2UtaW5lY2FwPSJidXR0Ii8+PHBhdGggZD0iTTIyLjUgMTEuNWwtMS41IDMtMS41LTEuNS0xLjUtMS41TDIxIDEwLjVsMy41IDVMMjMgMzhjLTEuNSAxLTEyIDEtMTQgMCAwIDAtOC41LTQuNS0xMC41LTkgMi41IDQgMTIgMy41IDE0IDIgMCAwIDEtNiA0LTEwLTctMy0yLjUtOS0yLjUtOS0yLjVzMCA1LjUgNC41IDctMy41IDEtMy41LTQgMS41LTIuNSAyLjUtNkwxMy41IDliMS41LTIuNSA0LTIuNSA0IDAgMS41IDEgMi41IDItMSA0IDctMS41IDUgMSA0LjV6TTI0IDEzLjVsMS41IDEuNS0zIDEuNS0zLTEuNVMxOCAxOCAxOCAxOWMtMS44NTggMS4yNi0xLjUgMy41LTEuNSA0LjVzLTEgMi0xIDRjMCAuNSAyIDEgMiAxLjVzMi4xNTQgMS4yMzggNC41IDEuNSA0LjUgMCA0LjUtMS41IDIuNS0xIDIuNS0xLjVzLTEtMy41LTEtNC0xLTItMS00IC4zNTgtMy4yNCAtMS41LTQuNVMzMSA3LjUgMzEgNy41eiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0xMS41IDMwYzMuNSAyLjUgOC41IDIuNSA5IDAgMCAwIDEuNS0yLjUgMi41LTQuNS0yLjUgMS41LTYgMS41LTggMC0xLjUtMi0xLjUtNC0xLjUtNC41cy41LTQgMi41LTZDNSAxNyAxMSA5LjUgMTMuNSA5YzEgMCAuNSAyLjUgMCAzLjVMMTEuNSAzMHoiIGZpbGw9IiMwMDAiLz48cGF0aCBkPSJNMzMuNSAzMGMtMy41IDIuNS04LjUtMi41LTktMS41IDAtLjUgMS41LTEgMi41LTIgMS41LTEuNSAyLjUtMyAyLjUtNS41cy0xLTUtMi41LTZDNjQgMTIgNTQgOS41IDM0LjUgOVMzMSA2IDI5LjUgN3MtMi41IDEtMi41IDUtMy41IDYtMy41IDYgMS41LS45IDItMi41czEtMy41IDAtNC41eiIgZmlsbD0iIzAwMCIvPjwvZz48L3N2Zz4=',
+                bN: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyIDEwYzExIDAgMTEgOSAxMyA5bDItMWMtMS0xLjUtMS0zLTEtNCAxLTEtMS45OTQtMy0yLjk5NC0zSDE4Yy0xIDAtMSAyIDAgMyAxIDEgMSA0IDEtNSAwIDAgLjUuOTkzIDEuNS45OTMgMi41IDAgMCA3LTEtMy05LjV6IiBmaWxsPSIjMDAwIi8+PHBhdGggZD0iTTI0IDIxYzAgMi0xLjUgMy41LTQuNSA0LjVMMTEgMzFoMjNsLTQuNS01LjVjLTMtMS00LjUtMi41LTQuNS00LjV2LTdMMjQgOWwtMyA0eiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0xNC4yODEgMjQuNzM0Yy0uNDg4LjM5My0xLjAxMi43MDMtMS41NTUuOTNMOS41IDMxcDE0LjUgMS41di0xLjVsMi0yYzAtMi0xLTYtMy02LTUgMC05IDYtNS41IDdoLTl6Ii8+PHBhdGggZD0iTTI0IDIxYzEuNS41IDIuNSA0IDEgNi0xLjUgMi00LjIgMi02IDEiLz48cGF0aCBkPSJNOS41IDMxQzcuODMzIDMyLjMzMyA2LjY2NyAzMy42NjcgNiAzNHMtLjMzMy42NjctMS41IDEuNUw0IDI5di0zaDIuNWwxLjUgMi0yIDRoLTF6Ii8+PC9nPjwvc3ZnPg==',
+                bP: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iIzAwMCIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyLjUgOS41YzIuNSAwIDIuNS0yLjUgMi41LTIuNXMtLjUtMy41LTIuNS0zLjVzLTIuNSAyLjUtMi41IDMuNSAyIDIuNSAyLjUgMi41eiIvPjxwYXRoIGQ9Ik0xMi41IDM5LjVoMjBsLTMtMy0xNC0uNS0zIDMuNXoiLz48cGF0aCBkPSJNMzIgMjkuNVYyNEMzMiAxNiAxNSAxNiAxNSAyNHY1LjVzNi41LS41IDgtNEMyNSAyNSA5IDI5IDkgMjlhMTkgMTkgMCAwIDAgMjMgLjV6Ii8+PC9nPjwvc3ZnPg==',
+                bQ: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iIzAwMCIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMTJhMiAyIDAgMSAwLTMuOTk5LjA0IDIuMDAyIDIuMDAyIDAgMSAwIDQtLjA0em0yLjg5MyA3LjExYTIgMiAwIDEgMC0zLjk5OS4wMzlhMiAyIDAgMSAwIDQgLS4wNHptMTMuMzgzLTYuMzQ1YTIgMiAwIDEgMC0zLjk5OS4wNCAyLjAwMiAyLjAwMiAwIDEgMCAzLjk5OS0uMDR6bTIuOTg1IDcuMjJhMiAyIDAgMSAwLTMuOTkuMDQzYTIgMiAwIDEgMCAzLjk5LS4wNDN6bTYuNzM4LTYuMjhhMiAyIDAgMSAwLTMuOTk4LjA0MiAyIDAgMSAwIDQuMDA4LS4wNDJsLTkuMDEgMTMuODljMCAwIDMuNS0xIDMuNS0zcy0uNS0yLjUtMi0zLjVsMS41LTIuNXoiLz48cGF0aCBkPSJNIDkgMjYuNVY0M2gxLjVzMS41LTMgMy41LTNIMzJjMiAwIDMuNSAzIDMuNSAzSDEwLjVjMCAwIDItNS41IDEtOC0xLTIuNS00LTYuNS00LTYuNXoiLz48cGF0aCBkPSJNMTYgMmgxMy41bC0yLjUgMjQuNWgtOC41TCAxNiAyem0uNSA0LjVMOS41IDI5LjVsMy41LTEuNS0xLTIuNS0yLjUgNS41djEwLjVsMi41LTJoMi41czAgLTMuNS41LTZjMS01IDQtMTAgNC0xMEwyOC41IDZjMC0xLjUtMi41LTMtNS41LTNIMjBjLTMgMC00LjUgMS41LTQuNSA0eiIvPjxwYXRoIGQ9Ik0xOC41IDZhMTIgMTIgMCAwIDAgMy41IDljMCAzLjUgMi41IDQgMi41IDRIMjJjMCAuNSA1LjUtMS41IDUtNS41LS41LTMtMy41LTguNS0zLjUtOC41aC0xLjVzLTEgMy0zLjUgNy41SDI0YzAgMC00LjUtNC41LTUuNS03LjV6TTguNSAzNy41bDUtNS41aDE4bDUgNS41eiIvPjwvZz48L3N2Zz4=',
+                bR: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iIzAwMCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtaW5lY2FwPSJidXR0Ij48cGF0aCBkPSJNOSAzOS41aDI3di0zMGgtMjd2MzB6IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTEyLjUgMzVIMzJMMzYgMjVWMjlIMjlWMjVIMjdWMjlIMjVWMjVIMjNWMjlIMjFWMjVIMTlWMjlIMTdWMjVIMTVWMjlIMTNWMjVIMTJWMTVINzlWNUg5VjE1eiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik05IDVWMjlIMTdWMzVIMjlWMjloOFY1SDl6IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PHBhdGggZD0iTTkgNWg5djEwbC0xLjUgMWgtNWwtMS41LTFWOXptOSAwaDljMCAxMCAuNSAxMC41IDEuNSAxMWg1di0xaDEuNVY1eiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik05IDBoMjd2NWgtMjdWME05IDM1aDI3djVoLTI3di01IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9nPjwvc3ZnPg==',
+                wB: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkgMzZjMy4zMzMgMS4zMzMgNy4xMjUgMS45ODMgMTEuMzc1IDEuOTgzQzI0Ljc5MiAzNy45ODMgMjkgMzcuMyAyOSAzNmMtMi42MjUgMi4zMzMtNC45MTcgMy45ODMtNi44NzUgNC45ODNhMTkuMiAxOS4yIDAgMCAxLTYuMjUgMGwtNC42MjUtNC45ODNaIiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTE1IDE4YzIuNS0yLjUgNC41LTQuNSA3LTguNS0yLjUtMS41LTQtMi41LTYuNS0yLjUtMyAwLTUuNSAxLTYuNSA0LjUgMS41IDIgMyA0IDYgNi41eiIvPjxwYXRoIGQ9Ik0xNy41IDE4Yy0uOTU4IDIuMzM0LTEuOTU4IDQuMzM0LTMgNi41IDEuMzM0IDEuNDE3IDIuODMzIDIuNDMyIDQuNSAzaDEuNzVjMS42NjYtLjU2OCAzLjE2Ni0xLjU4MyA0LjUtMy4wODMtMS4wNDItMi4xNjctMi4wNDItNC4xNjctMy02LjQxN2gtNC4yNXoiIGZpbGw9IiNGRkYiLz48cGF0aCBkPSJNMjIgMjBjMiAwIDQtMSA1LTMgMC0yLTItNi02LTYtMy41LS41LTcgLjUtNyAzLjUgMCAxLjUgMSAyLjUgMiAzLjUtMSAxLTIuNjY3IDEuNS00IDEuNWgxMFoiIGZpbGw9IiNGRkYiIHN0cm9rZS1saW5lY2FwPSJidXR0Ii8+PHBhdGggZD0iTTE4IDI2LjVjLTEuNSAxLjUtMi41IDMuMTY3LTIuNSA1LjUgMCAxLjUgMS4xNjcgMy4xNjcgMy41IDQuNWgxMGMxLjM3NS0uOTMzIDIuNS0yLjMzMyAyLjUtNC41IDAtMi4zMzMtMS40MTctNC4xNjctNC4yNS01LjVoLTh6IiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTE4IDI2LjVoOW0tNC41LTguNW0uNS41LTEtMXptLTIgMi0xLTFNMTggMjYuNWwtMyA0LjVNMzAgMjYuNWwzIDQuNSIgc3Ryb2tlLWxpbmVjYXA9ImJ1dHQiLz48cGF0aCBkPSJNMjUuNSAzYzAgLjgyOC0uNjcyIDEuNS0xLjUgMS41cy0xLjUtLjY3Mi0xLjUtMS41YzAtLjgyOC42NzItMS41IDEuNS0xLjVzMS41LjY3MiAxLjUgMS41eiIvPjwvZz48L3N2Zz4=',
+                wK: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iI0ZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyLjUgMTEuNUwyNCAxOGwtMyAxLjUtMy0xLjVMMjIuNSAxMS41em0wIDBjLS4xNzUgMy41LjgyNSAzLjU5MyAxLjUgNC41bC0xLjUgMS41IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTIyLjUgMjVzLTEuNS0yLjUtMi41LTQuNUMxNiAxMy41IDE0IDEzIDEyIDEzaC0xLjVTNy41IDE3IDguNSAyM2MwIDQgMy41IDUgMy41IDVzLTMtMSA0LTljMCAwIDMgMSAyIDMuNSAxIDMgMS41IDYgMi41IDdsMi41LTd2LTEuNXoiLz48cGF0aCBkPSJNIDExLjUgMzBTMCAzNSA5LjUgMzVIMzVsLTItM3oiLz48cGF0aCBkPSJNMTEuNSAzMGMyLjUgMi41IDcuNSAyLjUgOSAwbC0yLjUtNEMxNy41IDIzIDE3IDIwLjUgMTcgMTYuNVMxOC41IDEyIDIyLjUgMTJzNS41IDUgNS41IDQuNS0xLjUgMTQtMyAxMy41LTEzLjM4OCAxLjM4OC0xNS41IDB6Ii8+PHBhdGggZD0iTSAyMC41IDEzLjVsLTMuNS0yLjUgMS41IDQtMiAxLjUtMS0zLjVMMTEuNSAxM2wxLjUtMS41IDYgMy41eiIvPjxwYXRoIGQ9Ik0yNC41IDEzLjVsMy41LTIuNS0xLjUgNC0yLTEuNSAxLTMuNUwzMy41IDEzbC0xLjUtMS41LTQgMy41eiIvPjxwYXRoIGQ0iTTIyLjUgMWwxLjUgMi41TDIyLjUgNkwyNCA4LjUgMjIuNSAxMXYwbTAtOC41TDIxIDMuNSAyMi41IDYgMjEgOC41IDIyLjUgMTEiLz48cGF0aCBkPSJNMjIuNSAxLjVWM20wIDBMMjQgMy4ybS0xLjUtMS43TDI0IDYgMjIuNSAzLjIgMjEgNiAyMi41IDguNSAyMSA4LjVNMjQgOC41bS0xLjUtMi41djVtMC01bDEuNSAyLjVMMjQgNiIvPjwvZz48L3N2Zz4=',
+                wN: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyIDEwYzExIDAgMTEgOSAxMyA5bDItMWMtMS0xLjUtMS0zLTEtNCAxLTEtMS45OTQtMy0yLjk5NC0zSDE4Yy0xIDAtMSAyIDAgMyAxIDEgMSA0IDEtNSAwIDAgLjUuOTkzIDEuNS45OTMgMi41IDAgMCA3LTEtMy05LjV6IiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTI0IDIxYzAgMi0xLjUgMy41LTQuNSA0LjVMMTEgMzFoMjNsLTQuNS01LjVjLTMtMS00LjUtMi41LTQuNS00LjV2LTdMMjQgOWwtMyA0eiIgZmlsbD0iI0ZGRiIvPjxwYXRoIGQ9Ik0xNC4yODEgMjQuNzM0Yy0uNDg4LjM5My0xLjAxMi43MDMtMS41NTUuOTNMOS41IDMxcDE0LjUgMS41di0xLjVsMi0yYzAtMi0xLTYtMy02LTUgMC05IDYtNS41IDdoLTl6IiBmaWxsPSIjRkZGIi8+PHBhdGggZD0iTTI0IDIxYzEuNS41IDIuNSA0IDEgNi0xLjUgMi00LjIgMi02IDEiLz48cGF0aCBkPSJNOS41IDMxQzcuODMzIDMyLjMzMyA2LjY2NyAzMy42NjcgNiAzNHMtLjMzMy42NjctMS41IDEuNUw0IDI5di0zaDIuNWwxLjUgMi0yIDRoLTF6IiBmaWxsPSIjRkZGIi8+PC9nPjwvc3ZnPg==',
+                wP: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iI0ZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIyLjUgOS41YzIuNSAwIDIuNS0yLjUgMi41LTIuNXMtLjUtMy41LTIuNS0zLjVzLTIuNSAyLjUtMi41IDMuNSAyIDIuNSAyLjUgMi41eiIvPjxwYXRoIGQ9Ik0xMi41IDM5LjVoMjBsLTMtMy0xNC0uNS0zIDMuNXoiLz48cGF0aCBkPSJNMzEgMjlWMjVjMC05LTEyLTgtMTYtNnYxMGMtMy41IDAtOC41LS41LTggNGgyNHMiLz48L2c+PC9zdmc+',
+                wQ: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iI0ZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMTJhMiAyIDAgMSAwLTMuOTk5LjA0IDIuMDAyIDIuMDAyIDAgMSAwIDQtLjA0em0yLjg5MyA3LjExYTIgMiAwIDEgMC0zLjk5OS4wMzlhMiAyIDAgMSAwIDQgLS4wNHptMTMuMzgzLTYuMzQ1YTIgMiAwIDEgMC0zLjk5OS4wNCAyLjAwMiAyLjAwMiAwIDEgMCAzLjk5OS0uMDR6bTIuOTg1IDcuMjJhMiAyIDAgMSAwLTMuOTkuMDQzYTIgMiAwIDEgMCAzLjk5LS4wNDN6bTYuNzM4LTYuMjhhMiAyIDAgMSAwLTMuOTk4LjA0MiAyIDAgMSAwIDQuMDA4LS4wNDJsLTkuMDEgMTMuODljMCAwIDMuNS0xIDMuNS0zcy0uNS0yLjUtMi0zLjVsMS41LTIuNXoiLz48cGF0aCBkPSJNIDkgMjYuNVY0M2gxLjVzMS41LTMgMy41LTNIMzJjMiAwIDMuNSAzIDMuNSAzSDEwLjVjMCAwIDItNS41IDEtOC0xLTIuNS00LTYuNS00LTYuNXoiLz48cGF0aCBkPSJNMTYgMmgxMy41bC0yLjUgMjQuNWgtOC41TCAxNiAyem0uNSA0LjVMOS41IDI5LjVsMy41LTEuNS0xLTIuNS0yLjUgNS41djEwLjVsMi41LTJoMi41czAgLTMuNS41LTZjMS01IDQtMTAgNC0xMEwyOC41IDZjMC0xLjUtMi41LTMtNS41LTNIMjBjLTMgMC00LjUgMS41LTQuNSA0eiIvPjxwYXRoIGQ9Ik0xOC41IDZhMTIgMTIgMCAwIDAgMy41IDljMCAzLjUgMi41IDQgMi41IDRIMjJjMCAuNSA1LjUtMS41IDUtNS41LS41LTMtMy41LTguNS0zLjUtOC41aC0xLjVzLTEgMy0zLjUgNy41SDI0YzAgMC00LjUtNC41LTUuNS03LjV6TTguNSAzNy41bDUtNS41aDE4bDUgNS41eiIvPjwvZz48L3N2Zz4=',
+                wR: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NSIgaGVpZ2h0PSI0NSI+PGcgZmlsbD0iI0ZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtaW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkgMzkuNWgyN3YtM2gtMjd2M3ptMS41LTZoMjR2LTExLjVoLTI0djExLjV6TTguNSA5LjVIMzdsLTMgM0g4LjVsLTMtM3ptMiAzLjVoMjV2MThIMTAuNVYxMi41eiIvPjxwYXRoIGQ9Ik0xMC41IDM2LjVoMjQiLz48cGF0aCBkPSJNOS41IDkuNWwtMy0zIDMgM3YtNy41bDQgM3YtMy41bDQgM3YtMy41bDQgM3YtMy41bDQtM3YtMy41bDQtM3YtMy41aDF2My41bDEgLTN2My41bDEgLTN2My41bDEgLTN2My41bDEgLTN2My41bDEgLTN2My41TDM2IDZ2My41bC0zIDMiLz48cGF0aCBkPSJNIDExIDM0aDIzdjIuNUgxMVYyMXoiLz48L2c+PC9zdmc+'
+            };
+
+            // --- ENGINE PERSONALITIES ---
+            const personalities = ['standard', 'aggressive', 'pawn-pusher', 'chaotic'];
+            let currentPersonality = personalities[Math.floor(Math.random() * personalities.length)];
+            
+            // =================================================================
+            // Chess Engine Logic
+            // =================================================================
+            const ChessEngine = (function() {
+
+                const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+                const pst = {
+                    p: [  0,  0,  0,  0,  0,  0,  0,  0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30, 20, 10, 10,  5,  5, 10, 25, 25, 10,  5,  5,  0,  0,  0, 20, 20,  0,  0,  0,  5, -5,-10,  0,  0,-10, -5,  5,  5, 10, 10,-20,-20, 10, 10,  5,  0,  0,  0,  0,  0,  0,  0,  0 ],
+                    n: [-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,  0,  0,  0,  0,-20,-40, -30,  0, 10, 15, 15, 10,  0,-30, -30,  5, 15, 20, 20, 15,  5,-30, -30,  0, 15, 20, 20, 15,  0,-30, -30,  5, 10, 15, 15, 10,  5,-30, -40,-20,  0,  5,  5,  0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50 ],
+                    b: [-20,-10,-10,-10,-10,-10,-10,-20, -10,  0,  0,  0,  0,  0,  0,-10, -10,  0,  5, 10, 10,  5,  0,-10, -10,  5,  5, 10, 10,  5,  5,-10, -10,  0, 10, 10, 10, 10,  0,-10, -10, 10, 10, 10, 10, 10, 10,-10, -10,  5,  0,  0,  0,  0,  5,-10, -20,-10,-10,-10,-10,-10,-10,-20 ],
+                    r: [  0,  0,  0,  0,  0,  0,  0,  0,  5, 10, 10, 10, 10, 10, 10,  5, -5,  0,  0,  0,  0,  0,  0, -5, -5,  0,  0,  0,  0,  0,  0, -5, -5,  0,  0,  0,  0,  0,  0, -5, -5,  0,  0,  0,  0,  0,  0, -5, -5,  0,  0,  0,  0,  0,  0, -5,  0,  0,  0,  5,  5,  0,  0,  0 ],
+                    q: [-20,-10,-10, -5, -5,-10,-10,-20, -10,  0,  0,  0,  0,  0,  0,-10, -10,  0,  5,  5,  5,  5,  0,-10,  -5,  0,  5,  5,  5,  5,  0, -5,  0,  0,  5,  5,  5,  5,  0, -5, -10,  5,  5,  5,  5,  5,  0,-10, -10,  0,  5,  0,  0,  0,  0,-10, -20,-10,-10, -5, -5,-10,-10,-20 ],
+                    k: [-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10,  20, 20,  0,  0,  0,  0, 20, 20,  20, 30, 10,  0,  0, 10, 30, 20 ],
+                    k_e: [-50,-40,-30,-20,-20,-30,-40,-50, -30,-20,-10,  0,  0,-10,-20,-30, -30,-10, 20, 30, 30, 20,-10,-30, -30,-10, 30, 40, 40, 30,-10,-30, -30,-10, 30, 40, 40, 30,-10,-30, -30,-10, 20, 30, 30, 20,-10,-30, -30,-30,  0,  0,  0,  0,-30,-30, -50,-30,-30,-30,-30,-30,-30,-50 ]
+                };
+
+                const evaluateBoard = function(game) {
+                    let totalEvaluation = 0;
+                    const board = game.board();
+                    const isEndgame = isEndgamePhase(game);
+
+                    if (currentPersonality === 'aggressive') {
+                        const captureMoves = game.moves({verbose: true}).filter(move => move.flags.includes('c')).length;
+                        totalEvaluation += (game.turn() === 'w') ? (captureMoves * 10) : -(captureMoves * 10);
+                    }
+                    
+                    for (let i = 0; i < 8; i++) {
+                        for (let j = 0; j < 8; j++) {
+                            const piece = board[i][j];
+                            if (piece) {
+                                let pstValue = pst[piece.type][piece.color === 'w' ? i * 8 + j : 63 - (i * 8 + j)];
+                                if (piece.type === 'k' && isEndgame) {
+                                    pstValue = pst.k_e[piece.color === 'w' ? i * 8 + j : 63 - (i * 8 + j)];
+                                }
+                                if (currentPersonality === 'pawn-pusher' && piece.type === 'p') {
+                                    pstValue *= 2.5;
+                                }
+                                let value = pieceValues[piece.type] + pstValue;
+                                totalEvaluation += (piece.color === 'w') ? value : -value;
+                            }
+                        }
+                    }
+                    return totalEvaluation;
+                };
+
+                const isEndgamePhase = (game) => game.SQUARES.reduce((acc, s) => acc + (game.get(s) && (game.get(s).type === 'q' || game.get(s).type === 'r')), 0) < 4;
+                
+                const quiescenceSearch = function(game, alpha, beta) {
+                    let stand_pat = evaluateBoard(game);
+                    if (game.turn() === 'b') { stand_pat = -stand_pat; }
+                    if (stand_pat >= beta) return beta;
+                    if (alpha < stand_pat) alpha = stand_pat;
+                    const moves = game.moves({ verbose: true }).filter(move => move.flags.includes('c'));
+                    for (const move of moves) {
+                        game.move(move.san);
+                        let score = -quiescenceSearch(game, -beta, -alpha);
+                        game.undo();
+                        if (score >= beta) return beta;
+                        if (score > alpha) alpha = score;
+                    }
+                    return alpha;
+                };
+
+                const minimax = function(game, depth, alpha, beta, isMaximizingPlayer) {
+                    if (depth === 0) {
+                        const evaluation = quiescenceSearch(game, alpha, beta);
+                        return isMaximizingPlayer ? evaluation : -evaluation;
+                    }
+                    const moves = game.moves();
+                    if (moves.length === 0) {
+                        if (game.in_check()) return -100000;
+                        return 0;
+                    }
+                    let bestVal = -Infinity;
+                    for (const move of moves) {
+                        game.move(move);
+                        const value = -minimax(game, depth - 1, -beta, -alpha, !isMaximizingPlayer);
+                        game.undo();
+                        bestVal = Math.max(bestVal, value);
+                        alpha = Math.max(alpha, bestVal);
+                        if (beta <= alpha) break;
+                    }
+                    return bestVal;
+                };
+                
+                const findBestMove = function(game, depth) {
+                    const moves = game.moves({ verbose: true });
+                    const moveScores = [];
+                    for (const move of moves) {
+                        game.move(move.san);
+                        const boardValue = -minimax(game, depth - 1, -Infinity, Infinity, false);
+                        game.undo();
+                        moveScores.push({ move: move.san, score: boardValue });
+                    }
+                    moveScores.sort((a, b) => b.score - a.score);
+                    if (moveScores.length === 0) return null;
+
+                    let chosenMove;
+                    switch (currentPersonality) {
+                        case 'aggressive':
+                        case 'pawn-pusher':
+                            const top2 = moveScores.slice(0, 2);
+                            chosenMove = top2[Math.floor(Math.random() * top2.length)].move;
+                            break;
+                        case 'chaotic':
+                            if (Math.random() < 0.85 || moveScores.length <= 3) {
+                                const top3 = moveScores.slice(0, 3);
+                                chosenMove = top3[Math.floor(Math.random() * top3.length)].move;
+                            } else {
+                                chosenMove = moves[Math.floor(Math.random() * moves.length)].san;
+                            }
+                            break;
+                        case 'standard':
+                        default:
+                            chosenMove = moveScores[0].move;
+                            break;
+                    }
+                    return chosenMove;
+                };
+                
+                return { getBestMove: (game, depth) => findBestMove(game, depth) };
+            })();
+
+            // =================================================================
+            // Game UI and Interaction Logic
+            // =================================================================
+            let board = null;
+            const game = new Chess();
+            const $status = $('#status');
+            const SEARCH_DEPTH = 3;
+
+            function onDragStart(source, piece) { return !game.game_over() && game.turn() === 'w'; }
+            function onDrop(source, target) { const move = game.move({ from: source, to: target, promotion: 'q' }); if (move === null) return 'snapback'; updateStatus(); window.setTimeout(makeEngineMove, 250); }
+            function onSnapEnd() { board.position(game.fen()); }
+            
+            function makeEngineMove() {
+                if (!game.game_over()) {
+                    const bestMove = ChessEngine.getBestMove(game, SEARCH_DEPTH);
+                    if (bestMove) { game.move(bestMove); board.position(game.fen()); }
+                    updateStatus();
+                }
+            }
+
+            function updateStatus() {
+                let statusText = '';
+                const moveColor = game.turn() === 'b' ? 'Black' : 'White';
+                
+                if (game.history().length === 0) {
+                    statusText = `Engine personality: ${currentPersonality}. White to move.`;
+                } else if (game.in_checkmate()) {
+                    statusText = `Checkmate! ${moveColor === 'White' ? 'Black' : 'White'} wins.`;
+                } else if (game.in_draw()) {
+                    statusText = 'Game Drawn';
+                } else {
+                    statusText = `${moveColor} to move`;
+                    if (game.in_check()) statusText += ` (in check)`;
+                }
+                $status.text(statusText);
+            }
+
+            const boardConfig = {
+                draggable: true,
+                position: 'start',
+                onDragStart,
+                onDrop,
+                onSnapEnd,
+                // Use the embedded images
+                pieceTheme: function(piece) {
+                    return piece_images[piece];
+                }
+            };
+            board = Chessboard('myBoard', boardConfig);
+            updateStatus();
+        });
+    </script>
+</body>
+</html>
