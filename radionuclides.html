@@ -2447,32 +2447,100 @@ const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclid
 };
     
 const Scratchpad = () => {
+    const { addToast } = useToast();
     const [notes, setNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
+    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
 
     React.useEffect(() => {
         localStorage.setItem('user_scratchpad_notes', notes);
     }, [notes]);
 
+    const handleCopyAll = () => {
+        if (notes) {
+            navigator.clipboard.writeText(notes);
+            addToast('Notes copied to clipboard!');
+        }
+    };
+
+    const handleExport = () => {
+        const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'scratchpad-notes.txt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
+    // --- NEW: Logic for the timestamp button ---
+    const handleInsertTimestamp = () => {
+        const timestamp = new Date().toLocaleString();
+        setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
+        addToast('Timestamp inserted!');
+    };
+
+    // --- NEW: Logic for the clear confirmation ---
+    const handleConfirmClear = () => {
+        setNotes('');
+        setIsClearModalOpen(false);
+        addToast('Scratchpad cleared.');
+    };
+
+    const characterCount = notes.length;
+    const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
+
     return (
-        <div className="p-4 animate-fade-in">
-            <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
-                    <button onClick={() => setNotes('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Notes
-                    </button>
+        <>
+            <div className="p-4 animate-fade-in">
+                <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
+                        {/* --- MODIFIED: Clear button now opens the modal --- */}
+                        <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                            <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Notes
+                        </button>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                        Your notes are automatically saved in your browser's local storage.
+                    </p>
+                    <div className="flex items-center gap-2 mb-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-t-md border-b border-slate-200 dark:border-slate-700">
+                        <button onClick={handleCopyAll} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                            <Icon path={ICONS.copy} className="w-4 h-4" />
+                            Copy All
+                        </button>
+                        <button onClick={handleExport} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                            <Icon path={ICONS.database} className="w-4 h-4" />
+                            Export as .txt
+                        </button>
+                        {/* --- NEW: The timestamp button --- */}
+                        <button onClick={handleInsertTimestamp} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                            <Icon path={ICONS.stopwatch} className="w-4 h-4" />
+                            Insert Timestamp
+                        </button>
+                    </div>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Jot down your notes and calculations here..."
+                        className="w-full h-96 p-4 rounded-b-md bg-slate-50 dark:bg-slate-900 font-mono text-sm border-x border-b border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                    />
+                    <div className="text-right text-xs text-slate-400 dark:text-slate-500 mt-2 pr-1">
+                        <span>{characterCount.toLocaleString()} Characters</span>
+                        <span className="mx-2">|</span>
+                        <span>{wordCount.toLocaleString()} Words</span>
+                    </div>
                 </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    Your notes are automatically saved in your browser's local storage.
-                </p>
-                <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Jot down your notes and calculations here..."
-                    className="w-full h-96 p-4 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
             </div>
-        </div>
+            {/* --- NEW: The confirmation modal component --- */}
+            <ConfirmationModal
+                isOpen={isClearModalOpen}
+                onClose={() => setIsClearModalOpen(false)}
+                onConfirm={handleConfirmClear}
+                title="Clear Scratchpad?"
+            >
+                <p>Are you sure you want to permanently delete all notes from the scratchpad? This action cannot be undone.</p>
+            </ConfirmationModal>
+        </>
     );
 };
 
@@ -3668,8 +3736,6 @@ addHistory({ id: Date.now(), type: 'Decay', icon: ICONS.calculator, inputs: `${A
          };
          
          
-
-
 const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
     const LEAK_TEST_LIMIT_UCI = 0.005;
     const DPM_PER_UCI = 2.22e6;
@@ -3721,7 +3787,12 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
             {result && (
                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                     <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.pass ? 'PASS' : 'FAIL'}</p>
-                    <p className="text-xl font-bold mt-2">{result.activity} µCi</p>
+                    {/* --- MODIFIED BLOCK START --- */}
+                    <div className="flex items-center justify-center mt-2">
+                        <p className="text-xl font-bold">{result.activity} µCi</p>
+                        <CopyButton textToCopy={result.activity} />
+                    </div>
+                    {/* --- MODIFIED BLOCK END --- */}
                     <p className={`text-xs font-semibold ${result.pass ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>(Limit: {LEAK_TEST_LIMIT_UCI} µCi)</p>
                 </div>
             )}
@@ -3784,12 +3855,18 @@ const StaticSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol
                        <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                          <p className="text-xs font-bold">Average</p>
                          <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
-                         <p className="text-sm">{result.average.toPrecision(3)}</p>
+                         <div className="flex items-center justify-center">
+                            <p className="text-sm">{result.average.toPrecision(3)}</p>
+                            <CopyButton textToCopy={result.average.toPrecision(3)} />
+                         </div>
                        </div>
                        <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                          <p className="text-xs font-bold">Maximum</p>
                          <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
-                         <p className="text-sm">{result.max.toPrecision(3)}</p>
+                         <div className="flex items-center justify-center">
+                            <p className="text-sm">{result.max.toPrecision(3)}</p>
+                            <CopyButton textToCopy={result.max.toPrecision(3)} />
+                         </div>
                        </div>
                    </div>
                </div>
@@ -3837,7 +3914,10 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
            {result && (
                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
-                   <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
+                    <div className="flex items-center justify-center">
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
+                        <CopyButton textToCopy={result.contamination} />
+                    </div>
                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
                        <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                          <p className="text-xs font-bold">Reg. Guide 1.86</p>
@@ -3855,6 +3935,7 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
         </div>
     );
 };
+
          
 const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, releaseActivity, setReleaseActivity, activityUnit, setActivityUnit, roomVolume, setRoomVolume, volumeUnit, setVolumeUnit, ventilationRate, setVentilationRate, result, setResult, error, setError }) => {
     const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
@@ -3889,8 +3970,20 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
            {result && (
                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
                    <div className="grid grid-cols-2 gap-2 text-sm"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
-                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p></div>
-                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p><p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p></div>
+                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                       <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p>
+                        <div className="flex items-center justify-center">
+                            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p>
+                            <CopyButton textToCopy={result.dacMultiple} />
+                        </div>
+                   </div>
+                   <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                       <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p>
+                       <div className="flex items-center justify-center">
+                            <p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p>
+                            <CopyButton textToCopy={result.time_to_1_dac_hr} />
+                       </div>
+                   </div>
                </div>
            )}
         </div>
@@ -5218,225 +5311,232 @@ const ActivityAndMassTools = ({ radionuclides }) => {
          */
          
          const EquilibriumCalculator = ({ radionuclides }) => {
-         const [parentNuclide, setParentNuclide] = React.useState(() => {
-         const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
-         if (!savedSymbol) return null;
-         return radionuclides.find(n => n.symbol === savedSymbol) || null;
-         });
-         const [daughterNuclide, setDaughterNuclide] = React.useState(null);
-         const [initialActivity, setInitialActivity] = React.useState(() => localStorage.getItem('equilibrium_initialActivity') || '100');
-         const [initialDaughterActivity, setInitialDaughterActivity] = React.useState(() => localStorage.getItem('equilibrium_initialDaughterActivity') || '0');
-         const [timeElapsed, setTimeElapsed] = React.useState(() => localStorage.getItem('equilibrium_timeElapsed') || '10');
-         const [timeUnit, setTimeUnit] = React.useState(() => localStorage.getItem('equilibrium_timeUnit') || 'days');
-         const [result, setResult] = React.useState(null);
-         const [chartData, setChartData] = React.useState(null);
-         const [error, setError] = React.useState('');
-         const [analysis, setAnalysis] = React.useState(null);
-         const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
-         
-         const { addHistory } = useCalculationHistory();
-         
-         React.useEffect(() => {
-         localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
-         localStorage.setItem('equilibrium_initialActivity', initialActivity);
-         localStorage.setItem('equilibrium_initialDaughterActivity', initialDaughterActivity);
-         localStorage.setItem('equilibrium_timeElapsed', timeElapsed);
-         localStorage.setItem('equilibrium_timeUnit', timeUnit);
-         localStorage.setItem('equilibrium_useLogScale', JSON.stringify(useLogScale));
-         }, [parentNuclide, initialActivity, initialDaughterActivity, timeElapsed, timeUnit, useLogScale]);
-         
-         const parentNuclides = React.useMemo(() => {
-         return radionuclides.filter(parent => {
-         if (!parent.daughter || parent.halfLife === 'Stable' || parent.daughter.includes('/')) return false;
-         const daughterName = parent.daughter.split('(')[0].trim();
-         const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
-         return daughter && daughter.halfLife !== 'Stable';
-         }).sort((a, b) => a.name.localeCompare(b.name));
-         }, [radionuclides]);
-         
-         React.useEffect(() => {
-         if (!parentNuclide) {
-         setAnalysis(null);
-         setDaughterNuclide(null);
-         return;
-         }
-         const daughterName = parentNuclide.daughter.split('(')[0].trim();
-         const foundDaughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
-         if (!foundDaughter) {
-         setAnalysis({ type: 'Analysis Error', message: 'Daughter nuclide data not found.' });
-         setDaughterNuclide(null);
-         return;
-         }
-         setDaughterNuclide(foundDaughter);
-         const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
-         const T2_seconds = parseHalfLifeToSeconds(foundDaughter.halfLife);
-         let type, message, ratio = null, timeToEq = null, timeToMax = null;
-         if (T1_seconds < T2_seconds) {
-         type = 'No Equilibrium';
-         message = `The parent half-life (${parentNuclide.halfLife}) is shorter than the daughter half-life (${foundDaughter.halfLife}). The daughter will never reach equilibrium.`;
-         } else if (T1_seconds > 100 * T2_seconds) {
-         type = 'Secular Equilibrium';
-         ratio = 1;
-         timeToEq = (7 * T2_seconds);
-         message = `The parent half-life is much longer than the daughter's. The daughter activity will rise to become equal to the parent's activity.`;
-         } else {
-         type = 'Transient Equilibrium';
-         const lambda1 = Math.log(2) / T1_seconds;
-         const lambda2 = Math.log(2) / T2_seconds;
-         ratio = lambda2 / (lambda2 - lambda1);
-         timeToEq = (7 * T2_seconds);
-         timeToMax = Math.log(lambda2 / lambda1) / (lambda2 - lambda1);
-         message = `The parent decays at a rate comparable to the daughter. The daughter's activity will rise, exceed the parent's, and then decay with the parent's apparent half-life.`;
-         }
-         setAnalysis({ type, message, ratio, timeToEq, timeToMax });
-         if (timeToEq) {
-         const bestUnit = getBestHalfLifeUnit(timeToEq);
-         const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-         setTimeUnit(bestUnit);
-         setTimeElapsed(Math.ceil(timeToEq / unitConversions[bestUnit]).toString());
-         }
-         }, [parentNuclide, radionuclides]);
-         
-         const handleCalculate = () => {
-         if (!parentNuclide || !daughterNuclide) { setError('Please select a valid parent nuclide.'); return; }
-         const N0_parent = parseFloat(initialActivity);
-         const N0_daughter = parseFloat(initialDaughterActivity);
-         const t_input = parseFloat(timeElapsed);
-         if (isNaN(N0_parent) || N0_parent < 0 || isNaN(t_input) || t_input < 0 || isNaN(N0_daughter) || N0_daughter < 0) { setError('All activity and time inputs must be non-negative numbers.'); return; }
-         setError('');
-         const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
-         const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
-         const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-         const t_seconds = t_input * unitConversions[timeUnit];
-         const lambda1 = Math.log(2) / T1_seconds;
-         const lambda2 = Math.log(2) / T2_seconds;
-         const A_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
-         const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
-         let daughterIngrowth;
-         if (Math.abs(lambda1 - lambda2) < 1e-12) { daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds); } 
-         else { daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds)); }
-         const A_daughter = initialDaughterDecay + daughterIngrowth;
-         
-         const newResult = { parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } };
-         setResult(newResult);
-         
-addHistory({ id: Date.now(), type: 'Equilibrium', icon: ICONS.activity, inputs: `${initialActivity} of ${parentNuclide.symbol} for ${timeElapsed} ${timeUnit}`, result: `Daughter: ${newResult.daughter.activity}`, view: VIEWS.EQUILIBRIUM });
-         
-         const labels = [], parentData = [], daughterData = [], ratioData = [];
-         const totalTime = t_input;
-         const steps = 100;
-         for (let i = 0; i <= steps; i++) {
-         const timePoint = (totalTime / steps) * i;
-         const timePoint_seconds = timePoint * unitConversions[timeUnit];
-         labels.push(timePoint.toFixed(2));
-         const current_A_parent = N0_parent * Math.exp(-lambda1 * timePoint_seconds);
-         parentData.push(current_A_parent);
-         const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
-         let current_daughterIngrowth;
-         if (Math.abs(lambda1 - lambda2) < 1e-12) { current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds); } 
-         else { current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)); }
-         const d_activity = current_initialDaughterDecay + current_daughterIngrowth;
-         daughterData.push(d_activity);
-         ratioData.push(current_A_parent > 1e-9 ? d_activity / current_A_parent : 0);
-         }
-         setChartData({ labels, parentData, daughterData, ratioData, parentName: parentNuclide.name, daughterName: daughterNuclide.name, timeUnit });
-         };
-         
-         React.useEffect(() => {
-         if (parentNuclide && daughterNuclide) { handleCalculate(); }
-         }, [parentNuclide, daughterNuclide, initialActivity, initialDaughterActivity, timeElapsed, timeUnit]);
-         
-         const handleParentChange = (symbol) => {
-         const parent = parentNuclides.find(p => p.symbol === symbol);
-         setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
-         };
-         
-         const handleClearInputs = () => {
-         setParentNuclide(null);
-         setDaughterNuclide(null);
-         setInitialActivity('100');
-         setInitialDaughterActivity('0');
-         setTimeElapsed('10');
-         setTimeUnit('days');
-         setResult(null);
-         setChartData(null);
-         setError('');
-         setAnalysis(null);
-         setUseLogScale(false);
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-         <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parent-Daughter Equilibrium Analyzer</h2>
-                {/* <-- MODIFIED: Using the standardized ClearButton component --> */}
-                <ClearButton onClick={handleClearInputs} />
-            </div>
-            <div className="space-y-4">
-                <div>
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Parent Nuclide</label>
-                    <div className="mt-1 min-h-[42px]">
-                        {parentNuclide ? 
-                           <CalculatorNuclideInfo 
-                               nuclide={parentNuclide} 
-                               onClear={() => setParentNuclide(null)} 
-                           /> 
-                        : <SearchableSelect options={parentNuclides} onSelect={handleParentChange} placeholder="Search for a parent nuclide..."/>}
-                    </div>
+    const [parentNuclide, setParentNuclide] = React.useState(() => {
+        const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
+        if (!savedSymbol) return null;
+        return radionuclides.find(n => n.symbol === savedSymbol) || null;
+    });
+    const [daughterNuclide, setDaughterNuclide] = React.useState(null);
+    const [initialActivity, setInitialActivity] = React.useState(() => localStorage.getItem('equilibrium_initialActivity') || '100');
+    const [initialDaughterActivity, setInitialDaughterActivity] = React.useState(() => localStorage.getItem('equilibrium_initialDaughterActivity') || '0');
+    const [timeElapsed, setTimeElapsed] = React.useState(() => localStorage.getItem('equilibrium_timeElapsed') || '10');
+    const [timeUnit, setTimeUnit] = React.useState(() => localStorage.getItem('equilibrium_timeUnit') || 'days');
+    const [result, setResult] = React.useState(null);
+    const [chartData, setChartData] = React.useState(null);
+    const [error, setError] = React.useState('');
+    const [analysis, setAnalysis] = React.useState(null);
+    const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
+    const { addHistory } = useCalculationHistory();
+    
+    React.useEffect(() => {
+        localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
+        localStorage.setItem('equilibrium_initialActivity', initialActivity);
+        localStorage.setItem('equilibrium_initialDaughterActivity', initialDaughterActivity);
+        localStorage.setItem('equilibrium_timeElapsed', timeElapsed);
+        localStorage.setItem('equilibrium_timeUnit', timeUnit);
+        localStorage.setItem('equilibrium_useLogScale', JSON.stringify(useLogScale));
+    }, [parentNuclide, initialActivity, initialDaughterActivity, timeElapsed, timeUnit, useLogScale]);
+    
+    const parentNuclides = React.useMemo(() => {
+        return radionuclides.filter(parent => {
+            if (!parent.daughter || parent.halfLife === 'Stable' || parent.daughter.includes('/')) return false;
+            const daughterName = parent.daughter.split('(')[0].trim();
+            const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+            return daughter && daughter.halfLife !== 'Stable';
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [radionuclides]);
+    
+    React.useEffect(() => {
+        if (!parentNuclide) {
+            setAnalysis(null);
+            setDaughterNuclide(null);
+            return;
+        }
+        const daughterName = parentNuclide.daughter.split('(')[0].trim();
+        const foundDaughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+        if (!foundDaughter) {
+            setAnalysis({ type: 'Analysis Error', message: 'Daughter nuclide data not found.' });
+            setDaughterNuclide(null);
+            return;
+        }
+        setDaughterNuclide(foundDaughter);
+        const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+        const T2_seconds = parseHalfLifeToSeconds(foundDaughter.halfLife);
+        let type, message, ratio = null, timeToEq = null, timeToMax = null;
+        if (T1_seconds < T2_seconds) {
+            type = 'No Equilibrium';
+            message = `The parent half-life (${parentNuclide.halfLife}) is shorter than the daughter half-life (${foundDaughter.halfLife}). The daughter will never reach equilibrium.`;
+        } else if (T1_seconds > 100 * T2_seconds) {
+            type = 'Secular Equilibrium';
+            ratio = 1;
+            timeToEq = (7 * T2_seconds);
+            message = `The parent half-life is much longer than the daughter's. The daughter activity will rise to become equal to the parent's activity.`;
+        } else {
+            type = 'Transient Equilibrium';
+            const lambda1 = Math.log(2) / T1_seconds;
+            const lambda2 = Math.log(2) / T2_seconds;
+            ratio = lambda2 / (lambda2 - lambda1);
+            timeToEq = (7 * T2_seconds);
+            timeToMax = Math.log(lambda2 / lambda1) / (lambda2 - lambda1);
+            message = `The parent decays at a rate comparable to the daughter. The daughter's activity will rise, exceed the parent's, and then decay with the parent's apparent half-life.`;
+        }
+        setAnalysis({ type, message, ratio, timeToEq, timeToMax });
+        if (timeToEq) {
+            const bestUnit = getBestHalfLifeUnit(timeToEq);
+            const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+            setTimeUnit(bestUnit);
+            setTimeElapsed(Math.ceil(timeToEq / unitConversions[bestUnit]).toString());
+        }
+    }, [parentNuclide, radionuclides]);
+    
+    const handleCalculate = () => {
+        if (!parentNuclide || !daughterNuclide) { setError('Please select a valid parent nuclide.'); return; }
+        const N0_parent = parseFloat(initialActivity);
+        const N0_daughter = parseFloat(initialDaughterActivity);
+        const t_input = parseFloat(timeElapsed);
+        if (isNaN(N0_parent) || N0_parent < 0 || isNaN(t_input) || t_input < 0 || isNaN(N0_daughter) || N0_daughter < 0) { setError('All activity and time inputs must be non-negative numbers.'); return; }
+        setError('');
+        const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+        const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+        const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const t_seconds = t_input * unitConversions[timeUnit];
+        const lambda1 = Math.log(2) / T1_seconds;
+        const lambda2 = Math.log(2) / T2_seconds;
+        const A_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
+        const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
+        let daughterIngrowth;
+        if (Math.abs(lambda1 - lambda2) < 1e-12) { daughterIngrowth = N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds); } 
+        else { daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds)); }
+        const A_daughter = initialDaughterDecay + daughterIngrowth;
+        const newResult = { parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } };
+        setResult(newResult);
+        addHistory({ id: Date.now(), type: 'Equilibrium', icon: ICONS.activity, inputs: `${initialActivity} of ${parentNuclide.symbol} for ${timeElapsed} ${timeUnit}`, result: `Daughter: ${newResult.daughter.activity}`, view: VIEWS.EQUILIBRIUM });
+        const labels = [], parentData = [], daughterData = [], ratioData = [];
+        const totalTime = t_input;
+        const steps = 100;
+        for (let i = 0; i <= steps; i++) {
+            const timePoint = (totalTime / steps) * i;
+            const timePoint_seconds = timePoint * unitConversions[timeUnit];
+            labels.push(timePoint.toFixed(2));
+            const current_A_parent = N0_parent * Math.exp(-lambda1 * timePoint_seconds);
+            parentData.push(current_A_parent);
+            const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
+            let current_daughterIngrowth;
+            if (Math.abs(lambda1 - lambda2) < 1e-12) { current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds); } 
+            else { current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)); }
+            const d_activity = current_initialDaughterDecay + current_daughterIngrowth;
+            daughterData.push(d_activity);
+            ratioData.push(current_A_parent > 1e-9 ? d_activity / current_A_parent : 0);
+        }
+        setChartData({ labels, parentData, daughterData, ratioData, parentName: parentNuclide.name, daughterName: daughterNuclide.name, timeUnit });
+    };
+    
+    React.useEffect(() => {
+        if (parentNuclide && daughterNuclide) { handleCalculate(); }
+    }, [parentNuclide, daughterNuclide, initialActivity, initialDaughterActivity, timeElapsed, timeUnit]);
+    
+    const handleParentChange = (symbol) => {
+        const parent = parentNuclides.find(p => p.symbol === symbol);
+        setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
+    };
+    
+    const handleClearInputs = () => {
+        setParentNuclide(null);
+        setDaughterNuclide(null);
+        setInitialActivity('100');
+        setInitialDaughterActivity('0');
+        setTimeElapsed('10');
+        setTimeUnit('days');
+        setResult(null);
+        setChartData(null);
+        setError('');
+        setAnalysis(null);
+        setUseLogScale(false);
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Parent-Daughter Equilibrium Analyzer</h2>
+                    <ClearButton onClick={handleClearInputs} />
                 </div>
-                {analysis && (
-                    <div className="p-4 bg-slate-100 dark:bg-slate-700/80 rounded-lg animate-fade-in border border-slate-200 dark:border-slate-600">
-                         <h3 className="text-lg font-bold text-sky-600 dark:text-sky-400 mb-2">{analysis.type}</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{analysis.message}</p>
-                        {analysis.ratio && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-slate-300 dark:border-slate-600 pt-3">
-                                <div><p className="font-semibold">Equilibrium Ratio (A₂/A₁):</p><p>{analysis.ratio.toFixed(4)}</p></div>
-                                <div><p className="font-semibold">Time to ~Equilibrium:</p><p>≈ {formatHalfLife(analysis.timeToEq.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToEq))}</p></div>
-                                {analysis.timeToMax && ( <div className="col-span-1 sm:col-span-2"><p className="font-semibold">Time to Max Daughter Activity:</p><p>{formatHalfLife(analysis.timeToMax.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToMax))}</p></div> )}
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Parent Nuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {parentNuclide ? 
+                               <CalculatorNuclideInfo 
+                                   nuclide={parentNuclide} 
+                                   onClear={() => setParentNuclide(null)} 
+                               /> 
+                            : <SearchableSelect options={parentNuclides} onSelect={handleParentChange} placeholder="Search for a parent nuclide..."/>}
+                        </div>
+                    </div>
+                    {analysis && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700/80 rounded-lg animate-fade-in border border-slate-200 dark:border-slate-600">
+                             <h3 className="text-lg font-bold text-sky-600 dark:text-sky-400 mb-2">{analysis.type}</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{analysis.message}</p>
+                            {analysis.ratio && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-slate-300 dark:border-slate-600 pt-3">
+                                    <div><p className="font-semibold">Equilibrium Ratio (A₂/A₁):</p><p>{analysis.ratio.toFixed(4)}</p></div>
+                                    <div><p className="font-semibold">Time to ~Equilibrium:</p><p>≈ {formatHalfLife(analysis.timeToEq.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToEq))}</p></div>
+                                    {analysis.timeToMax && ( <div className="col-span-1 sm:col-span-2"><p className="font-semibold">Time to Max Daughter Activity:</p><p>{formatHalfLife(analysis.timeToMax.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToMax))}</p></div> )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {parentNuclide && (
+                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label className="block text-sm font-medium">Initial Parent Activity</label><input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Initial Daughter Activity</label><input type="number" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             </div>
-                        )}
-                    </div>
-                )}
-                {parentNuclide && (
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Initial Parent Activity</label><input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                            <div><label className="block text-sm font-medium">Initial Daughter Activity</label><input type="number" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium">Time Elapsed</label>
-                            <div className="flex gap-2 mt-1">
-                                <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                                <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             <div>
+                                <label className="block text-sm font-medium">Time Elapsed</label>
+                                <div className="flex gap-2 mt-1">
+                                    <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                    <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                {result && (
-                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg space-y-2">
-                        <p className="font-semibold text-center text-sm">Activity at {timeElapsed} {timeUnit}</p>
-                        <div className="flex justify-between items-center"><p>{result.parent.name}:</p> <p className="font-bold">{result.parent.activity}</p></div>
-                        <div className="flex justify-between items-center"><p>{result.daughter.name}:</p> <p className="font-bold">{result.daughter.activity}</p></div>
-                    </div>
-                )}
-                {chartData && (
-                    <>
-                        <div className="flex justify-end mt-4">
-                            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                                Use Logarithmic Scale
-                            </label>
+                    )}
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg space-y-2">
+                            <p className="font-semibold text-center text-sm">Activity at {timeElapsed} {timeUnit}</p>
+                            <div className="flex justify-between items-center">
+                                <p>{result.parent.name}:</p>
+                                <div className="flex items-center">
+                                    <p className="font-bold">{result.parent.activity}</p>
+                                    <CopyButton textToCopy={result.parent.activity} />
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <p>{result.daughter.name}:</p>
+                                <div className="flex items-center">
+                                    <p className="font-bold">{result.daughter.activity}</p>
+                                    <CopyButton textToCopy={result.daughter.activity} />
+                                </div>
+                            </div>
                         </div>
-                        <DecayChart chartData={chartData} useLogScale={useLogScale} />
-                    </>
-                )}
+                    )}
+                    {chartData && (
+                        <>
+                            <div className="flex justify-end mt-4">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                    Use Logarithmic Scale
+                                </label>
+                            </div>
+                            <DecayChart chartData={chartData} useLogScale={useLogScale} />
+                        </>
+                    )}
+                </div>
             </div>
-         </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
          
 const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, delayTime, setDelayTime, grossCounts, setGrossCounts, countDuration, setCountDuration, backgroundCpm, setBackgroundCpm, efficiency, setEfficiency, result, setResult, error, setError }) => {
@@ -6700,88 +6800,82 @@ const RadonCalculator = () => {
          * 3. (Generic Rate) Calculates final OR initial dose rate from a user-inputted HVL.
          */
          
-         const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
-         const MODE_FROM_SOURCE = 'fromSource';
-         const MODE_FIND_THICKNESS = 'findThickness';
-         const MODE_GENERIC = 'genericRate';
-         const CALC_MODE_BETA = 'beta';
-         
-         const INPUT_MODE_DB = 'fromSource';
-         const INPUT_MODE_MANUAL = 'manual';
-         
-         const { settings } = React.useContext(SettingsContext);
-         const { addHistory } = useCalculationHistory();
-         
-         const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_FROM_SOURCE);
-         const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('shielding_inputMode') || INPUT_MODE_DB);
-         const [useManualHVL, setUseManualHVL] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useManualHVL')) || false);
-         const [useBuildup, setUseBuildup] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useBuildup')) || false); // <-- NEW: State for buildup toggle
-         const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
-         const [activity, setActivity] = React.useState(() => localStorage.getItem('shielding_activity') || '1');
-         const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || settings.activity);
-         const [distance, setDistance] = React.useState(() => localStorage.getItem('shielding_distance') || '1');
-         const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || settings.distance);
-         const [knownDoseRate, setKnownDoseRate] = React.useState(() => localStorage.getItem('shielding_knownDoseRate') || '100');
-         const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || settings.doseRate);
-         const [manualHVL, setManualHVL] = React.useState(() => localStorage.getItem('shielding_manualHVL') || '');
-         const [manualBetaEnergy, setManualBetaEnergy] = React.useState(() => localStorage.getItem('shielding_manualBetaEnergy') || '');
-         const [shieldMaterial, setShieldMaterial] = React.useState(() => localStorage.getItem('shielding_shieldMaterial') || 'Lead');
-         const [shieldThickness, setShieldThickness] = React.useState(() => localStorage.getItem('shielding_shieldThickness') || '1');
-         const [thicknessUnit, setThicknessUnit] = React.useState(() => localStorage.getItem('shielding_thicknessUnit') || 'cm');
-         const [targetDoseRate, setTargetDoseRate] = React.useState(() => localStorage.getItem('shielding_targetDoseRate') || '2');
-         const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_targetDoseRateUnit') || settings.doseRate);
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const materials = ['Lead', 'Concrete', 'Steel', 'Water', 'Tungsten', 'Aluminum'];
-         const betaShieldMaterials = ['Plastic', 'Aluminum', 'Water'];
-         const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1, 'dps': 1 / 3.7e10, 'dpm': 1 / (3.7e10 * 60) };
-         const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-         const thicknessFactors = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
-         const doseRateFactors = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-         const activityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci'];
-         const distanceUnits_ordered = ['mm', 'cm', 'm', 'in', 'ft'];
-         const thicknessUnits_ordered = ['mm', 'cm', 'in'];
-         const doseRateUnits_ordered = ['µrem/hr', 'mrem/hr', 'rem/hr', 'µSv/hr', 'mSv/hr', 'Sv/hr'];
-         
-         const shieldingNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-         
-         const availableMaterials = React.useMemo(() => {
-         const nuclideHVLData = HVL_DATA[nuclideSymbol];
-         return nuclideHVLData ? Object.keys(nuclideHVLData).filter(key => key !== 'sourceRef') : [];
-         }, [nuclideSymbol]);
-         
-         React.useEffect(() => {
-         localStorage.setItem('shielding_calcMode', calcMode);
-         localStorage.setItem('shielding_inputMode', inputMode);
-         localStorage.setItem('shielding_useManualHVL', JSON.stringify(useManualHVL));
-         localStorage.setItem('shielding_useBuildup', JSON.stringify(useBuildup));
-         localStorage.setItem('shielding_nuclideSymbol', nuclideSymbol);
-         localStorage.setItem('shielding_activity', activity);
-         localStorage.setItem('shielding_activityUnit', activityUnit);
-         localStorage.setItem('shielding_distance', distance);
-         localStorage.setItem('shielding_distanceUnit', distanceUnit);
-         localStorage.setItem('shielding_knownDoseRate', knownDoseRate);
-         localStorage.setItem('shielding_knownDoseRateUnit', knownDoseRateUnit);
-         localStorage.setItem('shielding_manualHVL', manualHVL);
-         localStorage.setItem('shielding_manualBetaEnergy', manualBetaEnergy);
-         localStorage.setItem('shielding_shieldMaterial', shieldMaterial);
-         localStorage.setItem('shielding_shieldThickness', shieldThickness);
-         localStorage.setItem('shielding_thicknessUnit', thicknessUnit);
-         localStorage.setItem('shielding_targetDoseRate', targetDoseRate);
-         localStorage.setItem('shielding_targetDoseRateUnit', targetDoseRateUnit);
-         }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
-         
-         React.useEffect(() => {
-         if (preselectedNuclide) {
+const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const MODE_FROM_SOURCE = 'fromSource';
+    const MODE_FIND_THICKNESS = 'findThickness';
+    const MODE_GENERIC = 'genericRate';
+    const CALC_MODE_BETA = 'beta';
+    const INPUT_MODE_DB = 'fromSource';
+    const INPUT_MODE_MANUAL = 'manual';
+
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+
+    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_FROM_SOURCE);
+    const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('shielding_inputMode') || INPUT_MODE_DB);
+    const [useManualHVL, setUseManualHVL] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useManualHVL')) || false);
+    const [useBuildup, setUseBuildup] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useBuildup')) || false);
+    const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
+    const [activity, setActivity] = React.useState(() => localStorage.getItem('shielding_activity') || '1');
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || settings.activity);
+    const [distance, setDistance] = React.useState(() => localStorage.getItem('shielding_distance') || '1');
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || settings.distance);
+    const [knownDoseRate, setKnownDoseRate] = React.useState(() => localStorage.getItem('shielding_knownDoseRate') || '100');
+    const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || settings.doseRate);
+    const [manualHVL, setManualHVL] = React.useState(() => localStorage.getItem('shielding_manualHVL') || '');
+    const [manualBetaEnergy, setManualBetaEnergy] = React.useState(() => localStorage.getItem('shielding_manualBetaEnergy') || '');
+    const [shieldMaterial, setShieldMaterial] = React.useState(() => localStorage.getItem('shielding_shieldMaterial') || 'Lead');
+    const [shieldThickness, setShieldThickness] = React.useState(() => localStorage.getItem('shielding_shieldThickness') || '1');
+    const [thicknessUnit, setThicknessUnit] = React.useState(() => localStorage.getItem('shielding_thicknessUnit') || 'cm');
+    const [targetDoseRate, setTargetDoseRate] = React.useState(() => localStorage.getItem('shielding_targetDoseRate') || '2');
+    const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_targetDoseRateUnit') || settings.doseRate);
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const materials = ['Lead', 'Concrete', 'Steel', 'Water', 'Tungsten', 'Aluminum'];
+    const betaShieldMaterials = ['Plastic', 'Aluminum', 'Water'];
+    const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1, 'dps': 1 / 3.7e10, 'dpm': 1 / (3.7e10 * 60) };
+    const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const thicknessFactors = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
+    const doseRateFactors = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const activityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci'];
+    const distanceUnits_ordered = ['mm', 'cm', 'm', 'in', 'ft'];
+    const thicknessUnits_ordered = ['mm', 'cm', 'in'];
+    const doseRateUnits_ordered = ['µrem/hr', 'mrem/hr', 'rem/hr', 'µSv/hr', 'mSv/hr', 'Sv/hr'];
+    const shieldingNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const availableMaterials = React.useMemo(() => { const nuclideHVLData = HVL_DATA[nuclideSymbol]; return nuclideHVLData ? Object.keys(nuclideHVLData).filter(key => key !== 'sourceRef') : []; }, [nuclideSymbol]);
+
+    React.useEffect(() => {
+        localStorage.setItem('shielding_calcMode', calcMode);
+        localStorage.setItem('shielding_inputMode', inputMode);
+        localStorage.setItem('shielding_useManualHVL', JSON.stringify(useManualHVL));
+        localStorage.setItem('shielding_useBuildup', JSON.stringify(useBuildup));
+        localStorage.setItem('shielding_nuclideSymbol', nuclideSymbol);
+        localStorage.setItem('shielding_activity', activity);
+        localStorage.setItem('shielding_activityUnit', activityUnit);
+        localStorage.setItem('shielding_distance', distance);
+        localStorage.setItem('shielding_distanceUnit', distanceUnit);
+        localStorage.setItem('shielding_knownDoseRate', knownDoseRate);
+        localStorage.setItem('shielding_knownDoseRateUnit', knownDoseRateUnit);
+        localStorage.setItem('shielding_manualHVL', manualHVL);
+        localStorage.setItem('shielding_manualBetaEnergy', manualBetaEnergy);
+        localStorage.setItem('shielding_shieldMaterial', shieldMaterial);
+        localStorage.setItem('shielding_shieldThickness', shieldThickness);
+        localStorage.setItem('shielding_thicknessUnit', thicknessUnit);
+        localStorage.setItem('shielding_targetDoseRate', targetDoseRate);
+        localStorage.setItem('shielding_targetDoseRateUnit', targetDoseRateUnit);
+    }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
+    
+    React.useEffect(() => {
+        if (preselectedNuclide) {
             if (shieldingNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(MODE_FROM_SOURCE); } 
             else if (betaNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(CALC_MODE_BETA); }
-         }
-         }, [preselectedNuclide, shieldingNuclides, betaNuclides]);
-         
-         React.useEffect(() => {
-         try {
+        }
+    }, [preselectedNuclide, shieldingNuclides, betaNuclides]);
+
+    React.useEffect(() => {
+        try {
             setError('');
             if (calcMode === CALC_MODE_BETA) {
                 let E_max;
@@ -6843,10 +6937,7 @@ const RadonCalculator = () => {
                        const shielded_mrem_hr = shieldedRateR_hr * 1000;
                        const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate'), buildup: buildupFactor.toFixed(2) };
                        setResult(newResult);
-
-addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`, result: `${newResult.shielded.value} ${newResult.shielded.unit}`, view: VIEWS.SHIELDING });
-                    
-
+                       addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`, result: `${newResult.shielded.value} ${newResult.shielded.unit}`, view: VIEWS.SHIELDING });
                    } else {
                         const targetRateValue = parseFloat(targetDoseRate);
                         if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
@@ -6866,49 +6957,49 @@ addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${s
                     }
                 }
             }
-         } catch (e) { setError(e.message); setResult(null); }
-         }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
-         
-         const handleModeChange = (mode) => {
-         setCalcMode(mode);
-         setResult(null);
-         setError('');
-         setUseManualHVL(false);
-         setUseBuildup(false);
-         setNuclideSymbol('');
-         setInputMode(INPUT_MODE_DB);
-         if (mode === CALC_MODE_BETA) {
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
+    
+    const handleModeChange = (mode) => {
+        setCalcMode(mode);
+        setResult(null);
+        setError('');
+        setUseManualHVL(false);
+        setUseBuildup(false);
+        setNuclideSymbol('');
+        setInputMode(INPUT_MODE_DB);
+        if (mode === CALC_MODE_BETA) {
             setShieldMaterial('Plastic');
-         } else if (availableMaterials.length > 0) {
+        } else if (availableMaterials.length > 0) {
             setShieldMaterial(availableMaterials[0]);
-         }
-         };
-         
-         const handleClearInputs = () => {
-         setCalcMode(MODE_FROM_SOURCE);
-         setInputMode(INPUT_MODE_DB);
-         setUseManualHVL(false);
-         setUseBuildup(false);
-         setNuclideSymbol('');
-         setActivity('1');
-         setActivityUnit(settings.activity);
-         setDistance('1');
-         setDistanceUnit(settings.distance);
-         setKnownDoseRate('100');
-         setKnownDoseRateUnit(settings.doseRate);
-         setManualHVL('');
-         setManualBetaEnergy('');
-         setShieldMaterial('Lead');
-         setShieldThickness('1');
-         setThicknessUnit('cm');
-         setTargetDoseRate('2');
-         setTargetDoseRateUnit(settings.doseRate);
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        }
+    };
+    
+    const handleClearInputs = () => {
+        setCalcMode(MODE_FROM_SOURCE);
+        setInputMode(INPUT_MODE_DB);
+        setUseManualHVL(false);
+        setUseBuildup(false);
+        setNuclideSymbol('');
+        setActivity('1');
+        setActivityUnit(settings.activity);
+        setDistance('1');
+        setDistanceUnit(settings.distance);
+        setKnownDoseRate('100');
+        setKnownDoseRateUnit(settings.doseRate);
+        setManualHVL('');
+        setManualBetaEnergy('');
+        setShieldMaterial('Lead');
+        setShieldThickness('1');
+        setThicknessUnit('cm');
+        setTargetDoseRate('2');
+        setTargetDoseRateUnit(settings.doseRate);
+        setResult(null);
+        setError('');
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shielding Calculator</h2>
@@ -6985,16 +7076,52 @@ addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${s
                             </div>
                         </div>
                     )}
-         
                     {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
                     {result && (
                         <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
-                           { result.type === 'doseRate' && <><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded.value} {result.unshielded.unit}</p></div><div className="font-bold text-2xl">↓</div><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded.value} {result.shielded.unit}</p>{useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}</div></>}
-                           { result.type === 'thickness' && <><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">To reduce from {result.unshielded.value} {result.unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-2">{result.thickness.value} {result.thickness.unit}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">of {useManualHVL ? 'custom material' : shieldMaterial}</p></>}
-                           { result.type === 'genericRateFinal' && <><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initial.value} {result.initial.unit}</p></div><div className="font-bold text-2xl">↓</div><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final.value} {result.final.unit}</p></div></>}
+                           { result.type === 'doseRate' && <>
+                                <div>
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p>
+                                    <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded.value} {result.unshielded.unit}</p>
+                                </div>
+                                <div className="font-bold text-2xl">↓</div>
+                                <div>
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p>
+                                    <div className="flex items-center justify-center">
+                                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded.value} {result.shielded.unit}</p>
+                                        <CopyButton textToCopy={result.shielded.value} />
+                                    </div>
+                                    {useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}
+                                </div>
+                            </>}
+                           { result.type === 'thickness' && <>
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">To reduce from {result.unshielded.value} {result.unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p>
+                                <div className="flex items-center justify-center mt-2">
+                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} {result.thickness.unit}</p>
+                                    <CopyButton textToCopy={result.thickness.value} />
+                                </div>
+                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {useManualHVL ? 'custom material' : shieldMaterial}</p>
+                            </>}
+                           { result.type === 'genericRateFinal' && <>
+                                <div>
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p>
+                                    <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initial.value} {result.initial.unit}</p>
+                                </div>
+                                <div className="font-bold text-2xl">↓</div>
+                                <div>
+                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p>
+                                    <div className="flex items-center justify-center">
+                                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final.value} {result.final.unit}</p>
+                                        <CopyButton textToCopy={result.final.value} />
+                                    </div>
+                                </div>
+                            </>}
                            { result.type === 'beta' && <>
                                 <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Beta Shield Thickness</p>
-                                <p className="text-3xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.thickness.value} <span className="text-2xl opacity-75">{result.thickness.unit}</span></p>
+                                <div className="flex items-center justify-center my-1">
+                                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} <span className="text-2xl opacity-75">{result.thickness.unit}</span></p>
+                                    <CopyButton textToCopy={result.thickness.value} />
+                                </div>
                                 <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {shieldMaterial}</p>
                                 <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-xs text-amber-800 dark:text-amber-200 p-3 rounded-md bg-amber-100 dark:bg-amber-900/50">
                                     <p className="font-semibold">⚠️ Bremsstrahlung Warning</p>
@@ -7005,73 +7132,69 @@ addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${s
                     )}
                 </div>
             </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
          /**
          * @description A calculator for determining allowable stay time and total dose received.
          * The dose rate can be calculated from a specific source or entered manually.
          */
          
-         const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
-         const INPUT_MODE_SOURCE = 'fromSource';
-         const INPUT_MODE_MANUAL = 'manualRate';
-         
-         const { settings } = React.useContext(SettingsContext);
-         const { addHistory } = useCalculationHistory();
-         
-         // State for inputs
-         const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('stayTime_inputMode') || INPUT_MODE_SOURCE);
-         const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('stayTime_nuclideSymbol') || '');
-         const [activity, setActivity] = React.useState(() => localStorage.getItem('stayTime_activity') || '1');
-         const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('stayTime_activityUnit') || settings.activity);
-         const [distance, setDistance] = React.useState(() => localStorage.getItem('stayTime_distance') || '1');
-         const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('stayTime_distanceUnit') || settings.distance);
-         const [manualDoseRate, setManualDoseRate] = React.useState(() => localStorage.getItem('stayTime_manualDoseRate') || '10');
-         const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(() => localStorage.getItem('stayTime_manualDoseRateUnit') || settings.doseRate);
-         const [doseLimit, setDoseLimit] = React.useState(() => localStorage.getItem('stayTime_doseLimit') || '2');
-         const [plannedTime, setPlannedTime] = React.useState(() => localStorage.getItem('stayTime_plannedTime') || '10');
-         const [plannedTimeUnit, setPlannedTimeUnit] = React.useState(() => localStorage.getItem('stayTime_plannedTimeUnit') || 'minutes');
-         
-         // State for results
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1, 'dps': 1 / 3.7e10, 'dpm': 1 / (3.7e10 * 60) };
-         const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-         const timeFactors = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
-         const doseRateFactors = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-         const activityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci'];
-         const distanceUnits_ordered = ['mm', 'cm', 'm', 'in', 'ft'];
-         const doseRateUnits_ordered = ['µrem/hr', 'mrem/hr', 'rem/hr', 'µSv/hr', 'mSv/hr', 'Sv/hr'];
-         const timeUnits_ordered = ['minutes', 'hours', 'days'];
-         const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-         
-         React.useEffect(() => {
-         localStorage.setItem('stayTime_inputMode', inputMode);
-         localStorage.setItem('stayTime_nuclideSymbol', nuclideSymbol);
-         localStorage.setItem('stayTime_activity', activity);
-         localStorage.setItem('stayTime_activityUnit', activityUnit);
-         localStorage.setItem('stayTime_distance', distance);
-         localStorage.setItem('stayTime_distanceUnit', distanceUnit);
-         localStorage.setItem('stayTime_manualDoseRate', manualDoseRate);
-         localStorage.setItem('stayTime_manualDoseRateUnit', manualDoseRateUnit);
-         localStorage.setItem('stayTime_doseLimit', doseLimit);
-         localStorage.setItem('stayTime_plannedTime', plannedTime);
-         localStorage.setItem('stayTime_plannedTimeUnit', plannedTimeUnit);
-         }, [inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit]);
-         
-         React.useEffect(() => {
-         if (preselectedNuclide && gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
+const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const INPUT_MODE_SOURCE = 'fromSource';
+    const INPUT_MODE_MANUAL = 'manualRate';
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+
+    const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('stayTime_inputMode') || INPUT_MODE_SOURCE);
+    const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('stayTime_nuclideSymbol') || '');
+    const [activity, setActivity] = React.useState(() => localStorage.getItem('stayTime_activity') || '1');
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('stayTime_activityUnit') || settings.activity);
+    const [distance, setDistance] = React.useState(() => localStorage.getItem('stayTime_distance') || '1');
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('stayTime_distanceUnit') || settings.distance);
+    const [manualDoseRate, setManualDoseRate] = React.useState(() => localStorage.getItem('stayTime_manualDoseRate') || '10');
+    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(() => localStorage.getItem('stayTime_manualDoseRateUnit') || settings.doseRate);
+    const [doseLimit, setDoseLimit] = React.useState(() => localStorage.getItem('stayTime_doseLimit') || '2');
+    const [plannedTime, setPlannedTime] = React.useState(() => localStorage.getItem('stayTime_plannedTime') || '10');
+    const [plannedTimeUnit, setPlannedTimeUnit] = React.useState(() => localStorage.getItem('stayTime_plannedTimeUnit') || 'minutes');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1, 'dps': 1 / 3.7e10, 'dpm': 1 / (3.7e10 * 60) };
+    const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const timeFactors = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
+    const doseRateFactors = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const activityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci'];
+    const distanceUnits_ordered = ['mm', 'cm', 'm', 'in', 'ft'];
+    const doseRateUnits_ordered = ['µrem/hr', 'mrem/hr', 'rem/hr', 'µSv/hr', 'mSv/hr', 'Sv/hr'];
+    const timeUnits_ordered = ['minutes', 'hours', 'days'];
+    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+
+    React.useEffect(() => {
+        localStorage.setItem('stayTime_inputMode', inputMode);
+        localStorage.setItem('stayTime_nuclideSymbol', nuclideSymbol);
+        localStorage.setItem('stayTime_activity', activity);
+        localStorage.setItem('stayTime_activityUnit', activityUnit);
+        localStorage.setItem('stayTime_distance', distance);
+        localStorage.setItem('stayTime_distanceUnit', distanceUnit);
+        localStorage.setItem('stayTime_manualDoseRate', manualDoseRate);
+        localStorage.setItem('stayTime_manualDoseRateUnit', manualDoseRateUnit);
+        localStorage.setItem('stayTime_doseLimit', doseLimit);
+        localStorage.setItem('stayTime_plannedTime', plannedTime);
+        localStorage.setItem('stayTime_plannedTimeUnit', plannedTimeUnit);
+    }, [inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit]);
+
+    React.useEffect(() => {
+        if (preselectedNuclide && gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
             setNuclideSymbol(preselectedNuclide);
             setInputMode(INPUT_MODE_SOURCE);
-         }
-         }, [preselectedNuclide, gammaNuclides]);
-         
-         const handleCalculate = () => {
-         let doseRate_mrem_hr = 0;
-         try {
+        }
+    }, [preselectedNuclide, gammaNuclides]);
+
+    const handleCalculate = () => {
+        let doseRate_mrem_hr = 0;
+        try {
             if (inputMode === INPUT_MODE_SOURCE) {
                 const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
                 if (!nuclide) { throw new Error('Please select a radionuclide.'); }
@@ -7092,51 +7215,46 @@ addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${s
             const plannedTimeValue = parseFloat(plannedTime);
             if (isNaN(limit) || isNaN(plannedTimeValue) || limit <= 0 || plannedTimeValue < 0) { throw new Error('Please enter valid, positive numbers for dose limit and planned time.'); }
             if (doseRate_mrem_hr <= 0) { throw new Error('Dose rate must be greater than zero to calculate stay time.'); }
-         
             const stayTimeHours = limit / doseRate_mrem_hr;
             const totalMinutes = stayTimeHours * 60;
             const minutes = Math.floor(totalMinutes);
             const seconds = Math.round((totalMinutes - minutes) * 60);
-         
             const plannedTimeInHours = plannedTimeValue * timeFactors[plannedTimeUnit];
             const totalDoseReceived = doseRate_mrem_hr * plannedTimeInHours;
-         
             const isSafe = totalDoseReceived <= limit;
             setResult({ doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), stayTime: `${minutes} min ${seconds} sec`, totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'), isSafe: isSafe });
-            
-addHistory({ id: Date.now(), type: 'Stay Time', icon: ICONS.stopwatch, inputs: `${doseRate_mrem_hr.toPrecision(3)} mrem/hr, ${limit} mrem limit`, result: `${minutes} min ${seconds} sec`, view: VIEWS.STAY_TIME });
-
-         } catch(e) {
+            addHistory({ id: Date.now(), type: 'Stay Time', icon: ICONS.stopwatch, inputs: `${doseRate_mrem_hr.toPrecision(3)} mrem/hr, ${limit} mrem limit`, result: `${minutes} min ${seconds} sec`, view: VIEWS.STAY_TIME });
+        } catch(e) {
             setError(e.message);
             setResult(null);
-         }
-         };
-         
-         React.useEffect(() => {
-         setResult(null);
-         setError('');
-         if (inputMode === INPUT_MODE_SOURCE && !nuclideSymbol) { return; }
-         handleCalculate();
-         }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
-         
-         const handleClearInputs = () => {
-         setInputMode(INPUT_MODE_SOURCE);
-         setNuclideSymbol('');
-         setActivity('1');
-         setActivityUnit(settings.activity);
-         setDistance('1');
-         setDistanceUnit(settings.distance);
-         setManualDoseRate('10');
-         setManualDoseRateUnit(settings.doseRate);
-         setDoseLimit('2');
-         setPlannedTime('10');
-         setPlannedTimeUnit('minutes');
-         setError('');
-         setResult(null);
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        }
+    };
+
+    React.useEffect(() => {
+        setResult(null);
+        setError('');
+        if (inputMode === INPUT_MODE_SOURCE && !nuclideSymbol) { return; }
+        handleCalculate();
+    }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
+
+    const handleClearInputs = () => {
+        setInputMode(INPUT_MODE_SOURCE);
+        setNuclideSymbol('');
+        setActivity('1');
+        setActivityUnit(settings.activity);
+        setDistance('1');
+        setDistanceUnit(settings.distance);
+        setManualDoseRate('10');
+        setManualDoseRateUnit(settings.doseRate);
+        setDoseLimit('2');
+        setPlannedTime('10');
+        setPlannedTimeUnit('minutes');
+        setError('');
+        setResult(null);
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time & Dose Calculator</h2>
@@ -7187,12 +7305,22 @@ addHistory({ id: Date.now(), type: 'Stay Time', icon: ICONS.stopwatch, inputs: `
                             <div className="grid grid-cols-2 gap-4 text-center">
                                 <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
                                     <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
-                                    <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
+                                
+                                    <div className="flex items-center justify-center">
+                                        <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
+                                        <CopyButton textToCopy={result.stayTime} />
+                                    </div>
+                                
                                     <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
                                 </div>
                                 <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                                     <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
-                                    <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived.value} {result.totalDoseReceived.unit}</p>
+                              
+                                    <div className="flex items-center justify-center">
+                                        <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived.value} {result.totalDoseReceived.unit}</p>
+                                        <CopyButton textToCopy={result.totalDoseReceived.value} />
+                                    </div>
+                                 
                                     <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
                                 </div>
                             </div>
@@ -7201,9 +7329,9 @@ addHistory({ id: Date.now(), type: 'Stay Time', icon: ICONS.stopwatch, inputs: `
                     )}
                 </div>
             </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
          /**
          * Data and components for the Neutron Tools module.
@@ -7350,7 +7478,18 @@ const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputV
                 </div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.title}</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.displayValue} <span className="text-xl opacity-75">{result.unit}</span></p><p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Conversion Factor: {result.factor} {result.factorUnit}</p></div>)}
+            {result && (
+                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in">
+                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.title}</p>
+                    {/* --- MODIFIED BLOCK START --- */}
+                    <div className="flex items-center justify-center">
+                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.displayValue} <span className="text-xl opacity-75">{result.unit}</span></p>
+                        <CopyButton textToCopy={result.displayValue} />
+                    </div>
+                    {/* --- MODIFIED BLOCK END --- */}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Conversion Factor: {result.factor} {result.factorUnit}</p>
+                </div>
+            )}
         </div>
     );
 };
@@ -7432,7 +7571,10 @@ const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMa
             {result && (
                 <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in">
                     <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Activity of Produced {result.productName}</p>
-                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.activity_Ci} Ci</p>
+                    <div className="flex items-center justify-center my-1">
+                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.activity_Ci} Ci</p>
+                        <CopyButton textToCopy={result.activity_Ci} />
+                    </div>
                     <p className="text-md text-slate-600 dark:text-slate-300">({result.activity_Bq} Bq)</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Saturation: {result.saturation}% of maximum possible activity</p>
                 </div>
@@ -7557,7 +7699,24 @@ const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initial
                 <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(thicknessFactors_cm).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (<div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2 animate-fade-in"><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initialDose.value} {result.initialDose.unit}</p><p className="text-xs font-mono">({result.initialFlux} n/cm²·s)</p></div><div className="font-bold text-2xl">↓</div><div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.finalDose.value} {result.finalDose.unit}</p><p className="text-xs font-mono">({result.finalFlux} n/cm²·s)</p></div></div>)}
+            {result && (
+                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2 animate-fade-in">
+                    <div>
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded</p>
+                        <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initialDose.value} {result.initialDose.unit}</p>
+                        <p className="text-xs font-mono">({result.initialFlux} n/cm²·s)</p>
+                    </div>
+                    <div className="font-bold text-2xl">↓</div>
+                    <div>
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded</p>
+                        <div className="flex items-center justify-center">
+                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.finalDose.value} {result.finalDose.unit}</p>
+                            <CopyButton textToCopy={result.finalDose.value} />
+                        </div>
+                        <p className="text-xs font-mono">({result.finalFlux} n/cm²·s)</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -7707,8 +7866,6 @@ const NeutronCalculator = ({radionuclides}) => {
 const MDACalculator = () => {
     const MDA_MODE_STATIC = 'static';
     const MDA_MODE_SCAN = 'scan';
-    
-    // <-- ADD THIS HOOK -->
     const { addHistory } = useCalculationHistory();
 
     const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
@@ -7737,18 +7894,7 @@ const MDACalculator = () => {
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
     
-    const MDA_UNIT_CONFIG = {
-        'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] },
-        'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] },
-        'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] },
-        'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] },
-        'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] },
-        'mCi': { label: 'Activity (mCi)', category: 'Activity', requires: ['efficiency'] },
-        'Ci': { label: 'Activity (Ci)', category: 'Activity', requires: ['efficiency'] },
-        'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] },
-        'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] },
-        'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] }
-    };
+    const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'mCi': { label: 'Activity (mCi)', category: 'Activity', requires: ['efficiency'] }, 'Ci': { label: 'Activity (Ci)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
     const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6, 'mCi': 1 / 2.22e9, 'Ci': 1 / 2.22e12 };
     const confidenceOptions = [ { value: '1.282', label: '90%' }, { value: '1.645', label: '95%' }, { value: '2.326', label: '99%' } ];
     const dprimeOptions = [ { value: '0.4', label: '0.4 (Conservative)' }, { value: '1.0', label: '1.0 (Computer-aided GWS)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.38', label: '1.38 (95% detection prob.)' } ];
@@ -7796,16 +7942,7 @@ const MDACalculator = () => {
         else { throw new Error('Selected unit calculation not implemented.'); }
         const newResult = { type: 'static', LLD: LLD.toPrecision(3), MDA: finalMDA.toPrecision(3), backgroundActivity: finalBackground.toPrecision(3), unit: finalUnit };
         setResult(newResult);
-        
-        // <-- ADD THIS BLOCK -->
-        addHistory({
-            id: Date.now(),
-            type: 'Static MDA',
-            icon: ICONS.search,
-            inputs: `Bkg: ${params.Cb} counts, Sample Time: ${params.tg} min`,
-            result: `${newResult.MDA} ${newResult.unit}`,
-            view: VIEWS.MDA
-        });
+        addHistory({ id: Date.now(), type: 'Static MDA', icon: ICONS.search, inputs: `Bkg: ${params.Cb} counts, Sample Time: ${params.tg} min`, result: `${newResult.MDA} ${newResult.unit}`, view: VIEWS.MDA });
     };
     
     const handleScanCalculate = () => {
@@ -7828,16 +7965,7 @@ const MDACalculator = () => {
         const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
         const newResult = { type: 'scan', obs_interval: residence_time_s.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3), mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3), background_activity: background_activity.toPrecision(3) };
         setResult(newResult);
-
-        // <-- ADD THIS BLOCK -->
-        addHistory({
-            id: Date.now(),
-            type: 'Scan MDC',
-            icon: ICONS.search,
-            inputs: `Bkg: ${params.b_cpm} cpm, Speed: ${params.speed_cms} cm/s`,
-            result: `${newResult.scan_mda} dpm/100cm²`,
-            view: VIEWS.MDA
-        });
+        addHistory({ id: Date.now(), type: 'Scan MDC', icon: ICONS.search, inputs: `Bkg: ${params.b_cpm} cpm, Speed: ${params.speed_cms} cm/s`, result: `${newResult.scan_mda} dpm/100cm²`, view: VIEWS.MDA });
     };
     
     React.useEffect(() => {
@@ -7920,14 +8048,38 @@ const MDACalculator = () => {
                 {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
                 {result && (
                     <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
-                        {result.type === 'static' ? ( <><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">LLD:</span><span className="font-mono text-right">{result.LLD} net counts</span>{result.unit !== 'counts' && ( <span className="font-semibold text-slate-600 dark:text-slate-300">Background Equiv. Activity:</span> )}{result.unit !== 'counts' && ( <span className="font-mono text-right">{result.backgroundActivity} {result.unit}</span> )}</div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">{ result.unit === 'counts' ? 'Lower Limit of Detection (LLD)' : result.unit === 'cpm' ? 'Minimum Detectable Count Rate (MDCR)' : 'Minimum Detectable Activity/Conc.' }</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p></div></> ) : ( <div className="space-y-3"><h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3><div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">Observation Interval:</span><span className="font-mono text-right">{result.obs_interval} s</span><span className="font-semibold text-slate-600 dark:text-slate-300">Bkg. Counts in Interval:</span><span className="font-mono text-right">{result.bg_counts_in_interval} counts</span><span className="font-semibold text-slate-600 dark:text-slate-300">MDCR (Surveyor):</span><span className="font-mono text-right">{result.mdcr} cpm</span><span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.background_activity} dpm/100cm²</span></div><div className="text-center pt-2"><p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Scan MDC</p><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.scan_mda}</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p></div></div> )}
+                        {result.type === 'static' ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">LLD:</span><span className="font-mono text-right">{result.LLD} net counts</span>{result.unit !== 'counts' && ( <span className="font-semibold text-slate-600 dark:text-slate-300">Background Equiv. Activity:</span> )}{result.unit !== 'counts' && ( <span className="font-mono text-right">{result.backgroundActivity} {result.unit}</span> )}</div>
+                                <div className="text-center pt-2">
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">{ result.unit === 'counts' ? 'Lower Limit of Detection (LLD)' : result.unit === 'cpm' ? 'Minimum Detectable Count Rate (MDCR)' : 'Minimum Detectable Activity/Conc.' }</p>
+                                    <div className="flex items-center justify-center">
+                                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.MDA}</p>
+                                        <CopyButton textToCopy={result.MDA} />
+                                    </div>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <h3 className="text-lg font-bold text-center mb-2">Scan Survey Results</h3>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-left p-2 border-b border-slate-300 dark:border-slate-600"><span className="font-semibold text-slate-600 dark:text-slate-300">Observation Interval:</span><span className="font-mono text-right">{result.obs_interval} s</span><span className="font-semibold text-slate-600 dark:text-slate-300">Bkg. Counts in Interval:</span><span className="font-mono text-right">{result.bg_counts_in_interval} counts</span><span className="font-semibold text-slate-600 dark:text-slate-300">MDCR (Surveyor):</span><span className="font-mono text-right">{result.mdcr} cpm</span><span className="font-semibold text-slate-600 dark:text-slate-300">Background Activity:</span><span className="font-mono text-right">{result.background_activity} dpm/100cm²</span></div>
+                                <div className="text-center pt-2">
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Scan MDC</p>
+                                    <div className="flex items-center justify-center">
+                                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.scan_mda}</p>
+                                        <CopyButton textToCopy={result.scan_mda} />
+                                    </div>
+                                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">dpm/100 cm²</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
         </div>
     );
-};
-         
+};         
          /**
          * @description A calculator to determine the required number of statistical samples for a
          * survey unit based on the more precise MARSSIM Equation 5-2.
@@ -7935,7 +8087,6 @@ const MDACalculator = () => {
          
 
 const MARSSIM_SampleCalculator = () => {
-    // <-- MODIFIED: Add the useCalculationHistory hook -->
     const { addHistory } = useCalculationHistory();
 
     const [alpha, setAlpha] = React.useState(() => localStorage.getItem('marssim_alpha') || '0.05');
@@ -8025,11 +8176,9 @@ const MARSSIM_SampleCalculator = () => {
         const final_N = Math.ceil(N_with_overage);
         const samplesPerGroup = Math.ceil(final_N / 2);
         
-        // <-- MODIFIED: Create a result object first -->
         const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
         setResult(newResult);
         
-        // <-- MODIFIED: Add the history item after a successful calculation -->
         addHistory({
             id: Date.now(),
             type: 'MARSSIM Samples',
@@ -8088,7 +8237,6 @@ const MARSSIM_SampleCalculator = () => {
                             <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                         </div>
                     </div>
-                    
                     <details className="p-3 my-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
                         <summary className="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">
                             Scoping Data Helper
@@ -8111,7 +8259,6 @@ const MARSSIM_SampleCalculator = () => {
                             </button>
                         </div>
                     </details>
-                    
                     <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Number of Samples</button>
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                     {result && (
@@ -8129,7 +8276,10 @@ const MARSSIM_SampleCalculator = () => {
                             </div>
                             <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
                                 <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Recommended Samples</p>
-                                <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final_N}</p>
+                                <div className="flex items-center justify-center">
+                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final_N}</p>
+                                    <CopyButton textToCopy={result.final_N} />
+                                </div>
                                 <p className="text-xs font-medium text-slate-600 dark:text-slate-300">({result.N_base} base samples + 20% overage)</p>
                             </div>
                         </div>
@@ -8237,7 +8387,12 @@ const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime,
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
                     <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Corrected (True) Count Rate</p>
-                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{Math.round(result.trueCpm).toLocaleString()}</p>
+                    {/* --- MODIFIED BLOCK START --- */}
+                    <div className="flex items-center justify-center">
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{Math.round(result.trueCpm).toLocaleString()}</p>
+                        <CopyButton textToCopy={Math.round(result.trueCpm)} />
+                    </div>
+                    {/* --- MODIFIED BLOCK END --- */}
                     <p className="text-md font-medium text-slate-600 dark:text-slate-300">CPM</p>
                     <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
                         <p className={`font-semibold text-lg ${result.lossPercent > 20 ? 'text-red-500' : result.lossPercent > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.lossPercent.toFixed(1)}% Counts Lost</p>
@@ -8275,7 +8430,12 @@ const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setRe
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
                     <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Relative Percent Difference (RPD)</p>
-                    <p className={`text-3xl font-bold ${result.isGood ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
+                    {/* --- MODIFIED BLOCK START --- */}
+                    <div className="flex items-center justify-center">
+                        <p className={`text-3xl font-bold ${result.isGood ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
+                        <CopyButton textToCopy={result.rpd} />
+                    </div>
+                    {/* --- MODIFIED BLOCK END --- */}
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(A difference of ≤ 20% is often acceptable)</p>
                 </div>
             )}
@@ -8309,8 +8469,24 @@ const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUppe
             </div>
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in grid grid-cols-2 gap-4">
-                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">FWHM</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.fwhm} <span className="text-xl opacity-75">keV</span></p></div>
-                    <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.resolution}%</p></div>
+                    <div>
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">FWHM</p>
+                        {/* --- MODIFIED BLOCK START --- */}
+                        <div className="flex items-center justify-center">
+                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.fwhm} <span className="text-xl opacity-75">keV</span></p>
+                            <CopyButton textToCopy={result.fwhm} />
+                        </div>
+                        {/* --- MODIFIED BLOCK END --- */}
+                    </div>
+                    <div>
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resolution</p>
+                        {/* --- MODIFIED BLOCK START --- */}
+                        <div className="flex items-center justify-center">
+                            <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.resolution}%</p>
+                            <CopyButton textToCopy={result.resolution} />
+                        </div>
+                        {/* --- MODIFIED BLOCK END --- */}
+                    </div>
                 </div>
             )}
         </div>
