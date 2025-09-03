@@ -185,6 +185,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
 
+
       <script>
          // When the document is ready, add the 'visible' class to the #root element
          
@@ -8244,13 +8245,7 @@ const MARSSIM_SampleDesign = () => {
     );
 };
 
-
-
-
-
-
-
-    
+// --- Helper Functions from the User's Original Code ---
 /**
  * A helper function to calculate the area of a polygon using the Shoelace formula.
  * @param {Array<object>} latLngs - An array of Leaflet LatLng objects.
@@ -8288,7 +8283,8 @@ const isPointInPolygon = (point, polygonLatLngs) => {
 };
 
 
-// The new DrawingTool component
+// The updated DrawingTool component
+// The updated DrawingTool component
 const DrawingTool = ({ samplesToPlace }) => {
     const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
     const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
@@ -8301,20 +8297,20 @@ const DrawingTool = ({ samplesToPlace }) => {
     React.useEffect(() => {
         if (mapRef.current) return;
 
-        mapRef.current = L.map('marssim-map', { crs: L.CRS.Simple, minZoom: -5, maxZoom: 5 });
-        mapRef.current.setView([500, 500], -2);
-
+        const map = L.map('marssim-map', { crs: L.CRS.Simple, minZoom: -5, maxZoom: 5 });
+        map.setView([500, 500], 3); // Changed zoom level from -2 to 3
+        
         drawnItemsRef.current = new L.FeatureGroup();
-        mapRef.current.addLayer(drawnItemsRef.current);
+        map.addLayer(drawnItemsRef.current);
 
         samplePointsLayerRef.current = new L.FeatureGroup();
-        mapRef.current.addLayer(samplePointsLayerRef.current);
+        map.addLayer(samplePointsLayerRef.current);
 
         const drawControl = new L.Control.Draw({
             draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
             edit: { featureGroup: drawnItemsRef.current }
         });
-        mapRef.current.addControl(drawControl);
+        map.addControl(drawControl);
 
         const onDrawCreate = (e) => {
             const layer = e.layer;
@@ -8333,8 +8329,10 @@ const DrawingTool = ({ samplesToPlace }) => {
             });
         };
 
-        mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
-        mapRef.current.on(L.Draw.Event.EDITED, onDrawEdit);
+        map.on(L.Draw.Event.CREATED, onDrawCreate);
+        map.on(L.Draw.Event.EDITED, onDrawEdit);
+
+        mapRef.current = map;
 
         return () => {
             if (mapRef.current) {
@@ -8390,6 +8388,11 @@ const DrawingTool = ({ samplesToPlace }) => {
         setSurveyUnitArea(0);
         setPlottedPoints([]);
     };
+    
+    const backgroundPatternStyle = {
+      backgroundImage: "repeating-linear-gradient(45deg, #ccc 0px, #ccc 1px, transparent 1px, transparent 10px), repeating-linear-gradient(-45deg, #ccc 0px, #ccc 1px, transparent 1px, transparent 10px)",
+      backgroundSize: "20px 20px"
+    };
 
     return (
         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
@@ -8400,7 +8403,11 @@ const DrawingTool = ({ samplesToPlace }) => {
                 </button>
             </div>
             
-            <div id="marssim-map" className="w-full h-[50vh] my-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600"></div>
+            <div 
+                id="marssim-map" 
+                className="w-full h-[50vh] my-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600"
+                style={backgroundPatternStyle}
+            ></div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
@@ -8425,8 +8432,6 @@ const DrawingTool = ({ samplesToPlace }) => {
         </div>
     );
 };
-
-
          /**
          * @description A calculator to determine the required number of statistical samples for a
          * survey unit based on the more precise MARSSIM Equation 5-2.
@@ -8526,7 +8531,9 @@ const DrawingTool = ({ samplesToPlace }) => {
 
          setResult(newResult);
 
-
+if (onSamplesCalculated) {
+    onSamplesCalculated(final_N); 
+}
          
          addHistory({
             id: Date.now(),
