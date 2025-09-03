@@ -699,7 +699,7 @@
          //==============================================================================
          
          const VERSION = '3.3.8';
-         const LAST_UPDATED = 'September 02, 2025';
+         const LAST_UPDATED = 'September 03, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -1213,6 +1213,18 @@
              recurse(chain);
              return flatChain;
          };
+
+/**
+ * Formats a number for compact display on mobile screens.
+ * Rounds to 3 significant figures and handles special cases.
+ * @param {number} num - The number to format.
+ * @returns {string} The compacted, formatted string.
+ */
+const formatForMobile = (num) => {
+    if (num === null || num === undefined || isNaN(num) || num === Infinity) return 'N/A';
+    if (num === 0) return '0';
+    return num.toPrecision(3);
+};
          
          /**
           * Parses a half-life string (e.g., "1600 years") into a total number of seconds.
@@ -2558,43 +2570,48 @@
          const [memory, setMemory] = React.useState(0);
          const { addToast } = useToast();
          
-         const handleInput = (value) => setExpression(prev => prev + value);
+         const handleInput = (value) => {
+    setExpression(prev => (prev === '' && result ? result : prev) + value);
+    setResult('');
+};
+
          const handleClear = () => { setExpression(''); setResult(''); };
          const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
          
-         const handleCalculate = () => {
-         if (!expression) return;
-         try {
-            const evalResult = math.evaluate(expression);
-            const resultStr = evalResult.toString();
-            setResult(resultStr);
-            setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
-            setExpression(resultStr);
-         } catch (e) {
-            setResult(e.message || 'Error');
-            setExpression('');
-         }
-         };
+const handleCalculate = () => {
+    if (!expression) return;
+    try {
+        const evalResult = math.evaluate(expression);
+        const resultStr = evalResult.toString();
+        setResult(resultStr);
+        setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
+        setExpression(''); // This line is changed
+    } catch (e) {
+        setResult(e.message || 'Error');
+        setExpression('');
+    }
+};
          
          const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
          const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
          const handleMemoryAdd = () => {
          try {
-            const currentValue = math.evaluate(expression || '0');
+            const currentValue = math.evaluate(expression || '\u00A0');
             const newMemory = memory + currentValue;
             setMemory(newMemory);
             addToast(`Added to memory. New value: ${newMemory}`);
          } catch { addToast('Invalid expression to add to memory'); }
          };
          
-         const handleConversion = (factor, fromUnit, toUnit) => {
-         try {
-            const currentValue = math.evaluate(expression || '0');
-            const convertedValue = currentValue * factor;
-            setExpression(convertedValue.toString());
-            setResult(`${convertedValue.toExponential(3)} ${toUnit}`);
-         } catch { setResult('Error'); setExpression(''); }
-         };
+const handleConversion = (factor, fromUnit, toUnit) => {
+    try {
+        const currentValue = math.evaluate(expression || '\u00A0');
+        const convertedValue = currentValue * factor;
+        setExpression(convertedValue.toString());
+        addToast(`Converted to ${toUnit}`); // Provide feedback
+        // The setResult(...) line is now removed.
+    } catch { setResult('Error'); setExpression(''); }
+};
          
          const handleConstant = (name, value) => {
          setExpression(prev => prev + value.toString());
@@ -2637,7 +2654,7 @@
                     <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
                         {history.map((item, index) => <div key={index}>{item}</div>)}
                     </div>
-                    <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '0'}</div>
+                    <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
                    
                     <div className="flex justify-end items-center h-10">
                         <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
@@ -6477,7 +6494,7 @@
          
                                                      if(prop.type === 'numeric') {
                                                          const numericVal = parseFloat(formattedValue);
-                                                         displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toExponential(2);
+let displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6);
                                                          if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
                                                          if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
                                                      }
@@ -6495,15 +6512,22 @@
                                                          }
                                                      }
          
+const mobileDisplayValue = formatForMobile(numericVal);
+
                                                      cellContent = (
-                                                         <>
-                                                             {prop.type === 'numeric' && barWidth > 0 && <div className="absolute left-0 top-0 h-full bg-slate-200 dark:bg-slate-700/50 opacity-50" style={{ width: `${barWidth}%` }}></div>}
-                                                             <div className="relative">
-                                                                 <span>{displayValue}</span>
-                                                                 {differenceTag}
-                                                             </div>
-                                                         </>
-                                                     );
+    <>
+        {prop.type === 'numeric' && barWidth > 0 && <div className="absolute ..." style={{ width: `${barWidth}%` }}></div>}
+        <div className="relative">
+            {/* This span is ONLY visible on mobile (md:hidden) */}
+            <span className="md:hidden">{mobileDisplayValue}</span>
+            
+            {/* This span is HIDDEN on mobile and visible on medium screens and up (hidden md:inline) */}
+            <span className="hidden md:inline">{displayValue}</span>
+            
+            {differenceTag}
+        </div>
+    </>
+);
                                                  }
          
                                                  return (
