@@ -2582,7 +2582,7 @@ const handleCalculate = () => {
     if (!expression) return;
     try {
         const evalResult = math.evaluate(expression);
-        const resultStr = evalResult.toString();
+        const resultStr = math.format(evalResult, { precision: 8 });
         setResult(resultStr);
         setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
         setExpression(''); // This line is changed
@@ -6494,7 +6494,7 @@ const handleConversion = (factor, fromUnit, toUnit) => {
          
                                                      if(prop.type === 'numeric') {
                                                          const numericVal = parseFloat(formattedValue);
-let displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6);
+
                                                          if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
                                                          if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
                                                      }
@@ -6512,18 +6512,22 @@ let displayValue = isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numeri
                                                          }
                                                      }
          
-const mobileDisplayValue = formatForMobile(numericVal);
+
 
                                                      cellContent = (
     <>
         {prop.type === 'numeric' && barWidth > 0 && <div className="absolute ..." style={{ width: `${barWidth}%` }}></div>}
         <div className="relative">
-            {/* This span is ONLY visible on mobile (md:hidden) */}
-            <span className="md:hidden">{mobileDisplayValue}</span>
+            {/* Mobile view: Formats to 3 significant figures */}
+            <span className="md:hidden">
+                {formatForMobile(numericVal)}
+            </span>
             
-            {/* This span is HIDDEN on mobile and visible on medium screens and up (hidden md:inline) */}
-            <span className="hidden md:inline">{displayValue}</span>
-            
+            {/* Desktop view: Formats to 6 significant figures */}
+            <span className="hidden md:inline">
+                {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6)}
+            </span>
+
             {differenceTag}
         </div>
     </>
