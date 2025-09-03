@@ -2582,7 +2582,7 @@ const handleCalculate = () => {
     if (!expression) return;
     try {
         const evalResult = math.evaluate(expression);
-        const resultStr = math.format(evalResult, { precision: 12 });
+        const resultStr = math.format(evalResult, { precision: 6 });
         setResult(resultStr);
         setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
         setExpression(''); // This line is changed
