@@ -8195,15 +8195,23 @@ case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
          );
          }; 
      
-
-
-
 const MARSSIM_SampleDesign = () => {
     // This state is shared between the two child components
     const [numberOfSamples, setNumberOfSamples] = React.useState(null);
+    const [manualSampleCount, setManualSampleCount] = React.useState('');
     
     // State to track which module is currently visible
     const [activeModule, setActiveModule] = React.useState('calculator'); // Start with the calculator
+
+    const handleSetManualSamples = () => {
+        const count = parseInt(manualSampleCount, 10);
+        if (!isNaN(count) && count > 0) {
+            setNumberOfSamples(count);
+        } else {
+            setNumberOfSamples(null); // Clear invalid input
+            alert('Please enter a valid number greater than 0.');
+        }
+    };
 
     return (
         <div className="p-4 animate-fade-in">
@@ -8233,7 +8241,38 @@ const MARSSIM_SampleDesign = () => {
                 {/* --- Conditional rendering of the active module --- */}
                 <div>
                     {activeModule === 'calculator' && (
-                        <MARSSIM_SampleCalculator onSamplesCalculated={setNumberOfSamples} />
+                        <>
+                            {/* --- The original calculator component --- */}
+                            <MARSSIM_SampleCalculator onSamplesCalculated={setNumberOfSamples} />
+
+                            {/* --- NEW: Manual input alternative --- */}
+                            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                                <h3 className="text-lg font-bold">Manual Sample Input</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                                    Alternatively, you can manually enter the desired number of samples.
+                                </p>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number"
+                                        value={manualSampleCount}
+                                        onChange={e => setManualSampleCount(e.target.value)}
+                                        placeholder="e.g., 20"
+                                        className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"
+                                    />
+                                    <button 
+                                        onClick={handleSetManualSamples}
+                                        className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition"
+                                    >
+                                        Set Samples
+                                    </button>
+                                </div>
+                                {numberOfSamples > 0 && (
+                                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                                        Sample count set to: {numberOfSamples}. You can now switch to the "Draw & Plot Samples" tab.
+                                    </p>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {activeModule === 'drawing' && (
@@ -8245,7 +8284,6 @@ const MARSSIM_SampleDesign = () => {
     );
 };
 
-// --- Helper Functions from the User's Original Code ---
 /**
  * A helper function to calculate the area of a polygon using the Shoelace formula.
  * @param {Array<object>} latLngs - An array of Leaflet LatLng objects.
@@ -8284,7 +8322,6 @@ const isPointInPolygon = (point, polygonLatLngs) => {
 
 
 // The updated DrawingTool component
-// The updated DrawingTool component
 const DrawingTool = ({ samplesToPlace }) => {
     const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
     const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
@@ -8298,7 +8335,7 @@ const DrawingTool = ({ samplesToPlace }) => {
         if (mapRef.current) return;
 
         const map = L.map('marssim-map', { crs: L.CRS.Simple, minZoom: -5, maxZoom: 5 });
-        map.setView([500, 500], 3); // Changed zoom level from -2 to 3
+        map.setView([500, 500], 0);
         
         drawnItemsRef.current = new L.FeatureGroup();
         map.addLayer(drawnItemsRef.current);
@@ -8307,19 +8344,35 @@ const DrawingTool = ({ samplesToPlace }) => {
         map.addLayer(samplePointsLayerRef.current);
 
         const drawControl = new L.Control.Draw({
-            draw: { polygon: true, rectangle: true, circle: false, marker: false, polyline: false, circlemarker: false },
+            draw: {
+                polygon: true,
+                rectangle: true,
+                circle: false,
+                marker: true, // This is now set to true to allow manual sample input
+                polyline: false,
+                circlemarker: false
+            },
             edit: { featureGroup: drawnItemsRef.current }
         });
         map.addControl(drawControl);
 
         const onDrawCreate = (e) => {
             const layer = e.layer;
-            drawnItemsRef.current.clearLayers();
-            samplePointsLayerRef.current.clearLayers();
-            drawnItemsRef.current.addLayer(layer);
-            setSurveyUnitLayer(layer);
-            setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
-            setPlottedPoints([]);
+            const layerType = e.layerType;
+
+            if (layerType === 'marker') {
+                // For a new sample point: add to the samples layer and update state
+                layer.addTo(samplePointsLayerRef.current);
+                setPlottedPoints(prevPoints => [...prevPoints, layer.getLatLng()]);
+            } else {
+                // For a new survey unit: clear old one, add new, and update state
+                drawnItemsRef.current.clearLayers();
+                samplePointsLayerRef.current.clearLayers();
+                drawnItemsRef.current.addLayer(layer);
+                setSurveyUnitLayer(layer);
+                setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
+                setPlottedPoints([]);
+            }
         };
 
         const onDrawEdit = (e) => {
@@ -8394,6 +8447,8 @@ const DrawingTool = ({ samplesToPlace }) => {
       backgroundSize: "20px 20px"
     };
 
+    const isDrawingToolReady = !!surveyUnitLayer;
+
     return (
         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
             <div className="flex justify-between items-center mb-4">
@@ -8405,9 +8460,20 @@ const DrawingTool = ({ samplesToPlace }) => {
             
             <div 
                 id="marssim-map" 
-                className="w-full h-[50vh] my-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600"
+                className="relative w-full h-[50vh] my-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600"
                 style={backgroundPatternStyle}
-            ></div>
+            >
+                {/* The conditional instructional message */}
+                {!isDrawingToolReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white z-10 p-4 rounded-lg text-center">
+                        <p className="text-lg font-semibold">
+                            Please use the drawing tools on the left to define a survey unit.
+                            <br />
+                            You can also manually add individual samples with the marker tool.
+                        </p>
+                    </div>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
@@ -8423,15 +8489,16 @@ const DrawingTool = ({ samplesToPlace }) => {
             <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                 <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <button onClick={() => handleGenerateSamples('square')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
-                    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
-                    <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+                    <button onClick={() => handleGenerateSamples('square')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Square Grid</button>
+                    <button onClick={() => handleGenerateSamples('triangular')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Triangular Grid</button>
+                    <button onClick={() => handleGenerateSamples('random')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Random</button>
                 </div>
             </div>
              <p className="text-center font-bold mt-4">Plotted {plottedPoints.length} sample points.</p>
         </div>
     );
 };
+
          /**
          * @description A calculator to determine the required number of statistical samples for a
          * survey unit based on the more precise MARSSIM Equation 5-2.
