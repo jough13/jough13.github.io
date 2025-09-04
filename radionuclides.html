@@ -176,6 +176,14 @@
          .animate-toast-in {
          animation: toast-in 0.3s ease-out forwards;
          }
+
+         .leaflet-container .leaflet-overlay-pane svg path {
+             stroke: #3388ff;  /* Standard Leaflet blue */
+             stroke-width: 3;
+             stroke-opacity: 1;
+             fill-opacity: 0.2;
+             fill: #3388ff;
+         }
       </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -184,7 +192,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
 
       <script>
          // When the document is ready, add the 'visible' class to the #root element
@@ -195,7 +203,6 @@
          });
       </script
          >
-
 
 
    </head>
@@ -697,6 +704,7 @@
          
       </script>
       <script type="text/babel">
+
          /**
           * Radionuclide Database Tool - Core Data and Utility Functions
           * -----------------------------------------------------------
@@ -710,8 +718,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.4';
-         const LAST_UPDATED = 'September 03, 2025';
+         const VERSION = '3.5';
+         const LAST_UPDATED = 'September 04, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -743,6 +751,7 @@
          LAB_STATS: 'labStats',
          SCRATCHPAD: 'scratchpad',
          SCIENTIFIC_CALCULATOR: 'scientificCalculator',
+
          REFERENCES: 'references'
          };
          
@@ -861,7 +870,30 @@
          };
          
          const THERAPY_NUCLIDES = ['I-131', 'Lu-177', 'Sm-153', 'Ra-223', 'Ho-166', 'Re-186', 'Au-198', 'I-125', 'Cs-137'];
-         
+  
+   /**
+ * Calculates the area of a polygon given its geographical coordinates.
+ * @param {L.LatLng[]} latLngs - An array of Leaflet LatLng objects.
+ * @returns {number} The area in square meters.
+ */
+const calculatePolygonArea = (latLngs) => {
+    if (!latLngs || latLngs.length === 0 || latLngs[0].length < 3) return 0;
+
+    const points = latLngs[0];
+    const earthRadius = 6378137; // Earth's radius in meters
+    let area = 0;
+
+    for (let i = 0; i < points.length; i++) {
+        const j = (i + 1) % points.length;
+        const xi = points[i].lng * Math.PI / 180;
+        const yi = points[i].lat * Math.PI / 180;
+        const xj = points[j].lng * Math.PI / 180;
+        const yj = points[j].lat * Math.PI / 180;
+
+        area += (xj - xi) * (2 + Math.sin(yi) + Math.sin(yj));
+    }
+    return Math.abs(area * earthRadius * earthRadius / 2.0);
+}; 
          
          const REG_GUIDE_1_86_LIMITS = {
          'transuranics': { removable: 20, total: 100, label: 'Transuranics, Ra-226, Ra-228, Th-230, etc.' },
@@ -2226,6 +2258,7 @@ const formatForMobile = (num) => {
         { id: VIEWS.LAB_STATS, label: 'Lab Stats', icon: ICONS.labStats },
         { id: VIEWS.PEAK_ID, label: 'Peak ID', icon: ICONS.gammaSpec },
         { id: VIEWS.MEDICAL, label: 'Medical', icon: ICONS.medical },
+	
         { id: VIEWS.SCRATCHPAD, label: 'Scratchpad', icon: ICONS.notepad },
         { id: VIEWS.SCIENTIFIC_CALCULATOR, label: 'Sci. Calculator', icon: ICONS.scientificCalculator },
         { id: VIEWS.REFERENCES, label: 'References', icon: ICONS.references }
@@ -2606,22 +2639,24 @@ const handleCalculate = () => {
          
          const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
          const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
-         const handleMemoryAdd = () => {
-         try {
-            const currentValue = math.evaluate(expression || '\u00A0');
-            const newMemory = memory + currentValue;
-            setMemory(newMemory);
-            addToast(`Added to memory. New value: ${newMemory}`);
-         } catch { addToast('Invalid expression to add to memory'); }
-         };
+
+const handleMemoryAdd = () => {
+    try {
+        const currentValue = parseFloat(expression || '0');
+        if (isNaN(currentValue)) throw new Error();
+        const newMemory = memory + currentValue;
+        setMemory(newMemory);
+        addToast(`Added to memory. New value: ${newMemory}`);
+    } catch { addToast('Invalid expression to add to memory'); }
+};
          
 const handleConversion = (factor, fromUnit, toUnit) => {
     try {
-        const currentValue = math.evaluate(expression || '\u00A0');
+        const currentValue = parseFloat(expression || '0');
+        if (isNaN(currentValue)) throw new Error();
         const convertedValue = currentValue * factor;
         setExpression(convertedValue.toString());
-        addToast(`Converted to ${toUnit}`); // Provide feedback
-        // The setResult(...) line is now removed.
+        addToast(`Converted to ${toUnit}`);
     } catch { setResult('Error'); setExpression(''); }
 };
          
@@ -6150,6 +6185,8 @@ case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
              case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
              case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
              case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+
+case VIEWS.MAP_TOOL: return <DrawingTool />;
             
          case  VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
              
@@ -8195,30 +8232,500 @@ case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
          );
          }; 
      
-const MARSSIM_SampleDesign = () => {
-    // This state is shared between the two child components
-    const [numberOfSamples, setNumberOfSamples] = React.useState(null);
-    const [manualSampleCount, setManualSampleCount] = React.useState('');
-    
-    // State to track which module is currently visible
-    const [activeModule, setActiveModule] = React.useState('calculator'); // Start with the calculator
 
-    const handleSetManualSamples = () => {
-        const count = parseInt(manualSampleCount, 10);
-        if (!isNaN(count) && count > 0) {
-            setNumberOfSamples(count);
-        } else {
-            setNumberOfSamples(null); // Clear invalid input
-            alert('Please enter a valid number greater than 0.');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         /**
+         * @description A calculator to determine the required number of statistical samples for a
+         * survey unit based on the more precise MARSSIM Equation 5-2.
+         */
+           
+const MARSSIM_SampleCalculator = () => {
+    const { addHistory } = useCalculationHistory();
+    
+    const [alpha, setAlpha] = React.useState('0.05');
+    const [beta, setBeta] = React.useState('0.05');
+    const [sigma, setSigma] = React.useState('15');
+    const [dcgl, setDcgl] = React.useState('100');
+    const [lbgr, setLbgr] = React.useState('50');
+    const [cv, setCv] = React.useState('0.3');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const zScores = {
+        '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
+        '0.10': 1.282, '0.20': 0.841,
+    };
+    
+    const prValues = {
+        0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
+        0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
+        1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
+        1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
+        2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
+        4: 0.997658
+    };
+
+    const handleClearInputs = () => {
+        setAlpha('0.05');
+        setBeta('0.05');
+        setSigma('15');
+        setDcgl('100');
+        setLbgr('50');
+        setCv('0.3');
+        setResult(null);
+        setError('');
+    };
+
+    React.useEffect(() => {
+        handleClearInputs();
+    }, []);
+
+    React.useEffect(() => {
+        localStorage.setItem('marssim_alpha', alpha);
+        localStorage.setItem('marssim_beta', beta);
+        localStorage.setItem('marssim_sigma', sigma);
+        localStorage.setItem('marssim_dcgl', dcgl);
+        localStorage.setItem('marssim_lbgr', lbgr);
+        localStorage.setItem('marssim_cv', cv);
+    }, [alpha, beta, sigma, dcgl, lbgr, cv]);
+    
+    const handleCalculateSigma = () => {
+        const dcgl_val = parseFloat(dcgl);
+        const cv_val = parseFloat(cv);
+        if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
+           setSigma((dcgl_val * cv_val).toPrecision(3));
         }
     };
+    
+    const handleSetLbgr = () => {
+        const dcgl_val = parseFloat(dcgl);
+        if (!isNaN(dcgl_val)) {
+           setLbgr((dcgl_val * 0.5).toPrecision(3));
+        }
+    };
+    
+    const handleCalculate = () => {
+        const sigma_val = parseFloat(sigma);
+        const dcgl_val = parseFloat(dcgl);
+        const lbgr_val = parseFloat(lbgr);
+        if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
+           setError('Please enter valid, positive numbers for all fields.');
+           setResult(null); return;
+        }
+        if (dcgl_val <= lbgr_val) {
+           setError('DCGL must be greater than the LBGR.');
+           setResult(null); return;
+        }
+        setError('');
+        const z1_alpha = zScores[alpha];
+        const z1_beta = zScores[beta];
+        const delta = dcgl_val - lbgr_val;
+        const relativeShift = delta / sigma_val;
+        const shiftKeys = Object.keys(prValues).map(parseFloat);
+        let Pr;
+        if (relativeShift >= 4) {
+           Pr = 1;
+        } else {
+           const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
+           const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
+           if (isFinite(lowerKey) && isFinite(upperKey)) {
+               const lowerP = prValues[lowerKey];
+               const upperP = prValues[upperKey];
+               const slope = (upperP - lowerP) / (upperKey - lowerKey);
+               Pr = lowerP + slope * (relativeShift - lowerKey);
+           } else {
+                setError(`Relative shift (${relativeShift.toFixed(2)}) is outside the table's range.`);
+                setResult(null); return;
+           }
+        }
+        const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
+        const N_base = Math.ceil(N_base_raw);
+        const N_with_overage = N_base * 1.2;
+        const final_N = Math.ceil(N_with_overage);
+        const samplesPerGroup = Math.ceil(final_N / 2);
+        
+        const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
+
+        setResult(newResult);
+        
+        addHistory({
+           id: Date.now(),
+           type: 'MARSSIM Samples',
+           icon: ICONS.calculator,
+           inputs: `Δ/σ: ${newResult.relativeShift}, α: ${alpha}, β: ${beta}`,
+           result: `${newResult.final_N} samples`,
+           view: VIEWS.MARSSIM_SAMPLES
+        });
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+           <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+               <div className="flex justify-between items-center mb-1">
+                   <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Number of Samples Calculator</h2>
+                   <ClearButton onClick={handleClearInputs} />
+               </div>
+               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Using the WRS Test and Table 5.2 Interpolation.</p>
+               <div className="space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                       <div>
+                           <label className="block text-sm font-medium">Type I Error (α)</label>
+                           <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                               {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                           </select>
+                       </div>
+                       <div>
+                           <label className="block text-sm font-medium">Type II Error (β)</label>
+                           <select value={beta} onChange={e => setBeta(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                              {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                           </select>
+                       </div>
+                   </div>
+                   <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <div>
+                           <label className="block text-sm font-medium">Estimated Standard Deviation (σ)</label>
+                           <input type="number" value={sigma} onChange={e => setSigma(e.target.value)} placeholder="in units of DCGL" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                       </div>
+                       <div>
+                           <label className="block text-sm font-medium">DCGL</label>
+                           <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} placeholder="Cleanup limit" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                       </div>
+                        <div>
+                           <label className="block text-sm font-medium">Lower Bound of Gray Region (LBGR)</label>
+                           <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                       </div>
+                   </div>
+                   <details className="p-3 my-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
+                       <summary className="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">
+                           Scoping Data Helper
+                       </summary>
+                       <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                           <p className="text-xs text-slate-500 dark:text-slate-400">
+                               Use these helpers to estimate input parameters based on the DCGL.
+                           </p>
+                           <div className="flex items-end gap-2">
+                               <div className="flex-grow">
+                                   <label className="block text-xs font-medium">Coefficient of Variation (CV)</label>
+                                   <input type="number" value={cv} onChange={e => setCv(e.target.value)} step="0.05" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700"/>
+                               </div>
+                               <button onClick={handleCalculateSigma} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
+                                   Calculate σ
+                               </button>
+                           </div>
+                           <button onClick={handleSetLbgr} className="w-full px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
+                               Set LBGR to 50% of DCGL
+                           </button>
+                       </div>
+                   </details>
+                   <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Number of Samples</button>
+                   {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                   {result && (
+                       <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                               <p className="font-semibold text-slate-500 dark:text-slate-400">Total Shift (Δ):</p><p className="font-mono">{result.totalShift}</p>
+                               <p className="font-semibold text-slate-500 dark:text-slate-400">Relative Shift (Δ/σ):</p><p className="font-mono">{result.relativeShift}</p>
+                               <p className="font-semibold text-slate-500 dark:text-slate-400">Probability (Pᵣ):</p><p className="font-mono">{result.Pr}</p>
+                               <p className="font-semibold text-slate-500 dark:text-slate-400">Z₁₋ₐ:</p><p className="font-mono">{result.zAlpha}</p>
+                               <p className="font-semibold text-slate-500 dark:text-slate-400">Z₁₋ᵦ:</p><p className="font-mono">{result.zBeta}</p>
+                            </div>
+                            <div>
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Samples per Group (N/2)</p>
+                               <p className="text-lg font-bold">{result.samplesPerGroup}</p>
+                           </div>
+                           <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Recommended Samples</p>
+                               <div className="flex items-center justify-center">
+                                   <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final_N}</p>
+                                   <CopyButton textToCopy={result.final_N} />
+                               </div>
+                               <p className="text-xs font-medium text-slate-600 dark:text-slate-300">({result.N_base} base samples + 20% overage)</p>
+                           </div>
+                       </div>
+                   )}
+               </div>
+           </div>
+        </div>
+    );
+};
+         
+
+const DrawingTool = ({ isVisible }) => {
+    const mapRef = React.useRef(null);
+    const drawnItemsRef = React.useRef(null);
+    const samplePointsLayerRef = React.useRef(null);
+    
+    const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
+    const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
+    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
+    const [plottedPoints, setPlottedPoints] = React.useState([]);
+
+    const isPointInPolygon = (point, polygonLatLngs) => {
+        const polyPoints = polygonLatLngs[0];
+        const x = point.lat, y = point.lng;
+        
+        let inside = false;
+        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+            const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
+            const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
+            
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    };
+
+    const onDrawCreate = (e) => {
+        const { layer, layerType } = e;
+
+        if (layerType === 'polygon' || layerType === 'rectangle') {
+            drawnItemsRef.current.clearLayers();
+            samplePointsLayerRef.current.clearLayers();
+            drawnItemsRef.current.addLayer(layer);
+            setSurveyUnitLayer(layer);
+            setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
+            setPlottedPoints([]);
+        } else if (layerType === 'marker') {
+            samplePointsLayerRef.current.addLayer(layer);
+            const point = { 
+                lat: layer.getLatLng().lat, 
+                lng: layer.getLatLng().lng, 
+                type: 'Biased'
+            };
+            setPlottedPoints(prevPoints => [...prevPoints, point]);
+        }
+    };
+
+    const handleGenerateSamples = (pattern) => {
+        if (!surveyUnitLayer) {
+            alert("Please draw a survey unit boundary first.");
+            return;
+        }
+        
+        samplePointsLayerRef.current.clearLayers();
+        const newPoints = [];
+        const latLngs = surveyUnitLayer.getLatLngs();
+        const bounds = surveyUnitLayer.getBounds();
+
+        if (pattern === 'random') {
+            while (newPoints.length < samplesToPlace) {
+                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                const point = { lat, lng };
+                if (isPointInPolygon(point, latLngs)) {
+                    newPoints.push(point);
+                }
+            }
+        } else {
+            const geographicArea = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
+            const spacing = Math.sqrt(geographicArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
+            let row = 0;
+            for (let lat = bounds.getSouth(); lat < bounds.getNorth(); lat += spacing * (pattern === 'triangular' ? 0.866 : 1)) {
+                const lngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacing / 2 : 0;
+                for (let lng = bounds.getWest() + lngOffset; lng < bounds.getEast(); lng += spacing) {
+                    const point = { lat, lng };
+                    if (isPointInPolygon(point, latLngs)) {
+                        newPoints.push(point);
+                    }
+                }
+                row++;
+            }
+        }
+
+        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+        
+        setPlottedPoints(pointsWithTypes);
+        pointsWithTypes.forEach(p => {
+            L.circleMarker([p.lat, p.lng], { radius: 4, color: '#dc2626' }).addTo(samplePointsLayerRef.current);
+        });
+    };
+    
+    const handleExport = () => {
+        if (plottedPoints.length === 0 || !surveyUnitLayer) {
+            alert("Please draw a survey unit and place sample points before exporting.");
+            return;
+        }
+
+        const origin = surveyUnitLayer.getBounds().getSouthWest();
+
+        const dataForExport = plottedPoints.map((point, index) => {
+            const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
+            const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
+
+            return {
+                sampleNumber: index + 1,
+                type: point.type,
+                latitude: point.lat.toFixed(6),
+                longitude: point.lng.toFixed(6),
+                xDistance: xDistance.toFixed(2),
+                yDistance: yDistance.toFixed(2)
+            };
+        });
+
+        const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
+        const csvRows = [headers.join(',')];
+        dataForExport.forEach(row => {
+            csvRows.push(Object.values(row).join(','));
+        });
+        const csvContent = csvRows.join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "survey_sample_points.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+    
+    React.useEffect(() => {
+        if (mapRef.current) return;
+        mapRef.current = L.map('marssim-map');
+        mapRef.current.setView([37.207, -76.51], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapRef.current);
+        
+        drawnItemsRef.current = new L.FeatureGroup();
+        samplePointsLayerRef.current = new L.FeatureGroup();
+        mapRef.current.addLayer(drawnItemsRef.current);
+        mapRef.current.addLayer(samplePointsLayerRef.current);
+
+        const drawControl = new L.Control.Draw({ 
+            edit: { featureGroup: drawnItemsRef.current }, 
+            draw: { 
+                rectangle: true, 
+                polygon: true, 
+                marker: true,
+                circle: false, 
+                polyline: false, 
+                circlemarker: false 
+            } 
+        });
+        mapRef.current.addControl(drawControl);
+        mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
+
+        return () => { 
+            if (mapRef.current) { 
+                mapRef.current.remove(); 
+                mapRef.current = null; 
+            } 
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (isVisible && mapRef.current) {
+            setTimeout(() => mapRef.current.invalidateSize(), 100);
+        }
+    }, [isVisible]);
+
+    return (
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+            <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400">Number of Samples to Place</label>
+                    <input 
+                        type="number"
+                        value={samplesToPlace}
+                        onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)}
+                        className="w-24 text-center mx-auto block text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent"
+                    />
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
+                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
+                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
+                </div>
+            </div>
+
+            <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <button onClick={() => handleGenerateSamples('square')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
+                    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
+                    <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+                </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
+                    <button 
+                        onClick={handleExport}
+                        disabled={plottedPoints.length === 0}
+                        className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <Icon path={ICONS.database} className="w-4 h-4" />
+                        Export to CSV
+                    </button>
+                </div>
+                <div className="max-h-60 overflow-y-auto mt-2 pr-2">
+                    {plottedPoints.length > 0 ? (
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                                <tr>
+                                    <th className="p-2">#</th>
+                                    <th className="p-2">Type</th>
+                                    <th className="p-2">Latitude</th>
+                                    <th className="p-2">Longitude</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {plottedPoints.map((point, index) => (
+                                    <tr key={index} className="border-b border-slate-200 dark:border-slate-700">
+                                        <td className="p-2 font-medium">{index + 1}</td>
+                                        <td className="p-2">{point.type}</td>
+                                        <td className="p-2 font-mono">{point.lat.toFixed(6)}</td>
+                                        <td className="p-2 font-mono">{point.lng.toFixed(6)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+
+
+
+
+
+const MARSSIM_SampleDesign = () => {
+    const [activeModule, setActiveModule] = React.useState('calculator');
 
     return (
         <div className="p-4 animate-fade-in">
              <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Sample Design Suite</h2>
-
-                {/* --- Tab buttons to switch between modules --- */}
                 <div className="flex w-full p-1 my-4 bg-slate-200 dark:bg-slate-700 rounded-lg">
                     <button 
                         onClick={() => setActiveModule('calculator')}
@@ -8234,50 +8741,12 @@ const MARSSIM_SampleDesign = () => {
                             activeModule === 'drawing' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'
                         }`}
                     >
-                        2. Draw & Plot Samples
+                        2. Draw Survey Unit
                     </button>
                 </div>
-
-                {/* --- Conditional rendering of the active module --- */}
                 <div>
-                    {activeModule === 'calculator' && (
-                        <>
-                            {/* --- The original calculator component --- */}
-                            <MARSSIM_SampleCalculator onSamplesCalculated={setNumberOfSamples} />
-
-                            {/* --- NEW: Manual input alternative --- */}
-                            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                                <h3 className="text-lg font-bold">Manual Sample Input</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                                    Alternatively, you can manually enter the desired number of samples.
-                                </p>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="number"
-                                        value={manualSampleCount}
-                                        onChange={e => setManualSampleCount(e.target.value)}
-                                        placeholder="e.g., 20"
-                                        className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"
-                                    />
-                                    <button 
-                                        onClick={handleSetManualSamples}
-                                        className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition"
-                                    >
-                                        Set Samples
-                                    </button>
-                                </div>
-                                {numberOfSamples > 0 && (
-                                    <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                                        Sample count set to: {numberOfSamples}. You can now switch to the "Draw & Plot Samples" tab.
-                                    </p>
-                                )}
-                            </div>
-                        </>
-                    )}
-
-                    {activeModule === 'drawing' && (
-                        <DrawingTool samplesToPlace={numberOfSamples} />
-                    )}
+                    {activeModule === 'calculator' && <MARSSIM_SampleCalculator />}
+                    {activeModule === 'drawing' && <DrawingTool isVisible={true} />}
                 </div>
              </div>
         </div>
@@ -8285,434 +8754,40 @@ const MARSSIM_SampleDesign = () => {
 };
 
 /**
- * A helper function to calculate the area of a polygon using the Shoelace formula.
- * @param {Array<object>} latLngs - An array of Leaflet LatLng objects.
- * @returns {number} The calculated area of the polygon.
+ * Calculates the distance between two lat lng points in meters using the Haversine formula.
+ * @param {{lat: number, lng: number}} p1 - The first point.
+ * @param {{lat: number, lng: number}} p2 - The second point.
+ * @returns {number} The distance in meters.
  */
-const calculatePolygonArea = (latLngs) => {
-    let area = 0;
-    const points = latLngs[0]; // For simple polygons from Leaflet.draw
-    if (!points || points.length < 3) return 0;
-    for (let i = 0; i < points.length; i++) {
-        let j = (i + 1) % points.length;
-        area += points[i].lng * points[j].lat;
-        area -= points[j].lng * points[i].lat;
-    }
-    return Math.abs(area / 2.0);
-};
 
-/**
- * A helper function to check if a point is inside the drawn polygon using the Ray-Casting algorithm.
- * @param {object} point - A point with .lat and .lng properties.
- * @param {Array<object>} polygonLatLngs - An array of Leaflet LatLng objects for the polygon.
- * @returns {boolean} True if the point is inside the polygon.
- */
-const isPointInPolygon = (point, polygonLatLngs) => {
-    const polyPoints = polygonLatLngs[0];
-    let x = point.lng, y = point.lat; // Swapped to match standard Cartesian coordinates
-    let inside = false;
-    for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
-        let xi = polyPoints[i].lng, yi = polyPoints[i].lat;
-        let xj = polyPoints[j].lng, yj = polyPoints[j].lat;
-        let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-        if (intersect) inside = !inside;
-    }
-    return inside;
+const calculateDistance = (p1, p2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = p1.lat * Math.PI / 180;
+    const phi2 = p2.lat * Math.PI / 180;
+    const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
+    const deltaLambda = (p2.lng - p1.lng) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
 };
 
 
-// The updated DrawingTool component
-const DrawingTool = ({ samplesToPlace }) => {
-    const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
-    const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
-    const [plottedPoints, setPlottedPoints] = React.useState([]);
-    
-    const mapRef = React.useRef(null);
-    const drawnItemsRef = React.useRef(null);
-    const samplePointsLayerRef = React.useRef(null);
 
-    React.useEffect(() => {
-        if (mapRef.current) return;
 
-        const map = L.map('marssim-map', { crs: L.CRS.Simple, minZoom: -5, maxZoom: 5 });
-        map.setView([500, 500], 0);
-        
-        drawnItemsRef.current = new L.FeatureGroup();
-        map.addLayer(drawnItemsRef.current);
 
-        samplePointsLayerRef.current = new L.FeatureGroup();
-        map.addLayer(samplePointsLayerRef.current);
 
-        const drawControl = new L.Control.Draw({
-            draw: {
-                polygon: true,
-                rectangle: true,
-                circle: false,
-                marker: true, // This is now set to true to allow manual sample input
-                polyline: false,
-                circlemarker: false
-            },
-            edit: { featureGroup: drawnItemsRef.current }
-        });
-        map.addControl(drawControl);
 
-        const onDrawCreate = (e) => {
-            const layer = e.layer;
-            const layerType = e.layerType;
 
-            if (layerType === 'marker') {
-                // For a new sample point: add to the samples layer and update state
-                layer.addTo(samplePointsLayerRef.current);
-                setPlottedPoints(prevPoints => [...prevPoints, layer.getLatLng()]);
-            } else {
-                // For a new survey unit: clear old one, add new, and update state
-                drawnItemsRef.current.clearLayers();
-                samplePointsLayerRef.current.clearLayers();
-                drawnItemsRef.current.addLayer(layer);
-                setSurveyUnitLayer(layer);
-                setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
-                setPlottedPoints([]);
-            }
-        };
 
-        const onDrawEdit = (e) => {
-            e.layers.eachLayer(layer => {
-                setSurveyUnitLayer(layer);
-                setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
-            });
-        };
 
-        map.on(L.Draw.Event.CREATED, onDrawCreate);
-        map.on(L.Draw.Event.EDITED, onDrawEdit);
 
-        mapRef.current = map;
 
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
-    }, []);
 
-    const handleGenerateSamples = (pattern) => {
-        if (!surveyUnitLayer || !samplesToPlace || samplesToPlace <= 0) {
-            alert("Please ensure a survey unit is drawn and the number of samples is calculated and greater than zero.");
-            return;
-        }
-        
-        samplePointsLayerRef.current.clearLayers();
-        const newPoints = [];
-        const latLngs = surveyUnitLayer.getLatLngs();
-        const bounds = surveyUnitLayer.getBounds();
-        
-        if (pattern === 'random') {
-            while (newPoints.length < samplesToPlace) {
-                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-                const point = { lat, lng };
-                if (isPointInPolygon(point, latLngs)) {
-                    newPoints.push(point);
-                }
-            }
-        } else { // Systematic Grids
-            const spacing = Math.sqrt(surveyUnitArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
-            let row = 0;
-            for (let y = bounds.getSouth(); y < bounds.getNorth(); y += spacing * (pattern === 'triangular' ? 0.866 : 1)) {
-                const xOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacing / 2 : 0;
-                for (let x = bounds.getWest() + xOffset; x < bounds.getEast(); x += spacing) {
-                    const point = { lat: y, lng: x };
-                    if (isPointInPolygon(point, latLngs)) {
-                        newPoints.push(point);
-                    }
-                }
-                row++;
-            }
-        }
 
-        newPoints.forEach(p => L.circleMarker(p, { radius: 4, color: '#dc2626' }).addTo(samplePointsLayerRef.current));
-        setPlottedPoints(newPoints);
-    };
-
-    const handleClear = () => {
-        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
-        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
-        setSurveyUnitLayer(null);
-        setSurveyUnitArea(0);
-        setPlottedPoints([]);
-    };
-    
-    const backgroundPatternStyle = {
-      backgroundImage: "repeating-linear-gradient(45deg, #ccc 0px, #ccc 1px, transparent 1px, transparent 10px), repeating-linear-gradient(-45deg, #ccc 0px, #ccc 1px, transparent 1px, transparent 10px)",
-      backgroundSize: "20px 20px"
-    };
-
-    const isDrawingToolReady = !!surveyUnitLayer;
-
-    return (
-        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">2. Survey Unit Drawing & Sample Placement</h3>
-                <button onClick={handleClear} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Drawing
-                </button>
-            </div>
-            
-            <div 
-                id="marssim-map" 
-                className="relative w-full h-[50vh] my-4 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-600"
-                style={backgroundPatternStyle}
-            >
-                {/* The conditional instructional message */}
-                {!isDrawingToolReady && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white z-10 p-4 rounded-lg text-center">
-                        <p className="text-lg font-semibold">
-                            Please use the drawing tools on the left to define a survey unit.
-                            <br />
-                            You can also manually add individual samples with the marker tool.
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
-                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
-                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
-                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Samples to Place</p>
-                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{samplesToPlace || 'N/A'}</p>
-                </div>
-            </div>
-
-            <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <button onClick={() => handleGenerateSamples('square')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Square Grid</button>
-                    <button onClick={() => handleGenerateSamples('triangular')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Triangular Grid</button>
-                    <button onClick={() => handleGenerateSamples('random')} disabled={!isDrawingToolReady} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800 disabled:opacity-50 disabled:cursor-not-allowed">Random</button>
-                </div>
-            </div>
-             <p className="text-center font-bold mt-4">Plotted {plottedPoints.length} sample points.</p>
-        </div>
-    );
-};
-
-         /**
-         * @description A calculator to determine the required number of statistical samples for a
-         * survey unit based on the more precise MARSSIM Equation 5-2.
-         */
-           
-         const MARSSIM_SampleCalculator = ({ onSamplesCalculated }) => {
-         const { addHistory } = useCalculationHistory();
-         
-         const [alpha, setAlpha] = React.useState(() => localStorage.getItem('marssim_alpha') || '0.05');
-         const [beta, setBeta] = React.useState(() => localStorage.getItem('marssim_beta') || '0.05');
-         const [sigma, setSigma] = React.useState(() => localStorage.getItem('marssim_sigma') || '15');
-         const [dcgl, setDcgl] = React.useState(() => localStorage.getItem('marssim_dcgl') || '100');
-         const [lbgr, setLbgr] = React.useState(() => localStorage.getItem('marssim_lbgr') || '50');
-         const [cv, setCv] = React.useState(() => localStorage.getItem('marssim_cv') || '0.3');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const zScores = {
-         '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
-         '0.10': 1.282, '0.20': 0.841,
-         };
-         
-         React.useEffect(() => {
-         localStorage.setItem('marssim_alpha', alpha);
-         localStorage.setItem('marssim_beta', beta);
-         localStorage.setItem('marssim_sigma', sigma);
-         localStorage.setItem('marssim_dcgl', dcgl);
-         localStorage.setItem('marssim_lbgr', lbgr);
-         localStorage.setItem('marssim_cv', cv);
-         }, [alpha, beta, sigma, dcgl, lbgr, cv]);
-         
-         const prValues = {
-         0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
-         0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
-         1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
-         1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
-         2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
-         4: 0.997658
-         };
-         
-         const handleCalculateSigma = () => {
-         const dcgl_val = parseFloat(dcgl);
-         const cv_val = parseFloat(cv);
-         if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
-            setSigma((dcgl_val * cv_val).toPrecision(3));
-         }
-         };
-         
-         const handleSetLbgr = () => {
-         const dcgl_val = parseFloat(dcgl);
-         if (!isNaN(dcgl_val)) {
-            setLbgr((dcgl_val * 0.5).toPrecision(3));
-         }
-         };
-         
-         const handleCalculate = () => {
-         const sigma_val = parseFloat(sigma);
-         const dcgl_val = parseFloat(dcgl);
-         const lbgr_val = parseFloat(lbgr);
-         if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
-            setError('Please enter valid, positive numbers for all fields.');
-            setResult(null); return;
-         }
-         if (dcgl_val <= lbgr_val) {
-            setError('DCGL must be greater than the LBGR.');
-            setResult(null); return;
-         }
-         setError('');
-         const z1_alpha = zScores[alpha];
-         const z1_beta = zScores[beta];
-         const delta = dcgl_val - lbgr_val;
-         const relativeShift = delta / sigma_val;
-         const shiftKeys = Object.keys(prValues).map(parseFloat);
-         let Pr;
-         if (relativeShift >= 4) {
-            Pr = 1;
-         } else {
-            const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
-            const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
-            if (isFinite(lowerKey) && isFinite(upperKey)) {
-                const lowerP = prValues[lowerKey];
-                const upperP = prValues[upperKey];
-                const slope = (upperP - lowerP) / (upperKey - lowerKey);
-                Pr = lowerP + slope * (relativeShift - lowerKey);
-            } else {
-                 setError(`Relative shift (${relativeShift.toFixed(2)}) is outside the table's range.`);
-                 setResult(null); return;
-            }
-         }
-         const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
-         const N_base = Math.ceil(N_base_raw);
-         const N_with_overage = N_base * 1.2;
-         const final_N = Math.ceil(N_with_overage);
-         const samplesPerGroup = Math.ceil(final_N / 2);
-         
-         const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
-
-         setResult(newResult);
-
-if (onSamplesCalculated) {
-    onSamplesCalculated(final_N); 
-}
-         
-         addHistory({
-            id: Date.now(),
-            type: 'MARSSIM Samples',
-            icon: ICONS.calculator,
-            inputs: `Δ/σ: ${newResult.relativeShift}, α: ${alpha}, β: ${beta}`,
-            result: `${newResult.final_N} samples`,
-            view: VIEWS.MARSSIM_SAMPLES
-         });
-         };
-         
-         const handleClearInputs = () => {
-         setAlpha('0.05');
-         setBeta('0.05');
-         setSigma('15');
-         setDcgl('100');
-         setLbgr('50');
-         setCv('0.3');
-         setResult(null);
-         setError('');
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-1">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Number of Samples Calculator</h2>
-                    <ClearButton onClick={handleClearInputs} />
-                </div>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Using the WRS Test and Table 5.2 Interpolation.</p>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium">Type I Error (α)</label>
-                            <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Type II Error (β)</label>
-                            <select value={beta} onChange={e => setBeta(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                               {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                         <div>
-                            <label className="block text-sm font-medium">Estimated Standard Deviation (σ)</label>
-                            <input type="number" value={sigma} onChange={e => setSigma(e.target.value)} placeholder="in units of DCGL" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">DCGL</label>
-                            <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} placeholder="Cleanup limit" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium">Lower Bound of Gray Region (LBGR)</label>
-                            <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                        </div>
-                    </div>
-                    <details className="p-3 my-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
-                        <summary className="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">
-                            Scoping Data Helper
-                        </summary>
-                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Use these helpers to estimate input parameters based on the DCGL.
-                            </p>
-                            <div className="flex items-end gap-2">
-                                <div className="flex-grow">
-                                    <label className="block text-xs font-medium">Coefficient of Variation (CV)</label>
-                                    <input type="number" value={cv} onChange={e => setCv(e.target.value)} step="0.05" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700"/>
-                                </div>
-                                <button onClick={handleCalculateSigma} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
-                                    Calculate σ
-                                </button>
-                            </div>
-                            <button onClick={handleSetLbgr} className="w-full px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
-                                Set LBGR to 50% of DCGL
-                            </button>
-                        </div>
-                    </details>
-                    <button onClick={handleCalculate} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Calculate Number of Samples</button>
-                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                    {result && (
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-                             <div className="grid grid-cols-2 gap-2 text-sm">
-                                <p className="font-semibold text-slate-500 dark:text-slate-400">Total Shift (Δ):</p><p className="font-mono">{result.totalShift}</p>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400">Relative Shift (Δ/σ):</p><p className="font-mono">{result.relativeShift}</p>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400">Probability (Pᵣ):</p><p className="font-mono">{result.Pr}</p>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400">Z₁₋ₐ:</p><p className="font-mono">{result.zAlpha}</p>
-                                <p className="font-semibold text-slate-500 dark:text-slate-400">Z₁₋ᵦ:</p><p className="font-mono">{result.zBeta}</p>
-                             </div>
-                             <div>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Samples per Group (N/2)</p>
-                                <p className="text-lg font-bold">{result.samplesPerGroup}</p>
-                            </div>
-                            <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Recommended Samples</p>
-                                <div className="flex items-center justify-center">
-                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final_N}</p>
-                                    <CopyButton textToCopy={result.final_N} />
-                                </div>
-                                <p className="text-xs font-medium text-slate-600 dark:text-slate-300">({result.N_base} base samples + 20% overage)</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-         </div>
-         );
-         };
-         
          const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
@@ -9674,34 +9749,8 @@ if (onSamplesCalculated) {
          );
          };
          
-         // Final step: Render the main App component into the DOM.
-         
-         ReactDOM.createRoot(document.getElementById('root')).render(
-         <SettingsProvider>
-         <ToastProvider>
-             <App />
-         </ToastProvider>
-         </SettingsProvider>
-         );
-         
-         ReactDOM.createRoot(document.getElementById('back-to-top-root')).render(
-         <BackToTopButton />
-         );
-         
-         // After the app is rendered, find the loader and fade it out.
-         
-         const loader = document.getElementById('loader');
-         if (loader) {
-         
-         // A small timeout ensures the app has painted before the loader disappears.
-         
-         setTimeout(() => {
-         
-         loader.classList.add('hidden');
-         }, 100); // 100ms delay
-         }
-         
-         const SettingsPanel = () => {
+
+const SettingsPanel = () => {
          const { settings, updateSettings } = React.useContext(SettingsContext);
          const { addToast } = useToast();
          const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
@@ -9796,6 +9845,35 @@ if (onSamplesCalculated) {
          </>
          );
          };
+
+         // Final step: Render the main App component into the DOM.
+         
+         ReactDOM.createRoot(document.getElementById('root')).render(
+         <SettingsProvider>
+         <ToastProvider>
+             <App />
+         </ToastProvider>
+         </SettingsProvider>
+         );
+         
+         ReactDOM.createRoot(document.getElementById('back-to-top-root')).render(
+         <BackToTopButton />
+         );
+         
+         // After the app is rendered, find the loader and fade it out.
+         
+         const loader = document.getElementById('loader');
+         if (loader) {
+         
+         // A small timeout ensures the app has painted before the loader disappears.
+         
+         setTimeout(() => {
+         
+         loader.classList.add('hidden');
+         }, 100); // 100ms delay
+         }
+         
+         
          
       </script>
    </body>
