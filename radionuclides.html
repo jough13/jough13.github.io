@@ -177,13 +177,20 @@
          animation: toast-in 0.3s ease-out forwards;
          }
 
-         .leaflet-container .leaflet-overlay-pane svg path {
-             stroke: #3388ff;  /* Standard Leaflet blue */
-             stroke-width: 3;
-             stroke-opacity: 1;
-             fill-opacity: 0.2;
-             fill: #3388ff;
-         }
+/* --- NEW, TARGETED STYLES FOR SAMPLE POINTS --- */
+.grid-sample-marker {
+    stroke: #1E88E5; /* blue-600 */
+    stroke-width: 1;
+    fill: #1E88E5;
+    fill-opacity: 1;
+}
+.biased-sample-marker {
+    stroke: #facc15; /* amber-400 */
+    stroke-width: 1;
+    fill: #facc15;
+    fill-opacity: 1;
+}
+
       </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -8883,8 +8890,6 @@ const MARSSIM_SampleCalculator = () => {
 
 
 
-
-
 const DrawingTool = ({ isVisible }) => {
     const mapRef = React.useRef(null);
     const drawnItemsRef = React.useRef(null);
@@ -8919,8 +8924,13 @@ const DrawingTool = ({ isVisible }) => {
             setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
             setPlottedPoints([]);
         } else if (layerType === 'marker') {
-            samplePointsLayerRef.current.addLayer(layer);
-            const point = { lat: layer.getLatLng().lat, lng: layer.getLatLng().lng, type: 'Biased' };
+            const latLng = layer.getLatLng();
+            const newMarker = L.circleMarker(latLng, {
+                radius: 4,
+                className: 'biased-sample-marker'
+            });
+            samplePointsLayerRef.current.addLayer(newMarker);
+            const point = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
             setPlottedPoints(prevPoints => [...prevPoints, point]);
         }
     };
@@ -8931,17 +8941,20 @@ const DrawingTool = ({ isVisible }) => {
             return;
         }
         samplePointsLayerRef.current.clearLayers();
+        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+        existingBiasedPoints.forEach(p => {
+             L.circleMarker([p.lat, p.lng], { radius: 4, className: 'biased-sample-marker' }).addTo(samplePointsLayerRef.current);
+        });
+
         const newPoints = [];
         const latLngs = surveyUnitLayer.getLatLngs();
         const bounds = surveyUnitLayer.getBounds();
         if (pattern === 'random') {
-            while (newPoints.length < samplesToPlace) {
+             while (newPoints.length < samplesToPlace) {
                 const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
                 const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
                 const point = { lat, lng };
-                if (isPointInPolygon(point, latLngs)) {
-                    newPoints.push(point);
-                }
+                if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
             }
         } else {
             const geographicArea = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
@@ -8951,17 +8964,15 @@ const DrawingTool = ({ isVisible }) => {
                 const lngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacing / 2 : 0;
                 for (let lng = bounds.getWest() + lngOffset; lng < bounds.getEast(); lng += spacing) {
                     const point = { lat, lng };
-                    if (isPointInPolygon(point, latLngs)) {
-                        newPoints.push(point);
-                    }
+                    if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
                 }
                 row++;
             }
         }
         const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-        setPlottedPoints(pointsWithTypes);
+        setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
         pointsWithTypes.forEach(p => {
-            L.circleMarker([p.lat, p.lng], { radius: 4, color: '#dc2626' }).addTo(samplePointsLayerRef.current);
+            L.circleMarker([p.lat, p.lng], { radius: 4, className: 'grid-sample-marker' }).addTo(samplePointsLayerRef.current);
         });
     };
     
@@ -9002,11 +9013,16 @@ const DrawingTool = ({ isVisible }) => {
         }
     };
     
-    const handleClear = () => {
+    const handleClearAll = () => {
         if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
         if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
         setSurveyUnitLayer(null);
         setSurveyUnitArea(0);
+        setPlottedPoints([]);
+    };
+
+    const handleClearPoints = () => {
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
         setPlottedPoints([]);
     };
 
@@ -9065,8 +9081,8 @@ const DrawingTool = ({ isVisible }) => {
         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
-                <button onClick={handleClear} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Drawing
+                <button onClick={handleClearAll} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear All
                 </button>
             </div>
 
@@ -9112,10 +9128,24 @@ const DrawingTool = ({ isVisible }) => {
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
-                    <button onClick={handleExport} disabled={plottedPoints.length === 0} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                        <Icon path={ICONS.database} className="w-4 h-4" />
-                        Export to CSV
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={handleClearPoints}
+                            disabled={plottedPoints.length === 0}
+                            className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <Icon path={ICONS.clear} className="w-4 h-4" />
+                            Clear Points
+                        </button>
+                        <button 
+                            onClick={handleExport}
+                            disabled={plottedPoints.length === 0}
+                            className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            <Icon path={ICONS.database} className="w-4 h-4" />
+                            Export to CSV
+                        </button>
+                    </div>
                 </div>
                 <div className="max-h-60 overflow-y-auto mt-2 pr-2">
                     {plottedPoints.length > 0 ? (
@@ -9147,6 +9177,9 @@ const DrawingTool = ({ isVisible }) => {
         </div>
     );
 };
+
+
+
 
 
 
