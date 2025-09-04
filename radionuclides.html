@@ -194,6 +194,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
+<script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
+
       <script>
          // When the document is ready, add the 'visible' class to the #root element
          
@@ -894,6 +897,35 @@ const calculatePolygonArea = (latLngs) => {
     }
     return Math.abs(area * earthRadius * earthRadius / 2.0);
 }; 
+
+/**
+ * Calculates the distance between two lat lng points in meters using the Haversine formula.
+ * @param {{lat: number, lng: number}} p1 - The first point.
+ * @param {{lat: number, lng: number}} p2 - The second point.
+ * @returns {number} The distance in meters.
+ */
+
+const calculateDistance = (p1, p2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = p1.lat * Math.PI / 180;
+    const phi2 = p2.lat * Math.PI / 180;
+    const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
+    const deltaLambda = (p2.lng - p1.lng) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
+
+
+
+
+
+
+
          
          const REG_GUIDE_1_86_LIMITS = {
          'transuranics': { removable: 20, total: 100, label: 'Transuranics, Ra-226, Ra-228, Th-230, etc.' },
@@ -5920,6 +5952,387 @@ const handleConversion = (factor, fromUnit, toUnit) => {
          );
          };         
          
+
+
+         const ManualModal = ({ isOpen, onClose }) => {
+         if (!isOpen) return null;
+
+         // Internal component for the static content of the manual to keep JSX clean.
+
+         const ManualContent = () => {
+         return (
+             <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
+                 <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
+                 <p>
+                     Welcome to the Health Physics Toolbox! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
+                 </p>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
+                 <p>
+                     The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
+                 </p>
+                 <h4 className="italic mt-4">Searching</h4>
+                 <p>
+                     You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
+                 </p>
+                 <h4 className="italic mt-4">The Nuclide Card</h4>
+                 <p>
+                     Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
+                 </p>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
+                 <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
+
+                 <h3 className="mt-6"><strong>Database</strong></h3>
+                 <p>
+                     The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
+                 </p>
+                 <ul>
+                     <li><strong>Category & Commonality:</strong> Find nuclides based on their typical use (e.g., Medical, Industrial) or how frequently they are encountered.</li>
+                     <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
+                     <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
+                 </ul>
+
+                 <h3 className="mt-6"><strong>Compare</strong></h3>
+                 <p>
+                     The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function, allowing you to save the comparison table as a text file that can be opened in a spreadsheet program like Excel for further analysis.
+                 </p>
+
+                 <h3 className="mt-6"><strong>Calculators</strong></h3>
+                 <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
+
+                 <h4 className="italic mt-4">Decay Calculators</h4>
+                 <ul>
+                     <li><strong>Decay:</strong> This tool has two modes. <strong>Standard Decay</strong> solves the fundamental decay equation for any one variable given the others and includes a Parent-Daughter mode. <strong>Source Correction</strong> mode is a specialized tool for correcting a source's activity from its calibration date to a new date.</li>
+                     <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
+                     <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> or <strong>Transient</strong> and calculate important metrics like the time to maximum daughter activity.</li>
+                 </ul>
+                 
+                 <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
+                 <ul>
+                     <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose for surface contamination and Dose in Air for a point source. <strong>Bremsstrahlung</strong> mode estimates X-ray dose from beta shielding, and <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
+                     <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate final dose rate or required thickness, including an optional Buildup Factor correction. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
+                     <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
+                 </ul>
+
+                 <h4 className="italic mt-4">Operational HP Tools</h4>
+                 <ul>
+                    <li><strong>Static Survey:</strong> Evaluates a set of static surface measurements against an average and maximum limit.</li>
+                    <li><strong>Wipe Survey:</strong> Calculates removable contamination in dpm/100cm² from a smear count and compares it to NRC Regulatory Guide 1.86 and ANSI N13.12 limits.</li>
+                    <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the 0.005 µCi limit.</li>
+                    <li><strong>Airborne:</strong> Models an airborne release in a room to calculate the initial concentration in DAC units and the time required for ventilation to reduce the concentration to 1 DAC.</li>
+                 </ul>
+                 
+                 <h4 className="italic mt-4">Neutron Tools</h4>
+                 <ul>
+                    <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose (rem) using the log-log interpolation of data from 10 CFR 20.</li>
+                    <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known neutron flux. Includes both a database of common reactions and a manual input mode.</li>
+                    <li><strong>Composite Activation:</strong> Calculates the principal activation products from irradiating a composite material like concrete or steel.</li>
+                    <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate HVL data.</li>
+                 </ul>
+                 
+                 <h4 className="italic mt-4">Medical Physics Tools</h4>
+                 <ul>
+                    <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead or concrete for diagnostic X-ray rooms based on the NCRP-147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
+                    <li><strong>Patient Release:</strong> Evaluates if a patient administered with a radiopharmaceutical can be released based on the criteria in 10 CFR 35.75, checking against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE).</li>
+                 </ul>
+
+                 <h4 className="italic mt-4">MARSSIM Tools</h4>
+                 <ul>
+                     <li><strong>MDA:</strong> Calculates key decision values for radiation counting. Includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas).</li>
+                     <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology from MARSSIM.</li>
+                     <li><strong>MARSSIM Tests:</strong> Performs the <strong>WRS Test</strong> to compare a survey unit to a reference area and the <strong>EMC Sign Test</strong> for evaluating localized elevated areas.</li>
+                 </ul>
+
+                 <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
+                 <ul>
+                    <li><strong>Chi-Squared (χ²) Test:</strong> Performs a chi-squared test on a set of repeated counts to check if the counting system is statistically stable.</li>
+                    <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts lost due to detector dead time, providing the "true" count rate.</li>
+                    <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision.</li>
+                    <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties.</li>
+                 </ul>
+                 
+                 <h4 className="italic mt-4">Utility Tools</h4>
+                 <ul>
+                     <li><strong>Peak Identifier:</strong> An essential tool for gamma spectroscopy. Enter a peak energy (in keV or MeV) and a tolerance, and the tool will search the entire database for matching gamma or alpha emissions. It also analyzes the input energy for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays.</li>
+                     <li><strong>Activity/Mass:</strong> This module contains two tools. The first converts between a nuclide's mass and its activity. The second is a first-principles calculator for determining a nuclide's Specific Activity (Bq/g) from its atomic weight and half-life.</li>
+                     <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> and A<sub>2</sub> values.</li>
+                     <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
+                     <li><strong>Scratchpad:</strong> A simple notepad for jotting down notes or calculations. Your notes are automatically saved in your browser's local storage.</li>
+                     <li><strong>Sci. Calculator:</strong> A built-in scientific calculator for convenience.</li>
+                     <li><strong>References:</strong> A curated list of important links to regulatory bodies, data sources, and professional organizations.</li>
+                 </ul>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Settings & Customization</strong></h2>
+                 <p>The <strong>Settings</strong> panel, accessible from the gear icon in the top right, allows you to set default units for the main calculators. This can streamline your workflow by pre-populating inputs with your preferred units for **Activity**, **Dose Rate**, and **Distance**.</p>
+                 <ul>
+                     <li><strong>Activity:</strong> Set your preferred unit for activity (e.g., Ci, mCi, Bq). This will be the default for calculators like Dose Rate and Stay Time.</li>
+                     <li><strong>Dose Rate:</strong> Set your preferred dose rate unit (e.g., mrem/hr, µSv/hr). This will be the default for calculators like Dose Rate, Shielding, and Stay Time.</li>
+                     <li><strong>Distance:</strong> Set your preferred distance unit (e.g., m, cm, ft). This will be the default for calculators that require a distance from the source.</li>
+                 </ul>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
+                 <p>The following section provides the mathematical basis for the calculators used in this application.</p>
+
+                 <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
+                 <h4 className="italic mt-4">Radioactive Decay</h4>
+                 <p>The fundamental decay equation relates initial activity (A<sub>0</sub>) to the activity at time t (A(t)).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>A(t) = A<sub>0</sub> * e<sup>-λt</sup></pre>
+                 </div>
+                 <ul>
+                     <li><code>A(t)</code> is the activity at time <code>t</code>.</li>
+                     <li><code>A<sub>0</sub></code> is the initial activity at <code>t=0</code>.</li>
+                     <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T<sub>1/2</sub></code>.</li>
+                 </ul>
+                 <h4 className="italic mt-4">Series (Bateman) Decay</h4>
+                 <p>For a decay chain <code>A → B → C</code>, the activity of the daughter <code>B</code> is given by:</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ<sub>2</sub>/(λ<sub>2</sub>-λ<sub>1</sub>)] * [e<sup>-λ<sub>1</sub>t</sup> - e<sup>-λ<sub>2</sub>t</sup>] + A<sub>2</sub>(0)e<sup>-λ<sub>2</sub>t</sup></pre>
+                 </div>
+                 <p>The calculator solves the full system of Bateman equations for any chain length, including branching decays.</p>
+                 <h4 className="italic mt-4">Specific Activity (SA)</h4>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>SA (Bq/g) = (N<sub>a</sub> * λ) / M<sub>a</sub> = (N<sub>a</sub> * ln(2)) / (T<sub>1/2</sub> * M<sub>a</sub>)</pre>
+                 </div>
+                 <ul>
+                     <li><code>N<sub>a</sub></code> is Avogadro's Number (6.022 x 10<sup>23</sup> atoms/mol).</li>
+                     <li><code>M<sub>a</sub></code> is the molar mass of the radionuclide (g/mol).</li>
+                     <li><code>T<sub>1/2</sub></code> is the half-life in seconds.</li>
+                 </ul>
+
+                 <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
+                 <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
+                 <p>For a <strong>point source</strong>, the inverse square law is used:</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>Dose Rate = (Γ * A) / d<sup>2</sup></pre>
+                 </div>
+                 <ul>
+                     <li><code>Γ</code> is the specific gamma-ray constant.</li>
+                     <li><code>A</code> is the total source activity.</li>
+                     <li><code>d</code> is the perpendicular distance from the source.</li>
+                 </ul>
+                 <h4 className="italic mt-4">Shielding</h4>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>D<sub>shielded</sub> = D<sub>unshielded</sub> * (0.5)<sup>(x / HVL)</sup></pre>
+                 </div>
+                 <ul>
+                     <li><code>x</code> is the shield thickness.</li>
+                     <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
+                 </ul>
+
+                 <h3 className="mt-6"><b>Radon Formulas</b></h3>
+                 <h4 className="italic mt-4">Working Level & Equilibrium</h4>
+                 <p>The relationship between radon concentration, the equilibrium factor (F), and Working Levels (WL) is:</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>WL = (Concentration (pCi/L) / 100) * F</pre>
+                 </div>
+                 <h4 className="italic mt-4">Potential Alpha Energy Concentration (PAEC)</h4>
+                 <p>The PAEC is the energy concentration defined by the Working Level unit.</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>PAEC (MeV/L) = WL * 1.3 x 10<sup>5</sup></pre>
+                 </div>
+                 <h4 className="italic mt-4">Annual Dose Estimation</h4>
+                 <p>The annual dose is calculated from the cumulative exposure in Working Level Months (WLM).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>Dose (mrem/yr) = (WL * (hrs_yr * Occupancy) / 170) * 500</pre>
+                 </div>
+
+                 <h3 className="mt-6">MARSSIM Formulas</h3>
+                 <h4 className="italic mt-4"><b>LLD & MDA (Static Count)</b></h4>
+                 <p>The calculator uses the NUREG-1507 formula for the Lower Limit of Detection (LLD), which includes the Stapleton correction (+3).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>LLD (counts) = 3.29 * sqrt(R<sub>b</sub> * t<sub>g</sub> * (1 + t<sub>g</sub> / t<sub>b</sub>)) + 3</pre>
+                 </div>
+                 <p>The Minimum Detectable Activity (MDA) is then calculated from the LLD, count time (t<sub>g</sub>), and efficiencies (ε).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>MDA (dpm/100cm<sup>2</sup>) = (LLD / t<sub>g</sub>) / (ε<sub>i</sub> * ε<sub>s</sub>) * (100 / A)</pre>
+                 </div>
+                 <h4 className="italic mt-4">Scan MDC</h4>
+                 <p>The Scan MDC for a surveyor is based on the Minimum Detectable Count Rate (MDCR).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>MDCR (cpm) = d' * sqrt(B<sub>i</sub>) * (60 / t<sub>obs</sub>)</pre>
+                 </div>
+                 <p>The final MDC in dpm/100cm² accounts for surveyor efficiency (p) and total efficiency (ε<sub>total</sub>).</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>Scan MDC (dpm/100cm<sup>2</sup>) = MDCR / (sqrt(p) * ε<sub>total</sub> * (A<sub>probe</sub>/100))</pre>
+                 </div>
+                 <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
+                 <p>Based on MARSSIM Eq. 5-2, using the Relative Shift (Δ/σ) to find a corresponding probability value (P<sub>r</sub>) from a table.</p>
+                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                     <pre>N = (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> / (3 * (P<sub>r</sub> - 0.5)<sup>2</sup>)</pre>
+                 </div>
+                 <p>The final number is increased by 20% to account for missing or unusable samples.</p>
+                 <h4 className="italic mt-4">WRS & Sign Tests</h4>
+                 <p>These are non-parametric statistical hypothesis tests based on ranking data rather than a simple formula.</p>
+                 <ul>
+                     <li><strong>WRS Test:</strong> Tests the null hypothesis H<sub>0</sub>: The survey unit median is greater than the reference area median (i.e., it's contaminated). It compares the rank sum of the reference area (W<sub>rs</sub>) to a critical value (C<sub>w</sub>). The survey unit passes if W<sub>rs</sub> ≥ C<sub>w</sub>.</li>
+                     <li><strong>EMC Sign Test:</strong> Tests the null hypothesis H<sub>0</sub>: The median of the elevated area is greater than or equal to the DCGL<sub>EMC</sub>. It compares the number of positive differences (S<sup>+</sup>) to a critical value (C<sub>s</sub>). The area passes if S<sup>+</sup> ≥ C<sub>s</sub>.</li>
+                 </ul>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Copyright</strong></h2>
+                 <p>
+                     Feedback, bug reports, and suggestions are welcome! You can reach out via email, or check out my personal website and GitHub for other projects.
+                 </p>
+                 <ul>
+                     <li><strong>Email:</strong> <a href="mailto:joughdonakowski@gmail.com" className="text-sky-500 hover:underline">joughdonakowski@gmail.com</a></li>
+                     <li><strong>Website:</strong> <a href="https://www.joughdonakowski.com" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">www.joughdonakowski.com</a></li>
+                     <li><strong>GitHub:</strong> <a href="https://jough13.github.io" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">jough13.github.io</a></li>
+                 </ul>
+                 <p className="mt-4 text-xs text-slate-500">
+                     Copyright © 2025 Jough Donakowski. All rights reserved. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
+                 </p>
+
+                 <hr className="my-4" />
+
+                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
+
+                 <h4 className="italic mt-4">Where does the data come from?</h4>
+                 <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS). Dosimetry values are from 10 CFR 20, Appendix B.</p>
+
+                 <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
+                 <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools. Additionally, certain calculations (like the parent-daughter equilibrium) only feature nuclides with known progeny that are themselves radioactive.</p>
+
+                 <h4 className="italic mt-4">What is the disclaimer?</h4>
+                 <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been validated and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
+             </div>
+         );
+         };
+
+         return (
+
+         // The modal backdrop, which closes the modal when clicked.
+
+         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start p-4" onClick={onClose}>
+             {/* The modal panel itself. e.stopPropagation() prevents a click inside from closing it. */}
+             <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                     <h2 className="text-xl font-bold">User Manual & FAQ</h2>
+                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                         <Icon path={ICONS.clear} className="w-6 h-6" />
+                     </button>
+                 </div>
+                 <div className="overflow-y-auto">
+                     <ManualContent />
+                 </div>
+             </div>
+         </div>
+         );
+         };
+         
+
+const SettingsPanel = () => {
+         const { settings, updateSettings } = React.useContext(SettingsContext);
+         const { addToast } = useToast();
+         const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
+         
+         // --- CHANGE 1: Create a ref to reference the main panel div ---
+         const panelRef = React.useRef(null);
+         
+         const handleSettingChange = (key, value) => {
+         updateSettings({ [key]: value });
+         addToast(`Default setting for ${key} changed.`);
+         };
+         
+         const handleResetDefaults = () => {
+         localStorage.clear();
+         sessionStorage.setItem('showResetToast', 'true');
+         window.location.reload();
+         };
+         
+         const handleOpenResetModal = () => {
+         setIsResetModalOpen(true);
+         // --- CHANGE 2: Scroll the panel itself into the center of the view ---
+         if (panelRef.current) {
+         panelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+         }
+         };
+         
+         return (
+         <>
+         
+         <div ref={panelRef} className="p-4 animate-fade-in">
+         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Default Settings</h2>
+         <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+         These are the default units and modes used across the toolbox.
+         </p>
+         <div className="space-y-4">
+         <div>
+         <label className="block text-sm font-medium">Activity</label>
+         <select value={settings.activity} onChange={e => handleSettingChange('activity', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+           {activityUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+         </select>
+         </div>
+         <div>
+         <label className="block text-sm font-medium">Dose Rate</label>
+         <select value={settings.doseRate} onChange={e => handleSettingChange('doseRate', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+           {doseRateUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+         </select>
+         </div>
+         <div>
+         <label className="block text-sm font-medium">Distance</label>
+         <select value={settings.distance} onChange={e => handleSettingChange('distance', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+           {distanceUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+         </select>
+         </div>
+         <div>
+         <label className="block text-sm font-medium">Default Chart Scale</label>
+         <select value={settings.chartScale} onChange={e => handleSettingChange('chartScale', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+           <option value="Linear">Linear</option>
+           <option value="Logarithmic">Logarithmic</option>
+         </select>
+         </div>
+         <div>
+         <label className="block text-sm font-medium">Default Dose Calculator Mode</label>
+         <select value={settings.defaultDoseMode} onChange={e => handleSettingChange('defaultDoseMode', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+           <option value="gamma">Gamma</option>
+           <option value="beta">Beta</option>
+           <option value="bremsstrahlung">Bremsstrahlung</option>
+           <option value="internal">Internal</option>
+         </select>
+         </div>
+         </div>
+         
+         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+         <button
+         onClick={handleOpenResetModal}
+         className="w-full py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900 transition"
+         >
+         Reset to Defaults
+         </button>
+         </div>
+         </div>
+         </div>
+         
+         <ConfirmationModal
+         isOpen={isResetModalOpen}
+         onClose={() => setIsResetModalOpen(false)}
+         onConfirm={handleResetDefaults}
+         title="Reset All Settings & Saved Data?"
+         >
+         <p>Are you sure? This will clear <strong>all</strong> saved calculator inputs, favorites, search history, and default settings. The application will reload with its original defaults. This action cannot be undone.</p>
+         </ConfirmationModal>
+         </>
+         );
+         };
+
+
+
+
+
+
+
          /**
           * @description The root component of the entire application.
           * It manages all primary state, handles routing between views, and orchestrates all user interactions.
@@ -8468,6 +8881,10 @@ const MARSSIM_SampleCalculator = () => {
 };
          
 
+
+
+
+
 const DrawingTool = ({ isVisible }) => {
     const mapRef = React.useRef(null);
     const drawnItemsRef = React.useRef(null);
@@ -8477,16 +8894,15 @@ const DrawingTool = ({ isVisible }) => {
     const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
     const [samplesToPlace, setSamplesToPlace] = React.useState(25);
     const [plottedPoints, setPlottedPoints] = React.useState([]);
+    const [locationInput, setLocationInput] = React.useState('');
 
     const isPointInPolygon = (point, polygonLatLngs) => {
         const polyPoints = polygonLatLngs[0];
         const x = point.lat, y = point.lng;
-        
         let inside = false;
         for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
             const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
             const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
-            
             const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
             if (intersect) inside = !inside;
         }
@@ -8495,7 +8911,6 @@ const DrawingTool = ({ isVisible }) => {
 
     const onDrawCreate = (e) => {
         const { layer, layerType } = e;
-
         if (layerType === 'polygon' || layerType === 'rectangle') {
             drawnItemsRef.current.clearLayers();
             samplePointsLayerRef.current.clearLayers();
@@ -8505,11 +8920,7 @@ const DrawingTool = ({ isVisible }) => {
             setPlottedPoints([]);
         } else if (layerType === 'marker') {
             samplePointsLayerRef.current.addLayer(layer);
-            const point = { 
-                lat: layer.getLatLng().lat, 
-                lng: layer.getLatLng().lng, 
-                type: 'Biased'
-            };
+            const point = { lat: layer.getLatLng().lat, lng: layer.getLatLng().lng, type: 'Biased' };
             setPlottedPoints(prevPoints => [...prevPoints, point]);
         }
     };
@@ -8519,12 +8930,10 @@ const DrawingTool = ({ isVisible }) => {
             alert("Please draw a survey unit boundary first.");
             return;
         }
-        
         samplePointsLayerRef.current.clearLayers();
         const newPoints = [];
         const latLngs = surveyUnitLayer.getLatLngs();
         const bounds = surveyUnitLayer.getBounds();
-
         if (pattern === 'random') {
             while (newPoints.length < samplesToPlace) {
                 const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
@@ -8549,9 +8958,7 @@ const DrawingTool = ({ isVisible }) => {
                 row++;
             }
         }
-
         const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-        
         setPlottedPoints(pointsWithTypes);
         pointsWithTypes.forEach(p => {
             L.circleMarker([p.lat, p.lng], { radius: 4, color: '#dc2626' }).addTo(samplePointsLayerRef.current);
@@ -8563,13 +8970,10 @@ const DrawingTool = ({ isVisible }) => {
             alert("Please draw a survey unit and place sample points before exporting.");
             return;
         }
-
         const origin = surveyUnitLayer.getBounds().getSouthWest();
-
         const dataForExport = plottedPoints.map((point, index) => {
             const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
             const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
-
             return {
                 sampleNumber: index + 1,
                 type: point.type,
@@ -8579,14 +8983,12 @@ const DrawingTool = ({ isVisible }) => {
                 yDistance: yDistance.toFixed(2)
             };
         });
-
         const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
         const csvRows = [headers.join(',')];
         dataForExport.forEach(row => {
             csvRows.push(Object.values(row).join(','));
         });
         const csvContent = csvRows.join('\n');
-
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         if (link.download !== undefined) {
@@ -8600,10 +9002,41 @@ const DrawingTool = ({ isVisible }) => {
         }
     };
     
+    const handleClear = () => {
+        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
+        setSurveyUnitLayer(null);
+        setSurveyUnitArea(0);
+        setPlottedPoints([]);
+    };
+
+    const handleGoToLocation = async () => {
+        if (!locationInput.trim()) return;
+        const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
+        if (coordRegex.test(locationInput)) {
+            const [lat, lng] = locationInput.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                mapRef.current.setView([lat, lng], 16);
+                return;
+            }
+        }
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const { lat, lon } = data[0];
+                mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 16);
+            } else {
+                alert("Location not found. Please try a different address or format.");
+            }
+        } catch (error) {
+            alert("Could not connect to the location service. Please check your connection.");
+        }
+    };
+
     React.useEffect(() => {
         if (mapRef.current) return;
-        mapRef.current = L.map('marssim-map');
-        mapRef.current.setView([37.207, -76.51], 13);
+        mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapRef.current);
         
         drawnItemsRef.current = new L.FeatureGroup();
@@ -8613,24 +9046,13 @@ const DrawingTool = ({ isVisible }) => {
 
         const drawControl = new L.Control.Draw({ 
             edit: { featureGroup: drawnItemsRef.current }, 
-            draw: { 
-                rectangle: true, 
-                polygon: true, 
-                marker: true,
-                circle: false, 
-                polyline: false, 
-                circlemarker: false 
-            } 
+            draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
         });
         mapRef.current.addControl(drawControl);
+        
         mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
 
-        return () => { 
-            if (mapRef.current) { 
-                mapRef.current.remove(); 
-                mapRef.current = null; 
-            } 
-        };
+        return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     }, []);
 
     React.useEffect(() => {
@@ -8641,18 +9063,36 @@ const DrawingTool = ({ isVisible }) => {
 
     return (
         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+                <button onClick={handleClear} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Drawing
+                </button>
+            </div>
+
+            <div className="flex gap-2 items-center mb-4">
+                <input 
+                    type="text"
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }}
+                    placeholder="Enter an address or lat,lng coordinates"
+                    className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <button 
+                    onClick={handleGoToLocation}
+                    className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition"
+                >
+                    Go
+                </button>
+            </div>
+
             <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
                     <label className="font-semibold text-sm text-slate-500 dark:text-slate-400">Number of Samples to Place</label>
-                    <input 
-                        type="number"
-                        value={samplesToPlace}
-                        onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)}
-                        className="w-24 text-center mx-auto block text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent"
-                    />
+                    <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-24 text-center mx-auto block text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
                     <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
@@ -8672,11 +9112,7 @@ const DrawingTool = ({ isVisible }) => {
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
-                    <button 
-                        onClick={handleExport}
-                        disabled={plottedPoints.length === 0}
-                        className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
+                    <button onClick={handleExport} disabled={plottedPoints.length === 0} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                         <Icon path={ICONS.database} className="w-4 h-4" />
                         Export to CSV
                     </button>
@@ -8716,9 +9152,6 @@ const DrawingTool = ({ isVisible }) => {
 
 
 
-
-
-
 const MARSSIM_SampleDesign = () => {
     const [activeModule, setActiveModule] = React.useState('calculator');
 
@@ -8746,34 +9179,16 @@ const MARSSIM_SampleDesign = () => {
                 </div>
                 <div>
                     {activeModule === 'calculator' && <MARSSIM_SampleCalculator />}
-                    {activeModule === 'drawing' && <DrawingTool isVisible={true} />}
+                    {activeModule === 'drawing' && <DrawingTool isVisible={activeModule === 'drawing'} />}
                 </div>
              </div>
         </div>
     );
 };
 
-/**
- * Calculates the distance between two lat lng points in meters using the Haversine formula.
- * @param {{lat: number, lng: number}} p1 - The first point.
- * @param {{lat: number, lng: number}} p2 - The second point.
- * @returns {number} The distance in meters.
- */
 
-const calculateDistance = (p1, p2) => {
-    const R = 6371e3; // Earth's radius in meters
-    const phi1 = p1.lat * Math.PI / 180;
-    const phi2 = p2.lat * Math.PI / 180;
-    const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
-    const deltaLambda = (p2.lng - p1.lng) * Math.PI / 180;
 
-    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-              Math.cos(phi1) * Math.cos(phi2) *
-              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    return R * c;
-};
 
 
 
@@ -9473,378 +9888,6 @@ const calculateDistance = (p1, p2) => {
          );
          };
          
-         const ManualModal = ({ isOpen, onClose }) => {
-         if (!isOpen) return null;
-
-         // Internal component for the static content of the manual to keep JSX clean.
-
-         const ManualContent = () => {
-         return (
-             <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
-                 <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
-                 <p>
-                     Welcome to the Health Physics Toolbox! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
-                 </p>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
-                 <p>
-                     The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
-                 </p>
-                 <h4 className="italic mt-4">Searching</h4>
-                 <p>
-                     You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
-                 </p>
-                 <h4 className="italic mt-4">The Nuclide Card</h4>
-                 <p>
-                     Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
-                 </p>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
-                 <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
-
-                 <h3 className="mt-6"><strong>Database</strong></h3>
-                 <p>
-                     The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
-                 </p>
-                 <ul>
-                     <li><strong>Category & Commonality:</strong> Find nuclides based on their typical use (e.g., Medical, Industrial) or how frequently they are encountered.</li>
-                     <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
-                     <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
-                 </ul>
-
-                 <h3 className="mt-6"><strong>Compare</strong></h3>
-                 <p>
-                     The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function, allowing you to save the comparison table as a text file that can be opened in a spreadsheet program like Excel for further analysis.
-                 </p>
-
-                 <h3 className="mt-6"><strong>Calculators</strong></h3>
-                 <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-
-                 <h4 className="italic mt-4">Decay Calculators</h4>
-                 <ul>
-                     <li><strong>Decay:</strong> This tool has two modes. <strong>Standard Decay</strong> solves the fundamental decay equation for any one variable given the others and includes a Parent-Daughter mode. <strong>Source Correction</strong> mode is a specialized tool for correcting a source's activity from its calibration date to a new date.</li>
-                     <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
-                     <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> or <strong>Transient</strong> and calculate important metrics like the time to maximum daughter activity.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
-                 <ul>
-                     <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose for surface contamination and Dose in Air for a point source. <strong>Bremsstrahlung</strong> mode estimates X-ray dose from beta shielding, and <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
-                     <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate final dose rate or required thickness, including an optional Buildup Factor correction. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
-                     <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
-                 </ul>
-
-                 <h4 className="italic mt-4">Operational HP Tools</h4>
-                 <ul>
-                    <li><strong>Static Survey:</strong> Evaluates a set of static surface measurements against an average and maximum limit.</li>
-                    <li><strong>Wipe Survey:</strong> Calculates removable contamination in dpm/100cm² from a smear count and compares it to NRC Regulatory Guide 1.86 and ANSI N13.12 limits.</li>
-                    <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the 0.005 µCi limit.</li>
-                    <li><strong>Airborne:</strong> Models an airborne release in a room to calculate the initial concentration in DAC units and the time required for ventilation to reduce the concentration to 1 DAC.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Neutron Tools</h4>
-                 <ul>
-                    <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose (rem) using the log-log interpolation of data from 10 CFR 20.</li>
-                    <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known neutron flux. Includes both a database of common reactions and a manual input mode.</li>
-                    <li><strong>Composite Activation:</strong> Calculates the principal activation products from irradiating a composite material like concrete or steel.</li>
-                    <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate HVL data.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Medical Physics Tools</h4>
-                 <ul>
-                    <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead or concrete for diagnostic X-ray rooms based on the NCRP-147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
-                    <li><strong>Patient Release:</strong> Evaluates if a patient administered with a radiopharmaceutical can be released based on the criteria in 10 CFR 35.75, checking against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE).</li>
-                 </ul>
-
-                 <h4 className="italic mt-4">MARSSIM Tools</h4>
-                 <ul>
-                     <li><strong>MDA:</strong> Calculates key decision values for radiation counting. Includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas).</li>
-                     <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology from MARSSIM.</li>
-                     <li><strong>MARSSIM Tests:</strong> Performs the <strong>WRS Test</strong> to compare a survey unit to a reference area and the <strong>EMC Sign Test</strong> for evaluating localized elevated areas.</li>
-                 </ul>
-
-                 <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
-                 <ul>
-                    <li><strong>Chi-Squared (χ²) Test:</strong> Performs a chi-squared test on a set of repeated counts to check if the counting system is statistically stable.</li>
-                    <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts lost due to detector dead time, providing the "true" count rate.</li>
-                    <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision.</li>
-                    <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Utility Tools</h4>
-                 <ul>
-                     <li><strong>Peak Identifier:</strong> An essential tool for gamma spectroscopy. Enter a peak energy (in keV or MeV) and a tolerance, and the tool will search the entire database for matching gamma or alpha emissions. It also analyzes the input energy for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays.</li>
-                     <li><strong>Activity/Mass:</strong> This module contains two tools. The first converts between a nuclide's mass and its activity. The second is a first-principles calculator for determining a nuclide's Specific Activity (Bq/g) from its atomic weight and half-life.</li>
-                     <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> and A<sub>2</sub> values.</li>
-                     <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
-                     <li><strong>Scratchpad:</strong> A simple notepad for jotting down notes or calculations. Your notes are automatically saved in your browser's local storage.</li>
-                     <li><strong>Sci. Calculator:</strong> A built-in scientific calculator for convenience.</li>
-                     <li><strong>References:</strong> A curated list of important links to regulatory bodies, data sources, and professional organizations.</li>
-                 </ul>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Settings & Customization</strong></h2>
-                 <p>The <strong>Settings</strong> panel, accessible from the gear icon in the top right, allows you to set default units for the main calculators. This can streamline your workflow by pre-populating inputs with your preferred units for **Activity**, **Dose Rate**, and **Distance**.</p>
-                 <ul>
-                     <li><strong>Activity:</strong> Set your preferred unit for activity (e.g., Ci, mCi, Bq). This will be the default for calculators like Dose Rate and Stay Time.</li>
-                     <li><strong>Dose Rate:</strong> Set your preferred dose rate unit (e.g., mrem/hr, µSv/hr). This will be the default for calculators like Dose Rate, Shielding, and Stay Time.</li>
-                     <li><strong>Distance:</strong> Set your preferred distance unit (e.g., m, cm, ft). This will be the default for calculators that require a distance from the source.</li>
-                 </ul>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
-                 <p>The following section provides the mathematical basis for the calculators used in this application.</p>
-
-                 <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
-                 <h4 className="italic mt-4">Radioactive Decay</h4>
-                 <p>The fundamental decay equation relates initial activity (A<sub>0</sub>) to the activity at time t (A(t)).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>A(t) = A<sub>0</sub> * e<sup>-λt</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>A(t)</code> is the activity at time <code>t</code>.</li>
-                     <li><code>A<sub>0</sub></code> is the initial activity at <code>t=0</code>.</li>
-                     <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T<sub>1/2</sub></code>.</li>
-                 </ul>
-                 <h4 className="italic mt-4">Series (Bateman) Decay</h4>
-                 <p>For a decay chain <code>A → B → C</code>, the activity of the daughter <code>B</code> is given by:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ<sub>2</sub>/(λ<sub>2</sub>-λ<sub>1</sub>)] * [e<sup>-λ<sub>1</sub>t</sup> - e<sup>-λ<sub>2</sub>t</sup>] + A<sub>2</sub>(0)e<sup>-λ<sub>2</sub>t</sup></pre>
-                 </div>
-                 <p>The calculator solves the full system of Bateman equations for any chain length, including branching decays.</p>
-                 <h4 className="italic mt-4">Specific Activity (SA)</h4>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>SA (Bq/g) = (N<sub>a</sub> * λ) / M<sub>a</sub> = (N<sub>a</sub> * ln(2)) / (T<sub>1/2</sub> * M<sub>a</sub>)</pre>
-                 </div>
-                 <ul>
-                     <li><code>N<sub>a</sub></code> is Avogadro's Number (6.022 x 10<sup>23</sup> atoms/mol).</li>
-                     <li><code>M<sub>a</sub></code> is the molar mass of the radionuclide (g/mol).</li>
-                     <li><code>T<sub>1/2</sub></code> is the half-life in seconds.</li>
-                 </ul>
-
-                 <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
-                 <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
-                 <p>For a <strong>point source</strong>, the inverse square law is used:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Dose Rate = (Γ * A) / d<sup>2</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>Γ</code> is the specific gamma-ray constant.</li>
-                     <li><code>A</code> is the total source activity.</li>
-                     <li><code>d</code> is the perpendicular distance from the source.</li>
-                 </ul>
-                 <h4 className="italic mt-4">Shielding</h4>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>D<sub>shielded</sub> = D<sub>unshielded</sub> * (0.5)<sup>(x / HVL)</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>x</code> is the shield thickness.</li>
-                     <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
-                 </ul>
-
-                 <h3 className="mt-6"><b>Radon Formulas</b></h3>
-                 <h4 className="italic mt-4">Working Level & Equilibrium</h4>
-                 <p>The relationship between radon concentration, the equilibrium factor (F), and Working Levels (WL) is:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>WL = (Concentration (pCi/L) / 100) * F</pre>
-                 </div>
-                 <h4 className="italic mt-4">Potential Alpha Energy Concentration (PAEC)</h4>
-                 <p>The PAEC is the energy concentration defined by the Working Level unit.</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>PAEC (MeV/L) = WL * 1.3 x 10<sup>5</sup></pre>
-                 </div>
-                 <h4 className="italic mt-4">Annual Dose Estimation</h4>
-                 <p>The annual dose is calculated from the cumulative exposure in Working Level Months (WLM).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Dose (mrem/yr) = (WL * (hrs_yr * Occupancy) / 170) * 500</pre>
-                 </div>
-
-                 <h3 className="mt-6">MARSSIM Formulas</h3>
-                 <h4 className="italic mt-4"><b>LLD & MDA (Static Count)</b></h4>
-                 <p>The calculator uses the NUREG-1507 formula for the Lower Limit of Detection (LLD), which includes the Stapleton correction (+3).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>LLD (counts) = 3.29 * sqrt(R<sub>b</sub> * t<sub>g</sub> * (1 + t<sub>g</sub> / t<sub>b</sub>)) + 3</pre>
-                 </div>
-                 <p>The Minimum Detectable Activity (MDA) is then calculated from the LLD, count time (t<sub>g</sub>), and efficiencies (ε).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>MDA (dpm/100cm<sup>2</sup>) = (LLD / t<sub>g</sub>) / (ε<sub>i</sub> * ε<sub>s</sub>) * (100 / A)</pre>
-                 </div>
-                 <h4 className="italic mt-4">Scan MDC</h4>
-                 <p>The Scan MDC for a surveyor is based on the Minimum Detectable Count Rate (MDCR).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>MDCR (cpm) = d' * sqrt(B<sub>i</sub>) * (60 / t<sub>obs</sub>)</pre>
-                 </div>
-                 <p>The final MDC in dpm/100cm² accounts for surveyor efficiency (p) and total efficiency (ε<sub>total</sub>).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Scan MDC (dpm/100cm<sup>2</sup>) = MDCR / (sqrt(p) * ε<sub>total</sub> * (A<sub>probe</sub>/100))</pre>
-                 </div>
-                 <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
-                 <p>Based on MARSSIM Eq. 5-2, using the Relative Shift (Δ/σ) to find a corresponding probability value (P<sub>r</sub>) from a table.</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>N = (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> / (3 * (P<sub>r</sub> - 0.5)<sup>2</sup>)</pre>
-                 </div>
-                 <p>The final number is increased by 20% to account for missing or unusable samples.</p>
-                 <h4 className="italic mt-4">WRS & Sign Tests</h4>
-                 <p>These are non-parametric statistical hypothesis tests based on ranking data rather than a simple formula.</p>
-                 <ul>
-                     <li><strong>WRS Test:</strong> Tests the null hypothesis H<sub>0</sub>: The survey unit median is greater than the reference area median (i.e., it's contaminated). It compares the rank sum of the reference area (W<sub>rs</sub>) to a critical value (C<sub>w</sub>). The survey unit passes if W<sub>rs</sub> ≥ C<sub>w</sub>.</li>
-                     <li><strong>EMC Sign Test:</strong> Tests the null hypothesis H<sub>0</sub>: The median of the elevated area is greater than or equal to the DCGL<sub>EMC</sub>. It compares the number of positive differences (S<sup>+</sup>) to a critical value (C<sub>s</sub>). The area passes if S<sup>+</sup> ≥ C<sub>s</sub>.</li>
-                 </ul>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Copyright</strong></h2>
-                 <p>
-                     Feedback, bug reports, and suggestions are welcome! You can reach out via email, or check out my personal website and GitHub for other projects.
-                 </p>
-                 <ul>
-                     <li><strong>Email:</strong> <a href="mailto:joughdonakowski@gmail.com" className="text-sky-500 hover:underline">joughdonakowski@gmail.com</a></li>
-                     <li><strong>Website:</strong> <a href="https://www.joughdonakowski.com" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">www.joughdonakowski.com</a></li>
-                     <li><strong>GitHub:</strong> <a href="https://jough13.github.io" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">jough13.github.io</a></li>
-                 </ul>
-                 <p className="mt-4 text-xs text-slate-500">
-                     Copyright © 2025 Jough Donakowski. All rights reserved. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
-                 </p>
-
-                 <hr className="my-4" />
-
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
-
-                 <h4 className="italic mt-4">Where does the data come from?</h4>
-                 <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS). Dosimetry values are from 10 CFR 20, Appendix B.</p>
-
-                 <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
-                 <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools. Additionally, certain calculations (like the parent-daughter equilibrium) only feature nuclides with known progeny that are themselves radioactive.</p>
-
-                 <h4 className="italic mt-4">What is the disclaimer?</h4>
-                 <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been validated and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
-             </div>
-         );
-         };
-
-         return (
-
-         // The modal backdrop, which closes the modal when clicked.
-
-         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start p-4" onClick={onClose}>
-             {/* The modal panel itself. e.stopPropagation() prevents a click inside from closing it. */}
-             <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                     <h2 className="text-xl font-bold">User Manual & FAQ</h2>
-                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
-                         <Icon path={ICONS.clear} className="w-6 h-6" />
-                     </button>
-                 </div>
-                 <div className="overflow-y-auto">
-                     <ManualContent />
-                 </div>
-             </div>
-         </div>
-         );
-         };
-         
-
-const SettingsPanel = () => {
-         const { settings, updateSettings } = React.useContext(SettingsContext);
-         const { addToast } = useToast();
-         const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
-         
-         // --- CHANGE 1: Create a ref to reference the main panel div ---
-         const panelRef = React.useRef(null);
-         
-         const handleSettingChange = (key, value) => {
-         updateSettings({ [key]: value });
-         addToast(`Default setting for ${key} changed.`);
-         };
-         
-         const handleResetDefaults = () => {
-         localStorage.clear();
-         sessionStorage.setItem('showResetToast', 'true');
-         window.location.reload();
-         };
-         
-         const handleOpenResetModal = () => {
-         setIsResetModalOpen(true);
-         // --- CHANGE 2: Scroll the panel itself into the center of the view ---
-         if (panelRef.current) {
-         panelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-         }
-         };
-         
-         return (
-         <>
-         
-         <div ref={panelRef} className="p-4 animate-fade-in">
-         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Default Settings</h2>
-         <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-         These are the default units and modes used across the toolbox.
-         </p>
-         <div className="space-y-4">
-         <div>
-         <label className="block text-sm font-medium">Activity</label>
-         <select value={settings.activity} onChange={e => handleSettingChange('activity', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {activityUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Dose Rate</label>
-         <select value={settings.doseRate} onChange={e => handleSettingChange('doseRate', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {doseRateUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Distance</label>
-         <select value={settings.distance} onChange={e => handleSettingChange('distance', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {distanceUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Default Chart Scale</label>
-         <select value={settings.chartScale} onChange={e => handleSettingChange('chartScale', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           <option value="Linear">Linear</option>
-           <option value="Logarithmic">Logarithmic</option>
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Default Dose Calculator Mode</label>
-         <select value={settings.defaultDoseMode} onChange={e => handleSettingChange('defaultDoseMode', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           <option value="gamma">Gamma</option>
-           <option value="beta">Beta</option>
-           <option value="bremsstrahlung">Bremsstrahlung</option>
-           <option value="internal">Internal</option>
-         </select>
-         </div>
-         </div>
-         
-         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-         <button
-         onClick={handleOpenResetModal}
-         className="w-full py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900 transition"
-         >
-         Reset to Defaults
-         </button>
-         </div>
-         </div>
-         </div>
-         
-         <ConfirmationModal
-         isOpen={isResetModalOpen}
-         onClose={() => setIsResetModalOpen(false)}
-         onConfirm={handleResetDefaults}
-         title="Reset All Settings & Saved Data?"
-         >
-         <p>Are you sure? This will clear <strong>all</strong> saved calculator inputs, favorites, search history, and default settings. The application will reload with its original defaults. This action cannot be undone.</p>
-         </ConfirmationModal>
-         </>
-         );
-         };
 
          // Final step: Render the main App component into the DOM.
          
