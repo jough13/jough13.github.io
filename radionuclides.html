@@ -26,9 +26,7 @@
              if (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                  applyTheme();
              }
-         
          })();
-         
       </script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
       <title>Health Physics Toolbox</title>
@@ -53,23 +51,6 @@
       <link href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" rel="stylesheet" />
       <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
       <script defer onload="renderMathInElement(document.body);" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-
-	<style>
-
-         /* --- Styles for the mouse coordinate display on the map --- */
-
-         .leaflet-control-mouseposition {
-             background-color: rgba(255, 255, 255, 0.8);
-             box-shadow: 0 0 5px #bbb;
-             padding: 3px 8px;
-             margin: 0;
-             color: #333;
-             font: 12px/1.5 "Inter", sans-serif;
-             border-radius: 4px;
-             border: 1px solid #aaa;
-         }
-      </style>
-
       <style>
          /* This is now the only style block needed for the fade-in.
          It hides the main content area by default to prevent any FOUC.
@@ -195,38 +176,45 @@
          .animate-toast-in {
          animation: toast-in 0.3s ease-out forwards;
          }
-         /* --- NEW, TARGETED STYLES FOR SAMPLE POINTS --- */
-         .grid-sample-marker {
-         stroke: #1E88E5; /* blue-600 */
-         stroke-width: 1;
-         fill: #1E88E5;
-         fill-opacity: 1;
-         }
-         .biased-sample-marker {
-         stroke: #facc15; /* amber-400 */
-         stroke-width: 1;
-         fill: #facc15;
-         fill-opacity: 1;
-         }
-      </style>
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
 
-      <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
-      <script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
+/* --- NEW, TARGETED STYLES FOR SAMPLE POINTS --- */
+.grid-sample-marker {
+    stroke: #1E88E5; /* blue-600 */
+    stroke-width: 1;
+    fill: #1E88E5;
+    fill-opacity: 1;
+}
+.biased-sample-marker {
+    stroke: #facc15; /* amber-400 */
+    stroke-width: 1;
+    fill: #facc15;
+    fill-opacity: 1;
+}
+
+      </style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
+<script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
+
       <script>
          // When the document is ready, add the 'visible' class to the #root element
          
          // to trigger our CSS transition.
-         
          window.addEventListener('DOMContentLoaded', () => {
              document.getElementById('root').classList.add('visible');
          });
       </script
          >
+
+
    </head>
    <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300">
       <div id="loader">
@@ -268,7 +256,9 @@
              { name: 'Astatine-211', symbol: 'At-211', emissionType: ['Alpha', 'Electron Capture', 'X-ray'], emissionEnergies: { alpha: ['5.867 MeV'], beta: [], gamma: [] }, halfLife: '7.21 hours', decayConstant: '0.096 hour⁻¹', specificActivity: '7.8 x 10^16 Bq/g', parent: 'Bismuth-209 (α,2n)', daughter: 'Bismuth-207 (EC) or Polonium-211 (α)', commonUses: ['Targeted alpha therapy research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A promising research alpha-emitter that is difficult to produce and has a short half-life.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 20, A2: 0.005, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 9, ingestion: 7 }, DAC: { inhalation_W: 4e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
+         
              { name: 'Astatine-218', emissionType: ['Alpha', 'Beta-minus'], symbol: 'At-218', emissionEnergies: { alpha: ['6.757 MeV'], beta: ['2.88 MeV (max)'] }, avgBetaEnergy: '0.960 MeV', halfLife: '1.5 seconds', decayConstant: '0.462 s⁻¹', specificActivity: '4.8 x 10^19 Bq/g', parent: 'Polonium-218', daughter: 'Bismuth-214 (α) or Radon-218 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain with no practical applications.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_W: 10, ingestion: 10 }, DAC: { inhalation_W: 5e-9 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Barium-133', symbol: 'Ba-133', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.356 MeV', '0.081 MeV'], alpha: [] }, halfLife: '10.51 years', decayConstant: '0.0659 year⁻¹', gammaConstant: '0.30 R·m²/hr·Ci', specificActivity: '9.3 x 10^12 Bq/g', parent: 'Lanthanum-133', daughter: 'Cesium-133 (stable)', commonUses: ['Calibration sources', 'Density gauging'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A common, long-lived gamma source used for calibrating gamma spectroscopy systems.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 3, A2: 3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 200, inhalation_W: 90, ingestion: 200 }, DAC: { inhalation_D: 1e-7, inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -290,7 +280,9 @@
                  dosimetry: { ALI: { inhalation_D: 90, ingestion: 70 }, DAC: { inhalation_D: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Bismuth-213', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-213', emissionEnergies: { beta: ['1.42 MeV (max)'], alpha: ['5.87 MeV'], gamma: ['0.440 MeV'] }, avgBetaEnergy: '0.473 MeV', halfLife: '45.6 minutes', decayConstant: '0.0152 min⁻¹', specificActivity: '1.09 x 10^17 Bq/g', parent: 'Actinium-225', daughter: 'Polonium-213 (β) or Thallium-209 (α)', commonUses: ['Targeted Alpha Therapy (TAT) for various cancers.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A short-lived daughter of Ac-225, used in targeted alpha therapy research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.8, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 800, ingestion: 600 }, DAC: { inhalation_D: 4e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Bismuth-214', emissionType: ['Beta-minus', 'Alpha', 'Gamma'], symbol: 'Bi-214', emissionEnergies: { beta: ['3.27 MeV (max)'], gamma: ['0.609 MeV', '1.120 MeV', '1.764 MeV'], alpha: ['5.62 MeV'] }, avgBetaEnergy: '1.090 MeV', halfLife: '19.9 minutes', decayConstant: '0.0348 min⁻¹', specificActivity: '3.6 x 10^17 Bq/g', parent: 'Lead-214', daughter: 'Polonium-214 (β-) / Thallium-210 (α)', commonUses: ['Source of natural background gamma radiation (from Radon decay products)'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A prominent gamma-emitter in the Radon-222 decay chain, contributing to natural background radiation.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 400, ingestion: 200 }, DAC: { inhalation_D: 2e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Bromine-77', symbol: 'Br-77', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.239 MeV', '0.297 MeV'], alpha: [] }, halfLife: '57.04 hours', decayConstant: '0.0121 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Krypton-77', daughter: 'Selenium-77 (stable)', commonUses: ['PET imaging research', 'Antibody labeling'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used for specialized medical research applications like antibody labeling.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 3, A2: 3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2000, ingestion: 1000 }, DAC: { inhalation_D: 8e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -308,7 +300,8 @@
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Calcium-47', symbol: 'Ca-47', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.694 MeV (max)'], gamma: ['1.297 MeV'], alpha: [] }, avgBetaEnergy: '0.231 MeV', daughterEmissions: { from: 'Sc-47', beta: ['0.601 MeV (max)'], gamma: ['0.159 MeV'] }, halfLife: '4.536 days', decayConstant: '0.153 day⁻¹', specificActivity: '2.07 x 10^16 Bq/g', parent: 'Potassium-47', daughter: 'Scandium-47', commonUses: ['Bone metabolism research (historical)', 'Medical studies'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Largely replaced by other isotopes for medical studies, now used only in limited research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 200, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' }, 
+                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },                
+             
              { name: 'Californium-252', symbol: 'Cf-252', emissionType: ['Alpha', 'Spontaneous Fission', 'Neutron', 'Gamma'], emissionEnergies: { alpha: ['6.118 MeV'], beta: [], gamma: ['~0.1-6 MeV (complex spectrum from fission)'] }, halfLife: '2.645 years', decayConstant: '0.262 year⁻¹', specificActivity: '2.0 x 10^13 Bq/g', parent: 'Curium-252', daughter: 'Curium-248 (α), Fission products', commonUses: ['Neutron source (neutron activation analysis)', 'Tumor treatment', 'Reactor startup', 'Well logging'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A powerful and widely used spontaneous fission neutron source for various industrial and medical applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.2, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 0.05, inhalation_Y: 0.02, ingestion: 0.2 }, DAC: { inhalation_W: 2e-11, inhalation_Y: 1e-11 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
@@ -336,7 +329,7 @@
              { name: 'Copper-64', symbol: 'Cu-64', emissionType: ['Positron Emission', 'Beta-minus', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.653 MeV (β+ max)', '0.579 MeV (β- max)'], gamma: ['1.345 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.193 MeV (β-)', halfLife: '12.7 hours', decayConstant: '0.0546 hour⁻¹', specificActivity: '1.74 x 10^17 Bq/g', parent: 'Nickel-64 (p,n)', daughter: 'Nickel-64 (stable) or Zinc-64 (stable)', commonUses: ['PET imaging (various applications)', 'Targeted radionuclide therapy research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A versatile medical isotope for PET imaging and therapy research, but not as widespread as F-18.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 300, ingestion: 2000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 2e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         { name: 'Copper-67', symbol: 'Cu-67', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.576 MeV (max)'], gamma: ['0.185 MeV'], alpha: [] }, avgBetaEnergy: '0.192 MeV', halfLife: '61.83 hours', decayConstant: '0.0112 hour⁻¹', specificActivity: '1.2 x 10^16 Bq/g', parent: 'Zinc-67 (n,p)', daughter: 'Zinc-67 (stable)', commonUses: ['Radioimmunotherapy, theranostic partner for Copper-64 PET imaging.'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope for targeted therapy, valued as a "theranostic" partner to the PET isotope Cu-64.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 900, inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_D: 4e-7, inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Curium-244', symbol: 'Cm-244', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.805 MeV'], gamma: ['0.043 MeV'], beta: [] }, halfLife: '18.1 years', decayConstant: '0.0383 year⁻¹', specificActivity: '3.0 x 10^12 Bq/g', parent: 'Americium-244 (β-)', daughter: 'Plutonium-240', commonUses: ['Alpha particle X-ray spectrometers (APXS) for space exploration', 'Neutron sources'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'Used in specialized applications like space exploration instruments due to its alpha emissions.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 0.002, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 0.2, inhalation_Y: 0.3, ingestion: 3 }, DAC: { inhalation_W: 1e-10, inhalation_Y: 1e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
@@ -366,10 +359,12 @@
              { name: 'Gallium-68', symbol: 'Ga-68', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.90 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.633 MeV', halfLife: '67.71 minutes', decayConstant: '0.0102 min⁻¹', specificActivity: '1.45 x 10^17 Bq/g', parent: 'Germanium-68', daughter: 'Zinc-68 (stable)', commonUses: ['PET imaging, especially with DOTATATE/DOTATOC for neuroendocrine tumors'], category: 'Medical', commonality: 'Common', commonalityReason: 'A major PET imaging isotope, especially for neuroendocrine tumors, often produced from a Ge-68 generator.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.5, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 1000, ingestion: 400 }, DAC: { inhalation_W: 6e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Germanium-68', symbol: 'Ge-68', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, daughterEmissions: { from: 'Ga-68', beta: ['1.90 MeV (max)'], gamma: ['0.511 MeV (annihilation)'] }, halfLife: '270.95 days', decayConstant: '0.00256 day⁻¹', specificActivity: '2.8 x 10^14 Bq/g', parent: 'Arsenic-68', daughter: 'Gallium-68 (EC, β+)', commonUses: ['Generator for Ga-68 (PET imaging)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'The long-lived parent used in generators to produce the short-lived PET isotope Ga-68.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
+         
+         { name: 'Germanium-68', symbol: 'Ge-68', emissionType: ['Electron Capture', 'X-ray'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, daughterEmissions: { from: 'Ga-68', beta: ['1.90 MeV (max)'], gamma: ['0.511 MeV (annihilation)'] }, halfLife: '270.95 days', decayConstant: '0.00256 day⁻¹', specificActivity: '2.8 x 10^14 Bq/g', parent: 'Arsenic-68', daughter: 'Gallium-68 (EC, β+)', commonUses: ['Generator for Ga-68 (PET imaging)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'The long-lived parent used in generators to produce the short-lived PET isotope Ga-68.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 20, ingestion: 2000 }, DAC: { inhalation_D: 7e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Gold-195m', symbol: 'Au-195m', emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.262 MeV'], alpha: [] }, halfLife: '30.5 seconds', decayConstant: '0.0227 s⁻¹', specificActivity: '1.5 x 10^18 Bq/g', parent: 'Mercury-195m', daughter: 'Gold-195', commonUses: ['Cardiac blood flow imaging (historical)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used historically in medicine but has been replaced by other isotopes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 10000, ingestion: 10000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Gold-198', symbol: 'Au-198', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.961 MeV (max)'], gamma: ['0.412 MeV'], alpha: [] }, avgBetaEnergy: '0.320 MeV', halfLife: '2.695 days', decayConstant: '0.257 day⁻¹', specificActivity: '9.3 x 10^15 Bq/g', parent: 'Gold-197 (n,γ)', daughter: 'Mercury-198 (stable)', commonUses: ['Radiotherapy (brachytherapy)', 'Tracers', 'Industrial applications'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'Used in specific brachytherapy applications and as an industrial tracer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.6, unit: 'TBq' }, gammaConstant: '0.23 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 20, ingestion: 200 }, DAC: { inhalation_W: 9e-8, inhalation_Y: 1e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -407,10 +402,14 @@
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 80 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Krypton-79', symbol: 'Kr-79', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['0.604 MeV (max)'], gamma: ['0.261 MeV', '0.398 MeV'], alpha: [] }, avgBetaEnergy: '0.201 MeV', halfLife: '35.04 hours', decayConstant: '0.0198 hour⁻¹', specificActivity: '1.7 x 10^16 Bq/g', parent: 'Bromine-79', daughter: 'Bromine-79 (stable)', commonUses: ['Lung ventilation studies (PET)', 'Research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'Used in medical research, particularly for PET-based lung ventilation studies.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 2, A2: 2, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 20000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Krypton-81m', symbol: 'Kr-81m', emissionType: ['Gamma', 'Isomeric Transition'], emissionEnergies: { beta: [], gamma: ['0.190 MeV'], alpha: [] }, halfLife: '13.1 seconds', decayConstant: '0.0529 s⁻¹', specificActivity: '4.85 x 10^18 Bq/g', parent: 'Rubidium-81', daughter: 'Krypton-81', commonUses: ['Lung ventilation studies (very short half-life allows for repeated scans)'], category: 'Medical', commonality: 'Common', commonalityReason: 'A very short-lived gas used for lung ventilation scans, typically produced from a Rb-81 generator.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 500000, ingestion: 500000 }, DAC: { inhalation_D: 2e-4 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Krypton-85', symbol: 'Kr-85', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.687 MeV (max)'], gamma: ['0.514 MeV'], alpha: [] }, avgBetaEnergy: '0.229 MeV', halfLife: '10.76 years', decayConstant: '0.0644 year⁻¹', specificActivity: '1.45 x 10^13 Bq/g', parent: 'Uranium Fission', daughter: 'Rubidium-85 (stable)', commonUses: ['Atmospheric tracer', 'Industrial applications (leak detection, gauging)'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A fission product gas used in industrial applications like leak detection and thickness gauging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 10, unit: 'TBq' },
-                 dosimetry: { ALI: { inhalation_D: 40000 }, DAC: { inhalation_D: 1e-5 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Lanthanum-140', symbol: 'La-140', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.68 MeV (max)'], gamma: ['1.596 MeV', '0.816 MeV', '0.487 MeV'], alpha: [] }, avgBetaEnergy: '0.560 MeV', halfLife: '1.678 days', decayConstant: '0.413 day⁻¹', specificActivity: '2.07 x 10^16 Bq/g', parent: 'Barium-140', daughter: 'Cerium-140 (stable)', commonUses: ['Fission product', 'Research tracer'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived fission product used as a tracer in research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.7, A2: 0.4, unit: 'TBq' },
+                 dosimetry: { ALI: { inhalation_D: 40000 }, DAC: { inhalation_D: 1e-5 }, sourceRef: '10CFR20' },
+                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             
+                 { name: 'Lanthanum-140', symbol: 'La-140', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.68 MeV (max)'], gamma: ['1.596 MeV', '0.816 MeV', '0.487 MeV'], alpha: [] }, avgBetaEnergy: '0.560 MeV', halfLife: '1.678 days', decayConstant: '0.413 day⁻¹', specificActivity: '2.07 x 10^16 Bq/g', parent: 'Barium-140', daughter: 'Cerium-140 (stable)', commonUses: ['Fission product', 'Research tracer'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived fission product used as a tracer in research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.7, A2: 0.4, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 50, ingestion: 100 }, DAC: { inhalation_W: 2e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Lead-206', symbol: 'Pb-206', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Polonium-210', daughter: 'Stable', commonUses: ['Final stable product of U-238 decay series', 'Geological dating'], category: 'Stable/Reference', commonality: 'N/A', commonalityReason: 'This is a stable isotope and not radioactive.',
@@ -477,12 +476,16 @@
              { name: 'Plutonium-239', symbol: 'Pu-239', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.157 MeV (dominant)'], beta: [], gamma: ['0.0516 MeV'] }, halfLife: '24,110 years', decayConstant: '2.87 x 10⁻⁵ year⁻¹', specificActivity: '2.3 x 10^9 Bq/g', parent: 'Uranium-238 (n,γ) -> ... -> Np-239 (β-)', daughter: 'Uranium-235 (α)', commonUses: ['Nuclear weapons', 'Nuclear fuel (MOX fuel)'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A primary fissile material used in nuclear weapons and as a component of MOX fuel.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 0.006, inhalation_Y: 0.006, ingestion: 0.8 }, DAC: { inhalation_W: 3e-12, inhalation_Y: 3e-12 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
-             { name: 'Polonium-208', symbol: 'Po-208', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.115 MeV'], beta: [], gamma: ['0.134 MeV'] }, halfLife: '2.898 years', decayConstant: '0.239 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Bismuth-209 (p,2n)', daughter: 'Lead-204 (stable)', commonUses: ['Alpha calibration', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A synthetic alpha-emitter used for specialized research and calibration.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.01, unit: 'TBq' },
-                 dosimetry: { ALI: { inhalation_D: 0.4, ingestion: 0.4 }, DAC: { inhalation_D: 2e-10 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
+         
+         { name: 'Polonium-208', symbol: 'Po-208', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.115 MeV'], beta: [], gamma: ['0.134 MeV'] }, halfLife: '2.898 years', decayConstant: '0.239 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Bismuth-209 (p,2n)', daughter: 'Lead-204 (stable)', commonUses: ['Alpha calibration', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A synthetic alpha-emitter used for specialized research and calibration.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 0.01, unit: 'TBq' },
+                 dosimetry: { ALI: { inhalation_D: 0.4, ingestion: 0.4 }, DAC: { inhalation_D: 2e-10 }, sourceRef: '10CFR20' },
+                 regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
              { name: 'Polonium-210', symbol: 'Po-210', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.304 MeV'], beta: [], gamma: [] }, halfLife: '138.376 days', decayConstant: '0.00501 day⁻¹', specificActivity: '1.66 x 10^14 Bq/g', parent: 'Bismuth-210 (β-)', daughter: 'Lead-206 (stable)', commonUses: ['Antistatic devices', 'Neutron sources', 'Research (alpha spectroscopy)'], category: 'Natural', commonality: 'Common', commonalityReason: 'A naturally occurring alpha-emitter (from Radon decay) used commercially in antistatic devices.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.02, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 0.4, ingestion: 0.4 }, DAC: { inhalation_D: 2e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
+         
              { name: 'Polonium-211', symbol: 'Po-211', emissionType: ['Alpha'], emissionEnergies: { alpha: ['7.45 MeV'], beta: [], gamma: [] }, halfLife: '0.516 seconds', decayConstant: '1.34 s⁻¹', specificActivity: '1.4 x 10^20 Bq/g', parent: 'Bismuth-211', daughter: 'Lead-207 (stable)', commonUses: ['Fastest alpha emitter in natural series', 'Research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_D: 40, ingestion: 40 }, DAC: { inhalation_D: 2e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+         
              { name: 'Polonium-212', symbol: 'Po-212', emissionType: ['Alpha'], emissionEnergies: { alpha: ['8.785 MeV'], beta: [], gamma: [] }, halfLife: '0.299 microseconds', decayConstant: '2.32 x 10⁶ s⁻¹', specificActivity: '2.5 x 10^22 Bq/g', parent: 'Bismuth-212 (β-)', daughter: 'Lead-208 (stable)', commonUses: ['Fastest alpha emitter in natural series', 'Research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Polonium-214', symbol: 'Po-214', emissionType: ['Alpha'], emissionEnergies: { alpha: ['7.687 MeV'], beta: [], gamma: [] }, halfLife: '164.3 microseconds', decayConstant: '4218 s⁻¹', specificActivity: '4.4 x 10^21 Bq/g', parent: 'Bismuth-214', daughter: 'Lead-210 (α)', commonUses: ['Very short-lived intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
@@ -508,7 +511,9 @@
              { name: 'Protactinium-233', symbol: 'Pa-233', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.571 MeV (max)'], gamma: ['0.312 MeV'], alpha: [] }, avgBetaEnergy: '0.190 MeV', halfLife: '27.0 days', decayConstant: '0.0257 day⁻¹', specificActivity: '7.5 x 10^14 Bq/g', parent: 'Thorium-233 (β)', daughter: 'Uranium-233', commonUses: ['Intermediate in Th-232 to U-233 fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An important intermediate in the process of breeding U-233 fuel from Thorium-232.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 5, A2: 0.7, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_W: 200, inhalation_Y: 100, ingestion: 200 }, DAC: { inhalation_W: 1e-7, inhalation_Y: 6e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+             
              { name: 'Protactinium-234m', symbol: 'Pa-234m', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.29 MeV (max)'], gamma: ['1.001 MeV', '0.766 MeV'], alpha: [] }, avgBetaEnergy: '0.763 MeV', halfLife: '1.17 minutes', decayConstant: '0.592 min⁻¹', specificActivity: '1.7 x 10^19 Bq/g', parent: 'Thorium-234', daughter: 'Uranium-234 (β-)', commonUses: ['Intermediate in U-238 decay chain'], category: 'Natural', commonality: 'Moderate', commonalityReason: 'A very short-lived but commonly present intermediate in the U-238 decay series.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.3, A2: 0.3, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 300, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'beta_gamma' },
+         
              { name: 'Radium-220', symbol: 'Ra-220', emissionType: ['Alpha'], emissionEnergies: { alpha: ['6.818 MeV'], beta: [], gamma: [] }, halfLife: '27.4 seconds', decayConstant: '0.0253 s⁻¹', specificActivity: '1.8 x 10^18 Bq/g', parent: 'Thorium-224', daughter: 'Radon-216 (α)', commonUses: ['Intermediate in Thorium-232 decay series'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'transuranics', ansiCategory: 'alpha_very_high' },
              { name: 'Radium-223', symbol: 'Ra-223', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.71 MeV (dominant)'], beta: [], gamma: ['0.269 MeV'] }, halfLife: '11.43 days', decayConstant: '0.0606 day⁻¹', specificActivity: '1.9 x 10^15 Bq/g', parent: 'Thorium-227', daughter: 'Radon-219 (α)', commonUses: ['Alpha-emitter for targeted alpha therapy (e.g., Xofigo for prostate cancer)'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A clinically approved alpha-emitter for treating bone metastases from prostate cancer.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.9, A2: 0.005, unit: 'TBq' },
@@ -529,9 +534,13 @@
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Radon-221', symbol: 'Rn-221', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.19 MeV (max)'], gamma: ['0.078 MeV'], alpha: [] }, avgBetaEnergy: '0.397 MeV', halfLife: '25 minutes', decayConstant: '0.0277 min⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Francium-221', daughter: 'Francium-221', commonUses: ['Research (intermediate in artificial decay series)'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A short-lived intermediate in an artificial decay series with no practical applications.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' }, dosimetry: { DAC: { inhalation_D: 3e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-             { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
-                 dosimetry: { ALI: { inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_W: 5e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+                 
+         
+                 { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' }, dosimetry: { DAC: { inhalation_D: 3e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+         
+                 { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
+                 dosimetry: { ALI: { inhalation_W: 1000, ingestion: 1000 }, DAC: { inhalation_W: 5e-7 }, sourceRef: '10CFR20' },
+                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Rhenium-187', symbol: 'Re-187', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.0025 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.001 MeV', halfLife: '4.33 x 10¹⁰ years', decayConstant: '1.60 x 10⁻¹¹ year⁻¹', specificActivity: '1.03 x 10^6 Bq/g', parent: 'Primordial', daughter: 'Osmium-187 (stable)', commonUses: ['Rhenium-Osmium dating (geological)', 'Neutrino mass experiments'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A very long-lived primordial nuclide used for geological dating (Re-Os system).', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 40, unit: 'TBq' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_low_risk' },
              { name: 'Rhenium-188', symbol: 'Re-188', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['2.12 MeV (max)'], gamma: ['0.155 MeV'], alpha: [] }, avgBetaEnergy: '0.707 MeV', halfLife: '17.0 hours', decayConstant: '0.0408 hour⁻¹', specificActivity: '3.7 x 10^16 Bq/g', parent: 'Tungsten-188', daughter: 'Osmium-188 (stable)', commonUses: ['Radiotherapy (bone pain palliation, synovectomy, arterial brachytherapy)'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A high-energy beta emitter produced from a W-188 generator for various therapeutic applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.3, unit: 'TBq' },
@@ -544,6 +553,7 @@
                  dosimetry: { ALI: { inhalation_D: 10000, ingestion: 3000 }, DAC: { inhalation_D: 6e-6 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Rubidium-82', symbol: 'Rb-82', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['3.38 MeV (max)'], gamma: ['0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '1.127 MeV', halfLife: '76 seconds', decayConstant: '0.00912 s⁻¹', specificActivity: '8.3 x 10^17 Bq/g', parent: 'Strontium-82', daughter: 'Krypton-82 (stable)', commonUses: ['Cardiac PET imaging for myocardial perfusion'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'An extremely short-lived PET isotope produced from a Sr-82 generator for cardiac perfusion imaging.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.4, unit: 'TBq' }, dosimetry: { ALI: { inhalation_D: 20000, ingestion: 10000 }, DAC: { inhalation_D: 9e-6 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Rubidium-84', symbol: 'Rb-84', emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'], emissionEnergies: { beta: ['1.65 MeV (max)'], gamma: ['0.882 MeV'], alpha: [] }, avgBetaEnergy: '0.550 MeV', halfLife: '32.8 days', decayConstant: '0.0211 day⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Krypton-84', daughter: 'Krypton-84 (stable)', commonUses: ['Cardiac blood flow research'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research isotope used in studies of cardiac blood flow.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 200, ingestion: 300 }, DAC: { inhalation_D: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -557,6 +567,7 @@
                  dosimetry: { ALI: { inhalation_W: 300, ingestion: 800 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Scandium-44', symbol: 'Sc-44', emissionType: ['Positron Emission', 'Gamma'], emissionEnergies: { beta: ['1.47 MeV (max)'], gamma: ['1.157 MeV', '0.511 MeV (annihilation)'], alpha: [] }, avgBetaEnergy: '0.490 MeV', halfLife: '3.97 hours', decayConstant: '0.174 hour⁻¹', parent: 'Titanium-44 (EC)', daughter: 'Calcium-44 (stable)', commonUses: ['PET imaging', 'Theranostic pair with Sc-47'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A research PET isotope, often explored as a "theranostic" partner to the therapeutic isotope Sc-47.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.6, A2: 0.5, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 500 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
              { name: 'Scandium-46', symbol: 'Sc-46', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['0.357 MeV (max)'], gamma: ['0.889 MeV', '1.121 MeV'], alpha: [] }, avgBetaEnergy: '0.119 MeV', halfLife: '83.79 days', decayConstant: '0.00827 day⁻¹', specificActivity: '1.24 x 10^15 Bq/g', parent: 'Calcium-46 (n,p)', daughter: 'Titanium-46 (stable)', commonUses: ['Tracer in hydrology and industrial processes', 'Calibration source'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A long-lived gamma-emitter used as a tracer in specialized industrial processes.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' }, gammaConstant: '1.17 R·m²/hr·Ci',
                  dosimetry: { ALI: { inhalation_W: 90, ingestion: 200 }, DAC: { inhalation_W: 4e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -588,7 +599,8 @@
              { name: 'Strontium-90', symbol: 'Sr-90', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.546 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.196 MeV', daughterEmissions: { from: 'Y-90', beta: ['2.28 MeV (max)'] }, halfLife: '28.9 years', decayConstant: '0.0240 year⁻¹', specificActivity: '5.15 x 10^12 Bq/g', parent: 'Uranium Fission', daughter: 'Yttrium-90', commonUses: ['Radioisotope thermoelectric generators (RTGs)', 'Industrial gauges', 'Medical radiation therapy for bone cancer'], category: 'Industrial', commonality: 'Common', commonalityReason: 'A major fission product and long-lived, high-energy beta source (via its Y-90 daughter) for industrial and medical uses.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 0.4, A2: 0.3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2, ingestion: 8 }, DAC: { inhalation_D: 1e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Sulfur-34', symbol: 'S-34', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['Reference for stable sulfur', 'not a radionuclide use'], category: 'Stable/Reference', commonality: 'N/A', commonalityReason: 'This is a stable isotope and not radioactive.',
+         
+         { name: 'Sulfur-34', symbol: 'S-34', emissionType: ['Stable'], emissionEnergies: { beta: [], gamma: [], alpha: [] }, halfLife: 'Stable', decayConstant: '0', parent: 'Stable', daughter: 'Stable', commonUses: ['Reference for stable sulfur', 'not a radionuclide use'], category: 'Stable/Reference', commonality: 'N/A', commonalityReason: 'This is a stable isotope and not radioactive.',
                  regGuideCategory: null, ansiCategory: null },
              { name: 'Sulfur-35', symbol: 'S-35', emissionType: ['Beta-minus'], emissionEnergies: { beta: ['0.167 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.056 MeV', halfLife: '87.51 days', decayConstant: '0.00792 day⁻¹', specificActivity: '1.57 x 10^15 Bq/g', parent: 'Chlorine-35 (n,p)', daughter: 'Chlorine-35 (stable)', commonUses: ['Molecular biology (protein labeling)', 'Metabolic studies'], category: 'Industrial', commonality: 'Moderate', commonalityReason: 'A low-energy beta-emitter widely used in molecular biology labs for labeling proteins.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 3, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2000, ingestion: 2000 }, DAC: { inhalation_D: 1e-6 }, sourceRef: '10CFR20' },
@@ -610,8 +622,11 @@
              { name: 'Tellurium-130', symbol: 'Te-130', emissionType: ['Double Beta-minus'], emissionEnergies: { beta: ['2.528 MeV (total)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.843 MeV', halfLife: '2.5 x 10²¹ years', decayConstant: '2.77 x 10⁻²² year⁻¹', specificActivity: '1.6 x 10^-5 Bq/g', parent: 'Primordial', daughter: 'Xenon-130 (stable)', commonUses: ['Double beta decay research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An isotope with an extremely long half-life used in fundamental physics research.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.7, unit: 'TBq' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Terbium-161', symbol: 'Tb-161', emissionType: ['Beta-minus', 'Gamma', 'Auger electron'], emissionEnergies: { beta: ['0.593 MeV (max)'], gamma: ['0.049 MeV', '0.075 MeV'], alpha: [] }, avgBetaEnergy: '0.198 MeV', halfLife: '6.89 days', decayConstant: '0.101 day⁻¹', specificActivity: '4.4 x 10^14 Bq/g', commonUses: ['Theranostics (combined therapy and diagnostics), particularly for cancer treatment research.'], parent: 'Gadolinium-160 (n,γ)', daughter: 'Dysprosium-161 (stable)', category: 'Medical', commonality: 'Rare', commonalityReason: 'A promising research isotope for targeted radionuclide therapy due to its ideal decay properties.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 30, A2: 0.6, unit: 'TBq' }, dosimetry: { ALI: { inhalation_W: 300, ingestion: 600 }, DAC: { inhalation_W: 1e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
-             { name: 'Thallium-201', symbol: 'Tl-201', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.167 MeV', '0.135 MeV'], alpha: [] }, halfLife: '73.1 hours', decayConstant: '0.00948 hour⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Lead-201', daughter: 'Mercury-201 (stable)', commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A once-common SPECT agent for cardiac imaging, still used for certain applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 4, unit: 'TBq' },
-                 dosimetry: { ALI: { inhalation_W: 1000, ingestion: 700 }, DAC: { inhalation_W: 6e-7 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
+         
+             
+                 { name: 'Thallium-201', symbol: 'Tl-201', emissionType: ['Electron Capture', 'Gamma', 'X-ray'], emissionEnergies: { beta: [], gamma: ['0.167 MeV', '0.135 MeV'], alpha: [] }, halfLife: '73.1 hours', decayConstant: '0.00948 hour⁻¹', specificActivity: '1.74 x 10^15 Bq/g', parent: 'Lead-201', daughter: 'Mercury-201 (stable)', commonUses: ['Cardiac imaging (myocardial perfusion)', 'Parathyroid gland imaging'], category: 'Medical', commonality: 'Moderate', commonalityReason: 'A once-common SPECT agent for cardiac imaging, still used for certain applications.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 10, A2: 4, unit: 'TBq' },
+                 dosimetry: { ALI: { inhalation_W: 1000, ingestion: 700 }, DAC: { inhalation_W: 6e-7 }, sourceRef: '10CFR20' },
+                 regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Thallium-204', symbol: 'Tl-204', emissionType: ['Beta-minus', 'Electron Capture'], emissionEnergies: { beta: ['0.763 MeV (max)'], gamma: [], alpha: [] }, avgBetaEnergy: '0.254 MeV', halfLife: '3.78 years', decayConstant: '0.183 year⁻¹', specificActivity: '1.6 x 10^13 Bq/g', parent: 'Lead-204 (d,2n)', daughter: 'Lead-204 (stable) or Mercury-204 (stable)', commonUses: ['Calibration sources (beta)', 'Thickness gauging'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A long-lived pure beta-emitter used in specialized industrial gauges.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 4, A2: 1, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 400, ingestion: 300 }, DAC: { inhalation_D: 2e-7 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -661,6 +676,7 @@
                  dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Uranium-231', symbol: 'U-231', emissionType: ['Electron Capture', 'Gamma'], emissionEnergies: { beta: [], gamma: ['0.084 MeV', '0.143 MeV'], alpha: [] }, halfLife: '4.2 days', decayConstant: '0.165 day⁻¹', specificActivity: '1.27 x 10^16 Bq/g', parent: 'Neptunium-231 (EC)', daughter: 'Protactinium-231', commonUses: ['Intermediate in nuclear research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'A short-lived isotope encountered only in specialized nuclear research.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_D: 100, inhalation_W: 100, ingestion: 20 }, DAC: { inhalation_D: 4e-8, inhalation_W: 5e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
+         
              { name: 'Uranium-232', symbol: 'U-232', emissionType: ['Alpha', 'Gamma'], emissionEnergies: { alpha: ['5.320 MeV'], beta: [], gamma: ['0.058 MeV'] }, daughterEmissions: { from: 'Th-228', alpha: ['5.423 MeV'], gamma: ['0.084 MeV'] }, halfLife: '68.9 years', decayConstant: '0.0101 year⁻¹', specificActivity: '8.1 x 10^11 Bq/g', parent: 'Plutonium-236 (α)', daughter: 'Thorium-228 (α)', commonUses: ['Contaminant in U-233 from thorium fuel cycle', 'Research'], category: 'Industrial', commonality: 'Rare', commonalityReason: 'An isotope primarily known as a problematic contaminant in the thorium fuel cycle due to its high-energy gamma daughters.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.001, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 2, inhalation_W: 2, ingestion: 0.9 }, DAC: { inhalation_D: 1e-9, inhalation_W: 8e-10 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
@@ -699,7 +715,6 @@
       </script>
       <script type="text/babel">
 
-
          /**
           * Radionuclide Database Tool - Core Data and Utility Functions
           * -----------------------------------------------------------
@@ -713,8 +728,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.1';
-         const LAST_UPDATED = 'September 05, 2025';
+         const VERSION = '3.5';
+         const LAST_UPDATED = 'September 04, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -746,7 +761,7 @@
          LAB_STATS: 'labStats',
          SCRATCHPAD: 'scratchpad',
          SCIENTIFIC_CALCULATOR: 'scientificCalculator',
-         
+
          REFERENCES: 'references'
          };
          
@@ -865,52 +880,59 @@
          };
          
          const THERAPY_NUCLIDES = ['I-131', 'Lu-177', 'Sm-153', 'Ra-223', 'Ho-166', 'Re-186', 'Au-198', 'I-125', 'Cs-137'];
-         
-         /**
-         * Calculates the area of a polygon given its geographical coordinates.
-         * @param {L.LatLng[]} latLngs - An array of Leaflet LatLng objects.
-         * @returns {number} The area in square meters.
-         */
-         const calculatePolygonArea = (latLngs) => {
-         if (!latLngs || latLngs.length === 0 || latLngs[0].length < 3) return 0;
-         
-         const points = latLngs[0];
-         const earthRadius = 6378137; // Earth's radius in meters
-         let area = 0;
-         
-         for (let i = 0; i < points.length; i++) {
-         const j = (i + 1) % points.length;
-         const xi = points[i].lng * Math.PI / 180;
-         const yi = points[i].lat * Math.PI / 180;
-         const xj = points[j].lng * Math.PI / 180;
-         const yj = points[j].lat * Math.PI / 180;
-         
-         area += (xj - xi) * (2 + Math.sin(yi) + Math.sin(yj));
-         }
-         return Math.abs(area * earthRadius * earthRadius / 2.0);
-         }; 
-         
-         /**
-         * Calculates the distance between two lat lng points in meters using the Haversine formula.
-         * @param {{lat: number, lng: number}} p1 - The first point.
-         * @param {{lat: number, lng: number}} p2 - The second point.
-         * @returns {number} The distance in meters.
-         */
-         
-         const calculateDistance = (p1, p2) => {
-         const R = 6371e3; // Earth's radius in meters
-         const phi1 = p1.lat * Math.PI / 180;
-         const phi2 = p2.lat * Math.PI / 180;
-         const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
-         const deltaLambda = (p2.lng - p1.lng) * Math.PI / 180;
-         
-         const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+  
+   /**
+ * Calculates the area of a polygon given its geographical coordinates.
+ * @param {L.LatLng[]} latLngs - An array of Leaflet LatLng objects.
+ * @returns {number} The area in square meters.
+ */
+const calculatePolygonArea = (latLngs) => {
+    if (!latLngs || latLngs.length === 0 || latLngs[0].length < 3) return 0;
+
+    const points = latLngs[0];
+    const earthRadius = 6378137; // Earth's radius in meters
+    let area = 0;
+
+    for (let i = 0; i < points.length; i++) {
+        const j = (i + 1) % points.length;
+        const xi = points[i].lng * Math.PI / 180;
+        const yi = points[i].lat * Math.PI / 180;
+        const xj = points[j].lng * Math.PI / 180;
+        const yj = points[j].lat * Math.PI / 180;
+
+        area += (xj - xi) * (2 + Math.sin(yi) + Math.sin(yj));
+    }
+    return Math.abs(area * earthRadius * earthRadius / 2.0);
+}; 
+
+/**
+ * Calculates the distance between two lat lng points in meters using the Haversine formula.
+ * @param {{lat: number, lng: number}} p1 - The first point.
+ * @param {{lat: number, lng: number}} p2 - The second point.
+ * @returns {number} The distance in meters.
+ */
+
+const calculateDistance = (p1, p2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = p1.lat * Math.PI / 180;
+    const phi2 = p2.lat * Math.PI / 180;
+    const deltaPhi = (p2.lat - p1.lat) * Math.PI / 180;
+    const deltaLambda = (p2.lng - p1.lng) * Math.PI / 180;
+
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
               Math.cos(phi1) * Math.cos(phi2) *
               Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-         
-         return R * c;
-         };
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
+
+
+
+
+
+
+
          
          const REG_GUIDE_1_86_LIMITS = {
          'transuranics': { removable: 20, total: 100, label: 'Transuranics, Ra-226, Ra-228, Th-230, etc.' },
@@ -1274,19 +1296,18 @@
              recurse(chain);
              return flatChain;
          };
-         
-         /**
-         * Formats a number for compact display on mobile screens.
-         * Rounds to 3 significant figures and handles special cases.
-         * @param {number} num - The number to format.
-         * @returns {string} The compacted, formatted string.
-         */
-         
-         const formatForMobile = (num) => {
-         if (num === null || num === undefined || isNaN(num) || num === Infinity) return 'N/A';
-         if (num === 0) return '0';
-         return num.toPrecision(3);
-         };
+
+/**
+ * Formats a number for compact display on mobile screens.
+ * Rounds to 3 significant figures and handles special cases.
+ * @param {number} num - The number to format.
+ * @returns {string} The compacted, formatted string.
+ */
+const formatForMobile = (num) => {
+    if (num === null || num === undefined || isNaN(num) || num === Infinity) return 'N/A';
+    if (num === 0) return '0';
+    return num.toPrecision(3);
+};
          
          /**
           * Parses a half-life string (e.g., "1600 years") into a total number of seconds.
@@ -2177,7 +2198,6 @@
                  })}
          
                  {/* Conditionally render the footer */}
-         
                  {suggestions.length > 4 && (
                      <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
@@ -2255,40 +2275,39 @@
           */
          
          const MainNav = ({ activeView, onNavClick }) => {
-         
-         const navItems = [
-         { id: VIEWS.HOME, label: 'Home', icon: ICONS.home },
-         { id: VIEWS.DATABASE, label: 'Database', icon: ICONS.database },
-         { id: VIEWS.COMPARE, label: 'Compare', icon: ICONS.compare },
-         { id: VIEWS.CALCULATOR, label: 'Decay', icon: ICONS.calculator },
-         { id: VIEWS.MDA, label: 'MDA', icon: ICONS.search },
-         { id: VIEWS.MARSSIM_SAMPLES, label: 'MARSSIM Sample Design', icon: ICONS.calculator },
-         { id: VIEWS.MARSSIM_TESTS, label: 'MARSSIM Tests', icon: ICONS.database },
-         { id: VIEWS.SERIES_CALCULATOR, label: 'Series Decay', icon: ICONS.series },
-         { id: VIEWS.EQUILIBRIUM, label: 'Equilibrium', icon: ICONS.activity },
-         { id: VIEWS.RADON, label: 'Radon', icon: ICONS.radon },
-         { id: VIEWS.ACTIVITY_MASS, label: 'Activity/Mass', icon: ICONS.mass },
-         { id: VIEWS.DOSE_RATE, label: 'Dose & Dose Rate', icon: ICONS.doseRate },
-         { id: VIEWS.SHIELDING, label: 'Shielding', icon: ICONS.shield },
-         { id: VIEWS.STAY_TIME, label: 'Stay Time', icon: ICONS.stopwatch },
-         { id: VIEWS.NEUTRON, label: 'Neutron Tools', icon: ICONS.neutron },
-         { id: VIEWS.OPERATIONAL_HP, label: 'Operational HP', icon: ICONS.shield },
-         { id: VIEWS.TRANSPORTATION, label: 'Transportation', icon: ICONS.transport },
-         { id: VIEWS.CONVERTER, label: 'Converter', icon: ICONS.converter },
-         { id: VIEWS.LAB_STATS, label: 'Lab Stats', icon: ICONS.labStats },
-         { id: VIEWS.PEAK_ID, label: 'Peak ID', icon: ICONS.gammaSpec },
-         { id: VIEWS.MEDICAL, label: 'Medical', icon: ICONS.medical },
-         
-         { id: VIEWS.SCRATCHPAD, label: 'Scratchpad', icon: ICONS.notepad },
-         { id: VIEWS.SCIENTIFIC_CALCULATOR, label: 'Sci. Calculator', icon: ICONS.scientificCalculator },
-         { id: VIEWS.REFERENCES, label: 'References', icon: ICONS.references }
-         ];
-         
-         const NavButton = ({ item }) => (
-         <button
+    const navItems = [
+        { id: VIEWS.HOME, label: 'Home', icon: ICONS.home },
+        { id: VIEWS.DATABASE, label: 'Database', icon: ICONS.database },
+        { id: VIEWS.COMPARE, label: 'Compare', icon: ICONS.compare },
+        { id: VIEWS.CALCULATOR, label: 'Decay', icon: ICONS.calculator },
+        { id: VIEWS.MDA, label: 'MDA', icon: ICONS.search },
+        { id: VIEWS.MARSSIM_SAMPLES, label: 'MARSSIM Sample Design', icon: ICONS.calculator },
+        { id: VIEWS.MARSSIM_TESTS, label: 'MARSSIM Tests', icon: ICONS.database },
+        { id: VIEWS.SERIES_CALCULATOR, label: 'Series Decay', icon: ICONS.series },
+        { id: VIEWS.EQUILIBRIUM, label: 'Equilibrium', icon: ICONS.activity },
+        { id: VIEWS.RADON, label: 'Radon', icon: ICONS.radon },
+        { id: VIEWS.ACTIVITY_MASS, label: 'Activity/Mass', icon: ICONS.mass },
+        { id: VIEWS.DOSE_RATE, label: 'Dose & Dose Rate', icon: ICONS.doseRate },
+        { id: VIEWS.SHIELDING, label: 'Shielding', icon: ICONS.shield },
+        { id: VIEWS.STAY_TIME, label: 'Stay Time', icon: ICONS.stopwatch },
+        { id: VIEWS.NEUTRON, label: 'Neutron Tools', icon: ICONS.neutron },
+        { id: VIEWS.OPERATIONAL_HP, label: 'Operational HP', icon: ICONS.shield },
+        { id: VIEWS.TRANSPORTATION, label: 'Transportation', icon: ICONS.transport },
+        { id: VIEWS.CONVERTER, label: 'Converter', icon: ICONS.converter },
+        { id: VIEWS.LAB_STATS, label: 'Lab Stats', icon: ICONS.labStats },
+        { id: VIEWS.PEAK_ID, label: 'Peak ID', icon: ICONS.gammaSpec },
+        { id: VIEWS.MEDICAL, label: 'Medical', icon: ICONS.medical },
+	
+        { id: VIEWS.SCRATCHPAD, label: 'Scratchpad', icon: ICONS.notepad },
+        { id: VIEWS.SCIENTIFIC_CALCULATOR, label: 'Sci. Calculator', icon: ICONS.scientificCalculator },
+        { id: VIEWS.REFERENCES, label: 'References', icon: ICONS.references }
+    ];
+    
+    const NavButton = ({ item }) => (
+        <button
             onClick={() => onNavClick(item.id)}
             className="flex-shrink-0 w-full"
-         >
+        >
             <span
                  className={`mx-auto flex items-center justify-center gap-2 px-2 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
                     activeView === item.id
@@ -2299,11 +2318,11 @@
                 <Icon path={item.icon} className="w-4 h-4" />
                 <span className="truncate">{item.label}</span>
             </span>
-         </button>
-         );
-         
-         return (
-         <div className="px-4 pb-2">
+        </button>
+    );
+    
+    return (
+        <div className="px-4 pb-2">
             <div className="md:hidden">
                 <div className="grid grid-cols-2 gap-4">
                     {navItems.map(item => (
@@ -2326,9 +2345,9 @@
             <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-2">
               {navItems.map(item => <NavButton key={item.id} item={item} />)}
             </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
          //==============================================================================
          // --- VIEW COMPONENTS
@@ -2446,8 +2465,7 @@
                 </div>
             )}
             
-            {/* --- 1. FAVORITES --- */}
-         
+            {/* --- 1. FAVORITES (Moved to the top) --- */}
             {favoriteNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2470,7 +2488,6 @@
             )}
          
             {/* --- 2. RECENT SEARCHES --- */}
-         
             {searchHistoryNuclides.length > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
@@ -2493,11 +2510,9 @@
             )}
             
             {/* --- 3. RECENT CALCULATIONS --- */}
-         
             <CalculationHistoryPanel onNavClick={onNavClick} />
          
             {/* --- 4. QUICK SUGGESTIONS --- */}
-         
             <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -2619,9 +2634,7 @@
                     </div>
                 </div>
             </div>
-         
             {/* --- The confirmation modal component --- */}
-         
             <ConfirmationModal
                 isOpen={isClearModalOpen}
                 onClose={() => setIsClearModalOpen(false)}
@@ -2634,21 +2647,6 @@
          );
          };
          
-         /**
-         * @description React component for a multi-purpose scientific calculator.
-         * This component handles standard arithmetic, advanced functions (e.g., sin, log),
-         * unit conversions, and physical constants, specifically tailored for scientific
-         * and health physics applications.
-         *
-         * Key features:
-         * - Real-time expression evaluation using the `math.js` library.
-         * - Basic and scientific functions (trigonometry, logarithms, etc.).
-         * - Unit conversion buttons for common radiological units (e.g., Ci ↔ Bq).
-         * - Memory functions (M+, MR, MC).
-         * - History of recent calculations.
-         * - Support for keyboard input for a more fluid user experience.
-         */
-         
          const ScientificCalculator = () => {
          const [expression, setExpression] = React.useState('');
          const [result, setResult] = React.useState('');
@@ -2657,49 +2655,49 @@
          const { addToast } = useToast();
          
          const handleInput = (value) => {
-         setExpression(prev => (prev === '' && result ? result : prev) + value);
-         setResult('');
-         };
-         
+    setExpression(prev => (prev === '' && result ? result : prev) + value);
+    setResult('');
+};
+
          const handleClear = () => { setExpression(''); setResult(''); };
          const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
          
-         const handleCalculate = () => {
-         if (!expression) return;
-         try {
-         const evalResult = math.evaluate(expression);
-         const resultStr = math.format(evalResult, { precision: 6 });
-         setResult(resultStr);
-         setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
-         setExpression(''); // This line is changed
-         } catch (e) {
-         setResult(e.message || 'Error');
-         setExpression('');
-         }
-         };
+const handleCalculate = () => {
+    if (!expression) return;
+    try {
+        const evalResult = math.evaluate(expression);
+        const resultStr = math.format(evalResult, { precision: 6 });
+        setResult(resultStr);
+        setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
+        setExpression(''); // This line is changed
+    } catch (e) {
+        setResult(e.message || 'Error');
+        setExpression('');
+    }
+};
          
          const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
          const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
+
+const handleMemoryAdd = () => {
+    try {
+        const currentValue = parseFloat(expression || '0');
+        if (isNaN(currentValue)) throw new Error();
+        const newMemory = memory + currentValue;
+        setMemory(newMemory);
+        addToast(`Added to memory. New value: ${newMemory}`);
+    } catch { addToast('Invalid expression to add to memory'); }
+};
          
-         const handleMemoryAdd = () => {
-         try {
-         const currentValue = parseFloat(expression || '0');
-         if (isNaN(currentValue)) throw new Error();
-         const newMemory = memory + currentValue;
-         setMemory(newMemory);
-         addToast(`Added to memory. New value: ${newMemory}`);
-         } catch { addToast('Invalid expression to add to memory'); }
-         };
-         
-         const handleConversion = (factor, fromUnit, toUnit) => {
-         try {
-         const currentValue = parseFloat(expression || '0');
-         if (isNaN(currentValue)) throw new Error();
-         const convertedValue = currentValue * factor;
-         setExpression(convertedValue.toString());
-         addToast(`Converted to ${toUnit}`);
-         } catch { setResult('Error'); setExpression(''); }
-         };
+const handleConversion = (factor, fromUnit, toUnit) => {
+    try {
+        const currentValue = parseFloat(expression || '0');
+        if (isNaN(currentValue)) throw new Error();
+        const convertedValue = currentValue * factor;
+        setExpression(convertedValue.toString());
+        addToast(`Converted to ${toUnit}`);
+    } catch { setResult('Error'); setExpression(''); }
+};
          
          const handleConstant = (name, value) => {
          setExpression(prev => prev + value.toString());
@@ -2716,7 +2714,7 @@
          if (key === 'Enter' || key === '=') { handleCalculate(); }
          if (key === 'Backspace') { handleBackspace(); }
          if (key === 'Escape') { handleClear(); }
-         }, []);
+         }, [expression]);
          
          React.useEffect(() => {
          window.addEventListener('keydown', handleKeyDown);
@@ -2796,22 +2794,6 @@
          </div>
          );
          };
-         
-         
-         /**
-         * @description React component that serves as a static page for external links and references.
-         * This component provides a curated list of authoritative resources relevant to the application's
-         * domain, such as health physics, radiation safety, and nuclear data.
-         *
-         * It is a pure presentation component that renders a pre-defined array of links,
-         * categorized for easy navigation. The links are grouped into sections for:
-         * 1.  **Regulatory & Guidance:** Official documents from government agencies like the NRC and DOT.
-         * 2.  **Data & Tools:** Databases and software from sources like NNDC and EPA.
-         * 3.  **Professional Organizations:** Websites for key professional societies and international bodies.
-         *
-         * This component is intended to provide users with quick access to the foundational
-         * knowledge and external data sources that underpin the calculations and information in the app.
-         */
          
          const ReferencesPage = () => {
          const referenceLinks = [
@@ -3497,9 +3479,7 @@
          };
          
          const factors = {
-         
          // Base units: dose(rem), doseRate(mrem/hr), activity(Bq)
-         
          'mrem': { base: 'dose', factor: 0.001 },
          'rem': { base: 'dose', factor: 1 },
          'µSv': { base: 'dose', factor: 0.0001 },
@@ -3563,11 +3543,8 @@
             const toBase = factors[toUnit]?.base;
          
             // If the units have become incompatible...
-         
             if (fromBase && fromBase !== toBase) {
-         
                 // Find the category array that contains the new `fromUnit`.
-         
                 const newCategoryArray = Object.values(units).find(arr => arr.includes(fromUnit));
                 
                 if (newCategoryArray && newCategoryArray.length > 0) {
@@ -4003,35 +3980,6 @@
          );
          };
          
-         /**
-         * @description React component for a static surface contamination survey calculator.
-         * This tool allows health physics professionals to quickly analyze a set of static
-         * survey data points against regulatory or self-imposed limits.
-         *
-         * It is commonly used for a **2-part check**, verifying both:
-         * 1.  The **average** contamination level is below the acceptable limit.
-         * 2.  The **maximum** single reading is below a separate, often more conservative, limit.
-         *
-         * The component can automatically populate standard limits based on a selected radionuclide
-         * and provides real-time feedback on whether the survey "passes" or "fails" both checks.
-         *
-         * @prop {array} radionuclides - Array of available radionuclides with their properties.
-         * @prop {string} nuclideSymbol - The symbol of the currently selected nuclide.
-         * @prop {function} setNuclideSymbol - State setter for the nuclide symbol.
-         * @prop {string} surveyData - The raw, unparsed string of survey data points.
-         * @prop {function} setSurveyData - State setter for the survey data string.
-         * @prop {string} avgLimit - The average contamination limit.
-         * @prop {function} setAvgLimit - State setter for the average limit.
-         * @prop {string} maxLimit - The maximum contamination limit.
-         * @prop {function} setMaxLimit - State setter for the maximum limit.
-         * @prop {string} unit - The unit of measurement for the data (e.g., dpm/100cm²).
-         * @prop {function} setUnit - State setter for the units.
-         * @prop {object} result - Object containing the analysis results (average, max, pass/fail status).
-         * @prop {function} setResult - State setter for the result object.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
-         
          const StaticSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, surveyData, setSurveyData, avgLimit, setAvgLimit, maxLimit, setMaxLimit, unit, setUnit, result, setResult, error, setError }) => {
          const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
          const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
@@ -4230,7 +4178,6 @@
          const { addHistory } = useCalculationHistory();
          
          // State for LeakTestCalculator
-         
          const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
          const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
          const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
@@ -4238,7 +4185,6 @@
          const [lt_error, setLt_error] = React.useState('');
          
          // State for StaticSurveyCalculator
-         
          const [ss_nuclideSymbol, setSs_nuclideSymbol] = React.useState('');
          const [ss_surveyData, setSs_surveyData] = React.useState('');
          const [ss_avgLimit, setSs_avgLimit] = React.useState('');
@@ -4248,7 +4194,6 @@
          const [ss_error, setSs_error] = React.useState('');
          
          // State for ContaminationSurveyCalculator
-         
          const [cs_nuclideSymbol, setCs_nuclideSymbol] = React.useState('');
          const [cs_grossCpm, setCs_grossCpm] = React.useState('1500');
          const [cs_backgroundCpm, setCs_backgroundCpm] = React.useState('50');
@@ -4258,7 +4203,6 @@
          const [cs_error, setCs_error] = React.useState('');
          
          // State for AirborneCalculator
-         
          const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
          const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
          const [ac_activityUnit, setAc_activityUnit] = React.useState('mCi');
@@ -4269,7 +4213,6 @@
          const [ac_error, setAc_error] = React.useState('');
          
          // Clear Logic
-         
          const handleLeakTestClear = () => {
          setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25');
          setLt_result(null); setLt_error('');
@@ -4454,8 +4397,7 @@
             return;
          }
          
-         // <-- Check for the Tritium special case -->
-         
+         // <-- MODIFIED: Check for the Tritium special case -->
          let exceptedLimitFactor = 1e-4; // Generic factor
          if (selectedNuclide.symbol === 'H-3') {
             exceptedLimitFactor = 2e-2; // Special case factor for Tritium
@@ -4569,24 +4511,7 @@
          </div>
          );
          };
-          
-         /**
-         * @description React component acting as a container for various medical physics tools.
-         * This component provides a tabbed interface to switch between different calculators
-         * and utilities relevant to medical and hospital-based radiation safety.
-         *
-         * It manages the state for each sub-calculator independently and conditionally
-         * renders the active tool based on the user's tab selection.
-         *
-         * The included tools are:
-         * 1.  **X-Ray Shielding Calculator:** Used to determine the required shielding thickness for an X-ray room based on workload, distance, and other factors.
-         * 2.  **Patient Release Calculator:** Assists in determining if a patient who has received a radiopharmaceutical can be released from the hospital under regulatory guidelines (e.g., 10 CFR 35).
-         *
-         * This component centralizes multiple specialized tools into a single, cohesive user interface.
-         *
-         * @prop {array} radionuclides - A comprehensive array of radionuclide data used by the patient release calculator.
-         */
-         
+            
          const MedicalCalculator = ({radionuclides}) => {
          const [activeTab, setActiveTab] = React.useState('xrayShielding');
          
@@ -4673,44 +4598,6 @@
          );
          };
          
-         /**
-         * @description React component for calculating the required shielding for an X-ray room.
-         * This calculator uses the standard shielding design formula from NCRP Report No. 147,
-         * which determines the necessary barrier thickness to reduce the weekly dose equivalent
-         * to an acceptable limit.
-         *
-         * The formula is based on the relationship:
-         * $$B = \frac{P \cdot d^2}{W \cdot U \cdot T}$$
-         * where:
-         * **B** = Required transmission factor
-         * **P** = Weekly dose limit (mSv or mrem)
-         * **d** = Distance from source to barrier (m)
-         * **W** = Workload (mA-min/week)
-         * **U** = Use factor
-         * **T** = Occupancy factor
-         *
-         * The required shielding thickness is then calculated from the transmission factor **B**
-         * using the tenth-value layer (TVL) data for the specified shielding material (lead, concrete, or drywall).
-         *
-         * @prop {string} kvp - The peak kilovoltage of the X-ray tube.
-         * @prop {function} setKvp - State setter for kvp.
-         * @prop {string} workload - The workload in milliampere-minutes per week.
-         * @prop {function} setWorkload - State setter for workload.
-         * @prop {string} useFactor - The fraction of the workload directed at a barrier.
-         * @prop {function} setUseFactor - State setter for use factor.
-         * @prop {string} occupancyFactor - The fraction of time an area is occupied.
-         * @prop {function} setOccupancyFactor - State setter for occupancy factor.
-         * @prop {string} distance - The distance from the X-ray source to the barrier.
-         * @prop {function} setDistance - State setter for distance.
-         * @prop {string} doseLimit - The weekly dose limit.
-         * @prop {function} setDoseLimit - State setter for dose limit.
-         * @prop {string} shieldMaterial - The type of shielding material.
-         * @prop {function} setShieldMaterial - State setter for shield material.
-         * @prop {object} result - Object containing the calculated thickness and other values.
-         * @prop {function} setResult - State setter for the result.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */            
          
          const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor, setUseFactor, occupancyFactor, setOccupancyFactor, distance, setDistance, doseLimit, setDoseLimit, shieldMaterial, setShieldMaterial, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
@@ -4772,44 +4659,6 @@
          </div>
          );
          };
-         
-         /**
-         * @description React component for a patient release calculator. This tool helps medical
-         * physics professionals determine if a patient treated with a radiopharmaceutical meets the
-         * criteria for release from the hospital, as outlined in U.S. NRC regulations (e.g., 10 CFR 35.75).
-         *
-         * It evaluates patient release based on a three-tiered approach:
-         * 1.  **Activity-based limit:** Checks if the administered activity is below a pre-defined threshold.
-         * 2.  **Dose rate-based limit:** (For I-131 only) Checks if the measured dose rate at one meter
-         * is below the regulatory limit.
-         * 3.  **Integrated dose calculation:** If the first two criteria aren't met, it calculates the
-         * Total Effective Dose Equivalent (TEDE) that a member of the public would receive from the
-         * patient based on custom occupancy scenarios. This calculation uses the patient's
-         * administered activity, the selected nuclide's gamma constant, and either the physical
-         * or an inputted effective half-life.
-         *
-         * The calculator provides a clear PASS/FAIL result and details the specific criterion met or failed.
-         *
-         * @prop {array} radionuclides - Array of radionuclide data used for lookup.
-         * @prop {string} nuclideSymbol - The symbol of the selected radionuclide.
-         * @prop {function} setNuclideSymbol - State setter for the nuclide symbol.
-         * @prop {string} activity - The administered activity.
-         * @prop {function} setActivity - State setter for activity.
-         * @prop {string} activityUnit - The unit of administered activity.
-         * @prop {function} setActivityUnit - State setter for activity unit.
-         * @prop {string} measuredDoseRate - The optional measured dose rate for I-131.
-         * @prop {function} setMeasuredDoseRate - State setter for the measured dose rate.
-         * @prop {array} scenarios - Array of objects describing various public occupancy scenarios.
-         * @prop {function} setScenarios - State setter for the scenarios array.
-         * @prop {string} effectiveHalfLife - An optional effective half-life for the nuclide.
-         * @prop {function} setEffectiveHalfLife - State setter for effective half-life.
-         * @prop {string} effectiveHalfLifeUnit - The unit for the effective half-life.
-         * @prop {function} setEffectiveHalfLifeUnit - State setter for the effective half-life unit.
-         * @prop {object} result - Object containing the final analysis result.
-         * @prop {function} setResult - State setter for the result object.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
          
          const PatientReleaseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, measuredDoseRate, setMeasuredDoseRate, scenarios, setScenarios, effectiveHalfLife, setEffectiveHalfLife, effectiveHalfLifeUnit, setEffectiveHalfLifeUnit, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
@@ -4964,7 +4813,6 @@
          };
          
          // Effect to switch defaults when changing modes
-         
          React.useEffect(() => {
          if (searchMode === 'gamma') {
              setTargetEnergy('662');
@@ -4978,7 +4826,6 @@
          }, [searchMode]);
          
          // Effect to perform the search and analysis when inputs change
-         
          React.useEffect(() => {
          try {
              setError('');
@@ -4999,7 +4846,6 @@
              const maxEnergy = targetMeV + toleranceMeV;
          
              // --- Radionuclide Matching Logic ---
-         
              const matches = [];
              const emissionKey = searchMode === 'gamma' ? 'gamma' : 'alpha';
              radionuclides.forEach(nuclide => {
@@ -5020,22 +4866,17 @@
              });
              setResults(matches);
          
-             // --- Spectrum Artifact Analysis ---
-         
+             // --- NEW: Spectrum Artifact Analysis ---
              if (searchMode === 'gamma') {
-         
                  // 1. Compton Edge Calculation
-         
                  const mc2 = 0.511; // Rest mass of an electron in MeV
                  const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
          
                  // 2. Escape Peak Calculations (Corrected Threshold)
-         
                  const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
                  const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
          
                  // 3. Lead X-ray Identification
-         
                  const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - targetMeV) <= toleranceMeV);
                  
                  setAnalysis({
@@ -5326,9 +5167,7 @@
          }
          
          if (chartRef.current && chartData) {
-         
-            // Determine colors based on the theme prop
-         
+            // MODIFIED: Determine colors based on the theme prop
             const isDarkMode = theme === 'dark';
             const textColor = isDarkMode ? '#cbd5e1' : '#334155';
             const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
@@ -5346,13 +5185,13 @@
                             labels: { 
                                 boxWidth: 20, 
                                 font: { size: 10 },
-                                color: textColor 
+                                color: textColor // <-- MODIFIED: Use theme-aware color
                             } 
                         },
                         title: {
                             display: true,
                             text: 'Decay Series Activity Over Time',
-                            color: textColor
+                            color: textColor // <-- MODIFIED: Use theme-aware color
                         },
                         tooltip: {
                             mode: 'index',
@@ -5364,16 +5203,16 @@
                             title: { 
                                 display: true, 
                                 text: `Time (${chartData.timeUnit})`,
-                                color: textColor
+                                color: textColor // <-- MODIFIED: Use theme-aware color
                             },
                             ticks: { 
                                 maxRotation: 0, 
                                 autoSkip: true, 
                                 autoSkipPadding: 20,
-                                color: textColor
+                                color: textColor // <-- MODIFIED: Use theme-aware color
                             },
                             grid: {
-                                color: gridColor
+                                color: gridColor // <-- MODIFIED: Use theme-aware color
                             }
                         },
                         y: {
@@ -5381,15 +5220,15 @@
                             title: { 
                                 display: true, 
                                 text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})`,
-                                color: textColor
+                                color: textColor // <-- MODIFIED: Use theme-aware color
                             },
                             beginAtZero: !useLogScale,
                             min: useLogScale ? (Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0) : undefined,
                             ticks: {
-                                color: textColor
+                                color: textColor // <-- MODIFIED: Use theme-aware color
                             },
                             grid: {
-                                color: gridColor
+                                color: gridColor // <-- MODIFIED: Use theme-aware color
                             }
                         }
                     }
@@ -5402,7 +5241,7 @@
                 chartInstance.current.destroy();
             }
          };
-         }, [chartData, useLogScale, theme]);
+         }, [chartData, useLogScale, theme]); // <-- MODIFIED: Added 'theme' to the dependency array
          
          const handleExport = () => {
          if (chartInstance.current) {
@@ -5497,36 +5336,6 @@
          </div>
          );
          };
-         
-         /**
-         * @description React component for calculating the specific activity of a pure radionuclide.
-         * This calculator determines the activity per unit mass of a radioactive substance, a fundamental
-         * quantity in health physics and radiochemistry.
-         *
-         * It uses the following formula, derived from the decay constant and Avogadro's number:
-         *
-         * $$SA = \frac{\ln(2) \cdot N_A}{t_{1/2} \cdot A}$$
-         *
-         * where:
-         * **SA** = Specific Activity (Bq/g)
-         * **$N_A$** = Avogadro's constant ($6.022 \times 10^{23}$ atoms/mol)
-         * **$t_{1/2}$** = Half-life of the nuclide (in seconds)
-         * **A** = Atomic weight of the nuclide (in g/mol)
-         *
-         * The component takes the atomic weight and half-life as inputs and outputs the specific activity
-         * in both becquerels per gram (Bq/g) and curies per gram (Ci/g).
-         *
-         * @prop {string} atomicWeight - The atomic weight of the radionuclide.
-         * @prop {function} setAtomicWeight - State setter for atomic weight.
-         * @prop {string} halfLifeValue - The numeric value of the half-life.
-         * @prop {function} setHalfLifeValue - State setter for half-life value.
-         * @prop {string} halfLifeUnit - The unit of the half-life (e.g., 'years', 'days').
-         * @prop {function} setHalfLifeUnit - State setter for half-life unit.
-         * @prop {object} result - Object containing the calculated specific activity in Bq/g and Ci/g.
-         * @prop {function} setResult - State setter for the result.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
          
          const SpecificActivityModule = ({ atomicWeight, setAtomicWeight, halfLifeValue, setHalfLifeValue, halfLifeUnit, setHalfLifeUnit, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
@@ -5676,7 +5485,7 @@
          * @param {{radionuclides: Array<object>}} props
          */
          
-         const EquilibriumCalculator = ({ radionuclides, theme }) => {
+         const EquilibriumCalculator = ({ radionuclides }) => {
          const [parentNuclide, setParentNuclide] = React.useState(() => {
          const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
          if (!savedSymbol) return null;
@@ -5895,57 +5704,15 @@
                                     Use Logarithmic Scale
                                 </label>
                             </div>
-                            <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
+                            <DecayChart chartData={chartData} useLogScale={useLogScale} />
                         </>
                     )}
                 </div>
             </div>
          </div>
          );
-         };      
+         };
          
-         /**
-         * @description React component for a Kusnetz Method calculator. This tool is used in
-         * radiation protection to quickly estimate the **Working Level (WL)** of radon progeny
-         * (radium A, B, and C) in the air.
-         *
-         * The method relies on a relationship between the alpha activity of a sample collected on
-         * a filter and the equilibrium concentration of the radon progeny. It uses a specific
-         * "Kusnetz factor" (K) that accounts for the decay of the progeny during a fixed
-         * counting delay period (40 to 90 minutes).
-         *
-         * The core calculation is:
-         * $$WL = \frac{C_{net}}{K \cdot \epsilon \cdot V_{total}}$$
-         *
-         * where:
-         * **WL** = Working Level
-         * **$C_{net}$** = Net counts per minute of the filter
-         * **K** = Kusnetz factor (based on the delay time)
-         * **$\epsilon$** = Detector efficiency
-         * **$V_{total}$** = Total volume of air sampled
-         *
-         * The component calculates the total air volume and net counts per minute from user inputs,
-         * interpolates the correct Kusnetz factor, and provides the final Working Level value.
-         *
-         * @prop {string} flowRate - The flow rate of the air sampling pump (LPM).
-         * @prop {function} setFlowRate - State setter for flow rate.
-         * @prop {string} sampleTime - The duration of the air sampling (minutes).
-         * @prop {function} setSampleTime - State setter for sample time.
-         * @prop {string} delayTime - The time from end of sampling to start of counting (minutes).
-         * @prop {function} setDelayTime - State setter for delay time.
-         * @prop {string} grossCounts - The total counts observed on the filter.
-         * @prop {function} setGrossCounts - State setter for gross counts.
-         * @prop {string} countDuration - The duration of the count (minutes).
-         * @prop {function} setCountDuration - State setter for count duration.
-         * @prop {string} backgroundCpm - The background counts per minute of the detector.
-         * @prop {function} setBackgroundCpm - State setter for background cpm.
-         * @prop {string} efficiency - The alpha detector's efficiency (%).
-         * @prop {function} setEfficiency - State setter for efficiency.
-         * @prop {object} result - Object containing the calculated WL and intermediate values.
-         * @prop {function} setResult - State setter for the result.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
          
          const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, delayTime, setDelayTime, grossCounts, setGrossCounts, countDuration, setCountDuration, backgroundCpm, setBackgroundCpm, efficiency, setEfficiency, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
@@ -6020,39 +5787,6 @@
          </div>
          );
          };
-         
-         /**
-         * @file ConcentrationDoseModule.jsx
-         * @description React component for a radon concentration-to-dose calculator and interconversion tool.
-         * This tool allows users to convert between various units of radon concentration and to estimate
-         * the annual dose received from a given exposure.
-         *
-         * It provides four different calculation modes:
-         * 1.  **Dose from Concentration:** Estimates the annual dose based on radon concentration, equilibrium factor, and occupancy factor.
-         * 2.  **Find Working Level (WL):** Calculates the Working Level from a given radon concentration and equilibrium factor.
-         * 3.  **Find Concentration:** Calculates the radon concentration needed to produce a given Working Level, for a specified equilibrium factor.
-         * 4.  **Find Equilibrium Factor:** Calculates the equilibrium factor based on a known concentration and Working Level.
-         *
-         * The module handles conversions between common units like **picocuries per liter (pCi/L)** and **becquerels per cubic meter (Bq/m³)**,
-         * as well as the conversion to **Potential Alpha Energy Concentration (PAEC)** and finally to **Working Level Months (WLM)** and dose.
-         *
-         * @prop {string} calcMode - The active calculation mode ('doseFromConc', 'findWL', 'findConc', 'findEF').
-         * @prop {function} setCalcMode - State setter for the calculation mode.
-         * @prop {string} concentration - The radon concentration value.
-         * @prop {function} setConcentration - State setter for concentration.
-         * @prop {string} unit - The unit of concentration ('pCi/L' or 'Bq/m³').
-         * @prop {function} setUnit - State setter for the unit.
-         * @prop {string} equilibriumFactor - The equilibrium factor (F).
-         * @prop {function} setEquilibriumFactor - State setter for the equilibrium factor.
-         * @prop {string} workingLevel - The Working Level (WL) value.
-         * @prop {function} setWorkingLevel - State setter for Working Level.
-         * @prop {string} occupancyFactor - The occupancy factor.
-         * @prop {function} setOccupancyFactor - State setter for the occupancy factor.
-         * @prop {object} result - Object containing all calculated results.
-         * @prop {function} setResult - State setter for the result object.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
          
          const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConcentration, unit, setUnit, equilibriumFactor, setEquilibriumFactor, workingLevel, setWorkingLevel, occupancyFactor, setOccupancyFactor, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
@@ -6142,17 +5876,6 @@
          );
          };
          
-         /**
-         * @description React component that serves as a container for two radon-related calculation tools.
-         * It provides a tabbed interface for users to switch between the two functionalities:
-         * 1.  **Concentration & Dose:** Converts between different units of radon concentration and estimates the annual radiation dose from radon exposure.
-         * 2.  **Kusnetz Method:** Calculates the Working Level (WL) of radon progeny from air sampling and counting data.
-         *
-         * This component manages the state for both sub-calculators, ensuring their inputs and outputs are isolated
-         * while being accessible through a unified interface. It also includes functions to reset the inputs
-         * of the currently active calculator.
-         */
-         
          const RadonCalculator = () => {
          const [activeTab, setActiveTab] = React.useState('concentration');
          
@@ -6236,30 +5959,13 @@
          );
          };         
          
-         /**
-         * @description React component for displaying the application's user manual, FAQ, and technical reference.
-         * This component functions as a modal dialog that presents static, detailed information about the
-         * "Health Physics Toolbox" application.
-         *
-         * The manual content is an in-depth guide covering:
-         * - **Getting Started:** How to search for and view radionuclide data.
-         * - **Core Features:** A comprehensive breakdown of each major section of the app (Database, Compare, Calculators).
-         * - **Settings & Customization:** How to configure user preferences.
-         * - **Formulas & Equations:** A reference section detailing the key mathematical formulas used in various calculators.
-         * - **Contact & Copyright:** Information for user feedback and legal disclaimers.
-         * - **FAQ:** Answers to common questions, such as the source of the data and why certain nuclides may not appear in specific calculators.
-         *
-         * This component is purely for display and serves as the primary source of documentation for the user.
-         *
-         * @prop {boolean} isOpen - Boolean to control the visibility of the modal.
-         * @prop {function} onClose - A callback function to close the modal.
-         */
-         
+
+
          const ManualModal = ({ isOpen, onClose }) => {
          if (!isOpen) return null;
-         
+
          // Internal component for the static content of the manual to keep JSX clean.
-         
+
          const ManualContent = () => {
          return (
              <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
@@ -6267,9 +5973,9 @@
                  <p>
                      Welcome to the Health Physics Toolbox! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
                  </p>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
                  <p>
                      The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
@@ -6282,12 +5988,12 @@
                  <p>
                      Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
                  </p>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
                  <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
-         
+
                  <h3 className="mt-6"><strong>Database</strong></h3>
                  <p>
                      The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
@@ -6297,15 +6003,15 @@
                      <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
                      <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
                  </ul>
-         
+
                  <h3 className="mt-6"><strong>Compare</strong></h3>
                  <p>
                      The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function, allowing you to save the comparison table as a text file that can be opened in a spreadsheet program like Excel for further analysis.
                  </p>
-         
+
                  <h3 className="mt-6"><strong>Calculators</strong></h3>
                  <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-         
+
                  <h4 className="italic mt-4">Decay Calculators</h4>
                  <ul>
                      <li><strong>Decay:</strong> This tool has two modes. <strong>Standard Decay</strong> solves the fundamental decay equation for any one variable given the others and includes a Parent-Daughter mode. <strong>Source Correction</strong> mode is a specialized tool for correcting a source's activity from its calibration date to a new date.</li>
@@ -6319,7 +6025,7 @@
                      <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate final dose rate or required thickness, including an optional Buildup Factor correction. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
                      <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
                  </ul>
-         
+
                  <h4 className="italic mt-4">Operational HP Tools</h4>
                  <ul>
                     <li><strong>Static Survey:</strong> Evaluates a set of static surface measurements against an average and maximum limit.</li>
@@ -6341,14 +6047,14 @@
                     <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead or concrete for diagnostic X-ray rooms based on the NCRP-147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
                     <li><strong>Patient Release:</strong> Evaluates if a patient administered with a radiopharmaceutical can be released based on the criteria in 10 CFR 35.75, checking against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE).</li>
                  </ul>
-         
+
                  <h4 className="italic mt-4">MARSSIM Tools</h4>
                  <ul>
                      <li><strong>MDA:</strong> Calculates key decision values for radiation counting. Includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas).</li>
                      <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology from MARSSIM.</li>
                      <li><strong>MARSSIM Tests:</strong> Performs the <strong>WRS Test</strong> to compare a survey unit to a reference area and the <strong>EMC Sign Test</strong> for evaluating localized elevated areas.</li>
                  </ul>
-         
+
                  <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
                  <ul>
                     <li><strong>Chi-Squared (χ²) Test:</strong> Performs a chi-squared test on a set of repeated counts to check if the counting system is statistically stable.</li>
@@ -6367,9 +6073,9 @@
                      <li><strong>Sci. Calculator:</strong> A built-in scientific calculator for convenience.</li>
                      <li><strong>References:</strong> A curated list of important links to regulatory bodies, data sources, and professional organizations.</li>
                  </ul>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Settings & Customization</strong></h2>
                  <p>The <strong>Settings</strong> panel, accessible from the gear icon in the top right, allows you to set default units for the main calculators. This can streamline your workflow by pre-populating inputs with your preferred units for **Activity**, **Dose Rate**, and **Distance**.</p>
                  <ul>
@@ -6377,12 +6083,12 @@
                      <li><strong>Dose Rate:</strong> Set your preferred dose rate unit (e.g., mrem/hr, µSv/hr). This will be the default for calculators like Dose Rate, Shielding, and Stay Time.</li>
                      <li><strong>Distance:</strong> Set your preferred distance unit (e.g., m, cm, ft). This will be the default for calculators that require a distance from the source.</li>
                  </ul>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
                  <p>The following section provides the mathematical basis for the calculators used in this application.</p>
-         
+
                  <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
                  <h4 className="italic mt-4">Radioactive Decay</h4>
                  <p>The fundamental decay equation relates initial activity (A<sub>0</sub>) to the activity at time t (A(t)).</p>
@@ -6409,7 +6115,7 @@
                      <li><code>M<sub>a</sub></code> is the molar mass of the radionuclide (g/mol).</li>
                      <li><code>T<sub>1/2</sub></code> is the half-life in seconds.</li>
                  </ul>
-         
+
                  <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
                  <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
                  <p>For a <strong>point source</strong>, the inverse square law is used:</p>
@@ -6429,7 +6135,7 @@
                      <li><code>x</code> is the shield thickness.</li>
                      <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
                  </ul>
-         
+
                  <h3 className="mt-6"><b>Radon Formulas</b></h3>
                  <h4 className="italic mt-4">Working Level & Equilibrium</h4>
                  <p>The relationship between radon concentration, the equilibrium factor (F), and Working Levels (WL) is:</p>
@@ -6446,7 +6152,7 @@
                  <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
                      <pre>Dose (mrem/yr) = (WL * (hrs_yr * Occupancy) / 170) * 500</pre>
                  </div>
-         
+
                  <h3 className="mt-6">MARSSIM Formulas</h3>
                  <h4 className="italic mt-4"><b>LLD & MDA (Static Count)</b></h4>
                  <p>The calculator uses the NUREG-1507 formula for the Lower Limit of Detection (LLD), which includes the Stapleton correction (+3).</p>
@@ -6478,9 +6184,9 @@
                      <li><strong>WRS Test:</strong> Tests the null hypothesis H<sub>0</sub>: The survey unit median is greater than the reference area median (i.e., it's contaminated). It compares the rank sum of the reference area (W<sub>rs</sub>) to a critical value (C<sub>w</sub>). The survey unit passes if W<sub>rs</sub> ≥ C<sub>w</sub>.</li>
                      <li><strong>EMC Sign Test:</strong> Tests the null hypothesis H<sub>0</sub>: The median of the elevated area is greater than or equal to the DCGL<sub>EMC</sub>. It compares the number of positive differences (S<sup>+</sup>) to a critical value (C<sub>s</sub>). The area passes if S<sup>+</sup> ≥ C<sub>s</sub>.</li>
                  </ul>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Copyright</strong></h2>
                  <p>
                      Feedback, bug reports, and suggestions are welcome! You can reach out via email, or check out my personal website and GitHub for other projects.
@@ -6493,27 +6199,27 @@
                  <p className="mt-4 text-xs text-slate-500">
                      Copyright © 2025 Jough Donakowski. All rights reserved. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
                  </p>
-         
+
                  <hr className="my-4" />
-         
+
                  <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
-         
+
                  <h4 className="italic mt-4">Where does the data come from?</h4>
                  <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS). Dosimetry values are from 10 CFR 20, Appendix B.</p>
-         
+
                  <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
                  <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools. Additionally, certain calculations (like the parent-daughter equilibrium) only feature nuclides with known progeny that are themselves radioactive.</p>
-         
+
                  <h4 className="italic mt-4">What is the disclaimer?</h4>
                  <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been validated and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
              </div>
          );
          };
-         
+
          return (
-         
+
          // The modal backdrop, which closes the modal when clicked.
-         
+
          <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start p-4" onClick={onClose}>
              {/* The modal panel itself. e.stopPropagation() prevents a click inside from closing it. */}
              <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
@@ -6531,26 +6237,8 @@
          );
          };
          
-         /**
-         * @description React component for managing user settings and preferences.
-         * This panel provides a user interface to configure various default units and modes
-         * for the application's calculators, tailoring the user experience to their specific
-         * needs and regional standards.
-         *
-         * Key functionalities include:
-         * - **Unit Selection:** Users can set their preferred default units for common
-         * quantities like Activity, Dose Rate, and Distance.
-         * - **Mode Selection:** Users can choose the default calculator mode for multi-mode tools,
-         * such as the Dose Calculator.
-         * - **Data Management:** A "Reset to Defaults" button allows users to clear all locally
-         * saved data, including their custom settings, favorites list, and calculator inputs,
-         * via a confirmation modal. This ensures a clean slate, if needed.
-         *
-         * This component utilizes a global `SettingsContext` to persist and retrieve user preferences
-         * across the application's various tools.
-         */
-         
-         const SettingsPanel = () => {
+
+const SettingsPanel = () => {
          const { settings, updateSettings } = React.useContext(SettingsContext);
          const { addToast } = useToast();
          const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
@@ -6645,7 +6333,13 @@
          </>
          );
          };
-         
+
+
+
+
+
+
+
          /**
           * @description The root component of the entire application.
           * It manages all primary state, handles routing between views, and orchestrates all user interactions.
@@ -6896,14 +6590,14 @@
          
              case VIEWS.MDA: return <MDACalculator />;
              
-         case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
-         
+case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
+
              case VIEWS.WRS_TEST: return <WRS_Calculator />;
              case VIEWS.EMC_TEST: return <EMC_Calculator />;
          
              case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
          
-             case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
+             case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} />;
          
              case VIEWS.RADON: return <RadonCalculator />;
              case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
@@ -6911,8 +6605,8 @@
              case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
              case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
              case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-         
-         case VIEWS.MAP_TOOL: return <DrawingTool />;
+
+case VIEWS.MAP_TOOL: return <DrawingTool />;
             
          case  VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
              
@@ -7111,7 +6805,6 @@
          const [isModalOpen, setIsModalOpen] = React.useState(false);
          
          // This array MUST be defined INSIDE the component to access its props.
-         
          const propertiesToCompare = [
          { label: 'Half-life (seconds)', key: 'halfLife', type: 'numeric', format: (val) => parseHalfLifeToSeconds(val) },
          { label: 'Emission Type(s)', key: 'emissionType', type: 'categorical', format: (val) => val?.join(', ') || 'N/A' },
@@ -7272,7 +6965,7 @@
          
                                                      if(prop.type === 'numeric') {
                                                          const numericVal = parseFloat(formattedValue);
-         
+
                                                          if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
                                                          if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
                                                      }
@@ -7290,27 +6983,26 @@
                                                          }
                                                      }
          
+
+
                                                      cellContent = (
-         <>
-         {prop.type === 'numeric' && barWidth > 0 && <div className="absolute ..." style={{ width: `${barWidth}%` }}></div>}
-         <div className="relative">
-         
+    <>
+        {prop.type === 'numeric' && barWidth > 0 && <div className="absolute ..." style={{ width: `${barWidth}%` }}></div>}
+        <div className="relative">
             {/* Mobile view: Formats to 3 significant figures */}
-         
             <span className="md:hidden">
                 {formatForMobile(numericVal)}
             </span>
             
             {/* Desktop view: Formats to 6 significant figures */}
-         
             <span className="hidden md:inline">
                 {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6)}
             </span>
-         
+
             {differenceTag}
-         </div>
-         </>
-         );
+        </div>
+    </>
+);
                                                  }
          
                                                  return (
@@ -7363,37 +7055,6 @@
          </div>
          );
          };
-         
-         /**
-         * @description React component for a versatile dose and dose rate calculation suite.
-         * This component functions as a multi-tool, allowing users to estimate dose from various
-         * types of radiation and source geometries. It integrates with a pre-populated database
-         * of radionuclide properties but also supports manual input for greater flexibility.
-         *
-         * The calculator provides four primary modes:
-         * 1.  **Gamma:** Calculates dose rate from gamma-emitting sources in different geometries
-         * (point, line, or area) using the specific gamma-ray constant and the inverse-square law,
-         * with appropriate geometric corrections.
-         * 2.  **Beta:** Estimates dose from beta sources in two sub-modes:
-         * - **Skin Dose:** Calculates the absorbed dose at the skin surface from a
-         * surface contamination.
-         * - **Dose in Air:** Calculates the dose rate in air from a point source,
-         * considering the beta particle's maximum range.
-         * 3.  **Bremsstrahlung:** Calculates the dose rate from Bremsstrahlung (braking radiation)
-         * produced when a beta source is shielded by a high-Z material.
-         * 4.  **Internal:** Estimates the **Committed Effective Dose Equivalent (CEDE)** from a
-         * known intake of a radionuclide, based on the **Annual Limit on Intake (ALI)**
-         * values specified in 10 CFR 20 Appendix B.
-         *
-         * This component is a central hub for many fundamental dose and dose rate calculations,
-         * simplifying complex radiological physics for practical application.
-         *
-         * @prop {array} radionuclides - A comprehensive array of all known radionuclides,
-         * used as the data source for the calculator's modes.
-         * @prop {string} preselectedNuclide - An optional prop to pre-fill the calculator with
-         * a specific nuclide symbol from another part of the application (e.g., from the main
-         * nuclide search).
-         */
          
          const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
          const CALC_MODE_GAMMA = 'gamma';
@@ -8631,29 +8292,6 @@
          );
          };
          
-         /**
-         * @description React component that serves as a container for various neutron-related calculation tools.
-         * It provides a tabbed interface for users to switch between four different functionalities
-         * relevant to neutron radiation protection and analysis.
-         *
-         * This component manages the state for all four sub-calculators, ensuring their inputs and outputs
-         * are distinct and isolated. It also includes a single "Clear All" button that resets the state
-         * of the currently active calculator.
-         *
-         * The included tools are:
-         * 1.  **Fluence/Dose:** Converts between neutron fluence (n/cm²) and dose equivalent (rem or Sv)
-         * for a given neutron energy, based on standard fluence-to-dose conversion factors.
-         * 2.  **Activation:** Calculates the activity produced in a pure target material after irradiation
-         * in a neutron flux. It supports both database lookup for common reactions and manual input.
-         * 3.  **Composite Activation:** Estimates the activity of the principal activation products
-         * from irradiating common composite materials like concrete or steel.
-         * 4.  **Shielding:** Calculates the attenuation of fast or thermal neutrons through various
-         * shielding materials based on their half-value layer (HVL) data.
-         *
-         * @prop {array} radionuclides - A comprehensive array of radionuclide data, used by the activation
-         * and composite activation calculators.
-         */
-         
          const NeutronCalculator = ({radionuclides}) => {
          const [activeTab, setActiveTab] = React.useState('fluenceDose');
          
@@ -8802,9 +8440,7 @@
          const { addHistory } = useCalculationHistory();
          
          const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
-         
          // State for Static MDA
-         
          const [backgroundCounts, setBackgroundCounts] = React.useState(() => localStorage.getItem('mda_backgroundCounts') || '1000');
          const [backgroundTime, setBackgroundTime] = React.useState(() => localStorage.getItem('mda_backgroundTime') || '10');
          const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
@@ -8812,17 +8448,13 @@
          const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm');
          const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
          const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
-         
          // State for Scan MDC
-         
          const [scanBackground, setScanBackground] = React.useState(() => localStorage.getItem('mda_scanBackground') || '300');
          const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '12.6');
          const [hotspotDiameter, setHotspotDiameter] = React.useState(() => localStorage.getItem('mda_hotspotDiameter') || '15');
          const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
          const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
-         
          // Shared State
-         
          const [probeShape, setProbeShape] = React.useState(() => localStorage.getItem('mda_probeShape') || 'rectangle');
          const [probeWidth, setProbeWidth] = React.useState(() => localStorage.getItem('mda_probeWidth') || '10');
          const [probeLength, setProbeLength] = React.useState(() => localStorage.getItem('mda_probeLength') || '12.6');
@@ -9019,99 +8651,120 @@
          </div>
          );
          }; 
-         
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
          /**
          * @description A calculator to determine the required number of statistical samples for a
          * survey unit based on the more precise MARSSIM Equation 5-2.
          */
            
-         const MARSSIM_SampleCalculator = () => {
-         const { addHistory } = useCalculationHistory();
-         
-         const [alpha, setAlpha] = React.useState('0.05');
-         const [beta, setBeta] = React.useState('0.05');
-         const [sigma, setSigma] = React.useState('15');
-         const [dcgl, setDcgl] = React.useState('100');
-         const [lbgr, setLbgr] = React.useState('50');
-         const [cv, setCv] = React.useState('0.3');
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         const zScores = {
-         '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
-         '0.10': 1.282, '0.20': 0.841,
-         };
-         
-         const prValues = {
-         0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
-         0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
-         1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
-         1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
-         2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
-         4: 0.997658
-         };
-         
-         const handleClearInputs = () => {
-         setAlpha('0.05');
-         setBeta('0.05');
-         setSigma('15');
-         setDcgl('100');
-         setLbgr('50');
-         setCv('0.3');
-         setResult(null);
-         setError('');
-         };
-         
-         React.useEffect(() => {
-         handleClearInputs();
-         }, []);
-         
-         React.useEffect(() => {
-         localStorage.setItem('marssim_alpha', alpha);
-         localStorage.setItem('marssim_beta', beta);
-         localStorage.setItem('marssim_sigma', sigma);
-         localStorage.setItem('marssim_dcgl', dcgl);
-         localStorage.setItem('marssim_lbgr', lbgr);
-         localStorage.setItem('marssim_cv', cv);
-         }, [alpha, beta, sigma, dcgl, lbgr, cv]);
-         
-         const handleCalculateSigma = () => {
-         const dcgl_val = parseFloat(dcgl);
-         const cv_val = parseFloat(cv);
-         if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
+const MARSSIM_SampleCalculator = () => {
+    const { addHistory } = useCalculationHistory();
+    
+    const [alpha, setAlpha] = React.useState('0.05');
+    const [beta, setBeta] = React.useState('0.05');
+    const [sigma, setSigma] = React.useState('15');
+    const [dcgl, setDcgl] = React.useState('100');
+    const [lbgr, setLbgr] = React.useState('50');
+    const [cv, setCv] = React.useState('0.3');
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const zScores = {
+        '0.005': 2.576, '0.01': 2.326, '0.025': 1.960, '0.05': 1.645,
+        '0.10': 1.282, '0.20': 0.841,
+    };
+    
+    const prValues = {
+        0.1: 0.528182, 0.2: 0.556223, 0.3: 0.583985, 0.4: 0.611335, 0.5: 0.638143,
+        0.6: 0.66429, 0.7: 0.689665, 0.8: 0.714167, 0.9: 0.73771, 1: 0.760217,
+        1.1: 0.781627, 1.2: 0.801892, 1.3: 0.820978, 1.4: 0.838864, 1.5: 0.855541,
+        1.6: 0.871014, 1.7: 0.885299, 1.8: 0.89842, 1.9: 0.910413, 2: 0.921319,
+        2.25: 0.944167, 2.5: 0.961428, 2.75: 0.974067, 3: 0.983039, 3.5: 0.993329,
+        4: 0.997658
+    };
+
+    const handleClearInputs = () => {
+        setAlpha('0.05');
+        setBeta('0.05');
+        setSigma('15');
+        setDcgl('100');
+        setLbgr('50');
+        setCv('0.3');
+        setResult(null);
+        setError('');
+    };
+
+    React.useEffect(() => {
+        handleClearInputs();
+    }, []);
+
+    React.useEffect(() => {
+        localStorage.setItem('marssim_alpha', alpha);
+        localStorage.setItem('marssim_beta', beta);
+        localStorage.setItem('marssim_sigma', sigma);
+        localStorage.setItem('marssim_dcgl', dcgl);
+        localStorage.setItem('marssim_lbgr', lbgr);
+        localStorage.setItem('marssim_cv', cv);
+    }, [alpha, beta, sigma, dcgl, lbgr, cv]);
+    
+    const handleCalculateSigma = () => {
+        const dcgl_val = parseFloat(dcgl);
+        const cv_val = parseFloat(cv);
+        if (!isNaN(dcgl_val) && !isNaN(cv_val)) {
            setSigma((dcgl_val * cv_val).toPrecision(3));
-         }
-         };
-         
-         const handleSetLbgr = () => {
-         const dcgl_val = parseFloat(dcgl);
-         if (!isNaN(dcgl_val)) {
+        }
+    };
+    
+    const handleSetLbgr = () => {
+        const dcgl_val = parseFloat(dcgl);
+        if (!isNaN(dcgl_val)) {
            setLbgr((dcgl_val * 0.5).toPrecision(3));
-         }
-         };
-         
-         const handleCalculate = () => {
-         const sigma_val = parseFloat(sigma);
-         const dcgl_val = parseFloat(dcgl);
-         const lbgr_val = parseFloat(lbgr);
-         if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
+        }
+    };
+    
+    const handleCalculate = () => {
+        const sigma_val = parseFloat(sigma);
+        const dcgl_val = parseFloat(dcgl);
+        const lbgr_val = parseFloat(lbgr);
+        if (isNaN(sigma_val) || isNaN(dcgl_val) || isNaN(lbgr_val) || sigma_val <= 0) {
            setError('Please enter valid, positive numbers for all fields.');
            setResult(null); return;
-         }
-         if (dcgl_val <= lbgr_val) {
+        }
+        if (dcgl_val <= lbgr_val) {
            setError('DCGL must be greater than the LBGR.');
            setResult(null); return;
-         }
-         setError('');
-         const z1_alpha = zScores[alpha];
-         const z1_beta = zScores[beta];
-         const delta = dcgl_val - lbgr_val;
-         const relativeShift = delta / sigma_val;
-         const shiftKeys = Object.keys(prValues).map(parseFloat);
-         let Pr;
-         if (relativeShift >= 4) {
+        }
+        setError('');
+        const z1_alpha = zScores[alpha];
+        const z1_beta = zScores[beta];
+        const delta = dcgl_val - lbgr_val;
+        const relativeShift = delta / sigma_val;
+        const shiftKeys = Object.keys(prValues).map(parseFloat);
+        let Pr;
+        if (relativeShift >= 4) {
            Pr = 1;
-         } else {
+        } else {
            const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
            const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
            if (isFinite(lowerKey) && isFinite(upperKey)) {
@@ -9123,29 +8776,29 @@
                 setError(`Relative shift (${relativeShift.toFixed(2)}) is outside the table's range.`);
                 setResult(null); return;
            }
-         }
-         const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
-         const N_base = Math.ceil(N_base_raw);
-         const N_with_overage = N_base * 1.2;
-         const final_N = Math.ceil(N_with_overage);
-         const samplesPerGroup = Math.ceil(final_N / 2);
-         
-         const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
-         
-         setResult(newResult);
-         
-         addHistory({
+        }
+        const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
+        const N_base = Math.ceil(N_base_raw);
+        const N_with_overage = N_base * 1.2;
+        const final_N = Math.ceil(N_with_overage);
+        const samplesPerGroup = Math.ceil(final_N / 2);
+        
+        const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
+
+        setResult(newResult);
+        
+        addHistory({
            id: Date.now(),
            type: 'MARSSIM Samples',
            icon: ICONS.calculator,
            inputs: `Δ/σ: ${newResult.relativeShift}, α: ${alpha}, β: ${beta}`,
            result: `${newResult.final_N} samples`,
            view: VIEWS.MARSSIM_SAMPLES
-         });
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        });
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                <div className="flex justify-between items-center mb-1">
                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Number of Samples Calculator</h2>
@@ -9230,177 +8883,106 @@
                    )}
                </div>
            </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
-         /**
-         * @description React component for a graphical survey unit drawing tool. This utility
-         * allows users to visually plan and lay out radiation survey points on an interactive map.
-         * The tool is designed to support the planning phase of a final status survey, particularly
-         * for a **Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM)** project.
-         *
-         * Key features include:
-         * - **Interactive Map:** A Leaflet-based map provides a visual canvas.
-         * - **Drawing Controls:** Users can draw survey unit boundaries using **polygons** or
-         * **rectangles**.
-         * - **Sample Point Generation:** Automatically generates statistical sample points within
-         * the drawn boundary using common MARSSIM patterns: **random**, **square grid**, or
-         * **triangular grid**.
-         * - **Manual Point Placement:** Allows for the placement of "biased" sample points in
-         * areas of known or suspected contamination.
-         * - **Area Calculation:** Automatically calculates the area of the drawn survey unit.
-         * - **Data Export:** The final list of sample points, including coordinates and a unique
-         * identifier, can be exported to a `.csv` file for use with GPS devices or for documentation.
-         *
-         * This component is an essential part of the MARSSIM suite, bridging the statistical
-         * calculations with a practical, field-ready planning tool.
-         *
-         * @prop {boolean} isVisible - Boolean to trigger map redraw on component mount,
-         * ensuring correct rendering within a tabbed interface.
-         */
-         
-         const DrawingTool = ({ isVisible }) => {
-         const mapRef = React.useRef(null);
-         const drawnItemsRef = React.useRef(null);
-         const samplePointsLayerRef = React.useRef(null);
 
-         const osmLayerRef = React.useRef(null);
-         const satelliteLayerRef = React.useRef(null);
-         
-         const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
-         const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
-         const [samplesToPlace, setSamplesToPlace] = React.useState(25);
-         const [plottedPoints, setPlottedPoints] = React.useState([]);
-         const [locationInput, setLocationInput] = React.useState('');
 
-	 const [surveyClass, setSurveyClass] = React.useState('Class 1');
-         
-         const isPointInPolygon = (point, polygonLatLngs) => {
-         const polyPoints = polygonLatLngs[0];
-         const x = point.lat, y = point.lng;
-         let inside = false;
-         for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+
+const DrawingTool = ({ isVisible }) => {
+    const mapRef = React.useRef(null);
+    const drawnItemsRef = React.useRef(null);
+    const samplePointsLayerRef = React.useRef(null);
+    
+    const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
+    const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
+    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
+    const [plottedPoints, setPlottedPoints] = React.useState([]);
+    const [locationInput, setLocationInput] = React.useState('');
+
+    const isPointInPolygon = (point, polygonLatLngs) => {
+        const polyPoints = polygonLatLngs[0];
+        const x = point.lat, y = point.lng;
+        let inside = false;
+        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
             const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
             const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
             const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
             if (intersect) inside = !inside;
-         }
-         return inside;
-         };
-         
+        }
+        return inside;
+    };
 
+    const onDrawCreate = (e) => {
+        const { layer, layerType } = e;
+        if (layerType === 'polygon' || layerType === 'rectangle') {
+            drawnItemsRef.current.clearLayers();
+            samplePointsLayerRef.current.clearLayers();
+            drawnItemsRef.current.addLayer(layer);
+            setSurveyUnitLayer(layer);
+            setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
+            setPlottedPoints([]);
+        } else if (layerType === 'marker') {
+            const latLng = layer.getLatLng();
+            const newMarker = L.circleMarker(latLng, {
+                radius: 4,
+                className: 'biased-sample-marker'
+            });
+            samplePointsLayerRef.current.addLayer(newMarker);
+            const point = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+            setPlottedPoints(prevPoints => [...prevPoints, point]);
+        }
+    };
 
-/*
-This function, 'onDrawCreate', is an event handler that responds when a user draws a new feature on the map. It analyzes the type of feature drawn and takes a specific action.
+    const handleGenerateSamples = (pattern) => {
+        if (!surveyUnitLayer) {
+            alert("Please draw a survey unit boundary first.");
+            return;
+        }
+        samplePointsLayerRef.current.clearLayers();
+        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+        existingBiasedPoints.forEach(p => {
+             L.circleMarker([p.lat, p.lng], { radius: 4, className: 'biased-sample-marker' }).addTo(samplePointsLayerRef.current);
+        });
 
-If a **polygon or rectangle** is drawn, it's treated as the main survey unit. The function first clears any existing layers, then adds the new shape to the map, calculates its area, and resets the list of plotted points.
-
-If a **marker** is drawn, it's considered a biased sample point. The function adds it to a separate layer, styles it as a marker, and adds its coordinates to the list of plotted points.
-
-For any other type of drawn feature (like a polyline or other shapes), the function simply adds it to the map to keep it visible, without performing any additional actions. 
-*/
-
-
-	     const onDrawCreate = (e) => {
-             const { layer, layerType } = e;
-         
-             // This block now ONLY runs if it's the FIRST polygon/rectangle being drawn.
-             if ((layerType === 'polygon' || layerType === 'rectangle') && !surveyUnitLayer) {
-                 drawnItemsRef.current.clearLayers();
-                 samplePointsLayerRef.current.clearLayers();
-                 drawnItemsRef.current.addLayer(layer);
-                 setSurveyUnitLayer(layer);
-                 setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
-                 setPlottedPoints([]);
-             } 
-             // This block for biased sample markers remains the same.
-             else if (layerType === 'marker') {
-                 const latLng = layer.getLatLng();
-                 const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' });
-                 samplePointsLayerRef.current.addLayer(newMarker);
-                 const point = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-                 setPlottedPoints(prevPoints => [...prevPoints, point]);
-             } 
-             // NEW: This block handles all other drawings (polylines, extra shapes).
-             else {
-                 // It simply adds the measurement layer to the map so it stays visible.
-                 drawnItemsRef.current.addLayer(layer);
-             }
-         };
-         
-
-
-
-/*
-This function, handleGenerateSamples, handles the generation of sample points within a defined geographic area. The function supports two distinct sampling patterns: random and grid-based. For random sampling, points are scattered randomly within the survey boundary. For grid-based sampling, it calculates the necessary spacing to distribute points evenly in either a square or a triangular grid, ensuring they are placed only inside the designated survey unit.
-*/
-
-
-const handleGenerateSamples = (pattern) => {
-             if (!surveyUnitLayer) {
-                 alert("Please draw a survey unit boundary first.");
-                 return;
-             }
-             samplePointsLayerRef.current.clearLayers();
-             const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-             existingBiasedPoints.forEach(p => {
-                 L.circleMarker([p.lat, p.lng], { radius: 4, className: 'biased-sample-marker' }).addTo(samplePointsLayerRef.current);
-             });
-         
-             const newPoints = [];
-             const latLngs = surveyUnitLayer.getLatLngs();
-             const bounds = surveyUnitLayer.getBounds();
-             if (pattern === 'random') {
-                 while (newPoints.length < samplesToPlace) {
-                    const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                    const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+        const newPoints = [];
+        const latLngs = surveyUnitLayer.getLatLngs();
+        const bounds = surveyUnitLayer.getBounds();
+        if (pattern === 'random') {
+             while (newPoints.length < samplesToPlace) {
+                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                const point = { lat, lng };
+                if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
+            }
+        } else {
+            const geographicArea = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
+            const spacing = Math.sqrt(geographicArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
+            let row = 0;
+            for (let lat = bounds.getSouth(); lat < bounds.getNorth(); lat += spacing * (pattern === 'triangular' ? 0.866 : 1)) {
+                const lngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacing / 2 : 0;
+                for (let lng = bounds.getWest() + lngOffset; lng < bounds.getEast(); lng += spacing) {
                     const point = { lat, lng };
                     if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
                 }
-             } else {
-                const polygonArea = calculatePolygonArea(latLngs);
-                const spacingDegrees = Math.sqrt(polygonArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
-                const spacingLat = spacingDegrees / 111320;
-                const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
-                const spacingLng = spacingDegrees / (111320 * Math.cos(centerLat * Math.PI / 180));
-
-                // --- NEW: Generate a random starting offset for the grid ---
-                const randomLatOffset = Math.random() * spacingLat;
-                const randomLngOffset = Math.random() * spacingLng;
-                // --------------------------------------------------------
-
-                let row = 0;
-                // --- MODIFIED: The loops now start from a random offset ---
-                for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth(); lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
-                    const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
-                    for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast(); lng += spacingLng) {
-                        const point = { lat, lng };
-                        if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-                    }
-                    row++;
-                }
-             }
-             const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-             setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
-             pointsWithTypes.forEach(p => {
-                L.circleMarker([p.lat, p.lng], { radius: 4, className: 'grid-sample-marker' }).addTo(samplePointsLayerRef.current);
-             });
-         };
-
-/*
-The handleExport function is responsible for exporting a list of survey sample points as a CSV file. It first checks if a survey unit and sample points exist. 
-If they do, it then iterates through each plotted point, calculating its latitude and longitude, as well as its distance in meters from the southwest corner of the survey unit boundary (serving as a local origin). 
-Finally, it constructs a CSV file from this data and triggers a download in the user's browser.
-*/  
-      
-         const handleExport = () => {
-         if (plottedPoints.length === 0 || !surveyUnitLayer) {
+                row++;
+            }
+        }
+        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+        setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
+        pointsWithTypes.forEach(p => {
+            L.circleMarker([p.lat, p.lng], { radius: 4, className: 'grid-sample-marker' }).addTo(samplePointsLayerRef.current);
+        });
+    };
+    
+    const handleExport = () => {
+        if (plottedPoints.length === 0 || !surveyUnitLayer) {
             alert("Please draw a survey unit and place sample points before exporting.");
             return;
-         }
-         const origin = surveyUnitLayer.getBounds().getSouthWest();
-         const dataForExport = plottedPoints.map((point, index) => {
+        }
+        const origin = surveyUnitLayer.getBounds().getSouthWest();
+        const dataForExport = plottedPoints.map((point, index) => {
             const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
             const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
             return {
@@ -9411,16 +8993,16 @@ Finally, it constructs a CSV file from this data and triggers a download in the 
                 xDistance: xDistance.toFixed(2),
                 yDistance: yDistance.toFixed(2)
             };
-         });
-         const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
-         const csvRows = [headers.join(',')];
-         dataForExport.forEach(row => {
+        });
+        const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
+        const csvRows = [headers.join(',')];
+        dataForExport.forEach(row => {
             csvRows.push(Object.values(row).join(','));
-         });
-         const csvContent = csvRows.join('\n');
-         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-         const link = document.createElement("a");
-         if (link.download !== undefined) {
+        });
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
             link.setAttribute("download", "survey_sample_points.csv");
@@ -9428,157 +9010,33 @@ Finally, it constructs a CSV file from this data and triggers a download in the 
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-         }
-         };
-         
+        }
+    };
+    
+    const handleClearAll = () => {
+        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
+        setSurveyUnitLayer(null);
+        setSurveyUnitArea(0);
+        setPlottedPoints([]);
+    };
 
+    const handleClearPoints = () => {
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
+        setPlottedPoints([]);
+    };
 
-
-
-
-         const handleClearAll = () => {
-         if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
-         if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
-         setSurveyUnitLayer(null);
-         setSurveyUnitArea(0);
-         setPlottedPoints([]);
-         };
-
-
-
-
-
-/*
-This function generates a printable report of a survey unit. It captures the current state of a Leaflet map, including the drawn survey area and sample points, 
-and opens a new browser window to display the data in a formatted HTML report. The report includes an interactive map and a table of sample locations.
-*/
-
-
-const handlePrintMap = () => {
-             if (!mapRef.current || !surveyUnitLayer) {
-                 alert("Please draw a survey unit on the map before generating a report.");
-                 return;
-             }
-             const center = mapRef.current.getCenter();
-             const zoom = mapRef.current.getZoom();
-             const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
-             const pointsData = plottedPoints;
-             const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
-             const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
-             let customMarkerStyles = '';
-             for (const sheet of document.styleSheets) {
-                 try {
-                     for (const rule of sheet.cssRules) {
-                         if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker') {
-                             customMarkerStyles += rule.cssText;
-                         }
-                     }
-                 } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
-             }
-             let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
-             pointsData.forEach((point, index) => {
-                 tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`;
-             });
-             tableHtml += `</tbody></table>`;
-
-             // --- Detect the active basemap layer using the refs ---
-             let activeLayerConfig;
-             if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
-                 activeLayerConfig = {
-                     url: satelliteLayerRef.current._url,
-                     options: satelliteLayerRef.current.options
-                 };
-             } else {
-                 activeLayerConfig = {
-                     url: osmLayerRef.current._url,
-                     options: osmLayerRef.current.options
-                 };
-             }
-             
-             const reportWindow = window.open('', '_blank', 'height=800,width=1000');
-             reportWindow.document.write(`
-                 <html>
-                     <head>
-                         <title>Survey Unit Report</title>
-                         ${leafletCss} ${leafletDrawCss}
-                         <style>
-                             body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
-                             .report-container { max-width: 1200px; margin: auto; }
-                             h1, h2 { text-align: center; }
-                             #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
-                             .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
-                             .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
-                             .data-table th { background-color: #f1f5f9; font-weight: 600; }
-                             .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-                             .print-button:hover { background-color: #0369a1; }
-                             .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
-                             .summary-container div { font-size: 1.1em; color: #334155; }
-                             @media print { .print-button { display: none; } body { padding: 0; } }
-                             ${customMarkerStyles}
-                         </style>
-                     </head>
-                     <body>
-                         <button class="print-button" onclick="window.print()">Print Report</button>
-                         <div class="report-container">
-                             <h1>Survey Unit Report</h1>
-                             <div class="summary-container">
-                                 <div><strong>Survey Unit Class:</strong> ${surveyClass}</div>
-                                 <div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
-                                 <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
-                             </div>
-                             <div id="print-map"></div>
-                             <h2>Sample Locations</h2>
-                             ${tableHtml}
-                         </div>
-                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
-                         <script>
-                             setTimeout(() => {
-                                 const map = L.map('print-map').setView([${center.lat}, ${center.lng}], ${zoom});
-                                 
-                                 // Use the active layer's config we passed in
-                                 L.tileLayer(
-                                     '${activeLayerConfig.url}',
-                                     ${JSON.stringify(activeLayerConfig.options)}
-                                 ).addTo(map);
-                                 
-                                 L.control.scale({ imperial: true, metric: true }).addTo(map);
-                                 L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}).addTo(map);
-                                 const points = ${JSON.stringify(pointsData)};
-                                 points.forEach(point => {
-                                     L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map);
-                                 });
-                             }, 100);
-                         <\/script>
-                     </body>
-                 </html>
-             `);
-             reportWindow.document.close();
-         };
-
-
-
-/*
-The handleClearPoints function serves a straightforward purpose: to remove all currently plotted sample points from the map and reset the list of points stored in the application's state.
-It does this by clearing the layers from the samplePointsLayerRef and then updating the state using setPlottedPoints([]). 
-This function is useful when a user wants to start over with their sample points without clearing the entire survey boundary.
-*/
-
-         const handleClearPoints = () => {
-         if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
-         setPlottedPoints([]);
-         };
-         
-         const handleGoToLocation = async () => {
-         if (!locationInput.trim()) return;
-         const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
-         if (coordRegex.test(locationInput)) {
+    const handleGoToLocation = async () => {
+        if (!locationInput.trim()) return;
+        const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
+        if (coordRegex.test(locationInput)) {
             const [lat, lng] = locationInput.split(',').map(Number);
             if (!isNaN(lat) && !isNaN(lng)) {
                 mapRef.current.setView([lat, lng], 16);
                 return;
             }
-         }
-         try {
+        }
+        try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
             const data = await response.json();
             if (data && data.length > 0) {
@@ -9587,119 +9045,47 @@ This function is useful when a user wants to start over with their sample points
             } else {
                 alert("Location not found. Please try a different address or format.");
             }
-         } catch (error) {
+        } catch (error) {
             alert("Could not connect to the location service. Please check your connection.");
-         }
-         };
+        }
+    };
 
+    React.useEffect(() => {
+        if (mapRef.current) return;
+        mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapRef.current);
+        
+        drawnItemsRef.current = new L.FeatureGroup();
+        samplePointsLayerRef.current = new L.FeatureGroup();
+        mapRef.current.addLayer(drawnItemsRef.current);
+        mapRef.current.addLayer(samplePointsLayerRef.current);
 
+        const drawControl = new L.Control.Draw({ 
+            edit: { featureGroup: drawnItemsRef.current }, 
+            draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
+        });
+        mapRef.current.addControl(drawControl);
+        
+        mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
 
+        return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+    }, []);
 
-
-React.useEffect(() => {
-             if (mapRef.current) return;
-             
-             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                 attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21
-             });
-             const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                 attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21
-             });
-             const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
-         
-             mapRef.current = L.map('marssim-map', { layers: [osmLayer] });
-             
-             L.control.layers(baseMaps).addTo(mapRef.current);
-             
-             drawnItemsRef.current = new L.FeatureGroup();
-             samplePointsLayerRef.current = new L.FeatureGroup();
-             mapRef.current.addLayer(drawnItemsRef.current);
-             mapRef.current.addLayer(samplePointsLayerRef.current);
-
-             // --- THIS IS THE UPDATED DRAW CONTROL ---
-             const drawControl = new L.Control.Draw({ 
-                edit: { featureGroup: drawnItemsRef.current }, 
-                draw: {
-                    // Configure shapes to show measurements as they are drawn
-                    polyline: {
-                        shapeOptions: { color: '#f357a1' }, // Pink color for measurements
-                        showLength: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                    },
-                    polygon: {
-                        shapeOptions: { color: '#f357a1' },
-                        showArea: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                        allowIntersection: false,
-                        drawError: {
-                            color: '#e1e100',
-                            message: '<strong>Error:</strong> Shape edges cannot cross!'
-                        },
-                    },
-                    rectangle: {
-                        shapeOptions: { color: '#f357a1' },
-                        showArea: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                    },
-                    // Keep marker for biased samples, disable others
-                    marker: true, 
-                    circle: false, 
-                    circlemarker: false 
-                } 
-             });
-             mapRef.current.addControl(drawControl);
-             // ------------------------------------------
-             
-             L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
-             const mousePositionControl = L.control({ position: 'bottomleft' });
-             mousePositionControl.onAdd = function (map) { this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition'); this.update('Mouse over map'); return this._div; };
-             mousePositionControl.update = function (text) { this._div.innerHTML = text; };
-             mousePositionControl.addTo(mapRef.current);
-
-             mapRef.current.on('mousemove', (e) => {
-                 const lat = e.latlng.lat.toFixed(6);
-                 const lng = e.latlng.lng.toFixed(6);
-                 mousePositionControl.update(`Lat: ${lat}, Lng: ${lng}`);
-             });
-             mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
-             mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
-
-             mapRef.current.setView([37.207, -76.51], 13);
-         
-             return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
-         }, []);
-
-
-
-
-
-
-
-
-
-         React.useEffect(() => {
-         if (isVisible && mapRef.current) {
+    React.useEffect(() => {
+        if (isVisible && mapRef.current) {
             setTimeout(() => mapRef.current.invalidateSize(), 100);
-         }
-         }, [isVisible]);
-         
-         return (
-         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-		<div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
-                    <div className="flex items-center gap-4">
-                        <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1">
-                            <Icon path={ICONS.clear} className="w-3 h-3"/> Clear All
-                        </button>
-                        <button onClick={handlePrintMap} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">
-                           Print / Save as PDF
-                        </button>
-                    </div>
-                </div>
-         
+        }
+    }, [isVisible]);
+
+    return (
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+                <button onClick={handleClearAll} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear All
+                </button>
+            </div>
+
             <div className="flex gap-2 items-center mb-4">
                 <input 
                     type="text"
@@ -9716,48 +9102,20 @@ React.useEffect(() => {
                     Go
                 </button>
             </div>
-         
+
             <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
             
-		<div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                {/* --- NEW: Survey Class Dropdown --- */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Survey Unit Class</label>
-                    <select 
-                        value={surveyClass} 
-                        onChange={e => setSurveyClass(e.target.value)} 
-                        className="w-full text-center p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-semibold"
-                    >
-                        <option>Class 1</option>
-                        <option>Class 2</option>
-                        <option>Class 3</option>
-                        <option>Un-Impacted</option>
-                        <option>Other</option>
-                    </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400">Number of Samples to Place</label>
+                    <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-24 text-center mx-auto block text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
                 </div>
-
-                {/* --- NEW: Number of Samples Input with Buttons --- */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
-                    <div className="relative flex items-center justify-center">
-                        <button onClick={() => setSamplesToPlace(prev => Math.max(0, prev - 1))} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-l-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">-</button>
-                        <input 
-                            type="number" 
-                            value={samplesToPlace} 
-                            onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} 
-                            className="w-20 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent border-y border-slate-200 dark:border-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                        />
-                        <button onClick={() => setSamplesToPlace(prev => prev + 1)} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-r-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">+</button>
-                    </div>
-                </div>
-
-                {/* --- Survey Unit Area (Unchanged) --- */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
                     <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
                     <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
                 </div>
             </div>
-         
+
             <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                 <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -9766,7 +9124,7 @@ React.useEffect(() => {
                     <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
                 </div>
             </div>
-         
+
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
@@ -9816,25 +9174,26 @@ React.useEffect(() => {
                     )}
                 </div>
             </div>
-         </div>
-         );
-         };
-         
-         /**
-         * @description React component for the MARSSIM Sample Design Suite.
-         * This component acts as a container for two main functionalities:
-         * 1.  **Sample Size Calculator:** Calculates the number of samples required based on MARSSIM methodology.
-         * 2.  **Survey Unit Drawing Tool:** Provides a user interface for drawing survey units and sample locations.
-         *
-         * It manages the active module state ('calculator' or 'drawing') and conditionally renders the corresponding
-         * sub-component (`MARSSIM_SampleCalculator` or `DrawingTool`) based on user selection.
-         */
-         
-         const MARSSIM_SampleDesign = () => {
-         const [activeModule, setActiveModule] = React.useState('calculator');
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        </div>
+    );
+};
+
+
+/**
+ * @description React component for the MARSSIM Sample Design Suite.
+ * This component acts as a container for two main functionalities:
+ * 1.  **Sample Size Calculator:** Calculates the number of samples required based on MARSSIM methodology.
+ * 2.  **Survey Unit Drawing Tool:** Provides a user interface for drawing survey units and sample locations.
+ *
+ * It manages the active module state ('calculator' or 'drawing') and conditionally renders the corresponding
+ * sub-component (`MARSSIM_SampleCalculator` or `DrawingTool`) based on user selection.
+ */
+
+const MARSSIM_SampleDesign = () => {
+    const [activeModule, setActiveModule] = React.useState('calculator');
+
+    return (
+        <div className="p-4 animate-fade-in">
              <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Sample Design Suite</h2>
                 <div className="flex w-full p-1 my-4 bg-slate-200 dark:bg-slate-700 rounded-lg">
@@ -9860,31 +9219,32 @@ React.useEffect(() => {
                     {activeModule === 'drawing' && <DrawingTool isVisible={activeModule === 'drawing'} />}
                 </div>
              </div>
-         </div>
-         );
-         };
-         
-         /**
-         * @file ChiSquaredCalculator.jsx
-         * @description React component for a Chi-Squared (χ²) Test calculator.
-         * This tool is used in health physics and other fields to check the stability
-         * of a counting system by comparing the variance of repeated measurements
-         * to the expected variance of a Poisson distribution.
-         *
-         * It calculates the χ² value, compares it against critical values for a
-         * given significance level (α), and determines if the system 'PASSES' or
-         * 'FAILS' the test for stability.
-         *
-         * @prop {string} chiSquaredData - String of raw, separated count data.
-         * @prop {function} setChiSquaredData - State setter for the count data.
-         * @prop {string} alpha - The significance level (e.g., '0.05').
-         * @prop {function} setAlpha - State setter for the significance level.
-         * @prop {object} result - Object containing the test result and details.
-         * @prop {function} setResult - State setter for the test result.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
-         
+        </div>
+    );
+};
+
+
+/**
+ * @file ChiSquaredCalculator.jsx
+ * @description React component for a Chi-Squared (χ²) Test calculator.
+ * This tool is used in health physics and other fields to check the stability
+ * of a counting system by comparing the variance of repeated measurements
+ * to the expected variance of a Poisson distribution.
+ *
+ * It calculates the χ² value, compares it against critical values for a
+ * given significance level (α), and determines if the system 'PASSES' or
+ * 'FAILS' the test for stability.
+ *
+ * @prop {string} chiSquaredData - String of raw, separated count data.
+ * @prop {function} setChiSquaredData - State setter for the count data.
+ * @prop {string} alpha - The significance level (e.g., '0.05').
+ * @prop {function} setAlpha - State setter for the significance level.
+ * @prop {object} result - Object containing the test result and details.
+ * @prop {function} setResult - State setter for the test result.
+ * @prop {string} error - Any error message to display.
+ * @prop {function} setError - State setter for error messages.
+ */
+
          const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
@@ -9911,7 +9271,6 @@ React.useEffect(() => {
          setResult(newResult);
          
          // <-- ADDED: History call -->
-         
          addHistory({ id: Date.now(), type: 'χ² Test', icon: ICONS.labStats, inputs: `N=${newResult.n}, α=${alpha}`, result: `χ²=${newResult.chiSquared}, ${newResult.conclusion}`, view: VIEWS.LAB_STATS });
          };
          
@@ -9944,33 +9303,33 @@ React.useEffect(() => {
          );
          };
          
-         /**
-         * @description React component for a Dead Time Correction calculator.
-         * This tool calculates the true count rate of a radiation detector, accounting
-         * for the "dead time"—the brief period after a count is registered during which
-         * the detector cannot detect another particle.
-         *
-         * It uses the formula:
-         * N = R / (1 - R * τ)
-         * where:
-         * N = true count rate
-         * R = observed count rate
-         * τ = detector dead time
-         *
-         * This component takes observed counts per minute (CPM) and dead time in microseconds (µs)
-         * as inputs and provides the corrected CPM and the percentage of counts lost due to dead time.
-         * The calculation is automatically updated whenever the input values change.
-         *
-         * @prop {string} observedCpm - Observed counts per minute.
-         * @prop {function} setObservedCpm - State setter for observed CPM.
-         * @prop {string} deadTime - Dead time in microseconds.
-         * @prop {function} setDeadTime - State setter for dead time.
-         * @prop {object} result - Object containing the corrected rate and lost percentage.
-         * @prop {function} setResult - State setter for the result.
-         * @prop {string} error - Any error message to display.
-         * @prop {function} setError - State setter for error messages.
-         */
-         
+/**
+ * @description React component for a Dead Time Correction calculator.
+ * This tool calculates the true count rate of a radiation detector, accounting
+ * for the "dead time"—the brief period after a count is registered during which
+ * the detector cannot detect another particle.
+ *
+ * It uses the formula:
+ * N = R / (1 - R * τ)
+ * where:
+ * N = true count rate
+ * R = observed count rate
+ * τ = detector dead time
+ *
+ * This component takes observed counts per minute (CPM) and dead time in microseconds (µs)
+ * as inputs and provides the corrected CPM and the percentage of counts lost due to dead time.
+ * The calculation is automatically updated whenever the input values change.
+ *
+ * @prop {string} observedCpm - Observed counts per minute.
+ * @prop {function} setObservedCpm - State setter for observed CPM.
+ * @prop {string} deadTime - Dead time in microseconds.
+ * @prop {function} setDeadTime - State setter for dead time.
+ * @prop {object} result - Object containing the corrected rate and lost percentage.
+ * @prop {function} setResult - State setter for the result.
+ * @prop {string} error - Any error message to display.
+ * @prop {function} setError - State setter for error messages.
+ */
+
          const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          React.useEffect(() => {
@@ -10026,7 +9385,7 @@ React.useEffect(() => {
          );
          };
          
-         
+
          const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
          const { addHistory } = useCalculationHistory();
          React.useEffect(() => {
@@ -10449,7 +9808,6 @@ React.useEffect(() => {
          setResult(newResult);
          
          // <-- MODIFIED: Add history item -->
-         
          addHistory({
             id: Date.now(),
             type: 'EMC Sign Test',
@@ -10502,85 +9860,77 @@ React.useEffect(() => {
          * @param {{chartData: object}} props - The data object for the chart, including labels and datasets for parent and optional daughter.
          */
                   
-         const DecayChart = ({ chartData, useLogScale, theme }) => {
+         const DecayChart = ({ chartData, useLogScale }) => {
          const chartRef = React.useRef(null);
          const chartInstance = React.useRef(null);
          
          React.useEffect(() => {
-
-             // Destroy the previous chart instance if it exists
-
-             if (chartInstance.current) {
-                chartInstance.current.destroy();
-             }
+         // Destroy the previous chart instance if it exists
+         if (chartInstance.current) {
+            chartInstance.current.destroy();
+         }
          
-             if (chartRef.current && chartData) {
-                // Determine colors based on the theme prop
-                const isDarkMode = theme === 'dark';
-                const textColor = isDarkMode ? '#94a3b8' : '#475569';
-                const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-                const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
-
-                const ctx = chartRef.current.getContext('2d');
-                chartInstance.current = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: chartData.labels,
-                        datasets: [
-                            {
-                                label: chartData.parentName,
-                                data: chartData.parentData,
-                                borderColor: '#0284c7', // Sky-600
-                                backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                                fill: true,
-                                tension: 0.1,
-                                pointRadius: 0
-                            },
-                            ...(chartData.daughterData ? [{
-                                label: chartData.daughterName,
-                                data: chartData.daughterData,
-                                borderColor: '#e11d48', // Rose-600
-                                backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                                fill: true,
-                                tension: 0.1,
-                                pointRadius: 0
-                            }] : [])
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                title: { display: true, text: `Time (${chartData.timeUnit})` },
-                                ticks: { color: textColor },
-                                grid: { color: gridColor }
-                            },
-                            y: {
-                                type: useLogScale ? 'logarithmic' : 'linear',
-                                title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
-                                beginAtZero: !useLogScale,
-                                ticks: { color: textColor },
-                                grid: { color: gridColor }
-                            }
+         if (chartRef.current && chartData) {
+            const ctx = chartRef.current.getContext('2d');
+            chartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: chartData.parentName,
+                            data: chartData.parentData,
+                            borderColor: '#0284c7', // Sky-600
+                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
                         },
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: legendColor
-                                }
+                        ...(chartData.daughterData ? [{
+                            label: chartData.daughterName,
+                            data: chartData.daughterData,
+                            borderColor: '#e11d48', // Rose-600
+                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }] : [])
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: `Time (${chartData.timeUnit})` },
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
+                        },
+                        y: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
+                            beginAtZero: !useLogScale,
+                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
+                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155'
                             }
                         }
                     }
-                });
-             }
-         
-             return () => {
-                if (chartInstance.current) {
-                    chartInstance.current.destroy();
                 }
-             };
-         }, [chartData, useLogScale, theme]); // Added theme to the dependency array
+            });
+         }
+         
+         return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+         };
+         }, [chartData, useLogScale]);
          
          const handleExport = () => {
          if (chartInstance.current) {
@@ -10607,7 +9957,7 @@ React.useEffect(() => {
          </div>
          );
          };
-         
+
          // Final step: Render the main App component into the DOM.
          
          ReactDOM.createRoot(document.getElementById('root')).render(
