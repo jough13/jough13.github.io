@@ -214,6 +214,10 @@
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
       <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
+
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-measure@3.1.0/dist/leaflet-measure.css" />
+      <script src="https://cdn.jsdelivr.net/npm/leaflet-measure@3.1.0/dist/leaflet-measure.js"></script>
+
       <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
       <script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
       <script>
@@ -9563,18 +9567,44 @@ This function is useful when a user wants to start over with their sample points
             alert("Could not connect to the location service. Please check your connection.");
          }
          };
+
+
+
+
+
+
+
          
-	React.useEffect(() => {
+		React.useEffect(() => {
              if (mapRef.current) return; // Prevents re-initializing
              
-             // Initialize the map (as before)
-             mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
-             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+             // 1. Define the different basemap layers we want to use
+             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                  attribution: '&copy; OpenStreetMap',
                  maxNativeZoom: 19,
                  maxZoom: 21
-             }).addTo(mapRef.current);
+             });
          
+             const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                 attribution: 'Tiles &copy; Esri',
+                 maxNativeZoom: 19,
+                 maxZoom: 21
+             });
+         
+             const baseMaps = {
+                 "Street Map": osmLayer,
+                 "Satellite": satelliteLayer
+             };
+         
+             // 2. Initialize the map, setting 'osmLayer' as the default
+             mapRef.current = L.map('marssim-map', {
+                 layers: [osmLayer] 
+             }).setView([37.207, -76.51], 13);
+             
+             // 3. Add the layer control to the map
+             L.control.layers(baseMaps).addTo(mapRef.current);
+             
+             // (The rest of this is your original, functional setup code)
              drawnItemsRef.current = new L.FeatureGroup();
              samplePointsLayerRef.current = new L.FeatureGroup();
              mapRef.current.addLayer(drawnItemsRef.current);
@@ -9585,38 +9615,6 @@ This function is useful when a user wants to start over with their sample points
                 draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
              });
              mapRef.current.addControl(drawControl);
-             
-             // --- NEW: Add the scale bar control ---
-             L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
-             // -------------------------------------
-
-             // --- NEW: Create and add the mouse coordinate control ---
-             const mousePositionControl = L.control({ position: 'bottomleft' });
-             
-             mousePositionControl.onAdd = function (map) {
-                 this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition');
-                 this.update('Mouse over map');
-                 return this._div;
-             };
-             
-             mousePositionControl.update = function (text) {
-                 this._div.innerHTML = text;
-             };
-             
-             mousePositionControl.addTo(mapRef.current);
-             // --------------------------------------------------------
-
-             // --- NEW: Event listeners to update the coordinate display ---
-             mapRef.current.on('mousemove', (e) => {
-                 const lat = e.latlng.lat.toFixed(6);
-                 const lng = e.latlng.lng.toFixed(6);
-                 mousePositionControl.update(`Lat: ${lat}, Lng: ${lng}`);
-             });
-
-             mapRef.current.on('mouseout', () => {
-                 mousePositionControl.update('Mouse over map');
-             });
-             // -------------------------------------------------------------
          
              mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
          
@@ -9628,6 +9626,14 @@ This function is useful when a user wants to start over with their sample points
              };
          }, []);
          
+
+
+
+
+
+
+
+
          React.useEffect(() => {
          if (isVisible && mapRef.current) {
             setTimeout(() => mapRef.current.invalidateSize(), 100);
