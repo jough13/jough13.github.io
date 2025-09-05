@@ -2540,104 +2540,92 @@
          );
          };
          
-         const Scratchpad = () => {
-         const { addToast } = useToast();
-         const [notes, setNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
-         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+const Scratchpad = () => {
+             const { addToast } = useToast();
+             const [notes, setNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
+             const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
          
-         React.useEffect(() => {
-         localStorage.setItem('user_scratchpad_notes', notes);
-         }, [notes]);
+             React.useEffect(() => {
+                 localStorage.setItem('user_scratchpad_notes', notes);
+             }, [notes]);
          
-         const handleCopyAll = () => {
-         if (notes) {
-            navigator.clipboard.writeText(notes);
-            addToast('Notes copied to clipboard!');
-         }
-         };
+             const handleCopyAll = () => {
+                 if (notes) {
+                    navigator.clipboard.writeText(notes);
+                    addToast('Notes copied to clipboard!');
+                 }
+             };
          
-         const handleExport = () => {
-         const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
-         const link = document.createElement('a');
-         link.href = URL.createObjectURL(blob);
-         link.download = 'scratchpad-notes.txt';
-         document.body.appendChild(link);
-         link.click();
-         document.body.removeChild(link);
-         };
+             const handleExport = () => {
+                 const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
+                 const link = document.createElement('a');
+                 link.href = URL.createObjectURL(blob);
+                 link.download = 'scratchpad-notes.txt';
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+             };
          
-         // --- Logic for the timestamp button ---
-         const handleInsertTimestamp = () => {
-         const timestamp = new Date().toLocaleString();
-         setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
-         addToast('Timestamp inserted!');
-         };
+             const handleInsertTimestamp = () => {
+                 const timestamp = new Date().toLocaleString();
+                 setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
+                 addToast('Timestamp inserted!');
+             };
          
-         // --- Logic for the clear confirmation ---
-         const handleConfirmClear = () => {
-         setNotes('');
-         setIsClearModalOpen(false);
-         addToast('Scratchpad cleared.');
-         };
+             const handleConfirmClear = () => {
+                 setNotes('');
+                 setIsClearModalOpen(false);
+                 addToast('Scratchpad cleared.');
+             };
          
-         const characterCount = notes.length;
-         const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
+             const characterCount = notes.length;
+             const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
          
-         return (
-         <>
-            <div className="p-4 animate-fade-in">
-                <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
-                        {/* --- MODIFIED: Clear button now opens the modal --- */}
-                        <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                            <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Notes
-                        </button>
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                        Your notes are automatically saved in your browser's local storage.
-                    </p>
-                    <div className="flex items-center gap-2 mb-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-t-md border-b border-slate-200 dark:border-slate-700">
-                        <button onClick={handleCopyAll} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                            <Icon path={ICONS.copy} className="w-4 h-4" />
-                            Copy All
-                        </button>
-                        <button onClick={handleExport} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                            <Icon path={ICONS.database} className="w-4 h-4" />
-                            Export as .txt
-                        </button>
-                        {/* --- The timestamp button --- */}
-                        <button onClick={handleInsertTimestamp} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                            <Icon path={ICONS.stopwatch} className="w-4 h-4" />
-                            Insert Timestamp
-                        </button>
-                    </div>
-                    <textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Jot down your notes and calculations here..."
-                        className="w-full h-96 p-4 rounded-b-md bg-slate-50 dark:bg-slate-900 font-mono text-sm border-x border-b border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                    />
-                    <div className="text-right text-xs text-slate-400 dark:text-slate-500 mt-2 pr-1">
-                        <span>{characterCount.toLocaleString()} Characters</span>
-                        <span className="mx-2">|</span>
-                        <span>{wordCount.toLocaleString()} Words</span>
-                    </div>
-                </div>
-            </div>
-         
-            {/* --- The confirmation modal component --- */}
-         
-            <ConfirmationModal
-                isOpen={isClearModalOpen}
-                onClose={() => setIsClearModalOpen(false)}
-                onConfirm={handleConfirmClear}
-                title="Clear Scratchpad?"
-            >
-                <p>Are you sure you want to permanently delete all notes from the scratchpad? This action cannot be undone.</p>
-            </ConfirmationModal>
-         </>
-         );
+             return (
+                 // The outer container has been removed. We now return a Fragment.
+                 <>
+                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                         Your notes are automatically saved in your browser's local storage.
+                     </p>
+                     <div className="flex items-center gap-2 mb-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-t-md border-b border-slate-200 dark:border-slate-700">
+                         <button onClick={handleCopyAll} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                             <Icon path={ICONS.copy} className="w-4 h-4" />
+                             Copy All
+                         </button>
+                         <button onClick={handleExport} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                             <Icon path={ICONS.database} className="w-4 h-4" />
+                             Export as .txt
+                         </button>
+                         <button onClick={handleInsertTimestamp} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
+                             <Icon path={ICONS.stopwatch} className="w-4 h-4" />
+                             Insert Timestamp
+                         </button>
+                         <div className="flex-grow"></div> {/* Spacer */}
+                         <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                             <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Notes
+                         </button>
+                     </div>
+                     <textarea
+                         value={notes}
+                         onChange={(e) => setNotes(e.target.value)}
+                         placeholder="Jot down your notes and calculations here..."
+                         className="w-full h-96 p-4 rounded-b-md bg-slate-50 dark:bg-slate-900 font-mono text-sm border-x border-b border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                     />
+                     <div className="text-right text-xs text-slate-400 dark:text-slate-500 mt-2 pr-1">
+                         <span>{characterCount.toLocaleString()} Characters</span>
+                         <span className="mx-2">|</span>
+                         <span>{wordCount.toLocaleString()} Words</span>
+                     </div>
+                     <ConfirmationModal
+                         isOpen={isClearModalOpen}
+                         onClose={() => setIsClearModalOpen(false)}
+                         onConfirm={handleConfirmClear}
+                         title="Clear Scratchpad?"
+                     >
+                         <p>Are you sure you want to permanently delete all notes from the scratchpad? This action cannot be undone.</p>
+                     </ConfirmationModal>
+                 </>
+             );
          };
          
          /**
@@ -6639,24 +6627,28 @@ const ScientificCalculator = () => {
          );
          };
          
-const PopoutWindow = ({ children, title, onClose }) => {
+
+
+
+
+
+const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) => {
              const [container, setContainer] = React.useState(null);
              const newWindow = React.useRef(null);
          
              React.useEffect(() => {
-                 // Open a new window and store a reference to it.
-                 newWindow.current = window.open('', title, 'width=450,height=750,resizable=yes');
+                 newWindow.current = window.open('', title, `width=${width},height=${height},resizable=yes`);
                  
-                 // Create a root div in the new window's document.
+                 // --- THIS LINE IS UPDATED to include text colors ---
+                 newWindow.current.document.body.className = "bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200";
+                 
                  const popoutRoot = newWindow.current.document.createElement('div');
                  newWindow.current.document.body.appendChild(popoutRoot);
                  
-                 // Copy all <link> and <style> tags from the main document to the new window.
                  document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
                      newWindow.current.document.head.appendChild(node.cloneNode(true));
                  });
 
-                 // Add Tailwind CSS to the new window.
                  const tailwindScript = newWindow.current.document.createElement('script');
                  tailwindScript.src = "https://cdn.tailwindcss.com";
                  newWindow.current.document.head.appendChild(tailwindScript);
@@ -6664,19 +6656,13 @@ const PopoutWindow = ({ children, title, onClose }) => {
                  tailwindConfigScript.innerHTML = `tailwind.config = { darkMode: 'class' }`;
                  newWindow.current.document.head.appendChild(tailwindConfigScript);
                  
-                 // Match the dark/light mode of the main window.
                  newWindow.current.document.documentElement.className = document.documentElement.className;
                  
-                 // Set this new div as the container for our React Portal.
                  setContainer(popoutRoot);
                  
-                 // Listen for when the user manually closes the pop-up window.
-                 const handleUnload = () => {
-                     onClose();
-                 };
+                 const handleUnload = () => { onClose(); };
                  newWindow.current.addEventListener('beforeunload', handleUnload);
 
-                 // When this component is removed, close the window.
                  return () => {
                      newWindow.current.removeEventListener('beforeunload', handleUnload);
                      if (newWindow.current) {
@@ -6684,13 +6670,12 @@ const PopoutWindow = ({ children, title, onClose }) => {
                      }
                      setContainer(null);
                  };
-             }, []); // This effect runs only once.
+             }, []);
 
              if (!container) return null;
 
              return ReactDOM.createPortal(children, container);
          };
-
 
 
 
@@ -6704,6 +6689,9 @@ const PopoutWindow = ({ children, title, onClose }) => {
          const [activeView, setActiveView] = React.useState(VIEWS.HOME);
 	 
 	 const [showCalcPopout, setShowCalcPopout] = React.useState(false);
+
+	 const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
+           
 
          const [result, setResult] = React.useState(null);
          const [errorMessage, setErrorMessage] = React.useState('');
@@ -6991,7 +6979,22 @@ const PopoutWindow = ({ children, title, onClose }) => {
              case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
              case  VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
          
-             case VIEWS.SCRATCHPAD: return <Scratchpad />;
+             case VIEWS.SCRATCHPAD:
+                          return (
+                             <div className="p-4 animate-fade-in">
+                                 <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
+                                     <div className="flex justify-between items-center mb-4">
+                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
+                                         <Tooltip text="Open in New Window" widthClass="w-auto">
+                                             <button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                                 <Icon path={ICONS.popOut} className="w-5 h-5" />
+                                             </button>
+                                         </Tooltip>
+                                     </div>
+                                     <Scratchpad />
+                                 </div>
+                             </div>
+                         );
 
     case VIEWS.SCIENTIFIC_CALCULATOR:
         return (
@@ -7035,11 +7038,13 @@ const PopoutWindow = ({ children, title, onClose }) => {
              
 
              {showCalcPopout && (
-                 <PopoutWindow title="Scientific Calculator" onClose={() => setShowCalcPopout(false)}>
+                 <PopoutWindow 
+                     title="Scientific Calculator" 
+                     onClose={() => setShowCalcPopout(false)}
+                     height={850}
+                 >
                      <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-                         {/* This new container mimics the one in the main app */}
                          <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                             {/* This adds the header with the title */}
                              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
                              <ScientificCalculator />
                          </div>
@@ -7047,6 +7052,24 @@ const PopoutWindow = ({ children, title, onClose }) => {
                  </PopoutWindow>
              )}
 
+
+                         {showScratchpadPopout && (
+                             <PopoutWindow 
+                                 title="Scratchpad" 
+                                 onClose={() => setShowScratchpadPopout(false)}
+                                 width={800} 
+                                 height={660}
+                             >
+                                 <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+                                     <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
+                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
+                                         <div className="flex-grow flex flex-col">
+                                            <Scratchpad />
+                                         </div>
+                                     </div>
+                                 </div>
+                             </PopoutWindow>
+                         )}
 
 	     </div>
          </div>
