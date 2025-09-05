@@ -1561,7 +1561,9 @@
          clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
          filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
          settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
-         
+	 popOut: "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z",        
+
+ 
          // Theme Icons
          
          sun: "M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zm-9-8c.55 0 1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zm0 16c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1v2c0 .55.45 1 1 1zM5.64 6.36c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41L5.64 3.54c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41L5.64 6.36zm12.72 12.72c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0s-.39 1.02 0 1.41l1.41 1.41zM4.22 18.36c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0l1.41-1.41c.39-.39.39-1.02 0-1.41s-1.02-.39-1.41 0l-1.41 1.41zM18.36 4.22c-.39.39-.39 1.02 0 1.41l1.41 1.41c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41l-1.41-1.41c-.39-.39-1.02-.39-1.41 0z",
@@ -2280,7 +2282,9 @@
          { id: VIEWS.MEDICAL, label: 'Medical', icon: ICONS.medical },
          
          { id: VIEWS.SCRATCHPAD, label: 'Scratchpad', icon: ICONS.notepad },
-         { id: VIEWS.SCIENTIFIC_CALCULATOR, label: 'Sci. Calculator', icon: ICONS.scientificCalculator },
+
+	 { id: VIEWS.SCIENTIFIC_CALCULATOR, label: 'Sci. Calculator', icon: ICONS.scientificCalculator },
+
          { id: VIEWS.REFERENCES, label: 'References', icon: ICONS.references }
          ];
          
@@ -2324,7 +2328,9 @@
                 </div>
             </div>
             <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-2">
-              {navItems.map(item => <NavButton key={item.id} item={item} />)}
+
+	{navItems.map(item => <NavButton key={item.id} item={item} />)}
+
             </div>
          </div>
          );
@@ -2649,154 +2655,141 @@
          * - Support for keyboard input for a more fluid user experience.
          */
          
-         const ScientificCalculator = () => {
-         const [expression, setExpression] = React.useState('');
-         const [result, setResult] = React.useState('');
-         const [history, setHistory] = React.useState([]);
-         const [memory, setMemory] = React.useState(0);
-         const { addToast } = useToast();
+const ScientificCalculator = () => {
+             const [expression, setExpression] = React.useState('');
+             const [result, setResult] = React.useState('');
+             const [history, setHistory] = React.useState([]);
+             const [memory, setMemory] = React.useState(0);
+             const { addToast } = useToast();
+      
+             const handleInput = (value) => {
+                 setExpression(prev => (prev === '' && result ? result : prev) + value);
+                 setResult('');
+             };
+             
+             const handleClear = () => { setExpression(''); setResult(''); };
+             const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
+             
+             const handleCalculate = () => {
+                 if (!expression) return;
+                 try {
+                     const evalResult = math.evaluate(expression);
+                     const resultStr = math.format(evalResult, { precision: 6 });
+                     setResult(resultStr);
+                     setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
+                     setExpression('');
+                 } catch (e) {
+                     setResult(e.message || 'Error');
+                     setExpression('');
+                 }
+             };
+             
+             const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
+             const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
+             
+             const handleMemoryAdd = () => {
+                 try {
+                     const currentValue = parseFloat(expression || '0');
+                     if (isNaN(currentValue)) throw new Error();
+                     const newMemory = memory + currentValue;
+                     setMemory(newMemory);
+                     addToast(`Added to memory. New value: ${newMemory}`);
+                 } catch { addToast('Invalid expression to add to memory'); }
+             };
+             
+             const handleConversion = (factor, fromUnit, toUnit) => {
+                 try {
+                     const currentValue = parseFloat(expression || '0');
+                     if (isNaN(currentValue)) throw new Error();
+                     const convertedValue = currentValue * factor;
+                     setExpression(convertedValue.toString());
+                     addToast(`Converted to ${toUnit}`);
+                 } catch { setResult('Error'); setExpression(''); }
+             };
+             
+             const handleConstant = (name, value) => {
+                 setExpression(prev => prev + value.toString());
+                 addToast(`${name} added`);
+             };
+             
+             const handleKeyDown = React.useCallback((event) => {
+                 if ("1234567890+-*/.^()%=EnterBackspaceEscape".includes(event.key)) { event.preventDefault(); }
+                 const { key } = event;
+                 if (key >= '0' && key <= '9') { handleInput(key); }
+                 if (['+', '-', '*', '/', '.', '%', '(', ')', '^'].includes(key)) { handleInput(key); }
+                 if (key === 'Enter' || key === '=') { handleCalculate(); }
+                 if (key === 'Backspace') { handleBackspace(); }
+                 if (key === 'Escape') { handleClear(); }
+             }, []);
+             
+             React.useEffect(() => {
+                 window.addEventListener('keydown', handleKeyDown);
+                 return () => { window.removeEventListener('keydown', handleKeyDown); };
+             }, [handleKeyDown]);
          
-         const handleInput = (value) => {
-         setExpression(prev => (prev === '' && result ? result : prev) + value);
-         setResult('');
-         };
+             const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
+             const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
+             
+             const getButtonClass = (btn) => {
+                 if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
+                 if (['sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '(', ')', 'π', 'e'].includes(btn)) return 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500';
+                 return 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
+             };
          
-         const handleClear = () => { setExpression(''); setResult(''); };
-         const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
-         
-         const handleCalculate = () => {
-         if (!expression) return;
-         try {
-         const evalResult = math.evaluate(expression);
-         const resultStr = math.format(evalResult, { precision: 6 });
-         setResult(resultStr);
-         setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
-         setExpression(''); // This line is changed
-         } catch (e) {
-         setResult(e.message || 'Error');
-         setExpression('');
-         }
-         };
-         
-         const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
-         const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
-         
-         const handleMemoryAdd = () => {
-         try {
-         const currentValue = parseFloat(expression || '0');
-         if (isNaN(currentValue)) throw new Error();
-         const newMemory = memory + currentValue;
-         setMemory(newMemory);
-         addToast(`Added to memory. New value: ${newMemory}`);
-         } catch { addToast('Invalid expression to add to memory'); }
-         };
-         
-         const handleConversion = (factor, fromUnit, toUnit) => {
-         try {
-         const currentValue = parseFloat(expression || '0');
-         if (isNaN(currentValue)) throw new Error();
-         const convertedValue = currentValue * factor;
-         setExpression(convertedValue.toString());
-         addToast(`Converted to ${toUnit}`);
-         } catch { setResult('Error'); setExpression(''); }
-         };
-         
-         const handleConstant = (name, value) => {
-         setExpression(prev => prev + value.toString());
-         addToast(`${name} added`);
-         };
-         
-         const handleKeyDown = React.useCallback((event) => {
-         if ("1234567890+-*/.^()%=EnterBackspaceEscape".includes(event.key)) {
-            event.preventDefault();
-         }
-         const { key } = event;
-         if (key >= '0' && key <= '9') { handleInput(key); }
-         if (['+', '-', '*', '/', '.', '%', '(', ')', '^'].includes(key)) { handleInput(key); }
-         if (key === 'Enter' || key === '=') { handleCalculate(); }
-         if (key === 'Backspace') { handleBackspace(); }
-         if (key === 'Escape') { handleClear(); }
-         }, []);
-         
-         React.useEffect(() => {
-         window.addEventListener('keydown', handleKeyDown);
-         return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-         };
-         }, [handleKeyDown]);
-         
-         const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
-         const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
-         
-         const getButtonClass = (btn) => {
-         if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
-         if (['sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '(', ')', 'π', 'e'].includes(btn)) return 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500';
-         return 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
-                <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
-                    <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
-                        {history.map((item, index) => <div key={index}>{item}</div>)}
-                    </div>
-                    <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
-                   
-                    <div className="flex justify-end items-center h-10">
-                        <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
-                        {result && result !== 'Error' && <CopyButton textToCopy={result} />}
-                    </div>
-                    
-                </div>
-         
-                <div className="grid grid-cols-5 gap-2 mb-2">
-                    <button onClick={() => handleConversion(3.7e10, 'Ci', 'Bq')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
-                    <button onClick={() => handleConversion(1 / 3.7e10, 'Bq', 'Ci')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
-                    <button onClick={() => handleConversion(100, 'rem', 'Sv')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
-                    <button onClick={() => handleConversion(0.01, 'Sv', 'rem')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
-                    <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
-                    <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
-                    <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
-                    <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
-                    <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
-                </div>
-                
-                <div className="grid grid-cols-4 gap-2">
-                    {allButtons.map(btn => {
-                        let onClick;
-                        let className = `p-3 font-bold rounded-lg transition-colors `;
-                        
-                        if (btn === 'AC') {
-                            onClick = handleClear;
-                            className += 'bg-red-500 text-white hover:bg-red-600';
-                        } else if (btn === 'DEL') {
-                            onClick = handleBackspace;
-                            className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
-                        } else if (btn === 'π') {
-                            onClick = () => handleInput('pi');
-                            className += getButtonClass(btn);
-                        } else {
-                            onClick = () => handleInput(btn);
-                            className += getButtonClass(btn);
-                        }
-                        
-                        return (<button key={btn} onClick={onClick} className={className}>{btn}</button>);
-                    })}
-                </div>
-         
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
-                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                         {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
+             return (
+                 // The outer container and title have been removed.
+                 // We now return a Fragment <> containing just the calculator's contents.
+                 <>
+                     <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
+                         <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
+                             {history.map((item, index) => <div key={index}>{item}</div>)}
+                         </div>
+                         <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
+                         <div className="flex justify-end items-center h-10">
+                             <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
+                             {result && result !== 'Error' && <CopyButton textToCopy={result} />}
+                         </div>
                      </div>
-                </div>
-            </div>
-         </div>
-         );
-         };
-         
+                     <div className="grid grid-cols-5 gap-2 mb-2">
+                         <button onClick={() => handleConversion(3.7e10, 'Ci', 'Bq')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
+                         <button onClick={() => handleConversion(1 / 3.7e10, 'Bq', 'Ci')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
+                         <button onClick={() => handleConversion(100, 'rem', 'Sv')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
+                         <button onClick={() => handleConversion(0.01, 'Sv', 'rem')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
+                         <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
+                         <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
+                         <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
+                         <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
+                         <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
+                     </div>
+                     <div className="grid grid-cols-4 gap-2">
+                         {allButtons.map(btn => {
+                             let onClick;
+                             let className = `p-3 font-bold rounded-lg transition-colors `;
+                             if (btn === 'AC') {
+                                 onClick = handleClear;
+                                 className += 'bg-red-500 text-white hover:bg-red-600';
+                             } else if (btn === 'DEL') {
+                                 onClick = handleBackspace;
+                                 className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
+                             } else if (btn === 'π') {
+                                 onClick = () => handleInput('pi');
+                                 className += getButtonClass(btn);
+                             } else {
+                                 onClick = () => handleInput(btn);
+                                 className += getButtonClass(btn);
+                             }
+                             return (<button key={btn} onClick={onClick} className={className}>{btn}</button>);
+                         })}
+                     </div>
+                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
+                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                             {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
+                         </div>
+                     </div>
+                 </>
+             );
+         };         
          
          /**
          * @description React component that serves as a static page for external links and references.
@@ -6646,6 +6639,62 @@
          );
          };
          
+const PopoutWindow = ({ children, title, onClose }) => {
+             const [container, setContainer] = React.useState(null);
+             const newWindow = React.useRef(null);
+         
+             React.useEffect(() => {
+                 // Open a new window and store a reference to it.
+                 newWindow.current = window.open('', title, 'width=450,height=750,resizable=yes');
+                 
+                 // Create a root div in the new window's document.
+                 const popoutRoot = newWindow.current.document.createElement('div');
+                 newWindow.current.document.body.appendChild(popoutRoot);
+                 
+                 // Copy all <link> and <style> tags from the main document to the new window.
+                 document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
+                     newWindow.current.document.head.appendChild(node.cloneNode(true));
+                 });
+
+                 // Add Tailwind CSS to the new window.
+                 const tailwindScript = newWindow.current.document.createElement('script');
+                 tailwindScript.src = "https://cdn.tailwindcss.com";
+                 newWindow.current.document.head.appendChild(tailwindScript);
+                 const tailwindConfigScript = newWindow.current.document.createElement('script');
+                 tailwindConfigScript.innerHTML = `tailwind.config = { darkMode: 'class' }`;
+                 newWindow.current.document.head.appendChild(tailwindConfigScript);
+                 
+                 // Match the dark/light mode of the main window.
+                 newWindow.current.document.documentElement.className = document.documentElement.className;
+                 
+                 // Set this new div as the container for our React Portal.
+                 setContainer(popoutRoot);
+                 
+                 // Listen for when the user manually closes the pop-up window.
+                 const handleUnload = () => {
+                     onClose();
+                 };
+                 newWindow.current.addEventListener('beforeunload', handleUnload);
+
+                 // When this component is removed, close the window.
+                 return () => {
+                     newWindow.current.removeEventListener('beforeunload', handleUnload);
+                     if (newWindow.current) {
+                        newWindow.current.close();
+                     }
+                     setContainer(null);
+                 };
+             }, []); // This effect runs only once.
+
+             if (!container) return null;
+
+             return ReactDOM.createPortal(children, container);
+         };
+
+
+
+
+
          /**
           * @description The root component of the entire application.
           * It manages all primary state, handles routing between views, and orchestrates all user interactions.
@@ -6653,6 +6702,9 @@
          
          const App = () => {
          const [activeView, setActiveView] = React.useState(VIEWS.HOME);
+	 
+	 const [showCalcPopout, setShowCalcPopout] = React.useState(false);
+
          const [result, setResult] = React.useState(null);
          const [errorMessage, setErrorMessage] = React.useState('');
          const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
@@ -6668,6 +6720,8 @@
          const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
          const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
          const [randomSuggestions, setRandomSuggestions] = React.useState([]);
+
+
          const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
          const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
          const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
@@ -6735,7 +6789,17 @@
          setNuclideName(''); setSuggestions([]); setResult(null); inputRef.current?.focus();
          };
          
-         const handleNavClick = (view) => {
+
+
+
+
+
+         const handleNavClick = (view, isPopOut = false) => {
+             if (view === VIEWS.SCIENTIFIC_CALCULATOR && isPopOut) {
+                 handlePopOutCalculator();
+                 return;
+             }
+
          setResult(null);
          window.location.hash = view;
          scrollToMainContent();
@@ -6928,7 +6992,26 @@
              case  VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
          
              case VIEWS.SCRATCHPAD: return <Scratchpad />;
-             case VIEWS.SCIENTIFIC_CALCULATOR: return <ScientificCalculator />;
+
+    case VIEWS.SCIENTIFIC_CALCULATOR:
+        return (
+            <div className="p-4 animate-fade-in">
+                <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                    {/* The header with title and pop-out button is now controlled here */}
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2>
+                        <Tooltip text="Open in New Window" widthClass="w-auto">
+                            <button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                <Icon path={ICONS.popOut} className="w-5 h-5" />
+                            </button>
+                        </Tooltip>
+                    </div>
+                    {/* The calculator now renders its content directly inside this container */}
+                    <ScientificCalculator />
+                </div>
+            </div>
+        );
+
              case VIEWS.REFERENCES: return <ReferencesPage />;
          
              case VIEWS.HOME:
@@ -6940,18 +7023,41 @@
              <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
                  <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
                  <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-                 <MainNav activeView={activeView} onNavClick={handleNavClick} />
+                 
+		 <MainNav activeView={activeView} onNavClick={(view, isPopOut) => handleNavClick(view, isPopOut)} />
+
                  <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
                  <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
                      <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
                      <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
                  </footer>
                  <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-             </div>
+             
+
+             {showCalcPopout && (
+                 <PopoutWindow title="Scientific Calculator" onClose={() => setShowCalcPopout(false)}>
+                     <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+                         {/* This new container mimics the one in the main app */}
+                         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                             {/* This adds the header with the title */}
+                             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
+                             <ScientificCalculator />
+                         </div>
+                     </div>
+                 </PopoutWindow>
+             )}
+
+
+	     </div>
          </div>
          );
          };
-         
+        
+
+
+
+
+ 
          /**
          * @description A searchable dropdown component for selecting items from a large list.
          */
