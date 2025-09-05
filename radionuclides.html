@@ -2696,7 +2696,7 @@
          if (key === 'Enter' || key === '=') { handleCalculate(); }
          if (key === 'Backspace') { handleBackspace(); }
          if (key === 'Escape') { handleClear(); }
-         }, [expression]);
+         }, []);
          
          React.useEffect(() => {
          window.addEventListener('keydown', handleKeyDown);
@@ -5656,7 +5656,7 @@
          * @param {{radionuclides: Array<object>}} props
          */
          
-         const EquilibriumCalculator = ({ radionuclides }) => {
+         const EquilibriumCalculator = ({ radionuclides, theme }) => {
          const [parentNuclide, setParentNuclide] = React.useState(() => {
          const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
          if (!savedSymbol) return null;
@@ -5875,7 +5875,7 @@
                                     Use Logarithmic Scale
                                 </label>
                             </div>
-                            <DecayChart chartData={chartData} useLogScale={useLogScale} />
+                            <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
                         </>
                     )}
                 </div>
@@ -6883,7 +6883,7 @@
          
              case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
          
-             case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} />;
+             case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
          
              case VIEWS.RADON: return <RadonCalculator />;
              case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
@@ -10210,77 +10210,85 @@
          * @param {{chartData: object}} props - The data object for the chart, including labels and datasets for parent and optional daughter.
          */
                   
-         const DecayChart = ({ chartData, useLogScale }) => {
+         const DecayChart = ({ chartData, useLogScale, theme }) => {
          const chartRef = React.useRef(null);
          const chartInstance = React.useRef(null);
          
          React.useEffect(() => {
-         // Destroy the previous chart instance if it exists
-         if (chartInstance.current) {
-            chartInstance.current.destroy();
-         }
+
+             // Destroy the previous chart instance if it exists
+
+             if (chartInstance.current) {
+                chartInstance.current.destroy();
+             }
          
-         if (chartRef.current && chartData) {
-            const ctx = chartRef.current.getContext('2d');
-            chartInstance.current = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartData.labels,
-                    datasets: [
-                        {
-                            label: chartData.parentName,
-                            data: chartData.parentData,
-                            borderColor: '#0284c7', // Sky-600
-                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0
-                        },
-                        ...(chartData.daughterData ? [{
-                            label: chartData.daughterName,
-                            data: chartData.daughterData,
-                            borderColor: '#e11d48', // Rose-600
-                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0
-                        }] : [])
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            title: { display: true, text: `Time (${chartData.timeUnit})` },
-                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
-                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
-                        },
-                        y: {
-                            type: useLogScale ? 'logarithmic' : 'linear',
-                            title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
-                            beginAtZero: !useLogScale,
-                            ticks: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' },
-                            grid: { color: document.documentElement.classList.contains('dark') ? '#334155' : '#e2e8f0' }
-                        }
+             if (chartRef.current && chartData) {
+                // Determine colors based on the theme prop
+                const isDarkMode = theme === 'dark';
+                const textColor = isDarkMode ? '#94a3b8' : '#475569';
+                const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+                const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
+
+                const ctx = chartRef.current.getContext('2d');
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: [
+                            {
+                                label: chartData.parentName,
+                                data: chartData.parentData,
+                                borderColor: '#0284c7', // Sky-600
+                                backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0
+                            },
+                            ...(chartData.daughterData ? [{
+                                label: chartData.daughterName,
+                                data: chartData.daughterData,
+                                borderColor: '#e11d48', // Rose-600
+                                backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0
+                            }] : [])
+                        ]
                     },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: document.documentElement.classList.contains('dark') ? '#cbd5e1' : '#334155'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: { display: true, text: `Time (${chartData.timeUnit})` },
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            },
+                            y: {
+                                type: useLogScale ? 'logarithmic' : 'linear',
+                                title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})` },
+                                beginAtZero: !useLogScale,
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: legendColor
+                                }
                             }
                         }
                     }
-                }
-            });
-         }
+                });
+             }
          
-         return () => {
-            if (chartInstance.current) {
-                chartInstance.current.destroy();
-            }
-         };
-         }, [chartData, useLogScale]);
+             return () => {
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+             };
+         }, [chartData, useLogScale, theme]); // Added theme to the dependency array
          
          const handleExport = () => {
          if (chartInstance.current) {
