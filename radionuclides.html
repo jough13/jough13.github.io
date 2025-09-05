@@ -213,10 +213,10 @@
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
       <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
-
+      
       <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
       <script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
+
       <script>
          // When the document is ready, add the 'visible' class to the #root element
          
@@ -1561,7 +1561,9 @@
          clear: "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
          filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
          settings: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-2 11h4v-3h2v-2h-2v-2h-4v2h-2v2h2v3zm-4-7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-4 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z",
-	 popOut: "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z",        
+	 popOut: "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z",    
+
+         northArrow: "M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z",    
 
  
          // Theme Icons
@@ -2709,11 +2711,6 @@ const ScientificCalculator = () => {
                  if (key === 'Backspace') { handleBackspace(); }
                  if (key === 'Escape') { handleClear(); }
              }, []);
-             
-             React.useEffect(() => {
-                 window.addEventListener('keydown', handleKeyDown);
-                 return () => { window.removeEventListener('keydown', handleKeyDown); };
-             }, [handleKeyDown]);
          
              const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
              const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
@@ -2725,9 +2722,11 @@ const ScientificCalculator = () => {
              };
          
              return (
-                 // The outer container and title have been removed.
-                 // We now return a Fragment <> containing just the calculator's contents.
-                 <>
+                 <div 
+                    onKeyDown={handleKeyDown} 
+                    tabIndex="0" 
+                    className="focus:outline-none focus:ring-2 focus:ring-sky-500/80 rounded-lg"
+                 >
                      <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
                          <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
                              {history.map((item, index) => <div key={index}>{item}</div>)}
@@ -2741,8 +2740,8 @@ const ScientificCalculator = () => {
                      <div className="grid grid-cols-5 gap-2 mb-2">
                          <button onClick={() => handleConversion(3.7e10, 'Ci', 'Bq')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
                          <button onClick={() => handleConversion(1 / 3.7e10, 'Bq', 'Ci')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
-                         <button onClick={() => handleConversion(100, 'rem', 'Sv')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
-                         <button onClick={() => handleConversion(0.01, 'Sv', 'rem')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
+                         <button onClick={() => handleConversion(0.01, 'rem', 'Sv')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
+                         <button onClick={() => handleConversion(100, 'Sv', 'rem')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
                          <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
                          <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
                          <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
@@ -2775,7 +2774,7 @@ const ScientificCalculator = () => {
                              {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
                          </div>
                      </div>
-                 </>
+                 </div>
              );
          };         
          
@@ -6411,6 +6410,20 @@ const ScientificCalculator = () => {
                      <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
                  </ul>
          
+<h4 className="italic mt-4">X-Ray Shielding (NCRP-147)</h4>
+<p>The required transmission factor (B) for a diagnostic X-ray barrier is calculated as:</p>
+<div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+    <pre>B = (P * d<sup>2</sup>) / (K * W * U * T)</pre>
+</div>
+<ul>
+    <li><code>P</code> is the weekly dose limit (in R/wk).</li>
+    <li><code>d</code> is the distance from the source to the barrier (m).</li>
+    <li><code>K</code> is the air kerma rate constant (R·m²/mA·min).</li>
+    <li><code>W</code> is the workload (mA·min/wk).</li>
+    <li><code>U</code> is the Use Factor.</li>
+    <li><code>T</code> is the Occupancy Factor.</li>
+</ul>
+
                  <h3 className="mt-6"><b>Radon Formulas</b></h3>
                  <h4 className="italic mt-4">Working Level & Equilibrium</h4>
                  <p>The relationship between radon concentration, the equilibrium factor (F), and Working Levels (WL) is:</p>
@@ -9363,6 +9376,15 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
          );
          };
          
+
+
+const NorthArrowControl = () => (
+    <div className="absolute top-28 right-3 z-[1000] p-1.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-md shadow-md border border-slate-300 dark:border-slate-600 pointer-events-none">
+        <Icon path={ICONS.northArrow} className="w-6 h-6 text-slate-700 dark:text-slate-200" />
+    </div>
+);
+
+
          /**
          * @description React component for a graphical survey unit drawing tool. This utility
          * allows users to visually plan and lay out radiation survey points on an interactive map.
@@ -9388,7 +9410,8 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
          * @prop {boolean} isVisible - Boolean to trigger map redraw on component mount,
          * ensuring correct rendering within a tabbed interface.
          */
-         
+    
+ 
          
 const DrawingTool = ({ isVisible }) => {
              const mapRef = React.useRef(null);
@@ -9651,7 +9674,10 @@ const DrawingTool = ({ isVisible }) => {
                      } else { alert("Location not found."); }
                  } catch (error) { alert("Could not connect to the location service."); }
              };
-             
+        
+
+
+     
 const handlePrintMap = () => {
              if (!mapRef.current || !surveyUnitLayer) {
                  alert("Please draw a survey unit on the map before generating a report.");
@@ -9727,6 +9753,26 @@ const handlePrintMap = () => {
                                  const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
                                  const defaultLayer = baseMaps['${activeLayerName}'];
                                  const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
+                                 
+                                 // --- NEW: Add the North Arrow to the pop-up map ---
+                                 const NorthArrow = L.Control.extend({
+                                     options: { position: 'topright' },
+                                     onAdd: function (map) {
+                                         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                         container.style.backgroundColor = 'white';
+                                         container.style.width = '30px';
+                                         container.style.height = '30px';
+                                         container.style.display = 'flex';
+                                         container.style.alignItems = 'center';
+                                         container.style.justifyContent = 'center';
+                                         container.style.cursor = 'default';
+                                         container.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem; color: #374151;"><path d="${ICONS.northArrow}" /></svg>\`;
+                                         return container;
+                                     }
+                                 });
+                                 map.addControl(new NorthArrow());
+                                 // --------------------------------------------------
+
                                  L.control.layers(baseMaps).addTo(map);
                                  L.control.scale({ imperial: true, metric: true }).addTo(map);
                                  L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}, { style: { color: '#3388ff' } }).addTo(map);
@@ -9741,11 +9787,11 @@ const handlePrintMap = () => {
              `);
              reportWindow.document.close();
          };
+
+
+
+
          
-
-
-
-
 React.useEffect(() => {
              if (mapRef.current) return;
              
@@ -9757,9 +9803,7 @@ React.useEffect(() => {
              });
              const baseMaps = { "Street Map": osmLayerRef.current, "Satellite": satelliteLayerRef.current };
          
-             mapRef.current = L.map('marssim-map', { layers: [osmLayerRef.current] });
-             
-             L.control.layers(baseMaps).addTo(mapRef.current);
+             mapRef.current = L.map('marssim-map', { layers: [osmLayerRef.current] }).setView([37.207, -76.51], 13);
              
              drawnItemsRef.current = new L.FeatureGroup();
              samplePointsLayerRef.current = new L.FeatureGroup();
@@ -9769,34 +9813,40 @@ React.useEffect(() => {
              const drawControl = new L.Control.Draw({ 
                 edit: { featureGroup: drawnItemsRef.current }, 
                 draw: {
-                    polyline: {
-                        shapeOptions: { color: '#3388ff' }, // Changed to blue
-                        showLength: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                    },
-                    polygon: {
-                        shapeOptions: { color: '#3388ff' }, // Changed to blue
-                        showArea: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                        allowIntersection: false,
-                        drawError: { color: '#e1e100', message: '<strong>Error:</strong> Shape edges cannot cross!' },
-                    },
-                    rectangle: {
-                        shapeOptions: { color: '#3388ff' }, // Changed to blue
-                        showArea: true,
-                        metric: ['metres', 'kilometres'],
-                        feet: false,
-                    },
-                    marker: true, 
-                    circle: false, 
-                    circlemarker: false 
+                    polyline: { shapeOptions: { color: '#3388ff' }, showLength: true, metric: ['metres', 'kilometres'], feet: false, },
+                    polygon: { shapeOptions: { color: '#3388ff' }, showArea: true, metric: ['metres', 'kilometres'], feet: false, allowIntersection: false, drawError: { color: '#e1e100', message: '<strong>Error:</strong> Shape edges cannot cross!' }, },
+                    rectangle: { shapeOptions: { color: '#3388ff' }, showArea: true, metric: ['metres', 'kilometres'], feet: false, },
+                    marker: true, circle: false, circlemarker: false 
                 } 
              });
              mapRef.current.addControl(drawControl);
+
+             // --- SWAPPED: The North Arrow control is now added FIRST ---
+             const NorthArrow = L.Control.extend({
+                 options: {
+                     position: 'topright'
+                 },
+                 onAdd: function (map) {
+                     const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+                     container.style.backgroundColor = 'white';
+                     container.style.width = '30px';
+                     container.style.height = '30px';
+                     container.style.display = 'flex';
+                     container.style.alignItems = 'center';
+                     container.style.justifyContent = 'center';
+                     container.style.cursor = 'default';
+                     container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem; color: #374151;"><path d="${ICONS.northArrow}" /></svg>`;
+                     L.DomEvent.disableClickPropagation(container);
+                     return container;
+                 }
+             });
+             mapRef.current.addControl(new NorthArrow());
+             
+             // The Layer Control is now added SECOND, so it appears below the arrow.
+             L.control.layers(baseMaps).addTo(mapRef.current);
              
              L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
+             
              const mousePositionControl = L.control({ position: 'bottomleft' });
              mousePositionControl.onAdd = function (map) { this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition'); this.update('Mouse over map'); return this._div; };
              mousePositionControl.update = function (text) { this._div.innerHTML = text; };
@@ -9809,13 +9859,9 @@ React.useEffect(() => {
              });
              mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
              mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
-
-             mapRef.current.setView([37.207, -76.51], 13);
          
              return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
          }, []);
-
-
 
 
          
@@ -9825,8 +9871,9 @@ React.useEffect(() => {
                  }
              }, [isVisible]);
          
-             return (
+return (
                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                     
                      <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                          <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
                          <div className="flex items-center gap-2">
@@ -9922,6 +9969,11 @@ React.useEffect(() => {
                  </div>
              );
          };
+
+
+
+
+
 
          /**
          * @description React component for the MARSSIM Sample Design Suite.
