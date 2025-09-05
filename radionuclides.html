@@ -9250,6 +9250,8 @@
          const [samplesToPlace, setSamplesToPlace] = React.useState(25);
          const [plottedPoints, setPlottedPoints] = React.useState([]);
          const [locationInput, setLocationInput] = React.useState('');
+
+	 const [surveyClass, setSurveyClass] = React.useState('Class 1');
          
          const isPointInPolygon = (point, polygonLatLngs) => {
          const polyPoints = polygonLatLngs[0];
@@ -9285,47 +9287,71 @@
          }
          };
          
-         const handleGenerateSamples = (pattern) => {
-         if (!surveyUnitLayer) {
-            alert("Please draw a survey unit boundary first.");
-            return;
-         }
-         samplePointsLayerRef.current.clearLayers();
-         const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-         existingBiasedPoints.forEach(p => {
-             L.circleMarker([p.lat, p.lng], { radius: 4, className: 'biased-sample-marker' }).addTo(samplePointsLayerRef.current);
-         });
+
+
+
+/*
+This function, handleGenerateSamples, handles the generation of sample points within a defined geographic area. The function supports two distinct sampling patterns: random and grid-based. For random sampling, points are scattered randomly within the survey boundary. For grid-based sampling, it calculates the necessary spacing to distribute points evenly in either a square or a triangular grid, ensuring they are placed only inside the designated survey unit.
+*/
+
+
+const handleGenerateSamples = (pattern) => {
+             if (!surveyUnitLayer) {
+                 alert("Please draw a survey unit boundary first.");
+                 return;
+             }
+             samplePointsLayerRef.current.clearLayers();
+             const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+             existingBiasedPoints.forEach(p => {
+                 L.circleMarker([p.lat, p.lng], { radius: 4, className: 'biased-sample-marker' }).addTo(samplePointsLayerRef.current);
+             });
          
-         const newPoints = [];
-         const latLngs = surveyUnitLayer.getLatLngs();
-         const bounds = surveyUnitLayer.getBounds();
-         if (pattern === 'random') {
-             while (newPoints.length < samplesToPlace) {
-                const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-                const point = { lat, lng };
-                if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-            }
-         } else {
-            const geographicArea = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
-            const spacing = Math.sqrt(geographicArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
-            let row = 0;
-            for (let lat = bounds.getSouth(); lat < bounds.getNorth(); lat += spacing * (pattern === 'triangular' ? 0.866 : 1)) {
-                const lngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacing / 2 : 0;
-                for (let lng = bounds.getWest() + lngOffset; lng < bounds.getEast(); lng += spacing) {
+             const newPoints = [];
+             const latLngs = surveyUnitLayer.getLatLngs();
+             const bounds = surveyUnitLayer.getBounds();
+             if (pattern === 'random') {
+                 while (newPoints.length < samplesToPlace) {
+                    const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                    const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
                     const point = { lat, lng };
                     if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
                 }
-                row++;
-            }
-         }
-         const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-         setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
-         pointsWithTypes.forEach(p => {
-            L.circleMarker([p.lat, p.lng], { radius: 4, className: 'grid-sample-marker' }).addTo(samplePointsLayerRef.current);
-         });
+             } else {
+                const polygonArea = calculatePolygonArea(latLngs);
+                const spacingDegrees = Math.sqrt(polygonArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
+                const spacingLat = spacingDegrees / 111320;
+                const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
+                const spacingLng = spacingDegrees / (111320 * Math.cos(centerLat * Math.PI / 180));
+
+                // --- NEW: Generate a random starting offset for the grid ---
+                const randomLatOffset = Math.random() * spacingLat;
+                const randomLngOffset = Math.random() * spacingLng;
+                // --------------------------------------------------------
+
+                let row = 0;
+                // --- MODIFIED: The loops now start from a random offset ---
+                for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth(); lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
+                    const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
+                    for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast(); lng += spacingLng) {
+                        const point = { lat, lng };
+                        if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
+                    }
+                    row++;
+                }
+             }
+             const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+             setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
+             pointsWithTypes.forEach(p => {
+                L.circleMarker([p.lat, p.lng], { radius: 4, className: 'grid-sample-marker' }).addTo(samplePointsLayerRef.current);
+             });
          };
-         
+
+/*
+The handleExport function is responsible for exporting a list of survey sample points as a CSV file. It first checks if a survey unit and sample points exist. 
+If they do, it then iterates through each plotted point, calculating its latitude and longitude, as well as its distance in meters from the southwest corner of the survey unit boundary (serving as a local origin). 
+Finally, it constructs a CSV file from this data and triggers a download in the user's browser.
+*/  
+      
          const handleExport = () => {
          if (plottedPoints.length === 0 || !surveyUnitLayer) {
             alert("Please draw a survey unit and place sample points before exporting.");
@@ -9363,6 +9389,11 @@
          }
          };
          
+
+
+
+
+
          const handleClearAll = () => {
          if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
          if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
@@ -9370,7 +9401,132 @@
          setSurveyUnitArea(0);
          setPlottedPoints([]);
          };
+
+
+
+
+
+/*
+This function generates a printable report of a survey unit. It captures the current state of a Leaflet map, including the drawn survey area and sample points, 
+and opens a new browser window to display the data in a formatted HTML report. The report includes an interactive map and a table of sample locations.
+*/
+
+
+
+const handlePrintMap = () => {
+             // 1. Check if there's a map and a drawn survey unit.
+             if (!mapRef.current || !surveyUnitLayer) {
+                 alert("Please draw a survey unit on the map before generating a report.");
+                 return;
+             }
          
+             // 2. Gather the current state of the map and UI.
+             const center = mapRef.current.getCenter();
+             const zoom = mapRef.current.getZoom();
+             const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
+             const pointsData = plottedPoints;
+         
+             // 3. Find the necessary CSS files and custom styles.
+             const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
+             const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
+             
+             let customMarkerStyles = '';
+             for (const sheet of document.styleSheets) {
+                 try {
+                     for (const rule of sheet.cssRules) {
+                         if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker') {
+                             customMarkerStyles += rule.cssText;
+                         }
+                     }
+                 } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
+             }
+                 
+             // 4. Generate the HTML for the sample data table.
+             let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
+             pointsData.forEach((point, index) => {
+                 tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`;
+             });
+             tableHtml += `</tbody></table>`;
+         
+             // 5. Open a new, blank browser window for our report.
+             const reportWindow = window.open('', '_blank', 'height=800,width=1000');
+         
+             // 6. Write the final HTML document to the window.
+             reportWindow.document.write(`
+                 <html>
+                     <head>
+                         <title>Survey Unit Report</title>
+                         ${leafletCss} ${leafletDrawCss}
+                         <style>
+                             body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
+                             .report-container { max-width: 1200px; margin: auto; }
+                             h1, h2 { text-align: center; }
+                             #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
+                             .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
+                             .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
+                             .data-table th { background-color: #f1f5f9; font-weight: 600; }
+                             .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+                             .print-button:hover { background-color: #0369a1; }
+                             
+                             /* --- NEW: Styles for the summary block --- */
+                             .summary-container {
+                                 text-align: center;
+                                 padding: 15px;
+                                 background-color: #f1f5f9;
+                                 border-radius: 8px;
+                                 display: flex;
+                                 justify-content: space-around;
+                                 align-items: center;
+                                 border: 1px solid #e2e8f0;
+                             }
+                             .summary-container div {
+                                 font-size: 1.1em;
+                                 color: #334155;
+                             }
+                             
+                             @media print { .print-button { display: none; } body { padding: 0; } }
+                             ${customMarkerStyles}
+                         </style>
+                     </head>
+                     <body>
+                         <button class="print-button" onclick="window.print()">Print Report</button>
+                         <div class="report-container">
+                             <h1>Survey Unit Report</h1>
+                             
+                             <div class="summary-container">
+                                 <div><strong>Survey Unit Class:</strong> ${surveyClass}</div>
+                                 <div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
+                                 <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
+                             </div>
+                             
+                             <div id="print-map"></div>
+                             
+                             <h2>Sample Locations</h2>
+                             ${tableHtml}
+                         </div>
+                         
+                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+                         <script>
+                             setTimeout(() => {
+                                 const map = L.map('print-map').setView([${center.lat}, ${center.lng}], ${zoom});
+                                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                                 L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}).addTo(map);
+                                 const points = ${JSON.stringify(pointsData)};
+                                 points.forEach(point => {
+                                     L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map);
+                                 });
+                             }, 100);
+                         <\/script>
+                     </body>
+                 </html>
+             `);
+             reportWindow.document.close();
+         };
+
+
+
+
+
          const handleClearPoints = () => {
          if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
          setPlottedPoints([]);
@@ -9403,7 +9559,12 @@
          React.useEffect(() => {
          if (mapRef.current) return;
          mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
-         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapRef.current);
+
+         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+             attribution: '&copy; OpenStreetMap',
+             maxNativeZoom: 19, // The server's true max zoom
+             maxZoom: 22        // The zoom level you want to reach
+         }).addTo(mapRef.current);
          
          drawnItemsRef.current = new L.FeatureGroup();
          samplePointsLayerRef.current = new L.FeatureGroup();
@@ -9429,12 +9590,17 @@
          
          return (
          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
-                <button onClick={handleClearAll} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear All
-                </button>
-            </div>
+		<div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+                    <div className="flex items-center gap-4">
+                        <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1">
+                            <Icon path={ICONS.clear} className="w-3 h-3"/> Clear All
+                        </button>
+                        <button onClick={handlePrintMap} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">
+                           Print / Save as PDF
+                        </button>
+                    </div>
+                </div>
          
             <div className="flex gap-2 items-center mb-4">
                 <input 
@@ -9455,12 +9621,40 @@
          
             <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
-                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400">Number of Samples to Place</label>
-                    <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-24 text-center mx-auto block text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
+		<div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                {/* --- NEW: Survey Class Dropdown --- */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Survey Unit Class</label>
+                    <select 
+                        value={surveyClass} 
+                        onChange={e => setSurveyClass(e.target.value)} 
+                        className="w-full text-center p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-semibold"
+                    >
+                        <option>Class 1</option>
+                        <option>Class 2</option>
+                        <option>Class 3</option>
+                        <option>Un-Impacted</option>
+                        <option>Other</option>
+                    </select>
                 </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center">
+
+                {/* --- NEW: Number of Samples Input with Buttons --- */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
+                    <div className="relative flex items-center justify-center">
+                        <button onClick={() => setSamplesToPlace(prev => Math.max(0, prev - 1))} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-l-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">-</button>
+                        <input 
+                            type="number" 
+                            value={samplesToPlace} 
+                            onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} 
+                            className="w-20 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent border-y border-slate-200 dark:border-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                        />
+                        <button onClick={() => setSamplesToPlace(prev => prev + 1)} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-r-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">+</button>
+                    </div>
+                </div>
+
+                {/* --- Survey Unit Area (Unchanged) --- */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
                     <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
                     <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
                 </div>
