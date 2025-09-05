@@ -53,6 +53,23 @@
       <link href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" rel="stylesheet" />
       <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
       <script defer onload="renderMathInElement(document.body);" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+	<style>
+
+         /* --- Styles for the mouse coordinate display on the map --- */
+
+         .leaflet-control-mouseposition {
+             background-color: rgba(255, 255, 255, 0.8);
+             box-shadow: 0 0 5px #bbb;
+             padding: 3px 8px;
+             margin: 0;
+             color: #333;
+             font: 12px/1.5 "Inter", sans-serif;
+             border-radius: 4px;
+             border: 1px solid #aaa;
+         }
+      </style>
+
       <style>
          /* This is now the only style block needed for the fade-in.
          It hides the main content area by default to prevent any FOUC.
@@ -9556,30 +9573,68 @@ const handlePrintMap = () => {
          }
          };
          
-         React.useEffect(() => {
-         if (mapRef.current) return;
-         mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
+React.useEffect(() => {
+             if (mapRef.current) return; // Prevents re-initializing
+             
+             // Initialize the map (as before)
+             mapRef.current = L.map('marssim-map').setView([37.207, -76.51], 13);
+             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+                 attribution: '&copy; OpenStreetMap',
+                 maxNativeZoom: 19,
+                 maxZoom: 21
+             }).addTo(mapRef.current);
+         
+             drawnItemsRef.current = new L.FeatureGroup();
+             samplePointsLayerRef.current = new L.FeatureGroup();
+             mapRef.current.addLayer(drawnItemsRef.current);
+             mapRef.current.addLayer(samplePointsLayerRef.current);
+         
+             const drawControl = new L.Control.Draw({ 
+                edit: { featureGroup: drawnItemsRef.current }, 
+                draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
+             });
+             mapRef.current.addControl(drawControl);
+             
+             // --- NEW: Add the scale bar control ---
+             L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
+             // -------------------------------------
 
-         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-             attribution: '&copy; OpenStreetMap',
-             maxNativeZoom: 19, // The server's true max zoom
-             maxZoom: 22        // The zoom level you want to reach
-         }).addTo(mapRef.current);
+             // --- NEW: Create and add the mouse coordinate control ---
+             const mousePositionControl = L.control({ position: 'bottomleft' });
+             
+             mousePositionControl.onAdd = function (map) {
+                 this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition');
+                 this.update('Mouse over map');
+                 return this._div;
+             };
+             
+             mousePositionControl.update = function (text) {
+                 this._div.innerHTML = text;
+             };
+             
+             mousePositionControl.addTo(mapRef.current);
+             // --------------------------------------------------------
+
+             // --- NEW: Event listeners to update the coordinate display ---
+             mapRef.current.on('mousemove', (e) => {
+                 const lat = e.latlng.lat.toFixed(6);
+                 const lng = e.latlng.lng.toFixed(6);
+                 mousePositionControl.update(`Lat: ${lat}, Lng: ${lng}`);
+             });
+
+             mapRef.current.on('mouseout', () => {
+                 mousePositionControl.update('Mouse over map');
+             });
+             // -------------------------------------------------------------
          
-         drawnItemsRef.current = new L.FeatureGroup();
-         samplePointsLayerRef.current = new L.FeatureGroup();
-         mapRef.current.addLayer(drawnItemsRef.current);
-         mapRef.current.addLayer(samplePointsLayerRef.current);
+             mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
          
-         const drawControl = new L.Control.Draw({ 
-            edit: { featureGroup: drawnItemsRef.current }, 
-            draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
-         });
-         mapRef.current.addControl(drawControl);
-         
-         mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
-         
-         return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+             return () => { 
+                 if (mapRef.current) { 
+                     mapRef.current.remove(); 
+                     mapRef.current = null; 
+                 } 
+             };
          }, []);
          
          React.useEffect(() => {
