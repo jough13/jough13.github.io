@@ -215,9 +215,6 @@
       <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-easyprint/2.1.9/bundle.js"></script>
 
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-measure@3.1.0/dist/leaflet-measure.css" />
-      <script src="https://cdn.jsdelivr.net/npm/leaflet-measure@3.1.0/dist/leaflet-measure.js"></script>
-
       <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
       <script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
       <script>
@@ -701,6 +698,8 @@
          
       </script>
       <script type="text/babel">
+
+
          /**
           * Radionuclide Database Tool - Core Data and Utility Functions
           * -----------------------------------------------------------
@@ -714,8 +713,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5';
-         const LAST_UPDATED = 'September 04, 2025';
+         const VERSION = '3.5.1';
+         const LAST_UPDATED = 'September 05, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -9265,6 +9264,9 @@
          const mapRef = React.useRef(null);
          const drawnItemsRef = React.useRef(null);
          const samplePointsLayerRef = React.useRef(null);
+
+         const osmLayerRef = React.useRef(null);
+         const satelliteLayerRef = React.useRef(null);
          
          const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
          const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
@@ -9287,25 +9289,44 @@
          return inside;
          };
          
-         const onDrawCreate = (e) => {
-         const { layer, layerType } = e;
-         if (layerType === 'polygon' || layerType === 'rectangle') {
-            drawnItemsRef.current.clearLayers();
-            samplePointsLayerRef.current.clearLayers();
-            drawnItemsRef.current.addLayer(layer);
-            setSurveyUnitLayer(layer);
-            setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
-            setPlottedPoints([]);
-         } else if (layerType === 'marker') {
-            const latLng = layer.getLatLng();
-            const newMarker = L.circleMarker(latLng, {
-                radius: 4,
-                className: 'biased-sample-marker'
-            });
-            samplePointsLayerRef.current.addLayer(newMarker);
-            const point = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-            setPlottedPoints(prevPoints => [...prevPoints, point]);
-         }
+
+
+/*
+This function, 'onDrawCreate', is an event handler that responds when a user draws a new feature on the map. It analyzes the type of feature drawn and takes a specific action.
+
+If a **polygon or rectangle** is drawn, it's treated as the main survey unit. The function first clears any existing layers, then adds the new shape to the map, calculates its area, and resets the list of plotted points.
+
+If a **marker** is drawn, it's considered a biased sample point. The function adds it to a separate layer, styles it as a marker, and adds its coordinates to the list of plotted points.
+
+For any other type of drawn feature (like a polyline or other shapes), the function simply adds it to the map to keep it visible, without performing any additional actions. 
+*/
+
+
+	     const onDrawCreate = (e) => {
+             const { layer, layerType } = e;
+         
+             // This block now ONLY runs if it's the FIRST polygon/rectangle being drawn.
+             if ((layerType === 'polygon' || layerType === 'rectangle') && !surveyUnitLayer) {
+                 drawnItemsRef.current.clearLayers();
+                 samplePointsLayerRef.current.clearLayers();
+                 drawnItemsRef.current.addLayer(layer);
+                 setSurveyUnitLayer(layer);
+                 setSurveyUnitArea(calculatePolygonArea(layer.getLatLngs()));
+                 setPlottedPoints([]);
+             } 
+             // This block for biased sample markers remains the same.
+             else if (layerType === 'marker') {
+                 const latLng = layer.getLatLng();
+                 const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' });
+                 samplePointsLayerRef.current.addLayer(newMarker);
+                 const point = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+                 setPlottedPoints(prevPoints => [...prevPoints, point]);
+             } 
+             // NEW: This block handles all other drawings (polylines, extra shapes).
+             else {
+                 // It simply adds the measurement layer to the map so it stays visible.
+                 drawnItemsRef.current.addLayer(layer);
+             }
          };
          
 
@@ -9434,22 +9455,16 @@ and opens a new browser window to display the data in a formatted HTML report. T
 
 
 const handlePrintMap = () => {
-             // 1. Check if there's a map and a drawn survey unit.
              if (!mapRef.current || !surveyUnitLayer) {
                  alert("Please draw a survey unit on the map before generating a report.");
                  return;
              }
-         
-             // 2. Gather the current state of the map and UI.
              const center = mapRef.current.getCenter();
              const zoom = mapRef.current.getZoom();
              const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
              const pointsData = plottedPoints;
-         
-             // 3. Find the necessary CSS files and custom styles.
              const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
              const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
-             
              let customMarkerStyles = '';
              for (const sheet of document.styleSheets) {
                  try {
@@ -9460,18 +9475,27 @@ const handlePrintMap = () => {
                      }
                  } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
              }
-                 
-             // 4. Generate the HTML for the sample data table.
              let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
              pointsData.forEach((point, index) => {
                  tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`;
              });
              tableHtml += `</tbody></table>`;
-         
-             // 5. Open a new, blank browser window for our report.
+
+             // --- Detect the active basemap layer using the refs ---
+             let activeLayerConfig;
+             if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
+                 activeLayerConfig = {
+                     url: satelliteLayerRef.current._url,
+                     options: satelliteLayerRef.current.options
+                 };
+             } else {
+                 activeLayerConfig = {
+                     url: osmLayerRef.current._url,
+                     options: osmLayerRef.current.options
+                 };
+             }
+             
              const reportWindow = window.open('', '_blank', 'height=800,width=1000');
-         
-             // 6. Write the final HTML document to the window.
              reportWindow.document.write(`
                  <html>
                      <head>
@@ -9511,11 +9535,11 @@ const handlePrintMap = () => {
                              setTimeout(() => {
                                  const map = L.map('print-map').setView([${center.lat}, ${center.lng}], ${zoom});
                                  
-                                 // --- THIS LINE IS UPDATED ---
-                                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                     maxNativeZoom: 19,
-                                     maxZoom: 21
-                                 }).addTo(map);
+                                 // Use the active layer's config we passed in
+                                 L.tileLayer(
+                                     '${activeLayerConfig.url}',
+                                     ${JSON.stringify(activeLayerConfig.options)}
+                                 ).addTo(map);
                                  
                                  L.control.scale({ imperial: true, metric: true }).addTo(map);
                                  L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}).addTo(map);
@@ -9572,60 +9596,82 @@ This function is useful when a user wants to start over with their sample points
 
 
 
-
-
-         
-		React.useEffect(() => {
-             if (mapRef.current) return; // Prevents re-initializing
+React.useEffect(() => {
+             if (mapRef.current) return;
              
-             // 1. Define the different basemap layers we want to use
              const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                 attribution: '&copy; OpenStreetMap',
-                 maxNativeZoom: 19,
-                 maxZoom: 21
+                 attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21
              });
-         
              const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                 attribution: 'Tiles &copy; Esri',
-                 maxNativeZoom: 19,
-                 maxZoom: 21
+                 attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21
              });
+             const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
          
-             const baseMaps = {
-                 "Street Map": osmLayer,
-                 "Satellite": satelliteLayer
-             };
-         
-             // 2. Initialize the map, setting 'osmLayer' as the default
-             mapRef.current = L.map('marssim-map', {
-                 layers: [osmLayer] 
-             }).setView([37.207, -76.51], 13);
+             mapRef.current = L.map('marssim-map', { layers: [osmLayer] });
              
-             // 3. Add the layer control to the map
              L.control.layers(baseMaps).addTo(mapRef.current);
              
-             // (The rest of this is your original, functional setup code)
              drawnItemsRef.current = new L.FeatureGroup();
              samplePointsLayerRef.current = new L.FeatureGroup();
              mapRef.current.addLayer(drawnItemsRef.current);
              mapRef.current.addLayer(samplePointsLayerRef.current);
-         
+
+             // --- THIS IS THE UPDATED DRAW CONTROL ---
              const drawControl = new L.Control.Draw({ 
                 edit: { featureGroup: drawnItemsRef.current }, 
-                draw: { rectangle: true, polygon: true, marker: true, circle: false, polyline: false, circlemarker: false } 
+                draw: {
+                    // Configure shapes to show measurements as they are drawn
+                    polyline: {
+                        shapeOptions: { color: '#f357a1' }, // Pink color for measurements
+                        showLength: true,
+                        metric: ['metres', 'kilometres'],
+                        feet: false,
+                    },
+                    polygon: {
+                        shapeOptions: { color: '#f357a1' },
+                        showArea: true,
+                        metric: ['metres', 'kilometres'],
+                        feet: false,
+                        allowIntersection: false,
+                        drawError: {
+                            color: '#e1e100',
+                            message: '<strong>Error:</strong> Shape edges cannot cross!'
+                        },
+                    },
+                    rectangle: {
+                        shapeOptions: { color: '#f357a1' },
+                        showArea: true,
+                        metric: ['metres', 'kilometres'],
+                        feet: false,
+                    },
+                    // Keep marker for biased samples, disable others
+                    marker: true, 
+                    circle: false, 
+                    circlemarker: false 
+                } 
              });
              mapRef.current.addControl(drawControl);
-         
+             // ------------------------------------------
+             
+             L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
+             const mousePositionControl = L.control({ position: 'bottomleft' });
+             mousePositionControl.onAdd = function (map) { this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition'); this.update('Mouse over map'); return this._div; };
+             mousePositionControl.update = function (text) { this._div.innerHTML = text; };
+             mousePositionControl.addTo(mapRef.current);
+
+             mapRef.current.on('mousemove', (e) => {
+                 const lat = e.latlng.lat.toFixed(6);
+                 const lng = e.latlng.lng.toFixed(6);
+                 mousePositionControl.update(`Lat: ${lat}, Lng: ${lng}`);
+             });
+             mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
              mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
+
+             mapRef.current.setView([37.207, -76.51], 13);
          
-             return () => { 
-                 if (mapRef.current) { 
-                     mapRef.current.remove(); 
-                     mapRef.current = null; 
-                 } 
-             };
+             return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
          }, []);
-         
+
 
 
 
