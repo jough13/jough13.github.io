@@ -9407,6 +9407,15 @@ const DrawingTool = ({ isVisible }) => {
 
              const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
              const defaultStyle = { color: '#3388ff' };
+
+	         const handleZoomToSurveyUnit = () => {
+
+             // If a survey unit layer exists on the map, tell the map to fit its view to that layer's bounds.
+
+             if (surveyUnitLayer && mapRef.current) {
+                 mapRef.current.fitBounds(surveyUnitLayer.getBounds());
+             }
+         };
          
              const handleSavePlan = () => {
                  if (!surveyUnitLayer) {
@@ -9643,35 +9652,95 @@ const DrawingTool = ({ isVisible }) => {
                  } catch (error) { alert("Could not connect to the location service."); }
              };
              
-             const handlePrintMap = () => {
-                 if (!mapRef.current || !surveyUnitLayer) { alert("Please draw a survey unit on the map before generating a report."); return; }
-                 const center = mapRef.current.getCenter();
-                 const zoom = mapRef.current.getZoom();
-                 const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
-                 const pointsData = plottedPoints;
-                 const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
-                 const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
-                 let customMarkerStyles = '';
-                 for (const sheet of document.styleSheets) {
-                     try {
-                         for (const rule of sheet.cssRules) {
-                             if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker') { customMarkerStyles += rule.cssText; }
+const handlePrintMap = () => {
+             if (!mapRef.current || !surveyUnitLayer) {
+                 alert("Please draw a survey unit on the map before generating a report.");
+                 return;
+             }
+             const center = mapRef.current.getCenter();
+             const zoom = mapRef.current.getZoom();
+             const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
+             const pointsData = plottedPoints;
+             const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
+             const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
+             let customMarkerStyles = '';
+             for (const sheet of document.styleSheets) {
+                 try {
+                     for (const rule of sheet.cssRules) {
+                         if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker') {
+                             customMarkerStyles += rule.cssText;
                          }
-                     } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
-                 }
-                 let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
-                 pointsData.forEach((point, index) => { tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`; });
-                 tableHtml += `</tbody></table>`;
-                 let activeLayerConfig;
-                 if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
-                     activeLayerConfig = { url: satelliteLayerRef.current._url, options: satelliteLayerRef.current.options };
-                 } else {
-                     activeLayerConfig = { url: osmLayerRef.current._url, options: osmLayerRef.current.options };
-                 }
-                 const reportWindow = window.open('', '_blank', 'height=800,width=1000');
-                 reportWindow.document.write(`<html><head><title>Survey Unit Report</title>${leafletCss}${leafletDrawCss}<style>body{font-family:"Inter",sans-serif;margin:0;padding:20px;background-color:#f8fafc;color:#1e293b}.report-container{max-width:1200px;margin:auto}h1,h2{text-align:center}#print-map{height:50vh;border:1px solid #cbd5e1;border-radius:8px;margin:20px 0}.data-table{width:100%;border-collapse:collapse;font-size:.9em;margin-top:20px}.data-table th,.data-table td{border:1px solid #e2e8f0;padding:8px 12px;text-align:center}.data-table th{background-color:#f1f5f9;font-weight:600}.print-button{display:block;width:200px;margin:0 auto 30px;padding:12px 15px;background-color:#0284c7;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;transition:background-color .2s}.print-button:hover{background-color:#0369a1}.summary-container{text-align:center;padding:15px;background-color:#f1f5f9;border-radius:8px;display:flex;justify-content:space-around;align-items:center;border:1px solid #e2e8f0}.summary-container div{font-size:1.1em;color:#334155}@media print{.print-button{display:none}body{padding:0}}${customMarkerStyles}</style></head><body><button class="print-button" onclick="window.print()">Print Report</button><div class="report-container"><h1>Survey Unit Report</h1><div class="summary-container"><div><strong>Survey Unit Class:</strong> ${surveyClass}</div><div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div><div><strong>Samples Plotted:</strong> ${pointsData.length}</div></div><div id="print-map"></div><h2>Sample Locations</h2>${tableHtml}</div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script><script>setTimeout(()=>{const map=L.map('print-map').setView([${center.lat},${center.lng}],${zoom});L.tileLayer('${activeLayerConfig.url}',${JSON.stringify(activeLayerConfig.options)}).addTo(map);L.control.scale({imperial:true,metric:true}).addTo(map);L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}).addTo(map);const points=${JSON.stringify(pointsData)};points.forEach(point=>{L.circleMarker([point.lat,point.lng],{radius:4,className:point.type==='Biased'?'biased-sample-marker':'grid-sample-marker'}).addTo(map)})},100)<\/script></body></html>`);
-                 reportWindow.document.close();
-             };
+                     }
+                 } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
+             }
+             let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
+             pointsData.forEach((point, index) => {
+                 tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`;
+             });
+             tableHtml += `</tbody></table>`;
+
+             let activeLayerName = "Street Map";
+             if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
+                 activeLayerName = "Satellite";
+             }
+             
+             const reportWindow = window.open('', '_blank', 'height=800,width=1000');
+             reportWindow.document.write(`
+                 <html>
+                     <head>
+                         <title>Survey Unit Report</title>
+                         ${leafletCss} ${leafletDrawCss}
+                         <style>
+                             body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
+                             .report-container { max-width: 1200px; margin: auto; }
+                             h1, h2 { text-align: center; }
+                             #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
+                             .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
+                             .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
+                             .data-table th { background-color: #f1f5f9; font-weight: 600; }
+                             .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+                             .print-button:hover { background-color: #0369a1; }
+                             .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
+                             .summary-container div { font-size: 1.1em; color: #334155; }
+                             @media print { .print-button { display: none; } body { padding: 0; } }
+                             ${customMarkerStyles}
+                         </style>
+                     </head>
+                     <body>
+                         <button class="print-button" onclick="window.print()">Print Report</button>
+                         <div class="report-container">
+                             <h1>Survey Unit Report</h1>
+                             <div class="summary-container">
+                                 <div><strong>Survey Unit Class:</strong> ${surveyClass}</div>
+                                 <div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
+                                 <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
+                             </div>
+                             <div id="print-map"></div>
+                             <h2>Sample Locations</h2>
+                             ${tableHtml}
+                         </div>
+                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+                         <script>
+                             setTimeout(() => {
+                                 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '&copy; OpenStreetMap' });
+                                 const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Tiles &copy; Esri' });
+                                 const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
+                                 const defaultLayer = baseMaps['${activeLayerName}'];
+                                 const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
+                                 L.control.layers(baseMaps).addTo(map);
+                                 L.control.scale({ imperial: true, metric: true }).addTo(map);
+                                 L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}, { style: { color: '#3388ff' } }).addTo(map);
+                                 const points = ${JSON.stringify(pointsData)};
+                                 points.forEach(point => {
+                                     L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map);
+                                 });
+                             }, 100);
+                         <\/script>
+                     </body>
+                 </html>
+             `);
+             reportWindow.document.close();
+         };
          
 
 
@@ -9761,6 +9830,16 @@ React.useEffect(() => {
                      <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                          <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
                          <div className="flex items-center gap-2">
+
+                             {/* --- NEW: The "Zoom to Unit" button --- */}
+                             {/* It only shows up if a survey unit has been drawn */}
+                             {surveyUnitLayer && (
+                                 <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
+                                     Zoom to Unit
+                                 </button>
+                             )}
+                             {/* ------------------------------------ */}
+
                              <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
                              <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
                              <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
@@ -9804,7 +9883,7 @@ React.useEffect(() => {
                          </div>
                      </div>
          
-                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+<div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                          <div className="flex justify-between items-center">
                              <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
                              <div className="flex items-center gap-4">
@@ -9814,8 +9893,16 @@ React.useEffect(() => {
                          </div>
                          <div className="max-h-60 overflow-y-auto mt-2 pr-2">
                              {plottedPoints.length > 0 ? (
-                                 <table className="w-full text-sm text-left">
-                                     <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0"><tr><th className="p-2">#</th><th className="p-2">Type</th><th className="p-2">Latitude</th><th className="p-2">Longitude</th></tr></thead>
+                                 // --- THIS TABLE IS NOW CENTERED ---
+                                 <table className="w-full text-sm text-center">
+                                     <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                                         <tr>
+                                             <th className="p-2 text-center">#</th>
+                                             <th className="p-2 text-center">Type</th>
+                                             <th className="p-2 text-center">Latitude</th>
+                                             <th className="p-2 text-center">Longitude</th>
+                                         </tr>
+                                     </thead>
                                      <tbody>
                                          {plottedPoints.map((point, index) => (
                                              <tr key={index} className="border-b border-slate-200 dark:border-slate-700">
