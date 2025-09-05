@@ -9429,7 +9429,6 @@ and opens a new browser window to display the data in a formatted HTML report. T
 */
 
 
-
 const handlePrintMap = () => {
              // 1. Check if there's a map and a drawn survey unit.
              if (!mapRef.current || !surveyUnitLayer) {
@@ -9484,23 +9483,8 @@ const handlePrintMap = () => {
                              .data-table th { background-color: #f1f5f9; font-weight: 600; }
                              .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
                              .print-button:hover { background-color: #0369a1; }
-                             
-                             /* --- NEW: Styles for the summary block --- */
-                             .summary-container {
-                                 text-align: center;
-                                 padding: 15px;
-                                 background-color: #f1f5f9;
-                                 border-radius: 8px;
-                                 display: flex;
-                                 justify-content: space-around;
-                                 align-items: center;
-                                 border: 1px solid #e2e8f0;
-                             }
-                             .summary-container div {
-                                 font-size: 1.1em;
-                                 color: #334155;
-                             }
-                             
+                             .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
+                             .summary-container div { font-size: 1.1em; color: #334155; }
                              @media print { .print-button { display: none; } body { padding: 0; } }
                              ${customMarkerStyles}
                          </style>
@@ -9509,24 +9493,27 @@ const handlePrintMap = () => {
                          <button class="print-button" onclick="window.print()">Print Report</button>
                          <div class="report-container">
                              <h1>Survey Unit Report</h1>
-                             
                              <div class="summary-container">
                                  <div><strong>Survey Unit Class:</strong> ${surveyClass}</div>
                                  <div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
                                  <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
                              </div>
-                             
                              <div id="print-map"></div>
-                             
                              <h2>Sample Locations</h2>
                              ${tableHtml}
                          </div>
-                         
                          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
                          <script>
                              setTimeout(() => {
                                  const map = L.map('print-map').setView([${center.lat}, ${center.lng}], ${zoom});
-                                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                                 
+                                 // --- THIS LINE IS UPDATED ---
+                                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                     maxNativeZoom: 19,
+                                     maxZoom: 21
+                                 }).addTo(map);
+                                 
+                                 L.control.scale({ imperial: true, metric: true }).addTo(map);
                                  L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}).addTo(map);
                                  const points = ${JSON.stringify(pointsData)};
                                  points.forEach(point => {
@@ -9542,7 +9529,11 @@ const handlePrintMap = () => {
 
 
 
-
+/*
+The handleClearPoints function serves a straightforward purpose: to remove all currently plotted sample points from the map and reset the list of points stored in the application's state.
+It does this by clearing the layers from the samplePointsLayerRef and then updating the state using setPlottedPoints([]). 
+This function is useful when a user wants to start over with their sample points without clearing the entire survey boundary.
+*/
 
          const handleClearPoints = () => {
          if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
@@ -9573,7 +9564,7 @@ const handlePrintMap = () => {
          }
          };
          
-React.useEffect(() => {
+	React.useEffect(() => {
              if (mapRef.current) return; // Prevents re-initializing
              
              // Initialize the map (as before)
