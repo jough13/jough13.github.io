@@ -8438,10 +8438,12 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
                         <div className="flex justify-between items-center">
                             <label className="block text-sm font-semibold">Planning</label>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-medium">Dose Limit (mrem)</label><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-xs font-medium">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        </div>
+                        <div>
+    <Tooltip text="Common limits: 2 mrem (unrestricted area), 5 mrem (minor), 100 mrem (public annual limit), 5000 mrem (occupational annual limit). Always follow site-specific procedures.">
+        <label className="block text-xs font-medium">Dose Limit (mrem)</label>
+    </Tooltip>
+    <input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+</div>
                     </div>
                     {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
                     {result && (
@@ -9505,8 +9507,6 @@ const NorthArrowControl = () => (
          */
     
  
-
-
 const DrawingTool = ({ isVisible }) => {
     const mapRef = React.useRef(null);
     const drawnItemsRef = React.useRef(null);
@@ -9656,7 +9656,6 @@ const DrawingTool = ({ isVisible }) => {
     const handleGenerateSamples = (pattern) => {
         if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
         
-        // Clear only non-biased, non-origin markers before generating new ones
         samplePointsLayerRef.current.eachLayer(layer => {
             if (layer !== originMarkerRef.current && layer.options.className === 'grid-sample-marker') {
                 samplePointsLayerRef.current.removeLayer(layer);
@@ -9735,6 +9734,17 @@ const DrawingTool = ({ isVisible }) => {
         setSurveyUnitLayer(null);
         setSurveyUnitArea(0);
         setPlottedPoints([]);
+    };
+
+    const handleClearPoints = () => {
+        const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
+        setPlottedPoints(biasedOnly);
+        
+        samplePointsLayerRef.current.eachLayer(layer => {
+            if (layer.options.className === 'grid-sample-marker') {
+                samplePointsLayerRef.current.removeLayer(layer);
+            }
+        });
     };
     
     const handleGoToLocation = async () => {
@@ -9962,6 +9972,7 @@ const DrawingTool = ({ isVisible }) => {
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
                     <div className="flex items-center gap-4">
+                        <button onClick={handleClearPoints} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear Grid Points</button>
                         <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear All</button>
                         <button onClick={handlePrintMap} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">Print / Save as PDF</button>
                     </div>
@@ -10026,8 +10037,6 @@ const DrawingTool = ({ isVisible }) => {
         </div>
     );
 };
-
-
 
 
 
