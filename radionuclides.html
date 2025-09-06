@@ -4899,239 +4899,281 @@ const ScientificCalculator = () => {
          );
          };
          
-         /**
-         * @description A calculator to identify radionuclides and analyze common spectroscopic artifacts
-         * by matching a gamma or alpha peak energy against the database.
-         */
-         
-         const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
-         const [searchMode, setSearchMode] = React.useState('gamma'); // 'gamma' or 'alpha'
-         const [targetEnergy, setTargetEnergy] = React.useState('662');
-         const [tolerance, setTolerance] = React.useState('2');
-         const [energyUnit, setEnergyUnit] = React.useState('keV');
-         const [results, setResults] = React.useState([]);
-         const [analysis, setAnalysis] = React.useState(null); // NEW: State for analysis results
-         const [error, setError] = React.useState('');
-         
-         const LEAD_XRAYS = [
-         { name: 'Pb K-α2', energy: 0.07280 },
-         { name: 'Pb K-α1', energy: 0.07497 },
-         { name: 'Pb K-β3', energy: 0.08445 },
-         { name: 'Pb K-β1', energy: 0.08494 },
-         { name: 'Pb K-β2', energy: 0.08736 },
-         ];
-         
-         // Helper function to parse individual energy strings (e.g., "0.145 MeV")
-         
-         const parseSingleEnergyToMeV = (energyStr) => {
-         if (!energyStr || typeof energyStr !== 'string') return null;
-         const parts = energyStr.trim().split(' ');
-         let value = parseFloat(parts[0]);
-         if (isNaN(value)) return null;
-         const unit = parts[1]?.toLowerCase();
-         if (unit && unit.includes('kev')) return value / 1000;
-         return value; // Assume MeV if no unit or MeV is present
-         };
-         
-         const handleClearInputs = () => {
-            setSearchMode('gamma');
-            setTargetEnergy('662');
-            setTolerance('2');
-            setEnergyUnit('keV');
-            setResults([]);
-            setAnalysis(null);
+/**
+ * @description A component to display sortable data tables of all radionuclide emissions.
+ * It parses and flattens the entire radionuclide dataset into sortable lists for
+ * gamma, alpha, and beta emissions.
+ */
+const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
+    const [activeTable, setActiveTable] = React.useState('alpha');
+    const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
+
+    // Helper function to parse energy strings like "0.662 MeV (90%)" into sortable numbers.
+    const parseEnergyAndIntensity = React.useCallback((energyStr) => {
+        if (!energyStr) return null;
+        const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
+        const intensityRegex = /\(([\d.]+)%\)/;
+
+        const energyMatch = energyStr.match(energyRegex);
+        if (!energyMatch) return null;
+
+        let energyMeV = parseFloat(energyMatch[1]);
+        if (energyMatch[2].toLowerCase() === 'kev') {
+            energyMeV /= 1000;
+        }
+
+        const intensityMatch = energyStr.match(intensityRegex);
+        const intensity = intensityMatch ? parseFloat(intensityMatch[1]) : 100; // Default to 100% if not specified
+
+        return { energyMeV, intensity, displayEnergy: energyStr };
+    }, []);
+
+    // Memoize the flattened data to avoid re-calculating on every render.
+    const flattenedData = React.useMemo(() => {
+        const data = { gamma: [], alpha: [], beta: [] };
+        radionuclides.forEach(nuclide => {
+            // Process parent emissions
+            Object.keys(data).forEach(type => {
+                nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
+                    const parsed = parseEnergyAndIntensity(energyStr);
+                    if (parsed) {
+                        data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, ...parsed });
+                    }
+                });
+            });
+            // Process daughter emissions
+            if (nuclide.daughterEmissions) {
+                 Object.keys(data).forEach(type => {
+                    nuclide.daughterEmissions?.[type]?.forEach(energyStr => {
+                        const parsed = parseEnergyAndIntensity(energyStr);
+                        if (parsed) {
+                            const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
+                            data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, ...parsed });
+                        }
+                    });
+                });
+            }
+        });
+        return data;
+    }, [radionuclides, parseEnergyAndIntensity]);
+
+    // Memoize the sorted data based on the current sort configuration.
+    const sortedData = React.useMemo(() => {
+        const dataToSort = [...flattenedData[activeTable]];
+        if (sortConfig.key !== null) {
+            dataToSort.sort((a, b) => {
+                if (a[sortConfig.key] < b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (a[sortConfig.key] > b[sortConfig.key]) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return dataToSort;
+    }, [flattenedData, activeTable, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIndicator = (key) => {
+        if (sortConfig.key !== key) return '↕';
+        return sortConfig.direction === 'ascending' ? '▲' : '▼';
+    };
+
+    return (
+        <div className="animate-fade-in">
+            <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                <button onClick={() => setActiveTable('alpha')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'alpha' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>α Alpha</button>
+                <button onClick={() => setActiveTable('beta')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'beta' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>β Beta</button>
+                <button onClick={() => setActiveTable('gamma')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'gamma' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>γ Gamma</button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[60vh] border border-slate-200 dark:border-slate-700 rounded-lg">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                        <tr>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('nuclideName')}>Nuclide {getSortIndicator('nuclideName')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('energyMeV')}>Energy {getSortIndicator('energyMeV')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('intensity')}>Intensity {getSortIndicator('intensity')}</th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {sortedData.map((item, index) => (
+                            <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="p-3 font-medium">
+                                    <button
+                                        onClick={() => {
+                                            const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol);
+                                            if (nuclideToFind) onNuclideClick(nuclideToFind);
+                                        }}
+                                        className="text-sky-600 dark:text-sky-400 hover:underline"
+                                    >
+                                        {item.nuclideName}
+                                    </button>
+                                </td>
+                                <td className="p-3 font-mono">{item.displayEnergy}</td>
+                                <td className="p-3 font-mono">{item.intensity}%</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
+
+/**
+ * @description A calculator to identify radionuclides and analyze common spectroscopic artifacts
+ * by matching a gamma or alpha peak energy against the database. Now includes sortable data tables.
+ */
+const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
+    // NEW: State to manage the view between Search and Data Tables
+    const [peakIdMode, setPeakIdMode] = React.useState('search'); 
+
+    // Existing state for the search tool
+    const [searchMode, setSearchMode] = React.useState('gamma');
+    const [targetEnergy, setTargetEnergy] = React.useState('662');
+    const [tolerance, setTolerance] = React.useState('2');
+    const [energyUnit, setEnergyUnit] = React.useState('keV');
+    const [results, setResults] = React.useState([]);
+    const [analysis, setAnalysis] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    const LEAD_XRAYS = [
+        { name: 'Pb K-α2', energy: 0.07280 },
+        { name: 'Pb K-α1', energy: 0.07497 },
+        { name: 'Pb K-β3', energy: 0.08445 },
+        { name: 'Pb K-β1', energy: 0.08494 },
+        { name: 'Pb K-β2', energy: 0.08736 },
+    ];
+
+    const parseSingleEnergyToMeV = (energyStr) => {
+        if (!energyStr || typeof energyStr !== 'string') return null;
+        const parts = energyStr.trim().split(' ');
+        let value = parseFloat(parts[0]);
+        if (isNaN(value)) return null;
+        const unit = parts[1]?.toLowerCase();
+        if (unit && unit.includes('kev')) return value / 1000;
+        return value;
+    };
+
+    // UPDATED: handleClearInputs now resets the view mode as well
+    const handleClearInputs = () => {
+        setPeakIdMode('search'); // Go back to search view
+        setSearchMode('gamma');
+        setTargetEnergy('662');
+        setTolerance('2');
+        setEnergyUnit('keV');
+        setResults([]);
+        setAnalysis(null);
+        setError('');
+    };
+    
+    React.useEffect(() => {
+        if (searchMode === 'gamma') {
+            setTargetEnergy('662'); setTolerance('2'); setEnergyUnit('keV');
+        } else {
+            setTargetEnergy('5.486'); setTolerance('0.05'); setEnergyUnit('MeV');
+        }
+    }, [searchMode]);
+
+    React.useEffect(() => {
+        try {
             setError('');
-         };
-         
-         // Effect to switch defaults when changing modes
-         
-         React.useEffect(() => {
-         if (searchMode === 'gamma') {
-             setTargetEnergy('662');
-             setTolerance('2');
-             setEnergyUnit('keV');
-         } else { // alpha
-             setTargetEnergy('5.486');
-             setTolerance('0.05');
-             setEnergyUnit('MeV');
-         }
-         }, [searchMode]);
-         
-         // Effect to perform the search and analysis when inputs change
-         
-         React.useEffect(() => {
-         try {
-             setError('');
-             const target = parseFloat(targetEnergy);
-             const tol = parseFloat(tolerance);
-         
-             if (isNaN(target) || isNaN(tol) || target <= 0 || tol < 0) {
-                 if (targetEnergy || tolerance) setError('Energy and tolerance must be positive numbers.');
-                 setResults([]);
-                 setAnalysis(null);
-                 return;
-             }
-         
-             const targetMeV = energyUnit === 'keV' ? target / 1000 : target;
-             const toleranceMeV = energyUnit === 'keV' ? tol / 1000 : tol;
-         
-             const minEnergy = targetMeV - toleranceMeV;
-             const maxEnergy = targetMeV + toleranceMeV;
-         
-             // --- Radionuclide Matching Logic ---
-         
-             const matches = [];
-             const emissionKey = searchMode === 'gamma' ? 'gamma' : 'alpha';
-             radionuclides.forEach(nuclide => {
-                 const emissions = nuclide.emissionEnergies?.[emissionKey];
-                 if (emissions && emissions.length > 0) {
-                     const matchingPeaks = [];
-                     emissions.forEach(emissionStr => {
-                         const peakMeV = parseSingleEnergyToMeV(emissionStr);
-                         if (peakMeV !== null && peakMeV >= minEnergy && peakMeV <= maxEnergy) {
-                             matchingPeaks.push(emissionStr);
-                         }
-                     });
-         
-                     if (matchingPeaks.length > 0) {
-                         matches.push({ nuclide, matchingPeaks });
-                     }
-                 }
-             });
-             setResults(matches);
-         
-             // --- Spectrum Artifact Analysis ---
-         
-             if (searchMode === 'gamma') {
-         
-                 // 1. Compton Edge Calculation
-         
-                 const mc2 = 0.511; // Rest mass of an electron in MeV
-                 const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
-         
-                 // 2. Escape Peak Calculations (Corrected Threshold)
-         
-                 const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
-                 const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
-         
-                 // 3. Lead X-ray Identification
-         
-                 const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - targetMeV) <= toleranceMeV);
-                 
-                 setAnalysis({
-                     comptonEdge: comptonEdge.toFixed(3),
-                     singleEscape: singleEscape ? singleEscape.toFixed(3) : null,
-                     doubleEscape: doubleEscape ? doubleEscape.toFixed(3) : null,
-                     isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
-                 });
-             } else {
-                 setAnalysis(null); // No such artifacts for alpha spec
-             }
-         
-         } catch (e) {
-             setError('An error occurred during search.');
-             setResults([]);
-             setAnalysis(null);
-         }
-         }, [targetEnergy, tolerance, energyUnit, searchMode, radionuclides]);
-         
-         return (
-         <div className="p-4 animate-fade-in">
-             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                 <div className="flex justify-between items-center mb-4">
-         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
-         <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-         <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-         </button>
-         </div>
-                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                     <button onClick={() => setSearchMode('gamma')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'gamma' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Spec</button>
-                     <button onClick={() => setSearchMode('alpha')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'alpha' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Alpha Spec</button>
-                 </div>
-         
-                 <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                             <label className="block text-sm font-medium">Peak Energy</label>
-                             <input type="number" value={targetEnergy} onChange={e => setTargetEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                         </div>
-                         <div>
-                             <label className="block text-sm font-medium">Tolerance (±)</label>
-                             <input type="number" value={tolerance} onChange={e => setTolerance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                         </div>
-                     </div>
-                     <div>
-                         <label className="block text-sm font-medium">Energy Unit</label>
-                         <select value={energyUnit} onChange={e => setEnergyUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                             <option value="keV">keV</option>
-                             <option value="MeV">MeV</option>
-                         </select>
-                     </div>
-                 </div>
-         
-                 {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-                 
-                 {analysis && (
-                   <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg animate-fade-in">
-                       <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Spectrum Analysis</h3>
-                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                           <div>
-                               <Tooltip text="The maximum energy a gamma can impart to an electron in a single Compton scattering event. Expect a sharp drop-off in the continuum here.">
-                                   <p className="font-semibold text-slate-500 dark:text-slate-400">Compton Edge</p>
-                               </Tooltip>
-                               <p className="font-mono text-slate-800 dark:text-slate-100">{analysis.comptonEdge} MeV</p>
-                           </div>
-                           {analysis.singleEscape && (
-                               <div>
-                                   <Tooltip text="A peak seen at 511 keV below the full energy peak, caused by one annihilation photon escaping the detector after pair production. (E > 1.022 MeV)">
-                                       <p className="font-semibold text-slate-500 dark:text-slate-400">Single Escape</p>
-                                   </Tooltip>
-                                   <p className="font-mono text-slate-800 dark:text-slate-100">{analysis.singleEscape} MeV</p>
-                               </div>
-                           )}
-                            {analysis.doubleEscape && (
-                               <div>
-                                   <Tooltip text="A peak seen at 1022 keV below the full energy peak, caused by both annihilation photons escaping the detector after pair production. (E > 1.022 MeV)">
-                                       <p className="font-semibold text-slate-500 dark:text-slate-400">Double Escape</p>
-                                   </Tooltip>
-                                   <p className="font-mono text-slate-800 dark:text-slate-100">{analysis.doubleEscape} MeV</p>
-                               </div>
-                            )}
-                           {analysis.isLeadXray && (
-                               <div className="col-span-2 md:col-span-3 mt-2 pt-2 border-t border-slate-300 dark:border-slate-600">
-                                   <p className="font-semibold text-amber-600 dark:text-amber-400">
-                                       <Icon path={ICONS.help} className="w-4 h-4 inline-block mr-1" />
-                                       This energy is consistent with a {analysis.isLeadXray} X-ray, often seen from lead shielding.
-                                   </p>
-                               </div>
-                           )}
-                       </div>
-                   </div>
-                 )}
-         
-                 <div className="mt-6">
-                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Matching Radionuclides ({results.length})</h3>
-                     <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-                         {results.length > 0 ? (
-                             results.map(({ nuclide, matchingPeaks }) => (
-                                 <div key={nuclide.symbol} onClick={() => onNuclideClick(nuclide)} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-150">
-                                     <p className="font-bold text-sky-600 dark:text-sky-400">{nuclide.name} ({nuclide.symbol})</p>
-                                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                                         Matched Peak(s): <span className="font-semibold text-slate-700 dark:text-slate-200">{matchingPeaks.join(', ')}</span>
-                                     </p>
-                                 </div>
-                             ))
-                         ) : (
-                             <p className="text-center text-slate-500 dark:text-slate-400 py-4">
-                                 {targetEnergy && tolerance ? "No matches found." : "Enter an energy to begin."}
-                             </p>
-                         )}
-                     </div>
-                 </div>
-             </div>
-         </div>
-         );
-         };
+            const target = parseFloat(targetEnergy); const tol = parseFloat(tolerance);
+            if (isNaN(target) || isNaN(tol) || target <= 0 || tol < 0) {
+                if (targetEnergy || tolerance) setError('Energy and tolerance must be positive numbers.');
+                setResults([]); setAnalysis(null); return;
+            }
+            const targetMeV = energyUnit === 'keV' ? target / 1000 : target;
+            const toleranceMeV = energyUnit === 'keV' ? tol / 1000 : tol;
+            const minEnergy = targetMeV - toleranceMeV; const maxEnergy = targetMeV + toleranceMeV;
+            const matches = [];
+            const emissionKey = searchMode === 'gamma' ? 'gamma' : 'alpha';
+            radionuclides.forEach(nuclide => {
+                const emissions = nuclide.emissionEnergies?.[emissionKey];
+                if (emissions && emissions.length > 0) {
+                    const matchingPeaks = [];
+                    emissions.forEach(emissionStr => {
+                        const peakMeV = parseSingleEnergyToMeV(emissionStr);
+                        if (peakMeV !== null && peakMeV >= minEnergy && peakMeV <= maxEnergy) {
+                            matchingPeaks.push(emissionStr);
+                        }
+                    });
+                    if (matchingPeaks.length > 0) {
+                        matches.push({ nuclide, matchingPeaks });
+                    }
+                }
+            });
+            setResults(matches);
+            if (searchMode === 'gamma') {
+                const mc2 = 0.511;
+                const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
+                const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
+                const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
+                const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - targetMeV) <= toleranceMeV);
+                setAnalysis({
+                    comptonEdge: comptonEdge.toFixed(3),
+                    singleEscape: singleEscape ? singleEscape.toFixed(3) : null,
+                    doubleEscape: doubleEscape ? doubleEscape.toFixed(3) : null,
+                    isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
+                });
+            } else { setAnalysis(null); }
+        } catch (e) {
+            setError('An error occurred during search.'); setResults([]); setAnalysis(null);
+        }
+    }, [targetEnergy, tolerance, energyUnit, searchMode, radionuclides]);
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+                    </button>
+                </div>
+                
+                {/* NEW: Main tabs to switch between Search and Data Tables */}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setPeakIdMode('search')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'search' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Search</button>
+                    <button onClick={() => setPeakIdMode('tables')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'tables' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Data Tables</button>
+                </div>
+
+                {/* NEW: Conditional rendering based on the selected mode */}
+                {peakIdMode === 'search' ? (
+                    <div className="animate-fade-in">
+                        <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                            <button onClick={() => setSearchMode('gamma')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'gamma' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Spec</button>
+                            <button onClick={() => setSearchMode('alpha')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'alpha' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Alpha Spec</button>
+                        </div>
+                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label className="block text-sm font-medium">Peak Energy</label><input type="number" value={targetEnergy} onChange={e => setTargetEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                <div><label className="block text-sm font-medium">Tolerance (±)</label><input type="number" value={tolerance} onChange={e => setTolerance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                            </div>
+                            <div><label className="block text-sm font-medium">Energy Unit</label><select value={energyUnit} onChange={e => setEnergyUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="keV">keV</option><option value="MeV">MeV</option></select></div>
+                        </div>
+                        {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                        {analysis && ( <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg animate-fade-in"><h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Spectrum Analysis</h3><div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm"><div><Tooltip text="The maximum energy a gamma can impart to an electron in a single Compton scattering event. Expect a sharp drop-off in the continuum here."><p className="font-semibold text-slate-500 dark:text-slate-400">Compton Edge</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.comptonEdge} MeV</p></div>{analysis.singleEscape && (<div><Tooltip text="A peak seen at 511 keV below the full energy peak, caused by one annihilation photon escaping the detector after pair production. (E > 1.022 MeV)"><p className="font-semibold text-slate-500 dark:text-slate-400">Single Escape</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.singleEscape} MeV</p></div>)}{analysis.doubleEscape && (<div><Tooltip text="A peak seen at 1022 keV below the full energy peak, caused by both annihilation photons escaping the detector after pair production. (E > 1.022 MeV)"><p className="font-semibold text-slate-500 dark:text-slate-400">Double Escape</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.doubleEscape} MeV</p></div>)}{analysis.isLeadXray && (<div className="col-span-2 md:col-span-3 mt-2 pt-2 border-t border-slate-300 dark:border-slate-600"><p className="font-semibold text-amber-600 dark:text-amber-400"><Icon path={ICONS.help} className="w-4 h-4 inline-block mr-1" />This energy is consistent with a {analysis.isLeadXray} X-ray, often seen from lead shielding.</p></div>)}</div></div> )}
+                        <div className="mt-6"><h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Matching Radionuclides ({results.length})</h3><div className="max-h-96 overflow-y-auto space-y-2 pr-2">{results.length > 0 ? ( results.map(({ nuclide, matchingPeaks }) => ( <div key={nuclide.symbol} onClick={() => onNuclideClick(nuclide)} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-150"><p className="font-bold text-sky-600 dark:text-sky-400">{nuclide.name} ({nuclide.symbol})</p><p className="text-sm text-slate-500 dark:text-slate-400">Matched Peak(s): <span className="font-semibold text-slate-700 dark:text-slate-200">{matchingPeaks.join(', ')}</span></p></div> )) ) : ( <p className="text-center text-slate-500 dark:text-slate-400 py-4">{targetEnergy && tolerance ? "No matches found." : "Enter an energy to begin."}</p> )}</div></div>
+                    </div>
+                ) : (
+                    <PeakDataTables radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
+                )}
+            </div>
+        </div>
+    );
+};
          
          /**
           * @description A calculator that uses the Bateman equations to model the activity of every
