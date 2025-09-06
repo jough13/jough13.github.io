@@ -202,6 +202,12 @@
          fill: #1E88E5;
          fill-opacity: 1;
          }
+         .origin-sample-marker {
+    stroke: #9333ea; /* purple-600 */
+    stroke-width: 2;
+    fill: #c084fc; /* purple-400 */
+    fill-opacity: 1;
+}
          .biased-sample-marker {
          stroke: #facc15; /* amber-400 */
          stroke-width: 1;
@@ -527,7 +533,7 @@
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Radon-220', symbol: 'Rn-220', emissionType: ['Alpha'], emissionEnergies: { alpha: ['6.288 MeV'], beta: [], gamma: [] }, halfLife: '55.6 seconds', decayConstant: '0.0125 s⁻¹', specificActivity: '8.1 x 10^17 Bq/g', parent: 'Radium-224', daughter: 'Polonium-216 (α)', commonUses: ['Environmental monitoring (thoron gas)', 'Research'], category: 'Natural', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas (also called Thoron) from the Th-232 decay series.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
-             { name: 'Radon-221', symbol: 'Rn-221', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.19 MeV (max)'], gamma: ['0.078 MeV'], alpha: [] }, avgBetaEnergy: '0.397 MeV', halfLife: '25 minutes', decayConstant: '0.0277 min⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Francium-221', daughter: 'Francium-221', commonUses: ['Research (intermediate in artificial decay series)'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A short-lived intermediate in an artificial decay series with no practical applications.', sourceRef: { halfLife: 'nndc' },
+             { name: 'Radon-221', symbol: 'Rn-221', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.19 MeV (max)'], gamma: ['0.078 MeV'], alpha: [] }, avgBetaEnergy: '0.397 MeV', halfLife: '25 minutes', decayConstant: '0.0277 min⁻¹', specificActivity: '1.8 x 10^17 Bq/g', parent: 'Radium-225', daughter: 'Francium-221', commonUses: ['Research (intermediate in artificial decay series)'], category: 'Natural', commonality: 'Rare', commonalityReason: 'A short-lived intermediate in an artificial decay series with no practical applications.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Radon-222', symbol: 'Rn-222', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.490 MeV'], beta: [], gamma: [] }, halfLife: '3.823 days', decayConstant: '0.181 day⁻¹', specificActivity: '5.73 x 10^15 Bq/g', parent: 'Radium-226', daughter: 'Polonium-218 (α)', commonUses: ['Indoor air quality concern', 'Geological tracer', 'Research'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Common', commonalityReason: 'A naturally occurring noble gas from the U-238 series, well-known as an indoor air quality concern.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: null, A2: 0.1, unit: 'TBq' }, dosimetry: { DAC: { inhalation_D: 3e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Rhenium-186', symbol: 'Re-186', emissionType: ['Beta-minus', 'Gamma'], emissionEnergies: { beta: ['1.07 MeV (max)'], gamma: ['0.137 MeV'], alpha: [] }, avgBetaEnergy: '0.357 MeV', halfLife: '3.718 days', decayConstant: '0.186 day⁻¹', gammaConstant: '0.08 R·m²/hr·Ci', parent: 'Tungsten-186 (n,γ)', daughter: 'Osmium-186 (stable)', commonUses: ['Radiotherapy for bone pain palliation'], category: 'Medical', commonality: 'Rare', commonalityReason: 'A therapeutic isotope used for bone pain palliation in metastatic cancer.', sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' }, shipping: { A1: 2, A2: 0.6, unit: 'TBq' },
@@ -713,8 +719,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.1';
-         const LAST_UPDATED = 'September 05, 2025';
+         const VERSION = '3.5.2';
+         const LAST_UPDATED = 'September 06, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -2653,9 +2659,9 @@ const ScientificCalculator = () => {
              const { addToast } = useToast();
       
              const handleInput = (value) => {
-                 setExpression(prev => (prev === '' && result ? result : prev) + value);
-                 setResult('');
-             };
+                setExpression(prev => (prev === '' && result && !isNaN(parseFloat(result)) ? result : prev) + value);
+                setResult('');
+            };
              
              const handleClear = () => { setExpression(''); setResult(''); };
              const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
@@ -4900,54 +4906,39 @@ const ScientificCalculator = () => {
          };
          
 /**
- * @description A component to display sortable data tables of all radionuclide emissions.
+ * @description A component to display sortable and filterable data tables of all radionuclide emissions.
  * It parses and flattens the entire radionuclide dataset into sortable lists for
- * gamma, alpha, and beta emissions.
- */
-
-/**
- * @description A component to display sortable data tables of all radionuclide emissions.
- * It parses and flattens the entire radionuclide dataset into sortable lists for
- * gamma, alpha, and beta emissions.
+ * gamma, alpha, and beta emissions, and allows for CSV export.
  */
 const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const [activeTable, setActiveTable] = React.useState('alpha');
     const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
+    // NEW: State to hold the filter text
+    const [filterText, setFilterText] = React.useState('');
 
-    // This helper function now primarily just gets the energy value.
     const parseEnergy = React.useCallback((energyStr) => {
         if (!energyStr) return null;
         const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
         const energyMatch = energyStr.match(energyRegex);
         if (!energyMatch) return null;
-
         let energyMeV = parseFloat(energyMatch[1]);
         if (energyMatch[2].toLowerCase() === 'kev') {
             energyMeV /= 1000;
         }
-        return { energyMeV, displayEnergy: energyStr.split(' (')[0] }; // Clean up display
+        return { energyMeV, displayEnergy: energyStr.split(' (')[0] };
     }, []);
 
-    // Memoize the flattened data to avoid re-calculating on every render.
-    // This now includes the 'category' for each nuclide.
     const flattenedData = React.useMemo(() => {
         const data = { gamma: [], alpha: [], beta: [] };
         radionuclides.forEach(nuclide => {
-            // Process parent emissions
             Object.keys(data).forEach(type => {
                 nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
                     const parsed = parseEnergy(energyStr);
                     if (parsed) {
-                        data[type].push({ 
-                            nuclideSymbol: nuclide.symbol, 
-                            nuclideName: nuclide.name, 
-                            category: nuclide.category, // Added category
-                            ...parsed 
-                        });
+                        data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, category: nuclide.category, ...parsed });
                     }
                 });
             });
-            // Process daughter emissions, now looking up the daughter's category
             if (nuclide.daughterEmissions) {
                  const daughterNuclide = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
                  const daughterCategory = daughterNuclide ? daughterNuclide.category : 'N/A';
@@ -4956,12 +4947,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                         const parsed = parseEnergy(energyStr);
                         if (parsed) {
                             const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
-                            data[type].push({ 
-                                nuclideSymbol: nuclide.daughterEmissions.from, 
-                                nuclideName: daughterName, 
-                                category: daughterCategory, // Added daughter's category
-                                ...parsed 
-                            });
+                            data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, category: daughterCategory, ...parsed });
                         }
                     });
                 });
@@ -4970,25 +4956,29 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
         return data;
     }, [radionuclides, parseEnergy]);
 
-    // Memoize the sorted data based on the current sort configuration.
-    const sortedData = React.useMemo(() => {
-        const dataToSort = [...flattenedData[activeTable]];
+    // UPDATED: This memoized value now filters the data before sorting it.
+    const sortedAndFilteredData = React.useMemo(() => {
+        let dataToProcess = [...flattenedData[activeTable]];
+
+        // Apply filtering if filterText is not empty
+        if (filterText) {
+            dataToProcess = dataToProcess.filter(item =>
+                item.nuclideName.toLowerCase().includes(filterText.toLowerCase())
+            );
+        }
+        
+        // Apply sorting to the filtered data
         if (sortConfig.key !== null) {
-            dataToSort.sort((a, b) => {
-                // Handle undefined or null categories gracefully
+            dataToProcess.sort((a, b) => {
                 const valA = a[sortConfig.key] || '';
                 const valB = b[sortConfig.key] || '';
-                if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
             });
         }
-        return dataToSort;
-    }, [flattenedData, activeTable, sortConfig]);
+        return dataToProcess;
+    }, [flattenedData, activeTable, sortConfig, filterText]); // Added filterText as a dependency
 
     const requestSort = (key) => {
         let direction = 'ascending';
@@ -5002,6 +4992,25 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
         if (sortConfig.key !== key) return '↕';
         return sortConfig.direction === 'ascending' ? '▲' : '▼';
     };
+    
+    // NEW: Handler to export the current view to a CSV file.
+    const handleExportCSV = () => {
+        if (sortedAndFilteredData.length === 0) return;
+        const headers = ['Nuclide', 'Energy', 'Category'];
+        const rows = sortedAndFilteredData.map(item => [
+            `"${item.nuclideName}"`, // Enclose in quotes to handle potential commas
+            item.displayEnergy,
+            item.category
+        ].join(','));
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", `${activeTable}_emissions_data.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div className="animate-fade-in">
@@ -5010,7 +5019,31 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                 <button onClick={() => setActiveTable('beta')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'beta' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>β Beta</button>
                 <button onClick={() => setActiveTable('gamma')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'gamma' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>γ Gamma</button>
             </div>
-            <div className="overflow-y-auto max-h-[60vh] border border-slate-200 dark:border-slate-700 rounded-lg">
+            
+            {/* NEW: Filter and Export controls */}
+            <div className="flex justify-between items-center mb-2 gap-4">
+                <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Icon path={ICONS.search} className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder={`Filter by nuclide name...`}
+                        value={filterText}
+                        onChange={(e) => setFilterText(e.target.value)}
+                        className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm"
+                    />
+                </div>
+                <button
+                    onClick={handleExportCSV}
+                    className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2 flex-shrink-0"
+                >
+                    <Icon path={ICONS.database} className="w-4 h-4" />
+                    Export CSV
+                </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[55vh] border border-slate-200 dark:border-slate-700 rounded-lg">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                         <tr>
@@ -5020,7 +5053,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {sortedData.map((item, index) => {
+                        {sortedAndFilteredData.map((item, index) => {
                             const categoryStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
                             const bgColor = categoryStyle.border.replace('border-l-', 'bg-').replace('-400', '-100').replace('-600', '-900/50');
                             const textColor = categoryStyle.border.replace('border-l-', 'text-').replace('-400', '-700').replace('-600', '-300');
@@ -5028,13 +5061,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                             return (
                                 <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                     <td className="p-3 font-medium">
-                                        <button
-                                            onClick={() => {
-                                                const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol);
-                                                if (nuclideToFind) onNuclideClick(nuclideToFind);
-                                            }}
-                                            className="text-sky-600 dark:text-sky-400 hover:underline"
-                                        >
+                                        <button onClick={() => { const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol); if (nuclideToFind) onNuclideClick(nuclideToFind);}} className="text-sky-600 dark:text-sky-400 hover:underline">
                                             {item.nuclideName}
                                         </button>
                                     </td>
@@ -9478,564 +9505,527 @@ const NorthArrowControl = () => (
          */
     
  
-         
+
+
 const DrawingTool = ({ isVisible }) => {
-             const mapRef = React.useRef(null);
-             const drawnItemsRef = React.useRef(null);
-             const samplePointsLayerRef = React.useRef(null);
-             const fileInputRef = React.useRef(null);
-             const osmLayerRef = React.useRef(null);
-             const satelliteLayerRef = React.useRef(null);
-         
-             const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
-             const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
-             const [samplesToPlace, setSamplesToPlace] = React.useState(25);
-             const [plottedPoints, setPlottedPoints] = React.useState([]);
-             const [locationInput, setLocationInput] = React.useState('');
-             const [surveyClass, setSurveyClass] = React.useState('Class 1');
+    const mapRef = React.useRef(null);
+    const drawnItemsRef = React.useRef(null);
+    const samplePointsLayerRef = React.useRef(null);
+    const originMarkerRef = React.useRef(null);
+    const fileInputRef = React.useRef(null);
+    const osmLayerRef = React.useRef(null);
+    const satelliteLayerRef = React.useRef(null);
 
-             const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
-             const defaultStyle = { color: '#3388ff' };
+    const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
+    const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
+    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
+    const [plottedPoints, setPlottedPoints] = React.useState([]);
+    const [locationInput, setLocationInput] = React.useState('');
+    const [surveyClass, setSurveyClass] = React.useState('Class 1');
 
-	         const handleZoomToSurveyUnit = () => {
+    const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
+    const defaultStyle = { color: '#3388ff' };
 
-             // If a survey unit layer exists on the map, tell the map to fit its view to that layer's bounds.
+    const handleZoomToSurveyUnit = () => {
+        if (surveyUnitLayer && mapRef.current) {
+            mapRef.current.fitBounds(surveyUnitLayer.getBounds());
+        }
+    };
 
-             if (surveyUnitLayer && mapRef.current) {
-                 mapRef.current.fitBounds(surveyUnitLayer.getBounds());
-             }
-         };
-         
-             const handleSavePlan = () => {
-                 if (!surveyUnitLayer) {
-                     alert("Please draw a survey unit to save.");
-                     return;
-                 }
-                 const planData = {
-                     surveyUnit: surveyUnitLayer.toGeoJSON(),
-                     points: plottedPoints,
-                     surveyClass: surveyClass,
-                     samplesToPlace: samplesToPlace,
-                 };
-                 const blob = new Blob([JSON.stringify(planData, null, 2)], { type: 'application/json' });
-                 const link = document.createElement("a");
-                 link.href = URL.createObjectURL(blob);
-                 link.download = "survey-plan.json";
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-             };
+    const handleSavePlan = () => {
+        if (!surveyUnitLayer) {
+            alert("Please draw a survey unit to save.");
+            return;
+        }
+        const planData = {
+            surveyUnit: surveyUnitLayer.toGeoJSON(),
+            points: plottedPoints,
+            surveyClass: surveyClass,
+            samplesToPlace: samplesToPlace,
+        };
+        const blob = new Blob([JSON.stringify(planData, null, 2)], { type: 'application/json' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "survey-plan.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
-             const handleLoadPlan = (event) => {
-                 const file = event.target.files[0];
-                 if (!file) return;
-                 const reader = new FileReader();
-                 reader.onload = (e) => {
-                     try {
-                         const parsedData = JSON.parse(e.target.result);
-                         if (!parsedData.surveyUnit || !parsedData.points) { throw new Error("Invalid plan file format."); }
-                         
-                         handleClearAll();
-                         
-                         const newSurveyUnit = L.geoJSON(parsedData.surveyUnit, { style: defaultStyle });
-                         const layer = newSurveyUnit.getLayers()[0];
-                         if (layer) {
-                             drawnItemsRef.current.addLayer(layer);
-                             setSurveyUnitLayer(layer);
-                             const area = calculatePolygonArea(layer.getLatLngs());
-                             setSurveyUnitArea(area);
-                             mapRef.current.fitBounds(layer.getBounds());
+    const handleLoadPlan = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const parsedData = JSON.parse(e.target.result);
+                if (!parsedData.surveyUnit || !parsedData.points) { throw new Error("Invalid plan file format."); }
+                
+                handleClearAll();
+                
+                const newSurveyUnit = L.geoJSON(parsedData.surveyUnit, { style: defaultStyle });
+                const layer = newSurveyUnit.getLayers()[0];
+                if (layer) {
+                    drawnItemsRef.current.addLayer(layer);
+                    setSurveyUnitLayer(layer);
+                    const area = calculatePolygonArea(layer.getLatLngs());
+                    setSurveyUnitArea(area);
+                    mapRef.current.fitBounds(layer.getBounds());
 
-                             const popupContent = `<b>Survey Unit</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
-                             layer.bindPopup(popupContent);
-                             layer.on({
-                                 mouseover: (e) => e.target.setStyle(highlightStyle),
-                                 mouseout: (e) => e.target.setStyle(defaultStyle)
-                             });
-                         }
+                    const popupContent = `<b>Survey Unit</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
+                    layer.bindPopup(popupContent);
+                    layer.on({
+                        mouseover: (e) => e.target.setStyle(highlightStyle),
+                        mouseout: (e) => e.target.setStyle(defaultStyle)
+                    });
+                }
 
-                         const loadedPoints = parsedData.points || [];
-                         setPlottedPoints(loadedPoints);
-                         setSurveyClass(parsedData.surveyClass || 'Class 1');
-                         setSamplesToPlace(parsedData.samplesToPlace || 25);
-                         
-                         loadedPoints.forEach((point, index) => {
-                             const marker = L.circleMarker([point.lat, point.lng], {
-                                 radius: 4,
-                                 className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker'
-                             });
-                             const popupContent = `<b>Sample Point #${index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-                             marker.bindPopup(popupContent);
-                             marker.addTo(samplePointsLayerRef.current);
-                         });
+                const loadedPoints = parsedData.points || [];
+                setPlottedPoints(loadedPoints);
+                setSurveyClass(parsedData.surveyClass || 'Class 1');
+                setSamplesToPlace(parsedData.samplesToPlace || 25);
+                
+                loadedPoints.forEach((point, index) => {
+                    const marker = L.circleMarker([point.lat, point.lng], {
+                        radius: 4,
+                        className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker'
+                    });
+                    const popupContent = `<b>Sample Point #${index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+                    marker.bindPopup(popupContent);
+                    marker.addTo(samplePointsLayerRef.current);
+                });
 
-                     } catch (error) { alert(`Error loading plan: ${error.message}`); }
-                 };
-                 reader.readAsText(file);
-                 event.target.value = null;
-             };
-         
-             const isPointInPolygon = (point, polygonLatLngs) => {
-                 const polyPoints = polygonLatLngs[0];
-                 const x = point.lat, y = point.lng;
-                 let inside = false;
-                 for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
-                     const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
-                     const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
-                     const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                     if (intersect) inside = !inside;
-                 }
-                 return inside;
-             };
-         
-             const onDrawCreate = (e) => {
-                 const { layer, layerType } = e;
-             
-                 if ((layerType === 'polygon' || layerType === 'rectangle') && !surveyUnitLayer) {
-                     drawnItemsRef.current.clearLayers();
-                     samplePointsLayerRef.current.clearLayers();
-                     drawnItemsRef.current.addLayer(layer);
-                     setSurveyUnitLayer(layer);
-                     const area = calculatePolygonArea(layer.getLatLngs());
-                     setSurveyUnitArea(area);
-                     setPlottedPoints([]);
+            } catch (error) { alert(`Error loading plan: ${error.message}`); }
+        };
+        reader.readAsText(file);
+        event.target.value = null;
+    };
 
-                     const popupContent = `<b>Survey Unit</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
-                     layer.bindPopup(popupContent);
-                     layer.on({
-                         mouseover: (e) => e.target.setStyle(highlightStyle),
-                         mouseout: (e) => e.target.setStyle(defaultStyle)
-                     });
+    const isPointInPolygon = (point, polygonLatLngs) => {
+        const polyPoints = polygonLatLngs[0];
+        const x = point.lat, y = point.lng;
+        let inside = false;
+        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+            const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
+            const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    };
 
-                 } else if (layerType === 'marker') {
-                     const latLng = layer.getLatLng();
-                     const newMarker = L.circleMarker(latLng, {
-                         radius: 4,
-                         className: 'biased-sample-marker'
-                     });
-                     
-                     const newPoint = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-                     const updatedPoints = [...plottedPoints, newPoint];
-                     const popupContent = `<b>Sample Point #${updatedPoints.length}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
-                     newMarker.bindPopup(popupContent);
-                     
-                     samplePointsLayerRef.current.addLayer(newMarker);
-                     setPlottedPoints(updatedPoints);
+    const onDrawCreate = (e) => {
+        const { layer, layerType } = e;
+    
+        if ((layerType === 'polygon' || layerType === 'rectangle') && !surveyUnitLayer) {
+            drawnItemsRef.current.clearLayers();
+            samplePointsLayerRef.current.clearLayers();
+            drawnItemsRef.current.addLayer(layer);
+            setSurveyUnitLayer(layer);
+            const area = calculatePolygonArea(layer.getLatLngs());
+            setSurveyUnitArea(area);
+            setPlottedPoints([]);
 
-                 } else {
-                     drawnItemsRef.current.addLayer(layer);
-                 }
-             };
-         
-             const handleGenerateSamples = (pattern) => {
-                 if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
-                 samplePointsLayerRef.current.clearLayers();
-                 const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-                 
-                 existingBiasedPoints.forEach((point, index) => {
-                     const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'biased-sample-marker' });
-                     const popupContent = `<b>Sample Point #${index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-                     marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
-                 });
-             
-                 const newPoints = [];
-                 const latLngs = surveyUnitLayer.getLatLngs();
-                 const bounds = surveyUnitLayer.getBounds();
-                 if (pattern === 'random') {
-                     while (newPoints.length < samplesToPlace) {
-                        const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-                        const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-                        const point = { lat, lng };
-                        if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-                    }
-                 } else {
-                    const polygonArea = calculatePolygonArea(latLngs);
-                    const spacingMeters = Math.sqrt(polygonArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
-                    const spacingLat = spacingMeters / 111320;
-                    const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
-                    const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
-                    const randomLatOffset = Math.random() * spacingLat;
-                    const randomLngOffset = Math.random() * spacingLng;
-                    let row = 0;
-                    for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth(); lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
-                        const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
-                        for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast(); lng += spacingLng) {
-                            const point = { lat, lng };
-                            if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-                        }
-                        row++;
-                    }
-                 }
-                 const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-                 const finalPoints = [...existingBiasedPoints, ...pointsWithTypes];
-                 setPlottedPoints(finalPoints);
+            const popupContent = `<b>Survey Unit</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
+            layer.bindPopup(popupContent);
+            layer.on({
+                mouseover: (e) => e.target.setStyle(highlightStyle),
+                mouseout: (e) => e.target.setStyle(defaultStyle)
+            });
 
-                 pointsWithTypes.forEach((point, index) => {
-                    const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
-                    const popupContent = `<b>Sample Point #${existingBiasedPoints.length + index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-                    marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
-                 });
-             };
-             
-             const handleExport = () => {
-                 if (plottedPoints.length === 0 || !surveyUnitLayer) {
-                     alert("Please draw a survey unit and place sample points before exporting.");
-                     return;
-                 }
-                 const origin = surveyUnitLayer.getBounds().getSouthWest();
-                 const dataForExport = plottedPoints.map((point, index) => {
-                     const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
-                     const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
-                     return { sampleNumber: index + 1, type: point.type, latitude: point.lat.toFixed(6), longitude: point.lng.toFixed(6), xDistance: xDistance.toFixed(2), yDistance: yDistance.toFixed(2) };
-                 });
-                 const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
-                 const csvRows = [headers.join(',')];
-                 dataForExport.forEach(row => { csvRows.push(Object.values(row).join(',')); });
-                 const csvContent = csvRows.join('\n');
-                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                 const link = document.createElement("a");
-                 const url = URL.createObjectURL(blob);
-                 link.setAttribute("href", url);
-                 link.setAttribute("download", "survey_sample_points.csv");
-                 link.style.visibility = 'hidden';
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-             };
-             
-             const handleClearAll = () => {
-                 if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
-                 if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
-                 setSurveyUnitLayer(null);
-                 setSurveyUnitArea(0);
-                 setPlottedPoints([]);
-             };
-             
-             const handleClearPoints = () => {
-                 const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
-                 setPlottedPoints(biasedOnly);
-                 
-                 samplePointsLayerRef.current.eachLayer(layer => {
-                     // A simple way to check if it's a grid marker (we'll assume biased markers don't have popups initially or have different ones)
-                     // A better way would be to add an option to the marker on creation
-                     if (layer.options.className === 'grid-sample-marker') {
-                         samplePointsLayerRef.current.removeLayer(layer);
-                     }
-                 });
-             };
-             
-             const handleGoToLocation = async () => {
-                 if (!locationInput.trim()) return;
-                 const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
-                 if (coordRegex.test(locationInput)) {
-                     const [lat, lng] = locationInput.split(',').map(Number);
-                     if (!isNaN(lat) && !isNaN(lng)) { mapRef.current.setView([lat, lng], 16); return; }
-                 }
-                 try {
-                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
-                     const data = await response.json();
-                     if (data && data.length > 0) {
-                         const { lat, lon } = data[0];
-                         mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 16);
-                     } else { alert("Location not found."); }
-                 } catch (error) { alert("Could not connect to the location service."); }
-             };
+        } else if (layerType === 'marker') {
+            const latLng = layer.getLatLng();
+            const newMarker = L.circleMarker(latLng, {
+                radius: 4,
+                className: 'biased-sample-marker'
+            });
+            
+            const newPoint = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+            const updatedPoints = [...plottedPoints, newPoint];
+            const popupContent = `<b>Sample Point #${updatedPoints.length}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
+            newMarker.bindPopup(popupContent);
+            
+            samplePointsLayerRef.current.addLayer(newMarker);
+            setPlottedPoints(updatedPoints);
+
+        } else {
+            drawnItemsRef.current.addLayer(layer);
+        }
+    };
+
+    const handleGenerateSamples = (pattern) => {
+        if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
         
+        // Clear only non-biased, non-origin markers before generating new ones
+        samplePointsLayerRef.current.eachLayer(layer => {
+            if (layer !== originMarkerRef.current && layer.options.className === 'grid-sample-marker') {
+                samplePointsLayerRef.current.removeLayer(layer);
+            }
+        });
+        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+        
+        const newPoints = [];
+        const latLngs = surveyUnitLayer.getLatLngs();
+        const bounds = surveyUnitLayer.getBounds();
+        if (pattern === 'random') {
+            while (newPoints.length < samplesToPlace) {
+               const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+               const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+               const point = { lat, lng };
+               if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
+           }
+        } else {
+           const polygonArea = calculatePolygonArea(latLngs);
+           const spacingMeters = Math.sqrt(polygonArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
+           const spacingLat = spacingMeters / 111320;
+           const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
+           const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
+           const randomLatOffset = Math.random() * spacingLat;
+           const randomLngOffset = Math.random() * spacingLng;
+           let row = 0;
+           for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth(); lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
+               const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
+               for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast(); lng += spacingLng) {
+                   const point = { lat, lng };
+                   if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
+               }
+               row++;
+           }
+        }
+        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+        const finalPoints = [...existingBiasedPoints, ...pointsWithTypes];
+        setPlottedPoints(finalPoints);
 
+        pointsWithTypes.forEach((point, index) => {
+           const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
+           const popupContent = `<b>Sample Point #${existingBiasedPoints.length + index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+           marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
+        });
+    };
+    
+    const handleExport = () => {
+        if (plottedPoints.length === 0 || !surveyUnitLayer) {
+            alert("Please draw a survey unit and place sample points before exporting.");
+            return;
+        }
+        const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+        const dataForExport = plottedPoints.map((point, index) => {
+            const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
+            const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
+            return { sampleNumber: index + 1, type: point.type, latitude: point.lat.toFixed(6), longitude: point.lng.toFixed(6), xDistance: xDistance.toFixed(2), yDistance: yDistance.toFixed(2) };
+        });
+        const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
+        const csvRows = [headers.join(',')];
+        dataForExport.forEach(row => { csvRows.push(Object.values(row).join(',')); });
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "survey_sample_points.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
+    const handleClearAll = () => {
+        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
+        setSurveyUnitLayer(null);
+        setSurveyUnitArea(0);
+        setPlottedPoints([]);
+    };
+    
+    const handleGoToLocation = async () => {
+        if (!locationInput.trim()) return;
+        const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
+        if (coordRegex.test(locationInput)) {
+            const [lat, lng] = locationInput.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) { mapRef.current.setView([lat, lng], 16); return; }
+        }
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const { lat, lon } = data[0];
+                mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 16);
+            } else { alert("Location not found."); }
+        } catch (error) { alert("Could not connect to the location service."); }
+    };
 
-     
-const handlePrintMap = () => {
-             if (!mapRef.current || !surveyUnitLayer) {
-                 alert("Please draw a survey unit on the map before generating a report.");
-                 return;
-             }
-             const center = mapRef.current.getCenter();
-             const zoom = mapRef.current.getZoom();
-             const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
-             const pointsData = plottedPoints;
-             const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
-             const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
-             let customMarkerStyles = '';
-             for (const sheet of document.styleSheets) {
-                 try {
-                     for (const rule of sheet.cssRules) {
-                         if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker') {
-                             customMarkerStyles += rule.cssText;
-                         }
-                     }
-                 } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
-             }
-             let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th></tr></thead><tbody>`;
-             pointsData.forEach((point, index) => {
-                 tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td></tr>`;
-             });
-             tableHtml += `</tbody></table>`;
+    const handlePrintMap = () => {
+        if (!mapRef.current || !surveyUnitLayer) {
+            alert("Please draw a survey unit on the map before generating a report.");
+            return;
+        }
+        const center = mapRef.current.getCenter();
+        const zoom = mapRef.current.getZoom();
+        const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
+        const pointsData = plottedPoints;
+        const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
+        const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
+        let customMarkerStyles = '';
+        for (const sheet of document.styleSheets) {
+            try {
+                for (const rule of sheet.cssRules) {
+                    if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker' || rule.selectorText === '.origin-sample-marker') {
+                        customMarkerStyles += rule.cssText;
+                    }
+                }
+            } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
+        }
+        const origin = surveyUnitLayer.getBounds().getSouthWest();
+        let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Lat</th><th>Lng</th><th>X (m)</th><th>Y (m)</th></tr></thead><tbody>`;
+        pointsData.forEach((point, index) => {
+            const yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
+            const xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
+            tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td><td>${xDist.toFixed(2)}</td><td>${yDist.toFixed(2)}</td></tr>`;
+        });
+        tableHtml += `</tbody><tfoot><tr class="footer-row"><td colspan="2">Origin (SW Corner)</td><td>${origin.lat.toFixed(6)}</td><td>${origin.lng.toFixed(6)}</td><td>0.00</td><td>0.00</td></tr></tfoot></table>`;
 
-             let activeLayerName = "Street Map";
-             if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
-                 activeLayerName = "Satellite";
-             }
-             
-             const reportWindow = window.open('', '_blank', 'height=800,width=1000');
-             reportWindow.document.write(`
-                 <html>
-                     <head>
-                         <title>Survey Unit Report</title>
-                         ${leafletCss} ${leafletDrawCss}
-                         <style>
-                             body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
-                             .report-container { max-width: 1200px; margin: auto; }
-                             h1, h2 { text-align: center; }
-                             #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
-                             .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
-                             .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
-                             .data-table th { background-color: #f1f5f9; font-weight: 600; }
-                             .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-                             .print-button:hover { background-color: #0369a1; }
-                             .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
-                             .summary-container div { font-size: 1.1em; color: #334155; }
-                             @media print { .print-button { display: none; } body { padding: 0; } }
-                             ${customMarkerStyles}
-                         </style>
-                     </head>
-                     <body>
-                         <button class="print-button" onclick="window.print()">Print Report</button>
-                         <div class="report-container">
-                             <h1>Survey Unit Report</h1>
-                             <div class="summary-container">
-                                 <div><strong>Survey Unit Class:</strong> ${surveyClass}</div>
-                                 <div><strong>Survey Unit Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
-                                 <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
-                             </div>
-                             <div id="print-map"></div>
-                             <h2>Sample Locations</h2>
-                             ${tableHtml}
-                         </div>
-                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
-                         <script>
-                             setTimeout(() => {
-                                 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '&copy; OpenStreetMap' });
-                                 const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Tiles &copy; Esri' });
-                                 const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
-                                 const defaultLayer = baseMaps['${activeLayerName}'];
-                                 const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
-                                 
-                                 // --- NEW: Add the North Arrow to the pop-up map ---
-                                 const NorthArrow = L.Control.extend({
-                                     options: { position: 'topright' },
-                                     onAdd: function (map) {
-                                         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                         container.style.backgroundColor = 'white';
-                                         container.style.width = '30px';
-                                         container.style.height = '30px';
-                                         container.style.display = 'flex';
-                                         container.style.alignItems = 'center';
-                                         container.style.justifyContent = 'center';
-                                         container.style.cursor = 'default';
-                                         container.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem; color: #374151;"><path d="${ICONS.northArrow}" /></svg>\`;
-                                         return container;
-                                     }
-                                 });
-                                 map.addControl(new NorthArrow());
-                                 // --------------------------------------------------
+        let activeLayerName = "Street Map";
+        if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
+            activeLayerName = "Satellite";
+        }
+        
+        const reportWindow = window.open('', '_blank', 'height=800,width=1000');
+        reportWindow.document.write(`
+            <html>
+                <head>
+                    <title>Survey Unit Report</title>
+                    ${leafletCss} ${leafletDrawCss}
+                    <style>
+                        body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
+                        .report-container { max-width: 1200px; margin: auto; } h1, h2 { text-align: center; }
+                        #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
+                        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
+                        .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
+                        .data-table th { background-color: #f1f5f9; font-weight: 600; }
+                        .data-table .footer-row { background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #cbd5e1; }
+                        .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+                        .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
+                        @media print { .print-button { display: none; } body { padding: 0; } }
+                        ${customMarkerStyles}
+                    </style>
+                </head>
+                <body>
+                    <button class="print-button" onclick="window.print()">Print Report</button>
+                    <div class="report-container">
+                        <h1>Survey Unit Report</h1>
+                        <div class="summary-container">
+                            <div><strong>Class:</strong> ${surveyClass}</div>
+                            <div><strong>Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
+                            <div><strong>Samples:</strong> ${pointsData.length}</div>
+                        </div>
+                        <div id="print-map"></div>
+                        <h2>Sample Locations</h2>
+                        ${tableHtml}
+                    </div>
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+                    <script>
+                        setTimeout(() => {
+                            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '&copy; OpenStreetMap' });
+                            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Tiles &copy; Esri' });
+                            const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
+                            const defaultLayer = baseMaps['${activeLayerName}'];
+                            const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
+                            const NorthArrow = L.Control.extend({ options: { position: 'topright' }, onAdd: function (map) { const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control'); c.style.backgroundColor = 'white'; c.style.width = '30px'; c.style.height = '30px'; c.style.display = 'flex'; c.style.alignItems = 'center'; c.style.justifyContent = 'center'; c.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;"><path d="${ICONS.northArrow}" /></svg>\`; return c; } });
+                            map.addControl(new NorthArrow());
+                            L.control.layers(baseMaps).addTo(map);
+                            L.control.scale({ imperial: true, metric: true }).addTo(map);
+                            L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}, { style: { color: '#3388ff' } }).addTo(map);
+                            const points = ${JSON.stringify(pointsData)};
+                            points.forEach(point => { L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map); });
+                            const originPoint = ${JSON.stringify(origin)};
+                            L.circleMarker([originPoint.lat, originPoint.lng], { radius: 6, className: 'origin-sample-marker' }).addTo(map);
+                        }, 100);
+                    <\/script>
+                </body>
+            </html>
+        `);
+        reportWindow.document.close();
+    };
+        
+    React.useEffect(() => {
+        if (mapRef.current) return;
+        
+        osmLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21 });
+        satelliteLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21 });
+        const baseMaps = { "Street Map": osmLayerRef.current, "Satellite": satelliteLayerRef.current };
+    
+        mapRef.current = L.map('marssim-map', { layers: [osmLayerRef.current] }).setView([37.207, -76.51], 13);
+        
+        drawnItemsRef.current = new L.FeatureGroup();
+        samplePointsLayerRef.current = new L.FeatureGroup();
+        mapRef.current.addLayer(drawnItemsRef.current);
+        mapRef.current.addLayer(samplePointsLayerRef.current);
 
-                                 L.control.layers(baseMaps).addTo(map);
-                                 L.control.scale({ imperial: true, metric: true }).addTo(map);
-                                 L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}, { style: { color: '#3388ff' } }).addTo(map);
-                                 const points = ${JSON.stringify(pointsData)};
-                                 points.forEach(point => {
-                                     L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map);
-                                 });
-                             }, 100);
-                         <\/script>
-                     </body>
-                 </html>
-             `);
-             reportWindow.document.close();
-         };
+        const drawControl = new L.Control.Draw({ edit: { featureGroup: drawnItemsRef.current }, draw: { polyline: false, polygon: { shapeOptions: { color: '#3388ff' } }, rectangle: { shapeOptions: { color: '#3388ff' } }, marker: true, circle: false, circlemarker: false } });
+        mapRef.current.addControl(drawControl);
 
+        const NorthArrow = L.Control.extend({ options: { position: 'topright' }, onAdd: function (map) { const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control'); c.style.backgroundColor = 'white'; c.style.width = '30px'; c.style.height = '30px'; c.style.display = 'flex'; c.style.alignItems = 'center'; c.style.justifyContent = 'center'; c.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;"><path d="${ICONS.northArrow}" /></svg>`; L.DomEvent.disableClickPropagation(c); return c; } });
+        mapRef.current.addControl(new NorthArrow());
+        
+        L.control.layers(baseMaps).addTo(mapRef.current);
+        L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
+        
+        const mousePositionControl = L.control({ position: 'bottomleft' });
+        mousePositionControl.onAdd = function (map) { this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition'); this.update('Mouse over map'); return this._div; };
+        mousePositionControl.update = function (text) { this._div.innerHTML = text; };
+        mousePositionControl.addTo(mapRef.current);
 
+        mapRef.current.on('mousemove', (e) => { mousePositionControl.update(`Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`); });
+        mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
+        mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
+    
+        return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+    }, []);
 
+    React.useEffect(() => {
+        if (isVisible && mapRef.current) {
+            setTimeout(() => mapRef.current.invalidateSize(), 100);
+        }
+    }, [isVisible]);
 
-         
-React.useEffect(() => {
-             if (mapRef.current) return;
-             
-             osmLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                 attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21
-             });
-             satelliteLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                 attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21
-             });
-             const baseMaps = { "Street Map": osmLayerRef.current, "Satellite": satelliteLayerRef.current };
-         
-             mapRef.current = L.map('marssim-map', { layers: [osmLayerRef.current] }).setView([37.207, -76.51], 13);
-             
-             drawnItemsRef.current = new L.FeatureGroup();
-             samplePointsLayerRef.current = new L.FeatureGroup();
-             mapRef.current.addLayer(drawnItemsRef.current);
-             mapRef.current.addLayer(samplePointsLayerRef.current);
+    React.useEffect(() => {
+        if (originMarkerRef.current) {
+            originMarkerRef.current.remove();
+            originMarkerRef.current = null;
+        }
+        if (surveyUnitLayer && samplePointsLayerRef.current) {
+            const originLatLng = surveyUnitLayer.getBounds().getSouthWest();
+            const originMarker = L.circleMarker(originLatLng, {
+                radius: 6,
+                className: 'origin-sample-marker'
+            });
+            originMarker.bindPopup(`<b>Survey Origin (SW Corner)</b><br>Lat: ${originLatLng.lat.toFixed(6)}<br>Lng: ${originLatLng.lng.toFixed(6)}`);
+            originMarker.addTo(samplePointsLayerRef.current);
+            originMarkerRef.current = originMarker;
+        }
+    }, [surveyUnitLayer]);
 
-             const drawControl = new L.Control.Draw({ 
-                edit: { featureGroup: drawnItemsRef.current }, 
-                draw: {
-                    polyline: { shapeOptions: { color: '#3388ff' }, showLength: true, metric: ['metres', 'kilometres'], feet: false, },
-                    polygon: { shapeOptions: { color: '#3388ff' }, showArea: true, metric: ['metres', 'kilometres'], feet: false, allowIntersection: false, drawError: { color: '#e1e100', message: '<strong>Error:</strong> Shape edges cannot cross!' }, },
-                    rectangle: { shapeOptions: { color: '#3388ff' }, showArea: true, metric: ['metres', 'kilometres'], feet: false, },
-                    marker: true, circle: false, circlemarker: false 
-                } 
-             });
-             mapRef.current.addControl(drawControl);
+    return (
+        <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
+                <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+                <div className="flex items-center gap-2">
+                    {surveyUnitLayer && (
+                        <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
+                            Zoom to Unit
+                        </button>
+                    )}
+                    <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
+                    <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
+                    <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
+                </div>
+            </div>
 
-             // --- SWAPPED: The North Arrow control is now added FIRST ---
-             const NorthArrow = L.Control.extend({
-                 options: {
-                     position: 'topright'
-                 },
-                 onAdd: function (map) {
-                     const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-                     container.style.backgroundColor = 'white';
-                     container.style.width = '30px';
-                     container.style.height = '30px';
-                     container.style.display = 'flex';
-                     container.style.alignItems = 'center';
-                     container.style.justifyContent = 'center';
-                     container.style.cursor = 'default';
-                     container.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem; color: #374151;"><path d="${ICONS.northArrow}" /></svg>`;
-                     L.DomEvent.disableClickPropagation(container);
-                     return container;
-                 }
-             });
-             mapRef.current.addControl(new NorthArrow());
-             
-             // The Layer Control is now added SECOND, so it appears below the arrow.
-             L.control.layers(baseMaps).addTo(mapRef.current);
-             
-             L.control.scale({ imperial: true, metric: true }).addTo(mapRef.current);
-             
-             const mousePositionControl = L.control({ position: 'bottomleft' });
-             mousePositionControl.onAdd = function (map) { this._div = L.DomUtil.create('div', 'leaflet-control-mouseposition'); this.update('Mouse over map'); return this._div; };
-             mousePositionControl.update = function (text) { this._div.innerHTML = text; };
-             mousePositionControl.addTo(mapRef.current);
+            <div className="flex gap-2 items-center mb-4">
+                <input type="text" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }} placeholder="Enter an address or lat,lng coordinates" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"/>
+                <button onClick={handleGoToLocation} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Go</button>
+            </div>
 
-             mapRef.current.on('mousemove', (e) => {
-                 const lat = e.latlng.lat.toFixed(6);
-                 const lng = e.latlng.lng.toFixed(6);
-                 mousePositionControl.update(`Lat: ${lat}, Lng: ${lng}`);
-             });
-             mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
-             mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
-         
-             return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
-         }, []);
+            <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Survey Unit Class</label>
+                    <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full text-center p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-semibold">
+                        <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
+                    </select>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
+                    <div className="relative flex items-center justify-center">
+                        <button onClick={() => setSamplesToPlace(prev => Math.max(0, prev - 1))} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-l-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">-</button>
+                        <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-20 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent border-y border-slate-200 dark:border-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                        <button onClick={() => setSamplesToPlace(prev => prev + 1)} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-r-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">+</button>
+                    </div>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
+                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
+                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
+                </div>
+            </div>
 
+            <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <button onClick={() => handleGenerateSamples('square')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
+                    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
+                    <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+                </div>
+            </div>
 
-         
-             React.useEffect(() => {
-                 if (isVisible && mapRef.current) {
-                     setTimeout(() => mapRef.current.invalidateSize(), 100);
-                 }
-             }, [isVisible]);
-         
-return (
-                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                     
-                     <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
-                         <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
-                         <div className="flex items-center gap-2">
-
-                             {/* --- NEW: The "Zoom to Unit" button --- */}
-                             {/* It only shows up if a survey unit has been drawn */}
-                             {surveyUnitLayer && (
-                                 <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
-                                     Zoom to Unit
-                                 </button>
-                             )}
-                             {/* ------------------------------------ */}
-
-                             <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
-                             <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
-                             <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
-                         </div>
-                     </div>
-         
-                     <div className="flex gap-2 items-center mb-4">
-                         <input type="text" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }} placeholder="Enter an address or lat,lng coordinates" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"/>
-                         <button onClick={handleGoToLocation} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Go</button>
-                     </div>
-         
-                     <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
-                     
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                             <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Survey Unit Class</label>
-                             <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full text-center p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-semibold">
-                                 <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
-                             </select>
-                         </div>
-                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                             <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
-                             <div className="relative flex items-center justify-center">
-                                 <button onClick={() => setSamplesToPlace(prev => Math.max(0, prev - 1))} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-l-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">-</button>
-                                 <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-20 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent border-y border-slate-200 dark:border-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                                 <button onClick={() => setSamplesToPlace(prev => prev + 1)} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-r-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">+</button>
-                             </div>
-                         </div>
-                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                             <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
-                             <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
-                         </div>
-                     </div>
-         
-                     <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                         <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                             <button onClick={() => handleGenerateSamples('square')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
-                             <button onClick={() => handleGenerateSamples('triangular')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
-                             <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
-                         </div>
-                     </div>
-         
-<div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                         <div className="flex justify-between items-center">
-                             <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
-                             <div className="flex items-center gap-4">
-                                 <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear All</button>
-                                 <button onClick={handlePrintMap} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">Print / Save as PDF</button>
-                             </div>
-                         </div>
-                         <div className="max-h-60 overflow-y-auto mt-2 pr-2">
-                             {plottedPoints.length > 0 ? (
-                                 // --- THIS TABLE IS NOW CENTERED ---
-                                 <table className="w-full text-sm text-center">
-                                     <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
-                                         <tr>
-                                             <th className="p-2 text-center">#</th>
-                                             <th className="p-2 text-center">Type</th>
-                                             <th className="p-2 text-center">Latitude</th>
-                                             <th className="p-2 text-center">Longitude</th>
-                                         </tr>
-                                     </thead>
-                                     <tbody>
-                                         {plottedPoints.map((point, index) => (
-                                             <tr key={index} className="border-b border-slate-200 dark:border-slate-700">
-                                                 <td className="p-2 font-medium">{index + 1}</td>
-                                                 <td className="p-2">{point.type}</td>
-                                                 <td className="p-2 font-mono">{point.lat.toFixed(6)}</td>
-                                                 <td className="p-2 font-mono">{point.lng.toFixed(6)}</td>
-                                             </tr>
-                                         ))}
-                                     </tbody>
-                                 </table>
-                             ) : (
-                                 <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p>
-                             )}
-                         </div>
-                     </div>
-                 </div>
-             );
-         };
-
+            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
+                    <div className="flex items-center gap-4">
+                        <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear All</button>
+                        <button onClick={handlePrintMap} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">Print / Save as PDF</button>
+                    </div>
+                </div>
+                <div className="max-h-60 overflow-y-auto mt-2 pr-2">
+                    {plottedPoints.length > 0 || surveyUnitLayer ? (
+                        <table className="w-full text-sm text-center">
+                            <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                               <tr>
+                                  <th className="p-2 text-center">#</th>
+                                   <th className="p-2 text-center">Type</th>
+                                   <th className="p-2 text-center">Latitude</th>
+                                   <th className="p-2 text-center">Longitude</th>
+                                   <th className="p-2 text-center">X (m)</th>
+                                   <th className="p-2 text-center">Y (m)</th>
+                               </tr>
+                            </thead>
+                            <tbody>
+                                {(() => {
+                                    const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+                                    return plottedPoints.map((point, index) => {
+                                        let xDist = 'N/A', yDist = 'N/A';
+                                        if (origin) {
+                                            yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng }).toFixed(2);
+                                            xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng }).toFixed(2);
+                                        }
+                                        return (
+                                            <tr key={index} className="border-b border-slate-200 dark:border-slate-700">
+                                                <td className="p-2 font-medium">{index + 1}</td>
+                                                <td className="p-2">{point.type}</td>
+                                                <td className="p-2 font-mono">{point.lat.toFixed(6)}</td>
+                                                <td className="p-2 font-mono">{point.lng.toFixed(6)}</td>
+                                                <td className="p-2 font-mono">{xDist}</td>
+                                                <td className="p-2 font-mono">{yDist}</td>
+                                            </tr>
+                                        );
+                                    });
+                                })()}
+                            </tbody>
+                            <tfoot>
+                                {(() => {
+                                    const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+                                    if (!origin) return null;
+                        
+                                    return (
+                                        <tr className="bg-slate-200 dark:bg-slate-700 font-semibold border-t-2 border-slate-300 dark:border-slate-600">
+                                            <td colSpan="2" className="p-2 text-left">Origin (SW Corner)</td>
+                                            <td className="p-2 font-mono">{origin.lat.toFixed(6)}</td>
+                                            <td className="p-2 font-mono">{origin.lng.toFixed(6)}</td>
+                                            <td className="p-2 font-mono">0.00</td>
+                                            <td className="p-2 font-mono">0.00</td>
+                                        </tr>
+                                    );
+                                })()}
+                            </tfoot>
+                        </table>
+                    ) : (
+                        <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 
 
