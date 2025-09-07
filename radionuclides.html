@@ -2653,60 +2653,59 @@ const Scratchpad = () => {
          * - Support for keyboard input for a more fluid user experience.
          */
          
-const ScientificCalculator = () => {
-             const [expression, setExpression] = React.useState('');
-             const [result, setResult] = React.useState('');
-             const [history, setHistory] = React.useState([]);
-             const [memory, setMemory] = React.useState(0);
+const ScientificCalculator = ({ calcState, setCalcState }) => {
+             const { expression, result, history, memory } = calcState;
              const { addToast } = useToast();
       
              const handleInput = (value) => {
-                setExpression(prev => (prev === '' && result && !isNaN(parseFloat(result)) ? result : prev) + value);
-                setResult('');
+                const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
+                setCalcState({ ...calcState, expression: newExpression, result: '' });
             };
              
-             const handleClear = () => { setExpression(''); setResult(''); };
-             const handleBackspace = () => setExpression(prev => prev.slice(0, -1));
+             const handleClear = () => setCalcState({ ...calcState, expression: '', result: '' });
+             const handleBackspace = () => setCalcState({ ...calcState, expression: expression.slice(0, -1) });
              
              const handleCalculate = () => {
                  if (!expression) return;
                  try {
                      const evalResult = math.evaluate(expression);
                      const resultStr = math.format(evalResult, { precision: 6 });
-                     setResult(resultStr);
-                     setHistory(prev => [`${expression} = ${resultStr}`, ...prev].slice(0, 5));
-                     setExpression('');
+                     setCalcState({
+                         ...calcState,
+                         result: resultStr,
+                         history: [`${expression} = ${resultStr}`, ...history].slice(0, 5),
+                         expression: ''
+                     });
                  } catch (e) {
-                     setResult(e.message || 'Error');
-                     setExpression('');
+                     setCalcState({ ...calcState, result: e.message || 'Error', expression: '' });
                  }
              };
              
-             const handleMemoryClear = () => { setMemory(0); addToast('Memory cleared'); };
-             const handleMemoryRecall = () => setExpression(prev => prev + memory.toString());
+             const handleMemoryClear = () => { setCalcState({ ...calcState, memory: 0 }); addToast('Memory cleared'); };
+             const handleMemoryRecall = () => setCalcState({ ...calcState, expression: expression + memory.toString() });
              
              const handleMemoryAdd = () => {
                  try {
-                     const currentValue = parseFloat(expression || '0');
+                     const currentValue = parseFloat(expression || result || '0');
                      if (isNaN(currentValue)) throw new Error();
                      const newMemory = memory + currentValue;
-                     setMemory(newMemory);
+                     setCalcState({ ...calcState, memory: newMemory });
                      addToast(`Added to memory. New value: ${newMemory}`);
-                 } catch { addToast('Invalid expression to add to memory'); }
+                 } catch { addToast('Invalid value to add to memory'); }
              };
              
              const handleConversion = (factor, fromUnit, toUnit) => {
                  try {
-                     const currentValue = parseFloat(expression || '0');
+                     const currentValue = parseFloat(expression || result || '0');
                      if (isNaN(currentValue)) throw new Error();
                      const convertedValue = currentValue * factor;
-                     setExpression(convertedValue.toString());
+                     setCalcState({ ...calcState, expression: convertedValue.toString(), result: '' });
                      addToast(`Converted to ${toUnit}`);
-                 } catch { setResult('Error'); setExpression(''); }
+                 } catch { setCalcState({ ...calcState, result: 'Error', expression: '' }); }
              };
              
              const handleConstant = (name, value) => {
-                 setExpression(prev => prev + value.toString());
+                 setCalcState({ ...calcState, expression: expression + value.toString() });
                  addToast(`${name} added`);
              };
              
@@ -2718,7 +2717,7 @@ const ScientificCalculator = () => {
                  if (key === 'Enter' || key === '=') { handleCalculate(); }
                  if (key === 'Backspace') { handleBackspace(); }
                  if (key === 'Escape') { handleClear(); }
-             }, []);
+             }, [expression, result, history, memory]); // Update dependencies
          
              const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
              const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
@@ -2866,286 +2865,259 @@ const ScientificCalculator = () => {
          
          const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
          
-         const getSourceLink = (sourceKey) => {
-         const source = sources[sourceKey];
-         return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
-         };
-         
-         const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
-         
-         // This line correctly handles strings, numbers, or a React component (like our clickable link).
-         
-         const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
-         
-         // This checks if we should add a unit suffix (e.g., "MeV")
-         
-         const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
-         
-         return (
-         <div className="flex items-start py-2">
-             {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
-             {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
-             {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
-             <div>
-                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-                 <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
-         
-         
-                     {displayValue}
-                     {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
-                     {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
-                 </p>
-             </div>
-         </div>
-         );
-         };
-         
-         if (isCompact) {
-         const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
-         const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
-         const compactCardJSX = (
-             <div
-                 onClick={() => onNuclideClick(nuclide)}
-                 className={`flex flex-col justify-between p-4 h-full bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
-             >
-                 <div>
-                     <div className="flex justify-between items-start">
-                         <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
-                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
-                     </div>
-                     <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
-                     <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
-                 </div>
-                 <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                     <span>{nuclide.category} - {nuclide.commonality}</span>
-                 </div>
-             </div>
-         );
-         return compactCardJSX;
-         }
-         
-         const isFavorite = favorites?.includes(nuclide.symbol);
-         const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
-         
-         return (
-         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
-         
-             <div className="flex justify-between items-start">
-                 <div className="flex items-center gap-2">
-                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                         <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-                             {nuclide.name}
-                         </a>
-                         ({nuclide.symbol})
-                     </h2>
-                     {nuclide.commonalityReason ? (
-                         <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
-                             <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
-                                 {nuclide.category} - {nuclide.commonality}
-                                 <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
-                             </span>
-                         </Tooltip>
-                     ) : (
-                         <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-                             {nuclide.category} - {nuclide.commonality}
-                         </span>
-                     )}
-                 </div>
-                 <div className="flex items-center gap-2 mt-1">
-                     {toggleFavorite && (
-                         <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
-                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                         </button>
-                     )}
-                 </div>
-             </div>
-         
-             <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
-                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
-         <DataPoint
-         label="Half-life"
-         value={<>{formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
-         sourceKey={nuclide.sourceRef?.halfLife}
-         iconPath={ICONS.hourglass}
-         />
-                     <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
-                 </div>
-                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
-                     <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
-                     <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
-                     {nuclide.gammaConstant && (
-                         <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
-                     )}
-                 </div>
-                 <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                     <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
-         
-         <DataPoint label="Parent" value={<ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.parent} />
-         <DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
-         
-                 </div>
-         
-         {nuclide.shipping && (
-         <div className="divide-y divide-slate-200 dark:divide-slate-700">
-         <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Transportation Limits</h3>
-         <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
-         <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
-         </div>
-         )}
-             </div>
-         
-             {/* ADDED: New Dosimetry section for the detailed view. */}
-         
-             {nuclide.dosimetry && (
-                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Internal Dosimetry <sup className="ml-1">{getSourceLink('10CFR20')}</sup></h3>
-                     <div className="grid md:grid-cols-2 gap-x-6">
-                         <div className="flex items-start py-2">
-                              <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
-                             <div>
-                                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
-         
-         <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-         {nuclide.dosimetry.ALI?.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
-         {nuclide.dosimetry.ALI?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
-         {nuclide.dosimetry.ALI?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
-         {nuclide.dosimetry.ALI?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
-         </ul>
-                             </div>
-                         </div>
-                         <div className="flex items-start py-2">
-                             <div className="w-5 mr-3 flex-shrink-0"></div> {/* Spacer for alignment */}
-                             <div>
-                                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Derived Air Concentration (DAC)</p>
-                                  <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-                                     {nuclide.dosimetry.DAC?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.DAC.inhalation_D.toExponential()} µCi/mL</li>}
-                                     {nuclide.dosimetry.DAC?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.DAC.inhalation_W.toExponential()} µCi/mL</li>}
-                                     {nuclide.dosimetry.DAC?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.DAC.inhalation_Y.toExponential()} µCi/mL</li>}
-                                 </ul>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             )}
-         
-             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
-                 <div className="space-y-4">
-                     <div>
-                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
-                         <div className="grid md:grid-cols-3 gap-4 mt-1">
-                             <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
-                             <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` (${nuclide.avgBetaEnergy} avg)` : ''}`} unit="MeV" iconSymbol="β"/>
-                             <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
-                         </div>
-                     </div>
-                     {nuclide.daughterEmissions && (
-                          <div className="animate-fade-in">
-                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                                 From Daughter (
-                                 <button
-                                     onClick={() => {
-                                         const daughter = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
-                                         if (daughter && onNuclideClick) onNuclideClick(daughter);
-                                     }}
-                                     className="text-sky-500 hover:underline font-semibold disabled:text-slate-400 disabled:no-underline"
-                                     disabled={!onNuclideClick}
-                                 >
-                                     {nuclide.daughterEmissions.from}
-                                 </button>
-                                 )
+             const getSourceLink = (sourceKey) => {
+                 const source = sources[sourceKey];
+                 return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
+             };
+             
+             const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol }) => {
+                 const displayValue = value && (typeof value === 'string' || typeof value === 'number' || React.isValidElement(value)) ? value : 'N/A';
+                 const shouldAppendUnit = unit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(unit.toLowerCase());
+                 
+                 return (
+                     <div className="flex items-start py-2">
+                         {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
+                         {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
+                         {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
+                         <div>
+                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+                             <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
+                                 {displayValue}
+                                 {shouldAppendUnit ? <span className="ml-1">{unit}</span> : ''}
+                                 {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
                              </p>
-                             <div className="grid md:grid-cols-3 gap-4 mt-1">
-                                 <DataPoint label="Alpha" value={(nuclide.daughterEmissions.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
-                                 <DataPoint label="Beta" value={(nuclide.daughterEmissions.beta || []).join(', ') || 'None'} unit="MeV" iconSymbol="β"/>
-                                 <DataPoint label="Gamma" value={(nuclide.daughterEmissions.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
+                         </div>
+                     </div>
+                 );
+             };
+             
+             if (isCompact) {
+                 const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
+                 const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
+                 const compactCardJSX = (
+                     <div
+                         onClick={() => onNuclideClick(nuclide)}
+                         className={`flex flex-col justify-between p-4 h-full bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
+                     >
+                         <div>
+                             <div className="flex justify-between items-start">
+                                 <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                             </div>
+                             <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, getBestHalfLifeUnit(parseHalfLifeToSeconds(nuclide.halfLife)))}</span></div>
+                             <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{(nuclide.emissionType || []).slice(0, 2).join(', ')}</span></div>
+                         </div>
+                         <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                             <span>{nuclide.category} - {nuclide.commonality}</span>
+                         </div>
+                     </div>
+                 );
+                 return compactCardJSX;
+             }
+             
+             const isFavorite = favorites?.includes(nuclide.symbol);
+             const hlCategory = getHalfLifeCategory(parseHalfLifeToSeconds(nuclide.halfLife));
+             
+             return (
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
+                     <div className="flex justify-between items-start">
+                         <div className="flex items-center gap-2">
+                             <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                                 <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                                     {nuclide.name}
+                                 </a>
+                                 ({nuclide.symbol})
+                             </h2>
+                             {nuclide.commonalityReason ? (
+                                 <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
+                                     <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
+                                         {nuclide.category} - {nuclide.commonality}
+                                         <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
+                                     </span>
+                                 </Tooltip>
+                             ) : (
+                                 <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
+                                     {nuclide.category} - {nuclide.commonality}
+                                 </span>
+                             )}
+                         </div>
+                         <div className="flex items-center gap-2 mt-1">
+                             {toggleFavorite && (
+                                 <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
+                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                 </button>
+                             )}
+                         </div>
+                     </div>
+                 
+                     <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
+                         <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                             <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
+                             <DataPoint
+                                 label="Half-life"
+                                 value={<>{formatHalfLife(nuclide.halfLife, displayHalfLifeUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
+                                 sourceKey={nuclide.sourceRef?.halfLife}
+                                 iconPath={ICONS.hourglass}
+                             />
+                             <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
+                         </div>
+                         <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                             <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
+                             <DataPoint label="Specific Activity" value={standardizeScientificDisplay(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} />
+                             <DataPoint label="Emission Type(s)" value={(nuclide.emissionType || []).join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
+                             {nuclide.gammaConstant && (
+                                 <DataPoint label="Gamma Constant" value={nuclide.gammaConstant} sourceKey={nuclide.sourceRef?.gammaConstant} />
+                             )}
+                         </div>
+                         <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                             <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
+                             <DataPoint label="Parent" value={<ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.parent} />
+                             <DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
+                         </div>
+                         {nuclide.shipping && (
+                             <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                                 <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Transportation Limits</h3>
+                                 <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
+                                 <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />
+                             </div>
+                         )}
+                     </div>
+                 
+                     {nuclide.dosimetry && (
+                         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Internal Dosimetry <sup className="ml-1">{getSourceLink('10CFR20')}</sup></h3>
+                             <div className="grid md:grid-cols-2 gap-x-6">
+                                 <div className="flex items-start py-2">
+                                      <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
+                                     <div>
+                                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
+                                         <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+                                             {nuclide.dosimetry.ALI?.ingestion && <li>Ingestion: {nuclide.dosimetry.ALI.ingestion} µCi</li>}
+                                             {nuclide.dosimetry.ALI?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.ALI.inhalation_D} µCi</li>}
+                                             {nuclide.dosimetry.ALI?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.ALI.inhalation_W} µCi</li>}
+                                             {nuclide.dosimetry.ALI?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.ALI.inhalation_Y} µCi</li>}
+                                         </ul>
+                                     </div>
+                                 </div>
+                                 <div className="flex items-start py-2">
+                                     <div className="w-5 mr-3 flex-shrink-0"></div> {/* Spacer for alignment */}
+                                     <div>
+                                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Derived Air Concentration (DAC)</p>
+                                          <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+                                             {nuclide.dosimetry.DAC?.inhalation_D && <li>Inhalation (Class D): {nuclide.dosimetry.DAC.inhalation_D.toExponential()} µCi/mL</li>}
+                                             {nuclide.dosimetry.DAC?.inhalation_W && <li>Inhalation (Class W): {nuclide.dosimetry.DAC.inhalation_W.toExponential()} µCi/mL</li>}
+                                             {nuclide.dosimetry.DAC?.inhalation_Y && <li>Inhalation (Class Y): {nuclide.dosimetry.DAC.inhalation_Y.toExponential()} µCi/mL</li>}
+                                         </ul>
+                                     </div>
+                                 </div>
                              </div>
                          </div>
                      )}
-                    
-                 </div>
-             </div>
-             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3>
-                 <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
-                     {(nuclide.commonUses || []).map((use, i) => <li key={i}>{use}</li>)}
-                 </ul>
-             </div>
-         
-             {HVL_DATA[nuclide.symbol] && (
-                 <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Shielding Data (HVL in cm)</h3>
-                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
-                         {Object.entries(HVL_DATA[nuclide.symbol]).map(([material, value]) => {
-                             if (material === 'sourceRef') return null;
-                             return (
-                                 <div key={material}>
-                                     <span className="font-semibold text-slate-500 dark:text-slate-400">{material}: </span>
-                                     <span className="text-slate-700 dark:text-slate-200">{value} cm</span>
+                 
+                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                         <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
+                         <div className="space-y-4">
+                             <div>
+                                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
+                                 <div className="grid md:grid-cols-3 gap-4 mt-1">
+                                     <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
+                                     <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` (${nuclide.avgBetaEnergy} avg)` : ''}`} unit="MeV" iconSymbol="β"/>
+                                     <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
                                  </div>
-                             );
-                         })}
+                             </div>
+                             {nuclide.daughterEmissions && (
+                                  <div className="animate-fade-in">
+                                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                         From Daughter (<ClickableNuclide text={nuclide.daughterEmissions.from} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />)
+                                     </p>
+                                     <div className="grid md:grid-cols-3 gap-4 mt-1">
+                                         <DataPoint label="Alpha" value={(nuclide.daughterEmissions.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
+                                         <DataPoint label="Beta" value={(nuclide.daughterEmissions.beta || []).join(', ') || 'None'} unit="MeV" iconSymbol="β"/>
+                                         <DataPoint label="Gamma" value={(nuclide.daughterEmissions.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
+                                     </div>
+                                 </div>
+                             )}
+                         </div>
                      </div>
-                 </div>
-             )}
-         
-             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                     <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
-                     <div className="flex flex-wrap justify-center gap-2">
-                         {showBackButton && (
-                             <Tooltip text="Go back to the previous view" widthClass="w-auto">
-                                 <button
-                                     onClick={onBackClick}
-                                     className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
-                                 >
-                                     <Icon path={ICONS.database} className="w-4 h-4" />
-                                     Back
-                                 </button>
-                             </Tooltip>
-                         )}
-                         <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
-                             <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                 <Icon path={ICONS.compare} className="w-4 h-4" /> Add to Compare
-                             </button>
-                         </Tooltip>
-                         <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
-                             <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                 <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
-                             </button>
-                         </Tooltip>
-                         {nuclide.gammaConstant && (
-                             <Tooltip text="Send this nuclide to the Dose Rate Calculator." widthClass="w-64">
-                                  <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                     <Icon path={ICONS.doseRate} className="w-4 h-4" /> Dose Rate
-                                 </button>
-                             </Tooltip>
-                         )}
-                         {nuclide.gammaConstant && (
-                             <Tooltip text="Send this nuclide to the Shielding Calculator." widthClass="w-64">
-                                  <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                     <Icon path={ICONS.shield} className="w-4 h-4" /> Shielding
-                                 </button>
-                             </Tooltip>
-                         )}
-                         {nuclide.shipping && (
-                             <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
-                                  <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                                     <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
-                                 </button>
-                             </Tooltip>
-                         )}
+                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                         <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3>
+                         <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
+                             {(nuclide.commonUses || []).map((use, i) => <li key={i}><ClickableNuclide text={use} radionuclides={radionuclides} onNuclideClick={onNuclideClick} /></li>)}
+                         </ul>
                      </div>
+                 
+                     {HVL_DATA[nuclide.symbol] && (
+                         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Shielding Data (HVL in cm)</h3>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                                 {Object.entries(HVL_DATA[nuclide.symbol]).map(([material, value]) => {
+                                     if (material === 'sourceRef') return null;
+                                     return (
+                                         <div key={material}>
+                                             <span className="font-semibold text-slate-500 dark:text-slate-400">{material}: </span>
+                                             <span className="text-slate-700 dark:text-slate-200">{value} cm</span>
+                                         </div>
+                                     );
+                                 })}
+                             </div>
+                         </div>
+                     )}
+                 
+                     <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Quick Actions</h3>
+                             <div className="flex flex-wrap justify-center gap-2">
+                                 {showBackButton && (
+                                     <Tooltip text="Go back to the previous view" widthClass="w-auto">
+                                         <button
+                                             onClick={onBackClick}
+                                             className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center justify-center gap-2"
+                                         >
+                                             <Icon path={ICONS.database} className="w-4 h-4" />
+                                             Back
+                                         </button>
+                                     </Tooltip>
+                                 )}
+                                 <Tooltip text="Add this nuclide to the comparison table." widthClass="w-64">
+                                     <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                         <Icon path={ICONS.compare} className="w-4 h-4" /> Add to Compare
+                                     </button>
+                                 </Tooltip>
+                                 <Tooltip text="Send this nuclide to the Decay Calculator." widthClass="w-64">
+                                     <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                         <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
+                                     </button>
+                                 </Tooltip>
+                                 {nuclide.gammaConstant && (
+                                     <Tooltip text="Send this nuclide to the Dose Rate Calculator." widthClass="w-64">
+                                          <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                             <Icon path={ICONS.doseRate} className="w-4 h-4" /> Dose Rate
+                                         </button>
+                                     </Tooltip>
+                                 )}
+                                 {nuclide.gammaConstant && (
+                                     <Tooltip text="Send this nuclide to the Shielding Calculator." widthClass="w-64">
+                                          <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                             <Icon path={ICONS.shield} className="w-4 h-4" /> Shielding
+                                         </button>
+                                     </Tooltip>
+                                 )}
+                                 {nuclide.shipping && (
+                                     <Tooltip text="Send this nuclide to the Shipping Calculator." widthClass="w-64">
+                                          <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                             <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
+                                         </button>
+                                     </Tooltip>
+                                 )}
+                             </div>
+                         </div>
+                 
+                     {nuclide.decaySeriesId && (
+                         <div className="mt-6 text-center">
+                             <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">View Full Decay Series</button>
+                         </div>
+                     )}
                  </div>
-         
-             {nuclide.decaySeriesId && (
-                 <div className="mt-6 text-center">
-                     <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold hover:bg-slate-800 transition">View Full Decay Series</button>
-                 </div>
-             )}
-         </div>
-         );
+             );
          };
          
          /**
@@ -6818,373 +6790,306 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
           */
          
          const App = () => {
-         const [activeView, setActiveView] = React.useState(VIEWS.HOME);
-	 
-	 const [showCalcPopout, setShowCalcPopout] = React.useState(false);
-
-	 const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
-           
-
-         const [result, setResult] = React.useState(null);
-         const [errorMessage, setErrorMessage] = React.useState('');
-         const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
-         const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
-         const [nuclideName, setNuclideName] = React.useState('');
-         const [suggestions, setSuggestions] = React.useState([]);
-         const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
-         const [isManualOpen, setIsManualOpen] = React.useState(false);
-         const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
-         const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
-         const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
-         const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-         const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
-         const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
-         const [randomSuggestions, setRandomSuggestions] = React.useState([]);
-
-
-         const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
-         const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
-         const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
-         const [selectedEmissionType, setSelectedEmissionType] = React.useState(() => localStorage.getItem('filterEmissionType') || 'All');
-         const [selectedCommonality, setSelectedCommonality] = React.useState(() => localStorage.getItem('filterCommonality') || 'All');
-         const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(() => localStorage.getItem('filterMinAlphaEnergy') || '');
-         const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState(() => localStorage.getItem('filterMaxAlphaEnergy') || '');
-         const [minBetaEnergy, setMinBetaEnergy] = React.useState(() => localStorage.getItem('filterMinBetaEnergy') || '');
-         const [maxBetaEnergy, setMaxBetaEnergy] = React.useState(() => localStorage.getItem('filterMaxBetaEnergy') || '');
-         const [minGammaEnergy, setMinGammaEnergy] = React.useState(() => localStorage.getItem('filterMinGammaEnergy') || '');
-         const [maxGammaEnergy, setMaxGammaEnergy] = React.useState(() => localStorage.getItem('filterMaxGammaEnergy') || '');
-         const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
-         const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
-         const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
-         
-         React.useEffect(() => {
-         const handleHashChange = () => {
-             const hash = window.location.hash.replace('#', '');
-             const validViews = Object.values(VIEWS);
-             let targetView = VIEWS.HOME;
-             if (hash && validViews.includes(hash)) {
-                 targetView = hash;
-             } else {
-                 history.replaceState(null, '', `#${VIEWS.HOME}`);
-             }
-             setActiveView(targetView);
-             setPreselectedNuclide(null);
-             if (targetView === VIEWS.HOME) {
-                 setResult(null); setNuclideName(''); setSuggestions([]); setErrorMessage('');
-             }
-         };
-         window.addEventListener('hashchange', handleHashChange);
-         handleHashChange();
-         return () => window.removeEventListener('hashchange', handleHashChange);
-         }, []);
-         
-         const mainContentRef = React.useRef(null);
-         const scrollPositionRef = React.useRef(0);
-         const inputRef = React.useRef(null);
-         const suggestionsRef = React.useRef(null);
-         const { addToast } = useToast();
-         
-         React.useEffect(() => {
-         const initialHash = window.location.hash.replace('#', '');
-         if (initialHash === VIEWS.HOME || initialHash === '') {
-         inputRef.current?.focus();
-         }
-         }, []);
-         
-         React.useEffect(() => {
-         if (sessionStorage.getItem('showResetToast') === 'true') {
-             addToast('All settings and saved data have been reset.');
-             sessionStorage.removeItem('showResetToast');
-         }
-         }, []);
-         
-         const scrollToMainContent = () => {
-         const isMobile = window.innerWidth < 768;
-         if (isMobile && mainContentRef.current) {
-             mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }
-         };
-         
-         const handleClearSearch = () => {
-         setNuclideName(''); setSuggestions([]); setResult(null); inputRef.current?.focus();
-         };
-         
-
-
-
-
-
-         const handleNavClick = (view, isPopOut = false) => {
-             if (view === VIEWS.SCIENTIFIC_CALCULATOR && isPopOut) {
-                 handlePopOutCalculator();
-                 return;
-             }
-
-         setResult(null);
-         window.location.hash = view;
-         scrollToMainContent();
-         if (view === VIEWS.HOME) { inputRef.current?.blur(); }
-         };
-         
-         const handleSendToCalculator = (viewId, nuclideSymbol) => {
-         setPreselectedNuclide(nuclideSymbol);
-         window.location.hash = viewId;
-         };
-         
-         const handleAddToCompare = (nuclideSymbol) => {
-         const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
-         if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
-             setComparisonList(prevList => [...prevList, nuclideToAdd]);
-             addToast(`${nuclideToAdd.name} added to comparison.`);
-         } else if (nuclideToAdd) {
-             addToast(`${nuclideToAdd.name} is already in the comparison.`);
-         }
-         window.location.hash = VIEWS.COMPARE;
-         };
-         
-         const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
-         const handleClearCompare = () => { setComparisonList([]); addToast('Comparison list cleared.'); };
-         
-         React.useEffect(() => {
-         localStorage.setItem('filterSortBy', sortBy);
-         localStorage.setItem('filterSortOrder', sortOrder);
-         localStorage.setItem('filterCategory', selectedCategory);
-         localStorage.setItem('filterEmissionType', selectedEmissionType);
-         localStorage.setItem('filterCommonality', selectedCommonality);
-         localStorage.setItem('filterMinAlphaEnergy', minAlphaEnergy);
-         localStorage.setItem('filterMaxAlphaEnergy', maxAlphaEnergy);
-         localStorage.setItem('filterMinBetaEnergy', minBetaEnergy);
-         localStorage.setItem('filterMaxBetaEnergy', maxBetaEnergy);
-         localStorage.setItem('filterMinGammaEnergy', minGammaEnergy);
-         localStorage.setItem('filterMaxGammaEnergy', maxGammaEnergy);
-         localStorage.setItem('filterMinHalfLife', minHalfLife);
-         localStorage.setItem('filterMaxHalfLife', maxHalfLife);
-         localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
-         }, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-         
-         React.useEffect(() => {
-         const root = window.document.documentElement;
-         root.classList.toggle('dark', theme === 'dark');
-         localStorage.setItem('theme', theme);
-         }, [theme]);
-         
-         React.useEffect(() => {
-         localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
-         }, [comparisonList]);
-         
-         React.useEffect(() => {
-         const handleClickOutside = (e) => {
-             if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
-                 setSuggestions([]);
-             }
-         };
-         document.addEventListener('mousedown', handleClickOutside);
-         return () => document.removeEventListener('mousedown', handleClickOutside);
-         }, []);
-         
-         React.useEffect(() => {
-         const common = radionuclides.filter(n => n.commonality === 'Common');
-         setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
-         }, []);
-         
-         const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
-         const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
-         const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
-         const getFilteredAndSortedRadionuclides = React.useCallback(() => {
-         let filtered = [...radionuclides];
-         if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
-         if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
-         if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
-         const filterByEnergyRange = (nuclide, type, min, max) => {
-             const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
-             if (energy === 0 && (min || max)) return false;
-             const minVal = parseFloat(min); const maxVal = parseFloat(max);
-             if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
-             if (!isNaN(minVal)) return energy >= minVal;
-             if (!isNaN(maxVal)) return energy <= maxVal;
-             return true;
-         };
-         if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
-         if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
-         if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
-         if (minHalfLife || maxHalfLife) {
-             const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-             const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
-             const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
-             filtered = filtered.filter(n => {
-                 const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
-                 if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false;
-                 const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
-                 const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
-                 return checkMin && checkMax;
+             const [activeView, setActiveView] = React.useState(VIEWS.HOME);
+             const [showCalcPopout, setShowCalcPopout] = React.useState(false);
+             const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
+             const [result, setResult] = React.useState(null);
+             const [errorMessage, setErrorMessage] = React.useState('');
+             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
+             const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
+             const [nuclideName, setNuclideName] = React.useState('');
+             const [suggestions, setSuggestions] = React.useState([]);
+             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
+             const [isManualOpen, setIsManualOpen] = React.useState(false);
+             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
+             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
+             const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
+             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
+             const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
+             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
+             
+             // NEW: Central state for the scientific calculator
+             const [scientificCalculatorState, setScientificCalculatorState] = React.useState({
+                 expression: '',
+                 result: '',
+                 history: [],
+                 memory: 0
              });
-         }
-         filtered.sort((a, b) => {
-             let compare = 0;
-             if (sortBy === 'name') compare = a.name.localeCompare(b.name);
-             else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
-             else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
-             else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
-             else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
-             return sortOrder === 'asc' ? compare : -compare;
-         });
-         return filtered;
-         }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-         const filteredList = getFilteredAndSortedRadionuclides();
-         const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-         const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
-         const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); window.location.hash = VIEWS.DECAY_SERIES; };
-         const toggleFavorite = (symbol) => { const nuclide = radionuclides.find(n => n.symbol === symbol); const isCurrentlyFavorite = favorites.includes(symbol); const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol]; setFavorites(newFavorites); localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites)); if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); } };
-         const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
-         const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
-         
-         const handleNuclideSelection = (nuclide) => {
-         setNuclideName(nuclide.name);
-         // Update the history first.
-         updateSearchHistory(nuclide);
-         
-         // Then, schedule the view switch. A tiny delay allows the history state
-         // update to process before the HomePage disappears.
-         setTimeout(() => {
-         setResult(nuclide);
-         }, 0);
-         
-         setSuggestions([]);
-         setErrorMessage('');
-         setCurrentDecaySeriesId(null);
-         setDisplayHalfLifeUnit(settings.halfLifeUnit);
-         };
-         
-         const handleNuclideNameChange = (e) => {
-         const value = e.target.value; setNuclideName(value);
-         if (value.length > 0) {
-             const normVal = normalizeString(value); const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
-             const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal)).sort((a, b) => { const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal); const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal); if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1; const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderB !== orderA) return orderB - orderA; return a.name.localeCompare(b.name); }).slice(0, 10);
-             setSuggestions(filtered);
-         } else { setSuggestions([]); setResult(null); }
-         };
-         const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
-         const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
-         const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
-         
-         const renderActiveView = () => {
-         if (result) {
-             return ( <div className="p-4"><NuclideCard nuclide={result} radionuclides={radionuclides} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} onNuclideClick={handleNuclideSelection} showBackButton={true} onBackClick={() => setResult(null)} /></div> );
-         }
-         const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
-         switch (activeView) {
-         
-             case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
+
+             const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
+             const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
+             const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
+             const [selectedEmissionType, setSelectedEmissionType] = React.useState(() => localStorage.getItem('filterEmissionType') || 'All');
+             const [selectedCommonality, setSelectedCommonality] = React.useState(() => localStorage.getItem('filterCommonality') || 'All');
+             const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(() => localStorage.getItem('filterMinAlphaEnergy') || '');
+             const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState(() => localStorage.getItem('filterMaxAlphaEnergy') || '');
+             const [minBetaEnergy, setMinBetaEnergy] = React.useState(() => localStorage.getItem('filterMinBetaEnergy') || '');
+             const [maxBetaEnergy, setMaxBetaEnergy] = React.useState(() => localStorage.getItem('filterMaxBetaEnergy') || '');
+             const [minGammaEnergy, setMinGammaEnergy] = React.useState(() => localStorage.getItem('filterMinGammaEnergy') || '');
+             const [maxGammaEnergy, setMaxGammaEnergy] = React.useState(() => localStorage.getItem('filterMaxGammaEnergy') || '');
+             const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
+             const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
+             const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
              
-             case  VIEWS.CALCULATOR: return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
-         
-             case VIEWS.MDA: return <MDACalculator />;
+             React.useEffect(() => {
+                 const handleHashChange = () => {
+                     const hash = window.location.hash.replace('#', '');
+                     const validViews = Object.values(VIEWS);
+                     let targetView = VIEWS.HOME;
+                     if (hash && validViews.includes(hash)) {
+                         targetView = hash;
+                     } else {
+                         history.replaceState(null, '', `#${VIEWS.HOME}`);
+                     }
+                     setActiveView(targetView);
+                     setPreselectedNuclide(null);
+                     if (targetView === VIEWS.HOME) {
+                         setResult(null); setNuclideName(''); setSuggestions([]); setErrorMessage('');
+                     }
+                 };
+                 window.addEventListener('hashchange', handleHashChange);
+                 handleHashChange();
+                 return () => window.removeEventListener('hashchange', handleHashChange);
+             }, []);
              
-         case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
-         
-             case VIEWS.WRS_TEST: return <WRS_Calculator />;
-             case VIEWS.EMC_TEST: return <EMC_Calculator />;
-         
-             case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
-         
-             case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
-         
-             case VIEWS.RADON: return <RadonCalculator />;
-             case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
-             case VIEWS.ACTIVITY_MASS: return <ActivityAndMassTools radionuclides={radionuclides} />;
-             case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-             case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-             case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-         
-         case VIEWS.MAP_TOOL: return <DrawingTool />;
-            
-         case  VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
+             const mainContentRef = React.useRef(null);
+             const scrollPositionRef = React.useRef(null);
+             const inputRef = React.useRef(null);
+             const suggestionsRef = React.useRef(null);
+             const { addToast } = useToast();
              
-             case VIEWS.OPERATIONAL_HP: return <OperationalHPCalculators radionuclides={radionuclides} />;
-         
-             case VIEWS.TRANSPORTATION: return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-             case VIEWS.CONVERTER: return <UnitConverter />;
-             case VIEWS.LAB_STATS: return <LabStatistics />;
-             case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
-             case VIEWS.SETTINGS: return <SettingsPanel />;
-             case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
-             case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
-             case  VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
-         
-             case VIEWS.SCRATCHPAD:
-                          return (
-                             <div className="p-4 animate-fade-in">
-                                 <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
-                                     <div className="flex justify-between items-center mb-4">
-                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
-                                         <Tooltip text="Open in New Window" widthClass="w-auto">
-                                             <button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                                 <Icon path={ICONS.popOut} className="w-5 h-5" />
-                                             </button>
-                                         </Tooltip>
+             React.useEffect(() => {
+                 const initialHash = window.location.hash.replace('#', '');
+                 if (initialHash === VIEWS.HOME || initialHash === '') {
+                     inputRef.current?.focus();
+                 }
+             }, []);
+             
+             React.useEffect(() => {
+                 if (sessionStorage.getItem('showResetToast') === 'true') {
+                     addToast('All settings and saved data have been reset.');
+                     sessionStorage.removeItem('showResetToast');
+                 }
+             }, []);
+             
+             const scrollToMainContent = () => {
+                 const isMobile = window.innerWidth < 768;
+                 if (isMobile && mainContentRef.current) {
+                     mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 }
+             };
+             
+             const handleClearSearch = () => {
+                 setNuclideName(''); setSuggestions([]); setResult(null); inputRef.current?.focus();
+             };
+
+             const handleNavClick = (view) => {
+                 setResult(null);
+                 window.location.hash = view;
+                 scrollToMainContent();
+                 if (view === VIEWS.HOME) { inputRef.current?.blur(); }
+             };
+             
+             const handleSendToCalculator = (viewId, nuclideSymbol) => {
+                 setPreselectedNuclide(nuclideSymbol);
+                 window.location.hash = viewId;
+             };
+             
+             const handleAddToCompare = (nuclideSymbol) => {
+                 const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
+                 if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
+                     setComparisonList(prevList => [...prevList, nuclideToAdd]);
+                     addToast(`${nuclideToAdd.name} added to comparison.`);
+                 } else if (nuclideToAdd) {
+                     addToast(`${nuclideToAdd.name} is already in the comparison.`);
+                 }
+                 window.location.hash = VIEWS.COMPARE;
+             };
+             
+             const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
+             const handleClearCompare = () => { setComparisonList([]); addToast('Comparison list cleared.'); };
+             
+             React.useEffect(() => {
+                 localStorage.setItem('filterSortBy', sortBy);
+                 localStorage.setItem('filterSortOrder', sortOrder);
+                 localStorage.setItem('filterCategory', selectedCategory);
+                 localStorage.setItem('filterEmissionType', selectedEmissionType);
+                 localStorage.setItem('filterCommonality', selectedCommonality);
+                 localStorage.setItem('filterMinAlphaEnergy', minAlphaEnergy);
+                 localStorage.setItem('filterMaxAlphaEnergy', maxAlphaEnergy);
+                 localStorage.setItem('filterMinBetaEnergy', minBetaEnergy);
+                 localStorage.setItem('filterMaxBetaEnergy', maxBetaEnergy);
+                 localStorage.setItem('filterMinGammaEnergy', minGammaEnergy);
+                 localStorage.setItem('filterMaxGammaEnergy', maxGammaEnergy);
+                 localStorage.setItem('filterMinHalfLife', minHalfLife);
+                 localStorage.setItem('filterMaxHalfLife', maxHalfLife);
+                 localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
+             }, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
+             
+             React.useEffect(() => {
+                 const root = window.document.documentElement;
+                 root.classList.toggle('dark', theme === 'dark');
+                 localStorage.setItem('theme', theme);
+             }, [theme]);
+             
+             React.useEffect(() => {
+                 localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
+             }, [comparisonList]);
+             
+             React.useEffect(() => {
+                 const handleClickOutside = (e) => {
+                     if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
+                         setSuggestions([]);
+                     }
+                 };
+                 document.addEventListener('mousedown', handleClickOutside);
+                 return () => document.removeEventListener('mousedown', handleClickOutside);
+             }, []);
+             
+             React.useEffect(() => {
+                 const common = radionuclides.filter(n => n.commonality === 'Common');
+                 setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
+             }, []);
+             
+             const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
+             const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
+             const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
+             const getFilteredAndSortedRadionuclides = React.useCallback(() => {
+                 let filtered = [...radionuclides];
+                 if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
+                 if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
+                 if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
+                 const filterByEnergyRange = (nuclide, type, min, max) => {
+                     const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
+                     if (energy === 0 && (min || max)) return false;
+                     const minVal = parseFloat(min); const maxVal = parseFloat(max);
+                     if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
+                     if (!isNaN(minVal)) return energy >= minVal;
+                     if (!isNaN(maxVal)) return energy <= maxVal;
+                     return true;
+                 };
+                 if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
+                 if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
+                 if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
+                 if (minHalfLife || maxHalfLife) {
+                     const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+                     const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+                     const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+                     filtered = filtered.filter(n => {
+                         const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
+                         if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false;
+                         const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
+                         const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
+                         return checkMin && checkMax;
+                     });
+                 }
+                 filtered.sort((a, b) => {
+                     let compare = 0;
+                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
+                     else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
+                     else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
+                     else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
+                     else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
+                     return sortOrder === 'asc' ? compare : -compare;
+                 });
+                 return filtered;
+             }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
+             const filteredList = getFilteredAndSortedRadionuclides();
+             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
+             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); window.location.hash = VIEWS.DECAY_SERIES; };
+             const toggleFavorite = (symbol) => { const nuclide = radionuclides.find(n => n.symbol === symbol); const isCurrentlyFavorite = favorites.includes(symbol); const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol]; setFavorites(newFavorites); localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites)); if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); } };
+             const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
+             const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
+             
+             const handleNuclideSelection = (nuclide) => {
+                 setNuclideName(nuclide.name);
+                 updateSearchHistory(nuclide);
+                 setTimeout(() => { setResult(nuclide); }, 0);
+                 setSuggestions([]);
+                 setErrorMessage('');
+                 setCurrentDecaySeriesId(null);
+                 setDisplayHalfLifeUnit(settings.halfLifeUnit);
+             };
+             
+             const handleNuclideNameChange = (e) => {
+                 const value = e.target.value; setNuclideName(value);
+                 if (value.length > 0) {
+                     const normVal = normalizeString(value); const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
+                     const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal)).sort((a, b) => { const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal); const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal); if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1; const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderB !== orderA) return orderB - orderA; return a.name.localeCompare(b.name); }).slice(0, 10);
+                     setSuggestions(filtered);
+                 } else { setSuggestions([]); setResult(null); }
+             };
+             const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
+             const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
+             const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
+             
+             const renderActiveView = () => {
+                 if (result) {
+                     return ( <div className="p-4"><NuclideCard nuclide={result} radionuclides={radionuclides} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} onNuclideClick={handleNuclideSelection} showBackButton={true} onBackClick={() => setResult(null)} /></div> );
+                 }
+                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
+                 switch (activeView) {
+                     case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
+                     case VIEWS.CALCULATOR: return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
+                     case VIEWS.MDA: return <MDACalculator />;
+                     case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
+                     case VIEWS.WRS_TEST: return <WRS_Calculator />;
+                     case VIEWS.EMC_TEST: return <EMC_Calculator />;
+                     case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
+                     case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
+                     case VIEWS.RADON: return <RadonCalculator />;
+                     case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
+                     case VIEWS.ACTIVITY_MASS: return <ActivityAndMassTools radionuclides={radionuclides} />;
+                     case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                     case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                     case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                     case VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
+                     case VIEWS.OPERATIONAL_HP: return <OperationalHPCalculators radionuclides={radionuclides} />;
+                     case VIEWS.TRANSPORTATION: return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+                     case VIEWS.CONVERTER: return <UnitConverter />;
+                     case VIEWS.LAB_STATS: return <LabStatistics />;
+                     case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
+                     case VIEWS.SETTINGS: return <SettingsPanel />;
+                     case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
+                     case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
+                     case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
+                     case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
+                     case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
+                     case VIEWS.REFERENCES: return <ReferencesPage />;
+                     case VIEWS.HOME: default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
+                 }
+             };
+             
+             return (
+                 <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
+                     <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
+                         <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
+                         <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
+                         <MainNav activeView={activeView} onNavClick={handleNavClick} />
+                         <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
+                         <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
+                             <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
+                             <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
+                         </footer>
+                         <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+             
+                         {showCalcPopout && (
+                             <PopoutWindow 
+                                 title="Scientific Calculator" 
+                                 onClose={() => setShowCalcPopout(false)}
+                                 height={850}
+                             >
+                                 <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+                                     <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
+                                         <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
                                      </div>
-                                     <Scratchpad />
                                  </div>
-                             </div>
-                         );
-
-    case VIEWS.SCIENTIFIC_CALCULATOR:
-        return (
-            <div className="p-4 animate-fade-in">
-                <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                    {/* The header with title and pop-out button is now controlled here */}
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2>
-                        <Tooltip text="Open in New Window" widthClass="w-auto">
-                            <button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                <Icon path={ICONS.popOut} className="w-5 h-5" />
-                            </button>
-                        </Tooltip>
-                    </div>
-                    {/* The calculator now renders its content directly inside this container */}
-                    <ScientificCalculator />
-                </div>
-            </div>
-        );
-
-             case VIEWS.REFERENCES: return <ReferencesPage />;
-         
-             case VIEWS.HOME:
-             default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;         }
-         };
-         
-         return (
-         <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
-             <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
-                 <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
-                 <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-                 
-		 <MainNav activeView={activeView} onNavClick={(view, isPopOut) => handleNavClick(view, isPopOut)} />
-
-                 <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
-                 <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-                     <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
-                     <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
-                 </footer>
-                 <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-             
-
-             {showCalcPopout && (
-                 <PopoutWindow 
-                     title="Scientific Calculator" 
-                     onClose={() => setShowCalcPopout(false)}
-                     height={850}
-                 >
-                     <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-                         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
-                             <ScientificCalculator />
-                         </div>
-                     </div>
-                 </PopoutWindow>
-             )}
-
-
+                             </PopoutWindow>
+                         )}
+                         
                          {showScratchpadPopout && (
                              <PopoutWindow 
                                  title="Scratchpad" 
@@ -7202,14 +7107,10 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
                                  </div>
                              </PopoutWindow>
                          )}
-
-	     </div>
-         </div>
-         );
+                     </div>
+                 </div>
+             );
          };
-        
-
-
 
 
  
