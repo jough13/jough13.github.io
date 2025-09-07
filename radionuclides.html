@@ -3698,89 +3698,207 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
           * @param {{radionuclides: Array<object>}} props - The full list of radionuclide data.
           */
          
-          const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
-          const [activeCalculator, setActiveCalculator] = React.useState('standard');
+const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuclide, initialActivity, setInitialActivity, initialUnit, setInitialUnit, finalActivity, setFinalActivity, finalUnit, setFinalUnit, result, setResult, error, setError }) => {
+             const { addHistory } = useCalculationHistory();
+             const nuclidesWithHalfLife = React.useMemo(() => radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+             
+             // This constant is now defined in the parent DecayTools component
+             const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1, 'dps': 1 / 3.7e10, 'dpm': 1 / (3.7e10 * 60) };
+
+             React.useEffect(() => {
+                 try {
+                     setError('');
+                     if (!selectedNuclide) { setResult(null); return; }
+                     
+                     const A0 = parseFloat(initialActivity);
+                     const Af = parseFloat(finalActivity);
+                     
+                     if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af < 0) {
+                         if (initialActivity && finalActivity) setError("Activities must be positive numbers.");
+                         setResult(null); return;
+                     }
+                     
+                     const A0_Bq = A0 * (activityFactorsCi[initialUnit] * 3.7e10);
+                     const Af_Bq = Af * (activityFactorsCi[finalUnit] * 3.7e10);
+                     
+                     if (Af_Bq >= A0_Bq) {
+                         setError("Final activity must be less than initial activity.");
+                         setResult(null); return;
+                     }
+                     
+                     const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+                     const lambda = Math.log(2) / T_half_seconds;
+                     
+                     const time_seconds = (-1 / lambda) * Math.log(Af_Bq / A0_Bq);
+                     const num_half_lives = time_seconds / T_half_seconds;
+                     
+                     const bestUnit = getBestHalfLifeUnit(time_seconds);
+                     const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+                     const time_in_best_unit = time_seconds / unitConversions[bestUnit];
+                     
+                     setResult({
+                         time: time_in_best_unit.toPrecision(4),
+                         unit: bestUnit,
+                         halfLives: num_half_lives.toFixed(2)
+                     });
+                 } catch (e) {
+                     setError(e.message || "Calculation failed.");
+                     setResult(null);
+                 }
+             }, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit]);
+
+             React.useEffect(() => {
+                 if (result && selectedNuclide) {
+                    addHistory({ id: Date.now(), type: 'Decay to Limit', icon: ICONS.stopwatch, inputs: `${initialActivity} ${initialUnit} ${selectedNuclide.symbol} to ${finalActivity} ${finalUnit}`, result: `${result.time} ${result.unit}`, view: VIEWS.CALCULATOR });
+                 }
+             }, [result]);
+
+             return (
+                 <div className="space-y-4">
+                     <p className="text-sm text-slate-600 dark:text-slate-400">Calculates time required to decay to a specified activity level.</p>
+                     <div>
+                         <label className="text-sm font-medium">Radionuclide</label>
+                         <div className="mt-1 min-h-[42px]">
+                             {selectedNuclide ? 
+                                 <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setSelectedNuclide(null)} /> :
+                                 <SearchableSelect options={nuclidesWithHalfLife} onSelect={(symbol) => setSelectedNuclide(radionuclides.find(n => n.symbol === symbol))} placeholder="Search for a radionuclide..." />
+                             }
+                         </div>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                             <label className="block text-sm font-medium">Initial Activity</label>
+                             <div className="flex">
+                                 <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                 <select value={initialUnit} onChange={e => setInitialUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium">Final (Target) Activity</label>
+                             <div className="flex">
+                                 <input type="number" value={finalActivity} onChange={e => setFinalActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                 <select value={finalUnit} onChange={e => setFinalUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                     </div>
+                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                     {result && (
+                         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                             <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to Decay</p>
+                             <div className="flex items-center justify-center">
+                                 <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.time}</p>
+                                 <CopyButton textToCopy={result.time} />
+                             </div>
+                             <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p>
+                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">({result.halfLives} half-lives)</p>
+                         </div>
+                     )}
+                 </div>
+             );
+         };
          
-          const { settings } = React.useContext(SettingsContext);
-          const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState('');
-          const [corr_originalActivity, setCorr_originalActivity] = React.useState('10');
-          const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState('mCi');
-          const getTodayString = () => new Date().toISOString().split('T')[0];
-          const [corr_originalDate, setCorr_originalDate] = React.useState('2020-01-01');
-          const [corr_targetDate, setCorr_targetDate] = React.useState(getTodayString());
-          const [std_selectedNuclide, setStd_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
-          const [std_calculationMode, setStd_calculationMode] = React.useState(() => localStorage.getItem('decayCalc_mode') || 'findRemaining');
-          const [std_initialActivity, setStd_initialActivity] = React.useState(() => localStorage.getItem('decayCalc_initialActivity') || '100');
-          const [std_initialDaughterActivity, setStd_initialDaughterActivity] = React.useState(() => localStorage.getItem('decayCalc_initialDaughterActivity') || '0');
-          const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
-          const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
-          const [std_timeUnit, setStd_timeUnit] = React.useState(() => localStorage.getItem('decayCalc_timeUnit') || 'days');
-          const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || settings.chartScale === 'Logarithmic');
-         
-          const handleCorrectionClear = () => {
-              setCorr_nuclideSymbol('');
-              setCorr_originalActivity('10');
-              setCorr_originalActivityUnit('mCi');
-              setCorr_originalDate('2020-01-01');
-              setCorr_targetDate(getTodayString());
-          };
-          
-          const handleStandardClear = () => {
-              setStd_selectedNuclide(null);
-              setStd_calculationMode('findRemaining');
-              setStd_initialActivity('100');
-              setStd_initialDaughterActivity('0');
-              setStd_remainingActivity('');
-              setStd_timeElapsed('1');
-              setStd_timeUnit('days');
-              setStd_useLogScale(settings.chartScale === 'Logarithmic');
-          };
-          
-          const handleClearActiveCalculator = () => {
-              if (activeCalculator === 'standard') {
-                  handleStandardClear();
-              } else {
-                  handleCorrectionClear();
-              }
-          };
-         
-          return (
-              <div className="p-4 animate-fade-in">
-                  <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                      <div className="flex justify-between items-center mb-4">
-                          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Decay Tools</h2>
-                          <ClearButton onClick={handleClearActiveCalculator} />
-                      </div>
-                      <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
-                          <button onClick={() => setActiveCalculator('standard')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${ activeCalculator === 'standard' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Standard Decay</button>
-                          <button onClick={() => setActiveCalculator('correction')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${ activeCalculator === 'correction' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Source Correction</button>
-                      </div>
-                      {activeCalculator === 'standard' ? 
-                          <StandardDecayCalculator 
-                              radionuclides={radionuclides}
-                              preselectedNuclide={preselectedNuclide}
-                              selectedNuclide={std_selectedNuclide} setSelectedNuclide={setStd_selectedNuclide}
-                              calculationMode={std_calculationMode} setCalculationMode={setStd_calculationMode}
-                              initialActivity={std_initialActivity} setInitialActivity={setStd_initialActivity}
-                              initialDaughterActivity={std_initialDaughterActivity} setInitialDaughterActivity={setStd_initialDaughterActivity}
-                              remainingActivity={std_remainingActivity} setRemainingActivity={setStd_remainingActivity}
-                              timeElapsed={std_timeElapsed} setTimeElapsed={setStd_timeElapsed}
-                              timeUnit={std_timeUnit} setTimeUnit={setStd_timeUnit}
-                              useLogScale={std_useLogScale} setUseLogScale={setStd_useLogScale}
-                              theme={theme}
-                          /> : 
-                          <SourceCorrectionCalculator
-                              radionuclides={radionuclides}
-                              nuclideSymbol={corr_nuclideSymbol} setNuclideSymbol={setCorr_nuclideSymbol}
-                              originalActivity={corr_originalActivity} setOriginalActivity={setCorr_originalActivity}
-                              originalActivityUnit={corr_originalActivityUnit} setOriginalActivityUnit={setCorr_originalActivityUnit}
-                              originalDate={corr_originalDate} setOriginalDate={setCorr_originalDate}
-                              targetDate={corr_targetDate} setTargetDate={setCorr_targetDate}
-                          />
-                      }
-                  </div>
-              </div>
-          );
+         const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
+             const [activeCalculator, setActiveCalculator] = React.useState('standard');
+             const { settings } = React.useContext(SettingsContext);
+             
+             // State for Standard Decay
+             const [std_selectedNuclide, setStd_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
+             const [std_calculationMode, setStd_calculationMode] = React.useState(() => localStorage.getItem('decayCalc_mode') || 'findRemaining');
+             const [std_initialActivity, setStd_initialActivity] = React.useState(() => localStorage.getItem('decayCalc_initialActivity') || '100');
+             const [std_initialDaughterActivity, setStd_initialDaughterActivity] = React.useState(() => localStorage.getItem('decayCalc_initialDaughterActivity') || '0');
+             const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
+             const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
+             const [std_timeUnit, setStd_timeUnit] = React.useState(() => localStorage.getItem('decayCalc_timeUnit') || 'days');
+             const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || settings.chartScale === 'Logarithmic');
+             
+             // State for Source Correction
+             const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState('');
+             const [corr_originalActivity, setCorr_originalActivity] = React.useState('10');
+             const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState('mCi');
+             const getTodayString = () => new Date().toISOString().split('T')[0];
+             const [corr_originalDate, setCorr_originalDate] = React.useState('2020-01-01');
+             const [corr_targetDate, setCorr_targetDate] = React.useState(getTodayString());
+
+             // State for Decay to Limit
+             const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(null);
+             const [dtl_initialActivity, setDtl_initialActivity] = React.useState('10');
+             const [dtl_initialUnit, setDtl_initialUnit] = React.useState('mCi');
+             const [dtl_finalActivity, setDtl_finalActivity] = React.useState('0.001');
+             const [dtl_finalUnit, setDtl_finalUnit] = React.useState('mCi');
+             const [dtl_result, setDtl_result] = React.useState(null);
+             const [dtl_error, setDtl_error] = React.useState('');
+             
+             // --- Clear Logic ---
+             const handleStandardClear = () => {
+                 setStd_selectedNuclide(null); setStd_calculationMode('findRemaining'); setStd_initialActivity('100');
+                 setStd_initialDaughterActivity('0'); setStd_remainingActivity(''); setStd_timeElapsed('1');
+                 setStd_timeUnit('days'); setStd_useLogScale(settings.chartScale === 'Logarithmic');
+             };
+             const handleCorrectionClear = () => {
+                 setCorr_nuclideSymbol(''); setCorr_originalActivity('10'); setCorr_originalActivityUnit('mCi');
+                 setCorr_originalDate('2020-01-01'); setCorr_targetDate(getTodayString());
+             };
+             const handleDecayToLimitClear = () => {
+                 setDtl_selectedNuclide(null); setDtl_initialActivity('10'); setDtl_initialUnit('mCi');
+                 setDtl_finalActivity('0.001'); setDtl_finalUnit('mCi'); setDtl_result(null); setDtl_error('');
+             };
+             const handleClearActiveCalculator = () => {
+                 if (activeCalculator === 'standard') handleStandardClear();
+                 else if (activeCalculator === 'correction') handleCorrectionClear();
+                 else handleDecayToLimitClear();
+             };
+             
+             return (
+                 <div className="p-4 animate-fade-in">
+                     <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                         <div className="flex justify-between items-center mb-4">
+                             <h2 className="text-xl font-bold text-slate-800 dark:text-white">Decay Tools</h2>
+                             <ClearButton onClick={handleClearActiveCalculator} />
+                         </div>
+                         <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
+                             <button onClick={() => setActiveCalculator('standard')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'standard' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Standard</button>
+                             <button onClick={() => setActiveCalculator('correction')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'correction' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Correction</button>
+                             <button onClick={() => setActiveCalculator('toLimit')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'toLimit' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>To Limit</button>
+                         </div>
+                         {activeCalculator === 'standard' && 
+                             <StandardDecayCalculator 
+                                 radionuclides={radionuclides} preselectedNuclide={preselectedNuclide}
+                                 selectedNuclide={std_selectedNuclide} setSelectedNuclide={setStd_selectedNuclide}
+                                 calculationMode={std_calculationMode} setCalculationMode={setStd_calculationMode}
+                                 initialActivity={std_initialActivity} setInitialActivity={setStd_initialActivity}
+                                 initialDaughterActivity={std_initialDaughterActivity} setInitialDaughterActivity={setStd_initialDaughterActivity}
+                                 remainingActivity={std_remainingActivity} setRemainingActivity={setStd_remainingActivity}
+                                 timeElapsed={std_timeElapsed} setTimeElapsed={setStd_timeElapsed}
+                                 timeUnit={std_timeUnit} setTimeUnit={setStd_timeUnit}
+                                 useLogScale={std_useLogScale} setUseLogScale={setStd_useLogScale}
+                                 theme={theme}
+                             />
+                         }
+                         {activeCalculator === 'correction' && 
+                             <SourceCorrectionCalculator
+                                 radionuclides={radionuclides}
+                                 nuclideSymbol={corr_nuclideSymbol} setNuclideSymbol={setCorr_nuclideSymbol}
+                                 originalActivity={corr_originalActivity} setOriginalActivity={setCorr_originalActivity}
+                                 originalActivityUnit={corr_originalActivityUnit} setOriginalActivityUnit={setCorr_originalActivityUnit}
+                                 originalDate={corr_originalDate} setOriginalDate={setCorr_originalDate}
+                                 targetDate={corr_targetDate} setTargetDate={setCorr_targetDate}
+                             />
+                         }
+                         {activeCalculator === 'toLimit' &&
+                             <DecayToLimitCalculator
+                                radionuclides={radionuclides}
+                                selectedNuclide={dtl_selectedNuclide} setSelectedNuclide={setDtl_selectedNuclide}
+                                initialActivity={dtl_initialActivity} setInitialActivity={setDtl_initialActivity}
+                                initialUnit={dtl_initialUnit} setInitialUnit={setDtl_initialUnit}
+                                finalActivity={dtl_finalActivity} setFinalActivity={setDtl_finalActivity}
+                                finalUnit={dtl_finalUnit} setFinalUnit={setDtl_finalUnit}
+                                result={dtl_result} setResult={setDtl_result}
+                                error={dtl_error} setError={setDtl_error}
+                             />
+                         }
+                     </div>
+                 </div>
+             );
          };
          
          // This component is a source correction calculator that computes the activity of a radioactive source on a future date by applying the principle of radioactive decay. It requires the original activity, the calibration date, and the radionuclide's half-life to perform the calculation.
@@ -4185,170 +4303,242 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
          
          // ## The New Parent Component ##
          
+         const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, staticData, setStaticData, wipeGrossCpm, setWipeGrossCpm, wipeBackgroundCpm, setWipeBackgroundCpm, instrumentEff, setInstrumentEff, smearEff, setSmearEff, result, setResult, error, setError }) => {
+             const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+             const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+             const PROBE_AREA_CM2 = 100;
+
+             React.useEffect(() => {
+                 try {
+                     setError('');
+                     if (!selectedNuclide) { setResult(null); return; }
+         
+                     const staticPoints = staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+                     const wipeGross = parseFloat(wipeGrossCpm);
+                     const wipeBkg = parseFloat(wipeBackgroundCpm);
+                     const instEff = parseFloat(instrumentEff) / 100.0;
+                     const smearFraction = parseFloat(smearEff);
+         
+                     if (isNaN(instEff) || instEff <= 0) throw new Error("Instrument efficiency must be a positive number.");
+         
+                     let removableDPM = null, totalDPM = null, maxDPM = null;
+         
+                     // Calculate Removable
+                     if (!isNaN(wipeGross) && !isNaN(wipeBkg)) {
+                         if (wipeGross < wipeBkg) throw new Error("Wipe gross CPM cannot be less than background.");
+                         if (isNaN(smearFraction) || smearFraction <= 0) throw new Error("Smear efficiency must be a positive number.");
+                         const netWipeCpm = wipeGross - wipeBkg;
+                         removableDPM = netWipeCpm / (instEff * smearFraction);
+                     }
+         
+                     // Calculate Total
+                     if (staticPoints.length > 0) {
+                         const avgStaticCpm = staticPoints.reduce((sum, val) => sum + val, 0) / staticPoints.length;
+                         const maxStaticCpm = Math.max(...staticPoints);
+                         totalDPM = avgStaticCpm / instEff * (100 / PROBE_AREA_CM2);
+                         maxDPM = maxStaticCpm / instEff * (100 / PROBE_AREA_CM2);
+                     }
+                     
+                     if (removableDPM === null && totalDPM === null) { setResult(null); return; }
+
+                     const rgLimits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
+                     const ansiLimits = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory];
+
+                     setResult({
+                         removable: removableDPM,
+                         total_avg: totalDPM,
+                         total_max: maxDPM,
+                         rg: {
+                             removable_limit: rgLimits.removable,
+                             total_limit: rgLimits.total,
+                             removable_pass: removableDPM === null || removableDPM <= rgLimits.removable,
+                             total_pass: totalDPM === null || totalDPM <= rgLimits.total,
+                         },
+                         ansi: {
+                             removable_limit: ansiLimits.removable,
+                             total_limit: ansiLimits.total,
+                             removable_pass: removableDPM === null || removableDPM <= ansiLimits.removable,
+                             total_pass: totalDPM === null || totalDPM <= ansiLimits.total,
+                         }
+                     });
+                 } catch (e) {
+                     setError(e.message);
+                     setResult(null);
+                 }
+             }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, instrumentEff, smearEff]);
+         
+             return (
+                 <div className="space-y-4">
+                     <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to find limits..."/>}</div></div>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                             <label className="block text-sm font-semibold">Total Contamination (Static Survey)</label>
+                             <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="4" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste static CPM values..."></textarea>
+                         </div>
+                         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                             <label className="block text-sm font-semibold">Removable Contamination (Wipe)</label>
+                             <div><label className="block text-xs font-medium">Gross CPM</label><input type="number" value={wipeGrossCpm} onChange={e => setWipeGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                             <div><label className="block text-xs font-medium">Background CPM</label><input type="number" value={wipeBackgroundCpm} onChange={e => setWipeBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                         </div>
+                     </div>
+                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} placeholder="e.g., 25" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Efficiency (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={smearEff} onChange={e => setSmearEff(e.target.value)} placeholder="e.g., 0.1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                     </div>
+                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                     {result && (
+                         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
+                             <h3 className="text-lg font-bold text-center text-slate-700 dark:text-slate-200 mb-3">Survey Analysis (dpm/100cm²)</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 {result.removable !== null && <div className="p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                     <p className="font-semibold text-center text-sm">Removable</p>
+                                     <p className="text-2xl font-bold text-center text-sky-600 dark:text-sky-400 my-2">{result.removable.toFixed(0)}</p>
+                                     <div className="grid grid-cols-2 gap-2 text-xs text-center">
+                                         <div className={`p-1 rounded ${result.rg.removable_pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}><b>RG 1.86:</b><br/>{result.rg.removable_pass ? 'PASS' : 'FAIL'}</div>
+                                         <div className={`p-1 rounded ${result.ansi.removable_pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}><b>ANSI:</b><br/>{result.ansi.removable_pass ? 'PASS' : 'FAIL'}</div>
+                                     </div>
+                                 </div>}
+                                 {result.total_avg !== null && <div className="p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                     <p className="font-semibold text-center text-sm">Total (Average)</p>
+                                     <p className="text-2xl font-bold text-center text-sky-600 dark:text-sky-400 my-2">{result.total_avg.toFixed(0)}</p>
+                                      <div className="grid grid-cols-2 gap-2 text-xs text-center">
+                                         <div className={`p-1 rounded ${result.rg.total_pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}><b>RG 1.86:</b><br/>{result.rg.total_pass ? 'PASS' : 'FAIL'}</div>
+                                         <div className={`p-1 rounded ${result.ansi.total_pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}><b>ANSI:</b><br/>{result.ansi.total_pass ? 'PASS' : 'FAIL'}</div>
+                                     </div>
+                                 </div>}
+                             </div>
+                             <details className="text-xs mt-3 text-slate-500 dark:text-slate-400"><summary className="cursor-pointer font-semibold">View Applicable Limits</summary><div className="grid grid-cols-2 gap-2 p-2 bg-white dark:bg-slate-800 rounded-md mt-1"><div><b>Reg. Guide 1.86:</b><br/>Removable: {result.rg.removable_limit}<br/>Total: {result.rg.total_limit}</div><div><b>ANSI N13.12:</b><br/>Removable: {result.ansi.removable_limit}<br/>Total: {result.ansi.total_limit}</div></div></details>
+                         </div>
+                     )}
+                 </div>
+             );
+         };
+
          const OperationalHPCalculators = ({ radionuclides }) => {
-         const [activeCalculator, setActiveCalculator] = React.useState('staticSurvey');
-         const { addHistory } = useCalculationHistory();
+             const [activeCalculator, setActiveCalculator] = React.useState('surfaceContam');
+             const { addHistory } = useCalculationHistory();
          
-         // State for LeakTestCalculator
+             // State for the NEW SurfaceContaminationCalculator
+             const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState('');
+             const [sc_staticData, setSc_staticData] = React.useState('');
+             const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
+             const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
+             const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
+             const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
+             const [sc_result, setSc_result] = React.useState(null);
+             const [sc_error, setSc_error] = React.useState('');
          
-         const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
-         const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
-         const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
-         const [lt_result, setLt_result] = React.useState(null);
-         const [lt_error, setLt_error] = React.useState('');
-         
-         // State for StaticSurveyCalculator
-         
-         const [ss_nuclideSymbol, setSs_nuclideSymbol] = React.useState('');
-         const [ss_surveyData, setSs_surveyData] = React.useState('');
-         const [ss_avgLimit, setSs_avgLimit] = React.useState('');
-         const [ss_maxLimit, setSs_maxLimit] = React.useState('');
-         const [ss_unit, setSs_unit] = React.useState('dpm/100cm²');
-         const [ss_result, setSs_result] = React.useState(null);
-         const [ss_error, setSs_error] = React.useState('');
-         
-         // State for ContaminationSurveyCalculator
-         
-         const [cs_nuclideSymbol, setCs_nuclideSymbol] = React.useState('');
-         const [cs_grossCpm, setCs_grossCpm] = React.useState('1500');
-         const [cs_backgroundCpm, setCs_backgroundCpm] = React.useState('50');
-         const [cs_instrumentEff, setCs_instrumentEff] = React.useState('25');
-         const [cs_removableFraction, setCs_removableFraction] = React.useState('0.1');
-         const [cs_result, setCs_result] = React.useState(null);
-         const [cs_error, setCs_error] = React.useState('');
-         
-         // State for AirborneCalculator
-         
-         const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
-         const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
-         const [ac_activityUnit, setAc_activityUnit] = React.useState('mCi');
-         const [ac_roomVolume, setAc_roomVolume] = React.useState('100');
-         const [ac_volumeUnit, setAc_volumeUnit] = React.useState('m³');
-         const [ac_ventilationRate, setAc_ventilationRate] = React.useState('2');
-         const [ac_result, setAc_result] = React.useState(null);
-         const [ac_error, setAc_error] = React.useState('');
-         
-         // Clear Logic
-         
-         const handleLeakTestClear = () => {
-         setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25');
-         setLt_result(null); setLt_error('');
-         };
-         const handleStaticSurveyClear = () => {
-         setSs_nuclideSymbol(''); setSs_surveyData(''); setSs_avgLimit(''); setSs_maxLimit('');
-         setSs_unit('dpm/100cm²'); setSs_result(null); setSs_error('');
-         };
-         const handleContaminationSurveyClear = () => {
-         setCs_nuclideSymbol(''); setCs_grossCpm('1500'); setCs_backgroundCpm('50');
-         setCs_instrumentEff('25'); setCs_removableFraction('0.1'); setCs_result(null); setCs_error('');
-         };
-         const handleAirborneClear = () => {
-         setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_activityUnit('mCi');
-         setAc_roomVolume('100'); setAc_volumeUnit('m³'); setAc_ventilationRate('2');
-         setAc_result(null); setAc_error('');
-         };
-         
-         const handleClearActiveCalculator = () => {
-         switch (activeCalculator) {
-            case 'leakTest': handleLeakTestClear(); break;
-            case 'staticSurvey': handleStaticSurveyClear(); break;
-            case 'contamination': handleContaminationSurveyClear(); break;
-            case 'airborne': handleAirborneClear(); break;
-            default: break;
-         }
-         };
-         
-         // History Logic
-         React.useEffect(() => {
-         if (lt_result) {
-            addHistory({ id: Date.now(), type: 'Leak Test', icon: ICONS.check, inputs: `${lt_grossCpm} cpm / ${lt_backgroundCpm} cpm`, result: `${lt_result.activity} µCi`, view: VIEWS.OPERATIONAL_HP });
-         }
-         }, [lt_result]);
-         
-         React.useEffect(() => {
-         if (ss_result) {
-            addHistory({ id: Date.now(), type: 'Static Survey', icon: ICONS.gammaSpec, inputs: `${ss_result.count} data points`, result: `Avg: ${ss_result.average.toPrecision(3)} ${ss_unit}`, view: VIEWS.OPERATIONAL_HP });
-         }
-         }, [ss_result]);
-         
-         React.useEffect(() => {
-         if (cs_result) {
-            addHistory({ id: Date.now(), type: 'Wipe Survey', icon: ICONS.check, inputs: `${cs_grossCpm} cpm vs ${cs_backgroundCpm} cpm`, result: `${cs_result.contamination} dpm/100cm²`, view: VIEWS.OPERATIONAL_HP });
-         }
-         }, [cs_result]);
-         
-         React.useEffect(() => {
-         if (ac_result) {
-            addHistory({ id: Date.now(), type: 'Airborne Release', icon: ICONS.radon, inputs: `${ac_releaseActivity} ${ac_activityUnit} in ${ac_roomVolume} ${ac_volumeUnit}`, result: `${ac_result.dacMultiple}x DAC`, view: VIEWS.OPERATIONAL_HP });
-         }
-         }, [ac_result]);
-         
-         const calculatorViews = {
-         staticSurvey: { label: 'Static Survey', icon: ICONS.gammaSpec, component: <StaticSurveyCalculator 
-            radionuclides={radionuclides}
-            nuclideSymbol={ss_nuclideSymbol} setNuclideSymbol={setSs_nuclideSymbol}
-            surveyData={ss_surveyData} setSurveyData={setSs_surveyData}
-            avgLimit={ss_avgLimit} setAvgLimit={setSs_avgLimit}
-            maxLimit={ss_maxLimit} setMaxLimit={setSs_maxLimit}
-            unit={ss_unit} setUnit={setSs_unit}
-            result={ss_result} setResult={setSs_result}
-            error={ss_error} setError={setSs_error}
-         /> },
-         contamination: { label: 'Wipe Survey', icon: ICONS.check, component: <ContaminationSurveyCalculator 
-            radionuclides={radionuclides}
-            nuclideSymbol={cs_nuclideSymbol} setNuclideSymbol={setCs_nuclideSymbol}
-            grossCpm={cs_grossCpm} setGrossCpm={setCs_grossCpm}
-            backgroundCpm={cs_backgroundCpm} setBackgroundCpm={setCs_backgroundCpm}
-            instrumentEff={cs_instrumentEff} setInstrumentEff={setCs_instrumentEff}
-            removableFraction={cs_removableFraction} setRemovableFraction={setCs_removableFraction}
-            result={cs_result} setResult={setCs_result}
-            error={cs_error} setError={setCs_error}
-         /> },
-         leakTest: { label: 'Leak Test', icon: ICONS.check, component: <LeakTestCalculator
-            grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
-            backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
-            instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
-            result={lt_result} setResult={setLt_result}
-            error={lt_error} setError={setLt_error}
-         /> },
-         airborne: { label: 'Airborne', icon: ICONS.radon, component: <AirborneCalculator 
-            radionuclides={radionuclides}
-            nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
-            releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
-            activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit}
-            roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
-            volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
-            ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
-            result={ac_result} setResult={setAc_result}
-            error={ac_error} setError={setAc_error}
-         /> }
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
-                    <ClearButton onClick={handleClearActiveCalculator} />
-                </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
-                    {Object.entries(calculatorViews).map(([key, { label, icon }]) => (
-                        <button
-                            key={key}
-                            onClick={() => setActiveCalculator(key)}
-                            className={`flex-shrink-0 w-1/4 p-2 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${ activeCalculator === key ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
-                        >
-                            <Icon path={icon} className="w-4 h-4" />
-                            {label}
-                        </button>
-                    ))}
-                </div>
-                <div className="mt-4">
-                    {calculatorViews[activeCalculator].component}
-                </div>
-            </div>
-         </div>
-         );
+             // State for LeakTestCalculator
+             const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
+             const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
+             const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
+             const [lt_result, setLt_result] = React.useState(null);
+             const [lt_error, setLt_error] = React.useState('');
+             
+             // State for AirborneCalculator
+             const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
+             const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
+             const [ac_activityUnit, setAc_activityUnit] = React.useState('mCi');
+             const [ac_roomVolume, setAc_roomVolume] = React.useState('100');
+             const [ac_volumeUnit, setAc_volumeUnit] = React.useState('m³');
+             const [ac_ventilationRate, setAc_ventilationRate] = React.useState('2');
+             const [ac_result, setAc_result] = React.useState(null);
+             const [ac_error, setAc_error] = React.useState('');
+             
+             // --- Updated Clear Logic ---
+             const handleSurfaceContamClear = () => {
+                 setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150');
+                 setSc_wipeBackgroundCpm('50'); setSc_instrumentEff('25'); setSc_smearEff('0.1');
+                 setSc_result(null); setSc_error('');
+             };
+             const handleLeakTestClear = () => {
+                 setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25');
+                 setLt_result(null); setLt_error('');
+             };
+             const handleAirborneClear = () => {
+                 setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_activityUnit('mCi');
+                 setAc_roomVolume('100'); setAc_volumeUnit('m³'); setAc_ventilationRate('2');
+                 setAc_result(null); setAc_error('');
+             };
+             
+             const handleClearActiveCalculator = () => {
+                 switch (activeCalculator) {
+                    case 'surfaceContam': handleSurfaceContamClear(); break;
+                    case 'leakTest': handleLeakTestClear(); break;
+                    case 'airborne': handleAirborneClear(); break;
+                    default: break;
+                 }
+             };
+             
+             // --- Updated History Logic ---
+             React.useEffect(() => {
+                 if (sc_result) { addHistory({ id: Date.now(), type: 'Surface Survey', icon: ICONS.gammaSpec, inputs: `${sc_nuclideSymbol || '...'} contamination`, result: `Removable: ${sc_result.removable?.toFixed(0) || 'N/A'} dpm`, view: VIEWS.OPERATIONAL_HP }); }
+             }, [sc_result]);
+             React.useEffect(() => {
+                 if (lt_result) { addHistory({ id: Date.now(), type: 'Leak Test', icon: ICONS.check, inputs: `${lt_grossCpm} cpm / ${lt_backgroundCpm} cpm`, result: `${lt_result.activity} µCi`, view: VIEWS.OPERATIONAL_HP }); }
+             }, [lt_result]);
+             React.useEffect(() => {
+                 if (ac_result) { addHistory({ id: Date.now(), type: 'Airborne Release', icon: ICONS.radon, inputs: `${ac_releaseActivity} ${ac_activityUnit} in ${ac_roomVolume} ${ac_volumeUnit}`, result: `${ac_result.dacMultiple}x DAC`, view: VIEWS.OPERATIONAL_HP }); }
+             }, [ac_result]);
+             
+             const calculatorViews = {
+                 surfaceContam: { label: 'Surface Contam.', icon: ICONS.gammaSpec, component: <SurfaceContaminationCalculator 
+                     radionuclides={radionuclides}
+                     nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
+                     staticData={sc_staticData} setStaticData={setSc_staticData}
+                     wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
+                     wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
+                     instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
+                     smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
+                     result={sc_result} setResult={setSc_result}
+                     error={sc_error} setError={setSc_error}
+                 /> },
+                 leakTest: { label: 'Leak Test', icon: ICONS.check, component: <LeakTestCalculator
+                     grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
+                     backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
+                     instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
+                     result={lt_result} setResult={setLt_result}
+                     error={lt_error} setError={setLt_error}
+                 /> },
+                 airborne: { label: 'Airborne', icon: ICONS.radon, component: <AirborneCalculator 
+                     radionuclides={radionuclides}
+                     nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
+                     releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
+                     activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit}
+                     roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
+                     volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
+                     ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
+                     result={ac_result} setResult={setAc_result}
+                     error={ac_error} setError={setAc_error}
+                 /> }
+             };
+             
+             return (
+                 <div className="p-4 animate-fade-in">
+                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
+                            <ClearButton onClick={handleClearActiveCalculator} />
+                        </div>
+                        <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
+                            {Object.entries(calculatorViews).map(([key, { label, icon }]) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setActiveCalculator(key)}
+                                    className={`flex-shrink-0 w-1/3 p-2 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${ activeCalculator === key ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
+                                >
+                                    <Icon path={icon} className="w-4 h-4" />
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="mt-4">
+                            {calculatorViews[activeCalculator].component}
+                        </div>
+                    </div>
+                 </div>
+             );
          };
          
          /**
@@ -5653,92 +5843,216 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
          );
          };
          
+         const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, doseRate, setDoseRate, doseRateUnit, setDoseRateUnit, distance, setDistance, distanceUnit, setDistanceUnit, result, setResult, error, setError }) => {
+             const { addHistory } = useCalculationHistory();
+             const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+             const selectedNuclide = React.useMemo(() => gammaNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, gammaNuclides]);
+             
+             const doseRateFactors_R_hr = { 'µrem/hr': 1e-6, 'mrem/hr': 1e-3, 'rem/hr': 1, 'R/hr': 1, 'µSv/hr': 1e-4, 'mSv/hr': 0.1, 'Sv/hr': 100 };
+             const distanceFactors_m = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+         
+             React.useEffect(() => {
+                 try {
+                     setError('');
+                     if (!selectedNuclide) {
+                         setResult(null);
+                         return;
+                     }
+                     const doseRateVal = parseFloat(doseRate);
+                     const distanceVal = parseFloat(distance);
+                     if (isNaN(doseRateVal) || isNaN(distanceVal) || doseRateVal <= 0 || distanceVal <= 0) {
+                         if (doseRate && distance) setError("Dose rate and distance must be positive numbers.");
+                         setResult(null);
+                         return;
+                     }
+         
+                     const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+                     const doseRate_R_hr = doseRateVal * doseRateFactors_R_hr[doseRateUnit];
+                     const distance_m = distanceVal * distanceFactors_m[distanceUnit];
+         
+                     const activity_Ci = (doseRate_R_hr * Math.pow(distance_m, 2)) / gammaConstant;
+                     
+                     setResult({
+                         activity: formatSensibleUnit(activity_Ci * 1e6, 'activity_µCi') // Using a custom sensible unit config for activity
+                     });
+                 } catch (e) {
+                     setError(e.message || "Calculation failed.");
+                     setResult(null);
+                 }
+             }, [selectedNuclide, doseRate, doseRateUnit, distance, distanceUnit]);
+
+             React.useEffect(() => {
+                 if (result && selectedNuclide) {
+                    addHistory({ id: Date.now(), type: 'Activity from Dose', icon: ICONS.activity, inputs: `${doseRate} ${doseRateUnit} @ ${distance} ${distanceUnit}`, result: `${result.activity.value} ${result.activity.unit} ${selectedNuclide.symbol}`, view: VIEWS.ACTIVITY_MASS });
+                 }
+             }, [result]);
+         
+             // Temporary addition to SENSIBLE_UNIT_CONFIG for local use.
+             const tempSensibleUnitConfig = {
+                 ...SENSIBLE_UNIT_CONFIG,
+                 activity_µCi: {
+                     baseUnit: 'µCi',
+                     units: [
+                         { unit: 'nCi', threshold: 1, factor: 0.001 },
+                         { unit: 'µCi', threshold: 1000, factor: 1 },
+                         { unit: 'mCi', threshold: 1000, factor: 1000 },
+                         { unit: 'Ci',  threshold: Infinity, factor: 1e6 }
+                     ]
+                 }
+             };
+             const formatSensibleUnit = (value, unitType, precision = 3) => {
+                 const config = tempSensibleUnitConfig[unitType];
+                 if (!config) return { value: value.toPrecision(precision), unit: '' };
+                 for (const unitInfo of config.units) {
+                     if (Math.abs(value) < unitInfo.threshold) {
+                         const displayValue = value / unitInfo.factor;
+                         return { value: displayValue.toPrecision(precision), unit: unitInfo.unit };
+                     }
+                 }
+                 const largestUnit = config.units[config.units.length - 1];
+                 return { value: (value / largestUnit.factor).toPrecision(precision), unit: largestUnit.unit };
+             };
+         
+             return (
+                 <div className="space-y-4">
+                     <p className="text-sm text-slate-600 dark:text-slate-400">Calculates source activity from a gamma dose rate measurement.</p>
+                     <div>
+                         <label className="text-sm font-medium">Radionuclide</label>
+                         <div className="mt-1">
+                             {selectedNuclide ? 
+                                 <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> :
+                                 <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma emitter..." />
+                             }
+                         </div>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                             <label className="block text-sm font-medium">Measured Dose Rate</label>
+                             <div className="flex">
+                                 <input type="number" value={doseRate} onChange={e => setDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                 <select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium">Distance from Source</label>
+                             <div className="flex">
+                                 <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                 <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                     </div>
+                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                     {result && (
+                         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                             <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Source Activity</p>
+                             <div className="flex items-center justify-center">
+                                 <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.activity.value}</p>
+                                 <CopyButton textToCopy={result.activity.value} />
+                             </div>
+                             <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.activity.unit}</p>
+                         </div>
+                     )}
+                 </div>
+             );
+         };
+
          const ActivityAndMassTools = ({ radionuclides }) => {
-         const MODE_MASS_ACTIVITY = 'massActivity';
-         const MODE_SPECIFIC_ACTIVITY = 'specificActivity';
+             const MODE_MASS_ACTIVITY = 'massActivity';
+             const MODE_SPECIFIC_ACTIVITY = 'specificActivity';
+             const MODE_ACTIVITY_FROM_DOSE = 'activityFromDose'; // New Mode
          
-         const [calcMode, setCalcMode] = React.useState(MODE_MASS_ACTIVITY);
-         const { addHistory } = useCalculationHistory();
-         
-         // State for MassActivityModule
-         const [mass_selectedNuclide, setMass_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('massActivity_symbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
-         const [mass_mass, setMass_mass] = React.useState(() => localStorage.getItem('massActivity_mass') || '');
-         const [mass_massUnit, setMass_massUnit] = React.useState(() => localStorage.getItem('massActivity_massUnit') || 'g');
-         const [mass_activity, setMass_activity] = React.useState(() => localStorage.getItem('massActivity_activity') || '');
-         const [mass_activityUnit, setMass_activityUnit] = React.useState(() => localStorage.getItem('massActivity_activityUnit') || 'Ci');
-         const [mass_error, setMass_error] = React.useState('');
-         
-         // State for SpecificActivityModule
-         const [spec_atomicWeight, setSpec_atomicWeight] = React.useState(() => localStorage.getItem('specActivity_atomicWeight') || '');
-         const [spec_halfLifeValue, setSpec_halfLifeValue] = React.useState(() => localStorage.getItem('specActivity_halfLifeValue') || '');
-         const [spec_halfLifeUnit, setSpec_halfLifeUnit] = React.useState(() => localStorage.getItem('specActivity_halfLifeUnit') || 'years');
-         const [spec_result, setSpec_result] = React.useState(null);
-         const [spec_error, setSpec_error] = React.useState('');
-         
-         // History Logic for Mass <=> Activity (more complex as it's interactive)
-         React.useEffect(() => {
-         if (mass_selectedNuclide && mass_mass && mass_activity) {
-            addHistory({ id: Date.now(), type: 'Mass <=> Activity', icon: ICONS.mass, inputs: `${mass_mass} ${mass_massUnit} of ${mass_selectedNuclide.symbol}`, result: `${mass_activity} ${mass_activityUnit}`, view: VIEWS.ACTIVITY_MASS });
-         }
-         }, [mass_activity]); // Trigger when activity is calculated from mass
-         
-         const handleMassActivityClear = () => {
-         setMass_selectedNuclide(null);
-         setMass_mass('');
-         setMass_massUnit('g');
-         setMass_activity('');
-         setMass_activityUnit('Ci');
-         setMass_error('');
-         };
-         
-         const handleSpecificActivityClear = () => {
-         setSpec_atomicWeight('');
-         setSpec_halfLifeValue('');
-         setSpec_halfLifeUnit('years');
-         setSpec_result(null);
-         setSpec_error('');
-         };
-         
-         const handleClearActiveCalculator = () => {
-         if (calcMode === MODE_MASS_ACTIVITY) {
-            handleMassActivityClear();
-         } else {
-            handleSpecificActivityClear();
-         }
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Activity & Mass Tools</h2>
-                    <ClearButton onClick={handleClearActiveCalculator} />
-                </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => setCalcMode(MODE_MASS_ACTIVITY)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_MASS_ACTIVITY ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Mass ↔ Activity</button>
-                    <button onClick={() => setCalcMode(MODE_SPECIFIC_ACTIVITY)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_SPECIFIC_ACTIVITY ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Specific Activity</button>
-                </div>
-                {calcMode === MODE_MASS_ACTIVITY ? 
-                    <MassActivityModule 
-                        radionuclides={radionuclides}
-                        selectedNuclide={mass_selectedNuclide} setSelectedNuclide={setMass_selectedNuclide}
-                        mass={mass_mass} setMass={setMass_mass}
-                        massUnit={mass_massUnit} setMassUnit={setMass_massUnit}
-                        activity={mass_activity} setActivity={setMass_activity}
-                        activityUnit={mass_activityUnit} setActivityUnit={setMass_activityUnit}
-                        error={mass_error} setError={setMass_error}
-                    /> : 
-                    <SpecificActivityModule 
-                        atomicWeight={spec_atomicWeight} setAtomicWeight={setSpec_atomicWeight}
-                        halfLifeValue={spec_halfLifeValue} setHalfLifeValue={setSpec_halfLifeValue}
-                        halfLifeUnit={spec_halfLifeUnit} setHalfLifeUnit={setSpec_halfLifeUnit}
-                        result={spec_result} setResult={setSpec_result}
-                        error={spec_error} setError={setSpec_error}
-                    />
-                }
-            </div>
-         </div>
-         );
+             const [calcMode, setCalcMode] = React.useState(MODE_MASS_ACTIVITY);
+             
+             // State for MassActivityModule
+             const [mass_selectedNuclide, setMass_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('massActivity_symbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
+             const [mass_mass, setMass_mass] = React.useState(() => localStorage.getItem('massActivity_mass') || '');
+             const [mass_massUnit, setMass_massUnit] = React.useState(() => localStorage.getItem('massActivity_massUnit') || 'g');
+             const [mass_activity, setMass_activity] = React.useState(() => localStorage.getItem('massActivity_activity') || '');
+             const [mass_activityUnit, setMass_activityUnit] = React.useState(() => localStorage.getItem('massActivity_activityUnit') || 'Ci');
+             const [mass_error, setMass_error] = React.useState('');
+             
+             // State for SpecificActivityModule
+             const [spec_atomicWeight, setSpec_atomicWeight] = React.useState(() => localStorage.getItem('specActivity_atomicWeight') || '');
+             const [spec_halfLifeValue, setSpec_halfLifeValue] = React.useState(() => localStorage.getItem('specActivity_halfLifeValue') || '');
+             const [spec_halfLifeUnit, setSpec_halfLifeUnit] = React.useState(() => localStorage.getItem('specActivity_halfLifeUnit') || 'years');
+             const [spec_result, setSpec_result] = React.useState(null);
+             const [spec_error, setSpec_error] = React.useState('');
+
+             // NEW: State for ActivityFromDoseRate calculator
+             const [afd_nuclideSymbol, setAfd_nuclideSymbol] = React.useState('');
+             const [afd_doseRate, setAfd_doseRate] = React.useState('10');
+             const [afd_doseRateUnit, setAfd_doseRateUnit] = React.useState('mrem/hr');
+             const [afd_distance, setAfd_distance] = React.useState('1');
+             const [afd_distanceUnit, setAfd_distanceUnit] = React.useState('m');
+             const [afd_result, setAfd_result] = React.useState(null);
+             const [afd_error, setAfd_error] = React.useState('');
+             
+             const handleMassActivityClear = () => {
+                 setMass_selectedNuclide(null); setMass_mass(''); setMass_massUnit('g');
+                 setMass_activity(''); setMass_activityUnit('Ci'); setMass_error('');
+             };
+             const handleSpecificActivityClear = () => {
+                 setSpec_atomicWeight(''); setSpec_halfLifeValue(''); setSpec_halfLifeUnit('years');
+                 setSpec_result(null); setSpec_error('');
+             };
+             const handleActivityFromDoseClear = () => {
+                 setAfd_nuclideSymbol(''); setAfd_doseRate('10'); setAfd_doseRateUnit('mrem/hr');
+                 setAfd_distance('1'); setAfd_distanceUnit('m'); setAfd_result(null); setAfd_error('');
+             };
+             
+             const handleClearActiveCalculator = () => {
+                 if (calcMode === MODE_MASS_ACTIVITY) handleMassActivityClear();
+                 else if (calcMode === MODE_SPECIFIC_ACTIVITY) handleSpecificActivityClear();
+                 else handleActivityFromDoseClear();
+             };
+             
+             return (
+                 <div className="p-4 animate-fade-in">
+                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Activity & Mass Tools</h2>
+                            <ClearButton onClick={handleClearActiveCalculator} />
+                        </div>
+                        <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                            <button onClick={() => setCalcMode(MODE_MASS_ACTIVITY)} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_MASS_ACTIVITY ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Mass ↔ Activity</button>
+                            <button onClick={() => setCalcMode(MODE_ACTIVITY_FROM_DOSE)} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_ACTIVITY_FROM_DOSE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Act. from Dose</button>
+                            <button onClick={() => setCalcMode(MODE_SPECIFIC_ACTIVITY)} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_SPECIFIC_ACTIVITY ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Specific Activity</button>
+                        </div>
+                        {calcMode === MODE_MASS_ACTIVITY && 
+                            <MassActivityModule 
+                                radionuclides={radionuclides}
+                                selectedNuclide={mass_selectedNuclide} setSelectedNuclide={setMass_selectedNuclide}
+                                mass={mass_mass} setMass={setMass_mass}
+                                massUnit={mass_massUnit} setMassUnit={setMass_massUnit}
+                                activity={mass_activity} setActivity={setMass_activity}
+                                activityUnit={mass_activityUnit} setActivityUnit={setMass_activityUnit}
+                                error={mass_error} setError={setMass_error}
+                            />
+                        }
+                        {calcMode === MODE_ACTIVITY_FROM_DOSE &&
+                            <ActivityFromDoseRate
+                                radionuclides={radionuclides}
+                                nuclideSymbol={afd_nuclideSymbol} setNuclideSymbol={setAfd_nuclideSymbol}
+                                doseRate={afd_doseRate} setDoseRate={setAfd_doseRate}
+                                doseRateUnit={afd_doseRateUnit} setDoseRateUnit={setAfd_doseRateUnit}
+                                distance={afd_distance} setDistance={setAfd_distance}
+                                distanceUnit={afd_distanceUnit} setDistanceUnit={setAfd_distanceUnit}
+                                result={afd_result} setResult={setAfd_result}
+                                error={afd_error} setError={setAfd_error}
+                            />
+                        }
+                        {calcMode === MODE_SPECIFIC_ACTIVITY && 
+                            <SpecificActivityModule 
+                                atomicWeight={spec_atomicWeight} setAtomicWeight={setSpec_atomicWeight}
+                                halfLifeValue={spec_halfLifeValue} setHalfLifeValue={setSpec_halfLifeValue}
+                                halfLifeUnit={spec_halfLifeUnit} setHalfLifeUnit={setSpec_halfLifeUnit}
+                                result={spec_result} setResult={setSpec_result}
+                                error={spec_error} setError={setSpec_error}
+                            />
+                        }
+                    </div>
+                 </div>
+             );
          };
          
          /**
@@ -6224,87 +6538,195 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
          * of the currently active calculator.
          */
          
+         const RadonIngrowthCalculator = ({ result, setResult, error, setError, ra226Mass, setRa226Mass, massUnit, setMassUnit, time, setTime, timeUnit, setTimeUnit }) => {
+             const { addHistory } = useCalculationHistory();
+             const RA226_SPECIFIC_ACTIVITY_BQ_PER_G = 3.7e10; // By definition of the Curie, for 1g Ra-226
+             const RN222_HALFLIFE_SECONDS = 3.823 * 24 * 3600;
+             const RN222_LAMBDA_PER_SECOND = Math.log(2) / RN222_HALFLIFE_SECONDS;
+         
+             const massUnits = { 'ng': 1e-9, 'µg': 1e-6, 'mg': 1e-3, 'g': 1 };
+             const timeUnits = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'weeks': 604800 };
+         
+             React.useEffect(() => {
+                 try {
+                     setError('');
+                     const mass_g = parseFloat(ra226Mass) * (massUnits[massUnit] || 0);
+                     const time_s = parseFloat(time) * (timeUnits[timeUnit] || 0);
+         
+                     if (isNaN(mass_g) || isNaN(time_s) || mass_g <= 0 || time_s < 0) {
+                         if (ra226Mass && time) setError("Mass and time must be positive numbers.");
+                         setResult(null);
+                         return;
+                     }
+         
+                     const ra226_activity_Bq = mass_g * RA226_SPECIFIC_ACTIVITY_BQ_PER_G;
+                     const rn222_activity_Bq = ra226_activity_Bq * (1 - Math.exp(-RN222_LAMBDA_PER_SECOND * time_s));
+                     const percentEquilibrium = (rn222_activity_Bq / ra226_activity_Bq) * 100;
+         
+                     setResult({
+                         ra226_activity: formatSensibleUnit(ra226_activity_Bq / 3.7e4, 'activity'), // Convert to µCi for sensible unit formatting
+                         rn222_activity: formatSensibleUnit(rn222_activity_Bq / 3.7e4, 'activity'),
+                         percentEquilibrium: percentEquilibrium.toFixed(2)
+                     });
+                 } catch (e) {
+                     setError(e.message || "Calculation failed.");
+                     setResult(null);
+                 }
+             }, [ra226Mass, massUnit, time, timeUnit]);
+
+             React.useEffect(() => {
+                 if (result) {
+                    addHistory({ id: Date.now(), type: 'Radon Ingrowth', icon: ICONS.radon, inputs: `${ra226Mass} ${massUnit} Ra-226 for ${time} ${timeUnit}`, result: `${result.rn222_activity.value} ${result.rn222_activity.unit} Rn-222`, view: VIEWS.RADON });
+                 }
+             }, [result]);
+         
+             return (
+                 <div className="space-y-4">
+                     <p className="text-sm text-slate-600 dark:text-slate-400">Calculates the Rn-222 activity from a given mass of Ra-226 over time.</p>
+                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                         <div>
+                             <label className="block text-sm font-medium">Mass of Ra-226</label>
+                             <div className="flex">
+                                 <input type="number" value={ra226Mass} onChange={e => setRa226Mass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                 <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium">Ingrowth Time</label>
+                             <div className="flex">
+                                 <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                 <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                             </div>
+                         </div>
+                     </div>
+                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                     {result && (
+                         <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                             <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Parent Ra-226 Activity</p>
+                             <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.ra226_activity.value} {result.ra226_activity.unit}</p>
+                             <div className="mt-3 pt-3 border-t border-slate-300 dark:border-slate-600">
+                                 <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resulting Rn-222 Activity</p>
+                                 <div className="flex items-center justify-center">
+                                     <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.rn222_activity.value} <span className="text-2xl opacity-75">{result.rn222_activity.unit}</span></p>
+                                     <CopyButton textToCopy={result.rn222_activity.value} />
+                                 </div>
+                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.percentEquilibrium}% of secular equilibrium)</p>
+                             </div>
+                         </div>
+                     )}
+                 </div>
+             );
+         };
+
          const RadonCalculator = () => {
-         const [activeTab, setActiveTab] = React.useState('concentration');
+             const [activeTab, setActiveTab] = React.useState('concentration');
          
-         // State for KusnetzCalculator
-         const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
-         const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
-         const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
-         const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
-         const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
-         const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
-         const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
-         const [kusnetz_result, setKusnetz_result] = React.useState(null);
-         const [kusnetz_error, setKusnetz_error] = React.useState('');
+             // State for KusnetzCalculator
+             const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
+             const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
+             const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
+             const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
+             const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
+             const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
+             const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
+             const [kusnetz_result, setKusnetz_result] = React.useState(null);
+             const [kusnetz_error, setKusnetz_error] = React.useState('');
          
-         // State for ConcentrationDoseModule
-         const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
-         const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
-         const [conc_unit, setConc_unit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
-         const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
-         const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
-         const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
-         const [conc_result, setConc_result] = React.useState(null);
-         const [conc_error, setConc_error] = React.useState('');
+             // State for ConcentrationDoseModule
+             const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
+             const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
+             const [conc_unit, setConc_unit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
+             const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
+             const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
+             const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
+             const [conc_result, setConc_result] = React.useState(null);
+             const [conc_error, setConc_error] = React.useState('');
+
+             // NEW: State for RadonIngrowthCalculator
+             const [ingrowth_ra226Mass, setIngrowth_ra226Mass] = React.useState('1');
+             const [ingrowth_massUnit, setIngrowth_massUnit] = React.useState('mg');
+             const [ingrowth_time, setIngrowth_time] = React.useState('30');
+             const [ingrowth_timeUnit, setIngrowth_timeUnit] = React.useState('days');
+             const [ingrowth_result, setIngrowth_result] = React.useState(null);
+             const [ingrowth_error, setIngrowth_error] = React.useState('');
          
-         const handleKusnetzClear = () => {
-         setKusnetz_flowRate('10'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
-         setKusnetz_grossCounts('5000'); setKusnetz_countDuration('5'); setKusnetz_backgroundCpm('0.5');
-         setKusnetz_efficiency('25'); setKusnetz_result(null); setKusnetz_error('');
-         };
-         
-         const handleConcentrationClear = () => {
-         setConc_calcMode('doseFromConc'); setConc_concentration('4.0'); setConc_unit('pCi/L');
-         setConc_equilibriumFactor('0.4'); setConc_workingLevel(''); setConc_occupancyFactor('0.8');
-         setConc_result(null); setConc_error('');
-         };
-         
-         const handleClearActiveCalculator = () => {
-         if (activeTab === 'concentration') {
-            handleConcentrationClear();
-         } else {
-            handleKusnetzClear();
-         }
-         };
-         
-         return (
-         <div className="p-4 animate-fade-in">
-            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
-                    <ClearButton onClick={handleClearActiveCalculator} />
-                </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
-                    <button onClick={() => setActiveTab('concentration')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration & Dose</button>
-                    <button onClick={() => setActiveTab('kusnetz')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz Method (WL)</button>
-                </div>
-                {activeTab === 'concentration' ? 
-                    <ConcentrationDoseModule 
-                        calcMode={conc_calcMode} setCalcMode={setConc_calcMode}
-                        concentration={conc_concentration} setConcentration={setConc_concentration}
-                        unit={conc_unit} setUnit={setConc_unit}
-                        equilibriumFactor={conc_equilibriumFactor} setEquilibriumFactor={setConc_equilibriumFactor}
-                        workingLevel={conc_workingLevel} setWorkingLevel={setConc_workingLevel}
-                        occupancyFactor={conc_occupancyFactor} setOccupancyFactor={setConc_occupancyFactor}
-                        result={conc_result} setResult={setConc_result}
-                        error={conc_error} setError={setConc_error}
-                    /> : 
-                    <KusnetzCalculator 
-                        flowRate={kusnetz_flowRate} setFlowRate={setKusnetz_flowRate}
-                        sampleTime={kusnetz_sampleTime} setSampleTime={setKusnetz_sampleTime}
-                        delayTime={kusnetz_delayTime} setDelayTime={setKusnetz_delayTime}
-                        grossCounts={kusnetz_grossCounts} setGrossCounts={setKusnetz_grossCounts}
-                        countDuration={kusnetz_countDuration} setCountDuration={setKusnetz_countDuration}
-                        backgroundCpm={kusnetz_backgroundCpm} setBackgroundCpm={setKusnetz_backgroundCpm}
-                        efficiency={kusnetz_efficiency} setEfficiency={setKusnetz_efficiency}
-                        result={kusnetz_result} setResult={setKusnetz_result}
-                        error={kusnetz_error} setError={setKusnetz_error}
-                    />
-                }
-            </div>
-         </div>
-         );
+             const handleKusnetzClear = () => {
+                 setKusnetz_flowRate('10'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
+                 setKusnetz_grossCounts('5000'); setKusnetz_countDuration('5'); setKusnetz_backgroundCpm('0.5');
+                 setKusnetz_efficiency('25'); setKusnetz_result(null); setKusnetz_error('');
+             };
+             
+             const handleConcentrationClear = () => {
+                 setConc_calcMode('doseFromConc'); setConc_concentration('4.0'); setConc_unit('pCi/L');
+                 setConc_equilibriumFactor('0.4'); setConc_workingLevel(''); setConc_occupancyFactor('0.8');
+                 setConc_result(null); setConc_error('');
+             };
+
+             const handleIngrowthClear = () => {
+                setIngrowth_ra226Mass('1'); setIngrowth_massUnit('mg'); setIngrowth_time('30');
+                setIngrowth_timeUnit('days'); setIngrowth_result(null); setIngrowth_error('');
+             };
+             
+             const handleClearActiveCalculator = () => {
+                 if (activeTab === 'concentration') {
+                    handleConcentrationClear();
+                 } else if (activeTab === 'kusnetz') {
+                    handleKusnetzClear();
+                 } else {
+                    handleIngrowthClear();
+                 }
+             };
+             
+             return (
+                 <div className="p-4 animate-fade-in">
+                    <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
+                            <ClearButton onClick={handleClearActiveCalculator} />
+                        </div>
+                        <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
+                            <button onClick={() => setActiveTab('concentration')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration</button>
+                            <button onClick={() => setActiveTab('ingrowth')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'ingrowth' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Ingrowth</button>
+                            <button onClick={() => setActiveTab('kusnetz')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz (WL)</button>
+                        </div>
+                        {activeTab === 'concentration' && 
+                            <ConcentrationDoseModule 
+                                calcMode={conc_calcMode} setCalcMode={setConc_calcMode}
+                                concentration={conc_concentration} setConcentration={setConc_concentration}
+                                unit={conc_unit} setUnit={setConc_unit}
+                                equilibriumFactor={conc_equilibriumFactor} setEquilibriumFactor={setConc_equilibriumFactor}
+                                workingLevel={conc_workingLevel} setWorkingLevel={setConc_workingLevel}
+                                occupancyFactor={conc_occupancyFactor} setOccupancyFactor={setConc_occupancyFactor}
+                                result={conc_result} setResult={setConc_result}
+                                error={conc_error} setError={setConc_error}
+                            />
+                        }
+                        {activeTab === 'ingrowth' &&
+                            <RadonIngrowthCalculator
+                                ra226Mass={ingrowth_ra226Mass} setRa226Mass={setIngrowth_ra226Mass}
+                                massUnit={ingrowth_massUnit} setMassUnit={setIngrowth_massUnit}
+                                time={ingrowth_time} setTime={setIngrowth_time}
+                                timeUnit={ingrowth_timeUnit} setTimeUnit={setIngrowth_timeUnit}
+                                result={ingrowth_result} setResult={setIngrowth_result}
+                                error={ingrowth_error} setError={setIngrowth_error}
+                            />
+                        }
+                        {activeTab === 'kusnetz' && 
+                            <KusnetzCalculator 
+                                flowRate={kusnetz_flowRate} setFlowRate={setKusnetz_flowRate}
+                                sampleTime={kusnetz_sampleTime} setSampleTime={setKusnetz_sampleTime}
+                                delayTime={kusnetz_delayTime} setDelayTime={setKusnetz_delayTime}
+                                grossCounts={kusnetz_grossCounts} setGrossCounts={setKusnetz_grossCounts}
+                                countDuration={kusnetz_countDuration} setCountDuration={setKusnetz_countDuration}
+                                backgroundCpm={kusnetz_backgroundCpm} setBackgroundCpm={setKusnetz_backgroundCpm}
+                                efficiency={kusnetz_efficiency} setEfficiency={setKusnetz_efficiency}
+                                result={kusnetz_result} setResult={setKusnetz_result}
+                                error={kusnetz_error} setError={setKusnetz_error}
+                            />
+                        }
+                    </div>
+                 </div>
+             );
          };         
          
          /**
