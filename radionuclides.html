@@ -1862,6 +1862,40 @@ const useDebounce = (value, delay) => {
              );
          };
          
+
+/**
+ * @description Displays a styled note for disclaimers or contextual info.
+ * @param {{children: React.ReactNode, type: 'info' | 'warning'}} props
+ */
+const ContextualNote = ({ children, type = 'info' }) => {
+    const styles = {
+        info: {
+            container: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
+            iconColor: 'text-slate-500 dark:text-slate-400',
+        },
+        warning: {
+            container: 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700',
+            iconColor: 'text-amber-600 dark:text-amber-400',
+        }
+    };
+    const selectedStyle = styles[type] || styles.info;
+
+    return (
+        <div className={`mt-4 p-3 border-l-4 rounded-r-lg text-xs ${selectedStyle.container}`}>
+            <div className="flex">
+                <div className="flex-shrink-0">
+                    <Icon path={ICONS.help} className={`w-4 h-4 mr-2 ${selectedStyle.iconColor}`} />
+                </div>
+                <div className="flex-grow text-slate-600 dark:text-slate-300">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
          const Tooltip = ({ text, children, widthClass = 'w-96' }) => {
          
          // --- Modified state to hold a flexible style object ---
@@ -3075,7 +3109,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                      <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Common Uses</h3>
                          <ul className="list-disc list-inside text-slate-600 dark:text-slate-300 space-y-1">
-                             {(nuclide.commonUses || []).map((use, i) => <li key={i}><ClickableNuclide text={use} radionuclides={radionuclides} onNuclideClick={onNuclideClick} /></li>)}
+                             {(nuclide.commonUses || []).map((use, i) => <li key={use}><ClickableNuclide text={use} radionuclides={radionuclides} onNuclideClick={onNuclideClick} /></li>)}
                          </ul>
                      </div>
                  
@@ -8742,7 +8776,13 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                {calcMode === CALC_MODE_INTERNAL && ( <>{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={dosimetryNuclides} onSelect={handleNuclideSelect} placeholder="Select an internal emitter..." /> )}</> )}
                {inputMode === INPUT_MODE_DB && selectedNuclide?.dosimetry && (<div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs"><h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">10 CFR 20 Appendix B Values:</h4><ul className="list-disc list-inside space-y-1">{selectedNuclide.dosimetry?.ALI && Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">ALI ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val} µCi</span></li>))}{selectedNuclide.dosimetry?.DAC && Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">DAC ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span></li>))}</ul></div>)}
                {calcMode === CALC_MODE_BREMS && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>)}
-               {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit(settings.activity); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>{betaMode === BETA_MODE_SKIN ? (<div className="animate-fade-in"><label className="block text-sm font-medium">Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{concentrationUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>) : (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}</div>)}
+               {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit(settings.activity); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
+
+<ContextualNote>
+                           <strong>Note:</strong> Beta dose calculations are based on standard empirical formulas and should be considered estimates for operational purposes.
+                       </ContextualNote>
+
+{betaMode === BETA_MODE_SKIN ? (<div className="animate-fade-in"><label className="block text-sm font-medium">Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{concentrationUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>) : (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}</div>)}
                {calcMode === CALC_MODE_GAMMA && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Geometry</label><div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setGeometryMode(GEOMETRY_POINT)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_POINT ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Point</button><button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Line</button><button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Area (Disk)</button></div></div>{geometryMode === GEOMETRY_POINT && (<div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Linear Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{(geometryMode === GEOMETRY_LINE || geometryMode === GEOMETRY_AREA) && (<div className="space-y-4">{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}</div>)}<div><Tooltip text="Assumes a perpendicular distance from the center of the source." widthClass="w-72"><label className="block text-sm font-medium">Distance from Source</label></Tooltip><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
                {calcMode === CALC_MODE_INTERNAL && (<div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium">Intake Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>{intakeRoute === 'inhalation' && (<div><label className="block text-sm font-medium">Solubility Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} disabled={availableClasses.length === 0} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div>)}</div><div><label className="block text-sm font-medium">Intake Amount</label><div className="flex"><input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
                {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
@@ -8827,6 +8867,8 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
     const availableMaterials = React.useMemo(() => { const nuclideHVLData = HVL_DATA[nuclideSymbol]; return nuclideHVLData ? Object.keys(nuclideHVLData).filter(key => key !== 'sourceRef') : []; }, [nuclideSymbol]);
     
+    const complexGammaNuclides = ['Ir-192', 'Eu-152', 'Ra-226', 'Na-24'];
+
     React.useEffect(() => {
     localStorage.setItem('shielding_calcMode', calcMode);
     localStorage.setItem('shielding_inputMode', inputMode);
@@ -9061,6 +9103,15 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                                            </>
                                        )}
                                    </div>
+
+                           {nuclideSymbol && complexGammaNuclides.includes(nuclideSymbol) && (
+                               <ContextualNote type="warning">
+                                   <strong>Beam Hardening:</strong> {nuclideSymbol} has a complex gamma spectrum. For thick shields, the actual dose rate may be higher than calculated as lower-energy gammas are filtered out.
+                               </ContextualNote>
+                           )}
+
+
+
                                </div>
                                <div className="grid grid-cols-2 gap-4">
                                    <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
@@ -9633,6 +9684,9 @@ const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMa
            <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} placeholder="e.g., 1e12" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
            <div><label className="block text-sm font-medium">Irradiation Time</label><div className="flex"><input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
        </div>
+       <ContextualNote>
+           <strong>Note:</strong> This calculation assumes a purely thermal neutron flux and uses the thermal capture cross-section. Results may vary for other neutron energy spectra.
+       </ContextualNote>
        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
        {result && (
            <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in">
@@ -10524,20 +10578,152 @@ const DrawingTool = ({ isVisible }) => {
     const fileInputRef = React.useRef(null);
     const osmLayerRef = React.useRef(null);
     const satelliteLayerRef = React.useRef(null);
+    const { addToast } = useToast();
 
+    // --- STATE MANAGEMENT (UPDATED with new state) ---
     const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
     const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
-    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
     const [plottedPoints, setPlottedPoints] = React.useState([]);
     const [locationInput, setLocationInput] = React.useState('');
-    const [surveyClass, setSurveyClass] = React.useState('Class 1');
+    const [surveyUnitName, setSurveyUnitName] = React.useState('SU-1'); // New
+    const [surveyClass, setSurveyClass] = React.useState('Class 1'); // New
+    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
+    const [sampleCalcMode, setSampleCalcMode] = React.useState('byNumber'); // New: 'byNumber' or 'bySpacing'
+    const [gridSpacing, setGridSpacing] = React.useState(10); // New: in meters
 
     const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
     const defaultStyle = { color: '#3388ff' };
 
+    // --- HELPER FUNCTIONS ---
+    const isPointInPolygon = (point, polygonLatLngs) => {
+        const polyPoints = polygonLatLngs[0];
+        const x = point.lat, y = point.lng;
+        let inside = false;
+        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
+            const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
+            const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    };
+
+    const handleClearPoints = () => {
+        const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
+        setPlottedPoints(biasedOnly);
+        
+        samplePointsLayerRef.current.eachLayer(layer => {
+            if (layer !== originMarkerRef.current && layer.options.className === 'grid-sample-marker') {
+                samplePointsLayerRef.current.removeLayer(layer);
+            }
+        });
+    };
+
+    const handleClearAll = () => {
+        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
+        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
+        setSurveyUnitLayer(null);
+        setSurveyUnitArea(0);
+        setPlottedPoints([]);
+    };
+
+    // --- CORE LOGIC (UPDATED FUNCTIONS) ---
+    const onDrawEditOrCreate = (e) => {
+        const layer = e.layer || e.layers.getLayers()[0];
+        if (!layer) return;
+
+        if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+            if (!surveyUnitLayer) {
+                drawnItemsRef.current.addLayer(layer);
+            }
+            setSurveyUnitLayer(layer);
+            const area = calculatePolygonArea(layer.getLatLngs());
+            setSurveyUnitArea(area);
+            
+            handleClearPoints(); 
+            const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
+            layer.bindPopup(popupContent).openPopup();
+            layer.on({
+                mouseover: (e) => e.target.setStyle(highlightStyle),
+                mouseout: (e) => e.target.setStyle(defaultStyle)
+            });
+            if (e.type === 'draw:edited') {
+                addToast("Survey unit updated. Please regenerate statistical samples.");
+            }
+        } else if (layer instanceof L.Marker) {
+            const latLng = layer.getLatLng();
+            const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' });
+            
+            const newPoint = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+            const updatedPoints = [...plottedPoints, newPoint];
+            const popupContent = `<b>Sample Point #${updatedPoints.length}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
+            newMarker.bindPopup(popupContent);
+            
+            samplePointsLayerRef.current.addLayer(newMarker);
+            setPlottedPoints(updatedPoints);
+        }
+    };
+    
+    const handleGenerateSamples = (pattern) => {
+        if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
+        
+        handleClearPoints();
+
+        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+        let numSamples = samplesToPlace;
+        let spacingMeters = gridSpacing;
+
+        if (sampleCalcMode === 'bySpacing' && pattern !== 'random') {
+            if (gridSpacing <= 0) { alert("Grid spacing must be greater than zero."); return; }
+            numSamples = Math.ceil(surveyUnitArea / (spacingMeters * spacingMeters));
+        } else if (sampleCalcMode === 'byNumber' && pattern !== 'random') {
+            if (samplesToPlace <= 0) { alert("Number of samples must be greater than zero."); return; }
+            const multiplier = pattern === 'triangular' ? 0.866 : 1;
+            spacingMeters = Math.sqrt(surveyUnitArea / (multiplier * numSamples));
+        }
+
+        const newPoints = [];
+        const latLngs = surveyUnitLayer.getLatLngs();
+        const bounds = surveyUnitLayer.getBounds();
+
+        if (pattern === 'random') {
+            while (newPoints.length < numSamples) {
+               const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+               const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+               if (isPointInPolygon({ lat, lng }, latLngs)) { newPoints.push({ lat, lng }); }
+           }
+        } else {
+           const spacingLat = spacingMeters / 111320;
+           const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
+           const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
+           const randomLatOffset = Math.random() * spacingLat;
+           const randomLngOffset = Math.random() * spacingLng;
+           let row = 0;
+           for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth() + spacingLat; lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
+               const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
+               for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast() + spacingLng; lng += spacingLng) {
+                   if (isPointInPolygon({ lat, lng }, latLngs)) { newPoints.push({ lat, lng }); }
+               }
+               row++;
+           }
+        }
+        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+        setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
+
+        pointsWithTypes.forEach((point, index) => {
+           const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
+           const popupContent = `<b>Sample Point #${existingBiasedPoints.length + index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+           marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
+        });
+    };
+
+    // --- UNCHANGED ORIGINAL FUNCTIONS ---
+// --- UNCHANGED ORIGINAL FUNCTIONS (NOW WITH FULL CODE) ---
+
     const handleZoomToSurveyUnit = () => {
         if (surveyUnitLayer && mapRef.current) {
-            mapRef.current.fitBounds(surveyUnitLayer.getBounds());
+            const bounds = surveyUnitLayer.getBounds();
+            mapRef.current.fitBounds(bounds);
         }
     };
 
@@ -10546,9 +10732,11 @@ const DrawingTool = ({ isVisible }) => {
             alert("Please draw a survey unit to save.");
             return;
         }
+        // UPDATED: Now includes the survey unit name in the saved file
         const planData = {
             surveyUnit: surveyUnitLayer.toGeoJSON(),
             points: plottedPoints,
+            surveyUnitName: surveyUnitName,
             surveyClass: surveyClass,
             samplesToPlace: samplesToPlace,
         };
@@ -10572,6 +10760,7 @@ const DrawingTool = ({ isVisible }) => {
                 
                 handleClearAll();
                 
+                // UPDATED: Now loads the survey unit name and other dashboard state
                 const newSurveyUnit = L.geoJSON(parsedData.surveyUnit, { style: defaultStyle });
                 const layer = newSurveyUnit.getLayers()[0];
                 if (layer) {
@@ -10580,8 +10769,12 @@ const DrawingTool = ({ isVisible }) => {
                     const area = calculatePolygonArea(layer.getLatLngs());
                     setSurveyUnitArea(area);
                     mapRef.current.fitBounds(layer.getBounds());
+                    
+                    setSurveyUnitName(parsedData.surveyUnitName || 'Loaded SU');
+                    setSurveyClass(parsedData.surveyClass || 'Class 1');
+                    setSamplesToPlace(parsedData.samplesToPlace || 25);
 
-                    const popupContent = `<b>Survey Unit</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
+                    const popupContent = `<b>Survey Unit: ${parsedData.surveyUnitName || 'Loaded SU'}</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
                     layer.bindPopup(popupContent);
                     layer.on({
                         mouseover: (e) => e.target.setStyle(highlightStyle),
@@ -10591,8 +10784,6 @@ const DrawingTool = ({ isVisible }) => {
 
                 const loadedPoints = parsedData.points || [];
                 setPlottedPoints(loadedPoints);
-                setSurveyClass(parsedData.surveyClass || 'Class 1');
-                setSamplesToPlace(parsedData.samplesToPlace || 25);
                 
                 loadedPoints.forEach((point, index) => {
                     const marker = L.circleMarker([point.lat, point.lng], {
@@ -10610,107 +10801,6 @@ const DrawingTool = ({ isVisible }) => {
         event.target.value = null;
     };
 
-    const isPointInPolygon = (point, polygonLatLngs) => {
-        const polyPoints = polygonLatLngs[0];
-        const x = point.lat, y = point.lng;
-        let inside = false;
-        for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
-            const xi = polyPoints[i].lat, yi = polyPoints[i].lng;
-            const xj = polyPoints[j].lat, yj = polyPoints[j].lng;
-            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    };
-
-    const onDrawCreate = (e) => {
-        const { layer, layerType } = e;
-    
-        if ((layerType === 'polygon' || layerType === 'rectangle') && !surveyUnitLayer) {
-            drawnItemsRef.current.clearLayers();
-            samplePointsLayerRef.current.clearLayers();
-            drawnItemsRef.current.addLayer(layer);
-            setSurveyUnitLayer(layer);
-            const area = calculatePolygonArea(layer.getLatLngs());
-            setSurveyUnitArea(area);
-            setPlottedPoints([]);
-
-            const popupContent = `<b>Survey Unit</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
-            layer.bindPopup(popupContent);
-            layer.on({
-                mouseover: (e) => e.target.setStyle(highlightStyle),
-                mouseout: (e) => e.target.setStyle(defaultStyle)
-            });
-
-        } else if (layerType === 'marker') {
-            const latLng = layer.getLatLng();
-            const newMarker = L.circleMarker(latLng, {
-                radius: 4,
-                className: 'biased-sample-marker'
-            });
-            
-            const newPoint = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-            const updatedPoints = [...plottedPoints, newPoint];
-            const popupContent = `<b>Sample Point #${updatedPoints.length}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
-            newMarker.bindPopup(popupContent);
-            
-            samplePointsLayerRef.current.addLayer(newMarker);
-            setPlottedPoints(updatedPoints);
-
-        } else {
-            drawnItemsRef.current.addLayer(layer);
-        }
-    };
-
-    const handleGenerateSamples = (pattern) => {
-        if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
-        
-        samplePointsLayerRef.current.eachLayer(layer => {
-            if (layer !== originMarkerRef.current && layer.options.className === 'grid-sample-marker') {
-                samplePointsLayerRef.current.removeLayer(layer);
-            }
-        });
-        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-        
-        const newPoints = [];
-        const latLngs = surveyUnitLayer.getLatLngs();
-        const bounds = surveyUnitLayer.getBounds();
-        if (pattern === 'random') {
-            while (newPoints.length < samplesToPlace) {
-               const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-               const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-               const point = { lat, lng };
-               if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-           }
-        } else {
-           const polygonArea = calculatePolygonArea(latLngs);
-           const spacingMeters = Math.sqrt(polygonArea / (pattern === 'triangular' ? 0.866 * samplesToPlace : samplesToPlace));
-           const spacingLat = spacingMeters / 111320;
-           const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
-           const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
-           const randomLatOffset = Math.random() * spacingLat;
-           const randomLngOffset = Math.random() * spacingLng;
-           let row = 0;
-           for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth(); lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
-               const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
-               for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast(); lng += spacingLng) {
-                   const point = { lat, lng };
-                   if (isPointInPolygon(point, latLngs)) { newPoints.push(point); }
-               }
-               row++;
-           }
-        }
-        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
-        const finalPoints = [...existingBiasedPoints, ...pointsWithTypes];
-        setPlottedPoints(finalPoints);
-
-        pointsWithTypes.forEach((point, index) => {
-           const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
-           const popupContent = `<b>Sample Point #${existingBiasedPoints.length + index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-           marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
-        });
-    };
-    
     const handleExport = () => {
         if (plottedPoints.length === 0 || !surveyUnitLayer) {
             alert("Please draw a survey unit and place sample points before exporting.");
@@ -10736,26 +10826,7 @@ const DrawingTool = ({ isVisible }) => {
         link.click();
         document.body.removeChild(link);
     };
-    
-    const handleClearAll = () => {
-        if (drawnItemsRef.current) drawnItemsRef.current.clearLayers();
-        if (samplePointsLayerRef.current) samplePointsLayerRef.current.clearLayers();
-        setSurveyUnitLayer(null);
-        setSurveyUnitArea(0);
-        setPlottedPoints([]);
-    };
 
-    const handleClearPoints = () => {
-        const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
-        setPlottedPoints(biasedOnly);
-        
-        samplePointsLayerRef.current.eachLayer(layer => {
-            if (layer.options.className === 'grid-sample-marker') {
-                samplePointsLayerRef.current.removeLayer(layer);
-            }
-        });
-    };
-    
     const handleGoToLocation = async () => {
         if (!locationInput.trim()) return;
         const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
@@ -10812,7 +10883,7 @@ const DrawingTool = ({ isVisible }) => {
         reportWindow.document.write(`
             <html>
                 <head>
-                    <title>Survey Unit Report</title>
+                    <title>Survey Unit Report: ${surveyUnitName}</title>
                     ${leafletCss} ${leafletDrawCss}
                     <style>
                         body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
@@ -10831,7 +10902,7 @@ const DrawingTool = ({ isVisible }) => {
                 <body>
                     <button class="print-button" onclick="window.print()">Print Report</button>
                     <div class="report-container">
-                        <h1>Survey Unit Report</h1>
+                        <h1>Survey Unit Report: ${surveyUnitName}</h1>
                         <div class="summary-container">
                             <div><strong>Class:</strong> ${surveyClass}</div>
                             <div><strong>Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
@@ -10865,7 +10936,8 @@ const DrawingTool = ({ isVisible }) => {
         `);
         reportWindow.document.close();
     };
-        
+
+    // --- MAP INITIALIZATION ---
     React.useEffect(() => {
         if (mapRef.current) return;
         
@@ -10896,7 +10968,10 @@ const DrawingTool = ({ isVisible }) => {
 
         mapRef.current.on('mousemove', (e) => { mousePositionControl.update(`Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`); });
         mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
-        mapRef.current.on(L.Draw.Event.CREATED, onDrawCreate);
+        
+        // --- UPDATED: Event listeners for draw events ---
+        mapRef.current.on(L.Draw.Event.CREATED, onDrawEditOrCreate);
+        mapRef.current.on(L.Draw.Event.EDITED, onDrawEditOrCreate);
     
         return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     }, []);
@@ -10914,10 +10989,7 @@ const DrawingTool = ({ isVisible }) => {
         }
         if (surveyUnitLayer && samplePointsLayerRef.current) {
             const originLatLng = surveyUnitLayer.getBounds().getSouthWest();
-            const originMarker = L.circleMarker(originLatLng, {
-                radius: 6,
-                className: 'origin-sample-marker'
-            });
+            const originMarker = L.circleMarker(originLatLng, { radius: 6, className: 'origin-sample-marker' });
             originMarker.bindPopup(`<b>Survey Origin (SW Corner)</b><br>Lat: ${originLatLng.lat.toFixed(6)}<br>Lng: ${originLatLng.lng.toFixed(6)}`);
             originMarker.addTo(samplePointsLayerRef.current);
             originMarkerRef.current = originMarker;
@@ -10946,34 +11018,59 @@ const DrawingTool = ({ isVisible }) => {
             </div>
 
             <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Survey Unit Class</label>
-                    <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full text-center p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-semibold">
-                        <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
-                    </select>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                    <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
-                    <div className="relative flex items-center justify-center">
-                        <button onClick={() => setSamplesToPlace(prev => Math.max(0, prev - 1))} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-l-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">-</button>
-                        <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-20 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent border-y border-slate-200 dark:border-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                        <button onClick={() => setSamplesToPlace(prev => prev + 1)} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded-r-md font-bold text-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors">+</button>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                    <h4 className="font-bold text-lg mb-3">Survey Unit Dashboard</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Name</label>
+                            <input type="text" value={surveyUnitName} onChange={e => setSurveyUnitName(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                        </div>
+                        <div>
+                            <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Class</label>
+                            <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
+                            </select>
+                        </div>
+                        <div className="pt-2">
+                            <p className="font-semibold text-slate-500 dark:text-slate-400">Area</p>
+                            <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
+                        </div>
+                         <div className="pt-2">
+                            <p className="font-semibold text-slate-500 dark:text-slate-400">Total Samples</p>
+                            <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{plottedPoints.length}</p>
+                        </div>
                     </div>
                 </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-center h-full flex flex-col justify-center">
-                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">Survey Unit Area</p>
-                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
-                </div>
-            </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg h-full flex flex-col justify-between">
+                    <div>
+                        <h4 className="font-bold text-lg mb-3">Statistical Samples</h4>
+                        <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-3">
+                            <button onClick={() => setSampleCalcMode('byNumber')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'byNumber' ? 'bg-white dark:bg-slate-800' : ''}`}>By Number</button>
+                            <button onClick={() => setSampleCalcMode('bySpacing')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'bySpacing' ? 'bg-white dark:bg-slate-800' : ''}`}>By Spacing</button>
+                        </div>
+                        {sampleCalcMode === 'byNumber' ? (
+                             <div className="text-center">
+                                <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
+                                <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
+                             </div>
+                        ) : (
+                            <div className="text-center">
+                                <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Grid Spacing (meters)</label>
+                                <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
 
-            <div className="mt-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                <p className="text-sm font-semibold text-center mb-2">Select a Sample Pattern</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <button onClick={() => handleGenerateSamples('square')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
-                    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
-                    <button onClick={() => handleGenerateSamples('random')} className="p-2 bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+    <button onClick={() => handleGenerateSamples('square')}     className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
+    
+
+    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 text-[12px] leading-tight bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
+
+    <button onClick={() => handleGenerateSamples('random')}     className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+</div>
                 </div>
             </div>
 
@@ -11046,7 +11143,6 @@ const DrawingTool = ({ isVisible }) => {
         </div>
     );
 };
-
 
 
          /**
