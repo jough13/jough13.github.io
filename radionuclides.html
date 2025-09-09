@@ -1024,7 +1024,7 @@
                      { nuclide: 'Thorium-234', decayType: 'Beta-minus', halfLife: '24.10 days', daughter: 'Protactinium-234m' },
                      { nuclide: 'Protactinium-234m', decayType: 'Beta-minus', halfLife: '1.17 minutes', daughter: 'Uranium-234' },
                      { nuclide: 'Uranium-234', decayType: 'Alpha', halfLife: '245,500 years', daughter: 'Thorium-230' },
-                     { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75,380 years', daughter: 'Radium-226' },
+                     { nuclide: 'Thorium-230', decayType: 'Alpha', halfLife: '75,400 years', daughter: 'Radium-226' },
                      { nuclide: 'Radium-226', decayType: 'Alpha', halfLife: '1600 years', daughter: 'Radon-222' },
                      { nuclide: 'Radon-222', decayType: 'Alpha', halfLife: '3.82 days', daughter: 'Polonium-218' },
                      { nuclide: 'Polonium-218', decayType: 'Alpha', halfLife: '3.1 minutes', daughter: 'Lead-214' },
@@ -1648,30 +1648,55 @@
          defaultDoseMode: 'gamma',
          };
          
-         const SettingsProvider = ({ children }) => {
-         const [settings, setSettings] = React.useState(() => {
-         try {
-             const saved = localStorage.getItem('rad_tool_settings');
-             return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
-         } catch (e) {
-             return defaultSettings;
-         }
-         });
-         
-         const updateSettings = (newSettings) => {
-         setSettings(prev => {
-             const updated = { ...prev, ...newSettings };
-             localStorage.setItem('rad_tool_settings', JSON.stringify(updated));
-             return updated;
-         });
-         };
-         
-         return (
-         <SettingsContext.Provider value={{ settings, updateSettings }}>
-             {children}
-         </SettingsContext.Provider>
-         );
-         };
+const SettingsProvider = ({ children }) => {
+    // UPDATED: Default settings now only contain the theme.
+    const defaultSettings = {
+        theme: 'system', // 'light', 'dark', or 'system'
+    };
+
+    const [settings, setSettings] = React.useState(() => {
+        try {
+            const saved = localStorage.getItem('rad_tool_settings');
+            return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+        } catch (e) {
+            return defaultSettings;
+        }
+    });
+
+    const updateSettings = (newSettings) => {
+        setSettings(prev => {
+            const updated = { ...prev, ...newSettings };
+            localStorage.setItem('rad_tool_settings', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
+    // This effect to handle the theme remains the same.
+    React.useEffect(() => {
+        const root = window.document.documentElement;
+        if (settings.theme === 'dark') {
+            root.classList.add('dark');
+        } else if (settings.theme === 'light') {
+            root.classList.remove('dark');
+        } else { // System theme
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            const handleChange = () => {
+                if (mediaQuery.matches) { root.classList.add('dark'); } 
+                else { root.classList.remove('dark'); }
+            };
+            mediaQuery.addEventListener('change', handleChange);
+            handleChange(); // Initial check
+            return () => mediaQuery.removeEventListener('change', handleChange);
+        }
+    }, [settings.theme]);
+
+    return (
+        // The context now provides a much simpler value.
+        <SettingsContext.Provider value={{ settings, updateSettings }}>
+            {children}
+        </SettingsContext.Provider>
+    );
+};
          
          const CATEGORY_DESCRIPTIONS = {
          'Medical': 'Used for diagnosis, therapy, or medical research.',
@@ -2229,30 +2254,31 @@ const ContextualNote = ({ children, type = 'info' }) => {
           * @param {(nuclide: object) => void} props.handleNuclideSelection - Handler for when a nuclide is selected.
           */
          
-         const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection, onNavClick }) => (
-         <div className="relative p-4 flex items-center gap-2">
-         
-         <div className="relative flex-grow">
-             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                 <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
-             </div>
-             <input
-                 ref={inputRef}
-                 type="text"
-                 value={nuclideName}
-                 onChange={handleNuclideNameChange}
-                 onKeyDown={handleKeyDown}
-                 placeholder="Search by name or symbol (e.g., U-238)"
-                 className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-             />
-             {nuclideName && (
-                 <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
-                     <Icon path={ICONS.clear} className="w-5 h-5" />
-                 </button>
-             )}
-         </div>
-         
-         <button
+const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection, onNavClick, isFocused, onFocus, onBlur }) => (
+    <div className="relative p-4 flex items-center gap-2">
+        <div className="relative flex-grow">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+            </div>
+            <input
+                ref={inputRef}
+                type="text"
+                value={nuclideName}
+                onChange={handleNuclideNameChange}
+                onKeyDown={handleKeyDown}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                placeholder="Search by name or symbol (e.g., U-238)"
+                className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+            />
+            {nuclideName && (
+                <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
+                    <Icon path={ICONS.clear} className="w-5 h-5" />
+                </button>
+            )}
+        </div>
+
+        <button
              onClick={() => onNavClick('home')}
              className="hidden md:flex items-center gap-2 p-3 md:px-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
              aria-label="Home"
@@ -2260,43 +2286,40 @@ const ContextualNote = ({ children, type = 'info' }) => {
              <Icon path={ICONS.home} className="w-5 h-5" />
              <span className="font-semibold">Home</span>
          </button>
-         
-         {suggestions.length > 0 && (
-             <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
-                 {suggestions.map((s, i) => {
-                     const styles = CATEGORY_STYLES[s.category] || CATEGORY_STYLES['default'];
-                     return (
-                         <li
-                             key={s.symbol}
-                             className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''}`}
-                             onClick={() => handleNuclideSelection(s)}
-                         >
-                             {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
-                         </li>
-                     );
-                 })}
-         
-                 {/* Conditionally render the footer */}
-         
-                 {suggestions.length > 4 && (
-                     <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
-                         <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                             {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
-                                 const bgColor = styles.border.replace('border-l-', 'bg-');
-                                 return (
-                                     <div key={category} className="flex items-center gap-1.5">
-                                         <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
-                                         <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
-                                     </div>
-                                 );
-                             })}
-                         </div>
-                     </div>
-                 )}
-             </ul>
-         )}
-         </div>
-         );
+        
+        {isFocused && suggestions.length > 0 && (
+            <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                {suggestions.map((s, i) => {
+                    const styles = CATEGORY_STYLES[s.category] || CATEGORY_STYLES['default'];
+                    return (
+                        <li
+                            key={s.symbol}
+                            className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''}`}
+                            onClick={() => handleNuclideSelection(s)}
+                        >
+                            {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
+                        </li>
+                    );
+                })}
+                {suggestions.length > 4 && (
+                    <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                            {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
+                                const bgColor = styles.border.replace('border-l-', 'bg-');
+                                return (
+                                    <div key={category} className="flex items-center gap-1.5">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </ul>
+        )}
+    </div>
+);
          
          /**
          * @description A button that appears when the user scrolls down, allowing them to quickly return to the top of the page.
@@ -2924,9 +2947,9 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
          * knowledge and external data sources that underpin the calculations and information in the app.
          */
          
-         const ReferencesPage = () => {
-         const referenceLinks = [
-         {
+const ReferencesPage = () => {
+    const referenceLinks = [
+        {
             category: 'Regulatory & Guidance',
             items: [
                 { title: '10 CFR Part 20 - Standards for Protection Against Radiation', url: 'https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/', description: 'The foundational NRC regulation for radiation protection in the United States.' },
@@ -2934,27 +2957,28 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                 { title: 'NUREG-1556 Series - Consolidated Guidance About Materials Licenses', url: 'https://www.nrc.gov/reading-rm/doc-collections/nuregs/staff/sr1556/index.html', description: 'A collection of NRC guidance documents for various types of materials licenses.' },
                 { title: 'MARSSIM - Multi-Agency Radiation Survey and Site Investigation Manual', url: 'https://www.nrc.gov/reading-rm/doc-collections/nuregs/staff/sr1575/index.html', description: 'The primary guidance for performing final status surveys for decommissioning.' },
             ]
-         },
-         {
+        },
+        {
             category: 'Data & Tools',
             items: [
                 { title: 'NNDC NuDat 3 - National Nuclear Data Center', url: 'https://www.nndc.bnl.gov/nudat3/', description: 'The primary source for the nuclear data in this toolbox. An authoritative database for nuclear structure and decay data.' },
-                { title: 'RAD Toolbox - EPA Radiation Protection Tools', url: 'https://www.epa.gov/radiation/rad-toolbox', description: 'A suite of tools and documents from the Environmental Protection Agency.' },
+                // CHANGED: The title, URL, and description for the EPA link have been updated.
+                { title: 'EPA Radiation Protection', url: 'https://www.epa.gov/radiation', description: "The Environmental Protection Agency's main hub for radiation information and resources." },
                 { title: 'REMM - Radiation Emergency Medical Management', url: 'https://remm.hhs.gov/', description: 'Guidance for health care providers on diagnosis and treatment of radiation injuries during emergencies.' },
             ]
-         },
-         {
+        },
+        {
             category: 'Professional Organizations',
             items: [
                 { title: 'Health Physics Society (HPS)', url: 'https://hps.org/', description: 'A scientific organization of professionals in radiation safety.' },
                 { title: 'American Association of Physicists in Medicine (AAPM)', url: 'https://www.aapm.org/', description: 'A scientific and professional organization for medical physicists.' },
-                { title: 'International Atomic Energy Agency (IAEA)', url: 'https://www.iaea.org/', description: 'The world\'s central intergovernmental forum for scientific and technical co-operation in the nuclear field.' },
+                { title: 'International Atomic Energy Agency (IAEA)', url: 'https://www.iaea.org/', description: "The world's central intergovernmental forum for scientific and technical co-operation in the nuclear field." },
             ]
-         }
-         ];
-         
-         return (
-         <div className="p-4 animate-fade-in">
+        }
+    ];
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Links & References</h2>
                 <div className="space-y-6">
@@ -2973,9 +2997,9 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                     ))}
                 </div>
             </div>
-         </div>
-         );
-         };
+        </div>
+    );
+};
          
          /**
           * @description Displays information about a single radionuclide. Can be a full detailed card or a compact version for lists.
@@ -6640,7 +6664,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
        const current_initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * timePoint_seconds);
        let current_daughterIngrowth;
        if (Math.abs(lambda1 - lambda2) < 1e-12) { current_daughterIngrowth = N0_parent * lambda1 * timePoint_seconds * Math.exp(-lambda1 * timePoint_seconds); } 
-       else { current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * t_seconds)); }
+       else { current_daughterIngrowth = (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)); }
        const d_activity = current_initialDaughterDecay + current_daughterIngrowth;
        daughterData.push(d_activity);
        ratioData.push(current_A_parent > 1e-9 ? d_activity / current_A_parent : 0);
@@ -7268,296 +7292,360 @@ const RadonCalculator = () => {
          * @prop {function} onClose - A callback function to close the modal.
          */
          
-         const ManualModal = ({ isOpen, onClose }) => {
-         if (!isOpen) return null;
-         
-         // Internal component for the static content of the manual to keep JSX clean.
-         
-         const ManualContent = () => {
-         return (
-             <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
-                 <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
-                 <p>
-                     Welcome to the Health Physics Toolbox! This application is designed for students, health physicists, and nuclear professionals who need quick access to radionuclide data and a powerful suite of radiological calculators. This guide will walk you through the various features to help you get the most out of the tool.
-                 </p>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
-                 <p>
-                     The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
-                 </p>
-                 <h4 className="italic mt-4">Searching</h4>
-                 <p>
-                     You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
-                 </p>
-                 <h4 className="italic mt-4">The Nuclide Card</h4>
-                 <p>
-                     Once you select a nuclide, its detailed information card is displayed. This card contains key data points including half-life, decay constant (λ), emission types, primary emission energies, and its parent and daughter products. You can also add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right.
-                 </p>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
-                 <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
-         
-                 <h3 className="mt-6"><strong>Database</strong></h3>
-                 <p>
-                     The <strong>Database</strong> view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties:
-                 </p>
-                 <ul>
-                     <li><strong>Category & Commonality:</strong> Find nuclides based on their typical use (e.g., Medical, Industrial) or how frequently they are encountered.</li>
-                     <li><strong>Emission Type:</strong> Isolate all nuclides that undergo a specific decay, such as Alpha Decay or Positron Emission.</li>
-                     <li><strong>Half-life & Energy Ranges:</strong> This is a powerful feature for finding the right tool for a job. For example, you can find a gamma emitter with a half-life between 30 and 90 days and a primary gamma energy above 0.5 MeV.</li>
-                 </ul>
-         
-                 <h3 className="mt-6"><strong>Compare</strong></h3>
-                 <p>
-                     The <strong>Compare</strong> tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function, allowing you to save the comparison table as a text file that can be opened in a spreadsheet program like Excel for further analysis.
-                 </p>
-         
-                 <h3 className="mt-6"><strong>Calculators</strong></h3>
-                 <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-         
-                 <h4 className="italic mt-4">Decay Calculators</h4>
-                 <ul>
-                     <li><strong>Decay:</strong> This tool has two modes. <strong>Standard Decay</strong> solves the fundamental decay equation for any one variable given the others and includes a Parent-Daughter mode. <strong>Source Correction</strong> mode is a specialized tool for correcting a source's activity from its calibration date to a new date.</li>
-                     <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny.</li>
-                     <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> or <strong>Transient</strong> and calculate important metrics like the time to maximum daughter activity.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
-                 <ul>
-                     <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose for surface contamination and Dose in Air for a point source. <strong>Bremsstrahlung</strong> mode estimates X-ray dose from beta shielding, and <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
-                     <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate final dose rate or required thickness, including an optional Buildup Factor correction. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
-                     <li><strong>Stay Time:</strong> A practical tool for radiation safety that calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
-                 </ul>
-         
-                 <h4 className="italic mt-4">Operational HP Tools</h4>
-                 <ul>
-                    <li><strong>Static Survey:</strong> Evaluates a set of static surface measurements against an average and maximum limit.</li>
-                    <li><strong>Wipe Survey:</strong> Calculates removable contamination in dpm/100cm² from a smear count and compares it to NRC Regulatory Guide 1.86 and ANSI N13.12 limits.</li>
-                    <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the 0.005 µCi limit.</li>
-                    <li><strong>Airborne:</strong> Models an airborne release in a room to calculate the initial concentration in DAC units and the time required for ventilation to reduce the concentration to 1 DAC.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Neutron Tools</h4>
-                 <ul>
-                    <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose (rem) using the log-log interpolation of data from 10 CFR 20.</li>
-                    <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known neutron flux. Includes both a database of common reactions and a manual input mode.</li>
-                    <li><strong>Composite Activation:</strong> Calculates the principal activation products from irradiating a composite material like concrete or steel.</li>
-                    <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate HVL data.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Medical Physics Tools</h4>
-                 <ul>
-                    <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead or concrete for diagnostic X-ray rooms based on the NCRP-147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
-                    <li><strong>Patient Release:</strong> Evaluates if a patient administered with a radiopharmaceutical can be released based on the criteria in 10 CFR 35.75, checking against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE).</li>
-                 </ul>
-         
-                 <h4 className="italic mt-4">MARSSIM Tools</h4>
-                 <ul>
-                     <li><strong>MDA:</strong> Calculates key decision values for radiation counting. Includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas).</li>
-                     <li><strong>MARSSIM Samples:</strong> Helps determine the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology from MARSSIM.</li>
-                     <li><strong>MARSSIM Tests:</strong> Performs the <strong>WRS Test</strong> to compare a survey unit to a reference area and the <strong>EMC Sign Test</strong> for evaluating localized elevated areas.</li>
-                 </ul>
-         
-                 <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
-                 <ul>
-                    <li><strong>Chi-Squared (χ²) Test:</strong> Performs a chi-squared test on a set of repeated counts to check if the counting system is statistically stable.</li>
-                    <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts lost due to detector dead time, providing the "true" count rate.</li>
-                    <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision.</li>
-                    <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties.</li>
-                 </ul>
-                 
-                 <h4 className="italic mt-4">Utility Tools</h4>
-                 <ul>
-                     <li><strong>Peak Identifier:</strong> An essential tool for gamma spectroscopy. Enter a peak energy (in keV or MeV) and a tolerance, and the tool will search the entire database for matching gamma or alpha emissions. It also analyzes the input energy for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays.</li>
-                     <li><strong>Activity/Mass:</strong> This module contains two tools. The first converts between a nuclide's mass and its activity. The second is a first-principles calculator for determining a nuclide's Specific Activity (Bq/g) from its atomic weight and half-life.</li>
-                     <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A<sub>1</sub> and A<sub>2</sub> values.</li>
-                     <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
-                     <li><strong>Scratchpad:</strong> A simple notepad for jotting down notes or calculations. Your notes are automatically saved in your browser's local storage.</li>
-                     <li><strong>Sci. Calculator:</strong> A built-in scientific calculator for convenience.</li>
-                     <li><strong>References:</strong> A curated list of important links to regulatory bodies, data sources, and professional organizations.</li>
-                 </ul>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Settings & Customization</strong></h2>
-                 <p>The <strong>Settings</strong> panel, accessible from the gear icon in the top right, allows you to set default units for the main calculators. This can streamline your workflow by pre-populating inputs with your preferred units for **Activity**, **Dose Rate**, and **Distance**.</p>
-                 <ul>
-                     <li><strong>Activity:</strong> Set your preferred unit for activity (e.g., Ci, mCi, Bq). This will be the default for calculators like Dose Rate and Stay Time.</li>
-                     <li><strong>Dose Rate:</strong> Set your preferred dose rate unit (e.g., mrem/hr, µSv/hr). This will be the default for calculators like Dose Rate, Shielding, and Stay Time.</li>
-                     <li><strong>Distance:</strong> Set your preferred distance unit (e.g., m, cm, ft). This will be the default for calculators that require a distance from the source.</li>
-                 </ul>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
-                 <p>The following section provides the mathematical basis for the calculators used in this application.</p>
-         
-                 <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
-                 <h4 className="italic mt-4">Radioactive Decay</h4>
-                 <p>The fundamental decay equation relates initial activity (A<sub>0</sub>) to the activity at time t (A(t)).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>A(t) = A<sub>0</sub> * e<sup>-λt</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>A(t)</code> is the activity at time <code>t</code>.</li>
-                     <li><code>A<sub>0</sub></code> is the initial activity at <code>t=0</code>.</li>
-                     <li><code>λ</code> is the decay constant, calculated as <code>ln(2) / T<sub>1/2</sub></code>.</li>
-                 </ul>
-                 <h4 className="italic mt-4">Series (Bateman) Decay</h4>
-                 <p>For a decay chain <code>A → B → C</code>, the activity of the daughter <code>B</code> is given by:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>A<sub>2</sub>(t) = [A<sub>1</sub>(0) * λ<sub>2</sub>/(λ<sub>2</sub>-λ<sub>1</sub>)] * [e<sup>-λ<sub>1</sub>t</sup> - e<sup>-λ<sub>2</sub>t</sup>] + A<sub>2</sub>(0)e<sup>-λ<sub>2</sub>t</sup></pre>
-                 </div>
-                 <p>The calculator solves the full system of Bateman equations for any chain length, including branching decays.</p>
-                 <h4 className="italic mt-4">Specific Activity (SA)</h4>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>SA (Bq/g) = (N<sub>a</sub> * λ) / M<sub>a</sub> = (N<sub>a</sub> * ln(2)) / (T<sub>1/2</sub> * M<sub>a</sub>)</pre>
-                 </div>
-                 <ul>
-                     <li><code>N<sub>a</sub></code> is Avogadro's Number (6.022 x 10<sup>23</sup> atoms/mol).</li>
-                     <li><code>M<sub>a</sub></code> is the molar mass of the radionuclide (g/mol).</li>
-                     <li><code>T<sub>1/2</sub></code> is the half-life in seconds.</li>
-                 </ul>
-         
-                 <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
-                 <h4 className="italic mt-4">Dose Rate (Gamma Sources)</h4>
-                 <p>For a <strong>point source</strong>, the inverse square law is used:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Dose Rate = (Γ * A) / d<sup>2</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>Γ</code> is the specific gamma-ray constant.</li>
-                     <li><code>A</code> is the total source activity.</li>
-                     <li><code>d</code> is the perpendicular distance from the source.</li>
-                 </ul>
-                 <h4 className="italic mt-4">Shielding</h4>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>D<sub>shielded</sub> = D<sub>unshielded</sub> * (0.5)<sup>(x / HVL)</sup></pre>
-                 </div>
-                 <ul>
-                     <li><code>x</code> is the shield thickness.</li>
-                     <li><code>HVL</code> is the half-value layer thickness for the shield material.</li>
-                 </ul>
-         
-<h4 className="italic mt-4">X-Ray Shielding (NCRP-147)</h4>
-<p>The required transmission factor (B) for a diagnostic X-ray barrier is calculated as:</p>
-<div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-    <pre>B = (P * d<sup>2</sup>) / (K * W * U * T)</pre>
-</div>
-<ul>
-    <li><code>P</code> is the weekly dose limit (in R/wk).</li>
-    <li><code>d</code> is the distance from the source to the barrier (m).</li>
-    <li><code>K</code> is the air kerma rate constant (R·m²/mA·min).</li>
-    <li><code>W</code> is the workload (mA·min/wk).</li>
-    <li><code>U</code> is the Use Factor.</li>
-    <li><code>T</code> is the Occupancy Factor.</li>
-</ul>
+/**
+ * @description React component for displaying the application's user manual, FAQ, and technical reference.
+ * This component functions as a modal dialog that presents static, detailed information about the
+ * "Health Physics Toolbox" application.
+ *
+ * The manual content is an in-depth guide covering:
+ * - **Getting Started:** How to search for and view radionuclide data.
+ * - **Core Features:** A comprehensive breakdown of each major section of the app (Database, Compare, Calculators).
+ * - **Settings & Customization:** How to configure user preferences.
+ * - **Formulas & Equations:** A reference section detailing the key mathematical formulas used in various calculators.
+ * - **Contact & Copyright:** Information for user feedback and legal disclaimers.
+ * - **FAQ:** Answers to common questions, such as the source of the data and why certain nuclides may not appear in specific calculators.
+ *
+ * This component is purely for display and serves as the primary source of documentation for the user.
+ *
+ * @prop {boolean} isOpen - Boolean to control the visibility of the modal.
+ * @prop {function} onClose - A callback function to close the modal.
+ */
+const ManualModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
 
-                 <h3 className="mt-6"><b>Radon Formulas</b></h3>
-                 <h4 className="italic mt-4">Working Level & Equilibrium</h4>
-                 <p>The relationship between radon concentration, the equilibrium factor (F), and Working Levels (WL) is:</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>WL = (Concentration (pCi/L) / 100) * F</pre>
-                 </div>
-                 <h4 className="italic mt-4">Potential Alpha Energy Concentration (PAEC)</h4>
-                 <p>The PAEC is the energy concentration defined by the Working Level unit.</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>PAEC (MeV/L) = WL * 1.3 x 10<sup>5</sup></pre>
-                 </div>
-                 <h4 className="italic mt-4">Annual Dose Estimation</h4>
-                 <p>The annual dose is calculated from the cumulative exposure in Working Level Months (WLM).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Dose (mrem/yr) = (WL * (hrs_yr * Occupancy) / 170) * 500</pre>
-                 </div>
-         
-                 <h3 className="mt-6">MARSSIM Formulas</h3>
-                 <h4 className="italic mt-4"><b>LLD & MDA (Static Count)</b></h4>
-                 <p>The calculator uses the NUREG-1507 formula for the Lower Limit of Detection (LLD), which includes the Stapleton correction (+3).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>LLD (counts) = 3.29 * sqrt(R<sub>b</sub> * t<sub>g</sub> * (1 + t<sub>g</sub> / t<sub>b</sub>)) + 3</pre>
-                 </div>
-                 <p>The Minimum Detectable Activity (MDA) is then calculated from the LLD, count time (t<sub>g</sub>), and efficiencies (ε).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>MDA (dpm/100cm<sup>2</sup>) = (LLD / t<sub>g</sub>) / (ε<sub>i</sub> * ε<sub>s</sub>) * (100 / A)</pre>
-                 </div>
-                 <h4 className="italic mt-4">Scan MDC</h4>
-                 <p>The Scan MDC for a surveyor is based on the Minimum Detectable Count Rate (MDCR).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>MDCR (cpm) = d' * sqrt(B<sub>i</sub>) * (60 / t<sub>obs</sub>)</pre>
-                 </div>
-                 <p>The final MDC in dpm/100cm² accounts for surveyor efficiency (p) and total efficiency (ε<sub>total</sub>).</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>Scan MDC (dpm/100cm<sup>2</sup>) = MDCR / (sqrt(p) * ε<sub>total</sub> * (A<sub>probe</sub>/100))</pre>
-                 </div>
-                 <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
-                 <p>Based on MARSSIM Eq. 5-2, using the Relative Shift (Δ/σ) to find a corresponding probability value (P<sub>r</sub>) from a table.</p>
-                 <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                     <pre>N = (Z<sub>1-α</sub> + Z<sub>1-β</sub>)<sup>2</sup> / (3 * (P<sub>r</sub> - 0.5)<sup>2</sup>)</pre>
-                 </div>
-                 <p>The final number is increased by 20% to account for missing or unusable samples.</p>
-                 <h4 className="italic mt-4">WRS & Sign Tests</h4>
-                 <p>These are non-parametric statistical hypothesis tests based on ranking data rather than a simple formula.</p>
+    // Internal component for the static content of the manual to keep JSX clean.
+    const ManualContent = () => {
+        return (
+            <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
+                <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
+                <p>
+                    Welcome to the Health Physics Toolbox! This application is designed to be a comprehensive, all-in-one resource for students, health physicists, and nuclear professionals. Our philosophy is to centralize the essential data and calculations you need, removing the reliance on scattered spreadsheets, outdated software, or manual lookups. This guide will walk you through the various features to help you get the most out of the tool.
+                </p>
+        
+                <hr className="my-4" />
+        
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
+                <p>
+                    The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
+                </p>
+                <h4 className="italic mt-4">Searching</h4>
+                <p>
+                    You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
+                </p>
+                <h4 className="italic mt-4">The Nuclide Card</h4>
+                <p>
+                    Once you select a nuclide, its detailed information card is displayed. This card is a comprehensive summary, containing key data points grouped into logical sections like **Decay Properties**, **Physical Properties**, **Genealogy**, **Transportation Limits**, **Internal Dosimetry**, and **Principal Emissions**. You can add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right, making it easily accessible from the home page.
+                </p>
+        
+                <hr className="my-4" />
+        
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
+                <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
+        
+                <h3 className="mt-6"><strong>Database & Compare</strong></h3>
+                <ul>
+                    <li><strong>Database:</strong> This view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties, such as category, emission type, half-life, and energy ranges. This is perfect for finding the right nuclide for a specific application.</li>
+                    <li><strong>Compare:</strong> This tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function.</li>
+                </ul>
+        
+                <h3 className="mt-6"><strong>Calculators</strong></h3>
+                <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
+        
+                <h4 className="italic mt-4">Decay Calculators</h4>
+                <p>This group of tools handles the physics of radioactive decay over time.</p>
+                <ul>
+                    <li><strong>Decay Tools:</strong> A multi-tool for fundamental decay calculations. The <strong>Standard</strong> tab solves the fundamental decay equation for any one variable (initial activity, remaining activity, or time). The <strong>Correction</strong> tab is a specialized tool for correcting a source's activity from its calibration date to a new date. The <strong>To Limit</strong> tab calculates the time required for a source to decay to a specific activity level, which is useful for waste management.</li>
+                    <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny, which is essential for understanding complex decay dynamics.</li>
+                    <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (parent half-life is much longer than daughter's) or <strong>Transient</strong> (parent half-life is longer, but not by a huge margin) and calculates important metrics like the time to maximum daughter activity.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
+                <p>These tools are for external dosimetry, helping to estimate radiation dose and the shielding required to reduce it.</p>
+                <ul>
+                    <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose from surface contamination and Dose in Air from a point source. <strong>Bremsstrahlung</strong> mode estimates the secondary X-ray dose produced when beta particles are stopped by shielding. <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
+                    <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate the final dose rate after passing through a shield or the required shield thickness to reach a target dose rate. It includes an optional Buildup Factor correction for a more accurate result in broad beam geometries. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
+                    <li><strong>Stay Time:</strong> A practical tool for ALARA planning. It calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
+                </ul>
+        
+                <h4 className="italic mt-4">Operational HP Tools</h4>
+                <p>A suite of calculators designed for day-to-day radiation safety tasks and survey analysis.</p>
+                <ul>
+                   <li><strong>Surface Contamination:</strong> A comprehensive tool that calculates both removable contamination (from a wipe test) and total contamination (from a static probe survey). It automatically compares the results against the standard limits found in both NRC Regulatory Guide 1.86 and ANSI N13.12.</li>
+                   <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the common 0.005 µCi regulatory limit for removable contamination.</li>
+                   <li><strong>Airborne Release:</strong> This tool models a theoretical airborne release in a room to calculate the initial concentration in DAC (Derived Air Concentration) units. It also estimates the time required for the room's ventilation system (in Air Changes per Hour) to reduce the concentration back down to 1 DAC.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Neutron Tools</h4>
+                <p>A set of specialized calculators for dealing with neutron radiation, a common consideration in reactor and accelerator facilities.</p>
+                <ul>
+                   <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose equivalent (rem or Sv) for a given neutron energy. The conversion is performed using a log-log interpolation of the quality factors and fluence-per-rem data specified in 10 CFR 20.</li>
+                   <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known thermal neutron flux for a given amount of time. It includes both a database of common (n,γ) reactions and a manual input mode for custom scenarios.</li>
+                   <li><strong>Composite Activation:</strong> Estimates the principal activation products from irradiating common composite materials like concrete or steel, which contain trace elements that can become significant activation products.</li>
+                   <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate Half-Value Layer (HVL) data.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Medical Physics Tools</h4>
+                <p>Calculators tailored to scenarios commonly found in a medical or hospital environment.</p>
+                <ul>
+                   <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead, concrete, or drywall for diagnostic X-ray rooms. It is based on the NCRP Report No. 147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
+                   <li><strong>Patient Release:</strong> This tool helps determine if a patient administered with a radiopharmaceutical can be released from the hospital based on the criteria in 10 CFR 35.75. It checks against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE) based on occupancy scenarios.</li>
+                </ul>
+        
+                <h4 className="italic mt-4">MARSSIM Tools</h4>
+                <p>A suite of tools dedicated to planning and evaluating final status surveys according to the Multi-Agency Radiation Survey and Site Investigation Manual.</p>
+                <ul>
+                    <li><strong>MDA/MDC:</strong> Calculates key decision values for radiation counting instrumentation. It includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas) to ensure your survey methods can detect contamination at the required levels.</li>
+                    <li><strong>Sample Design:</strong> A two-part suite. The <strong>Calculator</strong> determines the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology. The <strong>Drawing Tool</strong> provides an interactive map to draw survey unit boundaries and automatically generate sample locations in a square grid, triangular grid, or random pattern.</li>
+                    <li><strong>Statistical Tests:</strong> Performs the two primary MARSSIM statistical tests on a set of data. The <strong>WRS Test</strong> is used to compare a survey unit to a reference area to determine if it meets the release criteria. The <strong>EMC Sign Test</strong> is used for evaluating localized areas of elevated activity to ensure they are not a significant risk.</li>
+                </ul>
+        
+                <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
+                <p>Tools for quality assurance and control of radiation counting equipment and laboratory processes.</p>
+                <ul>
+                   <li><strong>Chi-Squared (χ²) Test:</strong> This is a key performance test for a counting system. It performs a chi-squared test on a set of repeated counts of a stable source to check if the observed variance is consistent with a random Poisson distribution, ensuring the detector is functioning properly.</li>
+                   <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts that were missed due to detector dead time—the brief period after detecting a particle when the system is busy and cannot register another. This is crucial for accurate measurements at high count rates.</li>
+                   <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision and the reproducibility of your lab processes.</li>
+                   <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties (centroid and half-max energies). This is a fundamental measure of a gamma spectroscopy system's performance.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Utility Tools</h4>
+                <p>A collection of helpful tools to streamline your workflow.</p>
+                <ul>
+                    <li><strong>Peak Identifier:</strong> An essential tool for spectroscopy. The <strong>Search</strong> tab finds matching radionuclides for a given peak energy and tolerance. It also analyzes for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays. The <strong>Data Tables</strong> tab provides a comprehensive, sortable, and filterable list of all alpha, beta, and gamma emissions in the database.</li>
+                    <li><strong>Activity/Mass Tools:</strong> A three-in-one module. <strong>Mass ↔ Activity</strong> converts between a nuclide's mass and its activity using its specific activity. <strong>Activity from Dose</strong> calculates a source's activity based on a gamma dose rate measurement. <strong>Specific Activity</strong> is a first-principles calculator for determining a nuclide's SA (Bq/g) from its atomic weight and half-life.</li>
+                    <li><strong>Radon Tools:</strong> A three-part suite for radon analysis. <strong>Concentration</strong> converts between radon concentration units (e.g., pCi/L and Bq/m³) and estimates annual dose. <strong>Ingrowth</strong> calculates the Rn-222 activity from a given mass of its parent, Ra-226. <strong>Kusnetz (WL)</strong> determines the Working Level of radon progeny from air sampling data.</li>
+                    <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A₁ (special form) and A₂ (normal form) values.</li>
+                    <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
+                    <li><strong>Scratchpad & Sci. Calculator:</strong> Simple utility tools for jotting down notes or performing quick calculations. Both can be popped out into a separate window.</li>
+                </ul>
+        
+                <hr className="my-4" />
+        
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
+        
+                <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
+                <h4 className="italic mt-4">Radioactive Decay</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A(t) = A₀ · e<sup>-λt</sup></pre>
+                </div>
+                <ul>
+                    <li><code>A(t)</code> = Activity at time t</li>
+                    <li><code>A₀</code> = Initial activity at t=0</li>
+                    <li><code>λ</code> = Decay constant (ln(2) / T<sub>1/2</sub>)</li>
+                    <li><code>t</code> = Elapsed time</li>
+                </ul>
+
+                <h4 className="italic mt-4">Series (Bateman) Decay for a 2-step chain (A → B)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A₂(t) = [A₁(0)·λ₂/(λ₂-λ₁)]·[e<sup>-λ₁t</sup> - e<sup>-λ₂t</sup>] + A₂(0)e<sup>-λ₂t</sup></pre>
+                </div>
                  <ul>
-                     <li><strong>WRS Test:</strong> Tests the null hypothesis H<sub>0</sub>: The survey unit median is greater than the reference area median (i.e., it's contaminated). It compares the rank sum of the reference area (W<sub>rs</sub>) to a critical value (C<sub>w</sub>). The survey unit passes if W<sub>rs</sub> ≥ C<sub>w</sub>.</li>
-                     <li><strong>EMC Sign Test:</strong> Tests the null hypothesis H<sub>0</sub>: The median of the elevated area is greater than or equal to the DCGL<sub>EMC</sub>. It compares the number of positive differences (S<sup>+</sup>) to a critical value (C<sub>s</sub>). The area passes if S<sup>+</sup> ≥ C<sub>s</sub>.</li>
-                 </ul>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Copyright</strong></h2>
-                 <p>
-                     Feedback, bug reports, and suggestions are welcome! You can reach out via email, or check out my personal website and GitHub for other projects.
-                 </p>
+                    <li><code>A₂(t)</code> = Activity of the daughter at time t</li>
+                    <li><code>A₁(0)</code> = Initial activity of the parent</li>
+                    <li><code>A₂(0)</code> = Initial activity of the daughter</li>
+                    <li><code>λ₁</code>, <code>λ₂</code> = Decay constants for parent and daughter, respectively</li>
+                </ul>
+
+                <h4 className="italic mt-4">Specific Activity (SA)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>SA (Bq/g) = (Nₐ · λ) / Mₐ</pre>
+                </div>
+                <ul>
+                    <li><code>Nₐ</code> = Avogadro's Number (6.022 x 10²³ atoms/mol)</li>
+                    <li><code>Mₐ</code> = Molar mass of the radionuclide (g/mol)</li>
+                    <li><code>λ</code> = Decay constant in seconds⁻¹</li>
+                </ul>
+        
+                <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
+                <h4 className="italic mt-4">Gamma Dose Rate (Point Source)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Dose Rate = (Γ · A) / d²</pre>
+                </div>
+                <ul>
+                    <li><code>Γ</code> = Specific gamma-ray constant (e.g., in R·m²/hr·Ci)</li>
+                    <li><code>A</code> = Source activity (in Ci)</li>
+                    <li><code>d</code> = Distance from the source (in m)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Gamma Shielding</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>D(x) = D₀ · B · (0.5)<sup>(x / HVL)</sup></pre>
+                </div>
+                <ul>
+                    <li><code>D(x)</code> = Dose rate after shielding</li>
+                    <li><code>D₀</code> = Initial dose rate</li>
+                    <li><code>B</code> = Buildup Factor, for scattered photons</li>
+                    <li><code>x</code> = Shield thickness</li>
+                    <li><code>HVL</code> = Half-Value Layer thickness for the material</li>
+                </ul>
+
+                <h4 className="italic mt-4">X-Ray Shielding (NCRP-147)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>B = (P · d²) / (K · W · U · T)</pre>
+                </div>
+                <ul>
+                    <li><code>B</code> = Required transmission factor</li>
+                    <li><code>P</code> = Weekly dose limit (in R/wk)</li>
+                    <li><code>d</code> = Distance from source to barrier (m)</li>
+                    <li><code>K</code> = Air kerma rate constant (R·m²/mA·min)</li>
+                    <li><code>W</code> = Workload (mA·min/wk)</li>
+                    <li><code>U</code> = Use Factor (fraction of time beam is on)</li>
+                    <li><code>T</code> = Occupancy Factor (fraction of time area is occupied)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Patient Release TEDE (10 CFR 35.75)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>TEDE (rem) ≈ 1.443 · Γ · A₀ · T<sub>eff</sub> · Σ(tᵢ / dᵢ²)</pre>
+                </div>
+                <ul>
+                    <li><code>Γ</code> = Gamma constant (R·m²/hr·mCi)</li>
+                    <li><code>A₀</code> = Initial activity (mCi)</li>
+                    <li><code>T<sub>eff</sub></code> = Effective half-life (hours)</li>
+                    <li><code>tᵢ</code> = Occupancy time fraction for scenario i (hours/24)</li>
+                    <li><code>dᵢ</code> = Distance for scenario i (m)</li>
+                </ul>
+                
+                <h3 className="mt-6"><b>Operational HP Formulas</b></h3>
+                <h4 className="italic mt-4">Wipe / Leak Test Activity</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Activity (µCi) = (CPM<sub>net</sub>) / (ε<sub>inst</sub> · ε<sub>smear</sub> · 2.22x10⁶)</pre>
+                </div>
+                <ul>
+                    <li><code>CPM<sub>net</sub></code> = Gross CPM - Background CPM</li>
+                    <li><code>ε<sub>inst</sub></code> = Instrument efficiency (as a fraction)</li>
+                    <li><code>ε<sub>smear</sub></code> = Smear/wipe efficiency (typically 0.1)</li>
+                    <li><code>2.22x10⁶</code> = DPM per µCi</li>
+                </ul>
+
+                <h4 className="italic mt-4">Airborne Concentration</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>C(t) = (A / V) · e<sup>(-ACH · t)</sup></pre>
+                </div>
+                <ul>
+                    <li><code>C(t)</code> = Concentration at time t</li>
+                    <li><code>A</code> = Released activity</li>
+                    <li><code>V</code> = Room volume</li>
+                    <li><code>ACH</code> = Air Changes per Hour</li>
+                    <li><code>t</code> = Time in hours</li>
+                </ul>
+
+                <h3 className="mt-6"><b>Neutron Formulas</b></h3>
+                <h4 className="italic mt-4">Thermal Neutron Activation</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A(t) = N · σ · φ · (1 - e<sup>-λt</sup>)</pre>
+                </div>
+                <ul>
+                    <li><code>A(t)</code> = Activity of product at time t (Bq)</li>
+                    <li><code>N</code> = Number of target atoms</li>
+                    <li><code>σ</code> = Thermal neutron cross-section (cm²)</li>
+                    <li><code>φ</code> = Neutron flux (n/cm²·s)</li>
+                    <li><code>λ</code> = Decay constant of the product nuclide</li>
+                    <li><code>t</code> = Irradiation time (s)</li>
+                </ul>
+                
+                <h3 className="mt-6">MARSSIM Formulas</h3>
+                <h4 className="italic mt-4">Static Count MDA (NUREG-1507)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>LLD (counts) = 3.29 · √(R<sub>b</sub>·t<sub>g</sub>·(1 + t<sub>g</sub>/t<sub>b</sub>)) + 3</pre>
+                </div>
+                <ul>
+                    <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
+                    <li><code>t<sub>g</sub></code>, <code>t<sub>b</sub></code> = Gross (sample) and background count times (min)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Scan MDC</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Scan MDC = MDCR / (√(p) · ε<sub>total</sub>)</pre>
+                </div>
+                <ul>
+                    <li><code>MDCR</code> = Minimum Detectable Count Rate</li>
+                    <li><code>p</code> = Surveyor efficiency</li>
+                    <li><code>ε<sub>total</sub></code> = Total efficiency (instrument * surface)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>N = (Z₁<sub>-α</sub> + Z₁<sub>-β</sub>)² / (3 · (Pᵣ - 0.5)²)</pre>
+                </div>
                  <ul>
-                     <li><strong>Email:</strong> <a href="mailto:joughdonakowski@gmail.com" className="text-sky-500 hover:underline">joughdonakowski@gmail.com</a></li>
-                     <li><strong>Website:</strong> <a href="https://www.joughdonakowski.com" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">www.joughdonakowski.com</a></li>
-                     <li><strong>GitHub:</strong> <a href="https://jough13.github.io" target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline">jough13.github.io</a></li>
-                 </ul>
-                 <p className="mt-4 text-xs text-slate-500">
-                     Copyright © 2025 Jough Donakowski. All rights reserved. The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
-                 </p>
-         
-                 <hr className="my-4" />
-         
-                 <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
-         
-                 <h4 className="italic mt-4">Where does the data come from?</h4>
-                 <p>The core nuclear data (half-life, decay modes, emission energies, etc.) is sourced from the National Nuclear Data Center's (NNDC) NuDat 3 database, a widely recognized authority. Gamma constants and Half-Value Layer (HVL) data are standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS). Dosimetry values are from 10 CFR 20, Appendix B.</p>
-         
-                 <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
-                 <p>Calculators are populated only with nuclides that have the necessary data. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Strontium-90) or pure alpha emitters will not be available in those specific tools. Additionally, certain calculations (like the parent-daughter equilibrium) only feature nuclides with known progeny that are themselves radioactive.</p>
-         
-                 <h4 className="italic mt-4">What is the disclaimer?</h4>
-                 <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been validated and may contain errors. It should not be used for radiation protection, safety-critical applications, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
-             </div>
-         );
-         };
-         
-         return (
-         
-         // The modal backdrop, which closes the modal when clicked.
-         
-         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start p-4" onClick={onClose}>
-             {/* The modal panel itself. e.stopPropagation() prevents a click inside from closing it. */}
-             <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                     <h2 className="text-xl font-bold">User Manual & FAQ</h2>
-                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
-                         <Icon path={ICONS.clear} className="w-6 h-6" />
-                     </button>
-                 </div>
-                 <div className="overflow-y-auto">
-                     <ManualContent />
-                 </div>
-             </div>
-         </div>
-         );
-         };
-         
+                    <li><code>Z₁<sub>-α</sub></code>, <code>Z₁<sub>-β</sub></code> = Z-scores for Type I/II error rates</li>
+                    <li><code>Pᵣ</code> = Probability value from MARSSIM Table 5.2 based on Relative Shift</li>
+                </ul>
+
+                <h3 className="mt-6"><b>Lab Statistics Formulas</b></h3>
+                <h4 className="italic mt-4">Chi-Squared (χ²) Test</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>χ² = Σ((xᵢ - x̄)²) / x̄</pre>
+                </div>
+                 <ul>
+                    <li><code>xᵢ</code> = Individual count value</li>
+                    <li><code>x̄</code> = Mean of all count values</li>
+                </ul>
+
+                <h4 className="italic mt-4">Dead Time Correction</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>N = R / (1 - Rτ)</pre>
+                </div>
+                 <ul>
+                    <li><code>N</code> = True count rate (cps)</li>
+                    <li><code>R</code> = Observed count rate (cps)</li>
+                    <li><code>τ</code> = Detector dead time (seconds)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Relative Percent Difference (RPD)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>RPD (%) = |S₁ - S₂| / ((S₁ + S₂) / 2) · 100</pre>
+                </div>
+                <ul>
+                    <li><code>S₁</code>, <code>S₂</code> = Values for the two duplicate samples</li>
+                </ul>
+
+                <h4 className="italic mt-4">Energy Resolution</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Resolution (%) = (FWHM / E) · 100</pre>
+                </div>
+                 <ul>
+                    <li><code>FWHM</code> = Full Width at Half Maximum of the peak (keV)</li>
+                    <li><code>E</code> = Peak centroid energy (keV)</li>
+                </ul>
+        
+                <hr className="my-4" />
+        
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
+                <h4 className="italic mt-4">Where does the data come from?</h4>
+                <p>The data is aggregated from highly reliable, standard industry sources:</p>
+                <ul>
+                    <li><strong>Nuclear Data (Half-life, emissions, etc.):</strong> National Nuclear Data Center's (NNDC) NuDat 3 database.</li>
+                    <li><strong>Dosimetry Data (ALI, DAC):</strong> U.S. Nuclear Regulatory Commission, 10 CFR 20, Appendix B.</li>
+                    <li><strong>Gamma Constants & HVL Data:</strong> Standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS).</li>
+                    <li><strong>MARSSIM Formulas:</strong> NUREG-1575 (MARSSIM), NUREG-1507.</li>
+                </ul>
+        
+                <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
+                <p>Calculators are populated only with nuclides that have the necessary data for that specific calculation. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Carbon-14) or pure alpha emitters will not be available in those specific tools. Similarly, the **Activation Calculator** only lists target nuclides known to produce common activation products.</p>
+        
+                <h4 className="italic mt-4">What is the disclaimer?</h4>
+                <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently peer-reviewed or validated and may contain errors. It should not be used for radiation protection, safety-critical applications, operational decision-making, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
+            </div>
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-[5000] flex justify-center items-start p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <h2 className="text-xl font-bold">User Manual & FAQ</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <Icon path={ICONS.clear} className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto">
+                    <ManualContent />
+                </div>
+            </div>
+        </div>
+    );
+};         
          /**
          * @description React component for managing user settings and preferences.
          * This panel provides a user interface to configure various default units and modes
@@ -7577,105 +7665,60 @@ const RadonCalculator = () => {
          * across the application's various tools.
          */
          
-         const SettingsPanel = () => {
-         const { settings, updateSettings } = React.useContext(SettingsContext);
-         const { addToast } = useToast();
-         const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
-         
-         // --- CHANGE 1: Create a ref to reference the main panel div ---
-         const panelRef = React.useRef(null);
-         
-         const handleSettingChange = (key, value) => {
-         updateSettings({ [key]: value });
-         addToast(`Default setting for ${key} changed.`);
-         };
-         
-         const handleResetDefaults = () => {
-         localStorage.clear();
-         sessionStorage.setItem('showResetToast', 'true');
-         window.location.reload();
-         };
-         
-         const handleOpenResetModal = () => {
-         setIsResetModalOpen(true);
-         // --- CHANGE 2: Scroll the panel itself into the center of the view ---
-         if (panelRef.current) {
-         panelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-         }
-         };
-         
-         return (
-         <>
-         
-         <div ref={panelRef} className="p-4 animate-fade-in">
-         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Default Settings</h2>
-         <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
-         These are the default units and modes used across the toolbox.
-         </p>
-         <div className="space-y-4">
-         <div>
-         <label className="block text-sm font-medium">Activity</label>
-         <select value={settings.activity} onChange={e => handleSettingChange('activity', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {activityUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Dose Rate</label>
-         <select value={settings.doseRate} onChange={e => handleSettingChange('doseRate', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {doseRateUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Distance</label>
-         <select value={settings.distance} onChange={e => handleSettingChange('distance', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           {distanceUnits_ordered.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Default Chart Scale</label>
-         <select value={settings.chartScale} onChange={e => handleSettingChange('chartScale', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           <option value="Linear">Linear</option>
-           <option value="Logarithmic">Logarithmic</option>
-         </select>
-         </div>
-         <div>
-         <label className="block text-sm font-medium">Default Dose Calculator Mode</label>
-         <select value={settings.defaultDoseMode} onChange={e => handleSettingChange('defaultDoseMode', e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-           <option value="gamma">Gamma</option>
-           <option value="beta">Beta</option>
-           <option value="bremsstrahlung">Bremsstrahlung</option>
-           <option value="internal">Internal</option>
-         </select>
-         </div>
-         </div>
-         
-         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-         <button
-         onClick={handleOpenResetModal}
-         className="w-full py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900 transition"
-         >
-         Reset to Defaults
-         </button>
-         </div>
-         </div>
-         </div>
-         
-         <ConfirmationModal
-         isOpen={isResetModalOpen}
-         onClose={() => setIsResetModalOpen(false)}
-         onConfirm={handleResetDefaults}
-         title="Reset All Settings & Saved Data?"
-         >
-         <p>Are you sure? This will clear <strong>all</strong> saved calculator inputs, favorites, search history, and default settings. The application will reload with its original defaults. This action cannot be undone.</p>
-         </ConfirmationModal>
-         </>
-         );
-         };
-         
+const SettingsPanel = () => {
+    const { settings, updateSettings } = React.useContext(SettingsContext);
+    const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
 
+    const handleSettingChange = (key, value) => {
+        updateSettings({ [key]: value });
+    };
 
+    const handleResetDefaults = () => {
+        localStorage.clear();
+        sessionStorage.setItem('showResetToast', 'true');
+        window.location.reload();
+    };
 
+    return (
+        <>
+            <div className="p-4 animate-fade-in">
+                <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Settings</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                        Manage application theme and saved data.
+                    </p>
+
+                    {/* --- Theme Section --- */}
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Theme</label>
+                            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                                 <button onClick={() => handleSettingChange('theme', 'light')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${settings.theme === 'light' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Light</button>
+                                 <button onClick={() => handleSettingChange('theme', 'dark')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${settings.theme === 'dark' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dark</button>
+                                 <button onClick={() => handleSettingChange('theme', 'system')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${settings.theme === 'system' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>System</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- About Section --- */}
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 space-y-2 text-center text-xs text-slate-500 dark:text-slate-400">
+                         <p><strong>Health Physics Toolbox</strong> Version {VERSION}</p>
+                         <p>Last Updated: {LAST_UPDATED}</p>
+                         <p>Created by Jough Donakowski</p>
+                    </div>
+
+                    {/* --- Reset Section --- */}
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">Application Data</h3>
+                         <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">This will clear all saved calculator inputs, favorites, search history, and settings.</p>
+                        <button onClick={() => setIsResetModalOpen(true)} className="w-full py-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900 transition">Reset All Saved Data</button>
+                    </div>
+                </div>
+            </div>
+            <ConfirmationModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={handleResetDefaults} title="Reset All Settings & Saved Data?"><p>Are you sure? This will clear <strong>all</strong> saved calculator inputs, favorites, search history, and default settings. The application will reload with its original defaults. This action cannot be undone.</p></ConfirmationModal>
+        </>
+    );
+};
 
 
 const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) => {
@@ -7690,6 +7733,20 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
                  
                  const popoutRoot = newWindow.current.document.createElement('div');
                  newWindow.current.document.body.appendChild(popoutRoot);
+
+        const reactScript = newWindow.current.document.createElement('script');
+        reactScript.src = "https://unpkg.com/react@18/umd/react.development.js";
+        reactScript.crossOrigin = true;
+        newWindow.current.document.head.appendChild(reactScript);
+
+        const reactDomScript = newWindow.current.document.createElement('script');
+        reactDomScript.src = "https://unpkg.com/react-dom@18/umd/react-dom.development.js";
+        reactDomScript.crossOrigin = true;
+        newWindow.current.document.head.appendChild(reactDomScript);
+
+        const babelScript = newWindow.current.document.createElement('script');
+        babelScript.src = "https://unpkg.com/@babel/standalone/babel.min.js";
+        newWindow.current.document.head.appendChild(babelScript);
                  
                  document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
                      newWindow.current.document.head.appendChild(node.cloneNode(true));
@@ -7732,354 +7789,383 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
           */
          
 const App = () => {
-             const [activeView, setActiveView] = React.useState(VIEWS.HOME);
-             const [showCalcPopout, setShowCalcPopout] = React.useState(false);
-             const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
-             const [result, setResult] = React.useState(null);
-             const [errorMessage, setErrorMessage] = React.useState('');
-             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
-             const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
-             const [nuclideName, setNuclideName] = React.useState('');
-             const debouncedSearchTerm = useDebounce(nuclideName, 250); // Debounce added
-             const [suggestions, setSuggestions] = React.useState([]);
-             const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
-             const [isManualOpen, setIsManualOpen] = React.useState(false);
-             const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
-             const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
-             const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
-             const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-             const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
-             const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
-             const [randomSuggestions, setRandomSuggestions] = React.useState([]);
-             
-             const [scientificCalculatorState, setScientificCalculatorState] = React.useState({
-                 expression: '',
-                 result: '',
-                 history: [],
-                 memory: 0
-             });
+    const [activeView, setActiveView] = React.useState(VIEWS.HOME);
+    const [showCalcPopout, setShowCalcPopout] = React.useState(false);
+    const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
+    const [result, setResult] = React.useState(null);
+    const [errorMessage, setErrorMessage] = React.useState('');
+    const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
+    const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
+    const [nuclideName, setNuclideName] = React.useState('');
+    const debouncedSearchTerm = useDebounce(nuclideName, 250);
+    const [suggestions, setSuggestions] = React.useState([]);
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
+    const [isManualOpen, setIsManualOpen] = React.useState(false);
+    const [isFiltersVisible, setIsFiltersVisible] = React.useState(false);
+    const [displayHalfLifeUnit, setDisplayHalfLifeUnit] = React.useState('years');
+    const [currentDecaySeriesId, setCurrentDecaySeriesId] = React.useState(null);
+    const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
+    const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
+    const [randomSuggestions, setRandomSuggestions] = React.useState([]);
+    
+    // ADDED: New state to track if the search input is focused
+    const [isSearchFocused, setIsSearchFocused] = React.useState(false);
 
-             const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
-             const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
-             const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
-             const [selectedEmissionType, setSelectedEmissionType] = React.useState(() => localStorage.getItem('filterEmissionType') || 'All');
-             const [selectedCommonality, setSelectedCommonality] = React.useState(() => localStorage.getItem('filterCommonality') || 'All');
-             const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(() => localStorage.getItem('filterMinAlphaEnergy') || '');
-             const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState(() => localStorage.getItem('filterMaxAlphaEnergy') || '');
-             const [minBetaEnergy, setMinBetaEnergy] = React.useState(() => localStorage.getItem('filterMinBetaEnergy') || '');
-             const [maxBetaEnergy, setMaxBetaEnergy] = React.useState(() => localStorage.getItem('filterMaxBetaEnergy') || '');
-             const [minGammaEnergy, setMinGammaEnergy] = React.useState(() => localStorage.getItem('filterMinGammaEnergy') || '');
-             const [maxGammaEnergy, setMaxGammaEnergy] = React.useState(() => localStorage.getItem('filterMaxGammaEnergy') || '');
-             const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
-             const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
-             const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
-             
-             React.useEffect(() => {
-                 const handleHashChange = () => {
-                     const hash = window.location.hash.replace('#', '');
-                     const validViews = Object.values(VIEWS);
-                     let targetView = VIEWS.HOME;
-                     if (hash && validViews.includes(hash)) {
-                         targetView = hash;
-                     } else {
-                         history.replaceState(null, '', `#${VIEWS.HOME}`);
-                     }
-                     setActiveView(targetView);
-                     setPreselectedNuclide(null);
-                     if (targetView === VIEWS.HOME) {
-                         setResult(null); setNuclideName(''); setSuggestions([]); setErrorMessage('');
-                     }
-                 };
-                 window.addEventListener('hashchange', handleHashChange);
-                 handleHashChange();
-                 return () => window.removeEventListener('hashchange', handleHashChange);
-             }, []);
-             
-             const mainContentRef = React.useRef(null);
-             const scrollPositionRef = React.useRef(null);
-             const inputRef = React.useRef(null);
-             const suggestionsRef = React.useRef(null);
-             const { addToast } = useToast();
-             
-             React.useEffect(() => {
-                 const initialHash = window.location.hash.replace('#', '');
-                 if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
-                     inputRef.current?.focus();
-                 }
-             }, []);
-             
-             React.useEffect(() => {
-                 if (sessionStorage.getItem('showResetToast') === 'true') {
-                     addToast('All settings and saved data have been reset.');
-                     sessionStorage.removeItem('showResetToast');
-                 }
-             }, []);
-             
-             const scrollToMainContent = () => {
-                 const isMobile = window.innerWidth < 768;
-                 if (isMobile && mainContentRef.current) {
-                     mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                 }
-             };
-             
-             const handleClearSearch = () => {
-                 setNuclideName(''); 
-                 setSuggestions([]); 
-                 setResult(null); 
-                 inputRef.current?.focus();
-             };
+    const [scientificCalculatorState, setScientificCalculatorState] = React.useState({
+        expression: '',
+        result: '',
+        history: [],
+        memory: 0
+    });
 
-             const handleNavClick = (view) => {
-                 setResult(null);
-                 window.location.hash = view;
-                 scrollToMainContent();
-                 if (view === VIEWS.HOME) { inputRef.current?.blur(); }
-             };
-             
-             const handleSendToCalculator = (viewId, nuclideSymbol) => {
-                 setPreselectedNuclide(nuclideSymbol);
-                 window.location.hash = viewId;
-             };
-             
-             const handleAddToCompare = (nuclideSymbol) => {
-                 const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
-                 if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
-                     setComparisonList(prevList => [...prevList, nuclideToAdd]);
-                     addToast(`${nuclideToAdd.name} added to comparison.`);
-                 } else if (nuclideToAdd) {
-                     addToast(`${nuclideToAdd.name} is already in the comparison.`);
-                 }
-                 window.location.hash = VIEWS.COMPARE;
-             };
-             
-             const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
-             const handleClearCompare = () => { setComparisonList([]); addToast('Comparison list cleared.'); };
-             
-             React.useEffect(() => {
-                 localStorage.setItem('filterSortBy', sortBy);
-                 localStorage.setItem('filterSortOrder', sortOrder);
-                 localStorage.setItem('filterCategory', selectedCategory);
-                 localStorage.setItem('filterEmissionType', selectedEmissionType);
-                 localStorage.setItem('filterCommonality', selectedCommonality);
-                 localStorage.setItem('filterMinAlphaEnergy', minAlphaEnergy);
-                 localStorage.setItem('filterMaxAlphaEnergy', maxAlphaEnergy);
-                 localStorage.setItem('filterMinBetaEnergy', minBetaEnergy);
-                 localStorage.setItem('filterMaxBetaEnergy', maxBetaEnergy);
-                 localStorage.setItem('filterMinGammaEnergy', minGammaEnergy);
-                 localStorage.setItem('filterMaxGammaEnergy', maxGammaEnergy);
-                 localStorage.setItem('filterMinHalfLife', minHalfLife);
-                 localStorage.setItem('filterMaxHalfLife', maxHalfLife);
-                 localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
-             }, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-             
-             React.useEffect(() => {
-                 const root = window.document.documentElement;
-                 root.classList.toggle('dark', theme === 'dark');
-                 localStorage.setItem('theme', theme);
-             }, [theme]);
-             
-             React.useEffect(() => {
-                 localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
-             }, [comparisonList]);
-             
-             React.useEffect(() => {
-                 const handleClickOutside = (e) => {
-                     if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
-                         setSuggestions([]);
-                     }
-                 };
-                 document.addEventListener('mousedown', handleClickOutside);
-                 return () => document.removeEventListener('mousedown', handleClickOutside);
-             }, []);
-             
-             React.useEffect(() => {
-                 const common = radionuclides.filter(n => n.commonality === 'Common');
-                 setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
-             }, []);
-             
-             const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
-             const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
-             const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
-             
-             const getFilteredAndSortedRadionuclides = React.useCallback(() => {
-                 let filtered = [...radionuclides];
-                 if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
-                 if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
-                 if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
-                 const filterByEnergyRange = (nuclide, type, min, max) => {
-                     const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
-                     if (energy === 0 && (min || max)) return false;
-                     const minVal = parseFloat(min); const maxVal = parseFloat(max);
-                     if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
-                     if (!isNaN(minVal)) return energy >= minVal;
-                     if (!isNaN(maxVal)) return energy <= maxVal;
-                     return true;
-                 };
-                 if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
-                 if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
-                 if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
-                 if (minHalfLife || maxHalfLife) {
-                     const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-                     const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
-                     const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
-                     filtered = filtered.filter(n => {
-                         const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
-                         if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false;
-                         const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
-                         const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
-                         return checkMin && checkMax;
-                     });
-                 }
-                 filtered.sort((a, b) => {
-                     let compare = 0;
-                     if (sortBy === 'name') compare = a.name.localeCompare(b.name);
-                     else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
-                     else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
-                     else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
-                     else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
-                     return sortOrder === 'asc' ? compare : -compare;
-                 });
-                 return filtered;
-             }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-             
-             const filteredList = getFilteredAndSortedRadionuclides();
-             const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-             const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
-             const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); window.location.hash = VIEWS.DECAY_SERIES; };
-             const toggleFavorite = (symbol) => { const nuclide = radionuclides.find(n => n.symbol === symbol); const isCurrentlyFavorite = favorites.includes(symbol); const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol]; setFavorites(newFavorites); localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites)); if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); } };
-             const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
-             const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
-             
-             const handleNuclideSelection = (nuclide) => {
-                 setNuclideName(nuclide.name);
-                 updateSearchHistory(nuclide);
-                 setTimeout(() => { setResult(nuclide); }, 0);
-                 setSuggestions([]);
-                 setErrorMessage('');
-                 setCurrentDecaySeriesId(null);
-                 setDisplayHalfLifeUnit(settings.halfLifeUnit);
-             };
-             
-             // The search logic is now handled in this useEffect, which depends on the debounced search term
-             React.useEffect(() => {
-                 if (debouncedSearchTerm.length > 0) {
-                     const normVal = normalizeString(debouncedSearchTerm);
-                     const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
-                     const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
-                         .sort((a, b) => {
-                             const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
-                             const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
-                             if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
-                             const orderA = commonalityOrder[a.commonality] || 0;
-                             const orderB = commonalityOrder[b.commonality] || 0;
-                             if (orderB !== orderA) return orderB - orderA;
-                             return a.name.localeCompare(b.name);
-                         })
-                         .slice(0, 10);
-                     setSuggestions(filtered);
-                 } else {
-                     setSuggestions([]);
-                     // This check prevents clearing the result when navigating to other views
-                     if (activeView === VIEWS.HOME) {
-                         setResult(null);
-                     }
-                 }
-             }, [debouncedSearchTerm, radionuclides, activeView]);
+    const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
+    const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
+    const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
+    const [selectedEmissionType, setSelectedEmissionType] = React.useState(() => localStorage.getItem('filterEmissionType') || 'All');
+    const [selectedCommonality, setSelectedCommonality] = React.useState(() => localStorage.getItem('filterCommonality') || 'All');
+    const [minAlphaEnergy, setMinAlphaEnergy] = React.useState(() => localStorage.getItem('filterMinAlphaEnergy') || '');
+    const [maxAlphaEnergy, setMaxAlphaEnergy] = React.useState(() => localStorage.getItem('filterMaxAlphaEnergy') || '');
+    const [minBetaEnergy, setMinBetaEnergy] = React.useState(() => localStorage.getItem('filterMinBetaEnergy') || '');
+    const [maxBetaEnergy, setMaxBetaEnergy] = React.useState(() => localStorage.getItem('filterMaxBetaEnergy') || '');
+    const [minGammaEnergy, setMinGammaEnergy] = React.useState(() => localStorage.getItem('filterMinGammaEnergy') || '');
+    const [maxGammaEnergy, setMaxGammaEnergy] = React.useState(() => localStorage.getItem('filterMaxGammaEnergy') || '');
+    const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
+    const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
+    const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
+    
+    // ADDED: Handlers to update the focus state
+    const handleSearchFocus = () => setIsSearchFocused(true);
+    const handleSearchBlur = () => {
+        // Use a small delay to allow a click on a suggestion to register before hiding the list
+        setTimeout(() => {
+            setIsSearchFocused(false);
+        }, 150); 
+    };
 
-             const handleNuclideNameChange = (e) => {
-                 setNuclideName(e.target.value);
-             };
-             
-             const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
-             const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
-             const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
-             
-             const renderActiveView = () => {
-                 if (result) {
-                     return ( <div className="p-4"><NuclideCard nuclide={result} radionuclides={radionuclides} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} onNuclideClick={handleNuclideSelection} showBackButton={true} onBackClick={() => setResult(null)} /></div> );
-                 }
-                 const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
-                 switch (activeView) {
-                     case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
-                     case VIEWS.CALCULATOR: return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
-                     case VIEWS.MDA: return <MDACalculator />;
-                     case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
-                     case VIEWS.WRS_TEST: return <WRS_Calculator />;
-                     case VIEWS.EMC_TEST: return <EMC_Calculator />;
-                     case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
-                     case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
-                     case VIEWS.RADON: return <RadonCalculator />;
-                     case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
-                     case VIEWS.ACTIVITY_MASS: return <ActivityAndMassTools radionuclides={radionuclides} />;
-                     case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                     case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                     case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                     case VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
-                     case VIEWS.OPERATIONAL_HP: return <OperationalHPCalculators radionuclides={radionuclides} />;
-                     case VIEWS.TRANSPORTATION: return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
-                     case VIEWS.CONVERTER: return <UnitConverter />;
-                     case VIEWS.LAB_STATS: return <LabStatistics />;
-                     case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
-                     case VIEWS.SETTINGS: return <SettingsPanel />;
-                     case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
-                     case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
-                     case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
-                     case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
-                     case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
-                     case VIEWS.REFERENCES: return <ReferencesPage />;
-                     case VIEWS.HOME: default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
-                 }
-             };
-             
-             return (
-                 <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
-                     <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
-                         <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
-                         <SearchBar nuclideName={nuclideName} inputRef={inputRef} handleNuclideNameChange={handleNuclideNameChange} handleKeyDown={handleKeyDown} onClear={handleClearSearch} suggestions={suggestions} activeSuggestionIndex={activeSuggestionIndex} suggestionsRef={suggestionsRef} handleNuclideSelection={handleNuclideSelection} onNavClick={handleNavClick} />
-                         <MainNav activeView={activeView} onNavClick={handleNavClick} />
-                         <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
-                         <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-                             <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
-                             <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
-                         </footer>
-                         <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
-             
-                         {showCalcPopout && (
-                             <PopoutWindow 
-                                 title="Scientific Calculator" 
-                                 onClose={() => setShowCalcPopout(false)}
-                                 height={850}
-                             >
-                                 <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-                                     <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
-                                         <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
-                                     </div>
-                                 </div>
-                             </PopoutWindow>
-                         )}
-                         
-                         {showScratchpadPopout && (
-                             <PopoutWindow 
-                                 title="Scratchpad" 
-                                 onClose={() => setShowScratchpadPopout(false)}
-                                 width={800} 
-                                 height={660}
-                             >
-                                 <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-                                     <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
-                                         <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
-                                         <div className="flex-grow flex flex-col">
-                                            <Scratchpad />
-                                         </div>
-                                     </div>
-                                 </div>
-                             </PopoutWindow>
-                         )}
-                     </div>
-                 </div>
-             );
-         };
+    React.useEffect(() => {
+        const handleHashChange = () => {
+            const hash = window.location.hash.replace('#', '');
+            const validViews = Object.values(VIEWS);
+            let targetView = VIEWS.HOME;
+            if (hash && validViews.includes(hash)) {
+                targetView = hash;
+            } else {
+                history.replaceState(null, '', `#${VIEWS.HOME}`);
+            }
+            setActiveView(targetView);
+            setPreselectedNuclide(null);
+            if (targetView === VIEWS.HOME) {
+                setResult(null); setNuclideName(''); setSuggestions([]); setErrorMessage('');
+            }
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        handleHashChange();
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
+    
+    const mainContentRef = React.useRef(null);
+    const scrollPositionRef = React.useRef(null);
+    const inputRef = React.useRef(null);
+    const suggestionsRef = React.useRef(null);
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        const initialHash = window.location.hash.replace('#', '');
+        if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
+            inputRef.current?.focus();
+        }
+    }, []);
+    
+    React.useEffect(() => {
+        if (sessionStorage.getItem('showResetToast') === 'true') {
+            addToast('All settings and saved data have been reset.');
+            sessionStorage.removeItem('showResetToast');
+        }
+    }, []);
+    
+    const scrollToMainContent = () => {
+        const isMobile = window.innerWidth < 768;
+        if (isMobile && mainContentRef.current) {
+            mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+    
+    const handleClearSearch = () => {
+        setNuclideName(''); 
+        setSuggestions([]); 
+        setResult(null); 
+        inputRef.current?.focus();
+    };
+
+const handleNavClick = (view) => {
+    setResult(null);
+    setActiveView(view); // ADD THIS LINE
+    window.location.hash = view;
+    scrollToMainContent();
+    if (view === VIEWS.HOME) { inputRef.current?.blur(); }
+};
+    
+    const handleSendToCalculator = (viewId, nuclideSymbol) => {
+        setPreselectedNuclide(nuclideSymbol);
+        window.location.hash = viewId;
+    };
+    
+    const handleAddToCompare = (nuclideSymbol) => {
+        const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
+        if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
+            setComparisonList(prevList => [...prevList, nuclideToAdd]);
+            addToast(`${nuclideToAdd.name} added to comparison.`);
+        } else if (nuclideToAdd) {
+            addToast(`${nuclideToAdd.name} is already in the comparison.`);
+        }
+        window.location.hash = VIEWS.COMPARE;
+    };
+    
+    const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
+    const handleClearCompare = () => { setComparisonList([]); addToast('Comparison list cleared.'); };
+    
+    React.useEffect(() => {
+        localStorage.setItem('filterSortBy', sortBy);
+        localStorage.setItem('filterSortOrder', sortOrder);
+        localStorage.setItem('filterCategory', selectedCategory);
+        localStorage.setItem('filterEmissionType', selectedEmissionType);
+        localStorage.setItem('filterCommonality', selectedCommonality);
+        localStorage.setItem('filterMinAlphaEnergy', minAlphaEnergy);
+        localStorage.setItem('filterMaxAlphaEnergy', maxAlphaEnergy);
+        localStorage.setItem('filterMinBetaEnergy', minBetaEnergy);
+        localStorage.setItem('filterMaxBetaEnergy', maxBetaEnergy);
+        localStorage.setItem('filterMinGammaEnergy', minGammaEnergy);
+        localStorage.setItem('filterMaxGammaEnergy', maxGammaEnergy);
+        localStorage.setItem('filterMinHalfLife', minHalfLife);
+        localStorage.setItem('filterMaxHalfLife', maxHalfLife);
+        localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
+    }, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
+    
+    React.useEffect(() => {
+        const root = window.document.documentElement;
+        root.classList.toggle('dark', theme === 'dark');
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+    
+    React.useEffect(() => {
+        localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
+    }, [comparisonList]);
+    
+    React.useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
+                setSuggestions([]);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+    
+    React.useEffect(() => {
+        const common = radionuclides.filter(n => n.commonality === 'Common');
+        setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
+    }, []);
+    
+    const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
+    const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
+    const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
+    
+    const getFilteredAndSortedRadionuclides = React.useCallback(() => {
+        let filtered = [...radionuclides];
+        if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
+        if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
+        if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
+        const filterByEnergyRange = (nuclide, type, min, max) => {
+            const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
+            if (energy === 0 && (min || max)) return false;
+            const minVal = parseFloat(min); const maxVal = parseFloat(max);
+            if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
+            if (!isNaN(minVal)) return energy >= minVal;
+            if (!isNaN(maxVal)) return energy <= maxVal;
+            return true;
+        };
+        if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
+        if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
+        if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
+        if (minHalfLife || maxHalfLife) {
+            const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+            const minSeconds = minHalfLife ? parseFloat(minHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+            const maxSeconds = maxHalfLife ? parseFloat(maxHalfLife) * unitConversions[halfLifeFilterUnit] : null;
+            filtered = filtered.filter(n => {
+                const nuclideSeconds = parseHalfLifeToSeconds(n.halfLife);
+                if (nuclideSeconds === Infinity && (minSeconds || maxSeconds)) return false;
+                const checkMin = minSeconds ? nuclideSeconds >= minSeconds : true;
+                const checkMax = maxSeconds ? nuclideSeconds <= maxSeconds : true;
+                return checkMin && checkMax;
+            });
+        }
+        filtered.sort((a, b) => {
+            let compare = 0;
+            if (sortBy === 'name') compare = a.name.localeCompare(b.name);
+            else if (sortBy === 'halfLife') compare = parseHalfLifeToSeconds(a.halfLife) - parseHalfLifeToSeconds(b.halfLife);
+            else if (sortBy === 'alphaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.alpha) - parseEnergyToMeV(b.emissionEnergies?.alpha);
+            else if (sortBy === 'betaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.beta) - parseEnergyToMeV(b.emissionEnergies?.beta);
+            else if (sortBy === 'gammaEnergy') compare = parseEnergyToMeV(a.emissionEnergies?.gamma) - parseEnergyToMeV(b.emissionEnergies?.gamma);
+            return sortOrder === 'asc' ? compare : -compare;
+        });
+        return filtered;
+    }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
+    
+    const filteredList = getFilteredAndSortedRadionuclides();
+    const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
+    const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); window.location.hash = VIEWS.DECAY_SERIES; };
+    const toggleFavorite = (symbol) => { const nuclide = radionuclides.find(n => n.symbol === symbol); const isCurrentlyFavorite = favorites.includes(symbol); const newFavorites = isCurrentlyFavorite ? favorites.filter(s => s !== symbol) : [...favorites, symbol]; setFavorites(newFavorites); localStorage.setItem('favoriteNuclides', JSON.stringify(newFavorites)); if (isCurrentlyFavorite) { addToast(`${nuclide ? nuclide.name : symbol} removed from favorites.`); } else { addToast(`${nuclide ? nuclide.name : symbol} added to favorites!`); } };
+    const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
+    const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
+    
+    const handleNuclideSelection = (nuclide) => {
+        setNuclideName(nuclide.name);
+        updateSearchHistory(nuclide);
+        setResult(nuclide);
+        setSuggestions([]);
+        setErrorMessage('');
+        setCurrentDecaySeriesId(null);
+    };
+    
+    React.useEffect(() => {
+        if (result && debouncedSearchTerm === result.name) {
+            setSuggestions([]);
+            return;
+        }
+
+        if (debouncedSearchTerm.length > 0) {
+            const normVal = normalizeString(debouncedSearchTerm);
+            const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
+            const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
+                .sort((a, b) => {
+                    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
+                    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
+                    if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+                    const orderA = commonalityOrder[a.commonality] || 0;
+                    const orderB = commonalityOrder[b.commonality] || 0;
+                    if (orderB !== orderA) return orderB - orderA;
+                    return a.name.localeCompare(b.name);
+                })
+                .slice(0, 10);
+            setSuggestions(filtered);
+        } else {
+            setSuggestions([]);
+            if (activeView === VIEWS.HOME) {
+                setResult(null);
+            }
+        }
+    }, [debouncedSearchTerm, result, radionuclides, activeView]);
+
+    const handleNuclideNameChange = (e) => {
+        setNuclideName(e.target.value);
+    };
+    
+    const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
+    const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
+    const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
+    
+    const renderActiveView = () => {
+        if (result) {
+            return ( <div className="p-4"><NuclideCard nuclide={result} radionuclides={radionuclides} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} onNuclideClick={handleNuclideSelection} showBackButton={true} onBackClick={() => setResult(null)} /></div> );
+        }
+        const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
+        switch (activeView) {
+            case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
+            case VIEWS.CALCULATOR: return <DecayTools radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} theme={theme} />;
+            case VIEWS.MDA: return <MDACalculator />;
+            case VIEWS.MARSSIM_SAMPLES: return <MARSSIM_SampleDesign />;
+            case VIEWS.WRS_TEST: return <WRS_Calculator />;
+            case VIEWS.EMC_TEST: return <EMC_Calculator />;
+            case VIEWS.SERIES_CALCULATOR: return <DecaySeriesCalculator radionuclides={radionuclides} decaySeriesData={decaySeriesData} theme={theme} />;
+            case VIEWS.EQUILIBRIUM: return <EquilibriumCalculator radionuclides={radionuclides} theme={theme} />;
+            case VIEWS.RADON: return <RadonCalculator />;
+            case VIEWS.COMPARE: return <ComparisonView radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} comparisonList={comparisonList} onAddToCompare={handleAddToCompare} onRemoveFromCompare={handleRemoveFromCompare} onClearCompare={handleClearCompare} />;
+            case VIEWS.ACTIVITY_MASS: return <ActivityAndMassTools radionuclides={radionuclides} />;
+            case VIEWS.DOSE_RATE: return <DoseRateCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+            case VIEWS.SHIELDING: return <ShieldingCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+            case VIEWS.STAY_TIME: return <StayTimeCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+            case VIEWS.NEUTRON: return <NeutronCalculator radionuclides={radionuclides} />;
+            case VIEWS.OPERATIONAL_HP: return <OperationalHPCalculators radionuclides={radionuclides} />;
+            case VIEWS.TRANSPORTATION: return <TransportationCalculator radionuclides={radionuclides} preselectedNuclide={preselectedNuclide} />;
+            case VIEWS.CONVERTER: return <UnitConverter />;
+            case VIEWS.LAB_STATS: return <LabStatistics />;
+            case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
+            case VIEWS.SETTINGS: return <SettingsPanel />;
+            case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
+            case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
+            case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
+            case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
+            case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
+            case VIEWS.REFERENCES: return <ReferencesPage />;
+            case VIEWS.HOME: default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
+        }
+    };
+    
+    return (
+        <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
+            <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
+                <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
+                <SearchBar 
+                    nuclideName={nuclideName} 
+                    inputRef={inputRef} 
+                    handleNuclideNameChange={handleNuclideNameChange} 
+                    handleKeyDown={handleKeyDown} 
+                    onClear={handleClearSearch} 
+                    suggestions={suggestions} 
+                    activeSuggestionIndex={activeSuggestionIndex} 
+                    suggestionsRef={suggestionsRef} 
+                    handleNuclideSelection={handleNuclideSelection} 
+                    onNavClick={handleNavClick}
+                    isFocused={isSearchFocused}
+                    onFocus={handleSearchFocus}
+                    onBlur={handleSearchBlur}
+                />
+                <MainNav activeView={activeView} onNavClick={handleNavClick} />
+                <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
+                <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
+                    <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
+                </footer>
+                <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+    
+                {showCalcPopout && (
+                    <PopoutWindow 
+                        title="Scientific Calculator" 
+                        onClose={() => setShowCalcPopout(false)}
+                        height={850}
+                    >
+                        <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+                            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
+                                <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
+                            </div>
+                        </div>
+                    </PopoutWindow>
+                )}
+                
+                {showScratchpadPopout && (
+                    <PopoutWindow 
+                        title="Scratchpad" 
+                        onClose={() => setShowScratchpadPopout(false)}
+                        width={800} 
+                        height={660}
+                    >
+                        <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+                            <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
+                                <div className="flex-grow flex flex-col">
+                                   <Scratchpad />
+                                </div>
+                            </div>
+                        </div>
+                    </PopoutWindow>
+                )}
+            </div>
+        </div>
+    );
+};
  
          /**
          * @description A searchable dropdown component for selecting items from a large list.
@@ -10795,20 +10881,23 @@ const DrawingTool = ({ isVisible }) => {
         }
     };
     
-    const handleGenerateSamples = (pattern) => {
-        if (!surveyUnitLayer) { addToast("Please draw a survey unit boundary first."); return; }
-        handleClearPoints();
-        const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-        let numSamples = samplesToPlace;
-        let spacingMeters = gridSpacing;
-        if (sampleCalcMode === 'bySpacing' && pattern !== 'random') {
-            if (gridSpacing <= 0) { addToast("Grid spacing must be greater than zero."); return; }
-            numSamples = Math.ceil(surveyUnitArea / (spacingMeters * spacingMeters));
-        } else if (sampleCalcMode === 'byNumber' && pattern !== 'random') {
-            if (samplesToPlace <= 0) { addToast("Number of samples must be greater than zero."); return; }
-            const multiplier = pattern === 'triangular' ? 0.866 : 1;
-            spacingMeters = Math.sqrt(surveyUnitArea / (multiplier * numSamples));
-        }
+const handleGenerateSamples = (pattern) => {
+    if (!surveyUnitLayer) { addToast("Please draw a survey unit boundary first."); return; }
+    handleClearPoints();
+    const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+    let numSamples = samplesToPlace;
+    let spacingMeters = gridSpacing;
+
+    if (sampleCalcMode === 'bySpacing' && pattern !== 'random') {
+        if (gridSpacing <= 0) { addToast("Grid spacing must be greater than zero."); return; }
+        numSamples = Math.ceil(surveyUnitArea / (spacingMeters * spacingMeters));
+        setSamplesToPlace(numSamples); // ADD THIS LINE to sync the UI state
+    } else if (sampleCalcMode === 'byNumber' && pattern !== 'random') {
+        if (samplesToPlace <= 0) { addToast("Number of samples must be greater than zero."); return; }
+        const multiplier = pattern === 'triangular' ? 0.866 : 1;
+        spacingMeters = Math.sqrt(surveyUnitArea / (multiplier * numSamples));
+        setGridSpacing(Math.round(spacingMeters)); // ADD THIS LINE to sync the UI state
+    }
         const newPoints = [];
         const latLngs = surveyUnitLayer.getLatLngs();
         const bounds = surveyUnitLayer.getBounds();
@@ -11234,6 +11323,7 @@ const handlePrintMap = () => {
                 </div>
                 <div className="max-h-60 overflow-y-auto mt-2 pr-2">
                     {plottedPoints.length > 0 || surveyUnitLayer ? (
+	<div className="overflow-x-auto">
                         <table className="w-full text-sm text-center">
                             <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
                                <tr>
@@ -11284,6 +11374,7 @@ const handlePrintMap = () => {
                                 })()}
                             </tfoot>
                         </table>
+</div>
                     ) : ( <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p> )}
                 </div>
             </div>
