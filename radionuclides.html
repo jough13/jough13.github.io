@@ -70,6 +70,32 @@
          }
       </style>
 
+	<style>
+         /* --- STYLES FOR PERSISTENT NUMBER INPUT SPINNERS & CUSTOM DRAW CURSOR --- */
+         .persistent-spinner::-webkit-inner-spin-button,
+         .persistent-spinner::-webkit-outer-spin-button {
+             opacity: 0.3;
+             -webkit-appearance: inner-spin-button !important;
+             cursor: pointer;
+             transition: opacity 0.2s ease-in-out;
+         }
+         .persistent-spinner:hover::-webkit-inner-spin-button,
+         .persistent-spinner:hover::-webkit-outer-spin-button,
+         .persistent-spinner:focus::-webkit-inner-spin-button,
+         .persistent-spinner:focus::-webkit-outer-spin-button {
+             opacity: 1;
+         }
+         
+         /* ADDED: This creates the yellow dot icon for the bias sample drawing tool */
+         .leaflet-draw-biased-marker-icon {
+             background-color: #facc15; /* amber-400 */
+             border: 2px solid #ca8a04; /* amber-600 */
+             border-radius: 50%;
+             box-shadow: 0 0 8px rgba(0,0,0,0.5);
+         }
+      </style>
+
+
       <style>
          /* This is now the only style block needed for the fade-in.
          It hides the main content area by default to prevent any FOUC.
@@ -88,6 +114,7 @@
          transform: translateY(0); /* Move it to its final position */
          }
       </style>
+
       <style>
          /* --- LOADER STYLES (NOW THEME-AWARE) --- */
          /* Light Mode Defaults */
@@ -153,6 +180,7 @@
          }
          }
       </style>
+
       <style>
          body {
          /* Sets the default background to your dark theme color */
@@ -243,6 +271,7 @@
       <div id="root"></div>
       <div id="back-to-top-root"></div>
       <div id="modal-root"></div>
+	<div id="toast-root"></div>
       <!--The primary dataset for all radionuclides.
          Keeping this in a separate script tag makes the main application logic cleaner and easier to manage.
          Each object conforms to a consistent structure for properties like name, symbol, halfLife, etc.-->
@@ -719,8 +748,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.3';
-         const LAST_UPDATED = 'September 07, 2025';
+         const VERSION = '3.5.4';
+         const LAST_UPDATED = 'September 09, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -1694,49 +1723,43 @@
           * @param {{children: React.ReactNode}} props - The child components that will have access to the context.
           */
          
-         const ToastProvider = ({ children }) => {
-             const [toasts, setToasts] = React.useState([]);
-         
-             /**
-              * Adds a new toast message to the list.
-              * @param {string} message - The message to display in the toast.
-              */
-         
-             const addToast = (message) => {
-                 const id = Date.now();
-                 setToasts(prevToasts => [...prevToasts, { id, message }]);
-                 // Automatically remove the toast after 3 seconds.
-                 setTimeout(() => {
-                     removeToast(id);
-                 }, 3000);
-             };
-         
-             /**
-              * Removes a toast from the list by its ID.
-              * @param {number} id - The unique ID of the toast to remove.
-              */
-         
-             const removeToast = (id) => {
-                 setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
-             };
-         
-             return (
-                 <ToastContext.Provider value={{ addToast }}>
-                     {children}
-         
-                     {/* Container for all visible toast notifications */}
-         
-                     <div className="fixed bottom-4 right-4 z-50 space-y-2">
-                         {toasts.map(toast => (
-                             <div key={toast.id} className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center">
-                                 <Icon path={ICONS.check} className="w-5 h-5 mr-3 text-green-400" />
-                                 <span>{toast.message}</span>
-                             </div>
-                         ))}
-                     </div>
-                 </ToastContext.Provider>
-             );
-         };
+const ToastProvider = ({ children }) => {
+    const [toasts, setToasts] = React.useState([]);
+
+    const addToast = (message) => {
+        const id = Date.now();
+        setToasts(prevToasts => [...prevToasts, { id, message }]);
+        setTimeout(() => {
+            removeToast(id);
+        }, 3000);
+    };
+
+    const removeToast = (id) => {
+        setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+    };
+
+    // ADDED: A variable to hold the toast container's JSX
+    const toastContainer = (
+        <div className="fixed bottom-4 right-4 z-50 space-y-2">
+            {toasts.map(toast => (
+                <div key={toast.id} className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center">
+                    <Icon path={ICONS.check} className="w-5 h-5 mr-3 text-green-400" />
+                    <span>{toast.message}</span>
+                </div>
+            ))}
+        </div>
+    );
+
+    return (
+        <ToastContext.Provider value={{ addToast }}>
+            {children}
+            
+            {/* CHANGED: Use ReactDOM.createPortal to render toasts outside this component's DOM hierarchy */}
+            {ReactDOM.createPortal(toastContainer, document.getElementById('toast-root'))}
+            
+        </ToastContext.Provider>
+    );
+};
         
 
 /**
@@ -2721,137 +2744,171 @@ const Scratchpad = () => {
          */
          
 const ScientificCalculator = ({ calcState, setCalcState }) => {
-             const { expression, result, history, memory } = calcState;
-             const { addToast } = useToast();
-      
-             const handleInput = (value) => {
-                const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
-                setCalcState({ ...calcState, expression: newExpression, result: '' });
-            };
+    const { addToast } = useToast();
+
+    // FIX 2: All state-updating functions are rewritten using the "functional update" form (e.g., setCalcState(currentState => ...)).
+    // This is a more robust pattern that prevents bugs where functions might use "stale" state.
+    // They are also wrapped in React.useCallback to ensure they don't get recreated unnecessarily on every render.
+
+    const handleInput = React.useCallback((value) => {
+        setCalcState(currentState => {
+            const { expression, result } = currentState;
+            // This logic correctly handles starting a new expression after a result is shown
+            const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
+            return { ...currentState, expression: newExpression, result: '' };
+        });
+    }, [setCalcState]);
+
+    const handleClear = React.useCallback(() => {
+        setCalcState(currentState => ({ ...currentState, expression: '', result: '' }));
+    }, [setCalcState]);
+
+    const handleBackspace = React.useCallback(() => {
+        setCalcState(currentState => ({ ...currentState, expression: currentState.expression.slice(0, -1) }));
+    }, [setCalcState]);
+
+    const handleCalculate = React.useCallback(() => {
+        setCalcState(currentState => {
+            if (!currentState.expression) return currentState;
+            try {
+                const evalResult = math.evaluate(currentState.expression);
+                const resultStr = math.format(evalResult, { precision: 6 });
+                return {
+                    ...currentState,
+                    result: resultStr,
+                    history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 5),
+                    expression: ''
+                };
+            } catch (e) {
+                // FIX 1: Correctly define the errorMessage before using it.
+                const errorMessage = e.message || 'Invalid expression';
+                addToast(errorMessage);
+                return { ...currentState, result: 'Error', expression: '' };
+            }
+        });
+    }, [setCalcState, addToast]);
+    
+    const handleMemoryClear = React.useCallback(() => {
+        setCalcState(currentState => ({ ...currentState, memory: 0 }));
+        addToast('Memory cleared');
+    }, [setCalcState, addToast]);
+
+    const handleMemoryRecall = React.useCallback(() => {
+        setCalcState(currentState => ({ ...currentState, expression: currentState.expression + currentState.memory.toString() }));
+    }, [setCalcState]);
+
+    const handleMemoryAdd = React.useCallback(() => {
+        setCalcState(currentState => {
+            try {
+                const currentValue = parseFloat(currentState.expression || currentState.result || '0');
+                if (isNaN(currentValue)) throw new Error();
+                const newMemory = currentState.memory + currentValue;
+                addToast(`Added to memory. New value: ${newMemory}`);
+                return { ...currentState, memory: newMemory };
+            } catch {
+                addToast('Invalid value to add to memory');
+                return currentState;
+            }
+        });
+    }, [setCalcState, addToast]);
+    
+    const handleKeyDown = React.useCallback((event) => {
+        if ("1234567890+-*/.^()%=EnterBackspaceEscape".includes(event.key)) { event.preventDefault(); }
+        const { key } = event;
+        if (key >= '0' && key <= '9') { handleInput(key); }
+        if (['+', '-', '*', '/', '.', '%', '(', ')', '^'].includes(key)) { handleInput(key); }
+        if (key === 'Enter' || key === '=') { handleCalculate(); }
+        if (key === 'Backspace') { handleBackspace(); }
+        if (key === 'Escape') { handleClear(); }
+    }, [handleInput, handleCalculate, handleBackspace, handleClear]); // FIX 2 (cont.): Dependency array updated to the stable handler functions.
+
+    // The rest of the component's JSX remains the same...
+    const { expression, result, history, memory } = calcState;
+    const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
+    const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
              
-             const handleClear = () => setCalcState({ ...calcState, expression: '', result: '' });
-             const handleBackspace = () => setCalcState({ ...calcState, expression: expression.slice(0, -1) });
-             
-             const handleCalculate = () => {
-                 if (!expression) return;
-                 try {
-                     const evalResult = math.evaluate(expression);
-                     const resultStr = math.format(evalResult, { precision: 6 });
-                     setCalcState({
-                         ...calcState,
-                         result: resultStr,
-                         history: [`${expression} = ${resultStr}`, ...history].slice(0, 5),
-                         expression: ''
-                     });
-                 } catch (e) {
-                     setCalcState({ ...calcState, result: e.message || 'Error', expression: '' });
-                 }
-             };
-             
-             const handleMemoryClear = () => { setCalcState({ ...calcState, memory: 0 }); addToast('Memory cleared'); };
-             const handleMemoryRecall = () => setCalcState({ ...calcState, expression: expression + memory.toString() });
-             
-             const handleMemoryAdd = () => {
-                 try {
-                     const currentValue = parseFloat(expression || result || '0');
-                     if (isNaN(currentValue)) throw new Error();
-                     const newMemory = memory + currentValue;
-                     setCalcState({ ...calcState, memory: newMemory });
-                     addToast(`Added to memory. New value: ${newMemory}`);
-                 } catch { addToast('Invalid value to add to memory'); }
-             };
-             
-             const handleConversion = (factor, fromUnit, toUnit) => {
-                 try {
-                     const currentValue = parseFloat(expression || result || '0');
-                     if (isNaN(currentValue)) throw new Error();
-                     const convertedValue = currentValue * factor;
-                     setCalcState({ ...calcState, expression: convertedValue.toString(), result: '' });
-                     addToast(`Converted to ${toUnit}`);
-                 } catch { setCalcState({ ...calcState, result: 'Error', expression: '' }); }
-             };
-             
-             const handleConstant = (name, value) => {
-                 setCalcState({ ...calcState, expression: expression + value.toString() });
-                 addToast(`${name} added`);
-             };
-             
-             const handleKeyDown = React.useCallback((event) => {
-                 if ("1234567890+-*/.^()%=EnterBackspaceEscape".includes(event.key)) { event.preventDefault(); }
-                 const { key } = event;
-                 if (key >= '0' && key <= '9') { handleInput(key); }
-                 if (['+', '-', '*', '/', '.', '%', '(', ')', '^'].includes(key)) { handleInput(key); }
-                 if (key === 'Enter' || key === '=') { handleCalculate(); }
-                 if (key === 'Backspace') { handleBackspace(); }
-                 if (key === 'Escape') { handleClear(); }
-             }, [expression, result, history, memory]); // Update dependencies
-         
-             const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
-             const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
-             
-             const getButtonClass = (btn) => {
-                 if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
-                 if (['sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '(', ')', 'π', 'e'].includes(btn)) return 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500';
-                 return 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
-             };
-         
-             return (
-                 <div 
-                    onKeyDown={handleKeyDown} 
-                    tabIndex="0" 
-                    className="focus:outline-none focus:ring-2 focus:ring-sky-500/80 rounded-lg"
-                 >
-                     <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
-                         <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
-                             {history.map((item, index) => <div key={index}>{item}</div>)}
-                         </div>
-                         <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
-                         <div className="flex justify-end items-center h-10">
-                             <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
-                             {result && result !== 'Error' && <CopyButton textToCopy={result} />}
-                         </div>
-                     </div>
-                     <div className="grid grid-cols-5 gap-2 mb-2">
-                         <button onClick={() => handleConversion(3.7e10, 'Ci', 'Bq')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
-                         <button onClick={() => handleConversion(1 / 3.7e10, 'Bq', 'Ci')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
-                         <button onClick={() => handleConversion(0.01, 'rem', 'Sv')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
-                         <button onClick={() => handleConversion(100, 'Sv', 'rem')} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
-                         <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
-                         <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
-                         <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
-                         <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
-                         <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
-                     </div>
-                     <div className="grid grid-cols-4 gap-2">
-                         {allButtons.map(btn => {
-                             let onClick;
-                             let className = `p-3 font-bold rounded-lg transition-colors `;
-                             if (btn === 'AC') {
-                                 onClick = handleClear;
-                                 className += 'bg-red-500 text-white hover:bg-red-600';
-                             } else if (btn === 'DEL') {
-                                 onClick = handleBackspace;
-                                 className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
-                             } else if (btn === 'π') {
-                                 onClick = () => handleInput('pi');
-                                 className += getButtonClass(btn);
-                             } else {
-                                 onClick = () => handleInput(btn);
-                                 className += getButtonClass(btn);
-                             }
-                             return (<button key={btn} onClick={onClick} className={className}>{btn}</button>);
-                         })}
-                     </div>
-                     <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
-                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                             {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
-                         </div>
-                     </div>
-                 </div>
-             );
-         };         
-         
+    const getButtonClass = (btn) => {
+        if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
+        if (['sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '(', ')', 'π', 'e'].includes(btn)) return 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500';
+        return 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
+    };
+
+    const handleConversion = (factor) => {
+        setCalcState(currentState => {
+            try {
+                const currentValue = parseFloat(currentState.expression || currentState.result || '0');
+                if (isNaN(currentValue)) throw new Error();
+                const convertedValue = currentValue * factor;
+                return { ...currentState, expression: convertedValue.toString(), result: '' };
+            } catch {
+                addToast('Invalid value for conversion');
+                return { ...currentState, result: 'Error', expression: '' };
+            }
+        });
+    };
+    
+    const handleConstant = (name, value) => {
+        setCalcState(currentState => ({ ...currentState, expression: currentState.expression + value.toString() }));
+        addToast(`${name} added`);
+    };
+
+    return (
+        <div 
+           onKeyDown={handleKeyDown} 
+           tabIndex="0" 
+           className="focus:outline-none focus:ring-2 focus:ring-sky-500/80 rounded-lg"
+        >
+            <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
+                <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
+                    {history.map((item, index) => <div key={index}>{item}</div>)}
+                </div>
+                <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
+                <div className="flex justify-end items-center h-10">
+                    <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
+                    {result && result !== 'Error' && <CopyButton textToCopy={result} />}
+                </div>
+            </div>
+            <div className="grid grid-cols-5 gap-2 mb-2">
+                <button onClick={() => handleConversion(3.7e10)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
+                <button onClick={() => handleConversion(1 / 3.7e10)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
+                <button onClick={() => handleConversion(0.01)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
+                <button onClick={() => handleConversion(100)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
+                <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
+                <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
+                <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
+                <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
+                <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+                {allButtons.map(btn => {
+                    let onClick;
+                    let className = `p-3 font-bold rounded-lg transition-colors `;
+                    if (btn === 'AC') {
+                        onClick = handleClear;
+                        className += 'bg-red-500 text-white hover:bg-red-600';
+                    } else if (btn === 'DEL') {
+                        onClick = handleBackspace;
+                        className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
+                    } else if (btn === 'π') {
+                        onClick = () => handleInput('pi');
+                        className += getButtonClass(btn);
+                    } else {
+                        onClick = () => handleInput(btn);
+                        className += getButtonClass(btn);
+                    }
+                    return (<button key={btn} onClick={onClick} className={className}>{btn}</button>);
+                })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
+                </div>
+            </div>
+        </div>
+    );
+};
+
          /**
          * @description React component that serves as a static page for external links and references.
          * This component provides a curated list of authoritative resources relevant to the application's
@@ -7674,7 +7731,7 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
           * It manages all primary state, handles routing between views, and orchestrates all user interactions.
           */
          
-         const App = () => {
+const App = () => {
              const [activeView, setActiveView] = React.useState(VIEWS.HOME);
              const [showCalcPopout, setShowCalcPopout] = React.useState(false);
              const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
@@ -7683,6 +7740,7 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
              const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
              const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
              const [nuclideName, setNuclideName] = React.useState('');
+             const debouncedSearchTerm = useDebounce(nuclideName, 250); // Debounce added
              const [suggestions, setSuggestions] = React.useState([]);
              const [activeSuggestionIndex, setActiveSuggestionIndex] = React.useState(-1);
              const [isManualOpen, setIsManualOpen] = React.useState(false);
@@ -7694,7 +7752,6 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
              const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
              const [randomSuggestions, setRandomSuggestions] = React.useState([]);
              
-             // NEW: Central state for the scientific calculator
              const [scientificCalculatorState, setScientificCalculatorState] = React.useState({
                  expression: '',
                  result: '',
@@ -7744,13 +7801,12 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
              const suggestionsRef = React.useRef(null);
              const { addToast } = useToast();
              
-React.useEffect(() => {
-    const initialHash = window.location.hash.replace('#', '');
-    // Add a check for screen width
-    if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
-        inputRef.current?.focus();
-    }
-}, []);
+             React.useEffect(() => {
+                 const initialHash = window.location.hash.replace('#', '');
+                 if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
+                     inputRef.current?.focus();
+                 }
+             }, []);
              
              React.useEffect(() => {
                  if (sessionStorage.getItem('showResetToast') === 'true') {
@@ -7767,7 +7823,10 @@ React.useEffect(() => {
              };
              
              const handleClearSearch = () => {
-                 setNuclideName(''); setSuggestions([]); setResult(null); inputRef.current?.focus();
+                 setNuclideName(''); 
+                 setSuggestions([]); 
+                 setResult(null); 
+                 inputRef.current?.focus();
              };
 
              const handleNavClick = (view) => {
@@ -7841,6 +7900,7 @@ React.useEffect(() => {
              const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
              const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
              const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
+             
              const getFilteredAndSortedRadionuclides = React.useCallback(() => {
                  let filtered = [...radionuclides];
                  if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
@@ -7881,6 +7941,7 @@ React.useEffect(() => {
                  });
                  return filtered;
              }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
+             
              const filteredList = getFilteredAndSortedRadionuclides();
              const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
              const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
@@ -7899,14 +7960,36 @@ React.useEffect(() => {
                  setDisplayHalfLifeUnit(settings.halfLifeUnit);
              };
              
-             const handleNuclideNameChange = (e) => {
-                 const value = e.target.value; setNuclideName(value);
-                 if (value.length > 0) {
-                     const normVal = normalizeString(value); const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
-                     const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal)).sort((a, b) => { const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal); const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal); if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1; const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderB !== orderA) return orderB - orderA; return a.name.localeCompare(b.name); }).slice(0, 10);
+             // The search logic is now handled in this useEffect, which depends on the debounced search term
+             React.useEffect(() => {
+                 if (debouncedSearchTerm.length > 0) {
+                     const normVal = normalizeString(debouncedSearchTerm);
+                     const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
+                     const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
+                         .sort((a, b) => {
+                             const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
+                             const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
+                             if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+                             const orderA = commonalityOrder[a.commonality] || 0;
+                             const orderB = commonalityOrder[b.commonality] || 0;
+                             if (orderB !== orderA) return orderB - orderA;
+                             return a.name.localeCompare(b.name);
+                         })
+                         .slice(0, 10);
                      setSuggestions(filtered);
-                 } else { setSuggestions([]); setResult(null); }
+                 } else {
+                     setSuggestions([]);
+                     // This check prevents clearing the result when navigating to other views
+                     if (activeView === VIEWS.HOME) {
+                         setResult(null);
+                     }
+                 }
+             }, [debouncedSearchTerm, radionuclides, activeView]);
+
+             const handleNuclideNameChange = (e) => {
+                 setNuclideName(e.target.value);
              };
+             
              const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
              const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
              const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
@@ -7997,8 +8080,6 @@ React.useEffect(() => {
                  </div>
              );
          };
-
-
  
          /**
          * @description A searchable dropdown component for selecting items from a large list.
@@ -10569,7 +10650,6 @@ const NorthArrowControl = () => (
          * ensuring correct rendering within a tabbed interface.
          */
     
- 
 const DrawingTool = ({ isVisible }) => {
     const mapRef = React.useRef(null);
     const drawnItemsRef = React.useRef(null);
@@ -10580,21 +10660,39 @@ const DrawingTool = ({ isVisible }) => {
     const satelliteLayerRef = React.useRef(null);
     const { addToast } = useToast();
 
-    // --- STATE MANAGEMENT (UPDATED with new state) ---
+    // --- STATE MANAGEMENT ---
     const [surveyUnitLayer, setSurveyUnitLayer] = React.useState(null);
     const [surveyUnitArea, setSurveyUnitArea] = React.useState(0);
     const [plottedPoints, setPlottedPoints] = React.useState([]);
     const [locationInput, setLocationInput] = React.useState('');
-    const [surveyUnitName, setSurveyUnitName] = React.useState('SU-1'); // New
-    const [surveyClass, setSurveyClass] = React.useState('Class 1'); // New
+    const [surveyUnitName, setSurveyUnitName] = React.useState('SU-1');
+    const [surveyClass, setSurveyClass] = React.useState('Class 1');
     const [samplesToPlace, setSamplesToPlace] = React.useState(25);
-    const [sampleCalcMode, setSampleCalcMode] = React.useState('byNumber'); // New: 'byNumber' or 'bySpacing'
-    const [gridSpacing, setGridSpacing] = React.useState(10); // New: in meters
+    const [sampleCalcMode, setSampleCalcMode] = React.useState('byNumber');
+    const [gridSpacing, setGridSpacing] = React.useState(10);
 
     const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
     const defaultStyle = { color: '#3388ff' };
 
     // --- HELPER FUNCTIONS ---
+    // NEW: Replaced old numbering logic with a robust prefix-based ID generator
+    const getNextIdForPrefix = (points, prefix) => {
+        const existingNumbers = points
+            .filter(p => p.id.startsWith(prefix + '-'))
+            .map(p => parseInt(p.id.split('-')[1], 10))
+            .sort((a, b) => a - b);
+            
+        let nextNum = 1;
+        for (const num of existingNumbers) {
+            if (num === nextNum) {
+                nextNum++;
+            } else {
+                break; // Found a gap
+            }
+        }
+        return `${prefix}-${nextNum}`;
+    };
+
     const isPointInPolygon = (point, polygonLatLngs) => {
         const polyPoints = polygonLatLngs[0];
         const x = point.lat, y = point.lng;
@@ -10611,9 +10709,8 @@ const DrawingTool = ({ isVisible }) => {
     const handleClearPoints = () => {
         const biasedOnly = plottedPoints.filter(p => p.type === 'Biased');
         setPlottedPoints(biasedOnly);
-        
         samplePointsLayerRef.current.eachLayer(layer => {
-            if (layer !== originMarkerRef.current && layer.options.className === 'grid-sample-marker') {
+            if (layer !== originMarkerRef.current) {
                 samplePointsLayerRef.current.removeLayer(layer);
             }
         });
@@ -10626,72 +10723,104 @@ const DrawingTool = ({ isVisible }) => {
         setSurveyUnitArea(0);
         setPlottedPoints([]);
     };
+    
+    const onDrawDelete = (e) => {
+        e.layers.eachLayer(layer => {
+            if (layer instanceof L.CircleMarker && layer.myCustomId) {
+                const deletedId = layer.myCustomId;
+                setPlottedPoints(currentPoints =>
+                    currentPoints.filter(p => p.id !== deletedId)
+                );
+            } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+                handleClearAll();
+            }
+        });
+        addToast("Item(s) removed from map.");
+    };
 
-    // --- CORE LOGIC (UPDATED FUNCTIONS) ---
+    // --- CORE LOGIC ---
     const onDrawEditOrCreate = (e) => {
-        const layer = e.layer || e.layers.getLayers()[0];
+        if (e.type === 'draw:edited') {
+            const statisticalPoints = plottedPoints.filter(p => p.type !== 'Biased');
+            setPlottedPoints(() => {
+                 const updatedBiasedPoints = [];
+                 e.layers.eachLayer(layer => {
+                     if (layer instanceof L.CircleMarker && layer.myCustomId) {
+                         const latLng = layer.getLatLng();
+                         // CHANGED: Preserves the ID on edit
+                         updatedBiasedPoints.push({ id: layer.myCustomId, lat: latLng.lat, lng: latLng.lng, type: 'Biased' });
+                     } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+                         const area = calculatePolygonArea(layer.getLatLngs());
+                         setSurveyUnitArea(area);
+                         const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
+                         layer.setPopupContent(popupContent);
+                     }
+                 });
+                 return [...updatedBiasedPoints, ...statisticalPoints];
+            });
+            addToast("Item(s) updated.");
+            return;
+        }
+
+        const layer = e.layer;
         if (!layer) return;
 
         if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-            if (!surveyUnitLayer) {
-                drawnItemsRef.current.addLayer(layer);
-            }
+            drawnItemsRef.current.eachLayer(l => {
+                if (l instanceof L.Polygon || l instanceof L.Rectangle) { drawnItemsRef.current.removeLayer(l); }
+            });
+            handleClearPoints();
+            drawnItemsRef.current.addLayer(layer);
             setSurveyUnitLayer(layer);
             const area = calculatePolygonArea(layer.getLatLngs());
             setSurveyUnitArea(area);
-            
-            handleClearPoints(); 
             const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
             layer.bindPopup(popupContent).openPopup();
             layer.on({
                 mouseover: (e) => e.target.setStyle(highlightStyle),
                 mouseout: (e) => e.target.setStyle(defaultStyle)
             });
-            if (e.type === 'draw:edited') {
-                addToast("Survey unit updated. Please regenerate statistical samples.");
-            }
         } else if (layer instanceof L.Marker) {
             const latLng = layer.getLatLng();
-            const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' });
-            
-            const newPoint = { lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-            const updatedPoints = [...plottedPoints, newPoint];
-            const popupContent = `<b>Sample Point #${updatedPoints.length}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
-            newMarker.bindPopup(popupContent);
-            
-            samplePointsLayerRef.current.addLayer(newMarker);
-            setPlottedPoints(updatedPoints);
+            setPlottedPoints(currentPoints => {
+                // CHANGED: Now uses the prefix-based ID generator
+                const newId = getNextIdForPrefix(currentPoints, 'B');
+                const newPoint = { id: newId, lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+                const popupContent = `<b>Bias Sample Point #${newId}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
+                const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' }).bindPopup(popupContent);
+                newMarker.myCustomId = newId;
+                drawnItemsRef.current.addLayer(newMarker);
+                return [...currentPoints, newPoint];
+            });
         }
     };
     
     const handleGenerateSamples = (pattern) => {
-        if (!surveyUnitLayer) { alert("Please draw a survey unit boundary first."); return; }
-        
+        if (!surveyUnitLayer) { addToast("Please draw a survey unit boundary first."); return; }
         handleClearPoints();
-
         const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
         let numSamples = samplesToPlace;
         let spacingMeters = gridSpacing;
-
         if (sampleCalcMode === 'bySpacing' && pattern !== 'random') {
-            if (gridSpacing <= 0) { alert("Grid spacing must be greater than zero."); return; }
+            if (gridSpacing <= 0) { addToast("Grid spacing must be greater than zero."); return; }
             numSamples = Math.ceil(surveyUnitArea / (spacingMeters * spacingMeters));
         } else if (sampleCalcMode === 'byNumber' && pattern !== 'random') {
-            if (samplesToPlace <= 0) { alert("Number of samples must be greater than zero."); return; }
+            if (samplesToPlace <= 0) { addToast("Number of samples must be greater than zero."); return; }
             const multiplier = pattern === 'triangular' ? 0.866 : 1;
             spacingMeters = Math.sqrt(surveyUnitArea / (multiplier * numSamples));
         }
-
         const newPoints = [];
         const latLngs = surveyUnitLayer.getLatLngs();
         const bounds = surveyUnitLayer.getBounds();
-
         if (pattern === 'random') {
-            while (newPoints.length < numSamples) {
-               const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
-               const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
-               if (isPointInPolygon({ lat, lng }, latLngs)) { newPoints.push({ lat, lng }); }
-           }
+            for (let i = 0; i < numSamples; i++) {
+                let pointFound = false;
+                while (!pointFound) {
+                    const lat = bounds.getSouth() + Math.random() * (bounds.getNorth() - bounds.getSouth());
+                    const lng = bounds.getWest() + Math.random() * (bounds.getEast() - bounds.getWest());
+                    if (isPointInPolygon({ lat, lng }, latLngs)) { newPoints.push({ lat, lng }); pointFound = true; }
+                }
+            }
         } else {
            const spacingLat = spacingMeters / 111320;
            const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
@@ -10707,110 +10836,95 @@ const DrawingTool = ({ isVisible }) => {
                row++;
            }
         }
-        const pointsWithTypes = newPoints.map(p => ({ ...p, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
+        
+        const pointsWithTypes = newPoints.map((p, index) => ({ ...p, id: `S-${index + 1}`, type: pattern.charAt(0).toUpperCase() + pattern.slice(1) }));
         setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
-
-        pointsWithTypes.forEach((point, index) => {
+        pointsWithTypes.forEach(point => {
            const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
-           const popupContent = `<b>Sample Point #${existingBiasedPoints.length + index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+           const popupContent = `<b>Sample Point #${point.id}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
            marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
         });
     };
 
-    // --- UNCHANGED ORIGINAL FUNCTIONS ---
-// --- UNCHANGED ORIGINAL FUNCTIONS (NOW WITH FULL CODE) ---
+    const handleZoomToSurveyUnit = () => { if (surveyUnitLayer && mapRef.current) { mapRef.current.fitBounds(surveyUnitLayer.getBounds()); } };
 
-    const handleZoomToSurveyUnit = () => {
-        if (surveyUnitLayer && mapRef.current) {
-            const bounds = surveyUnitLayer.getBounds();
-            mapRef.current.fitBounds(bounds);
-        }
-    };
+                const handleSavePlan = () => {
+                 if (!surveyUnitLayer) {
+                     addToast("Please draw a survey unit to save.");
+                     return;
+                 }
+                 const planData = {
+                     surveyUnit: surveyUnitLayer.toGeoJSON(),
+                     points: plottedPoints,
+                     surveyClass: surveyClass,
+                     samplesToPlace: samplesToPlace,
+                 };
+                 const blob = new Blob([JSON.stringify(planData, null, 2)], { type: 'application/json' });
+                 const link = document.createElement("a");
+                 link.href = URL.createObjectURL(blob);
+                 link.download = "survey-plan.json";
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+             };
 
-    const handleSavePlan = () => {
-        if (!surveyUnitLayer) {
-            alert("Please draw a survey unit to save.");
-            return;
-        }
-        // UPDATED: Now includes the survey unit name in the saved file
-        const planData = {
-            surveyUnit: surveyUnitLayer.toGeoJSON(),
-            points: plottedPoints,
-            surveyUnitName: surveyUnitName,
-            surveyClass: surveyClass,
-            samplesToPlace: samplesToPlace,
-        };
-        const blob = new Blob([JSON.stringify(planData, null, 2)], { type: 'application/json' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "survey-plan.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const handleLoadPlan = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const parsedData = JSON.parse(e.target.result);
-                if (!parsedData.surveyUnit || !parsedData.points) { throw new Error("Invalid plan file format."); }
-                
-                handleClearAll();
-                
-                // UPDATED: Now loads the survey unit name and other dashboard state
-                const newSurveyUnit = L.geoJSON(parsedData.surveyUnit, { style: defaultStyle });
-                const layer = newSurveyUnit.getLayers()[0];
-                if (layer) {
-                    drawnItemsRef.current.addLayer(layer);
-                    setSurveyUnitLayer(layer);
-                    const area = calculatePolygonArea(layer.getLatLngs());
-                    setSurveyUnitArea(area);
-                    mapRef.current.fitBounds(layer.getBounds());
-                    
-                    setSurveyUnitName(parsedData.surveyUnitName || 'Loaded SU');
-                    setSurveyClass(parsedData.surveyClass || 'Class 1');
-                    setSamplesToPlace(parsedData.samplesToPlace || 25);
-
-                    const popupContent = `<b>Survey Unit: ${parsedData.surveyUnitName || 'Loaded SU'}</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
-                    layer.bindPopup(popupContent);
-                    layer.on({
-                        mouseover: (e) => e.target.setStyle(highlightStyle),
-                        mouseout: (e) => e.target.setStyle(defaultStyle)
-                    });
-                }
-
-                const loadedPoints = parsedData.points || [];
-                setPlottedPoints(loadedPoints);
-                
-                loadedPoints.forEach((point, index) => {
-                    const marker = L.circleMarker([point.lat, point.lng], {
-                        radius: 4,
-                        className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker'
-                    });
-                    const popupContent = `<b>Sample Point #${index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-                    marker.bindPopup(popupContent);
-                    marker.addTo(samplePointsLayerRef.current);
-                });
-
-            } catch (error) { alert(`Error loading plan: ${error.message}`); }
-        };
-        reader.readAsText(file);
-        event.target.value = null;
-    };
-
+                 const handleLoadPlan = (event) => {
+                 const file = event.target.files[0];
+                 if (!file) return;
+                 const reader = new FileReader();
+                 reader.onload = (e) => {
+                     try {
+                         const parsedData = JSON.parse(e.target.result);
+                         if (!parsedData.surveyUnit || !parsedData.points) { throw new Error("Invalid plan file format."); }
+                         
+                         handleClearAll();
+                         
+                         const newSurveyUnit = L.geoJSON(parsedData.surveyUnit, { style: defaultStyle });
+                         const layer = newSurveyUnit.getLayers()[0];
+                         if (layer) {
+                             drawnItemsRef.current.addLayer(layer);
+                             setSurveyUnitLayer(layer);
+                             const area = calculatePolygonArea(layer.getLatLngs());
+                             setSurveyUnitArea(area);
+                             mapRef.current.fitBounds(layer.getBounds());
+         
+                             const popupContent = `<b>Survey Unit</b><br>Class: ${parsedData.surveyClass || 'Class 1'}<br>Area: ${area.toFixed(1)} m²`;
+                             layer.bindPopup(popupContent);
+                             layer.on({
+                                 mouseover: (e) => e.target.setStyle(highlightStyle),
+                                 mouseout: (e) => e.target.setStyle(defaultStyle)
+                             });
+                         }
+         
+                         const loadedPoints = parsedData.points || [];
+                         setPlottedPoints(loadedPoints);
+                         setSurveyClass(parsedData.surveyClass || 'Class 1');
+                         setSamplesToPlace(parsedData.samplesToPlace || 25);
+                         
+                         loadedPoints.forEach((point, index) => {
+                             const marker = L.circleMarker([point.lat, point.lng], {
+                                 radius: 4,
+                                 className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker'
+                             });
+                             const popupContent = `<b>Sample Point #${index + 1}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+                             marker.bindPopup(popupContent);
+                             marker.addTo(samplePointsLayerRef.current);
+                         });
+         
+                     } catch (error) { alert(`Error loading plan: ${error.message}`); }
+                 };
+                 reader.readAsText(file);
+                 event.target.value = null;
+             };
     const handleExport = () => {
         if (plottedPoints.length === 0 || !surveyUnitLayer) {
-            alert("Please draw a survey unit and place sample points before exporting.");
-            return;
+            addToast("Please draw a survey unit and place sample points before exporting."); return;
         }
         const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
-        const dataForExport = plottedPoints.map((point, index) => {
+        const dataForExport = plottedPoints.map((point) => {
             const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
             const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
-            return { sampleNumber: index + 1, type: point.type, latitude: point.lat.toFixed(6), longitude: point.lng.toFixed(6), xDistance: xDistance.toFixed(2), yDistance: yDistance.toFixed(2) };
+            return { sampleNumber: point.id, type: point.type, latitude: point.lat.toFixed(6), longitude: point.lng.toFixed(6), xDistance: xDistance.toFixed(2), yDistance: yDistance.toFixed(2) };
         });
         const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance from Origin (m)", "Y Distance from Origin (m)"];
         const csvRows = [headers.join(',')];
@@ -10827,120 +10941,164 @@ const DrawingTool = ({ isVisible }) => {
         document.body.removeChild(link);
     };
 
-    const handleGoToLocation = async () => {
-        if (!locationInput.trim()) return;
-        const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
-        if (coordRegex.test(locationInput)) {
-            const [lat, lng] = locationInput.split(',').map(Number);
-            if (!isNaN(lat) && !isNaN(lng)) { mapRef.current.setView([lat, lng], 16); return; }
-        }
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
-            const data = await response.json();
-            if (data && data.length > 0) {
-                const { lat, lon } = data[0];
-                mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 16);
-            } else { alert("Location not found."); }
-        } catch (error) { alert("Could not connect to the location service."); }
-    };
+             const handleGoToLocation = async () => {
+                 if (!locationInput.trim()) return;
+                 const coordRegex = /^-?[\d.]+\s*,\s*-?[\d.]+$/;
+                 if (coordRegex.test(locationInput)) {
+                     const [lat, lng] = locationInput.split(',').map(Number);
+                     if (!isNaN(lat) && !isNaN(lng)) { mapRef.current.setView([lat, lng], 16); return; }
+                 }
+                 try {
+                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationInput)}`);
+                     const data = await response.json();
+                     if (data && data.length > 0) {
+                         const { lat, lon } = data[0];
+                         mapRef.current.setView([parseFloat(lat), parseFloat(lon)], 16);
+                     } else { addToast("Location not found."); }
+                 } catch (error) { addToast("Could not connect to the location service."); }
+             };
+         
+         
+         
+         
+const handlePrintMap = () => {
+             if (!mapRef.current || !surveyUnitLayer) {
+                 addToast("Please draw a survey unit on the map before generating a report.");
+                 return;
+             }
+             const center = mapRef.current.getCenter();
+             const zoom = mapRef.current.getZoom();
+             const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
+             const pointsData = plottedPoints;
+             const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
+             const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
+             let customMarkerStyles = '';
+             for (const sheet of document.styleSheets) {
+                 try {
+                     for (const rule of sheet.cssRules) {
+                         // ADDED: .origin-sample-marker to ensure the origin point is styled correctly
+                         if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker' || rule.selectorText === '.origin-sample-marker') {
+                             customMarkerStyles += rule.cssText;
+                         }
+                     }
+                 } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
+             }
 
-    const handlePrintMap = () => {
-        if (!mapRef.current || !surveyUnitLayer) {
-            alert("Please draw a survey unit on the map before generating a report.");
-            return;
-        }
-        const center = mapRef.current.getCenter();
-        const zoom = mapRef.current.getZoom();
-        const surveyUnitGeoJSON = surveyUnitLayer.toGeoJSON();
-        const pointsData = plottedPoints;
-        const leafletCss = document.querySelector('link[href*="leaflet.css"]').outerHTML;
-        const leafletDrawCss = document.querySelector('link[href*="leaflet.draw.css"]').outerHTML;
-        let customMarkerStyles = '';
-        for (const sheet of document.styleSheets) {
-            try {
-                for (const rule of sheet.cssRules) {
-                    if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker' || rule.selectorText === '.origin-sample-marker') {
-                        customMarkerStyles += rule.cssText;
-                    }
-                }
-            } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
-        }
-        const origin = surveyUnitLayer.getBounds().getSouthWest();
-        let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Lat</th><th>Lng</th><th>X (m)</th><th>Y (m)</th></tr></thead><tbody>`;
-        pointsData.forEach((point, index) => {
-            const yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
-            const xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
-            tableHtml += `<tr><td>${index + 1}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td><td>${xDist.toFixed(2)}</td><td>${yDist.toFixed(2)}</td></tr>`;
-        });
-        tableHtml += `</tbody><tfoot><tr class="footer-row"><td colspan="2">Origin (SW Corner)</td><td>${origin.lat.toFixed(6)}</td><td>${origin.lng.toFixed(6)}</td><td>0.00</td><td>0.00</td></tr></tfoot></table>`;
+             // --- START: Added logic to match main display ---
+             const origin = { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng };
+             
+             let tableHtml = `<table class="data-table"><thead><tr><th>#</th><th>Type</th><th>Latitude</th><th>Longitude</th><th>X (m)</th><th>Y (m)</th></tr></thead><tbody>`;
+             
+             const sortedPoints = [...pointsData].sort((a, b) => {
+                const aPrefix = a.id.charAt(0);
+                const bPrefix = b.id.charAt(0);
+                const aNum = parseInt(a.id.substring(2));
+                const bNum = parseInt(b.id.substring(2));
+                if (aPrefix < bPrefix) return 1;
+                if (aPrefix > bPrefix) return -1;
+                return aNum - bNum;
+             });
 
-        let activeLayerName = "Street Map";
-        if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
-            activeLayerName = "Satellite";
-        }
-        
-        const reportWindow = window.open('', '_blank', 'height=800,width=1000');
-        reportWindow.document.write(`
-            <html>
-                <head>
-                    <title>Survey Unit Report: ${surveyUnitName}</title>
-                    ${leafletCss} ${leafletDrawCss}
-                    <style>
-                        body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
-                        .report-container { max-width: 1200px; margin: auto; } h1, h2 { text-align: center; }
-                        #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
-                        .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
-                        .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
-                        .data-table th { background-color: #f1f5f9; font-weight: 600; }
-                        .data-table .footer-row { background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #cbd5e1; }
-                        .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-                        .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; }
-                        @media print { .print-button { display: none; } body { padding: 0; } }
-                        ${customMarkerStyles}
-                    </style>
-                </head>
-                <body>
-                    <button class="print-button" onclick="window.print()">Print Report</button>
-                    <div class="report-container">
-                        <h1>Survey Unit Report: ${surveyUnitName}</h1>
-                        <div class="summary-container">
-                            <div><strong>Class:</strong> ${surveyClass}</div>
-                            <div><strong>Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
-                            <div><strong>Samples:</strong> ${pointsData.length}</div>
-                        </div>
-                        <div id="print-map"></div>
-                        <h2>Sample Locations</h2>
-                        ${tableHtml}
-                    </div>
-                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
-                    <script>
-                        setTimeout(() => {
-                            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '&copy; OpenStreetMap' });
-                            const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Tiles &copy; Esri' });
-                            const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
-                            const defaultLayer = baseMaps['${activeLayerName}'];
-                            const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
-                            const NorthArrow = L.Control.extend({ options: { position: 'topright' }, onAdd: function (map) { const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control'); c.style.backgroundColor = 'white'; c.style.width = '30px'; c.style.height = '30px'; c.style.display = 'flex'; c.style.alignItems = 'center'; c.style.justifyContent = 'center'; c.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;"><path d="${ICONS.northArrow}" /></svg>\`; return c; } });
-                            map.addControl(new NorthArrow());
-                            L.control.layers(baseMaps).addTo(map);
-                            L.control.scale({ imperial: true, metric: true }).addTo(map);
-                            L.geoJSON(${JSON.stringify(surveyUnitGeoJSON)}, { style: { color: '#3388ff' } }).addTo(map);
-                            const points = ${JSON.stringify(pointsData)};
-                            points.forEach(point => { L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map); });
-                            const originPoint = ${JSON.stringify(origin)};
-                            L.circleMarker([originPoint.lat, originPoint.lng], { radius: 6, className: 'origin-sample-marker' }).addTo(map);
-                        }, 100);
-                    <\/script>
-                </body>
-            </html>
-        `);
-        reportWindow.document.close();
-    };
+             sortedPoints.forEach((point) => {
+                 const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
+                 const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
+                 tableHtml += `<tr><td>${point.id}</td><td>${point.type}</td><td>${point.lat.toFixed(6)}</td><td>${point.lng.toFixed(6)}</td><td>${xDistance.toFixed(2)}</td><td>${yDistance.toFixed(2)}</td></tr>`;
+             });
+             tableHtml += `</tbody><tfoot><tr class="origin-row"><td colspan="2">Origin (SW Corner)</td><td>${origin.lat.toFixed(6)}</td><td>${origin.lng.toFixed(6)}</td><td>0.00</td><td>0.00</td></tr></tfoot></table>`;
+             // --- END: Added logic ---
+
+             let activeLayerName = "Street Map";
+             if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
+                 activeLayerName = "Satellite";
+             }
+             
+             const reportWindow = window.open('', '_blank', 'height=800,width=1000');
+             reportWindow.document.write(`
+                 <html>
+                     <head>
+                         <title>Survey Unit Report</title>
+                         ${leafletCss} ${leafletDrawCss}
+                         <style>
+                             body { font-family: "Inter", sans-serif; margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
+                             .report-container { max-width: 1200px; margin: auto; }
+                             h1, h2 { text-align: center; }
+                             #print-map { height: 50vh; border: 1px solid #cbd5e1; border-radius: 8px; margin: 20px 0; }
+                             .data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 20px; }
+                             .data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: center; }
+                             .data-table th { background-color: #f1f5f9; font-weight: 600; }
+                             .data-table .origin-row { background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; } /* CHANGED: Added style for origin row */
+                             .print-button { display: block; width: 200px; margin: 0 auto 30px auto; padding: 12px 15px; background-color: #0284c7; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+                             .print-button:hover { background-color: #0369a1; }
+                             .summary-container { text-align: center; padding: 15px; background-color: #f1f5f9; border-radius: 8px; display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center; border: 1px solid #e2e8f0; } /* CHANGED: Added flex-wrap */
+                             .summary-container div { font-size: 1.1em; color: #334155; padding: 5px 10px; } /* CHANGED: Added padding */
+                             @media print { .print-button { display: none; } body { padding: 0; } }
+                             ${customMarkerStyles}
+                         </style>
+                     </head>
+                     <body>
+                         <button class="print-button" onclick="window.print()">Print Report</button>
+                         <div class="report-container">
+                             <h1>Survey Unit Report</h1>
+                             <div class="summary-container">
+                                 <div><strong>Survey Unit Name:</strong> ${surveyUnitName}</div> <div><strong>Unit Class:</strong> ${surveyClass}</div>
+                                 <div><strong>Area:</strong> ${surveyUnitArea.toFixed(1)} m²</div>
+                                 <div><strong>Samples Plotted:</strong> ${pointsData.length}</div>
+                             </div>
+                             <div id="print-map"></div>
+                             <h2>Sample Locations</h2>
+                             ${tableHtml}
+                         </div>
+                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+                         <script>
+                             setTimeout(() => {
+                                 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxNativeZoom: 19, maxZoom: 21, attribution: '&copy; OpenStreetMap' });
+                                 const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 19, maxZoom: 21, attribution: 'Tiles &copy; Esri' });
+                                 const baseMaps = { "Street Map": osmLayer, "Satellite": satelliteLayer };
+                                 const defaultLayer = baseMaps['${activeLayerName}'];
+                                 const map = L.map('print-map', { layers: [defaultLayer] }).setView([${center.lat}, ${center.lng}], ${zoom});
+                                 const NorthArrow = L.Control.extend({
+                                     options: { position: 'topright' },
+                                     onAdd: function (map) {
+                                         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                         container.style.backgroundColor = 'white'; container.style.width = '30px'; container.style.height = '30px'; container.style.display = 'flex'; container.style.alignItems = 'center'; container.style.justifyContent = 'center'; container.style.cursor = 'default';
+                                         container.innerHTML = \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem; color: #374151;"><path d="${ICONS.northArrow}" /></svg>\`;
+                                         return container;
+                                     }
+                                 });
+                                 map.addControl(new NorthArrow());
+                                 L.control.layers(baseMaps).addTo(map);
+                                 L.control.scale({ imperial: true, metric: true }).addTo(map);
+                                 const surveyUnitGeoJSON = ${JSON.stringify(surveyUnitGeoJSON)};
+                                 L.geoJSON(surveyUnitGeoJSON, { style: { color: '#3388ff' } }).addTo(map);
+                                 const points = ${JSON.stringify(pointsData)};
+                                 points.forEach(point => {
+                                     L.circleMarker([point.lat, point.lng], { radius: 4, className: point.type === 'Biased' ? 'biased-sample-marker' : 'grid-sample-marker' }).addTo(map);
+                                 });
+
+                                 // --- ADDED: Draw the origin point on the map ---
+                                 const originLatLng = L.geoJSON(surveyUnitGeoJSON).getBounds().getSouthWest();
+                                 L.circleMarker(originLatLng, { radius: 6, className: 'origin-sample-marker' }).bindPopup('<b>Survey Origin (SW Corner)</b>').addTo(map);
+                                 // ---------------------------------------------
+                                 
+                             }, 100);
+                         <\/script>
+                     </body>
+                 </html>
+             `);
+             reportWindow.document.close();
+         };
+
 
     // --- MAP INITIALIZATION ---
     React.useEffect(() => {
         if (mapRef.current) return;
         
+        L.drawLocal.draw.toolbar.buttons.marker = 'Place a bias sample';
+        L.drawLocal.draw.handlers.marker.tooltip.start = 'Click map to place bias sample.';
+
+        // ADDED: Define the custom icon for the drawing cursor
+        const biasMarkerIcon = new L.DivIcon({ className: 'leaflet-draw-biased-marker-icon', iconSize: new L.Point(12, 12), iconAnchor: new L.Point(8, 8) });
+
         osmLayerRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxNativeZoom: 19, maxZoom: 21 });
         satelliteLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21 });
         const baseMaps = { "Street Map": osmLayerRef.current, "Satellite": satelliteLayerRef.current };
@@ -10952,7 +11110,18 @@ const DrawingTool = ({ isVisible }) => {
         mapRef.current.addLayer(drawnItemsRef.current);
         mapRef.current.addLayer(samplePointsLayerRef.current);
 
-        const drawControl = new L.Control.Draw({ edit: { featureGroup: drawnItemsRef.current }, draw: { polyline: false, polygon: { shapeOptions: { color: '#3388ff' } }, rectangle: { shapeOptions: { color: '#3388ff' } }, marker: true, circle: false, circlemarker: false } });
+        // CHANGED: Pass the custom icon to the marker options
+        const drawControl = new L.Control.Draw({ 
+            edit: { featureGroup: drawnItemsRef.current }, 
+            draw: { 
+                polyline: false, 
+                polygon: { shapeOptions: { color: '#3388ff' } }, 
+                rectangle: { shapeOptions: { color: '#3388ff' } }, 
+                marker: { icon: biasMarkerIcon }, 
+                circle: false, 
+                circlemarker: false 
+            } 
+        });
         mapRef.current.addControl(drawControl);
 
         const NorthArrow = L.Control.extend({ options: { position: 'topright' }, onAdd: function (map) { const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control'); c.style.backgroundColor = 'white'; c.style.width = '30px'; c.style.height = '30px'; c.style.display = 'flex'; c.style.alignItems = 'center'; c.style.justifyContent = 'center'; c.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.25rem;height:1.25rem;"><path d="${ICONS.northArrow}" /></svg>`; L.DomEvent.disableClickPropagation(c); return c; } });
@@ -10969,28 +11138,19 @@ const DrawingTool = ({ isVisible }) => {
         mapRef.current.on('mousemove', (e) => { mousePositionControl.update(`Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`); });
         mapRef.current.on('mouseout', () => { mousePositionControl.update('Mouse over map'); });
         
-        // --- UPDATED: Event listeners for draw events ---
         mapRef.current.on(L.Draw.Event.CREATED, onDrawEditOrCreate);
         mapRef.current.on(L.Draw.Event.EDITED, onDrawEditOrCreate);
+        mapRef.current.on(L.Draw.Event.DELETED, onDrawDelete);
     
         return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     }, []);
 
+    React.useEffect(() => { if (isVisible && mapRef.current) { setTimeout(() => mapRef.current.invalidateSize(), 100); } }, [isVisible]);
     React.useEffect(() => {
-        if (isVisible && mapRef.current) {
-            setTimeout(() => mapRef.current.invalidateSize(), 100);
-        }
-    }, [isVisible]);
-
-    React.useEffect(() => {
-        if (originMarkerRef.current) {
-            originMarkerRef.current.remove();
-            originMarkerRef.current = null;
-        }
+        if (originMarkerRef.current) { originMarkerRef.current.remove(); originMarkerRef.current = null; }
         if (surveyUnitLayer && samplePointsLayerRef.current) {
             const originLatLng = surveyUnitLayer.getBounds().getSouthWest();
-            const originMarker = L.circleMarker(originLatLng, { radius: 6, className: 'origin-sample-marker' });
-            originMarker.bindPopup(`<b>Survey Origin (SW Corner)</b><br>Lat: ${originLatLng.lat.toFixed(6)}<br>Lng: ${originLatLng.lng.toFixed(6)}`);
+            const originMarker = L.circleMarker(originLatLng, { radius: 6, className: 'origin-sample-marker' }).bindPopup(`<b>Survey Origin (SW Corner)</b><br>Lat: ${originLatLng.lat.toFixed(6)}<br>Lng: ${originLatLng.lng.toFixed(6)}`);
             originMarker.addTo(samplePointsLayerRef.current);
             originMarkerRef.current = originMarker;
         }
@@ -10998,27 +11158,21 @@ const DrawingTool = ({ isVisible }) => {
 
     return (
         <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
+            {/* ... rest of the JSX is unchanged ... */}
+             <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
                 <div className="flex items-center gap-2">
-                    {surveyUnitLayer && (
-                        <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">
-                            Zoom to Unit
-                        </button>
-                    )}
+                    {surveyUnitLayer && ( <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Zoom to Unit</button> )}
                     <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
                     <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
                     <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
                 </div>
             </div>
-
             <div className="flex gap-2 items-center mb-4">
                 <input type="text" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }} placeholder="Enter an address or lat,lng coordinates" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"/>
                 <button onClick={handleGoToLocation} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Go</button>
             </div>
-
             <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600"></div>
-
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <h4 className="font-bold text-lg mb-3">Survey Unit Dashboard</h4>
@@ -11038,7 +11192,7 @@ const DrawingTool = ({ isVisible }) => {
                             <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
                         </div>
                          <div className="pt-2">
-                            <p className="font-semibold text-slate-500 dark:text-slate-400">Total Samples</p>
+                            <p className="font-semibold text-slate-500 dark:text-slate-400">Plotted Samples</p>
                             <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{plottedPoints.length}</p>
                         </div>
                     </div>
@@ -11052,28 +11206,23 @@ const DrawingTool = ({ isVisible }) => {
                         </div>
                         {sampleCalcMode === 'byNumber' ? (
                              <div className="text-center">
-                                <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Number of Samples</label>
-                                <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
+                                <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Desired Number of Samples</label>
+                                <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
                              </div>
                         ) : (
                             <div className="text-center">
                                 <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Grid Spacing (meters)</label>
-                                <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 bg-transparent" />
+                                <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
                             </div>
                         )}
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-2">
-
-    <button onClick={() => handleGenerateSamples('square')}     className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
-    
-
-    <button onClick={() => handleGenerateSamples('triangular')} className="p-2 text-[12px] leading-tight bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
-
-    <button onClick={() => handleGenerateSamples('random')}     className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
-</div>
+                        <button onClick={() => handleGenerateSamples('square')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
+                        <button onClick={() => handleGenerateSamples('triangular')} className="p-2 text-[12px] leading-tight bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
+                        <button onClick={() => handleGenerateSamples('random')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+                    </div>
                 </div>
             </div>
-
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
@@ -11099,15 +11248,24 @@ const DrawingTool = ({ isVisible }) => {
                             <tbody>
                                 {(() => {
                                     const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
-                                    return plottedPoints.map((point, index) => {
+                                    const sortedPoints = [...plottedPoints].sort((a, b) => {
+                                        const aPrefix = a.id.charAt(0);
+                                        const bPrefix = b.id.charAt(0);
+                                        const aNum = parseInt(a.id.substring(2));
+                                        const bNum = parseInt(b.id.substring(2));
+                                        if (aPrefix < bPrefix) return 1; // B comes before S
+                                        if (aPrefix > bPrefix) return -1;
+                                        return aNum - bNum;
+                                    });
+                                    return sortedPoints.map((point) => {
                                         let xDist = 'N/A', yDist = 'N/A';
                                         if (origin) {
                                             yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng }).toFixed(2);
                                             xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng }).toFixed(2);
                                         }
                                         return (
-                                            <tr key={index} className="border-b border-slate-200 dark:border-slate-700">
-                                                <td className="p-2 font-medium">{index + 1}</td>
+                                            <tr key={point.id} className="border-b border-slate-200 dark:border-slate-700">
+                                                <td className="p-2 font-medium">{point.id}</td>
                                                 <td className="p-2">{point.type}</td>
                                                 <td className="p-2 font-mono">{point.lat.toFixed(6)}</td>
                                                 <td className="p-2 font-mono">{point.lng.toFixed(6)}</td>
@@ -11122,28 +11280,16 @@ const DrawingTool = ({ isVisible }) => {
                                 {(() => {
                                     const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
                                     if (!origin) return null;
-                        
-                                    return (
-                                        <tr className="bg-slate-200 dark:bg-slate-700 font-semibold border-t-2 border-slate-300 dark:border-slate-600">
-                                            <td colSpan="2" className="p-2 text-left">Origin (SW Corner)</td>
-                                            <td className="p-2 font-mono">{origin.lat.toFixed(6)}</td>
-                                            <td className="p-2 font-mono">{origin.lng.toFixed(6)}</td>
-                                            <td className="p-2 font-mono">0.00</td>
-                                            <td className="p-2 font-mono">0.00</td>
-                                        </tr>
-                                    );
+                                    return ( <tr className="bg-slate-200 dark:bg-slate-700 font-semibold border-t-2 border-slate-300 dark:border-slate-600"><td colSpan="2" className="p-2 text-left">Origin (SW Corner)</td><td className="p-2 font-mono">{origin.lat.toFixed(6)}</td><td className="p-2 font-mono">{origin.lng.toFixed(6)}</td><td className="p-2 font-mono">0.00</td><td className="p-2 font-mono">0.00</td></tr> );
                                 })()}
                             </tfoot>
                         </table>
-                    ) : (
-                        <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p>
-                    )}
+                    ) : ( <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p> )}
                 </div>
             </div>
         </div>
     );
 };
-
 
          /**
          * @description React component for the MARSSIM Sample Design Suite.
