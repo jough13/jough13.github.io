@@ -15,6 +15,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+
+	.fade-right {
+            position: relative;
+        }
+        .fade-right::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 50px;
+            background: linear-gradient(to left, rgb(249 250 251), transparent);
+            pointer-events: none; /* Allows clicking through the gradient */
+        }
+        .dark .fade-right::after {
+            background: linear-gradient(to left, rgb(31 41 55), transparent);
+        }
+
+
+
         .sticky-header { position: sticky; top: 0; z-index: 10; }
         .sortable { cursor: pointer; position: relative; user-select: none; }
         .sortable .sort-arrow { display: inline-block; width: 1em; height: 1em; opacity: 0.4; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
@@ -55,7 +75,7 @@
         .toast.fade-out { animation: toast-fade-out 0.3s ease-in forwards; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .spinner { animation: spin 1s linear infinite; }
-        @media (max-width: 1024px) {
+        @media (max-width: 768px) {
             #lookupTable thead { display: none; }
             #lookupTable, #lookupTable tbody, #lookupTable tr, #lookupTable td { display: block; width: 100%; }
             #lookupTable tr { margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; }
@@ -157,7 +177,8 @@
                     </div>
                 </div>
             </div>
-            <div class="overflow-x-auto">
+<div class="w-full">
+            <div class="overflow-x-auto max-h-[75vh] fade-right">
                 <table id="lookupTable" class="w-full text-sm text-gray-600 dark:text-gray-400">
                     <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-100 dark:bg-gray-700 sticky-header">
                         <tr>
@@ -190,6 +211,7 @@
                     </tbody>
                 </table>
             </div>
+</div>
              <div id="noResults" class="hidden p-6 text-center text-gray-500 dark:text-gray-400"></div>
         </div>
         <footer class="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
