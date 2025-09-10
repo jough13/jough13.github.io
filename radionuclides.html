@@ -315,7 +315,7 @@
                  dosimetry: { ALI: { inhalation_D: 20, inhalation_W: 7, ingestion: 50 }, DAC: { inhalation_D: 1e-8, inhalation_W: 3e-9 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
              { name: 'Bismuth-209', symbol: 'Bi-209', emissionType: ['Alpha'], emissionEnergies: { alpha: ['3.137 MeV'], beta: [], gamma: [] }, halfLife: '2.01 x 10¹⁹ years', decayConstant: '3.45 x 10⁻²⁰ year⁻¹', specificActivity: '0.001 Bq/g', parent: 'Primordial', daughter: 'Thallium-205 (stable)', commonUses: ['Considered stable for most practical purposes', 'Recently discovered to be radioactive'], category: 'Natural', commonality: 'Common', commonalityReason: 'The most abundant isotope of bismuth, long considered stable, with an extremely long half-life.', sourceRef: { halfLife: 'nndc' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
+                 regGuideCategory: 'transuranics', ansiCategory: 'alpha_high' },
              { name: 'Bismuth-210', emissionType: ['Beta-minus', 'Alpha'], symbol: 'Bi-210', emissionEnergies: { beta: ['1.16 MeV (max)'], alpha: ['5.03 MeV'], gamma: [] }, avgBetaEnergy: '0.387 MeV', halfLife: '5.012 days', decayConstant: '0.138 day⁻¹', specificActivity: '9.6 x 10^15 Bq/g', parent: 'Lead-210', daughter: 'Polonium-210 (β-) or Thallium-206 (α)', commonUses: ['Intermediate in U-238 decay chain', 'Used in disequilibrium studies with Pb-210'], category: 'Natural', decaySeriesId: 'U-238-series', commonality: 'Moderate', commonalityReason: 'A key intermediate in the U-238 decay series, the daughter of the common environmental nuclide Pb-210.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 1, A2: 0.2, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 40, inhalation_W: 20, ingestion: 100 }, DAC: { inhalation_D: 2e-8, inhalation_W: 1e-8 }, sourceRef: '10CFR20' },
                  regGuideCategory: 'beta_gamma', ansiCategory: 'beta_gamma' },
@@ -516,7 +516,7 @@
                  dosimetry: { ALI: { inhalation_D: 0.4, ingestion: 0.4 }, DAC: { inhalation_D: 2e-10 }, sourceRef: '10CFR20' }, regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
              { name: 'Polonium-210', symbol: 'Po-210', emissionType: ['Alpha'], emissionEnergies: { alpha: ['5.304 MeV'], beta: [], gamma: [] }, halfLife: '138.376 days', decayConstant: '0.00501 day⁻¹', specificActivity: '1.66 x 10^14 Bq/g', parent: 'Bismuth-210 (β-)', daughter: 'Lead-206 (stable)', commonUses: ['Antistatic devices', 'Neutron sources', 'Research (alpha spectroscopy)'], category: 'Natural', commonality: 'Common', commonalityReason: 'A naturally occurring alpha-emitter (from Radon decay) used commercially in antistatic devices.', sourceRef: { halfLife: 'nndc' }, shipping: { A1: 40, A2: 0.02, unit: 'TBq' },
                  dosimetry: { ALI: { inhalation_D: 0.4, ingestion: 0.4 }, DAC: { inhalation_D: 2e-10 }, sourceRef: '10CFR20' },
-                 regGuideCategory: 'beta_gamma', ansiCategory: 'alpha_high' },
+                 regGuideCategory: 'transuraniucs', ansiCategory: 'alpha_high' },
              { name: 'Polonium-211', symbol: 'Po-211', emissionType: ['Alpha'], emissionEnergies: { alpha: ['7.45 MeV'], beta: [], gamma: [] }, halfLife: '0.516 seconds', decayConstant: '1.34 s⁻¹', specificActivity: '1.4 x 10^20 Bq/g', parent: 'Bismuth-211', daughter: 'Lead-207 (stable)', commonUses: ['Fastest alpha emitter in natural series', 'Research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' }, dosimetry: { ALI: { inhalation_D: 40, ingestion: 40 }, DAC: { inhalation_D: 2e-8 }, sourceRef: '10CFR20' }, regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
              { name: 'Polonium-212', symbol: 'Po-212', emissionType: ['Alpha'], emissionEnergies: { alpha: ['8.785 MeV'], beta: [], gamma: [] }, halfLife: '0.299 microseconds', decayConstant: '2.32 x 10⁶ s⁻¹', specificActivity: '2.5 x 10^22 Bq/g', parent: 'Bismuth-212 (β-)', daughter: 'Lead-208 (stable)', commonUses: ['Fastest alpha emitter in natural series', 'Research'], category: 'Natural', commonality: 'Rare', commonalityReason: 'An extremely short-lived intermediate in a natural decay chain.', sourceRef: { halfLife: 'nndc' },
                  regGuideCategory: 'u_nat', ansiCategory: 'alpha_high' },
@@ -749,7 +749,7 @@
          //==============================================================================
          
          const VERSION = '3.5.4';
-         const LAST_UPDATED = 'September 09, 2025';
+         const LAST_UPDATED = 'September 10, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -948,11 +948,11 @@
          return R * c;
          };
          
-         const REG_GUIDE_1_86_LIMITS = {
-         'transuranics': { removable: 20, total: 100, label: 'Transuranics, Ra-226, Ra-228, Th-230, etc.' },
-         'u_nat': { removable: 1000, total: 5000, label: 'U-nat, U-235, U-238, and associated decay products' },
-         'beta_gamma': { removable: 1000, total: 5000, label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' }
-         };
+const REG_GUIDE_1_86_LIMITS = {
+    'transuranics': { removable: 20, total: 100, label: 'Transuranics & other high-toxicity alpha emitters' },
+    'u_nat': { removable: 1000, total: 5000, label: 'U-nat, U-235, U-238, and associated decay products' },
+    'beta_gamma': { removable: 1000, total: 5000, label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' }
+};
          
          const ANSI_13_12_LIMITS = {
          'alpha_very_high': { removable: 20, total: 100, label: 'Alpha Emitters (Very High Hazard - e.g., Pu-238, Am-241)' },
@@ -1641,13 +1641,6 @@
          
          const SettingsContext = React.createContext();
          
-         const defaultSettings = {
-         activity: 'mCi',
-         doseRate: 'mrem/hr',
-         distance: 'm',
-         chartScale: 'Linear',
-         defaultDoseMode: 'gamma',
-         };
          
 const SettingsProvider = ({ children }) => {
     // UPDATED: Default settings now only contain the theme.
@@ -4624,6 +4617,14 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
          </div>
          );
          };
+
+
+
+
+
+
+
+
          
   const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, releaseActivity, setReleaseActivity, activityUnit, setActivityUnit, roomVolume, setRoomVolume, volumeUnit, setVolumeUnit, ventilationRate, setVentilationRate, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
@@ -4700,7 +4701,13 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
     </div>
     );
 };
-         
+  
+
+
+
+
+
+
 const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, staticData, setStaticData, wipeGrossCpm, setWipeGrossCpm, wipeBackgroundCpm, setWipeBackgroundCpm, instrumentEff, setInstrumentEff, smearEff, setSmearEff, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
@@ -4800,6 +4807,12 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} placeholder="e.g., 25" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Efficiency (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={smearEff} onChange={e => setSmearEff(e.target.value)} placeholder="e.g., 0.1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
+
+            {/* --- ADDED THIS NOTE --- */}
+            <ContextualNote>
+                <strong>Note:</strong> ANSI N13.12 provides an alternative set of limits to NRC Regulatory Guide 1.86. Always adhere to the specific limits dictated by your license conditions or site procedures.
+            </ContextualNote>
+
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
@@ -4835,7 +4848,6 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
         </div>
     );
 };
-
 
 const OperationalHPCalculators = ({ radionuclides }) => {
     const [activeCalculator, setActiveCalculator] = React.useState('surfaceContam');
@@ -4893,35 +4905,47 @@ const OperationalHPCalculators = ({ radionuclides }) => {
     };
     
     const calculatorViews = {
-        surfaceContam: { label: 'Surface Contam.', icon: ICONS.gammaSpec, component: <SurfaceContaminationCalculator 
-            radionuclides={radionuclides}
-            nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
-            staticData={sc_staticData} setStaticData={setSc_staticData}
-            wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
-            wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
-            instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
-            smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
-            result={sc_result} setResult={setSc_result}
-            error={sc_error} setError={setSc_error}
-        /> },
-        leakTest: { label: 'Leak Test', icon: ICONS.check, component: <LeakTestCalculator
-            grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
-            backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
-            instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
-            result={lt_result} setResult={setLt_result}
-            error={lt_error} setError={setLt_error}
-        /> },
-        airborne: { label: 'Airborne', icon: ICONS.radon, component: <AirborneCalculator 
-            radionuclides={radionuclides}
-            nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
-            releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
-            activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit}
-            roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
-            volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
-            ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
-            result={ac_result} setResult={setAc_result}
-            error={ac_error} setError={setAc_error}
-        /> }
+        surfaceContam: { 
+            label: 'Surface Contam.', 
+            icon: ICONS.gammaSpec, 
+            component: <SurfaceContaminationCalculator 
+                radionuclides={radionuclides}
+                nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
+                staticData={sc_staticData} setStaticData={setSc_staticData}
+                wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
+                wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
+                instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
+                smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
+                result={sc_result} setResult={setSc_result}
+                error={sc_error} setError={setSc_error}
+            /> 
+        },
+        leakTest: { 
+            label: 'Leak Test', 
+            icon: ICONS.check, 
+            component: <LeakTestCalculator
+                grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
+                backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
+                instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
+                result={lt_result} setResult={setLt_result}
+                error={lt_error} setError={setLt_error}
+            /> 
+        },
+        airborne: { 
+            label: 'Airborne', 
+            icon: ICONS.radon, 
+            component: <AirborneCalculator 
+                radionuclides={radionuclides}
+                nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
+                releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
+                activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit}
+                roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
+                volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
+                ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
+                result={ac_result} setResult={setAc_result}
+                error={ac_error} setError={setAc_error}
+            /> 
+        }
     };
     
     return (
@@ -4950,6 +4974,7 @@ const OperationalHPCalculators = ({ radionuclides }) => {
         </div>
     );
 };
+
          
          /**
          * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
