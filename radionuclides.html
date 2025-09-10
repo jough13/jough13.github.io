@@ -776,6 +776,7 @@
          CONVERTER: 'converter',
          SETTINGS: 'settings',
          DECAY_SERIES: 'decaySeries',
+	 DETAIL: 'detail', 
          MEDICAL: 'medical',
          PEAK_ID: 'peakId',
          LAB_STATS: 'labStats',
@@ -3985,7 +3986,7 @@ const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
     const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
     const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
     const [std_timeUnit, setStd_timeUnit] = React.useState(() => localStorage.getItem('decayCalc_timeUnit') || 'days');
-    const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || settings.chartScale === 'Logarithmic');
+    const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || false);
     
     // State for Source Correction
     const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState('');
@@ -4008,7 +4009,7 @@ const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
     const handleStandardClear = () => {
         setStd_selectedNuclide(null); setStd_calculationMode('findRemaining'); setStd_initialActivity('100');
         setStd_initialDaughterActivity('0'); setStd_remainingActivity(''); setStd_timeElapsed('1');
-        setStd_timeUnit('days'); setStd_useLogScale(settings.chartScale === 'Logarithmic');
+        setStd_timeUnit('days'); setStd_useLogScale(false);
     };
     const handleCorrectionClear = () => {
         setCorr_nuclideSymbol(''); setCorr_originalActivity('10'); setCorr_originalActivityUnit('mCi');
@@ -7782,17 +7783,15 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
 
 
 
-
-         /**
-          * @description The root component of the entire application.
-          * It manages all primary state, handles routing between views, and orchestrates all user interactions.
-          */
-         
+/**
+ * @description The root component of the entire application.
+ * It manages all primary state, handles routing between views, and orchestrates all user interactions.
+ */
 const App = () => {
     const [activeView, setActiveView] = React.useState(VIEWS.HOME);
     const [showCalcPopout, setShowCalcPopout] = React.useState(false);
     const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
-    const [result, setResult] = React.useState(null);
+    const [detailedNuclide, setDetailedNuclide] = React.useState(null); // REPLACED 'result' state
     const [errorMessage, setErrorMessage] = React.useState('');
     const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
     const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
@@ -7808,8 +7807,6 @@ const App = () => {
     const [searchHistory, setSearchHistory] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideSearchHistory') || '[]'); } catch (e) { return []; } });
     const [favorites, setFavorites] = React.useState(() => { try { return JSON.parse(localStorage.getItem('favoriteNuclides') || '[]'); } catch (e) { return []; } });
     const [randomSuggestions, setRandomSuggestions] = React.useState([]);
-    
-    // ADDED: New state to track if the search input is focused
     const [isSearchFocused, setIsSearchFocused] = React.useState(false);
 
     const [scientificCalculatorState, setScientificCalculatorState] = React.useState({
@@ -7833,14 +7830,10 @@ const App = () => {
     const [minHalfLife, setMinHalfLife] = React.useState(() => localStorage.getItem('filterMinHalfLife') || '');
     const [maxHalfLife, setMaxHalfLife] = React.useState(() => localStorage.getItem('filterMaxHalfLife') || '');
     const [halfLifeFilterUnit, setHalfLifeFilterUnit] = React.useState(() => localStorage.getItem('filterHalfLifeUnit') || 'years');
-    
-    // ADDED: Handlers to update the focus state
+
     const handleSearchFocus = () => setIsSearchFocused(true);
     const handleSearchBlur = () => {
-        // Use a small delay to allow a click on a suggestion to register before hiding the list
-        setTimeout(() => {
-            setIsSearchFocused(false);
-        }, 150); 
+        setTimeout(() => { setIsSearchFocused(false); }, 150);
     };
 
     React.useEffect(() => {
@@ -7856,61 +7849,67 @@ const App = () => {
             setActiveView(targetView);
             setPreselectedNuclide(null);
             if (targetView === VIEWS.HOME) {
-                setResult(null); setNuclideName(''); setSuggestions([]); setErrorMessage('');
+                setDetailedNuclide(null); // CORRECTED
+                setNuclideName(''); 
+                setSuggestions([]); 
+                setErrorMessage('');
             }
         };
         window.addEventListener('hashchange', handleHashChange);
         handleHashChange();
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
-    
+
     const mainContentRef = React.useRef(null);
     const scrollPositionRef = React.useRef(null);
     const inputRef = React.useRef(null);
     const suggestionsRef = React.useRef(null);
     const { addToast } = useToast();
-    
+
     React.useEffect(() => {
         const initialHash = window.location.hash.replace('#', '');
         if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
             inputRef.current?.focus();
         }
     }, []);
-    
+
     React.useEffect(() => {
         if (sessionStorage.getItem('showResetToast') === 'true') {
             addToast('All settings and saved data have been reset.');
             sessionStorage.removeItem('showResetToast');
         }
-    }, []);
-    
+    }, [addToast]);
+
     const scrollToMainContent = () => {
         const isMobile = window.innerWidth < 768;
         if (isMobile && mainContentRef.current) {
             mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
+
+    const handleNavClick = (view) => {
+        if (view !== VIEWS.DETAIL) {
+            setDetailedNuclide(null);
+        }
+        setActiveView(view);
+        window.location.hash = view;
+        scrollToMainContent();
+        if (view === VIEWS.HOME) { inputRef.current?.blur(); }
+    };
     
     const handleClearSearch = () => {
-        setNuclideName(''); 
-        setSuggestions([]); 
-        setResult(null); 
+        setNuclideName('');
+        setSuggestions([]);
+        setDetailedNuclide(null); // CORRECTED
+        handleNavClick(VIEWS.HOME); // Go home after clearing
         inputRef.current?.focus();
     };
 
-const handleNavClick = (view) => {
-    setResult(null);
-    setActiveView(view); // ADD THIS LINE
-    window.location.hash = view;
-    scrollToMainContent();
-    if (view === VIEWS.HOME) { inputRef.current?.blur(); }
-};
-    
     const handleSendToCalculator = (viewId, nuclideSymbol) => {
         setPreselectedNuclide(nuclideSymbol);
         window.location.hash = viewId;
     };
-    
+
     const handleAddToCompare = (nuclideSymbol) => {
         const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
         if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
@@ -7921,10 +7920,10 @@ const handleNavClick = (view) => {
         }
         window.location.hash = VIEWS.COMPARE;
     };
-    
+
     const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
     const handleClearCompare = () => { setComparisonList([]); addToast('Comparison list cleared.'); };
-    
+
     React.useEffect(() => {
         localStorage.setItem('filterSortBy', sortBy);
         localStorage.setItem('filterSortOrder', sortOrder);
@@ -7941,17 +7940,17 @@ const handleNavClick = (view) => {
         localStorage.setItem('filterMaxHalfLife', maxHalfLife);
         localStorage.setItem('filterHalfLifeUnit', halfLifeFilterUnit);
     }, [sortBy, sortOrder, selectedCategory, selectedEmissionType, selectedCommonality, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-    
+
     React.useEffect(() => {
         const root = window.document.documentElement;
         root.classList.toggle('dark', theme === 'dark');
         localStorage.setItem('theme', theme);
     }, [theme]);
-    
+
     React.useEffect(() => {
         localStorage.setItem('radionuclideComparisonList', JSON.stringify(comparisonList));
     }, [comparisonList]);
-    
+
     React.useEffect(() => {
         const handleClickOutside = (e) => {
             if (suggestionsRef.current && !suggestionsRef.current.contains(e.target) && inputRef.current && !inputRef.current.contains(e.target)) {
@@ -7961,16 +7960,16 @@ const handleNavClick = (view) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-    
+
     React.useEffect(() => {
         const common = radionuclides.filter(n => n.commonality === 'Common');
         setRandomSuggestions([...common].sort(() => 0.5 - Math.random()).slice(0, 5));
-    }, []);
-    
-    const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], []);
-    const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], []);
-    const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], []);
-    
+    }, [radionuclides]);
+
+    const allCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.category))].sort()], [radionuclides]);
+    const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], [radionuclides]);
+    const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], [radionuclides]);
+
     const getFilteredAndSortedRadionuclides = React.useCallback(() => {
         let filtered = [...radionuclides];
         if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
@@ -8010,8 +8009,8 @@ const handleNavClick = (view) => {
             return sortOrder === 'asc' ? compare : -compare;
         });
         return filtered;
-    }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit]);
-    
+    }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit, radionuclides]);
+
     const filteredList = getFilteredAndSortedRadionuclides();
     const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
     const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
@@ -8023,14 +8022,16 @@ const handleNavClick = (view) => {
     const handleNuclideSelection = (nuclide) => {
         setNuclideName(nuclide.name);
         updateSearchHistory(nuclide);
-        setResult(nuclide);
+        setDetailedNuclide(nuclide);
         setSuggestions([]);
         setErrorMessage('');
         setCurrentDecaySeriesId(null);
+        handleNavClick(VIEWS.DETAIL);
     };
-    
+
+    // THIS IS THE FULLY CORRECTED useEffect HOOK
     React.useEffect(() => {
-        if (result && debouncedSearchTerm === result.name) {
+        if (detailedNuclide && debouncedSearchTerm === detailedNuclide.name) {
             setSuggestions([]);
             return;
         }
@@ -8053,23 +8054,50 @@ const handleNavClick = (view) => {
         } else {
             setSuggestions([]);
             if (activeView === VIEWS.HOME) {
-                setResult(null);
+                setDetailedNuclide(null);
             }
         }
-    }, [debouncedSearchTerm, result, radionuclides, activeView]);
+    }, [debouncedSearchTerm, detailedNuclide, radionuclides, activeView]);
 
     const handleNuclideNameChange = (e) => {
         setNuclideName(e.target.value);
     };
     
     const handleClearFilters = () => { setSortBy('name'); setSortOrder('asc'); setSelectedCategory('All'); setSelectedEmissionType('All'); setSelectedCommonality('All'); setMinAlphaEnergy(''); setMaxAlphaEnergy(''); setMinBetaEnergy(''); setMaxBetaEnergy(''); setMinGammaEnergy(''); setMaxGammaEnergy(''); setMinHalfLife(''); setMaxHalfLife(''); setHalfLifeFilterUnit('years'); };
-    const handleLookup = () => { setSuggestions([]); const normInput = normalizeString(nuclideName); const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); if (found) { handleNuclideSelection(found); } else { setResult(null); setErrorMessage(`Nuclide "${nuclideName}" not found.`); setActiveView(VIEWS.HOME); } };
-    const handleKeyDown = (e) => { if (e.key === 'Enter') { if (activeSuggestionIndex !== -1 && suggestions.length > 0) { handleNuclideSelection(suggestions[activeSuggestionIndex]); } else { handleLookup(); } } else if (e.key === 'ArrowDown') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); } else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); } else if (e.key === 'Escape') { setSuggestions([]); } };
     
+    const handleLookup = () => { 
+        setSuggestions([]); 
+        const normInput = normalizeString(nuclideName); 
+        const found = radionuclides.find(n => normalizeString(n.name) === normInput || normalizeString(n.symbol) === normInput); 
+        if (found) { 
+            handleNuclideSelection(found); 
+        } else { 
+            setDetailedNuclide(null); // CORRECTED
+            setErrorMessage(`Nuclide "${nuclideName}" not found.`); 
+            setActiveView(VIEWS.HOME); 
+        } 
+    };
+    
+    const handleKeyDown = (e) => { 
+        if (e.key === 'Enter') { 
+            if (activeSuggestionIndex !== -1 && suggestions.length > 0) { 
+                handleNuclideSelection(suggestions[activeSuggestionIndex]); 
+            } else { 
+                handleLookup(); 
+            } 
+        } else if (e.key === 'ArrowDown') { 
+            e.preventDefault(); 
+            setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0)); 
+        } else if (e.key === 'ArrowUp') { 
+            e.preventDefault(); 
+            setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1)); 
+        } else if (e.key === 'Escape') { 
+            setSuggestions([]); 
+        } 
+    };
+    
+    // THIS IS THE FULLY CORRECTED renderActiveView FUNCTION
     const renderActiveView = () => {
-        if (result) {
-            return ( <div className="p-4"><NuclideCard nuclide={result} radionuclides={radionuclides} onDecaySeriesClick={handleDecaySeriesClick} displayHalfLifeUnit={displayHalfLifeUnit} favorites={favorites} toggleFavorite={toggleFavorite} onSendToCalculator={handleSendToCalculator} onAddToCompare={handleAddToCompare} onNuclideClick={handleNuclideSelection} showBackButton={true} onBackClick={() => setResult(null)} /></div> );
-        }
         const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
         switch (activeView) {
             case VIEWS.DATABASE: return <DatabaseView filteredList={filteredList} onNuclideClick={handleNuclideSelection} filterProps={filterProps} isFiltersVisible={isFiltersVisible} setIsFiltersVisible={setIsFiltersVisible} scrollPositionRef={scrollPositionRef} handleClearFilters={handleClearFilters} />;
@@ -8094,15 +8122,40 @@ const handleNavClick = (view) => {
             case VIEWS.PEAK_ID: return <PeakIdentifier radionuclides={radionuclides} onNuclideClick={handleNuclideSelection} />;
             case VIEWS.SETTINGS: return <SettingsPanel />;
             case VIEWS.MARSSIM_TESTS: return <MARSSIM_Statistical_Tests />;
-            case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => setResult(null)} onNuclideClick={handleNuclideSelection} />;
+            case VIEWS.DECAY_SERIES: return <DecaySeriesViewer seriesId={currentDecaySeriesId} onBack={() => { setDetailedNuclide(null); handleNavClick(VIEWS.HOME); }} onNuclideClick={handleNuclideSelection} />;
+            case VIEWS.DETAIL:
+                if (detailedNuclide) {
+                    return (
+                        <div className="p-4">
+                            <NuclideCard 
+                                nuclide={detailedNuclide} 
+                                radionuclides={radionuclides} 
+                                onDecaySeriesClick={handleDecaySeriesClick} 
+                                displayHalfLifeUnit={displayHalfLifeUnit} 
+                                favorites={favorites} 
+                                toggleFavorite={toggleFavorite} 
+                                onSendToCalculator={handleSendToCalculator} 
+                                onAddToCompare={handleAddToCompare} 
+                                onNuclideClick={handleNuclideSelection} 
+                                showBackButton={true} 
+                                onBackClick={() => handleNavClick(VIEWS.HOME)} 
+                            />
+                        </div>
+                    );
+                }
+                // Fallback to home if no nuclide is detailed
+                return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
             case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
             case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
             case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
             case VIEWS.REFERENCES: return <ReferencesPage />;
-            case VIEWS.HOME: default: return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
+            case VIEWS.HOME: 
+            default: 
+                return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
         }
     };
     
+    // THIS IS THE CORRECTED RETURN STATEMENT FOR THE APP COMPONENT
     return (
         <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
             <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
@@ -8126,7 +8179,7 @@ const handleNavClick = (view) => {
                 <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
                 <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
                     <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
-                    <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
+                    <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
                 </footer>
                 <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
     
@@ -8627,13 +8680,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || settings.defaultDoseMode);
+    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || CALC_MODE_GAMMA);
     const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('doseRate_inputMode') || INPUT_MODE_DB);
     const [geometryMode, setGeometryMode] = React.useState(() => localStorage.getItem('doseRate_geometryMode') || GEOMETRY_POINT);
     const [activity, setActivity] = React.useState(() => localStorage.getItem('doseRate_activity') || '1');
-    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || settings.activity);
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || 'mCi');
     const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || settings.distance);
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || 'm');
+    
     const [lineLength, setLineLength] = React.useState(() => localStorage.getItem('doseRate_lineLength') || '1');
     const [lineLengthUnit, setLineLengthUnit] = React.useState(() => localStorage.getItem('doseRate_lineLengthUnit') || 'm');
     const [diskRadius, setDiskRadius] = React.useState(() => localStorage.getItem('doseRate_diskRadius') || '10');
@@ -8865,14 +8919,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     } else { setSolubility(''); setIntakeRoute('inhalation'); }
     }, [availableNuclides]);
     
-    const handleClearInputs = () => {
-    setCalcMode(settings.defaultDoseMode);
+const handleClearInputs = () => {
+    setCalcMode(CALC_MODE_GAMMA);
     setInputMode(INPUT_MODE_DB);
     setGeometryMode(GEOMETRY_POINT);
     setActivity('1');
-    setActivityUnit(settings.activity);
+    setActivityUnit('mCi');
     setDistance('1');
-    setDistanceUnit(settings.distance);
+    setDistanceUnit('m');
     setLineLength('1');
     setLineLengthUnit('m');
     setDiskRadius('10');
@@ -8890,7 +8944,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     setBetaMode(BETA_MODE_SKIN);
     setResult(null);
     setError('');
-    };
+};
     
     return (
     <div className="p-4 animate-fade-in">
@@ -9005,18 +9059,18 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [useBuildup, setUseBuildup] = React.useState(() => JSON.parse(localStorage.getItem('shielding_useBuildup')) || false);
     const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
     const [activity, setActivity] = React.useState(() => localStorage.getItem('shielding_activity') || '1');
-    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || settings.activity);
-    const [distance, setDistance] = React.useState(() => localStorage.getItem('shielding_distance') || '1');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || settings.distance);
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || 'mCi');
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || 'm');
+  
     const [knownDoseRate, setKnownDoseRate] = React.useState(() => localStorage.getItem('shielding_knownDoseRate') || '100');
-    const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || settings.doseRate);
+    const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || 'mrem/hr');
     const [manualHVL, setManualHVL] = React.useState(() => localStorage.getItem('shielding_manualHVL') || '');
     const [manualBetaEnergy, setManualBetaEnergy] = React.useState(() => localStorage.getItem('shielding_manualBetaEnergy') || '');
     const [shieldMaterial, setShieldMaterial] = React.useState(() => localStorage.getItem('shielding_shieldMaterial') || 'Lead');
     const [shieldThickness, setShieldThickness] = React.useState(() => localStorage.getItem('shielding_shieldThickness') || '1');
     const [thicknessUnit, setThicknessUnit] = React.useState(() => localStorage.getItem('shielding_thicknessUnit') || 'cm');
     const [targetDoseRate, setTargetDoseRate] = React.useState(() => localStorage.getItem('shielding_targetDoseRate') || '2');
-    const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_targetDoseRateUnit') || settings.doseRate);
+    const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_targetDoseRateUnit') || 'mrem/hr');
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
     
@@ -9394,11 +9448,11 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('stayTime_inputMode') || INPUT_MODE_SOURCE);
     const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('stayTime_nuclideSymbol') || '');
     const [activity, setActivity] = React.useState(() => localStorage.getItem('stayTime_activity') || '1');
-    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('stayTime_activityUnit') || settings.activity);
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('stayTime_activityUnit') || 'mCi');
     const [distance, setDistance] = React.useState(() => localStorage.getItem('stayTime_distance') || '1');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('stayTime_distanceUnit') || settings.distance);
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('stayTime_distanceUnit') || 'm');
     const [manualDoseRate, setManualDoseRate] = React.useState(() => localStorage.getItem('stayTime_manualDoseRate') || '10');
-    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(() => localStorage.getItem('stayTime_manualDoseRateUnit') || settings.doseRate);
+    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(() => localStorage.getItem('stayTime_manualDoseRateUnit') || 'mrem/hr');
     const [doseLimit, setDoseLimit] = React.useState(() => localStorage.getItem('stayTime_doseLimit') || '2');
     const [plannedTime, setPlannedTime] = React.useState(() => localStorage.getItem('stayTime_plannedTime') || '10');
     const [plannedTimeUnit, setPlannedTimeUnit] = React.useState(() => localStorage.getItem('stayTime_plannedTimeUnit') || 'minutes');
