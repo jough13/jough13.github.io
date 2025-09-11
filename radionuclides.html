@@ -15241,6 +15241,10 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [activity, setActivity] = React.useState(() => localStorage.getItem('shielding_activity') || '1');
     const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || 'mCi');
     const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || 'm');
+    
+    // --- THIS LINE WAS MISSING AND HAS BEEN ADDED BACK ---
+    const [distance, setDistance] = React.useState(() => localStorage.getItem('shielding_distance') || '1');
+    // ---------------------------------------------------
   
     const [knownDoseRate, setKnownDoseRate] = React.useState(() => localStorage.getItem('shielding_knownDoseRate') || '100');
     const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || 'mrem/hr');
@@ -15361,7 +15365,6 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                   const shielded_mrem_hr = shieldedRateR_hr * 1000;
                   const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate'), buildup: buildupFactor.toFixed(2) };
                   setResult(newResult);
-                  // REMOVED addHistory call
               } else {
                    const targetRateValue = parseFloat(targetDoseRate);
                    if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
