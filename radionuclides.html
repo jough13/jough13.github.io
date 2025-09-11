@@ -13966,11 +13966,12 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
  * @description The root component of the entire application.
  * It manages all primary state, handles routing between views, and orchestrates all user interactions.
  */
+
 const App = () => {
     const [activeView, setActiveView] = React.useState(VIEWS.HOME);
     const [showCalcPopout, setShowCalcPopout] = React.useState(false);
     const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
-    const [detailedNuclide, setDetailedNuclide] = React.useState(null); // REPLACED 'result' state
+    const [detailedNuclide, setDetailedNuclide] = React.useState(null);
     const [errorMessage, setErrorMessage] = React.useState('');
     const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
     const [comparisonList, setComparisonList] = React.useState(() => { try { return JSON.parse(localStorage.getItem('radionuclideComparisonList') || '[]'); } catch (e) { return []; } });
@@ -14028,7 +14029,7 @@ const App = () => {
             setActiveView(targetView);
             setPreselectedNuclide(null);
             if (targetView === VIEWS.HOME) {
-                setDetailedNuclide(null); // CORRECTED
+                setDetailedNuclide(null);
                 setNuclideName(''); 
                 setSuggestions([]); 
                 setErrorMessage('');
@@ -14079,8 +14080,8 @@ const App = () => {
     const handleClearSearch = () => {
         setNuclideName('');
         setSuggestions([]);
-        setDetailedNuclide(null); // CORRECTED
-        handleNavClick(VIEWS.HOME); // Go home after clearing
+        setDetailedNuclide(null);
+        handleNavClick(VIEWS.HOME);
         inputRef.current?.focus();
     };
 
@@ -14208,14 +14209,14 @@ const App = () => {
         handleNavClick(VIEWS.DETAIL);
     };
 
-    // THIS IS THE FULLY CORRECTED useEffect HOOK
+    // --- THIS IS THE CORRECTED useEffect HOOK ---
     React.useEffect(() => {
-        if (detailedNuclide && debouncedSearchTerm === detailedNuclide.name) {
-            setSuggestions([]);
-            return;
-        }
-
         if (debouncedSearchTerm.length > 0) {
+            // Don't show suggestions if the search term already matches the displayed nuclide
+            if (detailedNuclide && debouncedSearchTerm === detailedNuclide.name) {
+                setSuggestions([]);
+                return;
+            }
             const normVal = normalizeString(debouncedSearchTerm);
             const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
             const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
@@ -14231,12 +14232,14 @@ const App = () => {
                 .slice(0, 10);
             setSuggestions(filtered);
         } else {
+            // If the search term is empty, clear suggestions and the detailed result.
             setSuggestions([]);
-            if (activeView === VIEWS.HOME) {
+            if (detailedNuclide) { // Only change state if there's something to clear
                 setDetailedNuclide(null);
+                handleNavClick(VIEWS.HOME);
             }
         }
-    }, [debouncedSearchTerm, detailedNuclide, radionuclides, activeView]);
+    }, [debouncedSearchTerm, radionuclides]); // Simplified dependencies
 
     const handleNuclideNameChange = (e) => {
         setNuclideName(e.target.value);
@@ -14251,7 +14254,7 @@ const App = () => {
         if (found) { 
             handleNuclideSelection(found); 
         } else { 
-            setDetailedNuclide(null); // CORRECTED
+            setDetailedNuclide(null);
             setErrorMessage(`Nuclide "${nuclideName}" not found.`); 
             setActiveView(VIEWS.HOME); 
         } 
@@ -14275,7 +14278,6 @@ const App = () => {
         } 
     };
     
-    // THIS IS THE FULLY CORRECTED renderActiveView FUNCTION
     const renderActiveView = () => {
         const filterProps = { sortBy, setSortBy, sortOrder, setSortOrder, selectedCategory, setSelectedCategory, allCategories, selectedEmissionType, setSelectedEmissionType, allEmissionTypes, selectedCommonality, setSelectedCommonality, allCommonalityCategories, minAlphaEnergy, setMinAlphaEnergy, maxAlphaEnergy, setMaxAlphaEnergy, minBetaEnergy, setMinBetaEnergy, maxBetaEnergy, setMaxBetaEnergy, minGammaEnergy, setMinGammaEnergy, maxGammaEnergy, setMaxGammaEnergy, minHalfLife, setMinHalfLife, maxHalfLife, setMaxHalfLife, halfLifeFilterUnit, setHalfLifeFilterUnit, clearFilters: handleClearFilters };
         switch (activeView) {
@@ -14322,7 +14324,6 @@ const App = () => {
                         </div>
                     );
                 }
-                // Fallback to home if no nuclide is detailed
                 return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
             case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
             case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
@@ -14334,7 +14335,6 @@ const App = () => {
         }
     };
     
-    // THIS IS THE CORRECTED RETURN STATEMENT FOR THE APP COMPONENT
     return (
         <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
             <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
