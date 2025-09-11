@@ -6906,8 +6906,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.4';
-         const LAST_UPDATED = 'September 10, 2025';
+         const VERSION = '3.5.5';
+         const LAST_UPDATED = 'September 11, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -14864,9 +14864,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [geometryMode, setGeometryMode] = React.useState(() => localStorage.getItem('doseRate_geometryMode') || GEOMETRY_POINT);
     const [activity, setActivity] = React.useState(() => localStorage.getItem('doseRate_activity') || '1');
     const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || 'mCi');
-    const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
     const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || 'm');
-    
+    const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
     const [lineLength, setLineLength] = React.useState(() => localStorage.getItem('doseRate_lineLength') || '1');
     const [lineLengthUnit, setLineLengthUnit] = React.useState(() => localStorage.getItem('doseRate_lineLengthUnit') || 'm');
     const [diskRadius, setDiskRadius] = React.useState(() => localStorage.getItem('doseRate_diskRadius') || '10');
@@ -14942,19 +14941,23 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     return Object.keys(selectedNuclide.dosimetry?.ALI).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
     }, [selectedNuclide]);
     
+    // --- FIX #2 ---
     React.useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     setNuclideSymbol(''); setResult(null); setError(''); setInputMode(INPUT_MODE_DB);
     setManualGammaConstant(''); setManualBetaEnergy(''); setBetaMode(BETA_MODE_SKIN);
-    if (calcMode === CALC_MODE_BETA) { setActivityUnit('µCi/cm²'); } 
-    else { setActivityUnit(settings.activity); }
-    }, [calcMode, settings.activity]);
+    if (calcMode === CALC_MODE_BETA) { 
+        setActivityUnit('µCi/cm²'); 
+    } else { 
+        setActivityUnit('mCi'); // Replaced settings.activity
+    }
+    }, [calcMode]);
     
     React.useEffect(() => {
     if (preselectedNuclide) {
        const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
        const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
-       if (isGamma) { setCalcMode(CALC_MODE_GAMMA); setNuclideSymbol(preselectedNuclide); }
+       if (isGamma) { setCalcMode(CALC_MODE_GAMMA); setNuclideSymbol(preselectedNuclide); } 
        else if (isBeta) { setCalcMode(CALC_MODE_BETA); setNuclideSymbol(preselectedNuclide); }
     }
     }, [preselectedNuclide, gammaNuclides, betaNuclides]);
@@ -14965,13 +14968,16 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     } else { setSolubility(''); }
     }, [calcMode, intakeRoute, availableClasses, solubility]);
     
+    // --- FIX #1 ---
     React.useEffect(() => {
     if (!isInitialMount.current) {
-       if (geometryMode === GEOMETRY_POINT) { setActivityUnit(settings.activity); } 
+       if (geometryMode === GEOMETRY_POINT) { 
+           setActivityUnit('mCi'); // Replaced settings.activity
+       } 
        else if (geometryMode === GEOMETRY_LINE) { setLinearActivityUnit('mCi/m'); } 
        else if (geometryMode === GEOMETRY_AREA) { setArealActivityUnit('µCi/cm²'); }
     }
-    }, [geometryMode, settings.activity]);
+    }, [geometryMode]);
     
     React.useEffect(() => {
     try {
@@ -15049,7 +15055,6 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     } catch (e) { setError(e.message); }
     }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode ]);
     
-    // NEW: Explicit function to save to history
     const handleSaveToHistory = () => {
         if (!result) return;
         let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
@@ -15176,7 +15181,8 @@ const handleClearInputs = () => {
                {calcMode === CALC_MODE_INTERNAL && ( <>{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={dosimetryNuclides} onSelect={handleNuclideSelect} placeholder="Select an internal emitter..." /> )}</> )}
                {inputMode === INPUT_MODE_DB && selectedNuclide?.dosimetry && (<div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs"><h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">10 CFR 20 Appendix B Values:</h4><ul className="list-disc list-inside space-y-1">{selectedNuclide.dosimetry?.ALI && Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">ALI ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val} µCi</span></li>))}{selectedNuclide.dosimetry?.DAC && Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">DAC ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span></li>))}</ul></div>)}
                {calcMode === CALC_MODE_BREMS && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>)}
-               {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit(settings.activity); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
+               {/* --- FIX #3 --- */}
+               {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit('mCi'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
 
 <ContextualNote>
                            <strong>Note:</strong> Beta dose calculations are based on standard empirical formulas and should be considered estimates for operational purposes.
@@ -15207,11 +15213,6 @@ const handleClearInputs = () => {
     </div>
     );
 };
-    
-
-
-
-
      
          /**
          * @description A calculator for photon shielding with three modes:
