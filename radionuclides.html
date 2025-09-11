@@ -15240,12 +15240,8 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
     const [activity, setActivity] = React.useState(() => localStorage.getItem('shielding_activity') || '1');
     const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('shielding_activityUnit') || 'mCi');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || 'm');
-    
-    // --- THIS LINE WAS MISSING AND HAS BEEN ADDED BACK ---
     const [distance, setDistance] = React.useState(() => localStorage.getItem('shielding_distance') || '1');
-    // ---------------------------------------------------
-  
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('shielding_distanceUnit') || 'm');
     const [knownDoseRate, setKnownDoseRate] = React.useState(() => localStorage.getItem('shielding_knownDoseRate') || '100');
     const [knownDoseRateUnit, setKnownDoseRateUnit] = React.useState(() => localStorage.getItem('shielding_knownDoseRateUnit') || 'mrem/hr');
     const [manualHVL, setManualHVL] = React.useState(() => localStorage.getItem('shielding_manualHVL') || '');
@@ -15294,6 +15290,17 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     localStorage.setItem('shielding_targetDoseRate', targetDoseRate);
     localStorage.setItem('shielding_targetDoseRateUnit', targetDoseRateUnit);
     }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
+    
+    // --- NEWLY ADDED EFFECT TO PREVENT THIS BUG ---
+    React.useEffect(() => {
+        if (nuclideSymbol) {
+            const validMaterials = availableMaterials;
+            if (validMaterials.length > 0 && !validMaterials.includes(shieldMaterial)) {
+                setShieldMaterial(validMaterials[0]);
+            }
+        }
+    }, [nuclideSymbol, shieldMaterial, availableMaterials]);
+    // ---------------------------------------------
     
     React.useEffect(() => {
     if (preselectedNuclide) {
@@ -15446,18 +15453,18 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     setUseBuildup(false);
     setNuclideSymbol('');
     setActivity('1');
-    setActivityUnit(settings.activity);
+    setActivityUnit('mCi');
     setDistance('1');
-    setDistanceUnit(settings.distance);
+    setDistanceUnit('m');
     setKnownDoseRate('100');
-    setKnownDoseRateUnit(settings.doseRate);
+    setKnownDoseRateUnit('mrem/hr');
     setManualHVL('');
     setManualBetaEnergy('');
     setShieldMaterial('Lead');
     setShieldThickness('1');
     setThicknessUnit('cm');
     setTargetDoseRate('2');
-    setTargetDoseRateUnit(settings.doseRate);
+    setTargetDoseRateUnit('mrem/hr');
     setResult(null);
     setError('');
     };
@@ -15737,20 +15744,21 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     handleCalculate();
     }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
     
+    // --- THIS IS THE CORRECTED FUNCTION ---
     const handleClearInputs = () => {
-    setInputMode(INPUT_MODE_SOURCE);
-    setNuclideSymbol('');
-    setActivity('1');
-    setActivityUnit(settings.activity);
-    setDistance('1');
-    setDistanceUnit(settings.distance);
-    setManualDoseRate('10');
-    setManualDoseRateUnit(settings.doseRate);
-    setDoseLimit('2');
-    setPlannedTime('10');
-    setPlannedTimeUnit('minutes');
-    setError('');
-    setResult(null);
+        setInputMode(INPUT_MODE_SOURCE);
+        setNuclideSymbol('');
+        setActivity('1');
+        setActivityUnit('mCi');
+        setDistance('1');
+        setDistanceUnit('m');
+        setManualDoseRate('10');
+        setManualDoseRateUnit('mrem/hr');
+        setDoseLimit('2');
+        setPlannedTime('10');
+        setPlannedTimeUnit('minutes');
+        setError('');
+        setResult(null);
     };
     
     return (
