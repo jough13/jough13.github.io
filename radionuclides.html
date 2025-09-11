@@ -1543,7 +1543,7 @@
       {
         name: 'Cesium-137',
         symbol: 'Cs-137',
-        emissionType: ['Beta-minus', 'Gamma'],
+        emissionType: ['Beta-minus'],
         emissionEnergies: {
           beta: ['0.512 MeV (max)', '1.174 MeV (max)'],
           gamma: [],
@@ -14864,8 +14864,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [geometryMode, setGeometryMode] = React.useState(() => localStorage.getItem('doseRate_geometryMode') || GEOMETRY_POINT);
     const [activity, setActivity] = React.useState(() => localStorage.getItem('doseRate_activity') || '1');
     const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || 'mCi');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || 'm');
     const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
+    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || 'm');
     const [lineLength, setLineLength] = React.useState(() => localStorage.getItem('doseRate_lineLength') || '1');
     const [lineLengthUnit, setLineLengthUnit] = React.useState(() => localStorage.getItem('doseRate_lineLengthUnit') || 'm');
     const [diskRadius, setDiskRadius] = React.useState(() => localStorage.getItem('doseRate_diskRadius') || '10');
@@ -14923,7 +14923,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const arealActivityUnits_ordered = ['µCi/cm²', 'mCi/cm²', 'Ci/cm²', 'µCi/m²', 'mCi/m²', 'Ci/m²'];
     const intakeUnits_ordered = ['pCi', 'nCi', 'µCi', 'mCi', 'Bq', 'kBq'];
     const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0 || n.daughterEmissions?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
     const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.ALI).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
     
     const availableNuclides = React.useMemo(() => {
@@ -14941,16 +14941,12 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     return Object.keys(selectedNuclide.dosimetry?.ALI).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
     }, [selectedNuclide]);
     
-    // --- FIX #2 ---
     React.useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     setNuclideSymbol(''); setResult(null); setError(''); setInputMode(INPUT_MODE_DB);
     setManualGammaConstant(''); setManualBetaEnergy(''); setBetaMode(BETA_MODE_SKIN);
-    if (calcMode === CALC_MODE_BETA) { 
-        setActivityUnit('µCi/cm²'); 
-    } else { 
-        setActivityUnit('mCi'); // Replaced settings.activity
-    }
+    if (calcMode === CALC_MODE_BETA) { setActivityUnit('µCi/cm²'); } 
+    else { setActivityUnit('mCi'); }
     }, [calcMode]);
     
     React.useEffect(() => {
@@ -14968,17 +14964,15 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     } else { setSolubility(''); }
     }, [calcMode, intakeRoute, availableClasses, solubility]);
     
-    // --- FIX #1 ---
     React.useEffect(() => {
     if (!isInitialMount.current) {
-       if (geometryMode === GEOMETRY_POINT) { 
-           setActivityUnit('mCi'); // Replaced settings.activity
-       } 
+       if (geometryMode === GEOMETRY_POINT) { setActivityUnit('mCi'); } 
        else if (geometryMode === GEOMETRY_LINE) { setLinearActivityUnit('mCi/m'); } 
        else if (geometryMode === GEOMETRY_AREA) { setArealActivityUnit('µCi/cm²'); }
     }
     }, [geometryMode]);
     
+    // --- THIS IS THE CORRECTED CALCULATION LOGIC ---
     React.useEffect(() => {
     try {
        setError(''); setResult(null);
@@ -15010,32 +15004,58 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
            }
            case CALC_MODE_BETA:
            case CALC_MODE_BREMS: {
-               let E_max, E_avg;
+               let E_max, E_avg, effectiveSourceName = null;
                if (inputMode === INPUT_MODE_DB) {
                    if (!selectedNuclide) throw new Error('Please select a radionuclide or switch to Manual Input.');
-                   if (!selectedNuclide.emissionEnergies?.beta?.length > 0) throw new Error(`${selectedNuclide.name} is not a significant beta emitter.`);
-                   E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta); E_avg = parseFloat(selectedNuclide.avgBetaEnergy); if(isNaN(E_avg)) { E_avg = E_max / 3; }
-               } else { E_max = parseFloat(manualBetaEnergy); if (isNaN(E_max) || E_max <= 0) throw new Error('Please enter a valid, positive Max Beta Energy.'); E_avg = E_max / 3; }
+                   
+                   let effectiveBetaSource = selectedNuclide;
+                   // Check if there's a daughter with a significant beta emission (like Sr-90 -> Y-90)
+                   if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
+                       const daughter = radionuclides.find(n => n.symbol === selectedNuclide.daughterEmissions.from);
+                       if (daughter) {
+                           effectiveBetaSource = daughter;
+                           effectiveSourceName = daughter.name;
+                       }
+                   }
+                   
+                   if (!effectiveBetaSource.emissionEnergies?.beta?.length > 0) throw new Error(`${selectedNuclide.name} and its daughter have no significant beta emissions defined.`);
+                   E_max = parseEnergyToMeV(effectiveBetaSource.emissionEnergies.beta);
+                   E_avg = parseFloat(effectiveBetaSource.avgBetaEnergy);
+                   if(isNaN(E_avg)) { E_avg = E_max / 3; }
+
+               } else { // Manual Mode
+                   E_max = parseFloat(manualBetaEnergy); 
+                   if (isNaN(E_max) || E_max <= 0) throw new Error('Please enter a valid, positive Max Beta Energy.'); 
+                   E_avg = E_max / 3; 
+               }
                if (isNaN(activityValue) || (betaMode === BETA_MODE_AIR && (isNaN(distanceValue) || distanceValue <= 0)) || activityValue < 0) throw new Error('Invalid activity or distance.');
                if (calcMode === CALC_MODE_BETA) {
                    if (betaMode === BETA_MODE_SKIN) {
                        const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
                        const doseRate_rad_hr = 2.13 * concentration_uCi_per_cm2 * E_avg;
                        const doseRate_mrem_hr = doseRate_rad_hr * 1000;
-                       const newResult = { type: 'beta_skin', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max };
+                       const newResult = { type: 'beta_skin', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max, sourceNote: effectiveSourceName };
                        setResult(newResult);
-                   } else {
-                       const activityInCi = activityValue * activityFactorsCi[activityUnit]; const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
-                       let range_m; if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } else { const range_mg_cm2 = 407 * Math.pow(E_max, 1.38); range_m = (range_mg_cm2 / 1.225) / 100; }
-                       const range_cm = range_m * 100; let doseRate_mrem_hr = 0; if (distance_cm < range_cm) { const doseRate_rad_hr = (400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2); doseRate_mrem_hr = doseRate_rad_hr * 1000; }
-                       const newResult = { type: 'beta_air', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max, isBeyondRange: distance_cm >= range_cm, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2) };
+                   } else { // Dose in Air
+                       const activityInCi = activityValue * activityFactorsCi[activityUnit]; 
+                       const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
+                       let range_m; 
+                       if (E_max > 0.6) { range_m = (E_max - 0.25) / 1.83; } 
+                       else { const range_mg_cm2 = 407 * Math.pow(E_max, 1.38); range_m = (range_mg_cm2 / 1.225) / 100; }
+                       const range_cm = range_m * 100; 
+                       let doseRate_mrem_hr = 0; 
+                       if (distance_cm < range_cm) { 
+                           const doseRate_rad_hr = (400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2); 
+                           doseRate_mrem_hr = doseRate_rad_hr * 1000; 
+                       }
+                       const newResult = { type: 'beta_air', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), e_max: E_max, isBeyondRange: distance_cm >= range_cm, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2), sourceNote: effectiveSourceName };
                        setResult(newResult);
                    }
                } else { // Bremsstrahlung
                    const activityInCi = activityValue * activityFactorsCi[activityUnit]; const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
                    const Z = SHIELDING_MATERIALS[shieldMaterial].Z; const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
                    const doseRate_rad_hr = doseRate_rad_hr_at_1m / Math.pow(distanceInM, 2); const doseRate_mrem_hr = doseRate_rad_hr * 1000; const f = 3.5e-4 * Z * E_max;
-                   const newResult = { type: 'bremsstrahlung', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), bremsstrahlungFraction: (f * 100).toPrecision(2) };
+                   const newResult = { type: 'bremsstrahlung', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), bremsstrahlungFraction: (f * 100).toPrecision(2), sourceNote: effectiveSourceName };
                    setResult(newResult);
                }
                break;
@@ -15053,7 +15073,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
            default: throw new Error("Calculation mode not implemented.");
        }
     } catch (e) { setError(e.message); }
-    }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode ]);
+    }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode, radionuclides ]); // Added radionuclides to dependency array
     
     const handleSaveToHistory = () => {
         if (!result) return;
@@ -15181,7 +15201,6 @@ const handleClearInputs = () => {
                {calcMode === CALC_MODE_INTERNAL && ( <>{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={dosimetryNuclides} onSelect={handleNuclideSelect} placeholder="Select an internal emitter..." /> )}</> )}
                {inputMode === INPUT_MODE_DB && selectedNuclide?.dosimetry && (<div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs"><h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">10 CFR 20 Appendix B Values:</h4><ul className="list-disc list-inside space-y-1">{selectedNuclide.dosimetry?.ALI && Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">ALI ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val} µCi</span></li>))}{selectedNuclide.dosimetry?.DAC && Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">DAC ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span></li>))}</ul></div>)}
                {calcMode === CALC_MODE_BREMS && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>)}
-               {/* --- FIX #3 --- */}
                {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit('mCi'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
 
 <ContextualNote>
@@ -15203,9 +15222,9 @@ const handleClearInputs = () => {
                         </Tooltip>
                     </div>
                    {result.type === 'gamma' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
-                   {result.type === 'beta_skin' && (<><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400"><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p></div></>)}
-                   {result.type === 'beta_air' && (<>{result.isBeyondRange ? (<p className="text-4xl font-bold text-slate-600 dark:text-slate-300 my-1">0</p>) : (<p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>)}<div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">{result.isBeyondRange && <p className="font-semibold text-amber-600 dark:text-amber-400">Distance is beyond the beta's maximum range in air.</p>}<p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p></div></>)}
-                   {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p></>}
+                   {result.type === 'beta_skin' && (<><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400"><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</div></>)}
+                   {result.type === 'beta_air' && (<>{result.isBeyondRange ? (<p className="text-4xl font-bold text-slate-600 dark:text-slate-300 my-1">0</p>) : (<p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>)}<div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">{result.isBeyondRange && <p className="font-semibold text-amber-600 dark:text-amber-400">Distance is beyond the beta's maximum range in air.</p>}<p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</div></>)}
+                   {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</>}
                    {result.type === 'internal' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
                </div>)}
            </div>
