@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wayfinder: Echoes of the Void - v0.9.0 (Post-Nexus Story)</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
 	
 *, *::before, *::after {
@@ -125,11 +125,10 @@
             height: 18px; 
         }
 
-                #playerStats {
+        #playerStats {
             display: grid;
-            /* Changed to 2 columns to fit nicely in the sidebar */
             grid-template-columns: repeat(2, 1fr); 
-            gap: 8px 12px;
+            gap: 5px 10px; /* Reduced gap for tighter look */
             width: 100%;
             padding: 12px;
             background-color: #181830;
@@ -160,13 +159,13 @@
         .stat {
             color: #00E0E0; 
             font-weight: bold;
-            font-size: 16px; 
-            line-height: 18px; 
+            font-size: 14px; /* Was 16px */
+            line-height: 16px; 
         }
         .stat-label {
             color: #8888AA; 
-            font-size: 12px; 
-            line-height: 14px; 
+            font-size: 11px; /* Was 12px */
+            line-height: 13px; 
             margin-bottom: 2px; 
         }
         .sector-coords {
@@ -180,8 +179,8 @@
             overflow-y: auto;
             color: #FFD700; 
             text-align: left; 
-            font-size: 16px;
-            line-height: 23px; 
+            font-size: 15px; /* Was 16px */
+            line-height: 22px; 
             width: 100%;
             max-width: 720px; 
             padding: 15px; 
@@ -567,34 +566,36 @@
             },
 
             generateChunk(chunkX, chunkY) {
-                const chunkKey = `${chunkX},${chunkY}`;
-                let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
+            const chunkKey = `${chunkX},${chunkY}`;
+            let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
 
-                for (let y = 0; y < this.CHUNK_SIZE; y++) {
-                    for (let x = 0; x < this.CHUNK_SIZE; x++) {
-                        const worldX = chunkX * this.CHUNK_SIZE + x;
-                        const worldY = chunkY * this.CHUNK_SIZE + y;
-                        const locationKey = `${worldX},${worldY}`;
+            for (let y = 0; y < this.CHUNK_SIZE; y++) {
+                for (let x = 0; x < this.CHUNK_SIZE; x++) {
+                    const worldX = chunkX * this.CHUNK_SIZE + x;
+                    const worldY = chunkY * this.CHUNK_SIZE + y;
+                    const locationKey = `${worldX},${worldY}`;
 
-                        // First, check if a static location belongs here
-                        if (this.staticLocations.has(locationKey)) {
-                            const location = this.staticLocations.get(locationKey);
-                            chunkData[y][x] = { char: location.type, type: 'location', ...location };
-                        } else {
-                            // If not, generate procedural space
-                            let tile = EMPTY_SPACE_CHAR_VAL;
-                            if (Math.random() < 0.01) {
-                                tile = { char: STAR_CHAR_VAL, type: 'star', richness: Math.random(), scoopedThisVisit: false };
-                            } else if (Math.random() < 0.005) {
-                                tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: Math.random(), minedThisVisit: false };
-                            }
-                            chunkData[y][x] = tile;
+                    // First, check if a static location belongs here
+                    if (this.staticLocations.has(locationKey)) {
+                        const location = this.staticLocations.get(locationKey);
+                        chunkData[y][x] = { char: location.type, type: 'location', ...location };
+                    } else {
+                        // If not, generate procedural space
+                        let tile = EMPTY_SPACE_CHAR_VAL;
+                        if (Math.random() < 0.01) {
+                            tile = { char: STAR_CHAR_VAL, type: 'star', richness: Math.random(), scoopedThisVisit: false };
+                        } else if (Math.random() < 0.005) {
+                            tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: Math.random(), minedThisVisit: false };
+                        } else if (Math.random() < WORMHOLE_SPAWN_CHANCE) {
+                            tile = { char: WORMHOLE_CHAR_VAL, type: 'wormhole' };
                         }
+                        chunkData[y][x] = tile;
                     }
                 }
-                this.loadedChunks[chunkKey] = chunkData;
-                return chunkData;
-            },
+            }
+            this.loadedChunks[chunkKey] = chunkData;
+            return chunkData;
+        },
 
             getTile(worldX, worldY) {
                 const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
@@ -626,8 +627,8 @@
         var playerCargo = {}; 
         var currentCargoLoad = 0; 
 
-        const TILE_SIZE = 18; // You can tweak this to adjust the character size
-        var gameMapGrid = []; 
+        const TILE_SIZE = 20; // You can tweak this to adjust the character size
+
         var gameCanvas, ctx; // For our new canvas
 
         var message = ""; 
@@ -836,11 +837,8 @@
             ctx.textBaseline = 'middle';
             // --- MODIFIED SECTION END ---
 
-
-
-
-    playerX = Math.floor(MAP_WIDTH / 2); 
-    playerY = Math.floor(MAP_HEIGHT / 2);
+            playerX = Math.floor(MAP_WIDTH / 2); 
+            playerY = Math.floor(MAP_HEIGHT / 2);
 
             playerShip = { 
                 shipClass: "LIGHT_FREIGHTER",
@@ -890,9 +888,6 @@
 
             updateCurrentCargoLoad();
         
-            playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
-            
-
             currentTradeContext = null; 
             currentCombatContext = null; 
             currentOutfitContext = null; 
@@ -1087,42 +1082,30 @@ function getCombinedLocationData(y, x) {
         function traverseWormhole() { 
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
                 updateMessage(`Cannot traverse: Requires ${WORMHOLE_TRAVEL_FUEL_COST} fuel, you have ${playerFuel.toFixed(1)}.`); 
-                renderGame();
                 return;
             }
-            playerFuel -= WORMHOLE_TRAVEL_COST;
+
+            playerFuel -= WORMHOLE_TRAVEL_FUEL_COST;
             playerFuel = parseFloat(playerFuel.toFixed(1));
-            let jumpX = Math.floor(Math.random() * (WORMHOLE_JUMP_MAX_DIST - WORMHOLE_JUMP_MIN_DIST + 1)) + WORMHOLE_JUMP_MIN_DIST;
-            let jumpY = Math.floor(Math.random() * (WORMHOLE_JUMP_MAX_DIST - WORMHOLE_JUMP_MIN_DIST + 1)) + WORMHOLE_JUMP_MIN_DIST;
+
+            // Calculate a massive jump across the universe
+            let jumpX = (WORMHOLE_JUMP_MIN_DIST + Math.random() * (WORMHOLE_JUMP_MAX_DIST - WORMHOLE_JUMP_MIN_DIST)) * 100;
+            let jumpY = (WORMHOLE_JUMP_MIN_DIST + Math.random() * (WORMHOLE_JUMP_MAX_DIST - WORMHOLE_JUMP_MIN_DIST)) * 100;
             if (Math.random() < 0.5) jumpX *= -1;
             if (Math.random() < 0.5) jumpY *= -1;
-            currentSectorX += jumpX;
-            currentSectorY += jumpY;
+            
+            playerX += Math.floor(jumpX);
+            playerY += Math.floor(jumpY);
 
-
-            loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
-
-            ensurePlayerStartNotOccupied(); 
-
-            let warpMessage = `The wormhole violently ejects you into an unknown region!\nArrived in ${currentSectorName} (${currentSectorX},${currentSectorY}).`; 
-
-            const newSectorKey = `${currentSectorX},${currentSectorY}`;
-
-            if (!visitedSectors.has(newSectorKey)) {
-                visitedSectors.add(newSectorKey);
-                updatePlayerNotoriety(1); 
-                playerXP += XP_PER_NEW_SECTOR_DISCOVERY + XP_WORMHOLE_TRAVERSE; 
-                warpMessage += `\n<span style='color:#00FF00;'>New Sector Discovered via Wormhole! +${XP_PER_NEW_SECTOR_DISCOVERY + XP_WORMHOLE_TRAVERSE} XP!</span>`;
-                checkLevelUp();
-            } else {
-                 playerXP += XP_WORMHOLE_TRAVERSE;
-                 warpMessage += `\n<span style='color:#00DD00;'>Wormhole Traversed! +${XP_WORMHOLE_TRAVERSE} XP!</span>`;
-                 checkLevelUp();
-            }
+            // Grant XP and update the player
+            playerXP += XP_WORMHOLE_TRAVERSE;
+            let warpMessage = `The wormhole violently ejects you into an unknown region of deep space!\nArrived at coordinates (${playerX},${playerY}).`; 
+            warpMessage += `\n<span style='color:#00DD00;'>Wormhole Traversed! +${XP_WORMHOLE_TRAVERSE} XP!</span>`;
+            
             unlockLoreEntry("PHENOMENON_WORMHOLE"); 
             updateMessage(warpMessage);
+            checkLevelUp();
             handleInteraction(); 
-            renderGame();
         }
 
         function movePlayer(dx, dy) {
@@ -1223,28 +1206,41 @@ function getCombinedLocationData(y, x) {
         }
 
 
-
-
-        function scanLocation() { 
-            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { updateMessage("Cannot scan now."); renderGame(); return; }
+function scanLocation() { 
+            if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { 
+                updateMessage("Cannot scan now."); 
+                return; 
+            }
             
-            // NEW: Get the tile from our infinite world
+            // Get the tile from our infinite world. This is our single source of truth.
             const tileObject = chunkManager.getTile(playerX, playerY);
-            const tileType = getTileType(tileObject);
-            const tileChar = getTileChar(tileObject);
-            const location = null; // We'll add this back
 
             let scanMessage = `Scan Report: (${playerX},${playerY}):\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
-            let objectTypeForXP = getTileType(tileObject) || tileChar; 
+            let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject); 
             let actionsAvailable = "";
 
-            if (location) { 
-                // Starbase scan logic will go here
+            // Check if the tile is a pre-defined location.
+            if (tileObject && tileObject.type === 'location') {
+                scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
+                scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
+                
+                // Check for available services to list them
+                if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) {
+                    actionsAvailable += "Trade (B/S). ";
+                }
+                if (tileObject.isMajorHub) {
+                    actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). ";
+                }
+                actionsAvailable += "Leave (L)."
+                objectTypeForXP = tileObject.name; // Use the specific location name for discovery XP
+
             } else { 
+                // This block handles procedural objects (stars, asteroids, empty space)
+                const tileChar = getTileChar(tileObject);
                 switch (tileChar) { 
                     case EMPTY_SPACE_CHAR_VAL: 
-                        scanMessage+="Vast emptiness. Faint cosmic background radiation.";
-                        objectTypeForXP='empty_space';
+                        scanMessage += "Vast emptiness. Faint cosmic background radiation.";
+                        objectTypeForXP = 'empty_space';
                         break;
                     case STAR_CHAR_VAL: 
                         scanMessage += `Brilliant ${tileObject.starType || 'star'}.`;
@@ -1254,15 +1250,21 @@ function getCombinedLocationData(y, x) {
                         break;
                     case ASTEROID_CHAR_VAL: 
                         scanMessage += `Asteroid field. Type: ${tileObject.asteroidType || 'Unknown'}.`;
-                         if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
+                        if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
                         actionsAvailable += "Mine Asteroid (M).";
                         break;
-                    default: scanMessage += "Unknown anomaly detected. Sensor readings inconclusive."; break;
+                    default: 
+                        scanMessage += "Unknown anomaly detected. Sensor readings inconclusive."; 
+                        break;
                 }
             }
+
+            // Add the "Available Actions" section if any were found
             if (actionsAvailable) {
-                scanMessage += "\nAvailable Actions: " + actionsAvailable;
+                scanMessage += "\n\nAvailable Actions: " + actionsAvailable;
             }
+
+            // Grant XP for first-time scans
             if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) { 
                 scannedObjectTypes.add(objectTypeForXP);
                 playerXP += XP_PER_FIRST_SCAN_TYPE;
@@ -1271,7 +1273,6 @@ function getCombinedLocationData(y, x) {
             }
 
             updateMessage(scanMessage);
-            renderGame();
         }
 
         function scoopHydrogen() { 
@@ -1551,8 +1552,9 @@ function getCombinedLocationData(y, x) {
                                 const objectiveProgress = playerActiveMission.progress[progressKey];
                                 if (objectiveProgress && !objectiveProgress.complete && 
                                     (obj.targetName === "Pirate") && 
-                                    (obj.targetSectorKey === "ANY" || obj.targetSectorKey === `${currentSectorX},${currentSectorY}`)) {
-                                    objectiveProgress.current++;
+                                    
+                                    (obj.targetSectorKey === "ANY" || obj.targetSectorKey === "CURRENT")) {
+                                        objectiveProgress.current++;
                                     objectiveProgress.complete = (objectiveProgress.current >= objectiveProgress.required);
                                     combatLog += `\n<span style='color:#00FF00;'>Mission Update: ${objectiveProgress.current}/${objectiveProgress.required} ${obj.targetName}s eliminated.</span>`;
                                 }
@@ -1621,8 +1623,11 @@ function getCombinedLocationData(y, x) {
                     let cLs=Math.floor(playerCredits*0.1);playerCredits=Math.max(0,playerCredits-cLs);combatLog+=`\nLost ${cLs}c.`; 
                     updatePlayerNotoriety(-10); 
                     playerShields=1; playerHull = 1; // Minimal hull on return
-                    currentSectorX=0; currentSectorY=0; loadOrGenerateSectorMap(0,0); 
-                    const sA=LOCATIONS_DATA["Starbase Alpha"].coords; playerX=sA.x;playerY=sA.y; 
+
+                    const starbaseCoords = LOCATIONS_DATA["Starbase Alpha"].coords;
+                    playerX = starbaseCoords.x;
+                    playerY = starbaseCoords.y;
+
                     currentCombatContext=null;playerIsChargingAttack = false; playerIsEvading = false; 
                     updateMessage(combatLog);handleInteraction();renderGame();return; 
                 }
@@ -2112,8 +2117,7 @@ function displayMissionBoard() {
                     const progressKey = `delivery_${index}`;
                     const objectiveProgress = playerActiveMission.progress[progressKey];
                     if (objectiveProgress && !objectiveProgress.complete &&
-                        currentLocation.name === obj.destinationName &&
-                        `${currentSectorX},${currentSectorY}` === obj.destinationSectorKey) {
+                        currentLocation.name === obj.destinationName) {
 
                         if (playerCargo[obj.itemID] >= obj.count) {
                             playerCargo[obj.itemID] -= obj.count;
@@ -2361,11 +2365,11 @@ function displayMissionBoard() {
                 case 'm': mineAsteroid(); break; 
                 case 'j': toggleCodex(true); break; 
                 case 'i': displayCargoHold(); break; 
-                case 't': 
-                    const cT=gameMapGrid[playerY][playerX];
-                    if(getTileType(cT)==='wormhole')traverseWormhole();
-                    else updateMessage("No wormhole here.");
-                    break;
+case 't': 
+    const cT = chunkManager.getTile(playerX, playerY); // This is the new, correct line
+    if(getTileType(cT)==='wormhole')traverseWormhole();
+    else updateMessage("No wormhole here.");
+    break;
                 default:return; 
             }
             if(dx!==0||dy!==0)movePlayer(dx,dy); else renderGame(); 
