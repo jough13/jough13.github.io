@@ -8,8 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
 	
-	*, *::before, *::after {
-	box-sizing: inherit;
+*, *::before, *::after {
+    box-sizing: inherit;
+} 
 
         html {
             height: 100%;
@@ -72,21 +73,39 @@
             scrollbar-width: thin; 
             scrollbar-color: #00A0A0 #101022; 
         }
+       
+        
+
+
+
+
+
         #gameContainer {
-            background-color: #101022; 
+            background-color: #101022;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 220, 220, 0.25); 
-            border: 1px solid #303060; 
+            box-shadow: 0 0 20px rgba(0, 220, 220, 0.25);
+            border: 1px solid #303060;
+            width: 100%;
+            margin-bottom: 15px;
+            
+            /* New Grid Layout */
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* Main content gets 2/3, sidebar gets 1/3 */
+            gap: 20px; /* Space between columns */
+        }
+
+        #main-content-column {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            position: relative; 
-            height: 680px; 
-            overflow: hidden; 
-            width: 100%; 
-            margin-bottom: 15px; 
+            gap: 15px; /* Space between canvas and message area */
         }
+        
+        #sidebar-column {
+            display: flex;
+            flex-direction: column;
+        }
+
         #gameMap {
             white-space: pre;
             font-size: 18px; 
@@ -105,19 +124,33 @@
             text-align: center;
             height: 18px; 
         }
-        #playerStats {
+
+                #playerStats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 8px 12px; 
+            /* Changed to 2 columns to fit nicely in the sidebar */
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 8px 12px;
             width: 100%;
-            max-width: 580px; 
-            padding: 12px; 
-            background-color: #181830; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
+            padding: 12px;
+            background-color: #181830;
+            border-radius: 8px;
             text-align: center;
             border: 1px solid #2a2a5a;
         }
+
+        /* This makes the layout stack into a single column on smaller screens */
+        @media (max-width: 768px) {
+            #gameContainer {
+                grid-template-columns: 1fr; /* Single column */
+            }
+        }
+
+
+
+
+
+
+
         .stat-item {
              display: flex;
              flex-direction: column;
@@ -223,28 +256,32 @@
         <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
 
         <div id="gameContainer">
-            <div id="playerStats">
-                <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-                <div class="stat-item"> 
-                    <span class="stat-label">Current Sector</span>
-                    <span id="sectorNameStat" class="stat">Sol Sector</span>
-                    <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
-                </div>
-                <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
-                
-                <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
-                <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
-                <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div> 
-                
-                <div class="stat-item">
-                    <span class="stat-label">Level / XP</span>
-                    <span id="levelXpStat" class="stat">1 (0/0)</span>
-                </div>
-                <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
-                <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
+
+            <div id="main-content-column">
+                <canvas id="gameCanvas"></canvas>
+                <div id="messageArea">Welcome, Explorer!</div>
             </div>
-            <div id="gameMap"></div>
-            <div id="messageArea">Welcome, Explorer!</div>
+
+            <div id="sidebar-column">
+                <div id="playerStats">
+                    <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
+                    <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
+                    <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div>
+                    <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
+                    <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
+                    <div class="stat-item">
+                        <span class="stat-label">Level / XP</span>
+                        <span id="levelXpStat" class="stat">1 (0/0)</span>
+                    </div>
+                    <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
+                    <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
+                     <div class="stat-item"> 
+                        <span class="stat-label">Location</span>
+                        <span id="sectorNameStat" class="stat">Deep Space</span>
+                        <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+                    </div>
+                </div>
+            </div>
 
             <div id="codexOverlay">
                 <button id="codexCloseButton">&times;</button>
@@ -255,6 +292,7 @@
                     <div id="codexEntryText">Select an entry to read.</div>
                 </div>
             </div>
+
         </div>
 
         <div class="controls-info">
@@ -513,6 +551,64 @@
             MYSTERY_FIRST_NEXUS: { title: "The First Nexus", category: "Mysteries", text: "The location revealed by the Wayfinder Core. A place of immense Precursor power and significance. Its purpose is unknown, but it radiates an energy unlike anything known to modern science. It is likely to be of extreme interest to all major factions.", unlocked: false }
         };
 
+        const chunkManager = {
+            CHUNK_SIZE: 16,
+            loadedChunks: {},
+            staticLocations: new Map(), // NEW: A map to quickly find static locations
+
+            // NEW: A function to initialize our static locations
+            initializeStaticLocations() {
+                this.staticLocations.clear();
+                for (const name in LOCATIONS_DATA) {
+                    const location = LOCATIONS_DATA[name];
+                    const key = `${location.coords.x},${location.coords.y}`;
+                    this.staticLocations.set(key, { name, ...location });
+                }
+            },
+
+            generateChunk(chunkX, chunkY) {
+                const chunkKey = `${chunkX},${chunkY}`;
+                let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
+
+                for (let y = 0; y < this.CHUNK_SIZE; y++) {
+                    for (let x = 0; x < this.CHUNK_SIZE; x++) {
+                        const worldX = chunkX * this.CHUNK_SIZE + x;
+                        const worldY = chunkY * this.CHUNK_SIZE + y;
+                        const locationKey = `${worldX},${worldY}`;
+
+                        // First, check if a static location belongs here
+                        if (this.staticLocations.has(locationKey)) {
+                            const location = this.staticLocations.get(locationKey);
+                            chunkData[y][x] = { char: location.type, type: 'location', ...location };
+                        } else {
+                            // If not, generate procedural space
+                            let tile = EMPTY_SPACE_CHAR_VAL;
+                            if (Math.random() < 0.01) {
+                                tile = { char: STAR_CHAR_VAL, type: 'star', richness: Math.random(), scoopedThisVisit: false };
+                            } else if (Math.random() < 0.005) {
+                                tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: Math.random(), minedThisVisit: false };
+                            }
+                            chunkData[y][x] = tile;
+                        }
+                    }
+                }
+                this.loadedChunks[chunkKey] = chunkData;
+                return chunkData;
+            },
+
+            getTile(worldX, worldY) {
+                const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
+                const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
+                const chunkKey = `${chunkX},${chunkY}`;
+                
+                const chunk = this.loadedChunks[chunkKey] || this.generateChunk(chunkX, chunkY);
+                
+                const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+                const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+
+                return chunk[localY][localX];
+            }
+        };
     
 	// --- Global State Variables - Declare globally, instantiate in initializeGame ---
 
@@ -526,13 +622,13 @@
         var playerLevel; 
         var playerXP;    
         var xpToNextLevel; 
-        var currentSectorX, currentSectorY; 
 
         var playerCargo = {}; 
         var currentCargoLoad = 0; 
 
+        const TILE_SIZE = 18; // You can tweak this to adjust the character size
         var gameMapGrid = []; 
-        var gameMapCellElements = []; // For storing references to map cell <span> elements
+        var gameCanvas, ctx; // For our new canvas
 
         var message = ""; 
 
@@ -689,6 +785,9 @@
         }
 
         function initializeGame() {
+            
+            chunkManager.initializeStaticLocations();
+
             visitedSectors = new Set();
             scannedObjectTypes = new Set();
             discoveredLocations = new Set();
@@ -699,8 +798,9 @@
             discoveredLoreEntries = new Set();
             missionsAvailableAtStation = [];
             gameMapGrid = []; 
-            gameMapCellElements = []; 
-            gameMapElement = document.getElementById('gameMap');
+            
+            // --- MODIFIED SECTION START ---
+            // Get references to all the UI elements
             messageAreaElement = document.getElementById('messageArea');
             fuelStatElement = document.getElementById('fuelStat');
             creditsStatElement = document.getElementById('creditsStat');
@@ -716,19 +816,31 @@
             codexCategoriesElement = document.getElementById('codexCategories');
             codexEntriesElement = document.getElementById('codexEntries');
             codexEntryTextElement = document.getElementById('codexEntryText');   
-            gameMapElement.innerHTML = ''; 
 
-            for (let y = 0; y < MAP_HEIGHT; y++) {
-                const rowDiv = document.createElement('div');
-                gameMapCellElements[y] = [];
-                for (let x = 0; x < MAP_WIDTH; x++) {
-                    const cellSpan = document.createElement('span');
-                    rowDiv.appendChild(cellSpan);
-                    gameMapCellElements[y][x] = cellSpan;
-                }
+            // New Canvas Setup - Replaces the old gameMapElement and cell creation
+            gameCanvas = document.getElementById('gameCanvas');
+            ctx = gameCanvas.getContext('2d');
 
-                gameMapElement.appendChild(rowDiv);
-            }
+            // Set the canvas resolution based on map size and tile size
+            gameCanvas.width = MAP_WIDTH * TILE_SIZE;
+            gameCanvas.height = MAP_HEIGHT * TILE_SIZE;
+            
+            // Style the canvas to fit the container
+            gameCanvas.style.width = "100%";
+            gameCanvas.style.height = "auto";
+            gameCanvas.style.imageRendering = "pixelated"; // Keeps characters sharp
+
+            // Set default font styles for drawing on the canvas
+            ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // --- MODIFIED SECTION END ---
+
+
+
+
+    playerX = Math.floor(MAP_WIDTH / 2); 
+    playerY = Math.floor(MAP_HEIGHT / 2);
 
             playerShip = { 
                 shipClass: "LIGHT_FREIGHTER",
@@ -776,92 +888,26 @@
             mystery_wayfinder_finalLocation = null;
             mystery_first_nexus_location = null;
 
-            currentSectorX = 0; currentSectorY = 0; 
-
             updateCurrentCargoLoad();
-            loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
+        
             playerX = Math.floor(MAP_WIDTH / 2); playerY = Math.floor(MAP_HEIGHT / 2);
-            ensurePlayerStartNotOccupied(); 
+            
 
             currentTradeContext = null; 
             currentCombatContext = null; 
             currentOutfitContext = null; 
             currentEncounterContext = null;
-            updateMessage(`Welcome to ${currentSectorName} (${currentSectorX},${currentSectorY})! Use WASD to move.`);
 
+            updateMessage('Welcome, Wayfinder! Use WASD to move.');
+            
             renderGame();
 
 	    document.body.style.opacity = '1'; 
-
         }
 
-        function loadOrGenerateSectorMap(sX, sY) { 
-            const sectorKey = `${sX},${sY}`;
-            if (sectorCache[sectorKey]) {
-                const cachedSector = sectorCache[sectorKey];
-                gameMapGrid = JSON.parse(JSON.stringify(cachedSector.grid)); 
-                currentSectorOutpostData = cachedSector.outpostData ? JSON.parse(JSON.stringify(cachedSector.outpostData)) : null;
-                currentSectorName = cachedSector.name; 
+        
 
-                 for (let y = 0; y < MAP_HEIGHT; y++) {
-                    for (let x = 0; x < MAP_WIDTH; x++) {
-                        const tile = gameMapGrid[y][x];
-                        if (typeof tile === 'object' && tile !== null) {
-                           if(tile.type === 'star') tile.scoopedThisVisit = false;
-                           if(tile.type === 'asteroid') tile.minedThisVisit = false;
-                        }
-                    }
-                }
 
-            } else {
-                generateNewSectorMapData(sX, sY);
-                currentSectorName = generateSectorName(sX, sY); 
-                sectorCache[sectorKey] = { 
-                    grid: JSON.parse(JSON.stringify(gameMapGrid)), 
-                    outpostData: currentSectorOutpostData ? JSON.parse(JSON.stringify(currentSectorOutpostData)) : null,
-                    name: currentSectorName 
-                };
-            }
-        }
-
-        function generateNewSectorMapData(sX, sY) { 
-            gameMapGrid=[];currentSectorOutpostData=null;for(let y=0;y<MAP_HEIGHT;y++){const r=[];for(let x=0;x<MAP_WIDTH;x++)r.push(EMPTY_SPACE_CHAR_VAL);gameMapGrid.push(r);}
-
-            if(sX===0&&sY===0){for(const lN in LOCATIONS_DATA){const l=LOCATIONS_DATA[lN];if(l.coords&&l.type)gameMapGrid[l.coords.y][l.coords.x]=l.type;}}
-            else if (mystery_first_nexus_location && sX === mystery_first_nexus_location.sectorX && sY === mystery_first_nexus_location.sectorY) {
-                // Special generation for the Nexus sector
-                const nx = mystery_first_nexus_location.x;
-                const ny = mystery_first_nexus_location.y;
-                gameMapGrid[ny][nx] = { char: NEXUS_CHAR_VAL, type: 'nexus', subtype: 'First Nexus', looted: false };
-            }
-            else{
-
-                if(Math.random()<OUTPOST_SPAWN_CHANCE){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]=OUTPOST_CHAR_VAL;currentSectorOutpostData={name:`Outpost Kepler-${Math.abs(sX)}${Math.abs(sY)}${rX%10}${rY%10}`,coords:{y:rY,x:rX},type:OUTPOST_CHAR_VAL,isMajorHub:false,...generateOutpostMarket(),scanFlavor:"A lonely outpost, a speck of light in the vast darkness. They trade what they can, and always have an ear for news from the wider galaxy.",rumor:RUMORS[Math.floor(Math.random()*RUMORS.length)]};}}
-                if(Math.random()<WORMHOLE_SPAWN_CHANCE&&!currentSectorOutpostData){const rX=Math.floor(Math.random()*(MAP_WIDTH-4))+2;const rY=Math.floor(Math.random()*(MAP_HEIGHT-4))+2;if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){gameMapGrid[rY][rX]={char:WORMHOLE_CHAR_VAL,type:'wormhole',stability:Math.random()};}}}
-
-            const numStars=1+Math.floor(Math.random()*3);for(let i=0;i<numStars;i++){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:STAR_CHAR_VAL,type:'star',richness:Math.random(),starType:['G-type','Red dwarf','Blue giant','Binary','Neutron Star','White Dwarf','Pulsar','Protostar','Wolf-Rayet','Rogue Star','Black Hole Accretion Disk (Visual Only)'][Math.floor(Math.random()*11)],scoopedThisVisit:false};}
-            const ASTEROID_TYPES = {
-
-                "Common Silicate": [{id: "MINERALS", chance: 0.9, minYield: 5, maxYield: 20}],
-                "Metallic Core": [{id: "MINERALS", chance: 0.5, minYield: 10, maxYield: 25}, {id: "RARE_METALS", chance: 0.3, minYield: 1, maxYield: 5}, {id: "GOLD", chance: 0.15, minYield: 1, maxYield: 3}],
-                "Icy Cluster": [{id: "MINERALS", chance: 0.4, minYield: 3, maxYield: 10}, {id: "HYDROGEN_3", chance: 0.05, minYield: 1, maxYield: 2}], 
-                "Exotic Crystalline": [{id: "PLATINUM_ORE", chance: 0.4, minYield: 1, maxYield: 4}, {id: "VOID_CRYSTALS", chance: 0.02, minYield: 1, maxYield: 1}] 
-            };
-
-            const asteroidTypeKeys = Object.keys(ASTEROID_TYPES);
-            const numAsteroids=Math.floor(Math.random()*3);
-
-            for(let i=0;i<numAsteroids;i++){
-                const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);
-                if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){
-                    const chosenTypeKey = asteroidTypeKeys[Math.floor(Math.random() * asteroidTypeKeys.length)];
-                    gameMapGrid[rY][rX]={char:ASTEROID_CHAR_VAL,type:'asteroid',density:Math.random(), asteroidType: chosenTypeKey, resources: ASTEROID_TYPES[chosenTypeKey], minedThisVisit: false};
-                }
-            }
-
-            if(Math.random()<0.20){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL)gameMapGrid[rY][rX]={char:NEBULA_CHAR_VAL,type:'nebula',density:Math.random()};}
-            if(Math.random()<0.15){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const dS=['freighter','explorer','corvette','science vessel','luxury liner','mining barge','unknown wreckage','ancient probe','ghost ship','colony transport','prison hulk','sleeper ship','medical frigate','smuggler runabout','precursor sentinel','K\'tharr warscout','Concord patrol craft','diplomatic courier','generation ship fragment','orbital habitat shard','research outpost remains','K\'tharr broodship fragment','Concord black ops vessel','derelict Precursor surveyor','ancient stellar observatory','lost K\'tharr honor guard ship','abandoned listening post','deep space prison barge','ancient Precursor arkship','K\'tharr \'Shadow Hunter\' stealth vessel','Concord \'Aegis\' class cruiser fragment','lost generation ship','Precursor \'World Shaper\' fragment'];gameMapGrid[rY][rX]={char:DERELICT_CHAR_VAL,type:'derelict',subtype:dS[Math.floor(Math.random()*dS.length)],looted: false};}}
-            if(Math.random()<0.10){const rX=Math.floor(Math.random()*MAP_WIDTH);const rY=Math.floor(Math.random()*MAP_HEIGHT);if(getTileChar(gameMapGrid[rY][rX])===EMPTY_SPACE_CHAR_VAL){const aS=['gravimetric wave','temporal distortion','subspace echo','exotic particle cloud','void fissure','rogue sensor ghost','energy surge','whispering void','chromatic shimmer','localized reality shear','sentient stardust cloud','echoes of creation','cosmic string fragment','unstable warp pocket','null-space bubble','precursor energy field','memory of a star','song of the void','echoes of a dying god','localized chronal stutter','reality bloom','dimensional bleed','psionic storm front','causal loop fragment','void bloom','K\'tharr void rift','Concord FTL test site (failed)','Precursor defense grid node','echoes of a Precursor battle','localized sentience field','K\'tharr ritual site echo','chroniton feedback loop','sentient solar flare','void organism spoor field','fragmented Precursor archive','Concord FTL catastrophe echo','K\'tharr ancestral echo','Precursor dreamscape fragment'];gameMapGrid[rY][rX]={char:ANOMALY_CHAR_VAL,type:'anomaly',subtype:aS[Math.floor(Math.random()*aS.length)], studied: false};}}}
 
         const SECTOR_NAME_PARTS = {
 
@@ -902,45 +948,70 @@
         function generateOutpostMarket() { /* Same as v0.6.11 */ const cK=Object.keys(COMMODITIES);let sI=null,bI=null;const sLb=cK.filter(id=>!["RARE_METALS","TECH_PARTS","ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(sLb.length>0){const sID=sLb[Math.floor(Math.random()*sLb.length)];sI={id:sID,priceMod:1.0+(Math.random()*0.2-0.1),stock:10+Math.floor(Math.random()*21)};}const bLb=cK.filter(id=>(!sI||id!==sI.id)&&!["ARTIFACT_SHARDS","XENO_ANTIQUES","FORBIDDEN_TEXTS","PRECURSOR_DATACUBE","VOID_CRYSTALS","SENTIENT_MYCELIUM","PHASE_SHIFTED_ALLOY","WAYFINDER_CORE","KTHARR_ANCESTRAL_BLADE","PRECURSOR_STAR_MAP_FRAGMENT"].includes(id));if(bLb.length>0){const bID=bLb[Math.floor(Math.random()*bLb.length)];bI={id:bID,priceMod:1.0+(Math.random()*0.2-0.05),stock:15+Math.floor(Math.random()*26)};}return{sells:sI?[sI]:[],buys:bI?[bI]:[]};}
         function ensurePlayerStartNotOccupied() { /* Same as v0.6.7 */ if (getTileChar(gameMapGrid[playerY][playerX]) !== EMPTY_SPACE_CHAR_VAL) { let fE = false; for(let i=-1;i<=1;i++){for(let j=-1;j<=1;j++){if(i===0&&j===0)continue;const cY=playerY+i,cX=playerX+j;if(cY>=0&&cY<MAP_HEIGHT&&cX>=0&&cX<MAP_WIDTH&&getTileChar(gameMapGrid[cY][cX])===EMPTY_SPACE_CHAR_VAL){playerX=cX;playerY=cY;fE=true;break;}}if(fE)break;} if(!fE){if(getTileChar(gameMapGrid[0][0])===EMPTY_SPACE_CHAR_VAL){playerX=0;playerY=0;}else{for(let r=0;r<MAP_HEIGHT;r++){for(let c=0;c<MAP_WIDTH;c++){if(getTileChar(gameMapGrid[r][c])===EMPTY_SPACE_CHAR_VAL){playerX=c;playerY=r;fE=true;break;}}if(fE)break;}}}}}
         function updateCurrentCargoLoad() { /* Same as v0.6.7 */ currentCargoLoad = 0; for (const cID in playerCargo) currentCargoLoad += playerCargo[cID]; }
-        function renderGame() { 
+        
+        function renderGame() {
+            // --- 1. Calculate the camera/viewport position ---
+            // This keeps the player in the center of the screen.
+            const viewportCenterX = Math.floor(MAP_WIDTH / 2);
+            const viewportCenterY = Math.floor(MAP_HEIGHT / 2);
+            const startX = playerX - viewportCenterX;
+            const startY = playerY - viewportCenterY;
 
-            // Optimized map rendering: Only update textContent and className of existing cells
+            // --- 2. Clear the canvas and draw the world ---
+            ctx.fillStyle = '#000000'; // Background color of space
+            ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
 
+            // Loop through every tile on the screen (the viewport)
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 for (let x = 0; x < MAP_WIDTH; x++) {
+                    // Calculate the actual world coordinate to draw
+                    const mapX = startX + x;
+                    const mapY = startY + y;
 
-                    const cellSpan = gameMapCellElements[y][x];
-                    let tileData = gameMapGrid[y][x];
-                    let tileChar = getTileChar(tileData);
-                    let className = '';
-
-                    if (currentCombatContext && x === playerX && y === playerY) {
-                        tileChar = PIRATE_CHAR_VAL;
-                        className = 'pirate-char';
-                    } else if (x === playerX && y === playerY) {
-                        tileChar = PLAYER_CHAR_VAL;
-                        className = 'player-char';
-                    } else {
-                        switch(tileChar) {
-
-                            case STAR_CHAR_VAL: className = 'star-char'; break;
-                            case PLANET_CHAR_VAL: className = 'planet-char'; break;
-                            case STARBASE_CHAR_VAL: className = 'starbase-char'; break;
-                            case OUTPOST_CHAR_VAL: className = 'outpost-char'; break;
-                            case ASTEROID_CHAR_VAL: className = 'asteroid-char'; break;
-                            case NEBULA_CHAR_VAL: className = 'nebula-char'; break;
-                            case DERELICT_CHAR_VAL: className = 'derelict-char'; break;
-                            case ANOMALY_CHAR_VAL: className = 'anomaly-char'; break;
-                            case WORMHOLE_CHAR_VAL: className = 'wormhole-char'; break;
-                            case NEXUS_CHAR_VAL: className = 'nexus-char'; break;
-                            case EMPTY_SPACE_CHAR_VAL: className = 'empty-space-char'; break;
-                            default: className = 'empty-space-char'; 
-                        }
+                    // **FIX**: Get the tile directly from the chunkManager.
+                    // The old, broken 'if' check has been removed.
+                    const tileData = chunkManager.getTile(mapX, mapY);
+                    const tileChar = getTileChar(tileData);
+                    
+                    // Set the color based on the tile character
+                    switch(tileChar) {
+                        case STAR_CHAR_VAL: ctx.fillStyle = '#FFFF99'; break;
+                        case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
+                        case STARBASE_CHAR_VAL: ctx.fillStyle = '#FF88FF'; break;
+                        case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
+                        case ASTEROID_CHAR_VAL: ctx.fillStyle = '#FFAA66'; break;
+                        case NEBULA_CHAR_VAL: ctx.fillStyle = '#DD99FF'; break;
+                        case DERELICT_CHAR_VAL: ctx.fillStyle = '#88AACC'; break;
+                        case ANOMALY_CHAR_VAL: ctx.fillStyle = '#FF33FF'; break;
+                        case WORMHOLE_CHAR_VAL: ctx.fillStyle = '#FFB800'; break;
+                        case NEXUS_CHAR_VAL: ctx.fillStyle = '#40E0D0'; break;
+                        case PIRATE_CHAR_VAL: ctx.fillStyle = '#FF5555'; break;
+                        case EMPTY_SPACE_CHAR_VAL: 
+                        default: 
+                            ctx.fillStyle = '#909090'; 
+                            break;
                     }
-                    if (cellSpan.textContent !== tileChar) cellSpan.textContent = tileChar;
-                    if (cellSpan.className !== className) cellSpan.className = className;
+
+                    // Draw the character on the canvas at the correct screen position
+                    ctx.fillText(
+                        tileChar, 
+                        x * TILE_SIZE + TILE_SIZE / 2, 
+                        y * TILE_SIZE + TILE_SIZE / 2
+                    );
                 }
             }
+
+            // --- 3. Draw the Player ---
+            // After the whole world is drawn, draw the player's ship right in the center.
+            if (currentCombatContext) {
+                 ctx.fillStyle = '#FF5555';
+                 ctx.fillText(PIRATE_CHAR_VAL, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+            } else {
+                 ctx.fillStyle = '#FFFFFF'; // Player is bright white
+                 ctx.fillText(PLAYER_CHAR_VAL, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+            }
+            
+            // --- 4. Update UI Stats ---
             fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`; 
             shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
             hullStatElement.textContent = `${playerHull}/${MAX_PLAYER_HULL}`; 
@@ -949,11 +1020,12 @@
             levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`; 
             shipClassStatElement.textContent = SHIP_CLASSES[playerShip.shipClass].name;
             notorietyStatElement.textContent = playerNotorietyTitle; 
-            sectorNameStatElement.textContent = currentSectorName; 
-            sectorCoordsStatElement.textContent = `(${currentSectorX},${currentSectorY})`; 
-            messageAreaElement.innerHTML = message.replace(/\n/g, '<br>');
+            sectorNameStatElement.textContent = "Deep Space"; // Using a generic name for now
+            sectorCoordsStatElement.textContent = `(${playerX},${playerY})`; // **FIX**: Using player's world coordinates
+            messageAreaElement.innerHTML = message.replace(/\\n/g, '<br>');
             document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         }
+
         function updateMessage(newMessage, append = false) { 
             if (append) {
                  message += "\\n" + newMessage;
@@ -962,7 +1034,6 @@
             }
 
             // If not in a special context and a mission is active, append mission status
-
             if (!currentTradeContext && !currentCombatContext && !currentOutfitContext && !currentMissionContext && !currentEncounterContext && playerActiveMission) {
                 let missionStatus = `<span style='color:#FFFF00;'>Active Mission: ${playerActiveMission.title}`;
                 if (playerActiveMission.isComplete) {
@@ -994,9 +1065,25 @@
                     missionStatus += firstIncompleteObjective + "</span>";
                 }
                 message += "\\n" + missionStatus;
-            }
+            } 
+
+            // This call ensures the screen always refreshes when the message changes
+            renderGame();
         }
-        function getCombinedLocationData(y,x) { /* Same as v0.6.7 */ if (currentSectorX === 0 && currentSectorY === 0) { for(const n in LOCATIONS_DATA) if(LOCATIONS_DATA[n].coords.y===y && LOCATIONS_DATA[n].coords.x===x) return {name:n, ...LOCATIONS_DATA[n]};} if (currentSectorOutpostData && currentSectorOutpostData.coords.y === y && currentSectorOutpostData.coords.x === x) return currentSectorOutpostData; return null;}
+        
+function getCombinedLocationData(y, x) {
+    // Get the tile data from the chunk manager at the player's coordinates
+    const tileObject = chunkManager.getTile(x, y);
+
+    // Check if the tile is a location type (starbase, planet, etc.)
+    if (tileObject && tileObject.type === 'location') {
+        return tileObject; // Return the location data object
+    }
+
+    // If it's not a location, return null
+    return null;
+}
+        
         function traverseWormhole() { 
             if (playerFuel < WORMHOLE_TRAVEL_FUEL_COST) {
                 updateMessage(`Cannot traverse: Requires ${WORMHOLE_TRAVEL_FUEL_COST} fuel, you have ${playerFuel.toFixed(1)}.`); 
@@ -1011,8 +1098,7 @@
             if (Math.random() < 0.5) jumpY *= -1;
             currentSectorX += jumpX;
             currentSectorY += jumpY;
-            playerX = Math.floor(MAP_WIDTH / 2);
-            playerY = Math.floor(MAP_HEIGHT / 2);
+
 
             loadOrGenerateSectorMap(currentSectorX, currentSectorY); 
 
@@ -1038,208 +1124,138 @@
             handleInteraction(); 
             renderGame();
         }
-        function movePlayer(dx, dy) { 
-            if(currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext){updateMessage("Complete current action first.");renderGame();return;} 
-            if(currentCombatContext){updateMessage("In combat! (F)ight or (R)un.");renderGame();return;}
+
+        function movePlayer(dx, dy) {
+            if(currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext){
+                updateMessage("Complete current action first.");
+                renderGame();
+                return;
+            } 
+            if(currentCombatContext){
+                updateMessage("In combat! (F)ight or (R)un.");
+                renderGame();
+                return;
+            }
             
             const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
-
             const actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
 
-            if(playerFuel < actualFuelPerMove &&(dx!==0||dy!==0)){updateMessage("Out of fuel!");renderGame();return;}
-
-            let nX=playerX+dx; let nY=playerY+dy; let sC=false;
-
-            if(nX<0){currentSectorX--;nX=MAP_WIDTH-1;sC=true;}
-            else if(nX>=MAP_WIDTH){currentSectorX++;nX=0;sC=true;}
-            if(nY<0){currentSectorY--;nY=MAP_HEIGHT-1;sC=true;}
-            else if(nY>=MAP_HEIGHT){currentSectorY++;nY=0;sC=true;}
-
-            playerX=nX;playerY=nY;
-            if(dx!==0||dy!==0){
-                playerFuel-=actualFuelPerMove;
-                playerFuel = parseFloat(playerFuel.toFixed(1)); // Round fuel
-                if(playerFuel<0)playerFuel=0;
+            if(playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)){
+                updateMessage("Out of fuel!");
+                renderGame();
+                return;
             }
 
-            if(sC){
-                loadOrGenerateSectorMap(currentSectorX,currentSectorY); 
-                ensurePlayerStartNotOccupied();
-                let wM=`Warped to ${currentSectorName} (${currentSectorX},${currentSectorY}).`; 
-                const nSK=`${currentSectorX},${currentSectorY}`;
-                if(!visitedSectors.has(nSK)&&(currentSectorX!==0||currentSectorY!==0)){
-                    visitedSectors.add(nSK);
-                    playerXP+=XP_PER_NEW_SECTOR_DISCOVERY;
-                    updatePlayerNotoriety(1); 
-                    wM+=`\n<span style='color:#00FF00;'>New Sector Discovered! +${XP_PER_NEW_SECTOR_DISCOVERY} XP!</span>`;
-                    checkLevelUp();
-                }
-                updateMessage(wM);
-                const nSTO=gameMapGrid[playerY][playerX];const nSTC=getTileChar(nSTO);const nSTT=getTileType(nSTO);
-                if((nSTC===EMPTY_SPACE_CHAR_VAL||nSTT==='asteroid'||nSTT==='derelict'||nSTT==='anomaly'|| nSTT==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
-            } else { 
-                const currentTileObjectInternal = gameMapGrid[playerY][playerX]; 
-                const currentTileCharInternal = getTileChar(currentTileObjectInternal); 
-                const currentTileTypeInternal = getTileType(currentTileObjectInternal);
-                if(mystery_wayfinder_progress===4&&mystery_wayfinder_finalLocation&&currentSectorX===mystery_wayfinder_finalLocation.sectorX&&currentSectorY===mystery_wayfinder_finalLocation.sectorY&&playerX===mystery_wayfinder_finalLocation.x&&playerY===mystery_wayfinder_finalLocation.y){
-                    updateMessage(`You've arrived at the precise coordinates. A hidden Precursor Wayfinder activates!\nIts energy core hums, revealing fragmented charts pointing towards the Silentium Expanse and a 'First Nexus'.\n<span style='color:#DA70D6;'>+5000 Credits! +${XP_MYSTERY_REWARD} XP! Wayfinder Core acquired!</span>`);
-                    playerCredits+=5000;playerXP+=XP_MYSTERY_REWARD;
-                    updatePlayerNotoriety(100); 
-                    if(playerCargo.WAYFINDER_CORE<PLAYER_CARGO_CAPACITY-currentCargoLoad){playerCargo.WAYFINDER_CORE=(playerCargo.WAYFINDER_CORE||0)+1;updateCurrentCargoLoad();}else{updateMessage("Wayfinder Core acquired, but no cargo space! It's left floating here.",true);}
-                    mystery_wayfinder_progress=5;checkLevelUp();
-                    unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED"); 
+            // Simple movement: just update the player's coordinates
+            playerX += dx;
+            playerY += dy;
 
-                }else if((currentTileCharInternal===EMPTY_SPACE_CHAR_VAL||currentTileTypeInternal==='asteroid'||currentTileTypeInternal==='derelict'||currentTileTypeInternal==='anomaly'|| currentTileTypeInternal==='wormhole')&&Math.random()<PIRATE_ENCOUNTER_CHANCE)startCombat();else handleInteraction();
-
-            }renderGame();
+            if (dx !== 0 || dy !== 0) {
+                playerFuel -= actualFuelPerMove;
+                playerFuel = parseFloat(playerFuel.toFixed(1));
+                if (playerFuel < 0) playerFuel = 0;
+            }
+            
+            // This logic will go inside the chunk manager later, but we'll leave it simple for now
+            if (Math.random() < PIRATE_ENCOUNTER_CHANCE) {
+                startCombat();
+            } else {
+                handleInteraction(); // We'll update this function next
+            }
+            
+            renderGame();
         }
+
+
+
         function handleInteraction() { 
-            const tileObject = gameMapGrid[playerY][playerX];
+            // Get the tile from our infinite world at the player's current location
+            const tileObject = chunkManager.getTile(playerX, playerY);
             const tileChar = getTileChar(tileObject);
-            const l=getCombinedLocationData(playerY,playerX); 
 
-            if (playerActiveMission) {
-                checkMissionObjectiveCompletion();
-            }
+            // NEW: Check if the tile is a pre-defined location (like a starbase or planet)
+            let bM = "";
+            if (tileObject && tileObject.type === 'location') {
+                const location = tileObject; // The tile IS the location data now
 
-            let bM=`${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
-            if(l){
-
-                bM=`Arrived at ${l.name}. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
+                bM = `Arrived at ${location.name}. Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`;
                 let actionsAvailable = "";
-                if((l.sells&&l.sells.length>0)||(l.buys&&l.buys.length>0)) actionsAvailable += "Trade (B/S). ";
-                if (l.isMajorHub) {
-
+                
+                // Check for available services
+                if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
+                    actionsAvailable += "Trade (B/S). ";
+                }
+                if (location.isMajorHub) {
                     actionsAvailable += "Outfit (O). "; 
                     actionsAvailable += "Missions (K). ";
                     actionsAvailable += "Shipyard (Y). ";
                 }
-
                 actionsAvailable += "Leave (L).";
-
-            
-                // Check for mission-specific actions
-
-                if (playerActiveMission && !playerActiveMission.isComplete) {
-                    playerActiveMission.objectives.forEach((obj, index) => {
-                        const progressKey = `${obj.type.toLowerCase()}_${index}`;
-                        const objectiveProgress = playerActiveMission.progress[progressKey];
-                        if (obj.type === "DELIVERY" && objectiveProgress && !objectiveProgress.complete &&
-                            l.name === obj.destinationName && `${currentSectorX},${currentSectorY}` === obj.destinationSectorKey) {
-                            actionsAvailable += ` Complete Delivery for '${playerActiveMission.title}' (C).`;
-                        }
-                    });
-                }
-
-                if (playerActiveMission && playerActiveMission.isComplete && l.name === playerActiveMission.giver) {
-                     actionsAvailable += ` <span style='color:#00FF00;'>Claim Reward for '${playerActiveMission.title}' (G).</span>`;
-                }
-
                 bM += "\nActions: " + actionsAvailable;
 
-                if(l.type===STARBASE_CHAR_VAL||l.type===OUTPOST_CHAR_VAL){ 
-                    playerFuel=MAX_FUEL;playerShields=MAX_SHIELDS; playerHull = MAX_PLAYER_HULL; // Full repair
-                    bM+=`\nFuel, Shields, and Hull fully repaired!`;
+                // Auto-repair at stations
+                if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) { 
+                    playerFuel = MAX_FUEL;
+                    playerShields = MAX_SHIELDS; 
+                    playerHull = MAX_PLAYER_HULL;
+                    bM += `\nFuel, Shields, and Hull fully repaired!`;
                     applyPlayerShipStats(); 
                 }
 
-                if(l.rumor) bM+= `\n<span style='color:#AAAAFF;'>Local Chatter: "${l.rumor}"</span>`;
-                if(!discoveredLocations.has(l.name)){
-                    discoveredLocations.add(l.name);
-                    playerXP+=XP_PER_LOCATION_DISCOVERY;
-                    bM+=`\n<span style='color:#00FF00;'>Location Discovered: ${l.name}! +${XP_PER_LOCATION_DISCOVERY} XP!</span>`;
-                    unlockLoreEntry(`LOCATION_${l.name.replace(/\s+/g, '_').toUpperCase()}`); 
+                // Discovery XP
+                if (!discoveredLocations.has(location.name)) {
+                    discoveredLocations.add(location.name);
+                    playerXP += XP_PER_LOCATION_DISCOVERY;
+                    bM += `\n<span style='color:#00FF00;'>Location Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP!</span>`;
+                    unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`); 
                     checkLevelUp();
                 }
             } else {
-
+                // This is the logic for empty space and procedural objects
+                bM = `Coordinates: (${playerX},${playerY}). Fuel:${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}. Sh:${playerShields}/${MAX_SHIELDS}. Hull:${playerHull}/${MAX_PLAYER_HULL}.`; 
                 switch(tileChar){ 
                     case STAR_CHAR_VAL:bM+=` Near star. (H to Scoop Fuel)`; unlockLoreEntry("PHENOMENON_STAR"); break; 
                     case ASTEROID_CHAR_VAL:bM+=` Asteroids. (M to Mine)`; unlockLoreEntry("PHENOMENON_ASTEROID"); break;
-                    case NEBULA_CHAR_VAL:bM+=` Nebula.`; unlockLoreEntry("PHENOMENON_NEBULA"); break;
-                    case DERELICT_CHAR_VAL:bM+=` Near a derelict ship. (E to Interact)`; unlockLoreEntry("XENO_DERELICTS"); break;
-                    case ANOMALY_CHAR_VAL:bM+=` Near a strange anomaly. (E to Interact)`; unlockLoreEntry("XENO_ANOMALIES"); break;
-                    case NEXUS_CHAR_VAL:bM+=` You've arrived at the First Nexus. The air hums with untold power.`; unlockLoreEntry("MYSTERY_FIRST_NEXUS"); break;
-                    case WORMHOLE_CHAR_VAL:bM+=` Unstable Wormhole detected! (T to Traverse)`; unlockLoreEntry("PHENOMENON_WORMHOLE"); break;
                 }
-
             }
 
             updateMessage(bM); 
         }
 
+
+
+
         function scanLocation() { 
             if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { updateMessage("Cannot scan now."); renderGame(); return; }
-            const location = getCombinedLocationData(playerY, playerX); 
-            const tileObject = gameMapGrid[playerY][playerX];
+            
+            // NEW: Get the tile from our infinite world
+            const tileObject = chunkManager.getTile(playerX, playerY);
             const tileType = getTileType(tileObject);
-
-            // NEW: Divert to encounter system for interactable objects
-            if ((tileType === 'derelict' && !tileObject.looted) || (tileType === 'anomaly' && !tileObject.studied)) {
-                startEncounter(tileObject);
-                return;
-            }
-
-            let scanMessage = `Scan Report - ${currentSectorName} (${currentSectorX},${currentSectorY}) [${playerX},${playerY}]:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
-
             const tileChar = getTileChar(tileObject);
+            const location = null; // We'll add this back
 
+            let scanMessage = `Scan Report: (${playerX},${playerY}):\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
             let objectTypeForXP = getTileType(tileObject) || tileChar; 
             let actionsAvailable = "";
 
             if (location) { 
-                scanMessage+=`Location: ${location.name} (${location.type}).\n`;
-                scanMessage+=location.scanFlavor||"Standard readings for this type of installation/outpost.";
-                if(location.rumor)scanMessage+=`\n<span style='color:#AAAAFF;'>Intercepted Local Comm: "${location.rumor}"</span>`;
-                if((location.sells&&location.sells.length>0)||(location.buys&&location.buys.length>0)){
-                    scanMessage+="\\n<span style='color:#66FF66;'>Trade Analysis:</span>";
-                    if(location.sells.length>0)scanMessage+=`\n  Exports: ${location.sells.map(item=>COMMODITIES[item.id].name).join(', ')}.`;
-                    if(location.buys.length>0)scanMessage+=`\n  Imports: ${location.buys.map(item=>COMMODITIES[item.id].name).join(', ')}.`;
-                } else {
-                    scanMessage+="\\nNo active trade facilities detected.";
-                }
-                objectTypeForXP=location.type; 
-                 if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
-                    if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) actionsAvailable += "Trade (B/S). ";
-                    if (location.isMajorHub) {
-                        actionsAvailable += "Outfit (O). "; 
-                        actionsAvailable += "Missions (K). ";
-                        actionsAvailable += "Shipyard (Y). ";
-                    }
-                    actionsAvailable += "Leave (L).";
-                }
+                // Starbase scan logic will go here
             } else { 
                 switch (tileChar) { 
                     case EMPTY_SPACE_CHAR_VAL: 
-                        const eF=["Vast emptiness. Faint cosmic background radiation. The universe feels ancient here.","Cold and silent void. Distant quasar flicker, a beacon from billions of years past.","Deep space. Unknown navigational beacons at extreme range, their origin a mystery."];
-                        scanMessage+=eF[Math.floor(Math.random()*eF.length)];
+                        scanMessage+="Vast emptiness. Faint cosmic background radiation.";
                         objectTypeForXP='empty_space';
                         break;
                     case STAR_CHAR_VAL: 
                         scanMessage += `Brilliant ${tileObject.starType || 'star'}.`;
-                        if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected! Ideal for scooping.</span>";
-                        else scanMessage += "\n<span style='color:#FFFACD;'>Moderate hydrogen concentrations.</span>";
+                        if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
                         if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
                         actionsAvailable += "Scoop Fuel (H).";
                         break;
-
                     case ASTEROID_CHAR_VAL: 
                         scanMessage += `Asteroid field. Type: ${tileObject.asteroidType || 'Unknown'}.`;
                          if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
                         actionsAvailable += "Mine Asteroid (M).";
-                        break;
-
-                     case DERELICT_CHAR_VAL:
-                        scanMessage += `Scanners detect a derelict ${tileObject.subtype || 'ship'}. It appears to have been thoroughly salvaged already.`;
-                        break;
-                    case ANOMALY_CHAR_VAL:
-                         scanMessage += `The residual energy of a ${tileObject.subtype || 'anomaly'} is fading. Whatever secrets it held are gone.`;
-                        break;
-
-                    case WORMHOLE_CHAR_VAL: 
-                        scanMessage += "Detected an unstable Wormhole!";
-                        actionsAvailable += "Traverse Wormhole (T).";
-                        objectTypeForXP = 'wormhole';
                         break;
                     default: scanMessage += "Unknown anomaly detected. Sensor readings inconclusive."; break;
                 }
@@ -1251,16 +1267,19 @@
                 scannedObjectTypes.add(objectTypeForXP);
                 playerXP += XP_PER_FIRST_SCAN_TYPE;
                 scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
-                unlockLoreEntry(`PHENOMENON_${objectTypeForXP.toUpperCase()}`); 
                 checkLevelUp();
             }
 
             updateMessage(scanMessage);
             renderGame();
         }
+
         function scoopHydrogen() { 
             if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext || currentEncounterContext){updateMessage("Cannot scoop fuel now.");renderGame();return;}
-            const cT=gameMapGrid[playerY][playerX];
+            
+            // NEW: Get the tile from our infinite world
+            const cT = chunkManager.getTile(playerX, playerY);
+
             if(getTileType(cT)!=='star'){updateMessage("No star here to scoop from.");renderGame();return;}
             if(playerFuel>=MAX_FUEL){updateMessage("Fuel tanks full!");renderGame();return;}
             if (cT.scoopedThisVisit) {
@@ -1274,7 +1293,7 @@
             fG=Math.max(1,fG);
             const oF=playerFuel;
             playerFuel=Math.min(MAX_FUEL,playerFuel+fG);
-            playerFuel = parseFloat(playerFuel.toFixed(1)); // Round fuel
+            playerFuel = parseFloat(playerFuel.toFixed(1));
             const aG=playerFuel-oF;
             if(aG>0) {
                 updateMessage(`Scooped ${aG.toFixed(1)} units of hydrogen.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
@@ -1284,13 +1303,16 @@
             }
             renderGame();
         }
+
         function mineAsteroid() {
             if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
                 updateMessage("Cannot mine now.");
                 renderGame();
                 return;
             }
-            const asteroid = gameMapGrid[playerY][playerX];
+            // NEW: Get the tile from our infinite world
+            const asteroid = chunkManager.getTile(playerX, playerY);
+
             if (getTileType(asteroid) !== 'asteroid') {
                 updateMessage("No asteroid field here to mine.");
                 renderGame();
@@ -1307,34 +1329,22 @@
             let minedSomething = false;
             let gainedRareXP = false;
 
-            if (asteroid.resources && asteroid.resources.length > 0) {
-                asteroid.resources.forEach(resourceData => {
-                    if (Math.random() < resourceData.chance) {
-                        let yieldAmount = resourceData.minYield + Math.floor(Math.random() * (resourceData.maxYield - resourceData.minYield + 1));
-                        yieldAmount = Math.floor(yieldAmount * (asteroid.density || 0.5)); 
-                        yieldAmount = Math.max(0, yieldAmount); 
-                        if (yieldAmount > 0) {
-                            if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-                                playerCargo[resourceData.id] = (playerCargo[resourceData.id] || 0) + yieldAmount;
-                                totalMinedWeight += yieldAmount;
-                                minedResourcesMessage += ` ${yieldAmount} ${COMMODITIES[resourceData.id].name}\n`;
-                                minedSomething = true;
-                                unlockLoreEntry(`COMMODITY_${resourceData.id}`);
-                                if (["GOLD", "PLATINUM_ORE", "HYDROGEN_3", "RARE_METALS"].includes(resourceData.id)) {
-                                    gainedRareXP = true;
-                                }
-                            } else {
-                                minedResourcesMessage += ` Not enough cargo space for ${COMMODITIES[resourceData.id].name}.\n`;
-                            }
-                        }
-                    }
-                });
+            // This logic can be simplified as the asteroid object from chunkManager already has a simpler structure
+            const yieldAmount = 5 + Math.floor(Math.random() * 15 * (asteroid.density || 0.5));
+            if (yieldAmount > 0) {
+                if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+                    playerCargo.MINERALS = (playerCargo.MINERALS || 0) + yieldAmount;
+                    updateCurrentCargoLoad();
+                    minedResourcesMessage += ` ${yieldAmount} Minerals\n`;
+                    minedSomething = true;
+                } else {
+                     minedResourcesMessage += ` Not enough cargo space for Minerals.\n`;
+                }
             }
+
             if (minedSomething) {
-                updateCurrentCargoLoad();
                 playerXP += XP_PER_MINING_OP;
-                if (gainedRareXP) playerXP += XP_BONUS_RARE_MINERAL;
-                minedResourcesMessage += `\n+${XP_PER_MINING_OP + (gainedRareXP ? XP_BONUS_RARE_MINERAL : 0)} XP.`;
+                minedResourcesMessage += `\n+${XP_PER_MINING_OP} XP.`;
                 checkLevelUp();
             } else {
                 minedResourcesMessage = "Mining yielded nothing of value this attempt.";
@@ -1343,9 +1353,11 @@
             asteroid.minedThisVisit = true;
             updateMessage(minedResourcesMessage);
             renderGame();
-
         }
 
+
+
+        
 	function startEncounter(tileObject) {
             switch (tileObject.type) {
                 case 'anomaly':
@@ -1413,12 +1425,20 @@
         }
 
         function calculatePrice(bP,pM){return Math.round(bP*pM);}
+
         function displayTradeScreen(mode){ 
-            const l=getCombinedLocationData(playerY,playerX);
-            if(!l||!((mode==='buy'&&l.sells&&l.sells.length>0)||(mode==='sell'&&l.buys&&l.buys.length>0))){updateMessage(`No items to ${mode} here.`);currentTradeContext=null;renderGame();return;}
-            currentTradeContext={locationName:l.name,mode:mode,step:'selectItem',locationData:l};
-            let tM=`--- ${mode.toUpperCase()} AT ${l.name.toUpperCase()} --- (Cr: ${playerCredits})\nCargo: ${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}\n`;
-            const items=mode==='buy'?l.sells:l.buys;
+            // Get location data from the chunkManager
+            const location = chunkManager.getTile(playerX, playerY);
+
+            // Check if it's a valid location with services
+            if(!location || location.type !== 'location' || !((mode==='buy'&&location.sells&&location.sells.length>0)||(mode==='sell'&&location.buys&&location.buys.length>0))){
+                updateMessage(`No items to ${mode} here.`);
+                currentTradeContext=null;
+                return;
+            }
+            currentTradeContext={locationName:location.name,mode:mode,step:'selectItem',locationData:location};
+            let tM=`--- ${mode.toUpperCase()} AT ${location.name.toUpperCase()} --- (Cr: ${playerCredits})\nCargo: ${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}\n`;
+            const items=mode==='buy'?location.sells:location.buys;
             if(items.length===0)tM+=`Nothing available to ${mode}.\n`;
             else items.forEach((item,idx)=>{
                 const com=COMMODITIES[item.id];
@@ -1428,8 +1448,10 @@
                 const pH=mode==='sell'?`You have: ${playerCargo[item.id]||0}`:'';
                 tM+=`${idx+1}. ${com.name} (${pr}c) [${st}] ${pH}\n`;
             });
-            tM+="\\nEnter # to select, or 'L' to leave.";updateMessage(tM);renderGame();
+            tM+="\\nEnter # to select, or 'L' to leave.";
+            updateMessage(tM);
         }
+        
         function handleTradeSelection(input){ 
             if(!currentTradeContext||currentTradeContext.step!=='selectItem')return;
             const lD = currentTradeContext.locationData; 
@@ -1620,10 +1642,11 @@
         var currentShipyardContext = null; // Add this with your other global state variables
 
         function displayShipyard() {
-            const location = getCombinedLocationData(playerY, playerX);
-            if (!location || !location.isMajorHub) {
+            // Get location data from the chunkManager
+            const location = chunkManager.getTile(playerX, playerY);
+
+            if (!location || location.type !== 'location' || !location.isMajorHub) {
                 updateMessage("Shipyard services not available here.");
-                renderGame();
                 return;
             }
 
@@ -1644,7 +1667,6 @@
 
             shipyardMsg += "\nEnter # to inspect a ship, or (L) to leave.";
             updateMessage(shipyardMsg);
-            renderGame();
         }
 
         function displayShipPurchaseConfirmation(shipId) {
@@ -1716,11 +1738,17 @@
         // --- Outfitting Functions ---
 
        function displayOutfittingScreen() {
+            // Get location data from the chunkManager
+            const location = chunkManager.getTile(playerX, playerY);
+
+            if (!location || location.type !== 'location' || !location.isMajorHub) {
+                updateMessage("Outfitting services not available here.");
+                return;
+            }
 
             currentOutfitContext = { step: 'selectSlot' };
 
             let outfitMsg = "--- Ship Outfitting ---\n";
-
             outfitMsg += "Current Loadout:\n";
             outfitMsg += ` 1. Weapon: ${COMPONENTS_DATABASE[playerShip.components.weapon].name}\n`;
             outfitMsg += ` 2. Shield: ${COMPONENTS_DATABASE[playerShip.components.shield].name}\n`;
@@ -1729,9 +1757,8 @@
             outfitMsg += "Select slot # to upgrade, or (L) to Leave.";
 
             updateMessage(outfitMsg);
-
-            renderGame();
         }
+
         function displayComponentsForSlot(slotType) {
             currentOutfitContext.step = 'selectComponent';
             currentOutfitContext.selectedSlot = slotType;
@@ -1810,8 +1837,9 @@
         let currentCodexCategory = null;
         function toggleCodex(show) { /* Same as v0.6.11 */ if(show){codexOverlayElement.style.display='flex';renderCodexCategories();renderCodexEntries(null);codexEntryTextElement.innerHTML="Select a category, then an entry.";}else{codexOverlayElement.style.display='none';currentCodexCategory=null;}}
         function renderCodexCategories() { /* Same as v0.6.11 */ codexCategoriesElement.innerHTML='';const cats=new Set();Object.values(LORE_DATABASE).forEach(e=>{if(discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k=>LORE_DATABASE[k]===e)))cats.add(e.category);});Array.from(cats).sort().forEach(cat=>{const cD=document.createElement('div');cD.textContent=cat;cD.className='codex-list-item';if(cat===currentCodexCategory)cD.classList.add('active');cD.onclick=()=>{currentCodexCategory=cat;renderCodexCategories();renderCodexEntries(cat);codexEntryTextElement.innerHTML="Select an entry.";};codexCategoriesElement.appendChild(cD);});}
-        function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category===category&&discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}});}
-
+        
+        function renderCodexEntries(category) { /* Same as v0.6.11 */ codexEntriesElement.innerHTML='';if(!category)return;Object.entries(LORE_DATABASE).forEach(([k,e])=>{if(e.category === category && discoveredLoreEntries.has(k)){const eD=document.createElement('div');eD.textContent=e.title;eD.className='codex-list-item';eD.onclick=()=>{codexEntryTextElement.innerHTML=`<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;document.querySelectorAll('#codexEntries .codex-list-item').forEach(el=>el.classList.remove('active'));eD.classList.add('active');};codexEntriesElement.appendChild(eD);}}); }
+        
         /**
          * Selects a random, valid mission destination from the LOCATIONS_DATA.
          * Ensures the destination is not the same as the starting station.
@@ -1849,112 +1877,110 @@
             return commodity.id;
         }
 
+
+
+
 function generateMissionsForStation(stationName) {
-    const generatedMissions = [];
-    const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
-    const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
+            const generatedMissions = [];
+            const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
+            const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
-    for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
-        try {
-            const templateIndex = Math.floor(Math.random() * availableTemplates.length);
-            let newMission = JSON.parse(JSON.stringify(availableTemplates[templateIndex]));
+            for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
+                try {
+                    const templateIndex = Math.floor(Math.random() * availableTemplates.length);
+                    let newMission = JSON.parse(JSON.stringify(availableTemplates[templateIndex]));
 
-            newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
-            newMission.giver = stationName;
-            const objective = newMission.objective_templates[0];
+                    newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
+                    newMission.giver = stationName;
+                    const objective = newMission.objective_templates[0];
 
-            // Step 1: Randomize objective counts FIRST
-            if (objective.count) {
-                objective.count = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
-            }
+                    // Step 1: Randomize objective counts FIRST
+                    if (objective.count) {
+                        objective.count = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
+                    }
 
-            // Step 2: Randomize rewards
-            newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
-            newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
-            newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
+                    // Step 2: Randomize rewards
+                    newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
+                    newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
+                    newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
 
-            let success = true;
+                    let success = true;
 
-            // Step 3: Configure the mission details and build strings from templates
-            switch (newMission.type) {
-                case "BOUNTY":
-                    objective.targetSectorKey = `${currentSectorX},${currentSectorY}`;
-                    newMission.title = newMission.title_template.replace('{sectorName}', 'Local Sector');
-                    newMission.description = newMission.description_template
-                        .replace('{sectorName}', 'the local')
-                        .replace('{sectorCoords}', `(${objective.targetSectorKey})`)
-                        .replace('{count}', objective.count);
-                    break;
-                case "DELIVERY": {
-                    const destination = selectRandomDestination(stationName);
-                    if (!destination) { success = false; break; }
-                    const deliveryItem = selectRandomCommodity(destination.name);
-                    if (!deliveryItem) { success = false; break; }
-                    
-                    objective.destinationName = destination.name;
-                    objective.destinationSectorKey = destination.key;
-                    objective.itemID = deliveryItem;
-                    
-                    newMission.title = newMission.title_template.replace('{destinationName}', objective.destinationName);
-                    newMission.description = newMission.description_template
-                        .replace('{destinationName}', objective.destinationName)
-                        .replace('{count}', objective.count)
-                        .replace('{itemName}', COMMODITIES[deliveryItem].name);
-                    break;
+                    // Step 3: Configure the mission details and build strings from templates
+                    switch (newMission.type) {
+                        case "BOUNTY":
+                            // This mission type is local, so we can't assign a sector from here anymore.
+                            // We can simplify it for now.
+                            newMission.title = "Local Pirate Cull";
+                            newMission.description = `Pirate activity in this system is disrupting trade. Eliminate ${objective.count} pirate threats to secure the area and claim your reward.`;
+                            break;
+                        case "DELIVERY": {
+                            const destination = selectRandomDestination(stationName);
+                            if (!destination) { success = false; break; }
+                            const deliveryItem = selectRandomCommodity(destination.name);
+                            if (!deliveryItem) { success = false; break; }
+                            
+                            objective.destinationName = destination.name;
+                            objective.destinationSectorKey = destination.key;
+                            objective.itemID = deliveryItem;
+                            
+                            newMission.title = newMission.title_template.replace('{destinationName}', objective.destinationName);
+                            newMission.description = newMission.description_template
+                                .replace('{destinationName}', objective.destinationName)
+                                .replace('{count}', objective.count)
+                                .replace('{itemName}', COMMODITIES[deliveryItem].name);
+                            break;
+                        }
+                        case "ACQUIRE": {
+                            const acquireItem = selectRandomCommodity(stationName);
+                            if (!acquireItem) { success = false; break; }
+                            
+                            objective.itemID = acquireItem;
+                            
+                            newMission.title = newMission.title_template.replace('{itemName}', COMMODITIES[acquireItem].name);
+                            newMission.description = newMission.description_template
+                                .replace('{count}', objective.count)
+                                .replace('{itemName}', COMMODITIES[acquireItem].name);
+                            break;
+                        }
+                        case "SURVEY":
+                            objective.targetType = 'anomaly';
+                            objective.subtype = 'unstable warp pocket';
+                            objective.sectorKey = "ANY";
+                            newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
+                            newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
+                            break;
+                        default:
+                            success = false;
+                    }
+
+                    if (success) {
+                        newMission.objectives = [objective];
+                        generatedMissions.push(newMission);
+                    }
+                } catch (error) {
+                    // This will prevent a single broken mission from crashing the whole game
+                    console.error("Failed to generate a mission:", error);
                 }
-                case "ACQUIRE": {
-                    const acquireItem = selectRandomCommodity(stationName);
-                    if (!acquireItem) { success = false; break; }
-                    
-                    objective.itemID = acquireItem;
-                    
-                    newMission.title = newMission.title_template.replace('{itemName}', COMMODITIES[acquireItem].name);
-                    newMission.description = newMission.description_template
-                        .replace('{count}', objective.count)
-                        .replace('{itemName}', COMMODITIES[acquireItem].name);
-                    break;
-                }
-                case "SURVEY":
-                    objective.targetType = 'anomaly';
-                    objective.subtype = 'unstable warp pocket';
-                    objective.sectorKey = "ANY";
-                    newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
-                    newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
-                    break;
-                default:
-                    success = false;
             }
-
-            if (success) {
-                newMission.objectives = [objective];
-                generatedMissions.push(newMission);
-            }
-        } catch (error) {
-            // This will prevent a single broken mission from crashing the whole game
-            console.error("Failed to generate a mission:", error);
+            return generatedMissions;
         }
-    }
-    return generatedMissions;
-}
 
 
+function displayMissionBoard() {
+            // Get location data from the chunkManager
+            const location = chunkManager.getTile(playerX, playerY);
 
-
-
-
-
-        function displayMissionBoard() {
-            const currentLocation = getCombinedLocationData(playerY, playerX);
-            if (!currentLocation || !currentLocation.isMajorHub) {
+            if (!location || location.type !== 'location' || !location.isMajorHub) {
                 updateMessage("Mission board not accessible here.");
-                renderGame();
                 return;
             }
             
-            const stationName = currentLocation.name;
+            const stationName = location.name;
             let stationMissions = MISSIONS_DATABASE[stationName];
 
             if (!stationMissions) {
+                // We'll need to update mission generation later, but this will work for now
                 stationMissions = generateMissionsForStation(stationName);
                 MISSIONS_DATABASE[stationName] = stationMissions;
             }
@@ -1993,7 +2019,6 @@ function generateMissionsForStation(stationName) {
             
             currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation, stationName: stationName };
             updateMessage(missionMsg);
-            renderGame();
         }
 
         function displayMissionDetails(selectedIndex) {
@@ -2351,13 +2376,10 @@ function generateMissionsForStation(stationName) {
 	document.getElementById("codexCloseButton")
 	.addEventListener("click", () => toggleCodex(false));
 
-    </script>
-
-<script>
-    window.addEventListener("load", () => {
-        document.getElementById("page-wrapper").style.opacity = "1";
-    });
-</script>
-
-</body>
+    </script> 
+    <script>
+        window.addEventListener("load", () => {
+            document.getElementById("page-wrapper").style.opacity = "1";
+        });
+    </script> </body>
 </html>
