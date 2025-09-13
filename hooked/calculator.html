@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crochet Cost Calculator</title>
+    <style>
+        /* Vibe Check: Pastel Purple Edition ✨ */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --bg-color: #f3e5f5; /* Light pastel purple */
+            --container-color: #ffffff;
+            --primary-text: #4a148c; /* Dark purple for contrast */
+            --accent-color: #9575cd; /* Main pastel purple */
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --border-color: #d1c4e9; /* Lighter purple for borders */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .calculator {
+            background-color: var(--container-color);
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px var(--shadow-color);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .input-row .input-group {
+            flex-grow: 1;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1em;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #7e57c2;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .results {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .results h2 {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .results p {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .results p.total {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .results span {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+
+    <main class="calculator">
+        <h1>Crochet Project Pricer</h1>
+
+        <div class="input-row">
+            <div class="input-group">
+                <label for="skeinsUsed">Skeins of Yarn Used</label>
+                <input type="number" id="skeinsUsed" placeholder="e.g., 0.5">
+            </div>
+            <div class="input-group">
+                <label for="yarnQuality">Yarn Quality</label>
+                <select id="yarnQuality">
+                    <option value="4">Value (~$4/skein)</option>
+                    <option value="8" selected>Standard (~$8/skein)</option>
+                    <option value="20">'Bougie' (~$20/skein)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="input-row">
+            <div class="input-group">
+                <label for="accessoriesUsed"># of Accessories</label>
+                <input type="number" id="accessoriesUsed" placeholder="e.g., 2">
+            </div>
+             <div class="input-group">
+                <label for="accessoryQuality">Accessory Quality</label>
+                <select id="accessoryQuality">
+                    <option value="0.50">Basic (~$0.50/item)</option>
+                    <option value="1.50" selected>Standard (~$1.50/item)</option>
+                    <option value="4.00">Premium (~$4.00/item)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="input-row">
+            <div class="input-group">
+                <label for="hoursWorked">Hours Worked</label>
+                <input type="number" id="hoursWorked" placeholder="e.g., 2.5">
+            </div>
+            <div class="input-group">
+                <label for="hourlyRate">Your Hourly Rate ($)</label>
+                <input type="number" id="hourlyRate" value="10">
+            </div>
+        </div>
+        
+        <div class="input-group">
+            <label for="complexity">Complexity ('Frustration' Factor)</label>
+            <select id="complexity">
+                <option value="1.0">😊 Chill (Easy Pattern)</option>
+                <option value="1.25" selected>🤔 Involved (Intermediate)</option>
+                <option value="1.5">🤯 Frustrating (Advanced)</option>
+            </select>
+        </div>
+
+        <button onclick="calculateCost()">Calculate Price</button>
+
+        <div class="results">
+            <h2>Pricing Breakout</h2>
+            <p>Total Supply Cost: <span id="resultSupplyCost">$0.00</span></p>
+            <p>Total Labor Cost: <span id="resultLaborCost">$0.00</span></p>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+            <p class="total">Your Base Cost: <span id="resultBaseCost">$0.00</span></p>
+            <p class="total">Final Rounded Price (50% Markup): <span id="resultRetailPrice">$0.00</span></p>
+        </div>
+    </main>
+
+    <script>
+        function calculateCost() {
+            // 1. GET ALL THE VALUES FROM THE FORM
+            const skeinsUsed = parseFloat(document.getElementById('skeinsUsed').value) || 0;
+            const yarnPrice = parseFloat(document.getElementById('yarnQuality').value) || 0;
+            
+            const accessoriesUsed = parseFloat(document.getElementById('accessoriesUsed').value) || 0;
+            const accessoryPrice = parseFloat(document.getElementById('accessoryQuality').value) || 0;
+
+            const hoursWorked = parseFloat(document.getElementById('hoursWorked').value) || 0;
+            const hourlyRate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+
+            const complexityMultiplier = parseFloat(document.getElementById('complexity').value) || 1;
+
+            // 2. DO THE MATH
+            const yarnCost = skeinsUsed * yarnPrice;
+            const accessoryCost = accessoriesUsed * accessoryPrice;
+            const supplyCost = yarnCost + accessoryCost;
+            
+            const laborCost = hoursWorked * hourlyRate;
+            
+            const preMultiplierCost = supplyCost + laborCost;
+
+            const baseCost = preMultiplierCost * complexityMultiplier;
+            
+            // For retail, we'll use a 1.5x markup on the base cost.
+            const rawRetailPrice = baseCost * 1.5;
+
+            // 3. APPLY SMART ROUNDING LOGIC
+            let finalRetailPrice;
+            if (rawRetailPrice < 10) {
+                // If under $10, round to the nearest whole number.
+                finalRetailPrice = Math.round(rawRetailPrice);
+            } else {
+                // If $10 or more, round to the nearest 10.
+                finalRetailPrice = Math.round(rawRetailPrice / 10) * 10;
+            }
+
+            // 4. DISPLAY THE DETAILED RESULTS
+            document.getElementById('resultSupplyCost').textContent = `$${supplyCost.toFixed(2)}`;
+            document.getElementById('resultLaborCost').textContent = `$${laborCost.toFixed(2)}`;
+            document.getElementById('resultBaseCost').textContent = `$${baseCost.toFixed(2)}`;
+            document.getElementById('resultRetailPrice').textContent = `$${finalRetailPrice.toFixed(2)}`;
+        }
+    </script>
+
+</body>
+</html>
