@@ -3,7 +3,7 @@
    <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Wayfinder: Echoes of the Void - v0.9.0 (Post-Nexus Story)</title>
+      <title>Wayfinder: Echoes of the Void - v0.9.0 (Post-Nexus Story) - 13Sep25</title>
       <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
       <style>
          *, *::before, *::after {
@@ -43,6 +43,12 @@
          opacity: 0;
          transition: opacity 0.5s ease-in-out;
          }
+
+.log-datestamp {
+    color: #707090; /* A dimmer, secondary color */
+    margin-right: 8px; /* Some space between date and message */
+}
+
          /* Custom Scrollbar Styles for WebKit browsers */
          #page-wrapper::-webkit-scrollbar {
          width: 10px; 
@@ -134,12 +140,13 @@
                     "stats";
             }
         }
-         .stat-item {
-         display: flex;
-         flex-direction: column;
-         align-items: center;
-         padding: 3px 0; 
-         }
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* This centers the label/value blocks */
+    text-align: center;  /* This centers the text inside them */
+    padding: 3px 0; 
+}
          .stat {
          color: #00E0E0; 
          font-weight: bold;
@@ -158,6 +165,14 @@
          color: #6A6A8A; 
          margin-top: 1px;
          }
+
+#systemView {
+    grid-area: canvas; /* Locks it into the main grid area */
+    overflow-y: auto;  /* Makes it scrollable if content overflows */
+    display: none;     /* Keeps it hidden by default */
+    padding: 20px;
+    text-align: center;
+}
 
 #messageArea {
     grid-area: log; 
@@ -219,6 +234,79 @@
          .codex-list-item:hover { background-color: #282848; }
          .codex-list-item.active { background-color: #00E0E0; color: #0f0f1a; }
          #codexCloseButton { position: absolute; top: 15px; right: 20px; font-size: 1.5em; color: #ff4444; cursor: pointer; background: none; border: none; }
+         
+         /* --- Title Screen Styles --- */
+#titleOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #0D0D1A; /* Solid background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    text-align: center;
+    transition: opacity 0.5s ease-out;
+}
+
+#titleContainer {
+    max-width: 600px;
+    padding: 40px;
+    background-color: #101022;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 220, 220, 0.25);
+    border: 1px solid #303060;
+}
+
+.seed-prompt-text {
+    color: #8888AA;
+    margin-bottom: 20px;
+}
+
+.seed-input {
+    font-family: 'Roboto Mono', monospace;
+    width: 80%;
+    padding: 10px;
+    margin-bottom: 25px;
+    background-color: #0D0D1A;
+    border: 1px solid #303060;
+    color: #D0D0D0;
+    text-align: center;
+    font-size: 16px;
+    border-radius: 5px;
+}
+
+.seed-input::placeholder {
+    color: #505070;
+}
+
+.title-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.title-button {
+    font-family: 'Roboto Mono', monospace;
+    background-color: #181830;
+    color: #00E0E0;
+    border: 1px solid #303060;
+    padding: 12px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.title-button:hover {
+    background-color: #00E0E0;
+    color: #101022;
+}
+         
+         
          .player-char { color: #FFFFFF; text-shadow: 0 0 6px #FFFFFF, 0 0 10px #00FFFF; } 
          .star-char { color: #FFFF99; text-shadow: 0 0 3px #FFFF00; } 
          .planet-char { color: #88CCFF; } 
@@ -232,52 +320,107 @@
          .anomaly-char { color: #FF33FF; font-weight: bold; animation: pulse-magenta 1.3s infinite; } 
          .wormhole-char { color: #FFB800; font-weight: bold; animation: pulse-orange 1.3s infinite; } 
          .nexus-char { color: #40E0D0; font-weight: bold; animation: pulse-cyan 1s infinite; }
+  
+#action-buttons-container {
+    /* This one line pushes the container to the far right of the grid row */
+    margin-left: auto;
+    
+    /* These lines just arrange the buttons nicely side-by-side */
+    flex-direction: row;
+    gap: 10px;
+}
+
+.control-button {
+    font-family: 'Roboto Mono', monospace;
+    background-color: #181830;
+    color: #00E0E0;
+    border: 1px solid #303060;
+    padding: 8px 15px;
+    margin: 0 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.control-button:hover {
+    background-color: #00E0E0;
+    color: #101022;
+}
          @keyframes pulse-orange { 0% { opacity: 1; text-shadow: 0 0 6px #FFA500, 0 0 10px #FF8C00; } 50% { opacity: 0.7; text-shadow: 0 0 12px #FF8C00, 0 0 18px #FF7700; } 100% { opacity: 1; text-shadow: 0 0 6px #FFA500, 0 0 10px #FF8C00; } }
          @keyframes pulse-magenta { 0% { opacity: 1; text-shadow: 0 0 6px #FF00FF, 0 0 10px #DD00DD; } 50% { opacity: 0.7; text-shadow: 0 0 12px #DD00DD, 0 0 18px #CC00CC; } 100% { opacity: 1; text-shadow: 0 0 6px #FF00FF, 0 0 10px #DD00DD; } }
          @keyframes pulse-cyan { 0% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 12px #20C0B0; } 50% { opacity: 0.6; text-shadow: 0 0 14px #20C0B0, 0 0 20px #00A090; } 100% { opacity: 1; text-shadow: 0 0 8px #40E0D0, 0 0 12px #20C0B0; } }
       </style>
    </head>
    <body>
-      <div id="page-wrapper">
-      <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
-      <div id="gameContainer">
 
-    <canvas id="gameCanvas"></canvas>
-    <div id="messageArea">Welcome, Explorer!</div>
-    <div id="playerStats">
-        <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-        <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
-        <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div>
-        <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
-        <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
-        <div class="stat-item">
-            <span class="stat-label">Level / XP</span>
-            <span id="levelXpStat" class="stat">1 (0/0)</span>
-        </div>
-        <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
-        <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
-        <div class="stat-item"> 
-            <span class="stat-label">Location</span>
-            <span id="sectorNameStat" class="stat">Deep Space</span>
-            <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+<div id="titleOverlay">
+    <div id="titleContainer">
+        <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
+        <p class="seed-prompt-text">Enter a World Seed to begin your journey</p>
+        <input type="text" id="seedInput" class="seed-input" placeholder="Leave blank for a random world">
+        <div class="title-buttons">
+            <button id="startButton" class="title-button">Embark</button>
+            <button id="randomSeedButton" class="title-button">Randomize Seed</button>
         </div>
     </div>
-
-    <div id="codexOverlay">
-        <button id="codexCloseButton">&times;</button>
-        <div id="codexTitle">Codex Galactica</div>
-        <div id="codexContent">
-            <div id="codexCategories"></div>
-            <div id="codexEntries"></div>
-            <div id="codexEntryText">Select an entry to read.</div>
-        </div>
-    </div>
-
 </div>
-      <div class="controls-info">
-         WASD: Move | E: Scan | J: Codex
-      </div>
-      <div id="versionInfo">Wayfinder: Echoes of the Void - v0.9.0</div>
+
+
+<div id="page-wrapper">
+    <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
+
+    <div id="gameContainer">
+
+        <canvas id="gameCanvas"></canvas>
+
+<div id="systemView"></div>
+
+        <div id="messageArea">Welcome, Explorer!</div>
+
+        <div id="playerStats">
+            <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
+            <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
+            <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div>
+            <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
+            <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
+            <div class="stat-item">
+                <span class="stat-label">Level / XP</span>
+                <span id="levelXpStat" class="stat">1 (0/0)</span>
+            </div>
+            <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
+            <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
+            <div class="stat-item"> 
+                <span class="stat-label">Location</span>
+                <span id="sectorNameStat" class="stat">Deep Space</span>
+                <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Stardate</span>
+                <span id="stardateStat" class="stat">2458.00</span>
+            </div>
+            <div class="stat-item" id="action-buttons-container">
+                <button id="saveButton" class="control-button">Save</button>
+                <button id="loadButton" class="control-button">Load</button>
+            </div>
+        </div>
+
+        <div id="codexOverlay">
+            <button id="codexCloseButton">&times;</button>
+            <div id="codexTitle">Codex Galactica</div>
+            <div id="codexContent">
+                <div id="codexCategories"></div>
+                <div id="codexEntries"></div>
+                <div id="codexEntryText">Select an entry to read.</div>
+            </div>
+        </div>
+
+    </div> <div class="controls-info">
+       WASD: Move | E: Scan | J: Codex
+    </div>
+
+    <div id="versionInfo">Wayfinder: Echoes of the Void - v0.9.0</div>
+</div> 
       <script>
          // --- Game Configuration ---
          
@@ -327,7 +470,7 @@
          const SCOOP_RANDOM_BONUS = 4; 
          
          const OUTPOST_SPAWN_CHANCE = 0.08; 
-         const WORMHOLE_SPAWN_CHANCE = 0.03; 
+         const WORMHOLE_SPAWN_CHANCE = 0.0003; 
          const WORMHOLE_TRAVEL_FUEL_COST = 20;
          const WORMHOLE_JUMP_MIN_DIST = 5;
          const WORMHOLE_JUMP_MAX_DIST = 15;
@@ -355,6 +498,16 @@
              { score: 500,  title: "Galactic Hero" }
          ]; 
          
+const PLANET_BIOMES = {
+    BARREN_ROCK: { name: "Barren Rock", description: "A lifeless rock, rich in common minerals.", resources: ['MINERALS'], icon: '🪨' },
+    ICE_GIANT: { name: "Ice Giant", description: "A colossal ball of frozen gases. Its atmosphere is a source of hydrogen.", resources: ['HYDROGEN_3'], icon: '🧊' },
+    VOLCANIC: { name: "Volcanic World", description: "A molten hellscape, home to rare and valuable metals.", resources: ['RARE_METALS', 'PLATINUM_ORE'], icon: '🌋' },
+    TERRAN: { name: "Terran World", description: "An Earth-like world with liquid water and a breathable atmosphere. Potentially habitable.", resources: ['FOOD_SUPPLIES', 'GENETIC_SAMPLES'], icon: '🌍' },
+    TOXIC: { name: "Toxic Jungle", description: "A world teeming with aggressive, alien flora. Rich in unique genetic material.", resources: ['GENETIC_SAMPLES', 'KTHARR_SPICES'], icon: '🌿' },
+    CRYSTAL: { name: "Crystalline Anomaly", description: "A rare world composed of exotic, phase-shifted crystals.", resources: ['VOID_CRYSTALS', 'PHASE_SHIFTED_ALLOY'], icon: '💎' },
+    GAS_GIANT: { name: "Gas Giant", description: "A swirling mass of hydrogen and helium. Ideal for scooping fuel.", resources: ['HYDROGEN_3'], icon: '🪐' }
+};
+
          // --- Ship Classes Database ---
          const SHIP_CLASSES = {
              LIGHT_FREIGHTER: {
@@ -541,36 +694,64 @@
              },
          
              generateChunk(chunkX, chunkY) {
-             const chunkKey = `${chunkX},${chunkY}`;
-             let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
-         
-             for (let y = 0; y < this.CHUNK_SIZE; y++) {
-                 for (let x = 0; x < this.CHUNK_SIZE; x++) {
-                     const worldX = chunkX * this.CHUNK_SIZE + x;
-                     const worldY = chunkY * this.CHUNK_SIZE + y;
-                     const locationKey = `${worldX},${worldY}`;
-         
-                     // First, check if a static location belongs here
-                     if (this.staticLocations.has(locationKey)) {
-                         const location = this.staticLocations.get(locationKey);
-                         chunkData[y][x] = { char: location.type, type: 'location', ...location };
-                     } else {
-                         // If not, generate procedural space
-                         let tile = EMPTY_SPACE_CHAR_VAL;
-                         if (Math.random() < 0.01) {
-                             tile = { char: STAR_CHAR_VAL, type: 'star', richness: Math.random(), scoopedThisVisit: false };
-                         } else if (Math.random() < 0.005) {
-                             tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: Math.random(), minedThisVisit: false };
-                         } else if (Math.random() < WORMHOLE_SPAWN_CHANCE) {
-                             tile = { char: WORMHOLE_CHAR_VAL, type: 'wormhole' };
-                         }
-                         chunkData[y][x] = tile;
-                     }
-                 }
-             }
-             this.loadedChunks[chunkKey] = chunkData;
-             return chunkData;
-         },
+    const chunkKey = `${chunkX},${chunkY}`;
+    let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
+
+    // --- NEW: Sector-Aware Generation ---
+    // 1. Determine which sector this chunk belongs to and get its name.
+    const representativeWorldX = chunkX * this.CHUNK_SIZE;
+    const representativeWorldY = chunkY * this.CHUNK_SIZE;
+    const sectorX = Math.floor(representativeWorldX / SECTOR_SIZE);
+    const sectorY = Math.floor(representativeWorldY / SECTOR_SIZE);
+    const sectorName = generateSectorName(sectorX, sectorY);
+
+    // 2. Set default spawn probabilities.
+    let starChance = 0.01;
+    let asteroidChance = 0.005;
+    let nebulaChance = 0.0; // Default is no nebulas
+
+    // 3. Modify probabilities based on the sector's name.
+    if (sectorName.includes("Belt") || sectorName.includes("Fields") || sectorName.includes("Reach")) {
+        asteroidChance = 0.04; // Much higher chance of asteroids
+    } else if (sectorName.includes("Nebula") || sectorName.includes("Veil") || sectorName.includes("Shroud")) {
+        nebulaChance = 0.20;   // High chance of gas clouds
+        starChance = 0.005;    // Stars are less common/visible in a nebula
+    } else if (sectorName.includes("Badlands") || sectorName.includes("Peril") || sectorName.includes("Hazard")) {
+        asteroidChance = 0.025; // Badlands are often asteroid-heavy
+        // In the future, we could also increase pirate spawn chance here!
+    }
+    // --- END of new logic block ---
+
+    for (let y = 0; y < this.CHUNK_SIZE; y++) {
+        for (let x = 0; x < this.CHUNK_SIZE; x++) {
+            const worldX = chunkX * this.CHUNK_SIZE + x;
+            const worldY = chunkY * this.CHUNK_SIZE + y;
+            const locationKey = `${worldX},${worldY}`;
+
+            if (this.staticLocations.has(locationKey)) {
+                const location = this.staticLocations.get(locationKey);
+                chunkData[y][x] = { char: location.type, type: 'location', ...location };
+            } else {
+                let tile = EMPTY_SPACE_CHAR_VAL;
+                const tileSeed = WORLD_SEED ^ (worldX * 73856093) ^ (worldY * 19349663);
+
+                // 4. Use the (potentially modified) probabilities for generation.
+                if (seededRandom(tileSeed) < starChance) {
+                    tile = { char: STAR_CHAR_VAL, type: 'star', richness: seededRandom(tileSeed + 1), scoopedThisVisit: false };
+                } else if (seededRandom(tileSeed + 2) < asteroidChance) {
+                    tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: seededRandom(tileSeed + 3), minedThisVisit: false };
+                } else if (seededRandom(tileSeed + 3) < nebulaChance) {
+                    tile = { char: NEBULA_CHAR_VAL, type: 'nebula' }; // Add nebula tile
+                } else if (seededRandom(tileSeed + 4) < WORMHOLE_SPAWN_CHANCE) {
+                    tile = { char: WORMHOLE_CHAR_VAL, type: 'wormhole' };
+                }
+                chunkData[y][x] = tile;
+            }
+        }
+    }
+    this.loadedChunks[chunkKey] = chunkData;
+    return chunkData;
+},
          
              getTile(worldX, worldY) {
                  const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
@@ -588,6 +769,13 @@
          
          // --- Global State Variables - Declare globally, instantiate in initializeGame ---
          
+const GAME_STATES = {
+    TITLE_SCREEN: 'title_screen',
+    GALACTIC_MAP: 'galactic_map',
+    SYSTEM_MAP: 'system_map' 
+};
+let currentGameState;
+
          var playerX, playerY, playerFuel, playerCredits, playerShields; 
          var playerShip;
          var playerNotoriety; 
@@ -599,6 +787,9 @@
          var playerXP;    
          var xpToNextLevel; 
          
+const SECTOR_SIZE = 480; // Let's say a sector is a 160x160 tile area.
+var currentSectorX, currentSectorY;
+
          var playerCargo = {}; 
          var currentCargoLoad = 0; 
          
@@ -688,6 +879,9 @@
          prerequisites: { minLevel: 3 }
          }
          ];
+
+
+
          // --- DOM Elements ---
          
          var gameMapElement;
@@ -706,6 +900,11 @@
          var codexCategoriesElement;
          var codexEntriesElement;
          var codexEntryTextElement;   
+
+         var saveButtonElement; 
+         var loadButtonElement; 
+
+         var stardateStatElement; 
          
          function getTileChar(tile) { if (typeof tile === 'object' && tile !== null && tile.char) return tile.char; return tile; }
          
@@ -713,23 +912,22 @@
          
 function logMessage(newMessage) {
     if (!newMessage || newMessage.trim() === "") {
-        // Don't log empty messages, but still render to clear the box if needed.
-        renderGame();
+        render();
         return;
     }
 
-    // Add the new message to the top of the log array
-    messageLog.unshift(newMessage);
+    // Format the stardate and prepend it to the message
+    const timestamp = `<span class="log-datestamp">[SD ${currentGameDate.toFixed(2)}]</span>`;
+    const messageWithTimestamp = `${timestamp}${newMessage}`;
 
-    // If the log is too long, remove the oldest message (from the end)
+    messageLog.unshift(messageWithTimestamp);
+
     if (messageLog.length > MAX_LOG_MESSAGES) {
         messageLog.pop();
     }
 
-    // This line is critical to make sure the UI updates
-    renderGame();
+    render();
 }
-
 
          function calculateXpToNextLevel(level) {
              return Math.floor(BASE_XP_TO_LEVEL * Math.pow(level, XP_LEVEL_EXPONENT)); 
@@ -782,123 +980,359 @@ function logMessage(newMessage) {
              }
          }
          
-         function initializeGame() {
-             
-             chunkManager.initializeStaticLocations();
-         
-             visitedSectors = new Set();
-             scannedObjectTypes = new Set();
-             discoveredLocations = new Set();
-             playerCompletedMissions = new Set();
-             sectorCache = {};
-             playerCargo = {};
-             Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0); 
-             discoveredLoreEntries = new Set();
-             missionsAvailableAtStation = [];
-             gameMapGrid = []; 
-             
-             // --- MODIFIED SECTION START ---
-             // Get references to all the UI elements
-             messageAreaElement = document.getElementById('messageArea');
-             fuelStatElement = document.getElementById('fuelStat');
-             creditsStatElement = document.getElementById('creditsStat');
-             cargoStatElement = document.getElementById('cargoStat');
-             shieldsStatElement = document.getElementById('shieldsStat');
-             hullStatElement = document.getElementById('hullStat');
-             sectorNameStatElement = document.getElementById('sectorNameStat'); 
-             sectorCoordsStatElement = document.getElementById('sectorCoordsStat'); 
-             levelXpStatElement = document.getElementById('levelXpStat'); 
-             shipClassStatElement = document.getElementById('shipClassStat'); 
-             notorietyStatElement = document.getElementById('notorietyStat'); 
-             codexOverlayElement = document.getElementById('codexOverlay');
-             codexCategoriesElement = document.getElementById('codexCategories');
-             codexEntriesElement = document.getElementById('codexEntries');
-             codexEntryTextElement = document.getElementById('codexEntryText');   
-         
-             // New Canvas Setup - Replaces the old gameMapElement and cell creation
-             gameCanvas = document.getElementById('gameCanvas');
-             ctx = gameCanvas.getContext('2d');
-         
-             // Set the canvas resolution based on map size and tile size
-             gameCanvas.width = MAP_WIDTH * TILE_SIZE;
-             gameCanvas.height = MAP_HEIGHT * TILE_SIZE;
-             
-             // Style the canvas to fit the container
-             gameCanvas.style.width = "100%";
-             gameCanvas.style.height = "auto";
-             gameCanvas.style.imageRendering = "pixelated"; // Keeps characters sharp
-         
-             // Set default font styles for drawing on the canvas
-             ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
-             ctx.textAlign = 'center';
-             ctx.textBaseline = 'middle';
-             // --- MODIFIED SECTION END ---
-         
-             playerX = Math.floor(MAP_WIDTH / 2); 
-             playerY = Math.floor(MAP_HEIGHT / 2);
-         
-             playerShip = { 
-                 shipClass: "LIGHT_FREIGHTER",
-                 components: {
-                     weapon: "WEAPON_PULSE_LASER_MK1", 
-                     shield: "SHIELD_BASIC_ARRAY_A", 
-                     engine: "ENGINE_STD_DRIVE_MK1",
-                     scanner: "SCANNER_BASIC_SUITE" 
-                 },
-                 ammo: {}
-             };
-             
-             const startingWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
-             if (startingWeapon.stats.maxAmmo) {
-                 playerShip.ammo[playerShip.components.weapon] = startingWeapon.stats.maxAmmo;
-             }
-         
-             applyPlayerShipStats();             
-             playerFuel = MAX_FUEL; 
-             playerCredits = INITIAL_CREDITS; 
-             playerHull = MAX_PLAYER_HULL; 
-             playerShields = MAX_SHIELDS; 
-             playerNotoriety = 0;
-         
-             updateNotorietyTitle();
-             playerActiveMission = null;
-             currentMissionContext = null; 
-         
-             playerLevel = 1; playerXP = 0; xpToNextLevel = calculateXpToNextLevel(playerLevel);
-             visitedSectors.add("0,0"); 
-         
-             unlockLoreEntry("FACTION_CONCORD"); 
-             unlockLoreEntry("XENO_PRECURSORS"); 
-             unlockLoreEntry("MYSTERY_WAYFINDER_QUEST"); 
-             unlockLoreEntry("REGION_SOL_SECTOR");
-         
-             Object.keys(COMPONENTS_DATABASE).forEach(key => { 
-                 if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
-             });
-              Object.keys(SHIP_CLASSES).forEach(key => {
-                  if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey);
-             });
-         
-             mystery_wayfinder_progress = 0; 
-             mystery_wayfinder_finalLocation = null;
-             mystery_first_nexus_location = null;
-         
-             updateCurrentCargoLoad();
-         
-             currentTradeContext = null; 
-             currentCombatContext = null; 
-             currentOutfitContext = null; 
-             currentEncounterContext = null;
-         
-             logMessage('Welcome, Wayfinder! Use WASD to move.');
-             
-             ;
-         
-         document.body.style.opacity = '1'; 
-         }
-         
-         
-         
+let WORLD_SEED;
+let systemCache = {}; // Add this
+let currentSystemData; // Add this to hold the data of the system we're in
+let currentGameDate; // Add this line
+
+/**
+ * Procedurally generates a unique and persistent star system based on its coordinates.
+ * @param {number} starX - The world X coordinate of the star.
+ * @param {number} starY - The world Y coordinate of the star.
+ * @returns {object} The generated star system data.
+ */
+function generateStarSystem(starX, starY) {
+    const systemKey = `${starX},${starY}`;
+    if (systemCache[systemKey]) {
+        return systemCache[systemKey]; // Return from cache if we've already been here
+    }
+
+    const systemSeed = WORLD_SEED ^ (starX * 19349663) ^ (starY * 73856093);
+    const biomeKeys = Object.keys(PLANET_BIOMES);
+
+    const numPlanets = 2 + Math.floor(seededRandom(systemSeed) * 6); // 2 to 7 planets
+    const planets = [];
+
+    for (let i = 0; i < numPlanets; i++) {
+        const planetSeed = systemSeed + i * 101; // Unique seed for each planet
+        const biomeKey = biomeKeys[Math.floor(seededRandom(planetSeed) * biomeKeys.length)];
+
+        planets.push({
+            name: `Planet ${i + 1}`, // We can make procedural names later
+            biome: PLANET_BIOMES[biomeKey],
+            id: `${systemKey}-${i}`
+        });
+    }
+
+    const systemData = {
+        name: `${currentSectorName} System`,
+        x: starX,
+        y: starY,
+        planets: planets
+    };
+
+    systemCache[systemKey] = systemData; // Save to cache
+    return systemData;
+}
+
+function initializeGame() {
+    chunkManager.initializeStaticLocations();
+
+    visitedSectors = new Set();
+    scannedObjectTypes = new Set();
+    discoveredLocations = new Set();
+    playerCompletedMissions = new Set();
+    sectorCache = {};
+    playerCargo = {};
+    Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
+    discoveredLoreEntries = new Set();
+    missionsAvailableAtStation = [];
+    gameMapGrid = [];
+
+    // --- 1. GET ALL DOM ELEMENTS & SETUP CANVAS ---
+    messageAreaElement = document.getElementById('messageArea');
+    fuelStatElement = document.getElementById('fuelStat');
+    creditsStatElement = document.getElementById('creditsStat');
+    cargoStatElement = document.getElementById('cargoStat');
+    shieldsStatElement = document.getElementById('shieldsStat');
+    hullStatElement = document.getElementById('hullStat');
+    sectorNameStatElement = document.getElementById('sectorNameStat');
+    sectorCoordsStatElement = document.getElementById('sectorCoordsStat');
+    levelXpStatElement = document.getElementById('levelXpStat');
+    shipClassStatElement = document.getElementById('shipClassStat');
+    notorietyStatElement = document.getElementById('notorietyStat');
+    codexOverlayElement = document.getElementById('codexOverlay');
+    codexCategoriesElement = document.getElementById('codexCategories');
+    codexEntriesElement = document.getElementById('codexEntries');
+    codexEntryTextElement = document.getElementById('codexEntryText');
+    stardateStatElement = document.getElementById('stardateStat');
+
+saveButtonElement = document.getElementById('saveButton');
+loadButtonElement = document.getElementById('loadButton');
+
+saveButtonElement.addEventListener('click', saveGame);
+loadButtonElement.addEventListener('click', loadGame);
+
+    gameCanvas = document.getElementById('gameCanvas');
+    ctx = gameCanvas.getContext('2d');
+    gameCanvas.width = MAP_WIDTH * TILE_SIZE;
+    gameCanvas.height = MAP_HEIGHT * TILE_SIZE;
+    gameCanvas.style.width = "100%";
+    gameCanvas.style.height = "auto";
+    gameCanvas.style.imageRendering = "pixelated";
+    ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
+    ctx.textAlign = 'center';
+
+    
+    // --- 3. INITIALIZE PLAYER AND GAME STATE (MOVED UP) ---
+    playerX = Math.floor(MAP_WIDTH / 2);
+    playerY = Math.floor(MAP_HEIGHT / 2);
+    
+    currentSectorX = Math.floor(playerX / SECTOR_SIZE);
+    currentSectorY = Math.floor(playerY / SECTOR_SIZE);
+    currentSectorName = generateSectorName(currentSectorX, currentSectorY);
+
+    playerShip = {
+        shipClass: "LIGHT_FREIGHTER",
+        components: {
+            weapon: "WEAPON_PULSE_LASER_MK1",
+            shield: "SHIELD_BASIC_ARRAY_A",
+            engine: "ENGINE_STD_DRIVE_MK1",
+            scanner: "SCANNER_BASIC_SUITE"
+        },
+        ammo: {}
+    };
+
+    const startingWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+    if (startingWeapon.stats.maxAmmo) {
+        playerShip.ammo[playerShip.components.weapon] = startingWeapon.stats.maxAmmo;
+    }
+
+    applyPlayerShipStats();
+    playerFuel = MAX_FUEL;
+    playerCredits = INITIAL_CREDITS;
+    playerHull = MAX_PLAYER_HULL;
+    playerShields = MAX_SHIELDS;
+    playerNotoriety = 0;
+
+    updateNotorietyTitle();
+    playerActiveMission = null;
+    currentMissionContext = null;
+
+    playerLevel = 1;
+    playerXP = 0;
+    xpToNextLevel = calculateXpToNextLevel(playerLevel);
+    visitedSectors.add("0,0");
+    currentGameDate = 2458.0; // Set the starting date
+
+    unlockLoreEntry("FACTION_CONCORD");
+    unlockLoreEntry("XENO_PRECURSORS");
+    unlockLoreEntry("MYSTERY_WAYFINDER_QUEST");
+    unlockLoreEntry("REGION_SOL_SECTOR");
+
+    Object.keys(COMPONENTS_DATABASE).forEach(key => {
+        if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
+    });
+     Object.keys(SHIP_CLASSES).forEach(key => {
+         if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey);
+    });
+
+    mystery_wayfinder_progress = 0;
+    mystery_wayfinder_finalLocation = null;
+    mystery_first_nexus_location = null;
+
+    updateCurrentCargoLoad();
+
+    currentTradeContext = null;
+    currentCombatContext = null;
+    currentOutfitContext = null;
+    currentEncounterContext = null;
+    
+
+}
+        
+/**
+ * Processes the seed, logs initial messages, and fades out the title screen.
+ * @param {string} seedString - The seed value from the input field.
+ */
+function startGame(seedString) {
+    if (seedString && !isNaN(parseInt(seedString))) {
+        WORLD_SEED = parseInt(seedString);
+    } else if (seedString) {
+        let hash = 0;
+        for (let i = 0; i < seedString.length; i++) {
+            const char = seedString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0;
+        }
+        WORLD_SEED = hash;
+    } else {
+        WORLD_SEED = Math.floor(Math.random() * 99999999);
+    }
+
+    // Hide the title screen
+    const titleOverlay = document.getElementById('titleOverlay');
+    titleOverlay.style.opacity = '0';
+    setTimeout(() => {
+        titleOverlay.style.display = 'none';
+    }, 500); // Wait for fade-out to complete
+
+currentGameState = GAME_STATES.GALACTIC_MAP;
+
+    // Log initial messages and render the game
+    logMessage(`World Seed: ${WORLD_SEED}`);
+    logMessage('Welcome, Wayfinder! Use WASD to move.');
+
+    if (localStorage.getItem('wayfinderSaveData')) {
+        logMessage("Save game found. Press (F7) or use Load button.");
+    }
+
+    // Fade in the main game UI
+    document.getElementById("page-wrapper").style.opacity = "1";
+}
+
+/**
+ * Gathers all critical game state variables and saves them to localStorage.
+ */
+function saveGame() {
+    const gameState = {
+        // Core Player Stats
+        playerX,
+        playerY,
+        playerFuel,
+        playerCredits,
+        playerShields,
+        playerHull,
+        playerNotoriety,
+        playerLevel,
+        playerXP,
+
+        // Player Inventory & Ship
+        playerShip,
+        playerCargo,
+
+        // World & Progress State
+        WORLD_SEED,
+        playerActiveMission,
+        mystery_wayfinder_progress,
+        mystery_wayfinder_finalLocation,
+        mystery_first_nexus_location,
+        
+        // Convert Sets to Arrays for saving, as JSON doesn't support Sets
+        visitedSectors: Array.from(visitedSectors),
+        scannedObjectTypes: Array.from(scannedObjectTypes),
+        discoveredLocations: Array.from(discoveredLocations),
+        playerCompletedMissions: Array.from(playerCompletedMissions),
+        discoveredLoreEntries: Array.from(discoveredLoreEntries)
+    };
+
+    try {
+        const saveString = JSON.stringify(gameState);
+        localStorage.setItem('wayfinderSaveData', saveString);
+        logMessage("Game Saved.");
+    } catch (error) {
+        console.error("Error saving game:", error);
+        logMessage("Failed to save game. See console for details.");
+    }
+}
+
+/**
+ * Loads the game state from localStorage and applies it.
+ */
+function loadGame() {
+    const savedString = localStorage.getItem('wayfinderSaveData');
+
+    if (!savedString) {
+        logMessage("No saved game found.");
+        return;
+    }
+
+    try {
+        const savedState = JSON.parse(savedString);
+
+        // Restore Core Player Stats
+        playerX = savedState.playerX;
+        playerY = savedState.playerY;
+        playerFuel = savedState.playerFuel;
+        playerCredits = savedState.playerCredits;
+        playerShields = savedState.playerShields;
+        playerHull = savedState.playerHull;
+        playerNotoriety = savedState.playerNotoriety;
+        playerLevel = savedState.playerLevel;
+        playerXP = savedState.playerXP;
+
+        // Restore Player Inventory & Ship
+        playerShip = savedState.playerShip;
+        playerCargo = savedState.playerCargo;
+
+        // Restore World & Progress State
+        WORLD_SEED = savedState.WORLD_SEED;
+        playerActiveMission = savedState.playerActiveMission;
+        mystery_wayfinder_progress = savedState.mystery_wayfinder_progress;
+        mystery_wayfinder_finalLocation = savedState.mystery_wayfinder_finalLocation;
+        mystery_first_nexus_location = savedState.mystery_first_nexus_location;
+        
+        // Convert arrays back into Sets
+        visitedSectors = new Set(savedState.visitedSectors);
+        scannedObjectTypes = new Set(savedState.scannedObjectTypes);
+        discoveredLocations = new Set(savedState.discoveredLocations);
+        playerCompletedMissions = new Set(savedState.playerCompletedMissions);
+        discoveredLoreEntries = new Set(savedState.discoveredLoreEntries);
+
+        // --- Crucial Final Step: Refresh game systems with loaded data ---
+        applyPlayerShipStats();
+        updateNotorietyTitle();
+        updateCurrentCargoLoad();
+        xpToNextLevel = calculateXpToNextLevel(playerLevel);
+
+        logMessage("Game Loaded.");
+        handleInteraction(); // Refresh the docked/space message
+        render(); // Redraw the entire game screen
+
+    } catch (error) {
+        console.error("Error loading game:", error);
+        logMessage("Failed to load save data. It may be corrupted.");
+    }
+}
+
+/**
+ * A simple seeded random number generator.
+ * Ensures that the same input 'seed' always produces the same output number.
+ * @param {number} seed - The seed for the generator.
+ * @returns {number} A pseudo-random number between 0 and 1.
+ */
+function seededRandom(seed) {
+    // A simple algorithm to create a predictable pseudo-random number.
+    let x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+}
+
+/**
+ * Generates a procedural and deterministic name for a sector based on its coordinates.
+ * @param {number} sectorX - The x-coordinate of the sector.
+ * @param {number} sectorY - The y-coordinate of the sector.
+ * @returns {string} The generated name for the sector.
+ */
+function generateSectorName(sectorX, sectorY) {
+    if (sectorX === 0 && sectorY === 0) {
+        return "Sol Sector"; // The starting sector should always be the same.
+    }
+
+    // Create a unique seed for this specific sector coordinate pair.
+    const seed = WORLD_SEED + (sectorX * 10000) + sectorY;
+    
+    // Calculate the distance from the origin (0,0) to determine name "tier".
+    const distance = Math.sqrt(sectorX * sectorX + sectorY * sectorY);
+
+    let prefixPool, rootPool;
+
+    if (distance < 10) { // Tier 1: Closer to home, more familiar names.
+        prefixPool = SECTOR_NAME_PARTS.TIER1_PREFIX;
+        rootPool = SECTOR_NAME_PARTS.TIER1_ROOT;
+    } else if (distance < 30) { // Tier 2: The frontier, more exotic names.
+        prefixPool = SECTOR_NAME_PARTS.TIER2_PREFIX;
+        rootPool = SECTOR_NAME_PARTS.TIER2_ROOT;
+    } else { // Tier 3: Deep, uncharted space, ancient and mysterious names.
+        prefixPool = SECTOR_NAME_PARTS.TIER3_PREFIX;
+        rootPool = SECTOR_NAME_PARTS.TIER3_ROOT;
+    }
+
+    // Use the seeded random number to pick a name part from the chosen pools.
+    const prefix = prefixPool[Math.floor(seededRandom(seed) * prefixPool.length)];
+    const root = rootPool[Math.floor(seededRandom(seed + 1) * rootPool.length)]; // Slightly change seed for variety
+
+    return `${prefix} ${root}`;
+}
          
          
          const SECTOR_NAME_PARTS = {
@@ -910,8 +1344,49 @@ function logMessage(newMessage) {
              TIER3_PREFIX: ["Xylos", "Zylos", "Varkos", "Kryll", "Ghor", "Thrax", "Zargon", "Vorlag", "Nyx", "Erebus", "Tartarus", "Styx", "Acheron", "Phlegethon", "Cocytus", "Lethe", "Hades", "Gehenna", "Sheol", "Abaddon", "Apollyon", "Azrael", "Thanatos", "Moros", "Ker", "Keres", "Yama", "Hel", "Niflheim", "Muspelheim", "Jotunheim", "Svartalfheim", "Yomi", "Kur", "Irkalla", "Duat", "Xibalba", "Mictlan", "Naraka", "Patala", "Annwn", "Tuonela", "Adlivun", "Ukhu Pacha", "Chinvat", "Hamistagan", "Pescha", "Arqa", "Diyu"],
              TIER3_ROOT: ["Oblivion", "Annihilation", "Desolation", "Ruin", "Terror", "Horror", "Madness", "Silence", "Emptiness", "Nothingness", "End", "Omega", "Ultima", "Finality", "Doom", "Blight", "Scourge", "Plague", "Curse", "Hex", "Bane", "Wrath", "Fury", "Storm", "Tempest", "Vortex", "Singularity", "Anomaly", "Paradox", "Enigma", "Labyrinth", "Maze", "Prison", "Tomb", "Crypt", "Sepulcher", "Citadel", "Fortress", "Bastion", "Stronghold", "Domain", "Realm", "Kingdom", "Empire", "Cataclysm", "Apocalypse", "Judgement", "Nadir", "Zero"]
          };
+
          
-function renderGame() {
+function renderSystemMap() {
+    const systemView = document.getElementById('systemView');
+    if (!currentSystemData) {
+        systemView.innerHTML = `<h2>Error: No system data loaded.</h2>`;
+        return;
+    }
+
+    let html = `<h2>${currentSystemData.name}</h2>`;
+    html += `<p>System Coordinates: (${currentSystemData.x}, ${currentSystemData.y})</p>`;
+    html += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px;">';
+
+    currentSystemData.planets.forEach(planet => {
+        // --- THIS IS THE MODIFIED LINE ---
+        // We replaced 'width: 150px' with 'flex: 1' to make the cards flexible.
+        html += `
+            <div style="border: 1px solid #303060; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 120px;">
+                <div style="font-size: 40px;">${planet.biome.icon}</div>
+                <div style="font-weight: bold; color: #00E0E0;">${planet.name}</div>
+                <div style="font-size: 12px; color: #8888AA;">${planet.biome.name}</div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    html += `<p style="margin-top: 30px;">(Press 'L' to leave and return to the Galactic Map)</p>`;
+
+    systemView.innerHTML = html;
+}
+
+function render() {
+    switch (currentGameState) {
+        case GAME_STATES.GALACTIC_MAP:
+            renderGalacticMap();
+            break;
+        case GAME_STATES.SYSTEM_MAP:
+            renderSystemMap();
+            break;
+    }
+}
+
+function renderGalacticMap() {
     // --- 1. Calculate the camera/viewport position ---
     const viewportCenterX = Math.floor(MAP_WIDTH / 2);
     const viewportCenterY = Math.floor(MAP_HEIGHT / 2);
@@ -936,7 +1411,9 @@ function renderGame() {
                 case STARBASE_CHAR_VAL: ctx.fillStyle = '#FF88FF'; break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
                 case ASTEROID_CHAR_VAL: ctx.fillStyle = '#FFAA66'; break;
+
                 case NEBULA_CHAR_VAL: ctx.fillStyle = '#DD99FF'; break;
+                
                 case DERELICT_CHAR_VAL: ctx.fillStyle = '#88AACC'; break;
                 case ANOMALY_CHAR_VAL: ctx.fillStyle = '#FF33FF'; break;
                 case WORMHOLE_CHAR_VAL: ctx.fillStyle = '#FFB800'; break;
@@ -974,8 +1451,9 @@ function renderGame() {
     levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`; 
     shipClassStatElement.textContent = SHIP_CLASSES[playerShip.shipClass].name;
     notorietyStatElement.textContent = playerNotorietyTitle; 
-    sectorNameStatElement.textContent = "Deep Space";
+    sectorNameStatElement.textContent = currentSectorName;
     sectorCoordsStatElement.textContent = `(${playerX},${playerY})`;
+    stardateStatElement.textContent = `SD ${currentGameDate.toFixed(2)}`; 
     messageAreaElement.innerHTML = messageLog.join('<br>');
     messageAreaElement.scrollTop = 0; // Always show the newest message
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
@@ -1057,11 +1535,33 @@ function renderGame() {
              playerY += dy;
          
              if (dx !== 0 || dy !== 0) {
-                 playerFuel -= actualFuelPerMove;
-                 playerFuel = parseFloat(playerFuel.toFixed(1));
-                 if (playerFuel < 0) playerFuel = 0;
-             }
+    playerFuel -= actualFuelPerMove;
+    playerFuel = parseFloat(playerFuel.toFixed(1));
+    if (playerFuel < 0) playerFuel = 0;
+    currentGameDate += 0.01; // Time passes with each move
+}
              
+// --- NEW SECTOR DETECTION LOGIC ---
+    const newSectorX = Math.floor(playerX / SECTOR_SIZE);
+    const newSectorY = Math.floor(playerY / SECTOR_SIZE);
+
+    // Check if the calculated new sector is different from the current one.
+    if (newSectorX !== currentSectorX || newSectorY !== currentSectorY) {
+        currentSectorX = newSectorX;
+        currentSectorY = newSectorY;
+        currentSectorName = generateSectorName(currentSectorX, currentSectorY);
+        logMessage(`Now entering the ${currentSectorName} sector.`);
+
+        // Grant XP for discovering a new sector for the first time.
+        const sectorKey = `${currentSectorX},${currentSectorY}`;
+        if (!visitedSectors.has(sectorKey)) {
+            visitedSectors.add(sectorKey);
+            playerXP += XP_PER_NEW_SECTOR_DISCOVERY;
+            logMessage(`<span style='color:#00DD00;'>New Sector Discovered! +${XP_PER_NEW_SECTOR_DISCOVERY} XP!</span>`);
+            checkLevelUp();
+        }
+    }
+
              // This logic will go inside the chunk manager later, but we'll leave it simple for now
              if (Math.random() < PIRATE_ENCOUNTER_CHANCE) {
                  startCombat();
@@ -1113,13 +1613,18 @@ function renderGame() {
                  // It now only creates a message if you are at an interactive object.
                  switch(tileChar){ 
                      case STAR_CHAR_VAL:
-                         bM = `Near star. (H to Scoop Fuel)`; 
-                         unlockLoreEntry("PHENOMENON_STAR"); 
-                         break; 
-                     case ASTEROID_CHAR_VAL:
+    
+    bM = `Near star. (E to Enter System, H to Scoop Fuel)`; 
+    unlockLoreEntry("PHENOMENON_STAR"); 
+    break; ID_CHAR_VAL:
                          bM = `Asteroids. (M to Mine)`; 
                          unlockLoreEntry("PHENOMENON_ASTEROID"); 
                          break;
+
+                             case NEBULA_CHAR_VAL:
+        bM = `Inside a dense gas cloud. Sensors are intermittent.`;
+        unlockLoreEntry("PHENOMENON_NEBULA");
+        break;
                  }
              }
          
@@ -1127,74 +1632,72 @@ function renderGame() {
          }
          
          function scanLocation() { 
-             if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { 
-                 logMessage("Cannot scan now."); 
-                 return; 
-             }
-             
-             // Get the tile from our infinite world. This is our single source of truth.
-             const tileObject = chunkManager.getTile(playerX, playerY);
-         
-             let scanMessage = `Scan Report:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`;
+    if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { 
+        logMessage("Cannot scan now."); 
+        return; 
+    }
+    
+    currentGameDate += 0.05; // Add this line to make scanning advance the clock
+    
+    const tileObject = chunkManager.getTile(playerX, playerY);
+    let scanMessage = `Scan Report:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
+    let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject); 
+    let actionsAvailable = "";
 
-             let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject); 
-             let actionsAvailable = "";
-         
-             // Check if the tile is a pre-defined location.
-             if (tileObject && tileObject.type === 'location') {
-                 scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
-                 scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
-                 
-                 // Check for available services to list them
-                 if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) {
-                     actionsAvailable += "Trade (B/S). ";
-                 }
-                 if (tileObject.isMajorHub) {
-                     actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). ";
-                 }
-                 actionsAvailable += "Leave (L)."
-                 objectTypeForXP = tileObject.name; // Use the specific location name for discovery XP
-         
-             } else { 
-                 // This block handles procedural objects (stars, asteroids, empty space)
-                 const tileChar = getTileChar(tileObject);
-                 switch (tileChar) { 
-                     case EMPTY_SPACE_CHAR_VAL: 
-                         scanMessage += "Vast emptiness. Faint cosmic background radiation.";
-                         objectTypeForXP = 'empty_space';
-                         break;
-                     case STAR_CHAR_VAL: 
-                         scanMessage += `Brilliant ${tileObject.starType || 'star'}.`;
-                         if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
-                         if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
-                         actionsAvailable += "Scoop Fuel (H).";
-                         break;
-                     case ASTEROID_CHAR_VAL: 
-                         scanMessage += `Asteroid field. Type: ${tileObject.asteroidType || 'Unknown'}.`;
-                         if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
-                         actionsAvailable += "Mine Asteroid (M).";
-                         break;
-                     default: 
-                         scanMessage += "Unknown anomaly detected. Sensor readings inconclusive."; 
-                         break;
-                 }
-             }
-         
-             // Add the "Available Actions" section if any were found
-             if (actionsAvailable) {
-                 scanMessage += "\n\nAvailable Actions: " + actionsAvailable;
-             }
-         
-             // Grant XP for first-time scans
-             if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) { 
-                 scannedObjectTypes.add(objectTypeForXP);
-                 playerXP += XP_PER_FIRST_SCAN_TYPE;
-                 scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
-                 checkLevelUp();
-             }
-         
-             logMessage(scanMessage);
-         }
+    if (tileObject && tileObject.type === 'location') {
+        scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
+        scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
+        if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) { actionsAvailable += "Trade (B/S). "; }
+        if (tileObject.isMajorHub) { actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). "; }
+        actionsAvailable += "Leave (L)."
+        objectTypeForXP = tileObject.name;
+    } else { 
+        const tileChar = getTileChar(tileObject);
+        switch (tileChar) { 
+            case EMPTY_SPACE_CHAR_VAL: 
+                scanMessage += "Vast emptiness. Faint cosmic background radiation.";
+                objectTypeForXP = 'empty_space';
+                break;
+            case STAR_CHAR_VAL: 
+                scanMessage += `Brilliant star.`;
+                if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
+                if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
+                actionsAvailable += "Scoop Fuel (H). Enter System (E).";
+                break;
+            case ASTEROID_CHAR_VAL: 
+                scanMessage += `Asteroid field.`;
+                if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
+                actionsAvailable += "Mine Asteroid (M).";
+                break;
+            default: 
+                scanMessage += "Unknown object detected. Sensor readings inconclusive."; 
+                break;
+        }
+    }
+
+    if (actionsAvailable) { scanMessage += "\n\nAvailable Actions: " + actionsAvailable; }
+
+    if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
+        playerActiveMission.objectives.forEach((obj, index) => {
+            const progressKey = `survey_${index}`;
+            const objectiveProgress = playerActiveMission.progress[progressKey];
+            if (objectiveProgress && !objectiveProgress.complete && tileObject.type === obj.targetType && (obj.subtype === "ANY_ANOMALY" || tileObject.subtype === obj.subtype)) {
+                objectiveProgress.complete = true;
+                scanMessage += `\n<span style='color:#00FF00;'>Mission Update: ${obj.subtype} surveyed!</span>`;
+            }
+        });
+        checkMissionObjectiveCompletion();
+    }
+
+    if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) { 
+        scannedObjectTypes.add(objectTypeForXP);
+        playerXP += XP_PER_FIRST_SCAN_TYPE;
+        scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
+        checkLevelUp();
+    }
+
+    logMessage(scanMessage);
+}
          
          function scoopHydrogen() { 
              if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext || currentEncounterContext){logMessage("Cannot scoop fuel now.");;return;}
@@ -1218,6 +1721,7 @@ function renderGame() {
              playerFuel = parseFloat(playerFuel.toFixed(1));
              const aG=playerFuel-oF;
              if(aG>0) {
+                currentGameDate += 0.05; // Scooping takes time
                  logMessage(`Scooped ${aG.toFixed(1)} units of hydrogen.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
                  cT.scoopedThisVisit = true; 
              } else {
@@ -1271,7 +1775,7 @@ function renderGame() {
              } else {
                  minedResourcesMessage = "Mining yielded nothing of value this attempt.";
              }
-           
+             currentGameDate += 0.1; // Mining takes time
              asteroid.minedThisVisit = true;
              logMessage(minedResourcesMessage);
              ;
@@ -1402,7 +1906,7 @@ function renderGame() {
              else{if(qty>(playerCargo[cID]||0))fM=`Not enough ${com.name} to sell.`;else if(qty>iE.stock)fM=`${lD.name} doesn't demand that many.`;else{const tG=pr*qty;playerCredits+=tG;playerCargo[cID]-=qty;iE.stock-=qty;updateCurrentCargoLoad();fM=`Sold ${qty} ${com.name} for ${tG}c.`;const pPU=pr-com.basePrice;if(pPU>0){xAGT=Math.floor(pPU*qty*XP_PER_PROFIT_UNIT);playerXP+=xAGT;updatePlayerNotoriety(Math.floor(tG / 100)); /* + Notoriety for profitable large sales */ fM+=`\n<span style='color:#00FF00;'>+${xAGT} XP for profitable trade!</span>`;checkLevelUp();}}}
              
              currentTradeContext = null; 
-             logMessage(fM, message.includes("LEVEL UP!")); 
+             logMessage(fM); // The check for "LEVEL UP!" is handled by checkLevelUp() itself
              if(!message.includes("LEVEL UP!")) handleInteraction(); 
              ;
          }
@@ -2111,198 +2615,203 @@ function renderGame() {
          }
          
          document.addEventListener('keydown', function(event) {
-             const key = event.key.toLowerCase();
-         
-             // --- Top-level context checks first ---
-         
-             if (codexOverlayElement.style.display === 'flex') { 
-                 if (key === 'escape' || key === 'j') { toggleCodex(false); }
-                 event.preventDefault(); return;
-             }
-             if (currentOutfitContext && currentOutfitContext.step === 'viewingCargo') { 
-                 currentOutfitContext = null; 
-                 handleInteraction(); 
-                 ;
-                 event.preventDefault(); return;
-             }
-             if (currentMissionContext) {
-                 if (currentMissionContext.step === 'selectMission') {
-                     const selection = parseInt(key);
-                     if (!isNaN(selection) && selection > 0 && selection <= currentMissionContext.availableMissions.length) {
-                         displayMissionDetails(selection - 1);
-                     } else if (key === 'l') {
-                         currentMissionContext = null; handleInteraction(); ;
-                     }
-                 } else if (currentMissionContext.step === 'confirmMission') {
-                     if (key === 'y') {
-                         if (!playerActiveMission) { acceptMission(); } 
-                         else { logMessage("Cannot accept: Another mission is already active."); displayMissionBoard(); }
-                     } else if (key === 'n' || key === 'l') {
-                         displayMissionBoard(); 
-                     }
-                 } else if (currentMissionContext.step === 'viewOnlyDetails' || currentMissionContext.step === 'noMissions') {
-                      if (key === 'l') { currentMissionContext = null; handleInteraction(); ; }
-                 }
-                 event.preventDefault(); return;
-             }
-             if (currentOutfitContext) { 
-                 if (currentOutfitContext.step === 'selectSlot') {
-                     if (key === 'y') {
-                         displayShipyard(); actionTaken = true;
-                     }
-                     else if (key === '1') displayComponentsForSlot('weapon');
-                     else if (key === '2') displayComponentsForSlot('shield');
-                     else if (key === '3') displayComponentsForSlot('engine');
-                     else if (key === '4') displayComponentsForSlot('scanner');
-                     else if (key === 'l') { currentOutfitContext = null; handleInteraction(); ; }
-                 } else if (currentOutfitContext.step === 'selectComponent') {
-                     const selection = parseInt(key);
-                     if (!isNaN(selection) && selection > 0 && selection <= currentOutfitContext.availableComponents.length) {
-                         buyComponent(currentOutfitContext.availableComponents[selection - 1].id); 
-                     } else if (key === 'l') {
-                         displayOutfittingScreen(); 
-                     }
-                 }
-                 event.preventDefault(); return;
-             }
-             if (currentTradeContext) { 
-                 if (currentTradeContext.step === 'selectQuantity') { 
-                     if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { 
-                         currentQuantityInput += key; 
-                         const lD = currentTradeContext.locationData; 
-                         const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; 
-                         const itemEntry = itemsList[currentTradeContext.itemIndex]; 
-                         const commodity = COMMODITIES[itemEntry.id]; 
-                         const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); 
-                         let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; 
-                         if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } 
-                         else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } 
-         
-                         promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; 
-                         logMessage(promptMsg); ; 
-                     } else if (key === 'backspace' && currentQuantityInput.length > 0) { 
-                         currentQuantityInput = currentQuantityInput.slice(0, -1); 
-                         const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; logMessage(promptMsg); ; 
-                     } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); 
-                     } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); ; } 
-                 } else if (currentTradeContext.step === 'selectItem') { 
-                     if (!isNaN(parseInt(key))) handleTradeSelection(key); 
-                     else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); ;} 
-                 } 
-                 event.preventDefault();return;  
-             }
-             if (currentCombatContext) { 
-                 if (key === 'f') handleCombatAction('fight'); 
-                 else if (key === 'c') handleCombatAction('charge'); 
-                 else if (key === 'v') handleCombatAction('evade'); 
-                 else if (key === 'r') handleCombatAction('run'); 
-                 event.preventDefault(); return; 
-             }
-             
-             if (currentShipyardContext) {
-                 if (currentShipyardContext.step === 'selectShip') {
-                     const selection = parseInt(key);
-                     if (!isNaN(selection) && selection > 0 && selection <= currentShipyardContext.availableShips.length) {
-                         displayShipPurchaseConfirmation(currentShipyardContext.availableShips[selection - 1].id);
-                     } else if (key === 'l') {
-                         currentShipyardContext = null; handleInteraction(); ;
-                     }
-                 } else if (currentShipyardContext.step === 'confirmPurchase') {
-                     if (key === 'y') {
-                         buyShip();
-                     } else if (key === 'n' || key === 'l') {
-                         displayShipyard();
-                     }
-                 }
-                 event.preventDefault(); return;
-             }
-         
-             // --- General Gameplay (Docked or In Space) ---
-         
-             const currentLocation = getCombinedLocationData(playerY, playerX);
-         
-             let actionTaken = false;
-             let dx = 0, dy = 0;
-             if (currentLocation) { // Player is docked
-                 switch (key) {
-                     case 'b':
-                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
-                             displayTradeScreen('buy'); actionTaken = true;
-                         } else { logMessage("Cannot trade here."); actionTaken = true; } 
-                         break;
-                     case 's': 
-                         if ((currentLocation.sells && currentLocation.sells.length > 0) || (currentLocation.buys && currentLocation.buys.length > 0)) {
-                             displayTradeScreen('sell'); actionTaken = true;
-                         } else { logMessage("Cannot trade here."); actionTaken = true; }
-                         break;
-                     case 'o': 
-                         if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } 
-                         else { logMessage("Ship outfitting not available here."); actionTaken = true; }
-                         break;
-                     case 'k':
-                         if (currentLocation.isMajorHub) { 
-                             displayMissionBoard(); 
-                             actionTaken = true; 
-                         } else { 
-                             logMessage("No mission board available at this remote outpost."); 
-                             actionTaken = true; 
-                         }
-                         break;
-                     case 'c': // Complete Delivery
-                         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
-                             handleCompleteDelivery(); actionTaken = true;
-                         }
-                         break;
-                     case 'g': // Grant mission rewards / Turn in
-                         if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                             grantMissionRewards(); actionTaken = true;
-                         }
-                         break;
-                     case 'l': 
-                         if (currentMissionContext || currentOutfitContext || currentTradeContext) {
-                             currentMissionContext = null; currentOutfitContext = null; currentTradeContext = null; currentQuantityInput = "";
-                         }
-                         handleInteraction(); actionTaken = true; 
-                         break;
-                     case 'y': // Shipyard
-                         if (currentLocation.isMajorHub) {
-                             displayShipyard();
-                             actionTaken = true;
-                         }
-                         break;
-                 }
-             }
-         
-             if (actionTaken) {
-                 ;
-                 event.preventDefault();
-                 return;
-             }
-         
-             // If no docked action was taken, or not docked, process movement and other global keys
-         
-             switch(key){
-                 case 'w':case 'arrowup':dy=-1;break; 
-                 case 's':case 'arrowdown':dy=1;break; 
-                 case 'a':case 'arrowleft':dx=-1;break; 
-                 case 'd':case 'arrowright':dx=1;break;
-                 case 'e':scanLocation();break; 
-                 case 'h': scoopHydrogen(); break; 
-                 case 'm': mineAsteroid(); break; 
-                 case 'j': toggleCodex(true); break; 
-                 case 'i': displayCargoHold(); break; 
-         case 't': 
-         const cT = chunkManager.getTile(playerX, playerY); // This is the new, correct line
-         if(getTileType(cT)==='wormhole')traverseWormhole();
-         else logMessage("No wormhole here.");
-         break;
-                 default:return; 
-             }
-             if(dx!==0||dy!==0)movePlayer(dx,dy); else ; 
-             event.preventDefault();
-         });
+
+    // --- STATE: GALACTIC MAP ---
+    if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+        const key = event.key.toLowerCase();
+
+        // --- 1. BLOCKING CONTEXTS (Menus, Overlays, etc.) ---
+        // These are checked first to prevent other actions.
+        if (codexOverlayElement.style.display === 'flex') { 
+            if (key === 'escape' || key === 'j') { toggleCodex(false); }
+            event.preventDefault(); return;
+        }
+        if (currentOutfitContext && currentOutfitContext.step === 'viewingCargo') { 
+            currentOutfitContext = null; 
+            handleInteraction(); 
+            event.preventDefault(); return;
+        }
+        if (currentMissionContext) {
+            if (currentMissionContext.step === 'selectMission') {
+                const selection = parseInt(key);
+                if (!isNaN(selection) && selection > 0 && selection <= currentMissionContext.availableMissions.length) {
+                    displayMissionDetails(selection - 1);
+                } else if (key === 'l') {
+                    currentMissionContext = null; handleInteraction();
+                }
+            } else if (currentMissionContext.step === 'confirmMission') {
+                if (key === 'y') {
+                    if (!playerActiveMission) { acceptMission(); } 
+                    else { logMessage("Cannot accept: Another mission is already active."); displayMissionBoard(); }
+                } else if (key === 'n' || key === 'l') {
+                    displayMissionBoard(); 
+                }
+            } else if (currentMissionContext.step === 'viewOnlyDetails' || currentMissionContext.step === 'noMissions') {
+                 if (key === 'l') { currentMissionContext = null; handleInteraction(); }
+            }
+            event.preventDefault(); return;
+        }
+        if (currentOutfitContext) { 
+            if (currentOutfitContext.step === 'selectSlot') {
+                if (key === '1') displayComponentsForSlot('weapon');
+                else if (key === '2') displayComponentsForSlot('shield');
+                else if (key === '3') displayComponentsForSlot('engine');
+                else if (key === '4') displayComponentsForSlot('scanner');
+                else if (key === 'l') { currentOutfitContext = null; handleInteraction(); }
+            } else if (currentOutfitContext.step === 'selectComponent') {
+                const selection = parseInt(key);
+                if (!isNaN(selection) && selection > 0 && selection <= currentOutfitContext.availableComponents.length) {
+                    buyComponent(currentOutfitContext.availableComponents[selection - 1].id); 
+                } else if (key === 'l') {
+                    displayOutfittingScreen(); 
+                }
+            }
+            event.preventDefault(); return;
+        }
+        if (currentTradeContext) { 
+            if (currentTradeContext.step === 'selectQuantity') { 
+                if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) { 
+                    currentQuantityInput += key; 
+                    const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; logMessage(promptMsg); 
+                } else if (key === 'backspace' && currentQuantityInput.length > 0) { 
+                    currentQuantityInput = currentQuantityInput.slice(0, -1); 
+                    const lD = currentTradeContext.locationData; const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys; const itemEntry = itemsList[currentTradeContext.itemIndex]; const commodity = COMMODITIES[itemEntry.id]; const price = calculatePrice(commodity.basePrice, itemEntry.priceMod); let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`; if (currentTradeContext.mode === 'buy') { promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`; } else {  promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`; } promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`; logMessage(promptMsg); 
+                } else if (key === 'enter') { handleTradeQuantity(currentQuantityInput || "0"); 
+                } else if (key === 'l') { currentTradeContext = null; currentQuantityInput = ""; handleInteraction(); } 
+            } else if (currentTradeContext.step === 'selectItem') { 
+                if (!isNaN(parseInt(key))) handleTradeSelection(key); 
+                else if (key === 'l') {currentTradeContext = null; currentQuantityInput = ""; handleInteraction();} 
+            } 
+            event.preventDefault();return;  
+        }
+        if (currentCombatContext) { 
+            if (key === 'f') handleCombatAction('fight'); 
+            else if (key === 'c') handleCombatAction('charge'); 
+            else if (key === 'v') handleCombatAction('evade'); 
+            else if (key === 'r') handleCombatAction('run'); 
+            event.preventDefault(); return; 
+        }
+        if (currentShipyardContext) {
+            if (currentShipyardContext.step === 'selectShip') {
+                const selection = parseInt(key);
+                if (!isNaN(selection) && selection > 0 && selection <= currentShipyardContext.availableShips.length) {
+                    displayShipPurchaseConfirmation(currentShipyardContext.availableShips[selection - 1].id);
+                } else if (key === 'l') {
+                    currentShipyardContext = null; handleInteraction();
+                }
+            } else if (currentShipyardContext.step === 'confirmPurchase') {
+                if (key === 'y') {
+                    buyShip();
+                } else if (key === 'n' || key === 'l') {
+                    displayShipyard();
+                }
+            }
+            event.preventDefault(); return;
+        }
+
+        // --- 2. DOCKED ACTIONS ---
+        const currentLocation = getCombinedLocationData(playerY, playerX);
+        let actionTaken = false;
+        if (currentLocation) {
+            switch (key) {
+                case 'b': displayTradeScreen('buy'); actionTaken = true; break;
+                case 's': displayTradeScreen('sell'); actionTaken = true; break;
+                case 'o': if (currentLocation.isMajorHub) { displayOutfittingScreen(); actionTaken = true; } break;
+                case 'k': if (currentLocation.isMajorHub) { displayMissionBoard(); actionTaken = true; } break;
+                case 'y': if (currentLocation.isMajorHub) { displayShipyard(); actionTaken = true; } break;
+                case 'c': if (playerActiveMission && playerActiveMission.type === "DELIVERY") { handleCompleteDelivery(); actionTaken = true; } break;
+                case 'g': if (playerActiveMission && playerActiveMission.isComplete) { grantMissionRewards(); actionTaken = true; } break;
+                case 'l': handleInteraction(); actionTaken = true; break;
+            }
+        }
+        if (actionTaken) { event.preventDefault(); return; }
+
+        // --- 3. IN-SPACE & GLOBAL ACTIONS ---
+        let dx = 0, dy = 0;
+        switch(key){
+            case 'w': case 'arrowup': dy = -1; break; 
+            case 's': case 'arrowdown': dy = 1; break; 
+            case 'a': case 'arrowleft': dx = -1; break; 
+            case 'd': case 'arrowright': dx = 1; break;
+            case 'e':
+    const currentTile = chunkManager.getTile(playerX, playerY);
+    const tileChar = getTileChar(currentTile); // Add this missing line
+
+    if (tileChar === STAR_CHAR_VAL) {
+        // Generate (or load from cache) the star system for the player's location
+        currentSystemData = generateStarSystem(playerX, playerY);
+
+        // Change the game state
+        currentGameState = GAME_STATES.SYSTEM_MAP;
+        
+        // Update the display
+        document.getElementById('gameCanvas').style.display = 'none';
+        document.getElementById('systemView').style.display = 'block';
+
+        logMessage(`Entering ${currentSystemData.name}...`);
+        render();
+    } else {
+        // Perform a normal scan
+        scanLocation();
+    }
+    S
+                break;
+            case 'h': scoopHydrogen(); break; 
+            case 'm': mineAsteroid(); break; 
+            case 'j': toggleCodex(true); break; 
+            case 'i': displayCargoHold(); break; 
+            case 't': 
+                const tileForWormhole = chunkManager.getTile(playerX, playerY);
+                if(getTileType(tileForWormhole) === 'wormhole') traverseWormhole();
+                else logMessage("No wormhole here.");
+                break;
+            case 'f6': saveGame(); break;
+            case 'f7': loadGame(); break;
+            default: return; 
+        }
+
+        if(dx !== 0 || dy !== 0) movePlayer(dx, dy);
+        event.preventDefault();
+
+    // --- STATE: SYSTEM MAP ---
+    } else if (currentGameState === GAME_STATES.SYSTEM_MAP) {
+        const key = event.key.toLowerCase();
+        if (key === 'l') {
+            currentGameState = GAME_STATES.GALACTIC_MAP;
+            document.getElementById('systemView').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            handleInteraction();
+            render();
+        }
+    }
+});
+
          document.addEventListener('DOMContentLoaded', initializeGame);
          
+// --- Title Screen Event Listeners ---
+document.addEventListener('DOMContentLoaded', () => {
+    const startButton = document.getElementById('startButton');
+    const randomSeedButton = document.getElementById('randomSeedButton');
+    const seedInput = document.getElementById('seedInput');
+
+    // Start the game when the "Embark" button is clicked
+    startButton.addEventListener('click', () => {
+        startGame(seedInput.value);
+    });
+
+    // Also start the game if Enter is pressed in the input field
+    seedInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            startGame(seedInput.value);
+        }
+    });
+
+    // Generate a random seed and put it in the input field
+    randomSeedButton.addEventListener('click', () => {
+        seedInput.value = Math.floor(Math.random() * 99999999);
+    });
+});
+
          document.getElementById("codexCloseButton")
          .addEventListener("click", () => toggleCodex(false));
          
