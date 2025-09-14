@@ -771,6 +771,25 @@ const PLANET_BIOMES = {
              }
          };
          
+        // --- Pirate Ship Classes Database ---
+         const PIRATE_SHIP_CLASSES = {
+             RAIDER: {
+                 name: "Raider",
+                 baseHull: 60,
+                 baseShields: 20
+             },
+             STRIKER: {
+                 name: "Striker",
+                 baseHull: 45,
+                 baseShields: 35
+             },
+             BRUISER: {
+                 name: "Bruiser",
+                 baseHull: 80,
+                 baseShields: 15
+             }
+         };
+
          // --- Ship Components Database ---
          const COMPONENTS_DATABASE = {
              WEAPON_PULSE_LASER_MK1: { name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", description: "Standard issue civilian pulse laser. Reliable but low power.", cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "LORE_COMP_PULSE_LASER" },
@@ -1369,11 +1388,12 @@ function renderCombatView() {
             </div>
 
             <!-- Pirate Panel -->
-            <div class="combatant-panel">
-                <h3><img src="assets/pirate.png" alt="Pirate Vessel" class="combatant-icon">Pirate Vessel</h3>
+             <div class="combatant-panel">
+                <h3><img src="assets/pirate.png" alt="Pirate Vessel" class="combatant-icon">Hostile Ship</h3>
+                <div class="ship-class-label">${currentCombatContext.ship.name}</div>
                 <div class="stat-bar-label"><span>Shields</span><span>${currentCombatContext.pirateShields} / ${currentCombatContext.pirateMaxShields}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill shield-bar-fill" style="width: ${pirateShieldPercent}%;"></div></div>
-
+                
                 <div class="stat-bar-label"><span>Hull</span><span>${Math.max(0, currentCombatContext.pirateHull)} / ${currentCombatContext.pirateMaxHull}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill pirate-hull-bar-fill" style="width: ${pirateHullPercent}%;"></div></div>
             </div>
@@ -2420,23 +2440,30 @@ if (!leveledUp) {
     }
     return false; // <-- And this
 }
+function startCombat() {
+             // --- NEW: Randomly select a pirate ship class ---
+             const pirateShipKeys = Object.keys(PIRATE_SHIP_CLASSES);
+             const randomShipKey = pirateShipKeys[Math.floor(Math.random() * pirateShipKeys.length)];
+             const pirateShip = PIRATE_SHIP_CLASSES[randomShipKey];
 
-         function startCombat() {
-    const pirateMaxHull = PIRATE_BASE_HULL_MIN + Math.floor(Math.random() * (PIRATE_BASE_HULL_MAX - PIRATE_BASE_HULL_MIN + 1));
-    const pirateMaxShields = PIRATE_BASE_SHIELDS_MIN + Math.floor(Math.random() * (PIRATE_BASE_SHIELDS_MAX - PIRATE_BASE_SHIELDS_MIN + 1));
-    currentCombatContext = {
-        pirateShields: pirateMaxShields,
-        pirateMaxShields: pirateMaxShields,
-        pirateHull: pirateMaxHull,
-        pirateMaxHull: pirateMaxHull
-    };
+             // --- Use the ship's stats as a base for the enemy ---
+             const pirateMaxHull = pirateShip.baseHull + Math.floor(Math.random() * 10) - 5; // Add some variance
+             const pirateMaxShields = pirateShip.baseShields + Math.floor(Math.random() * 10) - 5;
 
-    const taunts = ["Your cargo or your life, spacer!", "Heh, fresh meat for the void!", "This sector is ours! Pay the toll!"];
-    const pirateTaunt = taunts[Math.floor(Math.random() * taunts.length)];
+             currentCombatContext = {
+                 ship: pirateShip, // Store the chosen ship data
+                 pirateShields: Math.max(10, pirateMaxShields),
+                 pirateMaxShields: Math.max(10, pirateMaxShields),
+                 pirateHull: Math.max(20, pirateMaxHull),
+                 pirateMaxHull: Math.max(20, pirateMaxHull)
+             };
 
-    changeGameState(GAME_STATES.COMBAT);
-    logMessage(`"${pirateTaunt}"\nHostile Pirate encountered!`);
-} 
+             const taunts = ["Your cargo or your life, spacer!", "Heh, fresh meat for the void!", "This sector is ours! Pay the toll!"];
+             const pirateTaunt = taunts[Math.floor(Math.random() * taunts.length)];
+
+             changeGameState(GAME_STATES.COMBAT);
+             logMessage(`"${pirateTaunt}"\nHostile Pirate encountered!`);
+         }
          
 function handleCombatAction(action) {
     if (!currentCombatContext) return;
