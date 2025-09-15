@@ -662,6 +662,8 @@
          const PIRATE_CHAR_VAL = 'X'; const DERELICT_CHAR_VAL = 'D'; 
          const ANOMALY_CHAR_VAL = '?'; const WORMHOLE_CHAR_VAL = 'W'; 
          const NEXUS_CHAR_VAL = '&';
+
+         const DERELICT_SPAWN_CHANCE = 0.004; // (Feel free to tweak!)
          
          var MAX_FUEL;     
          const INITIAL_CREDITS = 1000;
@@ -672,6 +674,8 @@
          var playerHull; 
          
          const HULL_REPAIR_COST_PER_POINT = 5;
+
+         const BIOLOGICAL_RESOURCES = new Set(['GENETIC_SAMPLES', 'KTHARR_SPICES', 'FOOD_SUPPLIES', 'SENTIENT_MYCELIUM']);
 
          const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
          const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
@@ -698,6 +702,8 @@
          const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 18; 
          const SCOOP_RANDOM_BONUS = 4; 
          
+         const ANOMALY_SPAWN_CHANCE = 0.0005; // (Feel free to tweak!)
+
          const OUTPOST_SPAWN_CHANCE = 0.0008; 
          const WORMHOLE_SPAWN_CHANCE = 0.00003; 
          const WORMHOLE_TRAVEL_FUEL_COST = 20;
@@ -941,34 +947,28 @@ const PLANET_BIOMES = {
                  }
              },
          
-             generateChunk(chunkX, chunkY) {
+generateChunk(chunkX, chunkY) {
          const chunkKey = `${chunkX},${chunkY}`;
          let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE).fill(null));
          
-         // --- NEW: Sector-Aware Generation ---
-         // 1. Determine which sector this chunk belongs to and get its name.
          const representativeWorldX = chunkX * this.CHUNK_SIZE;
          const representativeWorldY = chunkY * this.CHUNK_SIZE;
          const sectorX = Math.floor(representativeWorldX / SECTOR_SIZE);
          const sectorY = Math.floor(representativeWorldY / SECTOR_SIZE);
          const sectorName = generateSectorName(sectorX, sectorY);
          
-         // 2. Set default spawn probabilities.
          let starChance = 0.01;
          let asteroidChance = 0.005;
-         let nebulaChance = 0.0; // Default is no nebulas
+         let nebulaChance = 0.0; 
          
-         // 3. Modify probabilities based on the sector's name.
          if (sectorName.includes("Belt") || sectorName.includes("Fields") || sectorName.includes("Reach")) {
-         asteroidChance = 0.04; // Much higher chance of asteroids
+         asteroidChance = 0.04; 
          } else if (sectorName.includes("Nebula") || sectorName.includes("Veil") || sectorName.includes("Shroud")) {
-         nebulaChance = 0.20;   // High chance of gas clouds
-         starChance = 0.005;    // Stars are less common/visible in a nebula
+         nebulaChance = 0.20;   
+         starChance = 0.005;    
          } else if (sectorName.includes("Badlands") || sectorName.includes("Peril") || sectorName.includes("Hazard")) {
-         asteroidChance = 0.025; // Badlands are often asteroid-heavy
-         // In the future, we could also increase pirate spawn chance here!
+         asteroidChance = 0.025; 
          }
-         // --- END of new logic block ---
          
          for (let y = 0; y < this.CHUNK_SIZE; y++) {
          for (let x = 0; x < this.CHUNK_SIZE; x++) {
@@ -979,11 +979,10 @@ const PLANET_BIOMES = {
             if (this.staticLocations.has(locationKey)) {
                 const location = this.staticLocations.get(locationKey);
                 chunkData[y][x] = { char: location.type, type: 'location', ...location };
-             } else {
+            } else {
                 let tile = EMPTY_SPACE_CHAR_VAL;
                 const tileSeed = WORLD_SEED ^ (worldX * 73856093) ^ (worldY * 19349663);
          
-                // 4. Use the (potentially modified) probabilities for generation.
                 if (seededRandom(tileSeed) < starChance) {
                     tile = { char: STAR_CHAR_VAL, type: 'star', richness: seededRandom(tileSeed + 1), scoopedThisVisit: false };
                 } else if (seededRandom(tileSeed + 2) < asteroidChance) {
@@ -993,15 +992,11 @@ const PLANET_BIOMES = {
                 } else if (seededRandom(tileSeed + 5) < WORMHOLE_SPAWN_CHANCE) {
                     tile = { char: WORMHOLE_CHAR_VAL, type: 'wormhole' };
                 } else if (seededRandom(tileSeed + 6) < OUTPOST_SPAWN_CHANCE) {
-                    // NEW: Procedural Outpost Generation
                     const outpostSeed = tileSeed + 7;
                     const outpostName = `Outpost ${String.fromCharCode(65 + Math.floor(seededRandom(outpostSeed) * 26))}-${Math.floor(seededRandom(outpostSeed+1) * 999)}`;
                     tile = {
-                        char: OUTPOST_CHAR_VAL,
-                        type: 'location',
-                        name: outpostName,
-                        faction: "INDEPENDENT",
-                        isMajorHub: false,
+                        char: OUTPOST_CHAR_VAL, type: 'location', name: outpostName,
+                        faction: "INDEPENDENT", isMajorHub: false,
                         sells: [
                             { id: "FUEL_CELLS", priceMod: 1.5, stock: 20 + Math.floor(seededRandom(outpostSeed+2) * 30) },
                             { id: "TECH_PARTS", priceMod: 1.3, stock: 5 + Math.floor(seededRandom(outpostSeed+3) * 10) }
@@ -1011,6 +1006,20 @@ const PLANET_BIOMES = {
                             { id: "FOOD_SUPPLIES", priceMod: 0.8, stock: 20 + Math.floor(seededRandom(outpostSeed+5) * 40) }
                         ],
                         scanFlavor: "A small, automated independent outpost. It offers basic supplies at a markup and buys local resources."
+                    };
+                } else if (seededRandom(tileSeed + 8) < ANOMALY_SPAWN_CHANCE) {
+                    tile = { 
+                        char: ANOMALY_CHAR_VAL, 
+                        type: 'anomaly', 
+                        subtype: 'unstable warp pocket',
+                        studied: false 
+                    };
+                } else if (seededRandom(tileSeed + 9) < DERELICT_SPAWN_CHANCE) {
+                    // --- NEW DERELICT LOGIC ---
+                    tile = { 
+                        char: DERELICT_CHAR_VAL, 
+                        type: 'derelict', 
+                        studied: false // This will track if we've salvaged it
                     };
                 }
                 chunkData[y][x] = tile;
@@ -1315,15 +1324,24 @@ function renderContextualActions(actions) {
     render(); // Re-render the screen for the new state
 }
          
-         function renderPlanetView() {
+ function renderPlanetView() {
     const planetView = document.getElementById('planetView');
     const planet = currentSystemData.planets[selectedPlanetIndex];
     
-    // Check if the planet has mineable resources
-    const canMine = planet.biome.landable && planet.biome.resources && planet.biome.resources.length > 0;
+    // --- NEW LOGIC: Check for both resource types ---
+    const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
+    const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
+
+    const canMine = planet.biome.landable && mineralResources.length > 0;
     const mineButton = canMine
-        ? `<li><button class="action-button" onclick="minePlanet()">Mine for Resources</button></li>`
-        : `<li><button class="action-button" disabled>No Mineable Resources</button></li>`;
+        ? `<li><button class="action-button" onclick="minePlanet()">Mine for Minerals</button></li>`
+        : `<li><button class="action-button" disabled>No Mineral Deposits</button></li>`;
+
+    const canScan = planet.biome.landable && bioResources.length > 0;
+    const scanButton = canScan
+        ? `<li><button class="action-button" onclick="scanPlanetForLife()">Scan for Lifeforms</button></li>`
+        : `<li><button class="action-button" disabled>No Biological Signs</button></li>`;
+    // --- END NEW LOGIC ---
 
     let html = `
     <div class="planet-view-content">
@@ -1338,7 +1356,7 @@ function renderContextualActions(actions) {
             <h3>Available Actions:</h3>
             <ul>
                 ${mineButton}
-                <li><button class="action-button" disabled>Scan for Lifeforms (Coming Soon)</button></li>
+                ${scanButton}
                 <li><button class="action-button" disabled>Establish Colony (Coming Soon)</button></li>
             </ul>
         </div>
@@ -2107,11 +2125,9 @@ function handleInteraction() {
     let availableActions = []; // This new array will hold our button actions
 
     if (tileObject && tileObject.type === 'location') {
-        // --- This block handles being docked at a station or outpost ---
         const location = tileObject;
         bM = `Arrived at ${location.name}.`;
 
-        // Build the actions array for locations
         if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
             availableActions.push({ label: 'Buy', key: 'b', onclick: () => displayTradeScreen('buy') });
             availableActions.push({ label: 'Sell', key: 's', onclick: () => displayTradeScreen('sell') });
@@ -2122,7 +2138,6 @@ function handleInteraction() {
             availableActions.push({ label: 'Shipyard', key: 'y', onclick: displayShipyard });
         }
 
-        // --- NEW: Add Repair button if hull is damaged ---
         if (playerHull < MAX_PLAYER_HULL) {
             const hullToRepair = MAX_PLAYER_HULL - playerHull;
             const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
@@ -2133,7 +2148,6 @@ function handleInteraction() {
             });
         }
         
-        // Add mission completion buttons if applicable
         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete && location.name === playerActiveMission.objectives[0].destinationName) {
             availableActions.push({ label: 'Complete Delivery', key: 'c', onclick: handleCompleteDelivery });
         }
@@ -2141,11 +2155,9 @@ function handleInteraction() {
             availableActions.push({ label: 'Get Reward', key: 'g', onclick: grantMissionRewards });
         }
 
-        // --- MODIFIED: Refueling and discovery XP logic ---
         if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
             playerFuel = MAX_FUEL;
             playerShields = MAX_SHIELDS;
-            // Hull is NO LONGER repaired for free!
             bM += `\nFuel and Shields recharged.`;
             applyPlayerShipStats();
         }
@@ -2158,7 +2170,6 @@ function handleInteraction() {
         }
 
     } else {
-        // --- This block handles being in empty space (no change) ---
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 bM = `Near star.`;
@@ -2176,7 +2187,7 @@ function handleInteraction() {
                 break;
             case NEBULA_CHAR_VAL:
                 bM = `Inside a dense gas cloud. Sensors are intermittent.`;
-                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen }); // Now works
+                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen });
                 unlockLoreEntry("PHENOMENON_NEBULA");
                 break;
             case WORMHOLE_CHAR_VAL:
@@ -2184,47 +2195,63 @@ function handleInteraction() {
                 availableActions.push({ label: 'Traverse', key: 't', onclick: traverseWormhole });
                 unlockLoreEntry("PHENOMENON_WORMHOLE");
                 break;
+            case ANOMALY_CHAR_VAL:
+                bM = `You've entered the unstable anomaly!`;
+                if (tileObject.studied) {
+                    bM = "This anomaly has dissipated.";
+                } else {
+                    handleAnomalyEncounter(tileObject); // This stays
+                }
+                unlockLoreEntry("XENO_ANOMALIES");
+                break;
+            case DERELICT_CHAR_VAL:
+                // --- NEW DERELICT INTERACTION ---
+                bM = "You approach the dark hull of the derelict ship..."; // Base message
+                if (tileObject.studied) {
+                    bM = "You drift past the salvaged wreck.";
+                } else {
+                    handleDerelictEncounter(tileObject); // Trigger the encounter!
+                }
+                unlockLoreEntry("XENO_DERELICTS"); // Also unlock the codex entry
+                break;
         }
     }
 
-    // Finally, update the UI with the message and the new buttons
     logMessage(bM);
     renderContextualActions(availableActions);
 }
          
-         function scanLocation() {
+function scanLocation() {
     if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
         logMessage("Cannot scan now.");
         return;
     }
 
-    advanceGameTime(0.05);
+    advanceGameTime(0.05); // Use new time function
 
-    // --- NEW: Get scanner info ---
     const scanner = COMPONENTS_DATABASE[playerShip.components.scanner];
     const scanBonus = scanner.stats.scanBonus || 0;
 
     const tileObject = chunkManager.getTile(playerX, playerY);
-    let scanMessage = `Scan Report:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`;
+    let scanMessage = `Scan Report:\nPlayer Shields: ${Math.floor(playerShields)}/${MAX_SHIELDS}. Hull: ${Math.floor(playerHull)}/${MAX_PLAYER_HULL}.\n`;
     let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject);
     let actionsAvailable = "";
 
     if (tileObject && tileObject.type === 'location') {
-        // --- Location Scan (no change) ---
         scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
         scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
         if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) { actionsAvailable += "Trade (B/S). "; }
         if (tileObject.isMajorHub) { actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). "; }
+        if (playerHull < MAX_PLAYER_HULL) { actionsAvailable += "Repair (R). "; }
         actionsAvailable += "Leave (L)."
         objectTypeForXP = tileObject.name;
 
     } else {
-        // --- In-Space Scan (UPGRADED) ---
         const tileChar = getTileChar(tileObject);
         switch (tileChar) {
             case EMPTY_SPACE_CHAR_VAL:
                 scanMessage += "Vast emptiness. Faint cosmic background radiation.";
-                if (scanBonus > 0 && Math.random() < (scanBonus * 2)) { // Give a little bonus flavor
+                if (scanBonus > 0 && Math.random() < (scanBonus * 2)) {
                     scanMessage += "\n<span style='color:#FFFF99;'>Detailed Scan: Trace signature detected... faint energy echo... probably nothing.</span>";
                 }
                 objectTypeForXP = 'empty_space';
@@ -2243,7 +2270,7 @@ function handleInteraction() {
                 scanMessage += `Asteroid field.`;
                 if (scanBonus > 0) {
                     let densityDesc = (tileObject.density > 0.6) ? "High" : (tileObject.density > 0.3) ? "Moderate" : "Low";
-                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Field density is ${densityDesc}. Common minerals present.</span>`;
+                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Field density is ${densityDesc}.</span>`;
                 }
                 if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
                 actionsAvailable += "Mine Asteroid (M).";
@@ -2255,6 +2282,23 @@ function handleInteraction() {
                 }
                 actionsAvailable += "Scoop Fuel (H).";
                 break;
+            case ANOMALY_CHAR_VAL:
+                scanMessage += `Unstable energy readings.`;
+                if (tileObject.studied) {
+                     scanMessage += "\n<span style='color:#999999;'>The anomaly appears to have dissipated.</span>";
+                } else if (scanBonus > 0) {
+                    scanMessage += `\n<span style='color:#FF33FF;'>Detailed Scan: ${tileObject.subtype}. Highly volatile. Interaction is possible but dangerous.</span>`;
+                }
+                break;
+            case DERELICT_CHAR_VAL:
+                // --- NEW DERELICT SCAN ---
+                scanMessage += `A silent, drifting ship hulk. It appears powerless.`;
+                if (tileObject.studied) {
+                     scanMessage += "\n<span style='color:#999999;'>You've already salvaged this wreck.</span>";
+                } else if (scanBonus > 0) {
+                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Hull breaches detected. Life signs... negative. Potential salvage.</span>`;
+                }
+                break;
             default:
                 scanMessage += "Unknown object detected. Sensor readings inconclusive.";
                 break;
@@ -2263,7 +2307,6 @@ function handleInteraction() {
 
     if (actionsAvailable) { scanMessage += "\n\nAvailable Actions: " + actionsAvailable; }
 
-    // --- Mission Logic (no change) ---
     if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
         playerActiveMission.objectives.forEach((obj, index) => {
             const progressKey = `survey_${index}`;
@@ -2276,7 +2319,6 @@ function handleInteraction() {
         checkMissionObjectiveCompletion();
     }
 
-    // --- XP Logic (no change) ---
     if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) {
         scannedObjectTypes.add(objectTypeForXP);
         playerXP += XP_PER_FIRST_SCAN_TYPE;
@@ -2287,21 +2329,79 @@ function handleInteraction() {
     logMessage(scanMessage);
 }
 
-
 /**
- * Handles the logic for mining resources on a planet's surface.
+ * Handles the logic for scanning a planet for biological lifeforms and samples.
+ */
+function scanPlanetForLife() {
+    if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    
+    // NEW: Filter for *only* biological resources
+    const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
+
+    if (bioResources.length === 0) {
+        logMessage("No viable biological signatures detected.");
+        return;
+    }
+    
+    // Check for cargo space
+    if (currentCargoLoad + 1 > PLAYER_CARGO_CAPACITY) { // Check for at least 1 unit
+        logMessage("Scan complete, but no cargo space to store samples.");
+        return;
+    }
+
+    let scanMessage = "Biological scan yields:\n";
+    let foundSomething = false;
+    let spaceLeft = true;
+
+    bioResources.forEach(resourceId => {
+        if (!spaceLeft) return;
+        const yieldAmount = 1 + Math.floor(Math.random() * 5); // 1-5 units (bio scans are more precise)
+        
+        if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
+            updateCurrentCargoLoad();
+            scanMessage += ` ${yieldAmount} ${COMMODITIES[resourceId].name}\n`;
+            foundSomething = true;
+        } else {
+             scanMessage += ` Not enough cargo space for ${COMMODITIES[resourceId].name}.\n`;
+             spaceLeft = false;
+        }
+    });
+
+    if (foundSomething) {
+        const xpGained = XP_PER_MINING_OP; // Use same base XP as mining
+        playerXP += xpGained;
+        scanMessage += `\n+${xpGained} XP.`;
+        advanceGameTime(0.10); // Scanning takes a bit of time
+        checkLevelUp();
+    } else if (!spaceLeft) {
+        // Already logged "no cargo space"
+    } else {
+        scanMessage = "Scan complete. No viable samples could be collected.";
+    }
+
+    logMessage(scanMessage);
+    renderUIStats();
+}
+/**
+ * Handles the logic for mining mineral resources on a planet's surface.
  */
 function minePlanet() {
     if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
 
     const planet = currentSystemData.planets[selectedPlanetIndex];
-    if (!planet.biome.landable || !planet.biome.resources || planet.biome.resources.length === 0) {
-        logMessage("No mineable resources detected on this planet.");
+    
+    // MODIFIED: Filter for *only* non-biological resources
+    const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
+
+    if (mineralResources.length === 0) {
+        logMessage("No mineable mineral deposits detected.");
         return;
     }
 
     // Check for cargo space *before* mining (assume a minimum gain)
-    const potentialGain = 5; 
+    const potentialGain = 5;
     if (currentCargoLoad + potentialGain > PLAYER_CARGO_CAPACITY) {
         logMessage("Mining operation failed: Not enough cargo space for even a small haul.");
         return;
@@ -2311,8 +2411,8 @@ function minePlanet() {
     let minedSomething = false;
     let spaceLeft = true;
 
-    // Mine each resource type listed in the biome
-    planet.biome.resources.forEach(resourceId => {
+    // MODIFIED: Loop over mineralResources
+    mineralResources.forEach(resourceId => {
         if (!spaceLeft) return; // Stop if we ran out of space
 
         const yieldAmount = 5 + Math.floor(Math.random() * 11); // 5 to 15 units
@@ -2330,11 +2430,11 @@ function minePlanet() {
 
     if (minedSomething) {
         // Make planet mining a bit more rewarding than asteroids
-        const xpGained = XP_PER_MINING_OP * 2; 
+        const xpGained = XP_PER_MINING_OP * 2;
         playerXP += xpGained;
         minedResourcesMessage += `\n+${xpGained} XP.`;
-        advanceGameTime(0.15);// Planet mining takes longer
-        checkLevelUp(); 
+        advanceGameTime(0.15); // Planet mining takes longer
+        checkLevelUp();
     } else if (!spaceLeft) {
         // This case is already handled by the "Not enough cargo space" message
     } else {
@@ -2406,7 +2506,7 @@ function scoopHydrogen() {
     }
 }        
          
-         function mineAsteroid() {
+function mineAsteroid() {
     if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
         logMessage("Cannot mine now.");
         return;
@@ -2427,7 +2527,7 @@ function scoopHydrogen() {
     let minedSomething = false;
     let gainedRareXP = false;
 
-    // --- Base Mineral Mining (Same as before) ---
+    // --- Base Mineral Mining (now uses density) ---
     const density = asteroid.density || 0.5;
     const yieldAmount = 5 + Math.floor(Math.random() * 15 * density);
 
@@ -2476,7 +2576,7 @@ function scoopHydrogen() {
         minedResourcesMessage = "Mining yielded nothing of value this attempt.";
     }
     
-    advanceGameTime(0.1); // Use our new time function for shield regen!
+    advanceGameTime(0.1); // BUG FIX: Use our new time function for shield regen!
     asteroid.minedThisVisit = true;
     logMessage(minedResourcesMessage);
 }
@@ -2496,6 +2596,66 @@ function scoopHydrogen() {
          
          }
          
+
+/**
+ * Handles the random outcomes of salvaging a derelict ship.
+ * @param {object} derelictObject - The tile data for the derelict.
+ */
+function handleDerelictEncounter(derelictObject) {
+    const outcomes = [
+        {
+            text: "The derelict is picked clean. You find nothing of value.",
+            effect: () => { /* No effect, just the log message */ }
+        },
+        {
+            text: "You find a hidden cargo bay containing 15 Tech Parts!",
+            effect: () => {
+                if (currentCargoLoad + 15 <= PLAYER_CARGO_CAPACITY) {
+                    playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + 15;
+                    updateCurrentCargoLoad();
+                } else {
+                    logMessage("Found a cache of Tech Parts but cargo hold is full!");
+                }
+            }
+        },
+        {
+            text: "You access the ship's unsecured credit chit. Transferred 750 Credits!",
+            effect: () => { playerCredits += 750; }
+        },
+        {
+            text: "It's a trap! As you breach the hull, proximity sensors trigger... Pirates warp in!",
+            effect: () => { 
+                logMessage("The automated distress beacon was a pirate lure!");
+                startCombat();
+            }
+        },
+        {
+            text: "You trigger a plasma conduit booby trap! Your ship takes 15 hull damage!",
+            effect: () => { 
+                playerHull -= 15;
+                logMessage("The trap vented superheated plasma onto your ship!");
+                if (playerHull < 1) playerHull = 1; // Don't let it kill the player outside combat
+            }
+        },
+        {
+            text: "The ship's log is intact. You download the data, gaining 30 XP.",
+            effect: () => { 
+                playerXP += 30; 
+                checkLevelUp();
+            }
+        }
+    ];
+
+    // Select a random outcome
+    const chosenOutcome = outcomes[Math.floor(Math.random() * outcomes.length)];
+
+    // Apply the effect and log the result
+    logMessage(`Salvaging the derelict... ${chosenOutcome.text}`);
+    chosenOutcome.effect();
+
+    derelictObject.studied = true; // Mark it as salvaged
+}
+
          function handleAnomalyEncounter(anomalyObject) {
              const outcomes = [
                  {
