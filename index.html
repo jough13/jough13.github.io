@@ -696,8 +696,8 @@
          const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 18; 
          const SCOOP_RANDOM_BONUS = 4; 
          
-         const OUTPOST_SPAWN_CHANCE = 0.08; 
-         const WORMHOLE_SPAWN_CHANCE = 0.0003; 
+         const OUTPOST_SPAWN_CHANCE = 0.0008; 
+         const WORMHOLE_SPAWN_CHANCE = 0.00003; 
          const WORMHOLE_TRAVEL_FUEL_COST = 20;
          const WORMHOLE_JUMP_MIN_DIST = 5;
          const WORMHOLE_JUMP_MAX_DIST = 15;
@@ -977,7 +977,7 @@ const PLANET_BIOMES = {
             if (this.staticLocations.has(locationKey)) {
                 const location = this.staticLocations.get(locationKey);
                 chunkData[y][x] = { char: location.type, type: 'location', ...location };
-            } else {
+             } else {
                 let tile = EMPTY_SPACE_CHAR_VAL;
                 const tileSeed = WORLD_SEED ^ (worldX * 73856093) ^ (worldY * 19349663);
          
@@ -986,10 +986,30 @@ const PLANET_BIOMES = {
                     tile = { char: STAR_CHAR_VAL, type: 'star', richness: seededRandom(tileSeed + 1), scoopedThisVisit: false };
                 } else if (seededRandom(tileSeed + 2) < asteroidChance) {
                     tile = { char: ASTEROID_CHAR_VAL, type: 'asteroid', density: seededRandom(tileSeed + 3), minedThisVisit: false };
-                } else if (seededRandom(tileSeed + 3) < nebulaChance) {
-                    tile = { char: NEBULA_CHAR_VAL, type: 'nebula' }; // Add nebula tile
-                } else if (seededRandom(tileSeed + 4) < WORMHOLE_SPAWN_CHANCE) {
+                } else if (seededRandom(tileSeed + 4) < nebulaChance) {
+                    tile = { char: NEBULA_CHAR_VAL, type: 'nebula' };
+                } else if (seededRandom(tileSeed + 5) < WORMHOLE_SPAWN_CHANCE) {
                     tile = { char: WORMHOLE_CHAR_VAL, type: 'wormhole' };
+                } else if (seededRandom(tileSeed + 6) < OUTPOST_SPAWN_CHANCE) {
+                    // NEW: Procedural Outpost Generation
+                    const outpostSeed = tileSeed + 7;
+                    const outpostName = `Outpost ${String.fromCharCode(65 + Math.floor(seededRandom(outpostSeed) * 26))}-${Math.floor(seededRandom(outpostSeed+1) * 999)}`;
+                    tile = {
+                        char: OUTPOST_CHAR_VAL,
+                        type: 'location',
+                        name: outpostName,
+                        faction: "INDEPENDENT",
+                        isMajorHub: false,
+                        sells: [
+                            { id: "FUEL_CELLS", priceMod: 1.5, stock: 20 + Math.floor(seededRandom(outpostSeed+2) * 30) },
+                            { id: "TECH_PARTS", priceMod: 1.3, stock: 5 + Math.floor(seededRandom(outpostSeed+3) * 10) }
+                        ],
+                        buys: [
+                            { id: "MINERALS", priceMod: 0.9, stock: 30 + Math.floor(seededRandom(outpostSeed+4) * 50) },
+                            { id: "FOOD_SUPPLIES", priceMod: 0.8, stock: 20 + Math.floor(seededRandom(outpostSeed+5) * 40) }
+                        ],
+                        scanFlavor: "A small, automated independent outpost. It offers basic supplies at a markup and buys local resources."
+                    };
                 }
                 chunkData[y][x] = tile;
             }
