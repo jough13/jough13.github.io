@@ -2392,6 +2392,29 @@ function scoopHydrogen() {
          
          function calculatePrice(bP,pM){return Math.round(bP*pM);}
          
+/**
+ * Generates the common base message for the trade quantity prompt.
+ * Assumes currentTradeContext is valid.
+ * @returns {string} The base prompt message.
+ */
+
+function getTradeQuantityPromptBaseMessage() {
+    const lD = currentTradeContext.locationData;
+    const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
+    const itemEntry = itemsList[currentTradeContext.itemIndex];
+    const commodity = COMMODITIES[itemEntry.id];
+    const price = calculatePrice(commodity.basePrice, itemEntry.priceMod);
+
+    let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`;
+
+    if (currentTradeContext.mode === 'buy') {
+        promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`;
+    } else {
+        promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`;
+    }
+    return promptMsg;
+}
+
          function displayTradeScreen(mode){ 
              // Get location data from the chunkManager
              const location = chunkManager.getTile(playerX, playerY);
@@ -2414,7 +2437,7 @@ function scoopHydrogen() {
                  const pH=mode==='sell'?`You have: ${playerCargo[item.id]||0}`:'';
                  tM+=`${idx+1}. ${com.name} (${pr}c) [${st}] ${pH}\n`;
              });
-             tM+="\\nEnter # to select, or 'L' to leave.";
+             tM+="Enter # to select, or 'L' to leave.";
              logMessage(tM);
          }
          
@@ -2424,13 +2447,11 @@ function scoopHydrogen() {
              const items=currentTradeContext.mode==='buy'?lD.sells:lD.buys;const sel=parseInt(input);
              if(isNaN(sel)||sel<1||sel>items.length){logMessage("Invalid selection. # or 'L'.");;return;}
              currentTradeContext.itemIndex=sel-1;currentTradeContext.step='selectQuantity';
-             const sIE=items[currentTradeContext.itemIndex];const com=COMMODITIES[sIE.id];const pr=calculatePrice(com.basePrice,sIE.priceMod);
-             let pM=`How many ${com.name} to ${currentTradeContext.mode}? (Price: ${pr}c)\n`;
-             if(currentTradeContext.mode==='buy'){pM+=`Max: ${sIE.stock}, Afford: ${Math.floor(playerCredits/pr)}, Space: ${PLAYER_CARGO_CAPACITY-currentCargoLoad}\n`;}
-             else{pM+=`You have: ${playerCargo[sIE.id]||0}, Demand: ${sIE.stock}\n`;}
-             pM+="Enter quantity (then Enter), or '0' to cancel item."; 
+            
+             let promptMsg = getTradeQuantityPromptBaseMessage();
+             promptMsg += "Enter quantity (then Enter), or '0' to cancel item.";
              currentQuantityInput = ""; 
-             logMessage(pM);;
+             logMessage(promptMsg);
          }
          
 /**
@@ -2746,7 +2767,7 @@ function handleCombatAction(action) {
                  shipIndex++;
              }
          
-             shipyardMsg += "\nEnter # to inspect a ship, or (L) to leave.";
+             shipyardMsg += "Enter # to inspect a ship, or (L) to leave.";
              logMessage(shipyardMsg);
          }
          
@@ -2863,7 +2884,7 @@ function handleCombatAction(action) {
              if (currentOutfitContext.availableComponents.length === 0) {
                  componentMsg += "No other upgrades currently available for this slot.\n";
              }
-             componentMsg += "\nEnter # to purchase, or 'L' to go back.";
+             componentMsg += "Enter # to purchase, or 'L' to go back.";
              logMessage(componentMsg);
              ;
          }
@@ -3104,7 +3125,7 @@ function handleCombatAction(action) {
                  });
              }
          
-             missionMsg += "\nEnter # to view details, or (L) to leave.";
+             missionMsg += "Enter # to view details, or (L) to leave.";
              
              currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation, stationName: stationName };
              logMessage(missionMsg);
@@ -3346,32 +3367,12 @@ function handleTradeInput(key) {
     if (currentTradeContext.step === 'selectQuantity') {
         if (!isNaN(parseInt(key)) && key.length === 1 && currentQuantityInput.length < 3) {
             currentQuantityInput += key;
-            const lD = currentTradeContext.locationData;
-            const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
-            const itemEntry = itemsList[currentTradeContext.itemIndex];
-            const commodity = COMMODITIES[itemEntry.id];
-            const price = calculatePrice(commodity.basePrice, itemEntry.priceMod);
-            let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`;
-            if (currentTradeContext.mode === 'buy') {
-                promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`;
-            } else {
-                promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`;
-            }
+            let promptMsg = getTradeQuantityPromptBaseMessage();
             promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`;
             logMessage(promptMsg);
         } else if (key === 'backspace' && currentQuantityInput.length > 0) {
             currentQuantityInput = currentQuantityInput.slice(0, -1);
-            const lD = currentTradeContext.locationData;
-            const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
-            const itemEntry = itemsList[currentTradeContext.itemIndex];
-            const commodity = COMMODITIES[itemEntry.id];
-            const price = calculatePrice(commodity.basePrice, itemEntry.priceMod);
-            let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`;
-            if (currentTradeContext.mode === 'buy') {
-                promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`;
-            } else {
-                promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`;
-            }
+            let promptMsg = getTradeQuantityPromptBaseMessage();
             promptMsg += `Enter quantity (max 3 digits), then Enter. Current: ${currentQuantityInput} (Backspace to correct, 0 to cancel item)`;
             logMessage(promptMsg);
         } else if (key === 'enter') {
