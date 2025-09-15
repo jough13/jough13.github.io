@@ -671,6 +671,8 @@
          var MAX_PLAYER_HULL; 
          var playerHull; 
          
+         const HULL_REPAIR_COST_PER_POINT = 5;
+
          const PIRATE_ENCOUNTER_CHANCE = 0.0025; 
          const RUN_ESCAPE_CHANCE = 0.6; const RUN_FUEL_COST = 5;
          const EVASION_FUEL_COST = 3;
@@ -1271,8 +1273,8 @@ function renderContextualActions(actions) {
          */
          function renderUIStats() {
          fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`; 
-         shieldsStatElement.textContent = `${playerShields}/${MAX_SHIELDS}`;
-         hullStatElement.textContent = `${playerHull}/${MAX_PLAYER_HULL}`; 
+         shieldsStatElement.textContent = `${Math.floor(playerShields)}/${MAX_SHIELDS}`;
+         hullStatElement.textContent = `${Math.floor(playerHull)}/${MAX_PLAYER_HULL}`;
          creditsStatElement.textContent = playerCredits;
          cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
          levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`; 
@@ -1314,33 +1316,39 @@ function renderContextualActions(actions) {
 }
          
          function renderPlanetView() {
-         const planetView = document.getElementById('planetView');
-         const planet = currentSystemData.planets[selectedPlanetIndex];
-         
-         let html = `
-         <div class="planet-view-content">
-            <div class="planet-view-header">
-                <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
-                <div>
-                    <h2>${planet.biome.name}</h2>
-                    <p>${planet.biome.description}</p>
-                </div>
+    const planetView = document.getElementById('planetView');
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    
+    // Check if the planet has mineable resources
+    const canMine = planet.biome.landable && planet.biome.resources && planet.biome.resources.length > 0;
+    const mineButton = canMine
+        ? `<li><button class="action-button" onclick="minePlanet()">Mine for Resources</button></li>`
+        : `<li><button class="action-button" disabled>No Mineable Resources</button></li>`;
+
+    let html = `
+    <div class="planet-view-content">
+        <div class="planet-view-header">
+            <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
+            <div>
+                <h2>${planet.biome.name}</h2>
+                <p>${planet.biome.description}</p>
             </div>
-            <div class="planet-actions">
-                <h3>Available Actions:</h3>
-                <ul>
-                    <li><button class="action-button">Mine for Resources</button></li>
-                    <li><button class="action-button">Scan for Lifeforms</button></li>
-                    <li><button class="action-button" disabled>Establish Colony (Coming Soon)</button></li>
-                </ul>
-            </div>
-            <button class="action-button" onclick="returnToOrbit()">Return to Orbit</button>
-         </div>
-         `;
-         planetView.innerHTML = html;
-         // We'll also update the main UI elements
-         renderUIStats();
-         }
+        </div>
+        <div class="planet-actions">
+            <h3>Available Actions:</h3>
+            <ul>
+                ${mineButton}
+                <li><button class="action-button" disabled>Scan for Lifeforms (Coming Soon)</button></li>
+                <li><button class="action-button" disabled>Establish Colony (Coming Soon)</button></li>
+            </ul>
+        </div>
+        <button class="action-button" onclick="returnToOrbit()">Return to Orbit</button>
+    </div>
+    `;
+    planetView.innerHTML = html;
+    // We'll also update the main UI elements
+    renderUIStats();
+}
          
          function updatePlayerNotoriety(amount) {
              playerNotoriety += amount;
@@ -2058,7 +2066,7 @@ function renderSystemMap() {
          playerFuel -= actualFuelPerMove;
          playerFuel = parseFloat(playerFuel.toFixed(1));
          if (playerFuel < 0) playerFuel = 0;
-         currentGameDate += 0.01; // Time passes with each move
+         advanceGameTime(0.01);
          }
              
          // --- NEW SECTOR DETECTION LOGIC ---
@@ -2113,6 +2121,17 @@ function handleInteraction() {
             availableActions.push({ label: 'Missions', key: 'k', onclick: displayMissionBoard });
             availableActions.push({ label: 'Shipyard', key: 'y', onclick: displayShipyard });
         }
+
+        // --- NEW: Add Repair button if hull is damaged ---
+        if (playerHull < MAX_PLAYER_HULL) {
+            const hullToRepair = MAX_PLAYER_HULL - playerHull;
+            const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
+            availableActions.push({
+                label: `Repair Hull (${repairCost}c)`,
+                key: 'r', // 'r' for repair
+                onclick: repairShip
+            });
+        }
         
         // Add mission completion buttons if applicable
         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete && location.name === playerActiveMission.objectives[0].destinationName) {
@@ -2122,12 +2141,12 @@ function handleInteraction() {
             availableActions.push({ label: 'Get Reward', key: 'g', onclick: grantMissionRewards });
         }
 
-        // Refueling and discovery XP logic (remains the same)
+        // --- MODIFIED: Refueling and discovery XP logic ---
         if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
             playerFuel = MAX_FUEL;
             playerShields = MAX_SHIELDS;
-            playerHull = MAX_PLAYER_HULL;
-            bM += `\nFuel, Shields, and Hull fully repaired!`;
+            // Hull is NO LONGER repaired for free!
+            bM += `\nFuel and Shields recharged.`;
             applyPlayerShipStats();
         }
         if (!discoveredLocations.has(location.name)) {
@@ -2139,7 +2158,7 @@ function handleInteraction() {
         }
 
     } else {
-        // --- This block handles being in empty space ---
+        // --- This block handles being in empty space (no change) ---
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 bM = `Near star.`;
@@ -2157,6 +2176,7 @@ function handleInteraction() {
                 break;
             case NEBULA_CHAR_VAL:
                 bM = `Inside a dense gas cloud. Sensors are intermittent.`;
+                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen }); // Now works
                 unlockLoreEntry("PHENOMENON_NEBULA");
                 break;
             case WORMHOLE_CHAR_VAL:
@@ -2164,7 +2184,6 @@ function handleInteraction() {
                 availableActions.push({ label: 'Traverse', key: 't', onclick: traverseWormhole });
                 unlockLoreEntry("PHENOMENON_WORMHOLE");
                 break;
-            // You can add more cases here for derelicts, anomalies, etc. later
         }
     }
 
@@ -2173,155 +2192,294 @@ function handleInteraction() {
     renderContextualActions(availableActions);
 }
          
-         function scanLocation() { 
-         if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) { 
-         logMessage("Cannot scan now."); 
-         return; 
-         }
-         
-         currentGameDate += 0.05; // Add this line to make scanning advance the clock
-         
-         const tileObject = chunkManager.getTile(playerX, playerY);
-         let scanMessage = `Scan Report:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`; 
-         let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject); 
-         let actionsAvailable = "";
-         
-         if (tileObject && tileObject.type === 'location') {
-         scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
-         scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
-         if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) { actionsAvailable += "Trade (B/S). "; }
-         if (tileObject.isMajorHub) { actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). "; }
-         actionsAvailable += "Leave (L)."
-         objectTypeForXP = tileObject.name;
-         } else { 
-         const tileChar = getTileChar(tileObject);
-         switch (tileChar) { 
-            case EMPTY_SPACE_CHAR_VAL: 
+         function scanLocation() {
+    if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
+        logMessage("Cannot scan now.");
+        return;
+    }
+
+    advanceGameTime(0.05);
+
+    // --- NEW: Get scanner info ---
+    const scanner = COMPONENTS_DATABASE[playerShip.components.scanner];
+    const scanBonus = scanner.stats.scanBonus || 0;
+
+    const tileObject = chunkManager.getTile(playerX, playerY);
+    let scanMessage = `Scan Report:\nPlayer Shields: ${playerShields}/${MAX_SHIELDS}. Hull: ${playerHull}/${MAX_PLAYER_HULL}.\n`;
+    let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject);
+    let actionsAvailable = "";
+
+    if (tileObject && tileObject.type === 'location') {
+        // --- Location Scan (no change) ---
+        scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
+        scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
+        if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) { actionsAvailable += "Trade (B/S). "; }
+        if (tileObject.isMajorHub) { actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). "; }
+        actionsAvailable += "Leave (L)."
+        objectTypeForXP = tileObject.name;
+
+    } else {
+        // --- In-Space Scan (UPGRADED) ---
+        const tileChar = getTileChar(tileObject);
+        switch (tileChar) {
+            case EMPTY_SPACE_CHAR_VAL:
                 scanMessage += "Vast emptiness. Faint cosmic background radiation.";
+                if (scanBonus > 0 && Math.random() < (scanBonus * 2)) { // Give a little bonus flavor
+                    scanMessage += "\n<span style='color:#FFFF99;'>Detailed Scan: Trace signature detected... faint energy echo... probably nothing.</span>";
+                }
                 objectTypeForXP = 'empty_space';
                 break;
-            case STAR_CHAR_VAL: 
+            case STAR_CHAR_VAL:
                 scanMessage += `Brilliant star.`;
-                if (tileObject.richness > 0.75) scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
+                if (scanBonus > 0) {
+                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Corona richness at ${(tileObject.richness * 100).toFixed(0)}%.</span>`;
+                } else if (tileObject.richness > 0.75) {
+                    scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
+                }
                 if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
                 actionsAvailable += "Scoop Fuel (H). Enter System (E).";
                 break;
-            case ASTEROID_CHAR_VAL: 
+            case ASTEROID_CHAR_VAL:
                 scanMessage += `Asteroid field.`;
+                if (scanBonus > 0) {
+                    let densityDesc = (tileObject.density > 0.6) ? "High" : (tileObject.density > 0.3) ? "Moderate" : "Low";
+                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Field density is ${densityDesc}. Common minerals present.</span>`;
+                }
                 if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
                 actionsAvailable += "Mine Asteroid (M).";
                 break;
-            default: 
-                scanMessage += "Unknown object detected. Sensor readings inconclusive."; 
+            case NEBULA_CHAR_VAL:
+                scanMessage += `Inside a dense gas cloud. Sensors are intermittent.`;
+                if (scanBonus > 0) {
+                    scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Cloud composition is 98% hydrogen. Suitable for siphoning.</span>`;
+                }
+                actionsAvailable += "Scoop Fuel (H).";
                 break;
-         }
-         }
-         
-         if (actionsAvailable) { scanMessage += "\n\nAvailable Actions: " + actionsAvailable; }
-         
-         if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
-         playerActiveMission.objectives.forEach((obj, index) => {
+            default:
+                scanMessage += "Unknown object detected. Sensor readings inconclusive.";
+                break;
+        }
+    }
+
+    if (actionsAvailable) { scanMessage += "\n\nAvailable Actions: " + actionsAvailable; }
+
+    // --- Mission Logic (no change) ---
+    if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
+        playerActiveMission.objectives.forEach((obj, index) => {
             const progressKey = `survey_${index}`;
             const objectiveProgress = playerActiveMission.progress[progressKey];
             if (objectiveProgress && !objectiveProgress.complete && tileObject.type === obj.targetType && (obj.subtype === "ANY_ANOMALY" || tileObject.subtype === obj.subtype)) {
                 objectiveProgress.complete = true;
                 scanMessage += `\n<span style='color:#00FF00;'>Mission Update: ${obj.subtype} surveyed!</span>`;
             }
-         });
-         checkMissionObjectiveCompletion();
-         }
-         
-         if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) { 
-         scannedObjectTypes.add(objectTypeForXP);
-         playerXP += XP_PER_FIRST_SCAN_TYPE;
-         scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
-         checkLevelUp();
-         }
-         
-         logMessage(scanMessage);
-         }
-         
-function scoopHydrogen() { 
-    if(currentTradeContext||currentCombatContext||currentOutfitContext || currentMissionContext || currentEncounterContext){logMessage("Cannot scoop fuel now.");;return;}
-    const cT = chunkManager.getTile(playerX, playerY);
-    if(getTileType(cT)!=='star'){logMessage("No star here to scoop from.");;return;}
-    if(playerFuel>=MAX_FUEL){logMessage("Fuel tanks full!");;return;}
-    if (cT.scoopedThisVisit) {
-        logMessage("This star's corona has been depleted for this visit.");
-        ;
+        });
+        checkMissionObjectiveCompletion();
+    }
+
+    // --- XP Logic (no change) ---
+    if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) {
+        scannedObjectTypes.add(objectTypeForXP);
+        playerXP += XP_PER_FIRST_SCAN_TYPE;
+        scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
+        checkLevelUp();
+    }
+
+    logMessage(scanMessage);
+}
+
+
+/**
+ * Handles the logic for mining resources on a planet's surface.
+ */
+function minePlanet() {
+    if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    if (!planet.biome.landable || !planet.biome.resources || planet.biome.resources.length === 0) {
+        logMessage("No mineable resources detected on this planet.");
         return;
     }
-    const sR=(typeof cT.richness==='number')?cT.richness:0.3;
-    let fG=MIN_SCOOP_YIELD+Math.floor(sR*MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
-    fG+=Math.floor(Math.random()*SCOOP_RANDOM_BONUS);
-    fG=Math.max(1,fG);
-    const oF=playerFuel;
-    playerFuel=Math.min(MAX_FUEL,playerFuel+fG);
-    playerFuel = parseFloat(playerFuel.toFixed(1));
-    const aG=playerFuel-oF;
-    if(aG>0) {
-       currentGameDate += 0.05;
-        logMessage(`Scooped ${aG.toFixed(1)} units of hydrogen.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
-        cT.scoopedThisVisit = true; 
-    } else {
-         logMessage("Scooping yielded no fuel. Tanks full or star already depleted this visit.");
+
+    // Check for cargo space *before* mining (assume a minimum gain)
+    const potentialGain = 5; 
+    if (currentCargoLoad + potentialGain > PLAYER_CARGO_CAPACITY) {
+        logMessage("Mining operation failed: Not enough cargo space for even a small haul.");
+        return;
     }
-    ;
-}
+
+    let minedResourcesMessage = "Planetary mining operation yields:\n";
+    let minedSomething = false;
+    let spaceLeft = true;
+
+    // Mine each resource type listed in the biome
+    planet.biome.resources.forEach(resourceId => {
+        if (!spaceLeft) return; // Stop if we ran out of space
+
+        const yieldAmount = 5 + Math.floor(Math.random() * 11); // 5 to 15 units
         
+        if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
+            updateCurrentCargoLoad();
+            minedResourcesMessage += ` ${yieldAmount} ${COMMODITIES[resourceId].name}\n`;
+            minedSomething = true;
+        } else {
+             minedResourcesMessage += ` Not enough cargo space for ${COMMODITIES[resourceId].name}.\n`;
+             spaceLeft = false; // Flag to stop mining other resources
+        }
+    });
+
+    if (minedSomething) {
+        // Make planet mining a bit more rewarding than asteroids
+        const xpGained = XP_PER_MINING_OP * 2; 
+        playerXP += xpGained;
+        minedResourcesMessage += `\n+${xpGained} XP.`;
+        advanceGameTime(0.15);// Planet mining takes longer
+        checkLevelUp(); 
+    } else if (!spaceLeft) {
+        // This case is already handled by the "Not enough cargo space" message
+    } else {
+        minedResourcesMessage = "Mining yielded nothing of value this attempt.";
+    }
+
+    logMessage(minedResourcesMessage);
+    // We stay on the planet, so we just re-render the UI stats
+    renderUIStats();
+}
+
+function scoopHydrogen() {
+    if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
+        logMessage("Cannot scoop fuel now.");
+        return;
+    }
+
+    const cT = chunkManager.getTile(playerX, playerY);
+    const tileType = getTileType(cT);
+
+    if (tileType !== 'star' && tileType !== 'nebula') {
+        logMessage("No star or nebula here to scoop from.");
+        return;
+    }
+
+    if (playerFuel >= MAX_FUEL) {
+        logMessage("Fuel tanks full!");
+        return;
+    }
+
+    let fuelGained = 0;
+    let logMsg = "";
+    let timePassed = 0.05;
+
+    if (tileType === 'star') {
+        if (cT.scoopedThisVisit) {
+            logMessage("This star's corona has been depleted for this visit.");
+            return;
+        }
+
+        const richness = (typeof cT.richness === 'number') ? cT.richness : 0.3;
+        fuelGained = MIN_SCOOP_YIELD + Math.floor(richness * MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
+        fuelGained += Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
+        fuelGained = Math.max(1, fuelGained);
+
+        cT.scoopedThisVisit = true; // Stars can be depleted
+        logMsg = "Scooped hydrogen from the star's corona.";
+
+    } else if (tileType === 'nebula') {
+        // Nebulas give less fuel but can't be depleted
+        fuelGained = Math.floor(MIN_SCOOP_YIELD / 2) + Math.floor(Math.random() * SCOOP_RANDOM_BONUS); // Smaller, flat amount
+        fuelGained = Math.max(1, fuelGained);
+
+        // We don't mark nebulas as 'scoopedThisVisit'
+        logMsg = "Siphoned trace hydrogen from the gas cloud.";
+        timePassed = 0.02; // Faster than scooping a star
+    }
+
+    const originalFuel = playerFuel;
+    playerFuel = Math.min(MAX_FUEL, playerFuel + fuelGained);
+    playerFuel = parseFloat(playerFuel.toFixed(1));
+    const actualGained = playerFuel - originalFuel;
+
+    if (actualGained > 0) {
+        advanceGameTime(timePassed);
+        logMessage(`${logMsg}\nGained ${actualGained.toFixed(1)} fuel.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
+    } else {
+        logMessage("Scooping yielded no fuel. Tanks are full.");
+    }
+}        
          
          function mineAsteroid() {
-             if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
-                 logMessage("Cannot mine now.");
-                 ;
-                 return;
-             }
-             // NEW: Get the tile from our infinite world
-             const asteroid = chunkManager.getTile(playerX, playerY);
-         
-             if (getTileType(asteroid) !== 'asteroid') {
-                 logMessage("No asteroid field here to mine.");
-                 ;
-                 return;
-             }
-             if (asteroid.minedThisVisit) {
-                 logMessage("This asteroid field has been depleted for this visit.");
-                 ;
-                 return;
-             }
-         
-             let minedResourcesMessage = "Mining operation yields:\n";
-             let totalMinedWeight = 0;
-             let minedSomething = false;
-             let gainedRareXP = false;
-         
-             // This logic can be simplified as the asteroid object from chunkManager already has a simpler structure
-             const yieldAmount = 5 + Math.floor(Math.random() * 15 * (asteroid.density || 0.5));
-             if (yieldAmount > 0) {
-                 if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-                     playerCargo.MINERALS = (playerCargo.MINERALS || 0) + yieldAmount;
-                     updateCurrentCargoLoad();
-                     minedResourcesMessage += ` ${yieldAmount} Minerals\n`;
-                     minedSomething = true;
-                 } else {
-                      minedResourcesMessage += ` Not enough cargo space for Minerals.\n`;
-                 }
-             }
-         
-             if (minedSomething) {
-                 playerXP += XP_PER_MINING_OP;
-                 minedResourcesMessage += `\n+${XP_PER_MINING_OP} XP.`;
-                 checkLevelUp();
-             } else {
-                 minedResourcesMessage = "Mining yielded nothing of value this attempt.";
-             }
-             currentGameDate += 0.1; // Mining takes time
-             asteroid.minedThisVisit = true;
-             logMessage(minedResourcesMessage);
-             ;
-         }
-         
-         
+    if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
+        logMessage("Cannot mine now.");
+        return;
+    }
+
+    const asteroid = chunkManager.getTile(playerX, playerY);
+
+    if (getTileType(asteroid) !== 'asteroid') {
+        logMessage("No asteroid field here to mine.");
+        return;
+    }
+    if (asteroid.minedThisVisit) {
+        logMessage("This asteroid field has been depleted for this visit.");
+        return;
+    }
+
+    let minedResourcesMessage = "Mining operation yields:\n";
+    let minedSomething = false;
+    let gainedRareXP = false;
+
+    // --- Base Mineral Mining (Same as before) ---
+    const density = asteroid.density || 0.5;
+    const yieldAmount = 5 + Math.floor(Math.random() * 15 * density);
+
+    if (yieldAmount > 0) {
+        if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+            playerCargo.MINERALS = (playerCargo.MINERALS || 0) + yieldAmount;
+            updateCurrentCargoLoad();
+            minedResourcesMessage += ` ${yieldAmount} Minerals\n`;
+            minedSomething = true;
+        } else {
+            minedResourcesMessage += ` Not enough cargo space for Minerals.\n`;
+        }
+    }
+
+    // --- NEW: Chance for Rare Materials ---
+    const baseRareChance = 0.05; // 5% base chance
+    const bonusFromDensity = density * 0.1; // Max 10% bonus from density (total 15% max)
+    
+    if (Math.random() < (baseRareChance + bonusFromDensity)) {
+        const rareYield = 1 + Math.floor(Math.random() * 2); // 1 or 2 units
+        
+        if (currentCargoLoad + rareYield <= PLAYER_CARGO_CAPACITY) {
+            // Pick between Rare Metals and Platinum
+            const resourceId = (Math.random() < 0.7) ? "RARE_METALS" : "PLATINUM_ORE";
+            
+            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + rareYield;
+            updateCurrentCargoLoad();
+            minedResourcesMessage += `<span style='color:#FFFF99;'>+ ${rareYield} ${COMMODITIES[resourceId].name}!</span>\n`;
+            playerXP += XP_BONUS_RARE_MINERAL; // Use existing constant!
+            gainedRareXP = true;
+            minedSomething = true; // Ensure we log XP even if we only find rares
+        } else {
+            minedResourcesMessage += ` Not enough cargo space for rare materials.\n`;
+        }
+    }
+    // --- End of new block ---
+
+    if (minedSomething) {
+        playerXP += XP_PER_MINING_OP;
+        minedResourcesMessage += `\n+${XP_PER_MINING_OP} XP.`;
+        if (gainedRareXP) {
+            minedResourcesMessage += ` +${XP_BONUS_RARE_MINERAL} XP (Rare Find)!`;
+        }
+        checkLevelUp();
+    } else {
+        minedResourcesMessage = "Mining yielded nothing of value this attempt.";
+    }
+    
+    advanceGameTime(0.1); // Use our new time function for shield regen!
+    asteroid.minedThisVisit = true;
+    logMessage(minedResourcesMessage);
+}
          
          
          function startEncounter(tileObject) {
@@ -2546,6 +2704,49 @@ function handleTradeQuantity(inputString) {
     logMessage(finalMessage); // Log the final result to the player (this also calls render()).
     checkLevelUp(); // Check for a level up, which will log its own message if it occurs.
 }
+
+
+/**
+ * Regenerates the player's shields based on time passed and equipped shield.
+ * Does not run in combat or when shields are full.
+ * @param {number} timePassed - The amount of stardate that has passed.
+ */
+function regenerateShields(timePassed) {
+    // No regen in combat or when already full
+    if (currentGameState === GAME_STATES.COMBAT || playerShields >= MAX_SHIELDS) {
+        return;
+    }
+
+    // Get the equipped shield's stats
+    const shield = COMPONENTS_DATABASE[playerShip.components.shield];
+    const rechargeRate = shield.stats.rechargeRate || 1; // e.g., "1" point per 0.1 stardate
+
+    // Calculate regen. A rate of 1 means 1 point per 0.1 stardate.
+    // (rechargeRate / 0.1) gives us rate-per-stardate.
+    const regenAmount = ((rechargeRate / 0.1) * timePassed) * 6;
+
+    playerShields += regenAmount;
+
+    // Don't let it overshoot
+    if (playerShields > MAX_SHIELDS) {
+        playerShields = MAX_SHIELDS;
+    }
+}
+
+/**
+ * Advances the game clock and triggers time-based events like shield regen.
+ * This is our new "master" function for passing time.
+ * @param {number} timeAmount - The amount of stardate to pass (e.g., 0.01 for one move).
+ */
+function advanceGameTime(timeAmount) {
+    currentGameDate += timeAmount;
+
+    // Call all "per-tick" updates here
+    regenerateShields(timeAmount);
+
+    // In the future, this could also handle mission timers, etc.
+}
+
 
          function checkLevelUp() {
     if (playerXP >= xpToNextLevel) {
@@ -2798,6 +2999,34 @@ function handleCombatAction(action) {
              ;
          }
          
+/**
+ * Handles the logic for repairing the player's ship hull at a station.
+ */
+function repairShip() {
+    if (playerHull >= MAX_PLAYER_HULL) {
+        logMessage("Hull is already at maximum integrity.");
+        return;
+    }
+
+    const hullToRepair = MAX_PLAYER_HULL - playerHull;
+    const totalCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
+
+    if (playerCredits < totalCost) {
+        logMessage(`Cannot afford full repairs. Cost: ${totalCost}c, You have: ${playerCredits}c.`);
+        // Note: We could add partial repairs later, but for now, it's all or nothing.
+        return;
+    }
+
+    playerCredits -= totalCost;
+    playerHull = MAX_PLAYER_HULL;
+
+    logMessage(`Ship hull repaired for ${totalCost} credits.`);
+
+    // Refresh the UI. This rebuilds the button list and updates stats.
+    handleInteraction();
+    renderUIStats();
+}
+
          function buyShip() {
              if (!currentShipyardContext || currentShipyardContext.step !== 'confirmPurchase') return;
          
@@ -3455,6 +3684,14 @@ function handleGalacticMapInput(key) {
                     return true;
                 }
                 break; // No reward
+
+            case 'r':
+                if (playerHull < MAX_PLAYER_HULL) {
+                    repairShip();
+                    return true;
+                }
+                break; // Not damaged, or 'r' might be used for something else in space
+
             case 'l':
                 handleInteraction();
                 return true;
