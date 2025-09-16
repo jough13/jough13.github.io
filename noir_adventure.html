@@ -18,6 +18,13 @@
             --context-button-hover-bg: #3a4a5a;
         }
 
+#clues-container {
+    padding: 10px;
+    margin-bottom: 2em;
+    background-color: #111;
+    border-bottom: 1px solid var(--border-color);
+}
+
         body {
             background-color: var(--background-color);
             color: var(--text-color);
@@ -300,11 +307,17 @@
             <h3>Inventory</h3>
             <ul id="inventory-list"></ul>
         </div>
+
+<div id="clues-container">
+    <h3>Clues</h3>
+    <ul id="clue-list"></ul>
+</div>
+
         <div id="text-output"></div>
         <div id="choices-container"></div>
         <div id="context-actions-container"></div>
         <div id="footer">
-            Version 1.8 | Last Updated: August 19, 2025
+            Version 1.9 | Last Updated: September 16, 2025
         </div>
     </div>
 
@@ -406,7 +419,8 @@
             grit: 4,
             smarts: 4,
             charm: 4,
-            inventory: ['old_key']
+            inventory: ['old_key'],
+            clues: [] // <-- Add this
         };
         
         // --- GAME STATE FOR ONE-TIME EVENTS ---
@@ -467,11 +481,11 @@
             while (contextActionsContainer.firstChild) { contextActionsContainer.removeChild(contextActionsContainer.firstChild); }
 
             scene.choices.forEach(choice => {
-                if ((choice.showIfItem && !hasItem(choice.showIfItem)) || 
-                    (choice.hideIfState && gameState[choice.hideIfState]) ||
-                    (choice.showIfState && !gameState[choice.showIfState])) {
-                    return;
-                }
+if ((choice.showIfItem && !hasItem(choice.showIfItem)) || 
+    (choice.hideIfState && (Array.isArray(choice.hideIfState) ? choice.hideIfState.some(state => gameState[state]) : gameState[choice.hideIfState])) || // <-- REPLACED LINE
+    (choice.showIfState && !gameState[choice.showIfState])) {
+    return;
+}
 
                 const button = document.createElement('button');
                 button.innerText = choice.text;
@@ -515,6 +529,7 @@
 
         function makeChoice(choice) {
             if (choice.setState) { gameState[choice.setState] = true; }
+            if (choice.clueGained) { addClue(choice.clueGained); } 
 
             if (choice.effect) {
                 if (choice.effect.reset) {
@@ -546,29 +561,66 @@
 
         // --- HELPER FUNCTIONS ---
 
-        function updateDisplays() {
-            playerNameDisplay.innerText = player.name;
-            gritStat.innerText = player.grit;
-            smartsStat.innerText = player.smarts;
-            charmStat.innerText = player.charm;
-            
-            inventoryList.innerHTML = '';
-            if (player.inventory.length === 0) {
-                const li = document.createElement('li');
-                li.textContent = 'Empty';
-                inventoryList.appendChild(li);
-            } else {
-                player.inventory.forEach(itemId => {
-                    const item = items[itemId];
-                    const li = document.createElement('li');
-                    li.textContent = item.name;
-                    li.setAttribute('data-tooltip', item.description);
-                    li.addEventListener('click', () => showLore(itemId));
-                    if (item.cssClass) { li.classList.add(item.cssClass); }
-                    inventoryList.appendChild(li);
-                });
+function addClue(clue) {
+    if (!player.clues.includes(clue)) {
+        player.clues.push(clue);
+    }
+}
+
+        
+function updateDisplays() {
+    // --- GRAB UI ELEMENTS ---
+    // We grab the clue list here since it wasn't defined globally at the top
+    const clueList = document.getElementById('clue-list');
+
+    // --- UPDATE PLAYER NAME & STATS ---
+    playerNameDisplay.innerText = player.name;
+    gritStat.innerText = player.grit;
+    smartsStat.innerText = player.smarts;
+    charmStat.innerText = player.charm;
+    
+    // --- UPDATE INVENTORY DISPLAY ---
+    // Clear the existing list first
+    inventoryList.innerHTML = ''; 
+    
+if (player.clues.length === 0) {
+    const li = document.createElement('li');
+    li.style.fontStyle = 'italic'; // Make it stand out
+    li.textContent = 'A head full of questions and a gut full of cheap whiskey.';
+    clueList.appendChild(li);
+    } else {
+        // Loop through each item in the player's inventory and display it
+        player.inventory.forEach(itemId => {
+            const item = items[itemId];
+            const li = document.createElement('li');
+            li.textContent = item.name;
+            li.setAttribute('data-tooltip', item.description); // Adds the hover tooltip
+            li.addEventListener('click', () => showLore(itemId)); // Makes item clickable for lore
+            if (item.cssClass) { 
+                li.classList.add(item.cssClass); // Adds special styling if needed
             }
-        }
+            inventoryList.appendChild(li);
+        });
+    }
+
+    // --- UPDATE CLUE DISPLAY ---
+    // Clear the existing list first
+    clueList.innerHTML = '';
+
+    if (player.clues.length === 0) {
+        // Display a default message if no clues are found
+        const li = document.createElement('li');
+        li.textContent = 'The pieces aren\'t connecting...';
+        clueList.appendChild(li);
+    } else {
+        // Loop through each clue in the player's journal and display it
+        player.clues.forEach(clueText => {
+            const li = document.createElement('li');
+            li.textContent = `• ${clueText}`; // Added a bullet point for style
+            clueList.appendChild(li);
+        });
+    }
+}
 
         function addItem(itemId) {
             if (!player.inventory.includes(itemId)) { player.inventory.push(itemId); }
@@ -584,26 +636,123 @@
 
         // --- STORY DATA ---
         const story = [
-    {
-        "id": "start",
-        "text": "The return to the land of the living is never a gentle affair. It’s a hostile takeover of decayed real estate. Consciousness crashes back into your skull like a slow tide of battery acid and regret, carrying the flotsam of a forgotten night. First, the pain: a single, predatory bass drum kicking behind your right eye, threatening to split your head like a ripe melon. Then, the smell: stale bourbon, rain-soaked wool, ozone from a dying neon sign, and the faint, coppery tang of your own blood.",
-        "choices": [
-            {
-                "text": "Lift your head from the desk.",
-                "nextId": "desk_view"
-            }
-        ]
+{
+    "id": "start",
+    "text": "The return to the land of the living is a hostile takeover of decayed real estate. Consciousness crashes back into your skull carrying the flotsam of a forgotten night. A trio of unwelcome guests demand your attention.",
+    "choices": [
+        {
+            "text": "Focus on the pain: a predatory bass drum behind your right eye.",
+            "nextId": "desk_view_focus_pain"
+        },
+        {
+            "text": "Focus on the smell: stale bourbon, rain-soaked wool, and blood.",
+            "nextId": "desk_view_focus_smell"
+        },
+        {
+            "text": "Focus on the sound: a low, resonant hum vibrating in your teeth.",
+            "nextId": "desk_view_focus_hum"
+        }
+    ]
+},
+{
+    "id": "desk_view_focus_pain",
+    "text": "You ride the wave of pain, letting it crest. It's a familiar agony, the price of a temporary escape. The throbbing in your head is a physical thing, a frantic bird trapped in the cage of your skull, beating its wings against the bone. It's the only thing that feels real right now.",
+    "choices": [
+        {
+            "text": "It's time to face the facts. Lift your head.",
+            "nextId": "desk_view"
+        }
+    ]
+},
+{
+    "id": "desk_view_focus_smell",
+    "text": "You draw a slow breath through your nose, taking inventory. The cheap bourbon is your own brand of failure. The wet wool of your coat tells you the rain hasn't stopped. And the faint, coppery tang of blood... well, that could be anyone's. Best to find out whose.",
+    "choices": [
+        {
+            "text": "It's time to face the facts. Lift your head.",
+            "nextId": "desk_view"
+        }
+    ]
+},
+{
+    "id": "desk_view_focus_hum",
+    "text": "You ignore the pain and the smell, tuning into the vibration instead. It's not the building's wiring or the neon sign outside. It's deeper. A signal on the edge of hearing, like a secret the city is whispering to itself. It feels... important.",
+    "choices": [
+        {
+            "text": "Whatever it is, it can wait. Lift your head.",
+            "nextId": "desk_view"
+        }
+    ]
+},
+{
+    "id": "desk_view",
+    "text": () => {
+        let baseText = "You peel your cheek off the scarred surface of your desk. The world swims into focus, a disaster area in miniature.";
+        
+        if (!gameState.seenDeskRevolver) {
+            baseText += "\n- A heavy revolver sits like an anchor, promising a permanent solution to temporary problems.";
+        }
+        if (!gameState.seenDeskShell) {
+            baseText += "\n- A single, impossibly white seashell rests on a stack of papers, glaringly out of place.";
+        }
+        if (!gameState.seenDeskMatchbook) {
+            baseText += "\n- A soggy matchbook from 'The Electric Sheep' is a clue to a question you can't remember.";
+        }
+        
+        if (player.smarts > 5) {
+            baseText += "\n\nYour analytic mind instantly tries to catalogue the chaos.";
+        } else if (player.grit > 5) {
+            baseText += "\n\nYour knuckles ache with a familiar memory of violence.";
+        }
+
+        return baseText;
     },
-    {
-        "id": "desk_view",
-        "text": "With a groan that seems to rise up from the city's iron foundations, you peel your cheek off the scarred surface of your desk. The wood grain, a permanent fixture in your memory, swims into focus. For a moment, you could swear the swirling lines form a map of a place you’ve never been, or a place you never want to see again. \n\nYour bleary eyes take inventory of the immediate disaster area: a half-empty bottle of bourbon that looks more like a headstone, a heavy revolver that feels more like an anchor, a single, impossibly white seashell that doesn't belong, and a soggy matchbook from a place called 'The Electric Sheep'.\n\nAnd then there's the hum. A low, resonant thrumming that vibrates not in your ears, but in your teeth, in the cheap fillings of a life spent chewing on rocks.",
-        "choices": [
-            {
-                "text": "Push yourself to your feet.",
-                "nextId": "waking_up"
-            }
-        ]
-    },
+    "choices": [
+        {
+            "text": "Examine the revolver.",
+            "nextId": "examine_desk_revolver",
+            "setState": "seenDeskRevolver",
+            "hideIfState": "seenDeskRevolver"
+        },
+        {
+            "text": "Examine the seashell.",
+            "nextId": "examine_desk_shell",
+            "setState": "seenDeskShell",
+            "hideIfState": "seenDeskShell"
+        },
+        {
+            "text": "Examine the matchbook.",
+            "nextId": "examine_desk_matchbook",
+            "setState": "seenDeskMatchbook",
+            "hideIfState": "seenDeskMatchbook"
+        },
+        {
+            "text": "Enough stalling. Push yourself to your feet.",
+            "nextId": "waking_up"
+        }
+    ]
+},
+{
+    "id": "examine_desk_revolver",
+    "text": "You pick up the Colt. It's heavy, solid, and cold to the touch. It feels less like a tool and more like a promise. You check the cylinder. Fully loaded. It's a comforting weight in a city that offers little comfort.",
+    "choices": [
+        { "text": "Put it down.", "nextId": "desk_view" }
+    ]
+},
+{
+    "id": "examine_desk_shell",
+    "text": "You run a thumb over the seashell's perfect, smooth surface. It doesn't belong here, in this office of grime and regret. Holding it to your ear, you don't hear the ocean. You hear a faint, distorted snippet of a lonely saxophone, a melody that sounds like heartbreak and static.",
+    "choices": [
+        { "text": "Put it down.", "nextId": "desk_view" }
+    ]
+},
+{
+    "id": "examine_desk_matchbook",
+    "text": "The matchbook is flimsy cardboard. The logo is a stylized sheep made of glitching neon tubes. 'The Electric Sheep,' it reads. 'For androids and the men who love them.' The inside is empty, save for a hastily scrawled number.",
+    "choices": [
+        { "text": "Put it down.", "nextId": "desk_view" }
+    ]
+},
     {
         "id": "waking_up",
         "text": "You shove yourself up from the chair, a maneuver that sends a jolt of agony through your spine and makes the cheap furniture groan in protest. The room performs a slow, nauseating pirouette around you—a carousel of shadows and the dim, accusatory light filtering through the grime on your window like dishwater. The bass drum in your head has been joined by a full orchestra of pain, and the conductor is a sadist with a grudge.",
@@ -902,20 +1051,22 @@
             }
         ]
     },
-    {
-        "id": "finneys_note",
-        "text": "You open the envelope. The note inside is in Finney's familiar scrawl, but the letters are shaky, panicked.\n\n\"Slate,\nIf you're reading this, I'm gone. Or worse. It's the song. It gets in your head. They're not just shipping parts from the docks... they're shipping echoes. Ghosts.\nI dug deep. Too deep. Found something in the old City Archives, a corporate charter from the roaring 20s. Sterling Automata wasn't their first name. It was a shell company, a front.\nLook for the Hastur Foundation. Find out who they really are. Don't trust Mulligan. Don't trust anyone.\n\n-F\"\n\nThe note feels cold in your hand, a message from a dead man.",
-        "choices": [
-            {
-                "text": "This changes things. You need to go to the City Archives.",
-                "nextId": "travel_to_archives"
-            },
-            {
-                "text": "Put the note away. It's a ghost story.",
-                "nextId": "office_ambience"
-            }
-        ]
-    },
+{
+    "id": "finneys_note",
+    "text": "You open the envelope. The note inside is in Finney's familiar scrawl, but the letters are shaky, panicked.\n\n\"Slate,\nIf you're reading this, I'm gone. Or worse. It's the song. It gets in your head. They're not just shipping parts from the docks... they're shipping echoes. Ghosts.\nI dug deep. Too deep. Found something in the old City Archives, a corporate charter from the roaring 20s. Sterling Automata wasn't their first name. It was a shell company, a front.\nLook for the Hastur Foundation. Find out who they really are. Don't trust Mulligan. Don't trust anyone.\n\n-F\"\n\nThe note feels cold in your hand, a message from a dead man.",
+    "choices": [
+        {
+            "text": "This changes things. You need to go to the City Archives.",
+            "nextId": "travel_to_archives",
+            "clueGained": "Finney's Warning: Don't trust Mulligan. Sterling was a front for the 'Hastur Foundation'.",
+            "effect": { "smarts": 1 }
+        },
+        {
+            "text": "Put the note away. It's a ghost story for another night.",
+            "nextId": "office_ambience"
+        }
+    ]
+},
     {
         "id": "examine_matchbook",
         "text": "A flimsy cardboard matchbook, the logo a stylized sheep made of glitching neon tubes. 'The Electric Sheep,' it reads. 'For androids and the men who love them.' The inside is empty, save for a hastily scrawled number and a single, unspent match. The name tickles a memory you can't quite catch.",
@@ -1157,7 +1308,8 @@
             },
             {
                 "text": "Follow a lead into the twisting streets of the Narrows.",
-                "nextId": "travel_to_narrows"
+                "nextId": "travel_to_narrows",
+                "showIfState": "heardSullyRumors" // <-- This is the lock!
             },
             {
                 "text": "That matchbook... maybe I'll check out 'The Electric Sheep'.",
@@ -1539,7 +1691,8 @@
             },
             {
                 "text": "Glare at him. \"Give me the key.\"",
-                "nextId": "super_hostile"
+                "nextId": "super_hostile",
+                "setState": "antagonizedSuper" // <-- Track this hostile action
             },
             {
                 "text": "Never mind. Head upstairs.",
@@ -1656,14 +1809,13 @@
     {
         "id": "downtown_bars",
         "text": "You push open the door to \"The Rusty Mug,\" a dive where secrets are cheaper than the watered-down bourbon. The air is thick with smoke, lies, and the smell of stale beer. A grizzled bartender named Sully polishes a glass with a dirty rag, his eyes missing nothing. The few patrons here look like they were carved from cheap wood and regret, each one nursing a glass and a grudge.",
-        "choices": [
-            {
-                "text": "Ask the bartender about street rumors.",
-                "nextId": "sully_rumors",
-                "hideIfState": "heardSullyRumors",
-                "setState": "heardSullyRumors",
-                "hideIfState": "talkedToMulligan"
-            },
+    "choices": [
+        {
+            "text": "Ask the bartender about street rumors.",
+            "nextId": "sully_rumors",
+            "setState": "heardSullyRumors",
+            "hideIfState": ["heardSullyRumors", "talkedToMulligan"]
+        },
             {
                 "text": "Ask the bartender about the rumors (you mention talking to a cop).",
                 "nextId": "sully_rumors_post_mulligan",
@@ -1817,16 +1969,18 @@
             }
         ]
     },
-    {
-        "id": "bouncer_fight",
-        "text": "You try to shoulder past him. It's like running into a brick wall that hits back. The world explodes in a flash of bright, white pain. Your first mistake of the night, but probably not your last.",
-        "choices": [
-            {
-                "text": "This isn't working...",
-                "nextId": "ghost_run_reflection"
-            }
-        ]
-    },
+{
+    "id": "bouncer_fight",
+    "text": "You try to shoulder past him. It's like running into a brick wall that hits back. The world explodes in a flash of bright, white pain as his fist connects with your jaw. Your first mistake of the night, but probably not your last.",
+    "choices": [
+        {
+            "text": "You wake up in the alley, bruised and humbled.",
+            "nextId": "ghost_run_reflection",
+            "effect": { "grit": -1 },
+            "clueGained": "The bouncer at The Rusty Mug is no pushover. Need a smarter approach."
+        }
+    ]
+},
     {
         "id": "bouncer_bribe_fail",
         "text": "You slide a bill into his hand. He looks at it, then at you, and laughs a low, gravelly laugh that sounds like rocks in a blender. \"That's cute,\" he says, before effortlessly lifting you by the collar and depositing you in the back alley. Your money, and your dignity, are gone.",
