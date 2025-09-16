@@ -785,21 +785,24 @@ const PLANET_BIOMES = {
          };
          
         // --- Pirate Ship Classes Database ---
-         const PIRATE_SHIP_CLASSES = {
+const PIRATE_SHIP_CLASSES = {
              RAIDER: {
                  name: "Raider",
                  baseHull: 60,
-                 baseShields: 20
+                 baseShields: 20,
+                 weight: 5 // <-- ADD THIS (Most common)
              },
              STRIKER: {
                  name: "Striker",
                  baseHull: 45,
-                 baseShields: 35
+                 baseShields: 35,
+                 weight: 3 // <-- ADD THIS (Uncommon)
              },
              BRUISER: {
                  name: "Bruiser",
                  baseHull: 80,
-                 baseShields: 15
+                 baseShields: 15,
+                 weight: 1 // <-- ADD THIS (Rare)
              }
          };
 
@@ -1132,6 +1135,7 @@ const GAME_STATES = {
          {
          id_prefix: "BOUNTY_PIRATE_",
          type: "BOUNTY",
+         weight: 4, // <-- ADD THIS
          title_template: "Pirate Cull in {sectorName}",
          briefing_template: "Concord Security is offering a bounty for pirate vessels in the {sectorName} sector.",
          description_template: "Increased pirate activity in the {sectorName} ({sectorCoords}) sector is disrupting trade. Eliminate {count} pirate threats to secure the area and claim your reward.",
@@ -1142,6 +1146,7 @@ const GAME_STATES = {
          {
          id_prefix: "DELIVERY_",
          type: "DELIVERY",
+         weight: 4, // <-- ADD THIS
          title_template: "Urgent Delivery to {destinationName}",
          briefing_template: "{destinationName} requires an immediate shipment of {itemName}.",
          description_template: "A priority one request from {destinationName}. They need {count} units of {itemName} for critical operations. Deliver the goods and return here for payment.",
@@ -1152,6 +1157,7 @@ const GAME_STATES = {
          {
          id_prefix: "SURVEY_ANOMALY_",
          type: "SURVEY",
+         weight: 2, // <-- ADD THIS
          title_template: "Investigate {subtype} Anomaly",
          briefing_template: "Concord Science Division requires scan data on a nearby anomaly.",
          description_template: "We've detected a faint {subtype} signature. We need a ship on-site to perform a detailed scan. The anomaly could be anywhere, so keep your sensors active. Return here with the data.",
@@ -1162,6 +1168,7 @@ const GAME_STATES = {
          {
          id_prefix: "ACQUIRE_RESOURCES_",
          type: "ACQUIRE", // New type
+         weight: 1, // <-- ADD THIS
          title_template: "Resource Acquisition: {itemName}",
          briefing_template: "We need a contractor to acquire a shipment of {itemName}.",
          description_template: "Our operations require {count} units of {itemName}. We don't care where you get it - mine it, trade for it, or 'find' it. Just bring the specified amount back here for a generous reward.",
@@ -1170,8 +1177,6 @@ const GAME_STATES = {
          prerequisites: { minLevel: 3 }
          }
          ];
-         
-         
          
          // --- DOM Elements ---
          
@@ -2973,10 +2978,11 @@ function advanceGameTime(timeAmount) {
     return false; 
 }
 function startCombat() {
-             // --- NEW: Randomly select a pirate ship class ---
-             const pirateShipKeys = Object.keys(PIRATE_SHIP_CLASSES);
-             const randomShipKey = pirateShipKeys[Math.floor(Math.random() * pirateShipKeys.length)];
-             const pirateShip = PIRATE_SHIP_CLASSES[randomShipKey];
+
+            // --- NEW: Randomly select a pirate ship class ---
+
+             const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES);
+             const pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
 
              // --- Use the ship's stats as a base for the enemy ---
              const pirateMaxHull = pirateShip.baseHull + Math.floor(Math.random() * 10) - 5; // Add some variance
@@ -3449,10 +3455,13 @@ function repairShip() {
     const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
     for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
+        
         try {
-            const templateIndex = Math.floor(Math.random() * availableTemplates.length);
+            // Select a weighted random template from the available ones
+            const chosenTemplate = getWeightedRandomOutcome(availableTemplates);
+
             // Crucial fix: Make a deep copy of the template to avoid side-effects
-            let newMission = JSON.parse(JSON.stringify(availableTemplates[templateIndex]));
+            let newMission = JSON.parse(JSON.stringify(chosenTemplate));
             
             newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
             newMission.giver = stationName;
