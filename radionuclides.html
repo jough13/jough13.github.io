@@ -6906,8 +6906,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.5';
-         const LAST_UPDATED = 'September 11, 2025';
+         const VERSION = '3.5.6';
+         const LAST_UPDATED = 'September 16, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -8813,14 +8813,10 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
          );
          };
          
-const Scratchpad = () => {
+const Scratchpad = ({ notes, setNotes }) => {
              const { addToast } = useToast();
-             const [notes, setNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
+                 
              const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-         
-             React.useEffect(() => {
-                 localStorage.setItem('user_scratchpad_notes', notes);
-             }, [notes]);
          
              const handleCopyAll = () => {
                  if (notes) {
@@ -8920,6 +8916,7 @@ const Scratchpad = () => {
          
 const ScientificCalculator = ({ calcState, setCalcState }) => {
     const { addToast } = useToast();
+    const { addHistory } = useCalculationHistory();
 
     // FIX 2: All state-updating functions are rewritten using the "functional update" form (e.g., setCalcState(currentState => ...)).
     // This is a more robust pattern that prevents bugs where functions might use "stale" state.
@@ -8978,6 +8975,42 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         setCalcState(currentState => ({ ...currentState, expression: currentState.expression + currentState.memory.toString() }));
     }, [setCalcState]);
 
+const handleSaveToHistory = React.useCallback(() => {
+        const { result, history } = calcState;
+        // Try to get the *last calculated expression* from the history array, which is more useful
+        const lastCalculation = history[0] || null;
+        
+        if (lastCalculation) {
+            // Split the string "5+5 = 10" into inputs and result
+            const parts = lastCalculation.split(' = ');
+            const inputs = parts[0] || 'Calculation';
+            const res = parts[1] || result; // Fallback to current result if split fails
+            
+            addHistory({
+                id: Date.now(),
+                type: 'Sci. Calculator',
+                icon: ICONS.scientificCalculator,
+                inputs: inputs,
+                result: res,
+                view: VIEWS.SCIENTIFIC_CALCULATOR
+            });
+            addToast("Calculation saved to history!");
+        } else if (result && result !== 'Error') {
+            // Fallback if there's no history but there is a result
+             addHistory({
+                id: Date.now(),
+                type: 'Sci. Calculator',
+                icon: ICONS.scientificCalculator,
+                inputs: 'Result', // No expression to save, just the raw result
+                result: result,
+                view: VIEWS.SCIENTIFIC_CALCULATOR
+            });
+            addToast("Calculation saved to history!");
+        } else {
+            addToast("No valid result to save.");
+        }
+    }, [calcState, addHistory, addToast]);
+    
     const handleMemoryAdd = React.useCallback(() => {
         setCalcState(currentState => {
             try {
@@ -9046,7 +9079,16 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                 <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
                 <div className="flex justify-end items-center h-10">
                     <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
-                    {result && result !== 'Error' && <CopyButton textToCopy={result} />}
+                    {result && result !== 'Error' && (
+                        <>
+                            <CopyButton textToCopy={result} />
+                            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                               <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                   <Icon path={ICONS.notepad} className="w-5 h-5" />
+                               </button>
+                            </Tooltip>
+                        </>
+                    )}
                 </div>
             </div>
             <div className="grid grid-cols-5 gap-2 mb-2">
@@ -9870,16 +9912,21 @@ const UnitConverter = () => {
         }
     };
     
-    const handleSwap = () => {
+const handleSwap = () => {
     const from = factors[fromUnit];
     const to = factors[toUnit];
     if (from && to && from.base === to.base) {
+        // Swap the units
         setFromUnit(toUnit);
         setToUnit(fromUnit);
+        // AND swap the values by moving the result to the input
+        if (result) {
+            setValue(result);
+        }
     } else {
         setError("Cannot swap incompatible units.");
     }
-    };
+};
     
     const currentBase = factors[fromUnit]?.base;
     const compatibleUnits = Object.fromEntries(
@@ -11013,12 +11060,12 @@ const OperationalHPCalculators = ({ radionuclides }) => {
     const [activeCalculator, setActiveCalculator] = React.useState('surfaceContam');
     
     // State for the NEW SurfaceContaminationCalculator
-    const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState('');
-    const [sc_staticData, setSc_staticData] = React.useState('');
-    const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
-    const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
-    const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
-    const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
+    const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState(() => localStorage.getItem('sc_nuclideSymbol') || '');
+    const [sc_staticData, setSc_staticData] = React.useState(() => localStorage.getItem('sc_staticData') || '');
+    const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState(() => localStorage.getItem('sc_wipeGrossCpm') || '150');
+    const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState(() => localStorage.getItem('sc_wipeBackgroundCpm') || '50');
+    const [sc_instrumentEff, setSc_instrumentEff] = React.useState(() => localStorage.getItem('sc_instrumentEff') || '25');
+    const [sc_smearEff, setSc_smearEff] = React.useState(() => localStorage.getItem('sc_smearEff') || '0.1');
     const [sc_result, setSc_result] = React.useState(null);
     const [sc_error, setSc_error] = React.useState('');
 
@@ -11039,6 +11086,15 @@ const OperationalHPCalculators = ({ radionuclides }) => {
     const [ac_result, setAc_result] = React.useState(null);
     const [ac_error, setAc_error] = React.useState('');
     
+    React.useEffect(() => {
+        localStorage.setItem('sc_nuclideSymbol', sc_nuclideSymbol);
+        localStorage.setItem('sc_staticData', sc_staticData);
+        localStorage.setItem('sc_wipeGrossCpm', sc_wipeGrossCpm);
+        localStorage.setItem('sc_wipeBackgroundCpm', sc_wipeBackgroundCpm);
+        localStorage.setItem('sc_instrumentEff', sc_instrumentEff);
+        localStorage.setItem('sc_smearEff', sc_smearEff);
+    }, [sc_nuclideSymbol, sc_staticData, sc_wipeGrossCpm, sc_wipeBackgroundCpm, sc_instrumentEff, sc_smearEff]);
+
     // --- Updated Clear Logic ---
     const handleSurfaceContamClear = () => {
         setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150');
@@ -14023,6 +14079,8 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
         }
     });
 
+    const [scratchpadNotes, setScratchpadNotes] = React.useState(() => localStorage.getItem('user_scratchpad_notes') || '');
+
     const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
     const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
     const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
@@ -14087,23 +14145,23 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
         }
     }, [addToast]);
 
-    const scrollToMainContent = () => {
+    const scrollToMainContent = React.useCallback(() => {
         const isMobile = window.innerWidth < 768;
         if (isMobile && mainContentRef.current) {
             mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    };
+    }, [mainContentRef]);
 
-    const handleNavClick = (view) => {
+const handleNavClick = React.useCallback((view) => {
         if (view !== VIEWS.DETAIL) {
             setDetailedNuclide(null);
         }
-        setPreselectedNuclide(null); 
+        setPreselectedNuclide(null); // Our fix from last time
         setActiveView(view);
         window.location.hash = view;
         scrollToMainContent();
         if (view === VIEWS.HOME) { inputRef.current?.blur(); }
-    };
+    }, [scrollToMainContent]); // Add its function dependency
     
     const handleClearSearch = () => {
         setNuclideName('');
@@ -14152,6 +14210,10 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
     React.useEffect(() => {
         localStorage.setItem('scientificCalculatorState', JSON.stringify(scientificCalculatorState));
     }, [scientificCalculatorState]);
+
+    React.useEffect(() => {
+        localStorage.setItem('user_scratchpad_notes', scratchpadNotes);
+    }, [scratchpadNotes]);
 
     React.useEffect(() => {
         const root = window.document.documentElement;
@@ -14271,7 +14333,7 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
                 handleNavClick(VIEWS.HOME);
             }
         }
-    }, [debouncedSearchTerm, radionuclides]); // Simplified dependencies
+}, [debouncedSearchTerm, radionuclides, detailedNuclide, handleNavClick]);
 
     const handleNuclideNameChange = (e) => {
         setNuclideName(e.target.value);
@@ -14358,7 +14420,9 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
                 }
                 return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
             case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
-            case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad /></div></div> );
+            
+            case VIEWS.SCRATCHPAD: return ( <div className="p-4 animate-fade-in"><div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} /></div></div> );
+
             case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
             case VIEWS.REFERENCES: return <ReferencesPage />;
             case VIEWS.HOME: 
@@ -14420,7 +14484,7 @@ const [scientificCalculatorState, setScientificCalculatorState] = React.useState
                             <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
                                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
                                 <div className="flex-grow flex flex-col">
-                                   <Scratchpad />
+                                   <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
                                 </div>
                             </div>
                         </div>
@@ -15828,9 +15892,8 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     handleCalculate();
     }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
     
-    // --- THIS IS THE CORRECTED FUNCTION ---
-    const handleClearInputs = () => {
-        setInputMode(INPUT_MODE_SOURCE);
+const handleClearInputs = () => {
+        setInputMode(INPUT_MODE_MANUAL);
         setNuclideSymbol('');
         setActivity('1');
         setActivityUnit('mCi');
@@ -16824,7 +16887,7 @@ const MDACalculator = () => {
          * survey unit based on the more precise MARSSIM Equation 5-2.
          */
            
-const MARSSIM_SampleCalculator = () => {
+const MARSSIM_SampleCalculator = ({ onCalculationComplete }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast(); // Added for the save confirmation toast
 
@@ -16934,6 +16997,7 @@ const [error, setError] = React.useState('');
         const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
         
         setResult(newResult);
+        onCalculationComplete(final_N);
         // REMOVED the addHistory call from here
     };
 
@@ -17081,7 +17145,7 @@ const NorthArrowControl = () => (
          * ensuring correct rendering within a tabbed interface.
          */
     
-const DrawingTool = ({ isVisible }) => {
+const DrawingTool = ({ isVisible, samplesToPlace, setSamplesToPlace }) => {
     const mapRef = React.useRef(null);
     const drawnItemsRef = React.useRef(null);
     const samplePointsLayerRef = React.useRef(null);
@@ -17098,7 +17162,7 @@ const DrawingTool = ({ isVisible }) => {
     const [locationInput, setLocationInput] = React.useState('');
     const [surveyUnitName, setSurveyUnitName] = React.useState('SU-1');
     const [surveyClass, setSurveyClass] = React.useState('Class 1');
-    const [samplesToPlace, setSamplesToPlace] = React.useState(25);
+  
     const [sampleCalcMode, setSampleCalcMode] = React.useState('byNumber');
     const [gridSpacing, setGridSpacing] = React.useState(10);
 
@@ -17740,6 +17804,21 @@ const handlePrintMap = () => {
          const MARSSIM_SampleDesign = () => {
          const [activeModule, setActiveModule] = React.useState('calculator');
          
+ const [calculatedSampleCount, setCalculatedSampleCount] = React.useState(null); 
+         const [samplesToPlace, setSamplesToPlace] = React.useState(() => parseInt(localStorage.getItem('marssim_draw_samplesToPlace') || 25, 10));
+
+         // This is the "magic" link: when the calc result changes, update the drawing input
+         React.useEffect(() => {
+             if (calculatedSampleCount !== null) {
+                 setSamplesToPlace(calculatedSampleCount);
+             }
+         }, [calculatedSampleCount]);
+
+         // Keep saving the drawing input to localStorage
+         React.useEffect(() => {
+             localStorage.setItem('marssim_draw_samplesToPlace', samplesToPlace);
+         }, [samplesToPlace]);
+
          return (
          <div className="p-4 animate-fade-in">
              <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
@@ -17762,9 +17841,9 @@ const handlePrintMap = () => {
                         2. Draw Survey Unit
                     </button>
                 </div>
-                <div>
-                    {activeModule === 'calculator' && <MARSSIM_SampleCalculator />}
-                    {activeModule === 'drawing' && <DrawingTool isVisible={activeModule === 'drawing'} />}
+               <div>
+                    {activeModule === 'calculator' && <MARSSIM_SampleCalculator onCalculationComplete={setCalculatedSampleCount} />}
+                    {activeModule === 'drawing' && <DrawingTool isVisible={activeModule === 'drawing'} samplesToPlace={samplesToPlace} setSamplesToPlace={setSamplesToPlace} />}
                 </div>
              </div>
          </div>
