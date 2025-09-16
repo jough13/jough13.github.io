@@ -6906,8 +6906,8 @@
          // --- APPLICATION METADATA & CONSTANTS
          //==============================================================================
          
-         const VERSION = '3.5.6';
-         const LAST_UPDATED = 'September 16, 2025';
+         const VERSION = '3.5.5';
+         const LAST_UPDATED = 'September 11, 2025';
          
          // NEW: A global constant for all navigation views
          
@@ -10193,22 +10193,53 @@ const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
     const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || false);
     
     // State for Source Correction
-    const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState('');
-    const [corr_originalActivity, setCorr_originalActivity] = React.useState('10');
-    const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState('mCi');
+const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState(() => localStorage.getItem('corr_nuclideSymbol') || '');
+    const [corr_originalActivity, setCorr_originalActivity] = React.useState(() => localStorage.getItem('corr_originalActivity') || '10');
+    const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState(() => localStorage.getItem('corr_originalActivityUnit') || 'mCi');
     const getTodayString = () => new Date().toISOString().split('T')[0];
-    const [corr_originalDate, setCorr_originalDate] = React.useState('2020-01-01');
-    const [corr_targetDate, setCorr_targetDate] = React.useState(getTodayString());
+    const [corr_originalDate, setCorr_originalDate] = React.useState(() => localStorage.getItem('corr_originalDate') || '2020-01-01');
+    const [corr_targetDate, setCorr_targetDate] = React.useState(() => localStorage.getItem('corr_targetDate') || getTodayString());
 
     // State for Decay to Limit
-    const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(null);
-    const [dtl_initialActivity, setDtl_initialActivity] = React.useState('10');
-    const [dtl_initialUnit, setDtl_initialUnit] = React.useState('mCi');
-    const [dtl_finalActivity, setDtl_finalActivity] = React.useState('0.001');
-    const [dtl_finalUnit, setDtl_finalUnit] = React.useState('mCi');
+const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(() => { const saved = localStorage.getItem('dtl_nuclideSymbol'); return saved ? radionuclides.find(n => n.symbol === saved) : null; });
+    const [dtl_initialActivity, setDtl_initialActivity] = React.useState(() => localStorage.getItem('dtl_initialActivity') || '10');
+    const [dtl_initialUnit, setDtl_initialUnit] = React.useState(() => localStorage.getItem('dtl_initialUnit') || 'mCi');
+    const [dtl_finalActivity, setDtl_finalActivity] = React.useState(() => localStorage.getItem('dtl_finalActivity') || '0.001');
+    const [dtl_finalUnit, setDtl_finalUnit] = React.useState(() => localStorage.getItem('dtl_finalUnit') || 'mCi');
     const [dtl_result, setDtl_result] = React.useState(null);
     const [dtl_error, setDtl_error] = React.useState('');
     
+    React.useEffect(() => {
+        // Standard Decay
+        localStorage.setItem('decayCalc_nuclideSymbol', std_selectedNuclide ? std_selectedNuclide.symbol : '');
+        localStorage.setItem('decayCalc_mode', std_calculationMode);
+        localStorage.setItem('decayCalc_initialActivity', std_initialActivity);
+        localStorage.setItem('decayCalc_initialDaughterActivity', std_initialDaughterActivity);
+        localStorage.setItem('decayCalc_remainingActivity', std_remainingActivity);
+        localStorage.setItem('decayCalc_timeElapsed', std_timeElapsed);
+        localStorage.setItem('decayCalc_timeUnit', std_timeUnit);
+        localStorage.setItem('decayCalc_useLogScale', JSON.stringify(std_useLogScale));
+
+        // Source Correction
+        localStorage.setItem('corr_nuclideSymbol', corr_nuclideSymbol);
+        localStorage.setItem('corr_originalActivity', corr_originalActivity);
+        localStorage.setItem('corr_originalActivityUnit', corr_originalActivityUnit);
+        localStorage.setItem('corr_originalDate', corr_originalDate);
+        localStorage.setItem('corr_targetDate', corr_targetDate);
+
+        // Decay to Limit
+        localStorage.setItem('dtl_nuclideSymbol', dtl_selectedNuclide ? dtl_selectedNuclide.symbol : '');
+        localStorage.setItem('dtl_initialActivity', dtl_initialActivity);
+        localStorage.setItem('dtl_initialUnit', dtl_initialUnit);
+        localStorage.setItem('dtl_finalActivity', dtl_finalActivity);
+        localStorage.setItem('dtl_finalUnit', dtl_finalUnit);
+    }, [
+        std_selectedNuclide, std_calculationMode, std_initialActivity, std_initialDaughterActivity, std_remainingActivity, std_timeElapsed, std_timeUnit, std_useLogScale,
+        corr_nuclideSymbol, corr_originalActivity, corr_originalActivityUnit, corr_originalDate, corr_targetDate,
+        dtl_selectedNuclide, dtl_initialActivity, dtl_initialUnit, dtl_finalActivity, dtl_finalUnit
+    ]);
+
+
     // --- Clear Logic ---
     const handleStandardClear = () => {
         setStd_selectedNuclide(null); setStd_calculationMode('findRemaining'); setStd_initialActivity('100');
@@ -10405,7 +10436,6 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
     const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
     const sortedRadionuclides = React.useMemo(() => { const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 }; return [...radionuclides].filter(r => r.halfLife !== 'Stable').sort((a, b) => { const orderA = commonalityOrder[a.commonality] || 0; const orderB = commonalityOrder[b.commonality] || 0; if (orderA !== orderB) { return orderB - orderA; } return a.name.localeCompare(b.name); }); }, [radionuclides]);
     
-    React.useEffect(() => { localStorage.setItem('decayCalc_nuclideSymbol', selectedNuclide ? selectedNuclide.symbol : ''); localStorage.setItem('decayCalc_mode', calculationMode); localStorage.setItem('decayCalc_initialActivity', initialActivity); localStorage.setItem('decayCalc_initialDaughterActivity', initialDaughterActivity); localStorage.setItem('decayCalc_remainingActivity', remainingActivity); localStorage.setItem('decayCalc_timeElapsed', timeElapsed); localStorage.setItem('decayCalc_timeUnit', timeUnit); localStorage.setItem('decayCalc_useLogScale', JSON.stringify(useLogScale)); }, [selectedNuclide, calculationMode, initialActivity, initialDaughterActivity, remainingActivity, timeElapsed, timeUnit, useLogScale]);
     
     const handleNuclideSelect = React.useCallback((symbol) => { const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol); if (nuclideToSet) { setSelectedNuclide(nuclideToSet); const hl_seconds = parseHalfLifeToSeconds(nuclideToSet.halfLife); if (hl_seconds !== Infinity) { const bestUnit = getBestHalfLifeUnit(hl_seconds); const unitConv = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 }; const hl_in_best_unit = hl_seconds / unitConv[bestUnit]; setTimeUnit(bestUnit); setTimeElapsed(parseFloat(hl_in_best_unit.toPrecision(2)).toString()); } } }, [sortedRadionuclides, setSelectedNuclide, setTimeUnit, setTimeElapsed]);
     
@@ -11650,7 +11680,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
     try {
        setError('');
        const A0_mCi = parseFloat(activity) * ({'µCi': 1e-3, 'mCi': 1, 'Ci': 1000}[activityUnit]);
-       if (isNaN(A0_mCi)) throw new Error("Invalid administered activity.");
+       if (isNaN(A0_mCi) || A0_mCi <= 0) throw new Error("Administered activity must be a positive number.");
        if (selectedNuclide.symbol === 'I-131') {
            if (A0_mCi <= I131_ACTIVITY_RELEASE_LIMIT_MCI) { setResult({ title: 'PASS (Activity Limit Met)', pass: true, details: [`Administered activity of ${A0_mCi.toFixed(1)} mCi is at or below the 33 mCi release limit.`] }); return; }
            const measuredRate = parseFloat(measuredDoseRate);
@@ -11668,9 +11698,12 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
        if (isNaN(T_half_hours_eff) || isNaN(gammaConstant_R_m2_per_Ci_hr)) { throw new Error("Invalid nuclide data for dose calculation."); }
        let totalDose_mrem = 0; let effectiveDoseRateFactor = 0;
        scenarios.forEach(s => {
-           const hours = parseFloat(s.hours); const dist = parseFloat(s.distance);
+          
            const dist_m = dist * ({'cm': 0.01, 'm': 1, 'ft': 0.3048}[s.distUnit]);
-           if (isNaN(hours) || isNaN(dist) || dist <= 0) throw new Error("Occupancy inputs are invalid.");
+
+          const hours = parseFloat(s.hours); const dist = parseFloat(s.distance);
+           if (isNaN(hours) || isNaN(dist) || dist <= 0 || hours < 0) throw new Error("Occupancy hours cannot be negative and distance must be positive.");
+           
            const totalDoseForScenario = (1.443 * gammaConstant_R_m2_per_Ci_hr * (A0_mCi/1000) * T_half_hours_eff * (hours/24)) / Math.pow(dist_m, 2);
            totalDose_mrem += totalDoseForScenario * 1000;
            effectiveDoseRateFactor += ( (hours/24) / Math.pow(dist_m, 2) );
@@ -14244,7 +14277,18 @@ const handleNavClick = React.useCallback((view) => {
     const allEmissionTypes = React.useMemo(() => ['All', ...[...new Set(radionuclides.flatMap(n => n.emissionType || []))].sort()], [radionuclides]);
     const allCommonalityCategories = React.useMemo(() => ['All', ...[...new Set(radionuclides.map(n => n.commonality).filter(Boolean))].sort()], [radionuclides]);
 
-    const getFilteredAndSortedRadionuclides = React.useCallback(() => {
+
+
+
+
+
+
+
+
+
+
+
+const filteredList = React.useMemo(() => {
         let filtered = [...radionuclides];
         if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
         if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
@@ -14285,7 +14329,17 @@ const handleNavClick = React.useCallback((view) => {
         return filtered;
     }, [selectedCategory, selectedEmissionType, selectedCommonality, sortBy, sortOrder, minAlphaEnergy, maxAlphaEnergy, minBetaEnergy, maxBetaEnergy, minGammaEnergy, maxGammaEnergy, minHalfLife, maxHalfLife, halfLifeFilterUnit, radionuclides]);
 
-    const filteredList = getFilteredAndSortedRadionuclides();
+
+
+
+
+
+
+
+
+
+
+
     const toggleTheme = () => setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
     const handleClearHistory = () => { setSearchHistory([]); localStorage.removeItem('radionuclideSearchHistory'); addToast('Search history cleared.'); };
     const handleDecaySeriesClick = (seriesId) => { setCurrentDecaySeriesId(seriesId); window.location.hash = VIEWS.DECAY_SERIES; };
