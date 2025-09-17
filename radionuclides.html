@@ -8925,14 +8925,33 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
     // This is a more robust pattern that prevents bugs where functions might use "stale" state.
     // They are also wrapped in React.useCallback to ensure they don't get recreated unnecessarily on every render.
 
-    const handleInput = React.useCallback((value) => {
-        setCalcState(currentState => {
-            const { expression, result } = currentState;
-            // This logic correctly handles starting a new expression after a result is shown
-            const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
-            return { ...currentState, expression: newExpression, result: '' };
-        });
-    }, [setCalcState]);
+const handleInput = React.useCallback((value) => {
+    setCalcState(currentState => {
+        const { expression, result } = currentState;
+        const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
+        return { ...currentState, expression: newExpression, result: '' };
+    });
+}, [setCalcState]);
+
+const handleCalculate = React.useCallback(() => {
+    setCalcState(currentState => {
+        if (!currentState.expression) return currentState;
+        try {
+            const evalResult = math.evaluate(currentState.expression);
+            const resultStr = math.format(evalResult, { precision: 6 });
+            return {
+                ...currentState,
+                result: resultStr,
+                history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 5),
+                expression: ''
+            };
+        } catch (e) {
+            const errorMessage = e.message || 'Invalid expression';
+            addToast(errorMessage);
+            return { ...currentState, result: 'Error', expression: '' };
+        }
+    });
+}, [setCalcState, addToast]);
 
     const handleClear = React.useCallback(() => {
         setCalcState(currentState => ({ ...currentState, expression: '', result: '' }));
@@ -8941,27 +8960,6 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
     const handleBackspace = React.useCallback(() => {
         setCalcState(currentState => ({ ...currentState, expression: currentState.expression.slice(0, -1) }));
     }, [setCalcState]);
-
-    const handleCalculate = React.useCallback(() => {
-        setCalcState(currentState => {
-            if (!currentState.expression) return currentState;
-            try {
-                const evalResult = math.evaluate(currentState.expression);
-                const resultStr = math.format(evalResult, { precision: 6 });
-                return {
-                    ...currentState,
-                    result: resultStr,
-                    history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 5),
-                    expression: ''
-                };
-            } catch (e) {
-                // FIX 1: Correctly define the errorMessage before using it.
-                const errorMessage = e.message || 'Invalid expression';
-                addToast(errorMessage);
-                return { ...currentState, result: 'Error', expression: '' };
-            }
-        });
-    }, [setCalcState, addToast]);
     
     const handleMemoryClear = React.useCallback(() => {
         setCalcState(currentState => ({ ...currentState, memory: 0 }));
@@ -14209,37 +14207,39 @@ const App = () => {
         handleNavClick(VIEWS.DETAIL);
     };
 
-    // --- THIS IS THE CORRECTED useEffect HOOK ---
-    React.useEffect(() => {
-        if (debouncedSearchTerm.length > 0) {
-            // Don't show suggestions if the search term already matches the displayed nuclide
-            if (detailedNuclide && debouncedSearchTerm === detailedNuclide.name) {
-                setSuggestions([]);
-                return;
-            }
-            const normVal = normalizeString(debouncedSearchTerm);
-            const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1, 'N/A': 0, undefined: 0 };
-            const filtered = radionuclides.filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
-                .sort((a, b) => {
-                    const aStartsWith = normalizeString(a.name).startsWith(normVal) || normalizeString(a.symbol).startsWith(normVal);
-                    const bStartsWith = normalizeString(b.name).startsWith(normVal) || normalizeString(b.symbol).startsWith(normVal);
-                    if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
-                    const orderA = commonalityOrder[a.commonality] || 0;
-                    const orderB = commonalityOrder[b.commonality] || 0;
-                    if (orderB !== orderA) return orderB - orderA;
-                    return a.name.localeCompare(b.name);
-                })
-                .slice(0, 10);
-            setSuggestions(filtered);
-        } else {
-            // If the search term is empty, clear suggestions and the detailed result.
+
+// Corrected useEffect in the App component
+React.useEffect(() => {
+    if (debouncedSearchTerm.length > 0) {
+        // Don't show suggestions if the search term already matches the displayed nuclide
+        if (detailedNuclide && debouncedSearchTerm === detailedNuclide.name) {
             setSuggestions([]);
-            if (detailedNuclide) { // Only change state if there's something to clear
-                setDetailedNuclide(null);
-                handleNavClick(VIEWS.HOME);
-            }
+            return;
         }
-    }, [debouncedSearchTerm, radionuclides]); // Simplified dependencies
+        const normVal = normalizeString(debouncedSearchTerm);
+        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
+
+        // ** THIS IS THE RESTORED LOGIC **
+        const filtered = radionuclides
+            .filter(n => normalizeString(n.name).includes(normVal) || normalizeString(n.symbol).includes(normVal))
+            .sort((a, b) => {
+                const orderA = commonalityOrder[a.commonality] || 0;
+                const orderB = commonalityOrder[b.commonality] || 0;
+                if (orderB !== orderA) return orderB - orderA; // Sort by commonality first
+                return a.name.localeCompare(b.name); // Then alphabetically
+            })
+            .slice(0, 10);
+            
+        setSuggestions(filtered);
+    } else {
+        // If the search term is empty, clear suggestions and the detailed result.
+        setSuggestions([]);
+        if (detailedNuclide) { // Only change state if there's something to clear
+            setDetailedNuclide(null);
+            handleNavClick(VIEWS.HOME);
+        }
+    }
+}, [debouncedSearchTerm, radionuclides]); // Simplified dependencies
 
     const handleNuclideNameChange = (e) => {
         setNuclideName(e.target.value);
@@ -14775,12 +14775,13 @@ const App = () => {
                                          }
 
 
-         
-                                                 return (
-                                                     <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
-                                                         {cellContent}
-                                                     </td>
-                                                 );
+// Fixed code
+return (
+    <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
+        {cellContent}
+    </td>
+);
+
                                              })}
                                          </tr>
                                      );
@@ -14965,6 +14966,13 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     else { setActivityUnit('mCi'); }
     }, [calcMode]);
     
+React.useEffect(() => {
+    // If a nuclide is selected but it's not in the list of available nuclides for the current mode...
+    if (nuclideSymbol && !availableNuclides.find(n => n.symbol === nuclideSymbol)) {
+        setNuclideSymbol(''); // ...clear the invalid selection.
+    }
+}, [calcMode, availableNuclides, nuclideSymbol]);
+
     React.useEffect(() => {
     if (preselectedNuclide) {
        const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
@@ -15336,6 +15344,15 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     }, [nuclideSymbol, shieldMaterial, availableMaterials]);
     // ---------------------------------------------
+
+React.useEffect(() => {
+    if (nuclideSymbol) {
+        const validMaterials = availableMaterials;
+        if (validMaterials.length > 0 && !validMaterials.includes(shieldMaterial)) {
+            setShieldMaterial(validMaterials[0]);
+        }
+    }
+}, [nuclideSymbol, shieldMaterial, availableMaterials]);
     
     React.useEffect(() => {
     if (preselectedNuclide) {
