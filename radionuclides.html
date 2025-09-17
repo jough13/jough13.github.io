@@ -14722,58 +14722,57 @@ const App = () => {
 
 
 
-
 } else {
                                              const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
                                              const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
-                                             let displayValue = formattedValue;
- 
-                                             if(prop.type === 'numeric') {
-                                                 const numericVal = parseFloat(formattedValue); // <-- LOCALLY SCOPED!
+                                             let displayValue = formattedValue; // This will hold the text for categorical props
+                                             
+                                             // --- FIX 1: Declare variables with 'let' in the outer scope ---
+                                             let numericVal;
+                                             let differenceTag = null;
+                                             
+                                             const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
+
+                                             if (prop.type === 'numeric') {
+                                                 numericVal = parseFloat(formattedValue); // --- FIX 2: Assign to the outer variable ---
+
                                                  if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
                                                  if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
-                                             }
-                                             const barWidth = (prop.type === 'numeric' && maxVal > 0) ? (formattedValue / maxVal) * 100 : 0;
- 
-                                             let differenceTag = null;
-                                             if (comparisonList.length === 2 && nuclideIndex === 1 && prop.type === 'numeric') {
-                                                 const val1 = values[0];
-                                                 const val2 = values[1];
-                                                 if (val1 !== null && val2 !== null && !isNaN(val1) && !isNaN(val2) && val1 !== 0) {
-                                                     const diff = ((val2 - val1) / val1) * 100;
-                                                     const diffColor = diff >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-                                                     const sign = diff >= 0 ? '+' : '';
-                                                     differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
+
+                                                 // Corrected difference logic to use numericVal
+                                                 if (comparisonList.length === 2 && nuclideIndex === 1) {
+                                                     const val1 = values[0]; // Value from the first nuclide
+                                                     if (val1 !== null && !isNaN(val1) && !isNaN(numericVal) && val1 !== 0) {
+                                                         const diff = ((numericVal - val1) / val1) * 100;
+                                                         const diffColor = diff >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                                                         const sign = diff >= 0 ? '+' : '';
+                                                         differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
+                                                     }
                                                  }
                                              }
- 
+                                             
+                                             // --- FIX 3: Conditionally render numeric formats OR categorical text ---
                                              cellContent = (
                                                  <>
                                                      {prop.type === 'numeric' && barWidth > 0 && <div className="absolute ..." style={{ width: `${barWidth}%` }}></div>}
                                                      <div className="relative">
-                                                         
-                                                         {/* Mobile view: Formats to 3 significant figures */}
-                                                     
-                                                         <span className="md:hidden">
-                                                             {formatForMobile(numericVal)}
-                                                         </span>
-                                                         
-                                                         {/* Desktop view: Formats to 6 significant figures */}
-                                                     
-                                                         <span className="hidden md:inline">
-                                                             {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6)}
-                                                         </span>
-                                                     
+                                                         {prop.type === 'numeric' ? (
+                                                             <>
+                                                                 <span className="md:hidden">
+                                                                     {formatForMobile(numericVal)}
+                                                                 </span>
+                                                                 <span className="hidden md:inline">
+                                                                     {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6)}
+                                                                 </span>
+                                                             </>
+                                                         ) : (
+                                                             <span>{displayValue}</span> /* This just displays the raw string (e.g., "Alpha, Gamma") */
+                                                         )}
                                                          {differenceTag}
                                                      </div>
                                                  </>
                                              );
                                          }
-
-
-
-
-
 
 
          
