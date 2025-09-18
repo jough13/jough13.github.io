@@ -8775,57 +8775,57 @@
               };
               
          /**
- * @description A simple note-taking component. This is a "controlled component"
- * that receives its state and update function via props to ensure real-time
- * synchronization between the main app view and any pop-out windows.
- *
- * @param {{notes: string, setNotes: (notes: string) => void}} props
- */
-const Scratchpad = ({ notes, setNotes }) => {
-    // --- State for the confirmation modal is still managed locally ---
-    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-    const { addToast } = useToast();
-
-    // The useEffect that saved notes to localStorage has been REMOVED.
-    // This logic is now handled in the parent `App` component where the state lives.
-
-    const handleCopyAll = () => {
-        if (notes) {
+         * @description A simple note-taking component. This is a "controlled component"
+         * that receives its state and update function via props to ensure real-time
+         * synchronization between the main app view and any pop-out windows.
+         *
+         * @param {{notes: string, setNotes: (notes: string) => void}} props
+         */
+         const Scratchpad = ({ notes, setNotes }) => {
+         // --- State for the confirmation modal is still managed locally ---
+         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+         const { addToast } = useToast();
+         
+         // The useEffect that saved notes to localStorage has been REMOVED.
+         // This logic is now handled in the parent `App` component where the state lives.
+         
+         const handleCopyAll = () => {
+         if (notes) {
            navigator.clipboard.writeText(notes);
            addToast('Notes copied to clipboard!');
-        }
-    };
-
-    const handleExport = () => {
-        const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'scratchpad-notes.txt';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const handleInsertTimestamp = () => {
-        const timestamp = new Date().toLocaleString();
-        // It now calls the `setNotes` function from props
-        setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
-        addToast('Timestamp inserted!');
-    };
-
-    const handleConfirmClear = () => {
-        // It now calls the `setNotes` function from props
-        setNotes('');
-        setIsClearModalOpen(false);
-        addToast('Scratchpad cleared.');
-    };
-
-    const characterCount = notes.length;
-    const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
-
-    return (
-        // The JSX remains the same, but the <textarea> is now controlled by props.
-        <>
+         }
+         };
+         
+         const handleExport = () => {
+         const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
+         const link = document.createElement('a');
+         link.href = URL.createObjectURL(blob);
+         link.download = 'scratchpad-notes.txt';
+         document.body.appendChild(link);
+         link.click();
+         document.body.removeChild(link);
+         };
+         
+         const handleInsertTimestamp = () => {
+         const timestamp = new Date().toLocaleString();
+         // It now calls the `setNotes` function from props
+         setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
+         addToast('Timestamp inserted!');
+         };
+         
+         const handleConfirmClear = () => {
+         // It now calls the `setNotes` function from props
+         setNotes('');
+         setIsClearModalOpen(false);
+         addToast('Scratchpad cleared.');
+         };
+         
+         const characterCount = notes.length;
+         const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
+         
+         return (
+         // The JSX remains the same, but the <textarea> is now controlled by props.
+         <>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 Your notes are automatically saved in your browser's local storage.
             </p>
@@ -8867,9 +8867,9 @@ const Scratchpad = ({ notes, setNotes }) => {
             >
                 <p>Are you sure you want to permanently delete all notes from the scratchpad? This action cannot be undone.</p>
             </ConfirmationModal>
-        </>
-    );
-};
+         </>
+         );
+         };
               
               /**
               * @description React component for a multi-purpose scientific calculator.
@@ -8889,19 +8889,19 @@ const Scratchpad = ({ notes, setNotes }) => {
          const ScientificCalculator = ({ calcState, setCalcState }) => {
          const { addToast } = useToast();
          
-const handleButtonClick = React.useCallback((value) => {
-    // This function decides what to do based on the button's value
-    if (value === 'AC') {
-        handleClear();
-    } else if (value === 'DEL') {
-        handleBackspace();
-    } else if (value === 'π') {
-        handleInput('pi'); // Handle special cases like pi
-    } else {
-        // For all other buttons (numbers, operators), just use the standard input handler
-        handleInput(value);
-    }
-}, [handleClear, handleBackspace, handleInput]); // Its dependencies are the other stable handlers
+         const handleButtonClick = React.useCallback((value) => {
+         // This function decides what to do based on the button's value
+         if (value === 'AC') {
+         handleClear();
+         } else if (value === 'DEL') {
+         handleBackspace();
+         } else if (value === 'π') {
+         handleInput('pi'); // Handle special cases like pi
+         } else {
+         // For all other buttons (numbers, operators), just use the standard input handler
+         handleInput(value);
+         }
+         }, [handleClear, handleBackspace, handleInput]); // Its dependencies are the other stable handlers
          
          const handleInput = React.useCallback((value) => {
          setCalcState(currentState => {
@@ -8911,12 +8911,9 @@ const handleButtonClick = React.useCallback((value) => {
          });
          }, [setCalcState]);
          
-
-
-
-
-
-
+         
+         
+         
          const handleCalculate = React.useCallback(() => {
          setCalcState(currentState => {
              if (!currentState.expression) return currentState;
@@ -9036,17 +9033,17 @@ const handleButtonClick = React.useCallback((value) => {
                      <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
                      <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
                  </div>
-
-<div className="grid grid-cols-4 gap-2">
-    {allButtons.map(btn => {
-        // The class logic stays the same, as it's about appearance
-        let className = `p-3 font-bold rounded-lg transition-colors `;
-        if (btn === 'AC') className += 'bg-red-500 text-white hover:bg-red-600';
-        else if (btn === 'DEL') className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
-        else className += getButtonClass(btn);
-
-        // The onClick logic is now much simpler for every button
-        return (
+         
+         <div className="grid grid-cols-4 gap-2">
+         {allButtons.map(btn => {
+         // The class logic stays the same, as it's about appearance
+         let className = `p-3 font-bold rounded-lg transition-colors `;
+         if (btn === 'AC') className += 'bg-red-500 text-white hover:bg-red-600';
+         else if (btn === 'DEL') className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
+         else className += getButtonClass(btn);
+         
+         // The onClick logic is now much simpler for every button
+         return (
             <button
                 key={btn}
                 onClick={() => handleButtonClick(btn)} // Every button calls the same handler
@@ -9054,11 +9051,11 @@ const handleButtonClick = React.useCallback((value) => {
             >
                 {btn}
             </button>
-        );
-    })}
-</div>
-
-
+         );
+         })}
+         </div>
+         
+         
                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
@@ -9714,78 +9711,78 @@ const handleButtonClick = React.useCallback((value) => {
                */
               
          const UnitConverter = () => {
-    const [value, setValue] = React.useState('');
-    const [fromUnit, setFromUnit] = React.useState('Gy');
-    const [toUnit, setToUnit] = React.useState('auto'); // Default to the new 'auto' mode
-    const [result, setResult] = React.useState(null); // Result can now be an object or a string
-    const [error, setError] = React.useState('');
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-
-    // --- Data Definitions (Units, Factors, and Sensible Unit Config) ---
-    const units = {
-        'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'],
-        'Radiation Dose': ['mrem', 'rem', 'µSv', 'mSv', 'Sv', 'rad', 'cGy', 'Gy', 'R'],
-        'Dose Rate': ['µSv/hr', 'mSv/hr', 'Sv/hr', 'mrem/hr', 'rem/hr'],
-        'Energy': ['eV', 'keV', 'MeV', 'J'],
-        'Concentration': ['pCi/L', 'Bq/L', 'Bq/m³', 'µCi/mL'],
-        'Length': ['mm', 'cm', 'm', 'km', 'in', 'ft'],
-        'Area': ['cm²', 'm²', 'in²', 'ft²', 'barn'],
-        'Mass': ['µg', 'mg', 'g', 'kg', 'oz', 'lb'],
-    };
-
-    const factors = {
-        'Bq': { base: 'activity', factor: 1 }, 'kBq': { base: 'activity', factor: 1e3 }, 'MBq': { base: 'activity', factor: 1e6 }, 'GBq': { base: 'activity', factor: 1e9 }, 'TBq': { base: 'activity', factor: 1e12 }, 'Ci': { base: 'activity', factor: 3.7e10 }, 'mCi': { base: 'activity', factor: 3.7e7 }, 'µCi': { base: 'activity', factor: 3.7e4 }, 'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1/60 },
-        'rem': { base: 'dose', factor: 1 }, 'mrem': { base: 'dose', factor: 1e-3 }, 'Sv': { base: 'dose', factor: 100 }, 'mSv': { base: 'dose', factor: 0.1 }, 'µSv': { base: 'dose', factor: 1e-4 }, 'Gy': { base: 'dose', factor: 100 }, 'cGy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 1 }, 'R': { base: 'dose', factor: 0.96 },
-        'rem/hr': { base: 'doseRate', factor: 1 }, 'mrem/hr': { base: 'doseRate', factor: 1e-3 }, 'Sv/hr': { base: 'doseRate', factor: 100 }, 'mSv/hr': { base: 'doseRate', factor: 0.1 }, 'µSv/hr': { base: 'doseRate', factor: 1e-4 },
-        'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.602e-19 }, 'keV': { base: 'energy', factor: 1.602e-16 }, 'MeV': { base: 'energy', factor: 1.602e-13 },
-        'Bq/L': { base: 'concentration', factor: 1 }, 'µCi/mL': { base: 'concentration', factor: 3.7e7 }, 'pCi/L': { base: 'concentration', factor: 0.037 }, 'Bq/m³': { base: 'concentration', factor: 0.001 },
-        'm': { base: 'length', factor: 1 }, 'cm': { base: 'length', factor: 0.01 }, 'mm': { base: 'length', factor: 0.001 }, 'km': { base: 'length', factor: 1000 }, 'in': { base: 'length', factor: 0.0254 }, 'ft': { base: 'length', factor: 0.3048 },
-        'm²': { base: 'area', factor: 1 }, 'cm²': { base: 'area', factor: 1e-4 }, 'in²': { base: 'area', factor: 6.4516e-4 }, 'ft²': { base: 'area', factor: 0.0929 }, 'barn': { base: 'area', factor: 1e-28 },
-        'g': { base: 'mass', factor: 1 }, 'kg': { base: 'mass', factor: 1000 }, 'mg': { base: 'mass', factor: 1e-3 }, 'µg': { base: 'mass', factor: 1e-6 }, 'lb': { base: 'mass', factor: 453.592 }, 'oz': { base: 'mass', factor: 28.35 },
-    };
-
-    const sensibleUnitConfig = {
-        activity: { baseUnit: 'Bq', units: [ { unit: 'Bq', threshold: 1e3, factor: 1 }, { unit: 'kBq', threshold: 1e3, factor: 1e3 }, { unit: 'MBq', threshold: 1e3, factor: 1e6 }, { unit: 'GBq', threshold: 1e3, factor: 1e9 }, { unit: 'TBq', threshold: Infinity, factor: 1e12 } ]},
-        dose: { baseUnit: 'rem', units: [ { unit: 'mrem', threshold: 1e3, factor: 1e-3 }, { unit: 'rem', threshold: 1e3, factor: 1 }, { unit: 'krem', threshold: Infinity, factor: 1e3 } ]},
-        doseRate: { baseUnit: 'rem/hr', units: [ { unit: 'mrem/hr', threshold: 1e3, factor: 1e-3 }, { unit: 'rem/hr', threshold: 1e3, factor: 1 }, { unit: 'krem/hr', threshold: Infinity, factor: 1e3 } ]},
-        energy: { baseUnit: 'J', units: [ { unit: 'eV', threshold: 1e3, factor: 1.602e-19 }, { unit: 'keV', threshold: 1e3, factor: 1.602e-16 }, { unit: 'MeV', threshold: Infinity, factor: 1.602e-13 } ]},
-        concentration: { baseUnit: 'Bq/L', units: [ { unit: 'Bq/L', threshold: 1e3, factor: 1 }, { unit: 'kBq/L', threshold: Infinity, factor: 1e3 } ]},
-        length: { baseUnit: 'm', units: [ { unit: 'mm', threshold: 1e3, factor: 1e-3 }, { unit: 'cm', threshold: 100, factor: 0.01 }, { unit: 'm', threshold: 1e3, factor: 1 }, { unit: 'km', threshold: Infinity, factor: 1e3 } ]},
-        area: { baseUnit: 'm²', units: [ { unit: 'cm²', threshold: 1e4, factor: 1e-4 }, { unit: 'm²', threshold: Infinity, factor: 1 } ]},
-        mass: { baseUnit: 'g', units: [ { unit: 'mg', threshold: 1e3, factor: 1e-3 }, { unit: 'g', threshold: 1e3, factor: 1 }, { unit: 'kg', threshold: Infinity, factor: 1e3 } ]},
-    };
-
-    // --- Calculation and State Logic ---
-    React.useEffect(() => {
-        const fromBase = factors[fromUnit]?.base;
-        const toBase = factors[toUnit]?.base;
-        if (fromBase && toUnit !== 'auto' && fromBase !== toBase) {
+         const [value, setValue] = React.useState('');
+         const [fromUnit, setFromUnit] = React.useState('Gy');
+         const [toUnit, setToUnit] = React.useState('auto'); // Default to the new 'auto' mode
+         const [result, setResult] = React.useState(null); // Result can now be an object or a string
+         const [error, setError] = React.useState('');
+         const { addHistory } = useCalculationHistory();
+         const { addToast } = useToast();
+         
+         // --- Data Definitions (Units, Factors, and Sensible Unit Config) ---
+         const units = {
+         'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'],
+         'Radiation Dose': ['mrem', 'rem', 'µSv', 'mSv', 'Sv', 'rad', 'cGy', 'Gy', 'R'],
+         'Dose Rate': ['µSv/hr', 'mSv/hr', 'Sv/hr', 'mrem/hr', 'rem/hr'],
+         'Energy': ['eV', 'keV', 'MeV', 'J'],
+         'Concentration': ['pCi/L', 'Bq/L', 'Bq/m³', 'µCi/mL'],
+         'Length': ['mm', 'cm', 'm', 'km', 'in', 'ft'],
+         'Area': ['cm²', 'm²', 'in²', 'ft²', 'barn'],
+         'Mass': ['µg', 'mg', 'g', 'kg', 'oz', 'lb'],
+         };
+         
+         const factors = {
+         'Bq': { base: 'activity', factor: 1 }, 'kBq': { base: 'activity', factor: 1e3 }, 'MBq': { base: 'activity', factor: 1e6 }, 'GBq': { base: 'activity', factor: 1e9 }, 'TBq': { base: 'activity', factor: 1e12 }, 'Ci': { base: 'activity', factor: 3.7e10 }, 'mCi': { base: 'activity', factor: 3.7e7 }, 'µCi': { base: 'activity', factor: 3.7e4 }, 'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1/60 },
+         'rem': { base: 'dose', factor: 1 }, 'mrem': { base: 'dose', factor: 1e-3 }, 'Sv': { base: 'dose', factor: 100 }, 'mSv': { base: 'dose', factor: 0.1 }, 'µSv': { base: 'dose', factor: 1e-4 }, 'Gy': { base: 'dose', factor: 100 }, 'cGy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 1 }, 'R': { base: 'dose', factor: 0.96 },
+         'rem/hr': { base: 'doseRate', factor: 1 }, 'mrem/hr': { base: 'doseRate', factor: 1e-3 }, 'Sv/hr': { base: 'doseRate', factor: 100 }, 'mSv/hr': { base: 'doseRate', factor: 0.1 }, 'µSv/hr': { base: 'doseRate', factor: 1e-4 },
+         'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.602e-19 }, 'keV': { base: 'energy', factor: 1.602e-16 }, 'MeV': { base: 'energy', factor: 1.602e-13 },
+         'Bq/L': { base: 'concentration', factor: 1 }, 'µCi/mL': { base: 'concentration', factor: 3.7e7 }, 'pCi/L': { base: 'concentration', factor: 0.037 }, 'Bq/m³': { base: 'concentration', factor: 0.001 },
+         'm': { base: 'length', factor: 1 }, 'cm': { base: 'length', factor: 0.01 }, 'mm': { base: 'length', factor: 0.001 }, 'km': { base: 'length', factor: 1000 }, 'in': { base: 'length', factor: 0.0254 }, 'ft': { base: 'length', factor: 0.3048 },
+         'm²': { base: 'area', factor: 1 }, 'cm²': { base: 'area', factor: 1e-4 }, 'in²': { base: 'area', factor: 6.4516e-4 }, 'ft²': { base: 'area', factor: 0.0929 }, 'barn': { base: 'area', factor: 1e-28 },
+         'g': { base: 'mass', factor: 1 }, 'kg': { base: 'mass', factor: 1000 }, 'mg': { base: 'mass', factor: 1e-3 }, 'µg': { base: 'mass', factor: 1e-6 }, 'lb': { base: 'mass', factor: 453.592 }, 'oz': { base: 'mass', factor: 28.35 },
+         };
+         
+         const sensibleUnitConfig = {
+         activity: { baseUnit: 'Bq', units: [ { unit: 'Bq', threshold: 1e3, factor: 1 }, { unit: 'kBq', threshold: 1e3, factor: 1e3 }, { unit: 'MBq', threshold: 1e3, factor: 1e6 }, { unit: 'GBq', threshold: 1e3, factor: 1e9 }, { unit: 'TBq', threshold: Infinity, factor: 1e12 } ]},
+         dose: { baseUnit: 'rem', units: [ { unit: 'mrem', threshold: 1e3, factor: 1e-3 }, { unit: 'rem', threshold: 1e3, factor: 1 }, { unit: 'krem', threshold: Infinity, factor: 1e3 } ]},
+         doseRate: { baseUnit: 'rem/hr', units: [ { unit: 'mrem/hr', threshold: 1e3, factor: 1e-3 }, { unit: 'rem/hr', threshold: 1e3, factor: 1 }, { unit: 'krem/hr', threshold: Infinity, factor: 1e3 } ]},
+         energy: { baseUnit: 'J', units: [ { unit: 'eV', threshold: 1e3, factor: 1.602e-19 }, { unit: 'keV', threshold: 1e3, factor: 1.602e-16 }, { unit: 'MeV', threshold: Infinity, factor: 1.602e-13 } ]},
+         concentration: { baseUnit: 'Bq/L', units: [ { unit: 'Bq/L', threshold: 1e3, factor: 1 }, { unit: 'kBq/L', threshold: Infinity, factor: 1e3 } ]},
+         length: { baseUnit: 'm', units: [ { unit: 'mm', threshold: 1e3, factor: 1e-3 }, { unit: 'cm', threshold: 100, factor: 0.01 }, { unit: 'm', threshold: 1e3, factor: 1 }, { unit: 'km', threshold: Infinity, factor: 1e3 } ]},
+         area: { baseUnit: 'm²', units: [ { unit: 'cm²', threshold: 1e4, factor: 1e-4 }, { unit: 'm²', threshold: Infinity, factor: 1 } ]},
+         mass: { baseUnit: 'g', units: [ { unit: 'mg', threshold: 1e3, factor: 1e-3 }, { unit: 'g', threshold: 1e3, factor: 1 }, { unit: 'kg', threshold: Infinity, factor: 1e3 } ]},
+         };
+         
+         // --- Calculation and State Logic ---
+         React.useEffect(() => {
+         const fromBase = factors[fromUnit]?.base;
+         const toBase = factors[toUnit]?.base;
+         if (fromBase && toUnit !== 'auto' && fromBase !== toBase) {
             const newCategoryArray = Object.values(units).find(arr => arr.includes(fromUnit));
             if (newCategoryArray?.length > 0) {
                 let newToUnit = newCategoryArray.find(u => u !== fromUnit) || newCategoryArray[0];
                 setToUnit(newToUnit);
             }
-        }
-    }, [fromUnit]);
-
-    const handleConvert = React.useCallback(() => {
-        const val = parseFloat(value);
-        if (isNaN(val)) {
+         }
+         }, [fromUnit]);
+         
+         const handleConvert = React.useCallback(() => {
+         const val = parseFloat(value);
+         if (isNaN(val)) {
             if (value) setError("Invalid input value.");
             setResult(null); return;
-        }
-        const from = factors[fromUnit];
-        if (!from) {
+         }
+         const from = factors[fromUnit];
+         if (!from) {
             setError("Invalid 'From' unit.");
             setResult(null); return;
-        }
-        
-        // Step 1: Convert the input value to its fundamental base unit (e.g., rem, Bq, m).
-        const valueInBaseUnit = val * from.factor;
-
-        // Step 2: Decide what to do with the base value.
-        if (toUnit === 'auto') {
+         }
+         
+         // Step 1: Convert the input value to its fundamental base unit (e.g., rem, Bq, m).
+         const valueInBaseUnit = val * from.factor;
+         
+         // Step 2: Decide what to do with the base value.
+         if (toUnit === 'auto') {
             const config = sensibleUnitConfig[from.base];
             if (config) {
                 let sensibleResult = { value: 'N/A', unit: '' };
@@ -9805,7 +9802,7 @@ const handleButtonClick = React.useCallback((value) => {
                 setError(`"Auto" is not configured for this unit type.`);
                 setResult(null);
             }
-        } else { // Standard conversion to a specific unit
+         } else { // Standard conversion to a specific unit
             const to = factors[toUnit];
             if (!to || from.base !== to.base) {
                 setError("Cannot convert between these units.");
@@ -9813,35 +9810,35 @@ const handleButtonClick = React.useCallback((value) => {
             }
             const convertedVal = valueInBaseUnit / to.factor;
             setResult(convertedVal.toPrecision(4));
-        }
-        setError('');
-    }, [value, fromUnit, toUnit, factors, sensibleUnitConfig]);
-
-    React.useEffect(() => {
-        handleConvert();
-    }, [value, fromUnit, toUnit, handleConvert]);
-
-    const handleSaveToHistory = () => {
-        if (result && value) {
+         }
+         setError('');
+         }, [value, fromUnit, toUnit, factors, sensibleUnitConfig]);
+         
+         React.useEffect(() => {
+         handleConvert();
+         }, [value, fromUnit, toUnit, handleConvert]);
+         
+         const handleSaveToHistory = () => {
+         if (result && value) {
             const resultValue = typeof result === 'object' ? result.value : result;
             const resultUnit = typeof result === 'object' ? result.unit : toUnit;
             addHistory({ id: Date.now(), type: 'Unit Conversion', icon: ICONS.converter, inputs: `${value} ${fromUnit}`, result: `${resultValue} ${resultUnit}`, view: VIEWS.CONVERTER });
             addToast("Calculation saved to history!");
-        }
-    };
-    
-    // --- UI and Render Logic ---
-    const handleSwap = () => {
-        if (toUnit !== 'auto' && factors[fromUnit]?.base === factors[toUnit]?.base) {
+         }
+         };
+         
+         // --- UI and Render Logic ---
+         const handleSwap = () => {
+         if (toUnit !== 'auto' && factors[fromUnit]?.base === factors[toUnit]?.base) {
             setFromUnit(toUnit); setToUnit(fromUnit);
-        } else { addToast("Cannot swap incompatible units or 'Auto' mode."); }
-    };
-
-    const currentBase = factors[fromUnit]?.base;
-    const compatibleUnits = Object.fromEntries(Object.entries(units).map(([group, list]) => [group, list.filter(u => factors[u]?.base === currentBase)]).filter(([_, list]) => list.length > 0));
-
-    return (
-        <div className="p-4 animate-fade-in">
+         } else { addToast("Cannot swap incompatible units or 'Auto' mode."); }
+         };
+         
+         const currentBase = factors[fromUnit]?.base;
+         const compatibleUnits = Object.fromEntries(Object.entries(units).map(([group, list]) => [group, list.filter(u => factors[u]?.base === currentBase)]).filter(([_, list]) => list.length > 0));
+         
+         return (
+         <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Unit Converter</h2>
@@ -9893,9 +9890,9 @@ const handleButtonClick = React.useCallback((value) => {
                     </div>
                 </div>
             </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
               
               /**
               * @description A component that displays a prominent header for the selected nuclide
@@ -10060,132 +10057,132 @@ const handleButtonClick = React.useCallback((value) => {
          
          
          
+         const getTodayString = () => new Date().toISOString().split('T')[0];
          
-
-
-const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
-    // --- FIX: The active tab is now persisted in localStorage ---
-    const [activeCalculator, setActiveCalculator] = React.useState(
-        () => localStorage.getItem('decayTools_activeTab') || 'standard'
-    );
-
-    // --- State for Standard Decay (already correctly persisted) ---
-    const [std_selectedNuclide, setStd_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
-    const [std_calculationMode, setStd_calculationMode] = React.useState(() => localStorage.getItem('decayCalc_mode') || 'findRemaining');
-    const [std_initialActivity, setStd_initialActivity] = React.useState(() => localStorage.getItem('decayCalc_initialActivity') || '100');
-    const [std_initialDaughterActivity, setStd_initialDaughterActivity] = React.useState(() => localStorage.getItem('decayCalc_initialDaughterActivity') || '0');
-    const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
-    const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
-    const [std_timeUnit, setStd_timeUnit] = React.useState(() => localStorage.getItem('decayCalc_timeUnit') || 'days');
-    const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || false);
-
-    // --- FIX: State for Source Correction is now persisted ---
-    const getTodayString = () => new Date().toISOString().split('T')[0];
-    const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState(() => localStorage.getItem('corr_nuclideSymbol') || '');
-    const [corr_originalActivity, setCorr_originalActivity] = React.useState(() => localStorage.getItem('corr_originalActivity') || '10');
-    const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState(() => localStorage.getItem('corr_originalActivityUnit') || 'mCi');
-    const [corr_originalDate, setCorr_originalDate] = React.useState(() => localStorage.getItem('corr_originalDate') || '2020-01-01');
-    const [corr_targetDate, setCorr_targetDate] = React.useState(() => localStorage.getItem('corr_targetDate') || getTodayString());
-
-    // --- FIX: State for Decay to Limit is now persisted ---
-    const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(() => {
-        const saved = localStorage.getItem('dtl_nuclideSymbol');
-        return saved ? radionuclides.find(n => n.symbol === saved) : null;
-    });
-    const [dtl_initialActivity, setDtl_initialActivity] = React.useState(() => localStorage.getItem('dtl_initialActivity') || '10');
-    const [dtl_initialUnit, setDtl_initialUnit] = React.useState(() => localStorage.getItem('dtl_initialUnit') || 'mCi');
-    const [dtl_finalActivity, setDtl_finalActivity] = React.useState(() => localStorage.getItem('dtl_finalActivity') || '0.001');
-    const [dtl_finalUnit, setDtl_finalUnit] = React.useState(() => localStorage.getItem('dtl_finalUnit') || 'mCi');
-    // Result and error states are transient and should not be persisted
-    const [dtl_result, setDtl_result] = React.useState(null);
-    const [dtl_error, setDtl_error] = React.useState('');
-
-    // --- useEffect hooks to save all persisted state on change ---
-    React.useEffect(() => {
-        localStorage.setItem('decayTools_activeTab', activeCalculator);
-    }, [activeCalculator]);
-
-    React.useEffect(() => {
-        localStorage.setItem('corr_nuclideSymbol', corr_nuclideSymbol);
-        localStorage.setItem('corr_originalActivity', corr_originalActivity);
-        localStorage.setItem('corr_originalActivityUnit', corr_originalActivityUnit);
-        localStorage.setItem('corr_originalDate', corr_originalDate);
-        localStorage.setItem('corr_targetDate', corr_targetDate);
-    }, [corr_nuclideSymbol, corr_originalActivity, corr_originalActivityUnit, corr_originalDate, corr_targetDate]);
-
-    React.useEffect(() => {
-        localStorage.setItem('dtl_nuclideSymbol', dtl_selectedNuclide ? dtl_selectedNuclide.symbol : '');
-        localStorage.setItem('dtl_initialActivity', dtl_initialActivity);
-        localStorage.setItem('dtl_initialUnit', dtl_initialUnit);
-        localStorage.setItem('dtl_finalActivity', dtl_finalActivity);
-        localStorage.setItem('dtl_finalUnit', dtl_finalUnit);
-    }, [dtl_selectedNuclide, dtl_initialActivity, dtl_initialUnit, dtl_finalActivity, dtl_finalUnit]);
-
-
-    // --- Clear Logic (Unchanged, but now affects persisted state) ---
-const handleStandardClear = () => {
-    // 1. Reset all the component's state variables to their default values
-    setStd_selectedNuclide(null);
-    setStd_calculationMode('findRemaining');
-    setStd_initialActivity('100');
-    setStd_initialDaughterActivity('0');
-    setStd_remainingActivity('');
-    setStd_timeElapsed('1');
-    setStd_timeUnit('days');
-    setStd_useLogScale(false);
-
-    // 2. Remove all saved data for this specific calculator from localStorage
-    localStorage.removeItem('decayCalc_nuclideSymbol');
-    localStorage.removeItem('decayCalc_mode');
-    localStorage.removeItem('decayCalc_initialActivity');
-    localStorage.removeItem('decayCalc_initialDaughterActivity');
-    localStorage.removeItem('decayCalc_remainingActivity');
-    localStorage.removeItem('decayCalc_timeElapsed');
-    localStorage.removeItem('decayCalc_timeUnit');
-    localStorage.removeItem('decayCalc_useLogScale');
-};
-
-const handleCorrectionClear = () => {
-    // 1. Reset the state for the correction calculator
-    setCorr_nuclideSymbol(''); 
-    setCorr_originalActivity('10'); 
-    setCorr_originalActivityUnit('mCi');
-    setCorr_originalDate('2020-01-01'); 
-    setCorr_targetDate(getTodayString());
-
-    // 2. Remove the specific keys for the correction calculator from localStorage
-    localStorage.removeItem('corr_nuclideSymbol');
-    localStorage.removeItem('corr_originalActivity');
-    localStorage.removeItem('corr_originalActivityUnit');
-    localStorage.removeItem('corr_originalDate');
-    localStorage.removeItem('corr_targetDate');
-};
-const handleDecayToLimitClear = () => {
-    // 1. Reset all the component's state variables to their default values
-    setDtl_selectedNuclide(null);
-    setDtl_initialActivity('10');
-    setDtl_initialUnit('mCi');
-    setDtl_finalActivity('0.001');
-    setDtl_finalUnit('mCi');
-    setDtl_result(null);
-    setDtl_error('');
-
-    // 2. Remove all saved data for this specific calculator from localStorage
-    localStorage.removeItem('dtl_nuclideSymbol');
-    localStorage.removeItem('dtl_initialActivity');
-    localStorage.removeItem('dtl_initialUnit');
-    localStorage.removeItem('dtl_finalActivity');
-    localStorage.removeItem('dtl_finalUnit');
-};
-
-    const handleClearActiveCalculator = () => {
-        if (activeCalculator === 'standard') handleStandardClear();
-        else if (activeCalculator === 'correction') handleCorrectionClear();
-        else handleDecayToLimitClear();
-    };
-
-    return (
-        <div className="p-4 animate-fade-in">
+         const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
+         // --- FIX: The active tab is now persisted in localStorage ---
+         const [activeCalculator, setActiveCalculator] = React.useState(
+         () => localStorage.getItem('decayTools_activeTab') || 'standard'
+         );
+         
+         // --- State for Standard Decay (already correctly persisted) ---
+         
+         const [std_selectedNuclide, setStd_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
+         const [std_calculationMode, setStd_calculationMode] = React.useState(() => localStorage.getItem('decayCalc_mode') || 'findRemaining');
+         const [std_initialActivity, setStd_initialActivity] = React.useState(() => localStorage.getItem('decayCalc_initialActivity') || '100');
+         const [std_initialDaughterActivity, setStd_initialDaughterActivity] = React.useState(() => localStorage.getItem('decayCalc_initialDaughterActivity') || '0');
+         const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
+         const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
+         const [std_timeUnit, setStd_timeUnit] = React.useState(() => localStorage.getItem('decayCalc_timeUnit') || 'days');
+         const [std_useLogScale, setStd_useLogScale] = React.useState(() => JSON.parse(localStorage.getItem('decayCalc_useLogScale')) || false);
+         
+         // --- FIX: State for Source Correction is now persisted ---
+         
+         const [corr_nuclideSymbol, setCorr_nuclideSymbol] = React.useState(() => localStorage.getItem('corr_nuclideSymbol') || '');
+         const [corr_originalActivity, setCorr_originalActivity] = React.useState(() => localStorage.getItem('corr_originalActivity') || '10');
+         const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState(() => localStorage.getItem('corr_originalActivityUnit') || 'mCi');
+         const [corr_originalDate, setCorr_originalDate] = React.useState(() => localStorage.getItem('corr_originalDate') || '2020-01-01');
+         const [corr_targetDate, setCorr_targetDate] = React.useState(() => localStorage.getItem('corr_targetDate') || getTodayString());
+         
+         // --- FIX: State for Decay to Limit is now persisted ---
+         const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(() => {
+         const saved = localStorage.getItem('dtl_nuclideSymbol');
+         return saved ? radionuclides.find(n => n.symbol === saved) : null;
+         });
+         const [dtl_initialActivity, setDtl_initialActivity] = React.useState(() => localStorage.getItem('dtl_initialActivity') || '10');
+         const [dtl_initialUnit, setDtl_initialUnit] = React.useState(() => localStorage.getItem('dtl_initialUnit') || 'mCi');
+         const [dtl_finalActivity, setDtl_finalActivity] = React.useState(() => localStorage.getItem('dtl_finalActivity') || '0.001');
+         const [dtl_finalUnit, setDtl_finalUnit] = React.useState(() => localStorage.getItem('dtl_finalUnit') || 'mCi');
+         // Result and error states are transient and should not be persisted
+         const [dtl_result, setDtl_result] = React.useState(null);
+         const [dtl_error, setDtl_error] = React.useState('');
+         
+         // --- useEffect hooks to save all persisted state on change ---
+         React.useEffect(() => {
+         localStorage.setItem('decayTools_activeTab', activeCalculator);
+         }, [activeCalculator]);
+         
+         React.useEffect(() => {
+         localStorage.setItem('corr_nuclideSymbol', corr_nuclideSymbol);
+         localStorage.setItem('corr_originalActivity', corr_originalActivity);
+         localStorage.setItem('corr_originalActivityUnit', corr_originalActivityUnit);
+         localStorage.setItem('corr_originalDate', corr_originalDate);
+         localStorage.setItem('corr_targetDate', corr_targetDate);
+         }, [corr_nuclideSymbol, corr_originalActivity, corr_originalActivityUnit, corr_originalDate, corr_targetDate]);
+         
+         React.useEffect(() => {
+         localStorage.setItem('dtl_nuclideSymbol', dtl_selectedNuclide ? dtl_selectedNuclide.symbol : '');
+         localStorage.setItem('dtl_initialActivity', dtl_initialActivity);
+         localStorage.setItem('dtl_initialUnit', dtl_initialUnit);
+         localStorage.setItem('dtl_finalActivity', dtl_finalActivity);
+         localStorage.setItem('dtl_finalUnit', dtl_finalUnit);
+         }, [dtl_selectedNuclide, dtl_initialActivity, dtl_initialUnit, dtl_finalActivity, dtl_finalUnit]);
+         
+         
+         // --- Clear Logic (Unchanged, but now affects persisted state) ---
+         const handleStandardClear = () => {
+         // 1. Reset all the component's state variables to their default values
+         setStd_selectedNuclide(null);
+         setStd_calculationMode('findRemaining');
+         setStd_initialActivity('100');
+         setStd_initialDaughterActivity('0');
+         setStd_remainingActivity('');
+         setStd_timeElapsed('1');
+         setStd_timeUnit('days');
+         setStd_useLogScale(false);
+         
+         // 2. Remove all saved data for this specific calculator from localStorage
+         localStorage.removeItem('decayCalc_nuclideSymbol');
+         localStorage.removeItem('decayCalc_mode');
+         localStorage.removeItem('decayCalc_initialActivity');
+         localStorage.removeItem('decayCalc_initialDaughterActivity');
+         localStorage.removeItem('decayCalc_remainingActivity');
+         localStorage.removeItem('decayCalc_timeElapsed');
+         localStorage.removeItem('decayCalc_timeUnit');
+         localStorage.removeItem('decayCalc_useLogScale');
+         };
+         
+         const handleCorrectionClear = () => {
+         // 1. Reset the state for the correction calculator
+         setCorr_nuclideSymbol(''); 
+         setCorr_originalActivity('10'); 
+         setCorr_originalActivityUnit('mCi');
+         setCorr_originalDate('2020-01-01'); 
+         setCorr_targetDate(getTodayString());
+         
+         // 2. Remove the specific keys for the correction calculator from localStorage
+         localStorage.removeItem('corr_nuclideSymbol');
+         localStorage.removeItem('corr_originalActivity');
+         localStorage.removeItem('corr_originalActivityUnit');
+         localStorage.removeItem('corr_originalDate');
+         localStorage.removeItem('corr_targetDate');
+         };
+         const handleDecayToLimitClear = () => {
+         // 1. Reset all the component's state variables to their default values
+         setDtl_selectedNuclide(null);
+         setDtl_initialActivity('10');
+         setDtl_initialUnit('mCi');
+         setDtl_finalActivity('0.001');
+         setDtl_finalUnit('mCi');
+         setDtl_result(null);
+         setDtl_error('');
+         
+         // 2. Remove all saved data for this specific calculator from localStorage
+         localStorage.removeItem('dtl_nuclideSymbol');
+         localStorage.removeItem('dtl_initialActivity');
+         localStorage.removeItem('dtl_initialUnit');
+         localStorage.removeItem('dtl_finalActivity');
+         localStorage.removeItem('dtl_finalUnit');
+         };
+         
+         const handleClearActiveCalculator = () => {
+         if (activeCalculator === 'standard') handleStandardClear();
+         else if (activeCalculator === 'correction') handleCorrectionClear();
+         else handleDecayToLimitClear();
+         };
+         
+         return (
+         <div className="p-4 animate-fade-in">
             <div className="max-w-lg mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Decay Tools</h2>
@@ -10233,9 +10230,9 @@ const handleDecayToLimitClear = () => {
                     />
                 }
             </div>
-        </div>
-    );
-};              
+         </div>
+         );
+         };              
          
          
          
@@ -10366,50 +10363,48 @@ const handleDecayToLimitClear = () => {
          React.useEffect(() => { if (preselectedNuclide) { handleNuclideSelect(preselectedNuclide); } }, [preselectedNuclide, handleNuclideSelect]);
          React.useEffect(() => { setResult(null); setChartData(null); setError(''); }, [calculationMode]);
          
-
-
-
-
-const handleCalculate = React.useCallback(() => {
-    if (!selectedNuclide) return;
-
-    try {
-        setError('');
-        const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-        const lambda = Math.log(2) / T_half_seconds;
-        const A0 = parseFloat(initialActivity);
-        const At = parseFloat(remainingActivity);
-        const t_input = parseFloat(timeElapsed);
-        const t_seconds = t_input * unitConversions[timeUnit];
-
-        // This variable will hold the correct total time for the chart's x-axis.
-        // It defaults to the user's input but will be updated if time is calculated.
-        let finalTimeForChart = t_input;
-
-        if (calculationMode === MODE_REMAINING) {
+         
+         
+         const handleCalculate = React.useCallback(() => {
+         if (!selectedNuclide) return;
+         
+         try {
+         setError('');
+         const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+         const lambda = Math.log(2) / T_half_seconds;
+         const A0 = parseFloat(initialActivity);
+         const At = parseFloat(remainingActivity);
+         const t_input = parseFloat(timeElapsed);
+         const t_seconds = t_input * unitConversions[timeUnit];
+         
+         // This variable will hold the correct total time for the chart's x-axis.
+         // It defaults to the user's input but will be updated if time is calculated.
+         let finalTimeForChart = t_input;
+         
+         if (calculationMode === MODE_REMAINING) {
             if (isNaN(A0) || isNaN(t_seconds)) throw new Error('Initial activity and time must be valid numbers.');
             const finalActivity = A0 * Math.exp(-lambda * t_seconds);
             setResult({ label: 'Remaining Activity', value: finalActivity.toPrecision(4), unit: '' });
-
-        } else if (calculationMode === MODE_TIME) {
+         
+         } else if (calculationMode === MODE_TIME) {
             if (isNaN(A0) || isNaN(At) || A0 <= 0 || At < 0 || At > A0) throw new Error('Initial and remaining activities must be valid numbers, with At <= A0.');
             const timeInSeconds = (-1 / lambda) * Math.log(At / A0);
             const bestUnit = getBestHalfLifeUnit(timeInSeconds);
             const timeInBestUnit = timeInSeconds / unitConversions[bestUnit];
             setResult({ label: 'Time Elapsed', value: timeInBestUnit.toPrecision(4), unit: bestUnit });
-
+         
             // --- FIX APPLIED HERE ---
             // Update the chart's total time with the calculated result.
             // This converts the result (in seconds) back to the user's selected time unit to match the chart's axis.
             finalTimeForChart = timeInSeconds / unitConversions[timeUnit];
             // -------------------------
-
-        } else if (calculationMode === MODE_INITIAL) {
+         
+         } else if (calculationMode === MODE_INITIAL) {
             if (isNaN(At) || isNaN(t_seconds)) throw new Error('Remaining activity and time must be valid numbers.');
             const initial = At / Math.exp(-lambda * t_seconds);
             setResult({ label: 'Initial Activity', value: initial.toPrecision(4), unit: '' });
-
-        } else if (calculationMode === MODE_DAUGHTER) {
+         
+         } else if (calculationMode === MODE_DAUGHTER) {
             if (selectedNuclide.daughter.includes('/')) { throw new Error('This calculator does not support branching decay. Please use the Series Decay calculator.'); }
             const daughterName = selectedNuclide.daughter.split('(')[0].trim();
             const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
@@ -10426,13 +10421,13 @@ const handleCalculate = React.useCallback(() => {
                 finalDaughterActivity = (N0_daughter * Math.exp(-lambda2 * t_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds)));
             }
             setResult({ parent: { name: selectedNuclide.name, value: finalParentActivity.toPrecision(4) }, daughter: { name: daughter.name, value: finalDaughterActivity.toPrecision(4), isStable: T_half_daughter_seconds === Infinity } });
-        }
-
-        const labels = [], parentData = [], daughterData = [];
-        const totalTime = finalTimeForChart; // Use the corrected time value for the chart's x-axis.
-        const steps = 100;
-
-        for (let i = 0; i <= steps; i++) {
+         }
+         
+         const labels = [], parentData = [], daughterData = [];
+         const totalTime = finalTimeForChart; // Use the corrected time value for the chart's x-axis.
+         const steps = 100;
+         
+         for (let i = 0; i <= steps; i++) {
             const timePoint = (totalTime / steps) * i;
             const timePoint_seconds = timePoint * unitConversions[timeUnit];
             labels.push(timePoint.toFixed(2));
@@ -10447,21 +10442,21 @@ const handleCalculate = React.useCallback(() => {
                 if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
                     d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + (A0 * lambda2 * timePoint_seconds * Math.exp(-lambda2 * timePoint_seconds));
                 } else {
-                    d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + ((lambda2 / (lambda2 - lambda1)) * A0 * (Math.exp(-lambda1 * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
+                    d_activity = (N0_daughter * Math.exp(-lambda2 * timePoint_seconds)) + ((lambda2 / (lambda2 - lambda)) * A0 * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
                 }
                 daughterData.push(d_activity);
             }
-        }
-        setChartData({ labels, parentData, daughterData: daughterData.length > 0 ? daughterData : null, timeUnit: timeUnit, parentName: selectedNuclide.name, daughterName: calculationMode === MODE_DAUGHTER ? selectedNuclide.daughter.split('(')[0].trim() : null });
-    } catch (e) {
-        setError(e.message);
-        setResult(null);
-        setChartData(null);
-    }
-}, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, radionuclides]);
-
-
-
+         }
+         setChartData({ labels, parentData, daughterData: daughterData.length > 0 ? daughterData : null, timeUnit: timeUnit, parentName: selectedNuclide.name, daughterName: calculationMode === MODE_DAUGHTER ? selectedNuclide.daughter.split('(')[0].trim() : null });
+         } catch (e) {
+         setError(e.message);
+         setResult(null);
+         setChartData(null);
+         }
+         }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, radionuclides]);
+         
+         
+         
          
          React.useEffect(() => { 
              if (selectedNuclide) { 
@@ -11068,23 +11063,23 @@ const handleCalculate = React.useCallback(() => {
              setSc_wipeBackgroundCpm('50'); setSc_instrumentEff('25'); setSc_smearEff('0.1');
              setSc_result(null); setSc_error('');
          };
-
-const handleLeakTestClear = () => {
-    // 1. Reset all the component's state to defaults
-    setLt_grossCpm('150');
-    setLt_backgroundCpm('50');
-    setLt_instrumentEff('25');
-    setLt_result(null);
-    setLt_error('');
-
-    // 2. Remove all saved data for this component from localStorage
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('leakTest_')) {
+         
+         const handleLeakTestClear = () => {
+         // 1. Reset all the component's state to defaults
+         setLt_grossCpm('150');
+         setLt_backgroundCpm('50');
+         setLt_instrumentEff('25');
+         setLt_result(null);
+         setLt_error('');
+         
+         // 2. Remove all saved data for this component from localStorage
+         Object.keys(localStorage).forEach(key => {
+         if (key.startsWith('leakTest_')) {
             localStorage.removeItem(key);
-        }
-    });
-};
-
+         }
+         });
+         };
+         
          const handleAirborneClear = () => {
              setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_activityUnit('mCi');
              setAc_roomVolume('100'); setAc_volumeUnit('m³'); setAc_ventilationRate('2');
@@ -12543,17 +12538,17 @@ const handleLeakTestClear = () => {
          );
          };
          
-const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, doseRate, setDoseRate, doseRateUnit, setDoseRateUnit, distance, setDistance, distanceUnit, setDistanceUnit, result, setResult, error, setError }) => {
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const selectedNuclide = React.useMemo(() => gammaNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, gammaNuclides]);
-    
-    const doseRateFactors_R_hr = { 'µrem/hr': 1e-6, 'mrem/hr': 1e-3, 'rem/hr': 1, 'R/hr': 1, 'µSv/hr': 1e-4, 'mSv/hr': 0.1, 'Sv/hr': 100 };
-    const distanceFactors_m = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-
-    React.useEffect(() => {
-        try {
+         const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, doseRate, setDoseRate, doseRateUnit, setDoseRateUnit, distance, setDistance, distanceUnit, setDistanceUnit, result, setResult, error, setError }) => {
+         const { addHistory } = useCalculationHistory();
+         const { addToast } = useToast();
+         const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+         const selectedNuclide = React.useMemo(() => gammaNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, gammaNuclides]);
+         
+         const doseRateFactors_R_hr = { 'µrem/hr': 1e-6, 'mrem/hr': 1e-3, 'rem/hr': 1, 'R/hr': 1, 'µSv/hr': 1e-4, 'mSv/hr': 0.1, 'Sv/hr': 100 };
+         const distanceFactors_m = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+         
+         React.useEffect(() => {
+         try {
             setError('');
             if (!selectedNuclide) {
                 setResult(null);
@@ -12566,34 +12561,34 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                 setResult(null);
                 return;
             }
-
+         
             const gammaConstant = parseFloat(selectedNuclide.gammaConstant);
             const doseRate_R_hr = doseRateVal * doseRateFactors_R_hr[doseRateUnit];
             const distance_m = distanceVal * distanceFactors_m[distanceUnit];
-
+         
             const activity_Ci = (doseRate_R_hr * Math.pow(distance_m, 2)) / gammaConstant;
             
             // This call now uses the global formatSensibleUnit function
             setResult({
                 activity: formatSensibleUnit(activity_Ci * 1e6, 'activity_µCi')
             });
-        } catch (e) {
+         } catch (e) {
             setError(e.message || "Calculation failed.");
             setResult(null);
-        }
-    }, [selectedNuclide, doseRate, doseRateUnit, distance, distanceUnit, setResult, setError]);
-
-    const handleSaveToHistory = () => {
-        if (result && selectedNuclide) {
+         }
+         }, [selectedNuclide, doseRate, doseRateUnit, distance, distanceUnit, setResult, setError]);
+         
+         const handleSaveToHistory = () => {
+         if (result && selectedNuclide) {
            addHistory({ id: Date.now(), type: 'Activity from Dose', icon: ICONS.activity, inputs: `${doseRate} ${doseRateUnit} @ ${distance} ${distanceUnit}`, result: `${result.activity.value} ${result.activity.unit} ${selectedNuclide.symbol}`, view: VIEWS.ACTIVITY_MASS });
            addToast("Calculation saved to history!");
-        }
-    };
-
-    // The local tempSensibleUnitConfig and formatSensibleUnit functions have been removed.
-
-    return (
-        <div className="space-y-4">
+         }
+         };
+         
+         // The local tempSensibleUnitConfig and formatSensibleUnit functions have been removed.
+         
+         return (
+         <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">Calculates source activity from a gamma dose rate measurement.</p>
             <div>
                 <label className="text-sm font-medium">Radionuclide</label>
@@ -12639,82 +12634,82 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                     <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.activity.unit}</p>
                 </div>
             )}
-        </div>
-    );
-};
+         </div>
+         );
+         };
          
              const ActivityAndMassTools = ({ radionuclides }) => {
-    const MODE_MASS_ACTIVITY = 'massActivity';
-    const MODE_SPECIFIC_ACTIVITY = 'specificActivity';
-    const MODE_ACTIVITY_FROM_DOSE = 'activityFromDose';
-
-    const [calcMode, setCalcMode] = React.useState(MODE_MASS_ACTIVITY);
-    
-    // State for MassActivityModule
-    const [mass_selectedNuclide, setMass_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('massActivity_symbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
-    const [mass_mass, setMass_mass] = React.useState(() => localStorage.getItem('massActivity_mass') || '');
-    const [mass_massUnit, setMass_massUnit] = React.useState(() => localStorage.getItem('massActivity_massUnit') || 'g');
-    const [mass_activity, setMass_activity] = React.useState(() => localStorage.getItem('massActivity_activity') || '');
-    const [mass_activityUnit, setMass_activityUnit] = React.useState(() => localStorage.getItem('massActivity_activityUnit') || 'Ci');
-    const [mass_error, setMass_error] = React.useState('');
-    
-    // State for SpecificActivityModule
-    const [spec_atomicWeight, setSpec_atomicWeight] = React.useState(() => localStorage.getItem('specActivity_atomicWeight') || '');
-    const [spec_halfLifeValue, setSpec_halfLifeValue] = React.useState(() => localStorage.getItem('specActivity_halfLifeValue') || '');
-    const [spec_halfLifeUnit, setSpec_halfLifeUnit] = React.useState(() => localStorage.getItem('specActivity_halfLifeUnit') || 'years');
-    const [spec_result, setSpec_result] = React.useState(null);
-    const [spec_error, setSpec_error] = React.useState('');
-
-    // State for ActivityFromDoseRate calculator (not persisted in this module)
-    const [afd_nuclideSymbol, setAfd_nuclideSymbol] = React.useState('');
-    const [afd_doseRate, setAfd_doseRate] = React.useState('10');
-    const [afd_doseRateUnit, setAfd_doseRateUnit] = React.useState('mrem/hr');
-    const [afd_distance, setAfd_distance] = React.useState('1');
-    const [afd_distanceUnit, setAfd_distanceUnit] = React.useState('m');
-    const [afd_result, setAfd_result] = React.useState(null);
-    const [afd_error, setAfd_error] = React.useState('');
-    
-    // --- UPDATED CLEAR FUNCTIONS ---
-    const handleMassActivityClear = () => {
-        // 1. Reset state to defaults
-        setMass_selectedNuclide(null); setMass_mass(''); setMass_massUnit('g');
-        setMass_activity(''); setMass_activityUnit('Ci'); setMass_error('');
-        
-        // 2. Clear saved data from localStorage
-        Object.keys(localStorage).forEach(key => {
+         const MODE_MASS_ACTIVITY = 'massActivity';
+         const MODE_SPECIFIC_ACTIVITY = 'specificActivity';
+         const MODE_ACTIVITY_FROM_DOSE = 'activityFromDose';
+         
+         const [calcMode, setCalcMode] = React.useState(MODE_MASS_ACTIVITY);
+         
+         // State for MassActivityModule
+         const [mass_selectedNuclide, setMass_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('massActivity_symbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
+         const [mass_mass, setMass_mass] = React.useState(() => localStorage.getItem('massActivity_mass') || '');
+         const [mass_massUnit, setMass_massUnit] = React.useState(() => localStorage.getItem('massActivity_massUnit') || 'g');
+         const [mass_activity, setMass_activity] = React.useState(() => localStorage.getItem('massActivity_activity') || '');
+         const [mass_activityUnit, setMass_activityUnit] = React.useState(() => localStorage.getItem('massActivity_activityUnit') || 'Ci');
+         const [mass_error, setMass_error] = React.useState('');
+         
+         // State for SpecificActivityModule
+         const [spec_atomicWeight, setSpec_atomicWeight] = React.useState(() => localStorage.getItem('specActivity_atomicWeight') || '');
+         const [spec_halfLifeValue, setSpec_halfLifeValue] = React.useState(() => localStorage.getItem('specActivity_halfLifeValue') || '');
+         const [spec_halfLifeUnit, setSpec_halfLifeUnit] = React.useState(() => localStorage.getItem('specActivity_halfLifeUnit') || 'years');
+         const [spec_result, setSpec_result] = React.useState(null);
+         const [spec_error, setSpec_error] = React.useState('');
+         
+         // State for ActivityFromDoseRate calculator (not persisted in this module)
+         const [afd_nuclideSymbol, setAfd_nuclideSymbol] = React.useState('');
+         const [afd_doseRate, setAfd_doseRate] = React.useState('10');
+         const [afd_doseRateUnit, setAfd_doseRateUnit] = React.useState('mrem/hr');
+         const [afd_distance, setAfd_distance] = React.useState('1');
+         const [afd_distanceUnit, setAfd_distanceUnit] = React.useState('m');
+         const [afd_result, setAfd_result] = React.useState(null);
+         const [afd_error, setAfd_error] = React.useState('');
+         
+         // --- UPDATED CLEAR FUNCTIONS ---
+         const handleMassActivityClear = () => {
+         // 1. Reset state to defaults
+         setMass_selectedNuclide(null); setMass_mass(''); setMass_massUnit('g');
+         setMass_activity(''); setMass_activityUnit('Ci'); setMass_error('');
+         
+         // 2. Clear saved data from localStorage
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('massActivity_')) {
                 localStorage.removeItem(key);
             }
-        });
-    };
-
-    const handleSpecificActivityClear = () => {
-        // 1. Reset state to defaults
-        setSpec_atomicWeight(''); setSpec_halfLifeValue(''); setSpec_halfLifeUnit('years');
-        setSpec_result(null); setSpec_error('');
-
-        // 2. Clear saved data from localStorage
-        Object.keys(localStorage).forEach(key => {
+         });
+         };
+         
+         const handleSpecificActivityClear = () => {
+         // 1. Reset state to defaults
+         setSpec_atomicWeight(''); setSpec_halfLifeValue(''); setSpec_halfLifeUnit('years');
+         setSpec_result(null); setSpec_error('');
+         
+         // 2. Clear saved data from localStorage
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('specActivity_')) {
                 localStorage.removeItem(key);
             }
-        });
-    };
-
-    const handleActivityFromDoseClear = () => {
-        setAfd_nuclideSymbol(''); setAfd_doseRate('10'); setAfd_doseRateUnit('mrem/hr');
-        setAfd_distance('1'); setAfd_distanceUnit('m'); setAfd_result(null); setAfd_error('');
-    };
-    
-    const handleClearActiveCalculator = () => {
-        if (calcMode === MODE_MASS_ACTIVITY) handleMassActivityClear();
-        else if (calcMode === MODE_SPECIFIC_ACTIVITY) handleSpecificActivityClear();
-        else handleActivityFromDoseClear();
-    };
-    
- 
-    return (
-        <div className="p-4 animate-fade-in">
+         });
+         };
+         
+         const handleActivityFromDoseClear = () => {
+         setAfd_nuclideSymbol(''); setAfd_doseRate('10'); setAfd_doseRateUnit('mrem/hr');
+         setAfd_distance('1'); setAfd_distanceUnit('m'); setAfd_result(null); setAfd_error('');
+         };
+         
+         const handleClearActiveCalculator = () => {
+         if (calcMode === MODE_MASS_ACTIVITY) handleMassActivityClear();
+         else if (calcMode === MODE_SPECIFIC_ACTIVITY) handleSpecificActivityClear();
+         else handleActivityFromDoseClear();
+         };
+         
+         
+         return (
+         <div className="p-4 animate-fade-in">
            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                <div className="flex justify-between items-center mb-4">
                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Activity & Mass Tools</h2>
@@ -12758,9 +12753,9 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                    />
                }
            </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
               
               /**
               * @description A calculator to determine the activities of a parent-daughter pair over time,
@@ -12870,7 +12865,9 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
          const A_daughter = initialDaughterDecay + daughterIngrowth;
          const newResult = { parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) }, daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) } };
          setResult(newResult);
+         
          // REMOVED addHistory call from here
+         
          const labels = [], parentData = [], daughterData = [], ratioData = [];
          const totalTime = t_input;
          const steps = 100;
@@ -13382,84 +13379,84 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
          };
          
          const RadonCalculator = () => {
-    const [activeTab, setActiveTab] = React.useState('concentration');
-    
-    // State for KusnetzCalculator
-    const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
-    const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
-    const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
-    const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
-    const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
-    const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
-    const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
-    const [kusnetz_result, setKusnetz_result] = React.useState(null);
-    const [kusnetz_error, setKusnetz_error] = React.useState('');
-    
-    // State for ConcentrationDoseModule
-    const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
-    const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
-    const [conc_unit, setConc_unit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
-    const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
-    const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
-    const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
-    const [conc_result, setConc_result] = React.useState(null);
-    const [conc_error, setConc_error] = React.useState('');
-    
-    // State for RadonIngrowthCalculator (no localStorage needed for this one)
-    const [ingrowth_ra226Mass, setIngrowth_ra226Mass] = React.useState('1');
-    const [ingrowth_massUnit, setIngrowth_massUnit] = React.useState('mg');
-    const [ingrowth_time, setIngrowth_time] = React.useState('30');
-    const [ingrowth_timeUnit, setIngrowth_timeUnit] = React.useState('days');
-    const [ingrowth_result, setIngrowth_result] = React.useState(null);
-    const [ingrowth_error, setIngrowth_error] = React.useState('');
-    
-    // --- UPDATED CLEAR FUNCTIONS ---
-    const handleKusnetzClear = () => {
-        // 1. Reset state to defaults
-        setKusnetz_flowRate('10'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
-        setKusnetz_grossCounts('5000'); setKusnetz_countDuration('5'); setKusnetz_backgroundCpm('0.5');
-        setKusnetz_efficiency('25'); setKusnetz_result(null); setKusnetz_error('');
-        
-        // 2. Clear saved data from localStorage
-        Object.keys(localStorage).forEach(key => {
+         const [activeTab, setActiveTab] = React.useState('concentration');
+         
+         // State for KusnetzCalculator
+         const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '10');
+         const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
+         const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
+         const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '5000');
+         const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '5');
+         const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0.5');
+         const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '25');
+         const [kusnetz_result, setKusnetz_result] = React.useState(null);
+         const [kusnetz_error, setKusnetz_error] = React.useState('');
+         
+         // State for ConcentrationDoseModule
+         const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
+         const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4.0');
+         const [conc_unit, setConc_unit] = React.useState(() => localStorage.getItem('radon_unit') || 'pCi/L');
+         const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
+         const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '');
+         const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '0.8');
+         const [conc_result, setConc_result] = React.useState(null);
+         const [conc_error, setConc_error] = React.useState('');
+         
+         // State for RadonIngrowthCalculator (no localStorage needed for this one)
+         const [ingrowth_ra226Mass, setIngrowth_ra226Mass] = React.useState('1');
+         const [ingrowth_massUnit, setIngrowth_massUnit] = React.useState('mg');
+         const [ingrowth_time, setIngrowth_time] = React.useState('30');
+         const [ingrowth_timeUnit, setIngrowth_timeUnit] = React.useState('days');
+         const [ingrowth_result, setIngrowth_result] = React.useState(null);
+         const [ingrowth_error, setIngrowth_error] = React.useState('');
+         
+         // --- UPDATED CLEAR FUNCTIONS ---
+         const handleKusnetzClear = () => {
+         // 1. Reset state to defaults
+         setKusnetz_flowRate('10'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
+         setKusnetz_grossCounts('5000'); setKusnetz_countDuration('5'); setKusnetz_backgroundCpm('0.5');
+         setKusnetz_efficiency('25'); setKusnetz_result(null); setKusnetz_error('');
+         
+         // 2. Clear saved data from localStorage
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('kusnetz_')) {
                 localStorage.removeItem(key);
             }
-        });
-    };
-    
-    const handleConcentrationClear = () => {
-        // 1. Reset state to defaults
-        setConc_calcMode('doseFromConc'); setConc_concentration('4.0'); setConc_unit('pCi/L');
-        setConc_equilibriumFactor('0.4'); setConc_workingLevel(''); setConc_occupancyFactor('0.8');
-        setConc_result(null); setConc_error('');
-
-        // 2. Clear saved data from localStorage
-        Object.keys(localStorage).forEach(key => {
+         });
+         };
+         
+         const handleConcentrationClear = () => {
+         // 1. Reset state to defaults
+         setConc_calcMode('doseFromConc'); setConc_concentration('4.0'); setConc_unit('pCi/L');
+         setConc_equilibriumFactor('0.4'); setConc_workingLevel(''); setConc_occupancyFactor('0.8');
+         setConc_result(null); setConc_error('');
+         
+         // 2. Clear saved data from localStorage
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('radon_')) {
                 localStorage.removeItem(key);
             }
-        });
-    };
-    
-    const handleIngrowthClear = () => {
-       setIngrowth_ra226Mass('1'); setIngrowth_massUnit('mg'); setIngrowth_time('30');
-       setIngrowth_timeUnit('days'); setIngrowth_result(null); setIngrowth_error('');
-    };
-    
-    const handleClearActiveCalculator = () => {
-        if (activeTab === 'concentration') {
+         });
+         };
+         
+         const handleIngrowthClear = () => {
+         setIngrowth_ra226Mass('1'); setIngrowth_massUnit('mg'); setIngrowth_time('30');
+         setIngrowth_timeUnit('days'); setIngrowth_result(null); setIngrowth_error('');
+         };
+         
+         const handleClearActiveCalculator = () => {
+         if (activeTab === 'concentration') {
            handleConcentrationClear();
-        } else if (activeTab === 'kusnetz') {
+         } else if (activeTab === 'kusnetz') {
            handleKusnetzClear();
-        } else {
+         } else {
            handleIngrowthClear();
-        }
-    };
-    
-    // --- JSX (Unchanged) ---
-    return (
-        <div className="p-4 animate-fade-in">
+         }
+         };
+         
+         // --- JSX (Unchanged) ---
+         return (
+         <div className="p-4 animate-fade-in">
            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                <div className="flex justify-between items-center">
                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
@@ -13506,9 +13503,9 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                    />
                }
            </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
               
               /**
               * @description React component for displaying the application's user manual, FAQ, and technical reference.
@@ -14046,20 +14043,20 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
          const [randomSuggestions, setRandomSuggestions] = React.useState([]);
          const [isSearchFocused, setIsSearchFocused] = React.useState(false);
          
-    const [scientificCalculatorState, setScientificCalculatorState] = React.useState(() => {
-        const savedState = localStorage.getItem('scientificCalculatorState');
-        return savedState ? JSON.parse(savedState) : { expression: '', result: '', history: [], memory: 0 };
-    });
-
-    // Add this useEffect to save the state whenever it changes
-    React.useEffect(() => {
-        localStorage.setItem('scientificCalculatorState', JSON.stringify(scientificCalculatorState));
-    }, [scientificCalculatorState]);
-
-const [scratchpadNotes, setScratchpadNotes] = React.useState(
-        () => localStorage.getItem('user_scratchpad_notes') || ''
-    );
-
+         const [scientificCalculatorState, setScientificCalculatorState] = React.useState(() => {
+         const savedState = localStorage.getItem('scientificCalculatorState');
+         return savedState ? JSON.parse(savedState) : { expression: '', result: '', history: [], memory: 0 };
+         });
+         
+         // Add this useEffect to save the state whenever it changes
+         React.useEffect(() => {
+         localStorage.setItem('scientificCalculatorState', JSON.stringify(scientificCalculatorState));
+         }, [scientificCalculatorState]);
+         
+         const [scratchpadNotes, setScratchpadNotes] = React.useState(
+         () => localStorage.getItem('user_scratchpad_notes') || ''
+         );
+         
          const [sortBy, setSortBy] = React.useState(() => localStorage.getItem('filterSortBy') || 'name');
          const [sortOrder, setSortOrder] = React.useState(() => localStorage.getItem('filterSortOrder') || 'asc');
          const [selectedCategory, setSelectedCategory] = React.useState(() => localStorage.getItem('filterCategory') || 'All');
@@ -14391,10 +14388,10 @@ const [scratchpadNotes, setScratchpadNotes] = React.useState(
                      }
                      return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
                  case VIEWS.MEDICAL:return <MedicalCalculator radionuclides={radionuclides} />;
-
-case VIEWS.SCRATCHPAD:
-    return (
-        <div className="p-4 animate-fade-in">
+         
+         case VIEWS.SCRATCHPAD:
+         return (
+         <div className="p-4 animate-fade-in">
             <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
@@ -14407,10 +14404,10 @@ case VIEWS.SCRATCHPAD:
                 {/* Pass the centralized state down to the Scratchpad component */}
                 <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
             </div>
-        </div>
-    );
-
-case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
+         </div>
+         );
+         
+         case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
                  case VIEWS.REFERENCES: return <ReferencesPage />;
                  case VIEWS.HOME: 
                  default: 
@@ -14460,14 +14457,14 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                          </PopoutWindow>
                      )}
                      
-{showScratchpadPopout && (
-    <PopoutWindow 
-        title="Scratchpad" 
-        onClose={() => setShowScratchpadPopout(false)}
-        width={800} 
-        height={660}
-    >
-        <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
+         {showScratchpadPopout && (
+         <PopoutWindow 
+         title="Scratchpad" 
+         onClose={() => setShowScratchpadPopout(false)}
+         width={800} 
+         height={660}
+         >
+         <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
             <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
                 <div className="flex-grow flex flex-col">
@@ -14475,9 +14472,9 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                    <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
                 </div>
             </div>
-        </div>
-    </PopoutWindow>
-)}
+         </div>
+         </PopoutWindow>
+         )}
                  </div>
              </div>
          );
@@ -14796,26 +14793,26 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                                               <tr key={prop.label} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                                   <td className="sticky left-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 p-3 font-medium text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-slate-600 z-10">{prop.label}</td>
               
-
-
-{comparisonList.map((nuclide, nuclideIndex) => {
-    let cellContent;
-    let cellClass = 'border-b border-slate-200 dark:border-slate-600';
-
-    if (prop.render) {
-        cellContent = prop.render(nuclide);
-    } else {
-        const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
-        const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
-
-        if (prop.type === 'numeric') {
+         
+         
+         {comparisonList.map((nuclide, nuclideIndex) => {
+         let cellContent;
+         let cellClass = 'border-b border-slate-200 dark:border-slate-600';
+         
+         if (prop.render) {
+         cellContent = prop.render(nuclide);
+         } else {
+         const rawValue = prop.key === 'emissionEnergies' ? nuclide.emissionEnergies : nuclide[prop.key];
+         const formattedValue = prop.format ? prop.format(rawValue) : (rawValue || 'N/A');
+         
+         if (prop.type === 'numeric') {
             const numericVal = parseFloat(formattedValue);
             const barWidth = maxVal > 0 ? (numericVal / maxVal) * 100 : 0;
             
             // Highlight min/max values
             if (values.length > 1 && numericVal === maxVal && maxVal !== minVal) cellClass += ' bg-sky-100 dark:bg-sky-900/50 font-bold text-sky-800 dark:text-sky-200';
             if (values.length > 1 && numericVal === minVal && maxVal !== minVal) cellClass += ' bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-200';
-
+         
             // Calculate difference tag
             let differenceTag = null;
             if (comparisonList.length === 2 && nuclideIndex === 1) {
@@ -14827,7 +14824,7 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                     differenceTag = <span className={`block text-xs font-semibold mt-1 ${diffColor}`}>{`${sign}${diff.toFixed(1)}% vs. ${comparisonList[0].symbol}`}</span>;
                 }
             }
-
+         
             // Construct the final cell content for numeric types
             cellContent = (
                 <>
@@ -14843,18 +14840,18 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                     </div>
                 </>
             );
-        } else {
+         } else {
             // This is the safe path for categorical data
             cellContent = <span>{formattedValue}</span>;
-        }
-    }
-
-    return (
-        <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
+         }
+         }
+         
+         return (
+         <td key={nuclide.symbol} className={`${cellClass} p-3 relative`}>
             {cellContent}
-        </td>
-    );
-})}
+         </td>
+         );
+         })}
                                               </tr>
                                           );
                                       })}
@@ -15049,10 +15046,10 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
          if (preselectedNuclide) {
             const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
             const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
-
-        // If a nuclide is being sent, always switch to the database input mode.
-        setInputMode(INPUT_MODE_DB);
-
+         
+         // If a nuclide is being sent, always switch to the database input mode.
+         setInputMode(INPUT_MODE_DB);
+         
             if (isGamma) { setCalcMode(CALC_MODE_GAMMA); setNuclideSymbol(preselectedNuclide); } 
             else if (isBeta) { setCalcMode(CALC_MODE_BETA); setNuclideSymbol(preselectedNuclide); }
          }
@@ -15103,65 +15100,65 @@ case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in">
                     break;
                 }
                
-		case CALC_MODE_BETA:
-case CALC_MODE_BREMS: {
-    const sourcesToCalculate = [];
-    let sourceNote = null;
-
-    // --- 1. Identify all contributing beta sources ---
-    if (inputMode === INPUT_MODE_DB) {
-        if (!selectedNuclide) {
+         case CALC_MODE_BETA:
+         case CALC_MODE_BREMS: {
+         const sourcesToCalculate = [];
+         let sourceNote = null;
+         
+         // --- 1. Identify all contributing beta sources ---
+         if (inputMode === INPUT_MODE_DB) {
+         if (!selectedNuclide) {
             throw new Error('Please select a radionuclide or switch to Manual Input.');
-        }
-
-        // Add the parent nuclide to the list if it's a beta emitter
-        if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
+         }
+         
+         // Add the parent nuclide to the list if it's a beta emitter
+         if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
             sourcesToCalculate.push(selectedNuclide);
-        }
-
-        // Add the daughter nuclide if it's also a beta emitter (assumes equilibrium)
-        if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
+         }
+         
+         // Add the daughter nuclide if it's also a beta emitter (assumes equilibrium)
+         if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
             const daughter = radionuclides.find(n => n.symbol === selectedNuclide.daughterEmissions.from);
             if (daughter && daughter.emissionEnergies?.beta?.length > 0) {
                 sourcesToCalculate.push(daughter);
             }
-        }
-        
-        if (sourcesToCalculate.length === 0) {
+         }
+         
+         if (sourcesToCalculate.length === 0) {
             throw new Error(`${selectedNuclide.name} has no defined beta emissions.`);
-        }
-        
-        // Create a note for the UI if multiple sources are contributing to the dose
-        if (sourcesToCalculate.length > 1) {
+         }
+         
+         // Create a note for the UI if multiple sources are contributing to the dose
+         if (sourcesToCalculate.length > 1) {
             sourceNote = `Based on summed contributions from ${sourcesToCalculate.map(s => s.symbol).join(' & ')} in equilibrium.`;
-        }
-
-    } else { // Manual Mode
-        const E_max_manual = parseFloat(manualBetaEnergy);
-        if (isNaN(E_max_manual) || E_max_manual <= 0) {
+         }
+         
+         } else { // Manual Mode
+         const E_max_manual = parseFloat(manualBetaEnergy);
+         if (isNaN(E_max_manual) || E_max_manual <= 0) {
             throw new Error('Please enter a valid, positive Max Beta Energy.');
-        }
-        // Create a temporary "source" object for the calculation loop
-        sourcesToCalculate.push({
+         }
+         // Create a temporary "source" object for the calculation loop
+         sourcesToCalculate.push({
             manual: true,
             emissionEnergies: { beta: [`${E_max_manual} MeV`] },
             avgBetaEnergy: (E_max_manual / 3).toString()
-        });
-    }
-
-    // --- 2. Calculate and sum the dose from each source ---
-    let totalDoseRate_mrem_hr = 0;
-    let totalBremsstrahlungFraction = 0;
-    let primaryE_max = 0; // Use the highest E_max for range calculations
-
-    if (isNaN(activityValue)) throw new Error('Invalid activity value.');
-
-    for (const source of sourcesToCalculate) {
-        const E_max = parseEnergyToMeV(source.emissionEnergies.beta);
-        const E_avg = parseFloat(source.avgBetaEnergy) || E_max / 3;
-        if (E_max > primaryE_max) primaryE_max = E_max;
-
-        if (calcMode === CALC_MODE_BETA) {
+         });
+         }
+         
+         // --- 2. Calculate and sum the dose from each source ---
+         let totalDoseRate_mrem_hr = 0;
+         let totalBremsstrahlungFraction = 0;
+         let primaryE_max = 0; // Use the highest E_max for range calculations
+         
+         if (isNaN(activityValue)) throw new Error('Invalid activity value.');
+         
+         for (const source of sourcesToCalculate) {
+         const E_max = parseEnergyToMeV(source.emissionEnergies.beta);
+         const E_avg = parseFloat(source.avgBetaEnergy) || E_max / 3;
+         if (E_max > primaryE_max) primaryE_max = E_max;
+         
+         if (calcMode === CALC_MODE_BETA) {
             if (betaMode === BETA_MODE_SKIN) {
                 const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
                 totalDoseRate_mrem_hr += (2.13 * concentration_uCi_per_cm2 * E_avg) * 1000;
@@ -15170,20 +15167,20 @@ case CALC_MODE_BREMS: {
                 const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
                 totalDoseRate_mrem_hr += ((400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2)) * 1000;
             }
-        } else { // Bremsstrahlung
+         } else { // Bremsstrahlung
             const activityInCi = activityValue * activityFactorsCi[activityUnit];
             const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
             const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
             totalDoseRate_mrem_hr += doseRate_rad_hr_at_1m * 1000; // Doses are additive
             totalBremsstrahlungFraction += 3.5e-4 * Z * E_max;
-        }
-    }
-    
-    // --- 3. Format and set the final result ---
-    if (calcMode === CALC_MODE_BETA) {
-        if (betaMode === BETA_MODE_SKIN) {
+         }
+         }
+         
+         // --- 3. Format and set the final result ---
+         if (calcMode === CALC_MODE_BETA) {
+         if (betaMode === BETA_MODE_SKIN) {
             setResult({ type: 'beta_skin', dose: formatSensibleUnit(totalDoseRate_mrem_hr, 'doseRate'), e_max: primaryE_max, sourceNote: sourceNote });
-        } else { // Dose in Air
+         } else { // Dose in Air
             if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
             const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
             let range_m;
@@ -15193,15 +15190,15 @@ case CALC_MODE_BREMS: {
             const isBeyondRange = distance_cm >= range_cm;
             const finalDoseRate = isBeyondRange ? 0 : totalDoseRate_mrem_hr;
             setResult({ type: 'beta_air', dose: formatSensibleUnit(finalDoseRate, 'doseRate'), e_max: primaryE_max, isBeyondRange: isBeyondRange, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2), sourceNote: sourceNote });
-        }
-    } else { // Bremsstrahlung
-        if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
-        const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-        const finalDoseRate = totalDoseRate_mrem_hr / Math.pow(distanceInM, 2);
-        setResult({ type: 'bremsstrahlung', dose: formatSensibleUnit(finalDoseRate, 'doseRate'), bremsstrahlungFraction: (totalBremsstrahlungFraction * 100).toPrecision(2), sourceNote: sourceNote });
-    }
-    break;
-}
+         }
+         } else { // Bremsstrahlung
+         if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
+         const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+         const finalDoseRate = totalDoseRate_mrem_hr / Math.pow(distanceInM, 2);
+         setResult({ type: 'bremsstrahlung', dose: formatSensibleUnit(finalDoseRate, 'doseRate'), bremsstrahlungFraction: (totalBremsstrahlungFraction * 100).toPrecision(2), sourceNote: sourceNote });
+         }
+         break;
+         }
                 case CALC_MODE_INTERNAL: {
                     if (!selectedNuclide) { throw new Error("Please select a radionuclide for internal dose calculation.")}
                     const intake = parseFloat(intakeAmount); if (isNaN(intake) || intake < 0) throw new Error('Invalid intake amount.');
@@ -15608,26 +15605,26 @@ case CALC_MODE_BREMS: {
          setUseManualHVL(false);
          setUseBuildup(false);
          setNuclideSymbol('');
-
          
-setInputMode(INPUT_MODE_DB);
-
-    // --- FIX APPLIED HERE ---
-    // If we are switching TO a beta mode, default to a beta shield.
-    if (mode === CALC_MODE_BETA) {
-        setShieldMaterial('Plastic');
-    } 
-    // If we are switching FROM beta mode to a gamma mode...
-    else if (calcMode === CALC_MODE_BETA) {
-        // ...and the current shield is a beta-only shield...
-        if (betaShieldMaterials.includes(shieldMaterial)) {
+         
+         setInputMode(INPUT_MODE_DB);
+         
+         // --- FIX APPLIED HERE ---
+         // If we are switching TO a beta mode, default to a beta shield.
+         if (mode === CALC_MODE_BETA) {
+         setShieldMaterial('Plastic');
+         } 
+         // If we are switching FROM beta mode to a gamma mode...
+         else if (calcMode === CALC_MODE_BETA) {
+         // ...and the current shield is a beta-only shield...
+         if (betaShieldMaterials.includes(shieldMaterial)) {
             // ...reset it to a default gamma shield.
             setShieldMaterial('Lead');
-        }
-    }
-};
+         }
+         }
+         };
          
-
+         
          const handleClearInputs = () => {
          setCalcMode(MODE_FROM_SOURCE);
          setInputMode(INPUT_MODE_DB);
@@ -15926,29 +15923,29 @@ setInputMode(INPUT_MODE_DB);
          handleCalculate();
          }, [ inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, manualDoseRate, manualDoseRateUnit, doseLimit, plannedTime, plannedTimeUnit ]);
          
-const handleClearInputs = () => {
-    // 1. Reset all the component's state to defaults
-    setInputMode(INPUT_MODE_SOURCE);
-    setNuclideSymbol('');
-    setActivity('1');
-    setActivityUnit('mCi');
-    setDistance('1');
-    setDistanceUnit('m');
-    setManualDoseRate('10');
-    setManualDoseRateUnit('mrem/hr');
-    setDoseLimit('2');
-    setPlannedTime('10');
-    setPlannedTimeUnit('minutes');
-    setError('');
-    setResult(null);
-
-    // 2. Remove all saved data for this component from localStorage
-    Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('stayTime_')) {
+         const handleClearInputs = () => {
+         // 1. Reset all the component's state to defaults
+         setInputMode(INPUT_MODE_SOURCE);
+         setNuclideSymbol('');
+         setActivity('1');
+         setActivityUnit('mCi');
+         setDistance('1');
+         setDistanceUnit('m');
+         setManualDoseRate('10');
+         setManualDoseRateUnit('mrem/hr');
+         setDoseLimit('2');
+         setPlannedTime('10');
+         setPlannedTimeUnit('minutes');
+         setError('');
+         setResult(null);
+         
+         // 2. Remove all saved data for this component from localStorage
+         Object.keys(localStorage).forEach(key => {
+         if (key.startsWith('stayTime_')) {
             localStorage.removeItem(key);
-        }
-    });
-};
+         }
+         });
+         };
          
          return (
          <div className="p-4 animate-fade-in">
@@ -16638,149 +16635,149 @@ const handleClearInputs = () => {
               * MARSSIM-compliant static counts and scanning surveys.
               */
               
- const MDACalculator = () => {
-    const MDA_MODE_STATIC = 'static';
-    const MDA_MODE_SCAN = 'scan';
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-    
-    // --- State Management (Unified Background) ---
-    const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
-    
-    // SHARED STATE: Background is now a single value (cpm) used by both calculators.
-    const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '100');
-    const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '22');
-    const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
-    const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '126');
-    
-    // State for Static MDA
-    const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
-    const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm/100cm²');
-    const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
-    const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
-    
-    // State for Scan MDC
-    const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '12.6');
-    const [probeShape, setProbeShape] = React.useState(() => localStorage.getItem('mda_probeShape') || 'rectangle');
-    const [probeWidth, setProbeWidth] = React.useState(() => localStorage.getItem('mda_probeWidth') || '10');
-    const [probeLength, setProbeLength] = React.useState(() => localStorage.getItem('mda_probeLength') || '12.6');
-    const [probeDiameter, setProbeDiameter] = React.useState(() => localStorage.getItem('mda_probeDiameter') || '4.5');
-    const [hotspotDiameter, setHotspotDiameter] = React.useState(() => localStorage.getItem('mda_hotspotDiameter') || '15');
-    const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
-    const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
-    
-    const [result, setResult] = React.useState(null);
-    const [error, setError] = React.useState('');
-    
-    // --- Data and Constants ---
-    const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
-    const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
-    const dprimeOptions = [ { value: '1.38', label: '1.38 (95% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '1.0', label: '1.0 (Computer-aided GWS)' }, { value: '0.4', label: '0.4 (Conservative)' } ];
-    const surveyorEffOptions = [ { value: '0.5', label: '0.5 (Realistic default)' }, { value: '0.75', label: '0.75 (Highly trained/attentive)' }, { value: '1.0', label: '1.0 (Computer-aided scan)' }, { value: '0.25', label: '0.25 (Very conservative)' } ];
-    
-    // --- useEffect for State Persistence (Updated) ---
-    React.useEffect(() => {
-        localStorage.setItem('mda_mdaMode', mdaMode);
-        localStorage.setItem('mda_backgroundCpm', backgroundCpm);
-        localStorage.setItem('mda_instrumentEff', instrumentEff);
-        localStorage.setItem('mda_surfaceEff', surfaceEff);
-        localStorage.setItem('mda_probeArea', probeArea);
-        localStorage.setItem('mda_grossTime', grossTime);
-        localStorage.setItem('mda_outputUnit', outputUnit);
-        localStorage.setItem('mda_sampleVolume', sampleVolume);
-        localStorage.setItem('mda_sampleMass', sampleMass);
-        localStorage.setItem('mda_scanSpeed', scanSpeed);
-        localStorage.setItem('mda_probeShape', probeShape);
-        localStorage.setItem('mda_probeWidth', probeWidth);
-        localStorage.setItem('mda_probeLength', probeLength);
-        localStorage.setItem('mda_probeDiameter', probeDiameter);
-        localStorage.setItem('mda_hotspotDiameter', hotspotDiameter);
-        localStorage.setItem('mda_dprime', dprime);
-        localStorage.setItem('mda_surveyorEff', surveyorEff);
-    }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter, dprime, surveyorEff]);
-    
-    // --- Calculation Handlers (Updated for unified state) ---
-    const handleStaticCalculate = () => {
-        const params = { rb_cpm: parseFloat(backgroundCpm), tg: parseFloat(grossTime), ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff), A: parseFloat(probeArea), V: parseFloat(sampleVolume), M: parseFloat(sampleMass) };
-        if (isNaN(params.rb_cpm) || isNaN(params.tg) || params.tg <= 0) { throw new Error('Please enter valid, positive numbers for background rate and sample time.'); }
-        const LLD = 2.71 + 4.65 * Math.sqrt(params.rb_cpm * params.tg);
-        if (outputUnit === 'counts') { setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: LLD.toPrecision(3), unit: 'counts', backgroundActivity: params.rb_cpm.toPrecision(3) }); return; }
-        if (isNaN(params.ei) || isNaN(params.es) || params.ei <= 0 || params.es <= 0) { throw new Error('Valid efficiencies are required for this unit.'); }
-        const E_total = (params.ei / 100.0) * (params.es / 100.0);
-        const mda_dpm = (LLD / params.tg) / E_total;
-        const background_dpm = params.rb_cpm / E_total;
-        let finalMDA, finalBackground;
-        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') { finalMDA = mda_dpm / dpmFactors[outputUnit]; finalBackground = background_dpm / dpmFactors[outputUnit]; } 
-        else if (outputUnit === 'dpm/100cm²') { if (isNaN(params.A) || params.A <= 0) throw new Error('Probe Area is required.'); finalMDA = mda_dpm * (100 / params.A); finalBackground = background_dpm * (100 / params.A); } 
-        else if (outputUnit === 'Bq/L') { if (isNaN(params.V) || params.V <= 0) throw new Error('Sample Volume is required.'); finalMDA = (mda_dpm / 60) / params.V; finalBackground = (background_dpm / 60) / params.V; } 
-        else if (outputUnit === 'pCi/g') { if (isNaN(params.M) || params.M <= 0) throw new Error('Sample Mass is required.'); finalMDA = (mda_dpm / 2.22) / params.M; finalBackground = (background_dpm / 2.22) / params.M; } 
-        else if (outputUnit === 'cpm') { finalMDA = LLD / params.tg; finalBackground = params.rb_cpm; }
-        setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: finalMDA.toPrecision(3), backgroundActivity: finalBackground.toPrecision(3), unit: outputUnit });
-    };
-    
-    const handleScanCalculate = () => {
-        const params = { b_cpm: parseFloat(backgroundCpm), width_cm: parseFloat(probeWidth), length_cm: parseFloat(probeLength), diameter_cm: parseFloat(probeDiameter), eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff), speed_cms: parseFloat(scanSpeed), dp: parseFloat(dprime), p: parseFloat(surveyorEff) };
-        if (isNaN(params.b_cpm) || isNaN(params.eff_i) || isNaN(params.eff_s) || isNaN(params.speed_cms) || params.b_cpm < 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) { throw new Error('Please enter valid, positive numbers for all required fields.'); }
-        let residence_time_s, total_area_cm2;
-        const hotspot_diam_cm = parseFloat(hotspotDiameter);
-        if (probeShape === 'rectangle') {
+         const MDACalculator = () => {
+         const MDA_MODE_STATIC = 'static';
+         const MDA_MODE_SCAN = 'scan';
+         const { addHistory } = useCalculationHistory();
+         const { addToast } = useToast();
+         
+         // --- State Management (Unified Background) ---
+         const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
+         
+         // SHARED STATE: Background is now a single value (cpm) used by both calculators.
+         const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '100');
+         const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '22');
+         const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
+         const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '126');
+         
+         // State for Static MDA
+         const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
+         const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm/100cm²');
+         const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
+         const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
+         
+         // State for Scan MDC
+         const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '12.6');
+         const [probeShape, setProbeShape] = React.useState(() => localStorage.getItem('mda_probeShape') || 'rectangle');
+         const [probeWidth, setProbeWidth] = React.useState(() => localStorage.getItem('mda_probeWidth') || '10');
+         const [probeLength, setProbeLength] = React.useState(() => localStorage.getItem('mda_probeLength') || '12.6');
+         const [probeDiameter, setProbeDiameter] = React.useState(() => localStorage.getItem('mda_probeDiameter') || '4.5');
+         const [hotspotDiameter, setHotspotDiameter] = React.useState(() => localStorage.getItem('mda_hotspotDiameter') || '15');
+         const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
+         const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
+         
+         const [result, setResult] = React.useState(null);
+         const [error, setError] = React.useState('');
+         
+         // --- Data and Constants ---
+         const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'MDCR (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
+         const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
+         const dprimeOptions = [ { value: '1.38', label: '1.38 (95% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '1.0', label: '1.0 (Computer-aided GWS)' }, { value: '0.4', label: '0.4 (Conservative)' } ];
+         const surveyorEffOptions = [ { value: '0.5', label: '0.5 (Realistic default)' }, { value: '0.75', label: '0.75 (Highly trained/attentive)' }, { value: '1.0', label: '1.0 (Computer-aided scan)' }, { value: '0.25', label: '0.25 (Very conservative)' } ];
+         
+         // --- useEffect for State Persistence (Updated) ---
+         React.useEffect(() => {
+         localStorage.setItem('mda_mdaMode', mdaMode);
+         localStorage.setItem('mda_backgroundCpm', backgroundCpm);
+         localStorage.setItem('mda_instrumentEff', instrumentEff);
+         localStorage.setItem('mda_surfaceEff', surfaceEff);
+         localStorage.setItem('mda_probeArea', probeArea);
+         localStorage.setItem('mda_grossTime', grossTime);
+         localStorage.setItem('mda_outputUnit', outputUnit);
+         localStorage.setItem('mda_sampleVolume', sampleVolume);
+         localStorage.setItem('mda_sampleMass', sampleMass);
+         localStorage.setItem('mda_scanSpeed', scanSpeed);
+         localStorage.setItem('mda_probeShape', probeShape);
+         localStorage.setItem('mda_probeWidth', probeWidth);
+         localStorage.setItem('mda_probeLength', probeLength);
+         localStorage.setItem('mda_probeDiameter', probeDiameter);
+         localStorage.setItem('mda_hotspotDiameter', hotspotDiameter);
+         localStorage.setItem('mda_dprime', dprime);
+         localStorage.setItem('mda_surveyorEff', surveyorEff);
+         }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter, dprime, surveyorEff]);
+         
+         // --- Calculation Handlers (Updated for unified state) ---
+         const handleStaticCalculate = () => {
+         const params = { rb_cpm: parseFloat(backgroundCpm), tg: parseFloat(grossTime), ei: parseFloat(instrumentEff), es: parseFloat(surfaceEff), A: parseFloat(probeArea), V: parseFloat(sampleVolume), M: parseFloat(sampleMass) };
+         if (isNaN(params.rb_cpm) || isNaN(params.tg) || params.tg <= 0) { throw new Error('Please enter valid, positive numbers for background rate and sample time.'); }
+         const LLD = 2.71 + 4.65 * Math.sqrt(params.rb_cpm * params.tg);
+         if (outputUnit === 'counts') { setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: LLD.toPrecision(3), unit: 'counts', backgroundActivity: params.rb_cpm.toPrecision(3) }); return; }
+         if (isNaN(params.ei) || isNaN(params.es) || params.ei <= 0 || params.es <= 0) { throw new Error('Valid efficiencies are required for this unit.'); }
+         const E_total = (params.ei / 100.0) * (params.es / 100.0);
+         const mda_dpm = (LLD / params.tg) / E_total;
+         const background_dpm = params.rb_cpm / E_total;
+         let finalMDA, finalBackground;
+         if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') { finalMDA = mda_dpm / dpmFactors[outputUnit]; finalBackground = background_dpm / dpmFactors[outputUnit]; } 
+         else if (outputUnit === 'dpm/100cm²') { if (isNaN(params.A) || params.A <= 0) throw new Error('Probe Area is required.'); finalMDA = mda_dpm * (100 / params.A); finalBackground = background_dpm * (100 / params.A); } 
+         else if (outputUnit === 'Bq/L') { if (isNaN(params.V) || params.V <= 0) throw new Error('Sample Volume is required.'); finalMDA = (mda_dpm / 60) / params.V; finalBackground = (background_dpm / 60) / params.V; } 
+         else if (outputUnit === 'pCi/g') { if (isNaN(params.M) || params.M <= 0) throw new Error('Sample Mass is required.'); finalMDA = (mda_dpm / 2.22) / params.M; finalBackground = (background_dpm / 2.22) / params.M; } 
+         else if (outputUnit === 'cpm') { finalMDA = LLD / params.tg; finalBackground = params.rb_cpm; }
+         setResult({ type: 'static', LLD: LLD.toPrecision(3), MDA: finalMDA.toPrecision(3), backgroundActivity: finalBackground.toPrecision(3), unit: outputUnit });
+         };
+         
+         const handleScanCalculate = () => {
+         const params = { b_cpm: parseFloat(backgroundCpm), width_cm: parseFloat(probeWidth), length_cm: parseFloat(probeLength), diameter_cm: parseFloat(probeDiameter), eff_i: parseFloat(instrumentEff), eff_s: parseFloat(surfaceEff), speed_cms: parseFloat(scanSpeed), dp: parseFloat(dprime), p: parseFloat(surveyorEff) };
+         if (isNaN(params.b_cpm) || isNaN(params.eff_i) || isNaN(params.eff_s) || isNaN(params.speed_cms) || params.b_cpm < 0 || params.eff_i <= 0 || params.eff_s <= 0 || params.speed_cms <= 0) { throw new Error('Please enter valid, positive numbers for all required fields.'); }
+         let residence_time_s, total_area_cm2;
+         const hotspot_diam_cm = parseFloat(hotspotDiameter);
+         if (probeShape === 'rectangle') {
            if (isNaN(params.width_cm) || params.width_cm <= 0) { throw new Error('Probe Width must be a positive number.'); }
            let effective_dimension_cm = params.width_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
            residence_time_s = effective_dimension_cm / params.speed_cms;
-        } else {
+         } else {
            if (isNaN(params.diameter_cm) || params.diameter_cm <= 0) { throw new Error('Probe Diameter must be a positive number.'); }
            let effective_dimension_cm = params.diameter_cm; if (!isNaN(hotspot_diam_cm) && hotspot_diam_cm > 0 && hotspot_diam_cm < effective_dimension_cm) { effective_dimension_cm = hotspot_diam_cm; }
            residence_time_s = effective_dimension_cm / params.speed_cms;
-        }
-        total_area_cm2 = parseFloat(probeArea);
-        if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area must be a positive number.");
-        const b_cps = params.b_cpm / 60.0; const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
-        const B_i = b_cps * residence_time_s; const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / residence_time_s);
-        const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (total_area_cm2 / 100.0));
-        const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
-        setResult({ type: 'scan', obs_interval: residence_time_s.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3), mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3), background_activity: background_activity.toPrecision(3) });
-    };
-
-    const handleSaveToHistory = () => { /* ... (unchanged) ... */ };
-
-    React.useEffect(() => {
-        try {
+         }
+         total_area_cm2 = parseFloat(probeArea);
+         if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area must be a positive number.");
+         const b_cps = params.b_cpm / 60.0; const E_total = (params.eff_i / 100.0) * (params.eff_s / 100.0);
+         const B_i = b_cps * residence_time_s; const mdcr_surveyor_cpm = params.dp * Math.sqrt(B_i) * (60 / residence_time_s);
+         const scan_mda = mdcr_surveyor_cpm / (Math.sqrt(params.p) * E_total * (total_area_cm2 / 100.0));
+         const background_activity = params.b_cpm / (E_total * (total_area_cm2 / 100.0));
+         setResult({ type: 'scan', obs_interval: residence_time_s.toPrecision(3), bg_counts_in_interval: B_i.toPrecision(3), mdcr: mdcr_surveyor_cpm.toPrecision(3), scan_mda: scan_mda.toPrecision(3), background_activity: background_activity.toPrecision(3) });
+         };
+         
+         const handleSaveToHistory = () => { /* ... (unchanged) ... */ };
+         
+         React.useEffect(() => {
+         try {
            setError(''); setResult(null);
            if (mdaMode === MDA_MODE_STATIC) handleStaticCalculate(); 
            else handleScanCalculate();
-        } catch (e) { setError(e.message); setResult(null); }
-    }, [mdaMode, backgroundCpm, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter]);
-
-    const handleClearInputs = () => {
-        setMdaMode(MDA_MODE_STATIC);
-        setBackgroundCpm('100');
-        setInstrumentEff('22');
-        setSurfaceEff('50');
-        setProbeArea('126');
-        setGrossTime('1');
-        setOutputUnit('dpm/100cm²');
-        setSampleVolume('1');
-        setSampleMass('100');
-        setScanSpeed('12.6');
-        setProbeShape('rectangle');
-        setProbeWidth('10');
-        setProbeLength('12.6');
-        setProbeDiameter('4.5');
-        setHotspotDiameter('15');
-        setDprime('1.38');
-        setSurveyorEff('0.5');
-        setResult(null);
-        setError('');
-        Object.keys(localStorage).forEach(key => {
+         } catch (e) { setError(e.message); setResult(null); }
+         }, [mdaMode, backgroundCpm, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeShape, probeWidth, probeLength, probeDiameter, hotspotDiameter]);
+         
+         const handleClearInputs = () => {
+         setMdaMode(MDA_MODE_STATIC);
+         setBackgroundCpm('100');
+         setInstrumentEff('22');
+         setSurfaceEff('50');
+         setProbeArea('126');
+         setGrossTime('1');
+         setOutputUnit('dpm/100cm²');
+         setSampleVolume('1');
+         setSampleMass('100');
+         setScanSpeed('12.6');
+         setProbeShape('rectangle');
+         setProbeWidth('10');
+         setProbeLength('12.6');
+         setProbeDiameter('4.5');
+         setHotspotDiameter('15');
+         setDprime('1.38');
+         setSurveyorEff('0.5');
+         setResult(null);
+         setError('');
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('mda_')) {
                 localStorage.removeItem(key);
             }
-        });
-    };
-    
-    // --- JSX (Updated for unified UI) ---
-    return (
-        <div className="p-4 animate-fade-in">
+         });
+         };
+         
+         // --- JSX (Updated for unified UI) ---
+         return (
+         <div className="p-4 animate-fade-in">
            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                <div className="flex justify-between items-center mb-4">
                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
@@ -16800,7 +16797,7 @@ const handleClearInputs = () => {
                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                    </div>
                </div>
-
+         
                {mdaMode === MDA_MODE_STATIC ? (
                    <div className="space-y-4 animate-fade-in">
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -16856,9 +16853,9 @@ const handleClearInputs = () => {
                    </div>
                )}
            </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
               
               /**
               * @description A calculator to determine the required number of statistical samples for a
@@ -16968,8 +16965,9 @@ const handleClearInputs = () => {
              }
              const N_base_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
              const N_base = Math.ceil(N_base_raw);
-             const N_with_overage = N_base * 1.2;
-             const final_N = Math.ceil(N_with_overage);
+         const OVERAGE_FACTOR = 1.2; 
+         const N_with_overage = N_base * OVERAGE_FACTOR;
+         const final_N = Math.ceil(N_with_overage);
              const samplesPerGroup = Math.ceil(final_N / 2);
              
              const newResult = { totalShift: delta, relativeShift: relativeShift.toFixed(2), Pr: Pr.toFixed(5), zAlpha: z1_alpha, zBeta: z1_beta, N_base: N_base, samplesPerGroup: samplesPerGroup, final_N: final_N };
@@ -17147,7 +17145,17 @@ const handleClearInputs = () => {
          const defaultStyle = { color: '#3388ff' };
          
          // --- HELPER FUNCTIONS ---
-         // NEW: Replaced old numbering logic with a robust prefix-based ID generator
+         
+         
+         React.useEffect(() => {
+         if (surveyUnitLayer) {
+         const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${surveyUnitArea.toFixed(1)} m²`;
+         surveyUnitLayer.setPopupContent(popupContent);
+         }
+         }, [surveyUnitName, surveyClass, surveyUnitLayer, surveyUnitArea]);
+         
+         
+         
          const getNextIdForPrefix = (points, prefix) => {
              const existingNumbers = points
                  .filter(p => p.id.startsWith(prefix + '-'))
@@ -17213,6 +17221,12 @@ const handleClearInputs = () => {
          // --- CORE LOGIC ---
          const onDrawEditOrCreate = (e) => {
              if (e.type === 'draw:edited') {
+         
+         // Clear all old statistical (non-biased) points from the map and state
+         
+         handleClearPoints(); // This function already clears non-biased points
+         addToast("Survey unit edited. Please regenerate statistical samples.");
+         
                  const statisticalPoints = plottedPoints.filter(p => p.type !== 'Biased');
                  setPlottedPoints(() => {
                       const updatedBiasedPoints = [];
@@ -17253,12 +17267,12 @@ const handleClearInputs = () => {
                      mouseout: (e) => e.target.setStyle(defaultStyle)
                  });
              } else if (layer instanceof L.Marker) {
-
-    
-    // Remove the temporary marker that Leaflet.Draw creates to avoid duplicates.
-    drawnItemsRef.current.removeLayer(layer);
-   
-
+         
+         
+         // Remove the temporary marker that Leaflet.Draw creates to avoid duplicates.
+         drawnItemsRef.current.removeLayer(layer);
+         
+         
                  const latLng = layer.getLatLng();
                  setPlottedPoints(currentPoints => {
                      // CHANGED: Now uses the prefix-based ID generator
@@ -17273,29 +17287,29 @@ const handleClearInputs = () => {
              }
          };
          
-const handleGenerateSamples = React.useCallback((pattern) => {
-    // 1. Initial Validation
-    if (!surveyUnitLayer) {
-        addToast("Please draw a survey unit boundary first.");
-        return;
-    }
-    handleClearPoints();
-    const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
-    let numSamples = samplesToPlace;
-    let spacingMeters = gridSpacing;
-    const latLngs = surveyUnitLayer.getLatLngs();
-    const bounds = surveyUnitLayer.getBounds();
-
-    // 2. Determine sample number and spacing based on mode
-    if (pattern !== 'random') {
-        if (sampleCalcMode === 'bySpacing') {
+         const handleGenerateSamples = React.useCallback((pattern) => {
+         // 1. Initial Validation
+         if (!surveyUnitLayer) {
+         addToast("Please draw a survey unit boundary first.");
+         return;
+         }
+         handleClearPoints();
+         const existingBiasedPoints = plottedPoints.filter(p => p.type === 'Biased');
+         let numSamples = samplesToPlace;
+         let spacingMeters = gridSpacing;
+         const latLngs = surveyUnitLayer.getLatLngs();
+         const bounds = surveyUnitLayer.getBounds();
+         
+         // 2. Determine sample number and spacing based on mode
+         if (pattern !== 'random') {
+         if (sampleCalcMode === 'bySpacing') {
             if (spacingMeters <= 0) {
                 addToast("Grid spacing must be greater than zero.");
                 return;
             }
             numSamples = Math.ceil(surveyUnitArea / (spacingMeters * spacingMeters * (pattern === 'triangular' ? 0.866 : 1)));
             setSamplesToPlace(numSamples); // Sync UI state
-        } else { // byNumber
+         } else { // byNumber
             if (numSamples <= 0) {
                 addToast("Number of samples must be greater than zero.");
                 return;
@@ -17303,13 +17317,13 @@ const handleGenerateSamples = React.useCallback((pattern) => {
             const multiplier = pattern === 'triangular' ? 0.866 : 1;
             spacingMeters = Math.sqrt(surveyUnitArea / (multiplier * numSamples));
             setGridSpacing(spacingMeters.toFixed(2)); // Sync UI state
-        }
-    }
-
-    // 3. Generate new sample points based on the selected pattern
-    const newPoints = [];
-    if (pattern === 'random') {
-        for (let i = 0; i < numSamples; i++) {
+         }
+         }
+         
+         // 3. Generate new sample points based on the selected pattern
+         const newPoints = [];
+         if (pattern === 'random') {
+         for (let i = 0; i < numSamples; i++) {
             let pointFound = false;
             let attempts = 0; // Failsafe to prevent infinite loops
             while (!pointFound && attempts < 1000) {
@@ -17321,18 +17335,18 @@ const handleGenerateSamples = React.useCallback((pattern) => {
                 }
                 attempts++;
             }
-        }
-    } else { // Grid or Triangular pattern
-        const spacingLat = spacingMeters / 111320;
-        const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
-        const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
-        
-        // Random start point for the grid
-        const randomLatOffset = Math.random() * spacingLat;
-        const randomLngOffset = Math.random() * spacingLng;
-        
-        let row = 0;
-        for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth() + spacingLat; lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
+         }
+         } else { // Grid or Triangular pattern
+         const spacingLat = spacingMeters / 111320;
+         const centerLat = (bounds.getSouth() + bounds.getNorth()) / 2;
+         const spacingLng = spacingMeters / (111320 * Math.cos(centerLat * Math.PI / 180));
+         
+         // Random start point for the grid
+         const randomLatOffset = Math.random() * spacingLat;
+         const randomLngOffset = Math.random() * spacingLng;
+         
+         let row = 0;
+         for (let lat = bounds.getSouth() - randomLatOffset; lat < bounds.getNorth() + spacingLat; lat += spacingLat * (pattern === 'triangular' ? 0.866 : 1)) {
             const triangularLngOffset = (pattern === 'triangular' && row % 2 !== 0) ? spacingLng / 2 : 0;
             for (let lng = bounds.getWest() - randomLngOffset + triangularLngOffset; lng < bounds.getEast() + spacingLng; lng += spacingLng) {
                 if (isPointInPolygon({ lat, lng }, latLngs)) {
@@ -17340,32 +17354,36 @@ const handleGenerateSamples = React.useCallback((pattern) => {
                 }
             }
             row++;
-        }
-    }
-
-    // 4. Process and plot the new points
-    const pointsWithTypes = newPoints.map((p, index) => ({
-        ...p,
-        id: `S-${index + 1}`,
-        type: pattern.charAt(0).toUpperCase() + pattern.slice(1)
-    }));
-
-    setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
-
-    pointsWithTypes.forEach(point => {
-        const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
-        const popupContent = `<b>Sample Point #${point.id}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
-        marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
-    });
-    
-    addToast(`${newPoints.length} ${pattern} sample points generated.`);
-
-}, [surveyUnitLayer, sampleCalcMode, samplesToPlace, gridSpacing, surveyUnitArea, plottedPoints, addToast, handleClearPoints, setSamplesToPlace, setGridSpacing, setPlottedPoints, samplePointsLayerRef]);
+         }
+         }
          
-
-
-
-
+         // 4. Process and plot the new points
+         
+         const pointsWithTypes = newPoints.map((p, index) => {
+         const prefix = pattern.charAt(0).toUpperCase(); // e.g., 'S', 'T', or 'R'
+         return {
+         ...p,
+         id: `${prefix}-${index + 1}`, 
+         type: pattern.charAt(0).toUpperCase() + pattern.slice(1)
+         };
+         });
+         
+         setPlottedPoints([...existingBiasedPoints, ...pointsWithTypes]);
+         
+         pointsWithTypes.forEach(point => {
+         const marker = L.circleMarker([point.lat, point.lng], { radius: 4, className: 'grid-sample-marker' });
+         const popupContent = `<b>Sample Point #${point.id}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(6)}<br>Lng: ${point.lng.toFixed(6)}`;
+         marker.bindPopup(popupContent).addTo(samplePointsLayerRef.current);
+         });
+         
+         addToast(`${newPoints.length} ${pattern} sample points generated.`);
+         
+         }, [surveyUnitLayer, sampleCalcMode, samplesToPlace, gridSpacing, surveyUnitArea, plottedPoints, addToast, handleClearPoints, setSamplesToPlace, setGridSpacing, setPlottedPoints, samplePointsLayerRef]);
+         
+         
+         
+         
+         
          const handleZoomToSurveyUnit = () => { if (surveyUnitLayer && mapRef.current) { mapRef.current.fitBounds(surveyUnitLayer.getBounds()); } };
          
                      const handleSavePlan = () => {
@@ -17436,7 +17454,7 @@ const handleGenerateSamples = React.useCallback((pattern) => {
                       reader.readAsText(file);
                       event.target.value = null;
                   };
-
+         
          const handleExport = () => {
              if (plottedPoints.length === 0 || !surveyUnitLayer) {
                  addToast("Please draw a survey unit and place sample points before exporting."); return;
@@ -17516,8 +17534,8 @@ const handleGenerateSamples = React.useCallback((pattern) => {
                      const aNum = parseInt(a.id.substring(2));
                      const bNum = parseInt(b.id.substring(2));
                      if (aPrefix < bPrefix) return -1;
-		     if (aPrefix > bPrefix) return 1;
-
+         if (aPrefix > bPrefix) return 1;
+         
                      return aNum - bNum;
                   });
          
@@ -17777,9 +17795,9 @@ const handleGenerateSamples = React.useCallback((pattern) => {
                                              const aNum = parseInt(a.id.substring(2));
                                              const bNum = parseInt(b.id.substring(2));
                                              
-						if (aPrefix < bPrefix) return -1; 
-						if (aPrefix > bPrefix) return 1;
-
+         if (aPrefix < bPrefix) return -1; 
+         if (aPrefix > bPrefix) return 1;
+         
                                              return aNum - bNum;
                                          });
                                          return sortedPoints.map((point) => {
