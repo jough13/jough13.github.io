@@ -1,192 +1,118 @@
 <!DOCTYPE html>
-<html lang="en" class="">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Projects</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Coming Soon | Project Placeholder</title>
+    
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tailwind Dark Mode Configuration -->
-    <script>
-        tailwind.config = {
-            darkMode: 'class'
-        }
-    </script>
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        // Set theme on page load
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    </script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
+        /* Use the Inter font family defined in the <link> tag */
         body {
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease, color 0.3s ease;
         }
+
+        /* A subtle background pattern */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 25% 25%, rgba(14, 165, 233, 0.1), transparent 30%),
+                radial-gradient(circle at 75% 75%, rgba(139, 92, 246, 0.1), transparent 30%);
+            background-size: 100% 100%;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
         .project-link {
-            /* Styling for the project links */
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        /* Color-specific hover effects */
+
+        /* Color-specific hover effects for project links */
         .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
         .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
         .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
         .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
-        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
         .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
         .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
-        .project-link.bg-teal-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2); }
-        .project-link.bg-orange-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2); }
-        .project-link.bg-stone-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2); }
-        .project-link.bg-lime-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(101, 163, 13, 0.25), 0 6px 6px rgba(101, 163, 13, 0.2); }
-        .project-link.bg-emerald-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2); }
-        .project-link.bg-fuchsia-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2); }
         .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
         .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
-        .project-link.bg-blue-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2); }
-        .project-link.bg-violet-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25), 0 6px 6px rgba(124, 58, 237, 0.2); }
-        .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
-        .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
-        .gradient-text {
-            /* Animated gradient text for the main title */
-            background: linear-gradient(90deg, #4f46e5, #db2777, #f59e0b, #10b981);
-            background-size: 400% 400%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: gradientAnimation 10s ease infinite;
-            padding-bottom: 0.1em;
-            display: inline-block;
-        }
-        @keyframes gradientAnimation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white min-h-screen flex flex-col items-center justify-center p-6">
+<body class="bg-slate-900 text-slate-300 antialiased">
 
-    <!-- Main Container -->
-    <div class="bg-white dark:bg-gray-800 p-8 sm:p-12 rounded-xl shadow-lg dark:shadow-2xl w-full max-w-6xl text-center relative">
-
-        <!-- Dark Mode Toggle -->
-        <button id="theme-toggle" type="button" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-gray-700 rounded-lg text-sm p-2.5">
-            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
-        </button>
-
-        <!-- Header Title -->
-        <header class="mb-10">
-            <h1 class="text-4xl sm:text-5xl font-bold">
-                <span class="gradient-text">Small Wonders and Short Fictions</span>
-            </h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-3 text-lg">Explore my latest projects!</p>
-        </header>
-
-        <!-- Main Project Section -->
-        <div class="space-y-12">
-
-            <!-- Applications Section -->
-            <section>
-                <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-300">Applications</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <a href="cartographers_desk.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-amber-600 hover:bg-amber-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg><h3 class="font-semibold text-lg">Digital Cartographer's Desk</h3><span class="block text-sm text-amber-200 mt-1 font-normal">Crafting maps for forgotten worlds.</span></a>
-                    <a href="radionuclides.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><h3 class="font-semibold text-lg">Radionuclides Identification Tool</h3><span class="block text-sm text-cyan-200 mt-1 font-normal">Analyzing isotopes with precision.</span></a>
-                    <a href="finances.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg><h3 class="font-semibold text-lg">Budget Tracker</h3><span class="block text-sm text-purple-200 mt-1 font-normal">Manage your finances with ease.</span></a>
-                    <a href="commodities.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-lime-600 hover:bg-lime-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><h3 class="font-semibold text-lg">Rad-Waste Disposal Tool</h3><span class="block text-sm text-lime-200 mt-1 font-normal">Lookup and disposal requests.</span></a>
-                    <a href="salon_services.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879" /></svg><h3 class="font-semibold text-lg">Salon Services</h3><span class="block text-sm text-fuchsia-200 mt-1 font-normal">Organize stylists and services.</span></a>
-                    <a href="/hooked/index.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-pink-600 hover:bg-pink-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg><h3 class="font-semibold text-lg">Hooked by Emmy</h3><span class="block text-sm text-pink-200 mt-1 font-normal">Handmade crochet creations.</span></a>
-                    <a href="/hooked/calculator.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg><h3 class="font-semibold text-lg">Crochet Cost Calculator</h3><span class="block text-sm text-sky-200 mt-1 font-normal">Price your creations accurately.</span></a>
-                </div>
-            </section>
+    <!-- Main container to center the content -->
+    <main id="content-container" class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
+        
+        <div class="w-full max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-5 gap-8 items-start">
             
-            <!-- Games Section -->
-            <section>
-                <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-300">Games</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <a href="/wayfinder/index.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" /></svg><h3 class="font-semibold text-lg">Wayfinder: Echoes of the Void</h3><span class="block text-sm text-indigo-200 mt-1 font-normal">Embark on an interstellar journey.</span></a>
-                    <a href="realms/index.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><h3 class="font-semibold text-lg">Realms of Rust and Ruin</h3><span class="block text-sm text-rose-200 mt-1 font-normal">Survive in a post-apocalyptic world.</span></a>
-                    <a href="echoes_of_the_fall.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7.014A8.003 8.003 0 0117.657 18.657z" /></svg><h3 class="font-semibold text-lg">Echoes of the Fall</h3><span class="block text-sm text-green-200 mt-1 font-normal">Explore a world reclaimed by nature.</span></a>
-                    <a href="abs.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-slate-600 hover:bg-slate-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg><h3 class="font-semibold text-lg">Ancient Battle Simulator</h3><span class="block text-sm text-slate-200 mt-1 font-normal">Command legions in historic warfare.</span></a>
-                    <a href="Eldoria.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-teal-600 hover:bg-teal-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2h2" /></svg><h3 class="font-semibold text-lg">Echoes of Eldoria</h3><span class="block text-sm text-teal-200 mt-1 font-normal">A strategic fantasy card game.</span></a>
-                    <a href="noir_adventure.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-blue-800 hover:bg-blue-700 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7.014A8.003 8.003 0 0117.657 18.657z" /></svg><h3 class="font-semibold text-lg">Midnight City Blues</h3><span class="block text-sm text-blue-200 mt-1 font-normal">A neo-noir text adventure.</span></a>
-                    <a href="castles.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-yellow-800 hover:bg-yellow-700 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3h2m-2 3h2m-2 3h2m-2 3h2m-2 3h2M5 20v-4a2 2 0 012-2h2a2 2 0 012 2v4M5 20a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2H5z" /></svg><h3 class="font-semibold text-lg">Caves and Castles</h3><span class="block text-sm text-yellow-200 mt-1 font-normal">A retro MMO adventure.</span></a>
+            <!-- Left Column: Original Content -->
+            <div class="xl:col-span-3 w-full">
+                <!-- Content Card -->
+                <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl shadow-2xl shadow-black/20 p-8 md:p-12">
+                    <!-- Header -->
+                    <header class="mb-6">
+                        <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-violet-500 mb-2">
+                            Something Awesome is Coming
+                        </h1>
+                        <p class="text-lg text-slate-400">
+                            Our new website is under construction, but we're working hard to create something special.
+                        </p>
+                    </header>
+                    <!-- Placeholder Text Section -->
+                    <article class="prose prose-invert prose-lg text-slate-300 leading-relaxed space-y-4">
+                        <p>
+                            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+                        </p>
+                        <p>
+                            Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+                        </p>
+                    </article>
+                    <!-- Footer Section within the card -->
+                    <footer class="mt-8 pt-6 border-t border-slate-700 text-center">
+                        <p class="text-slate-500">Stay tuned for our launch!</p>
+                    </footer>
                 </div>
-            </section>
+            </div>
 
-            <!-- Creative Writing Section -->
-            <section>
-                <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-300">Creative Writing</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <a href="cor_main.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-stone-600 hover:bg-stone-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg><h3 class="font-semibold text-lg">Cartographers of Ruin - A Novel</h3><span class="block text-sm text-stone-200 mt-1 font-normal">A hard sci-fi space opera.</span></a>
-                    <a href="whispers.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-violet-600 hover:bg-violet-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg><h3 class="font-semibold text-lg">Whispers of Respite</h3><span class="block text-sm text-violet-200 mt-1 font-normal">A short story.</span></a>
-                    <a href="pinnacle.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-red-600 hover:bg-red-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg><h3 class="font-semibold text-lg">Pinnacle</h3><span class="block text-sm text-red-200 mt-1 font-normal">A monk's desperate bargain.</span></a>
+            <!-- Right Column: New Links Block -->
+            <div class="xl:col-span-2 w-full">
+                <div class="bg-slate-800/50 backdrop-blur-lg border border-slate-700 rounded-2xl shadow-2xl shadow-black/20 p-8 md:p-12">
+                    <h2 class="text-3xl font-bold text-slate-100 mb-6 pb-2 border-b border-slate-700">Project Showcase</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Project Links -->
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" /></svg><h3 class="font-semibold">Wayfinder</h3><span class="block text-sm text-indigo-200 mt-1 font-normal text-xs">Interstellar journey.</span></a>
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><h3 class="font-semibold">Realms of Ruin</h3><span class="block text-sm text-rose-200 mt-1 font-normal text-xs">Post-apocalyptic survival.</span></a>
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg><h3 class="font-semibold">Cartographer's Desk</h3><span class="block text-sm text-amber-200 mt-1 font-normal text-xs">Crafting new worlds.</span></a>
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><h3 class="font-semibold">Radionuclides ID</h3><span class="block text-sm text-cyan-200 mt-1 font-normal text-xs">Analyzing isotopes.</span></a>
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-pink-600 hover:bg-pink-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg><h3 class="font-semibold">Hooked by Emmy</h3><span class="block text-sm text-pink-200 mt-1 font-normal text-xs">Handmade creations.</span></a>
+                        <a href="#" class="project-link flex flex-col items-center justify-center text-center p-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg><h3 class="font-semibold">Budget Tracker</h3><span class="block text-sm text-purple-200 mt-1 font-normal text-xs">Manage your finances.</span></a>
+                    </div>
                 </div>
-            </section>
-
-            <!-- Study Guides Section -->
-            <section>
-                <h2 class="text-3xl font-bold text-left mb-6 border-b-2 border-gray-200 dark:border-gray-700 pb-2 text-gray-700 dark:text-gray-300">Study Guides</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <a href="chp.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-orange-600 hover:bg-orange-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg><h3 class="font-semibold text-lg">CHP Study Guide</h3><span class="block text-sm text-orange-200 mt-1 font-normal">Your guide to certification success.</span></a>
-                    <a href="epdstudyguide.html" class="project-link flex flex-col items-center justify-center text-center p-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M15 3v4m-2-2h4M3 17v4m2-2H3m14-4v4m2-2h-4m-4-7a4 4 0 11-8 0 4 4 0 018 0z" /></svg><h3 class="font-semibold text-lg">Environmental Protection Manager</h3><span class="block text-sm text-emerald-200 mt-1 font-normal">Tools for environmental compliance.</span></a>
-                </div>
-            </section>
+            </div>
 
         </div>
-
-        <!-- Footer -->
-        <footer class="mt-12 text-gray-500 text-sm">
-            <p>&copy; <span id="currentYear"></span> Jough Donakowski. All rights reserved.</p>
-            <p>Powered by imagination and code.</p>
-        </footer>
-    </div>
+    </main>
 
     <script>
-        // JS for theme toggle
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-
-        // Change the icons inside the button based on previous settings
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            themeToggleLightIcon.classList.remove('hidden');
-        } else {
-            themeToggleDarkIcon.classList.remove('hidden');
-        }
-
-        themeToggleBtn.addEventListener('click', function() {
-            // toggle icons inside button
-            themeToggleDarkIcon.classList.toggle('hidden');
-            themeToggleLightIcon.classList.toggle('hidden');
-
-            // if set via local storage previously
-            if (localStorage.getItem('theme')) {
-                if (localStorage.getItem('theme') === 'light') {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                }
-            // if NOT set via local storage previously
-            } else {
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                }
+        // Simple script to fade in the content on page load for a smooth effect
+        window.addEventListener('load', () => {
+            const content = document.getElementById('content-container');
+            if(content) {
+                content.classList.remove('opacity-0');
             }
         });
-
-        // JS for current year in footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
     </script>
 
 </body>
