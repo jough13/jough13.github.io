@@ -17641,11 +17641,11 @@
          
 const yourStadiaApiKey = 'a7f8d6b2-37be-4661-afa4-0409424b5708';
 
-osmLayerRef.current = L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key={apiKey}', {
-    attribution: '&copy; Stadia Maps, &copy; OpenStreetMap',
+osmLayerRef.current = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key={apiKey}', {
+    attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
     maxNativeZoom: 19,
     maxZoom: 21,
-    apiKey: yourStadiaApiKey // Pass the key here
+    apiKey: yourStadiaApiKey
 });
 
              satelliteLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21 });
