@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,10 +13,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <script>
+        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    
     <style>
         /* Use the Inter font family defined in the <link> tag */
         body {
             font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
         }
 
         .project-link {
@@ -45,7 +59,7 @@
         .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-300 antialiased">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-300 antialiased">
 
     <!-- Main container -->
     <main id="content-container" class="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
@@ -55,18 +69,26 @@
             <!-- Main Content Column -->
             <div class="flex-1">
                 <!-- Content Card -->
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl shadow-black/20 p-8 md:p-12">
+                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12">
                     <!-- Header -->
                     <header class="mb-6">
-                        <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-violet-500 mb-2">
-                            Something Awesome is Coming
-                        </h1>
-                        <p class="text-lg text-slate-400">
-                            Our new website is under construction, but we're working hard to create something special.
-                        </p>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-600 mb-2">
+                                    Something Awesome is Coming
+                                </h1>
+                                <p class="text-lg text-slate-600 dark:text-slate-400">
+                                    Our new website is under construction, but we're working hard to create something special.
+                                </p>
+                            </div>
+                            <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5">
+                                <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                                <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </div>
                     </header>
                     <!-- Placeholder Text Section -->
-                    <article class="prose prose-invert prose-lg text-slate-300 leading-relaxed space-y-4">
+                    <article class="prose prose-lg dark:prose-invert text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
                         <p>
                             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
                         </p>
@@ -75,7 +97,7 @@
                         </p>
                     </article>
                     <!-- Footer Section within the card -->
-                    <footer class="mt-8 pt-6 border-t border-slate-700 text-center">
+                    <footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
                         <p class="text-slate-500">Stay tuned for our launch!</p>
                     </footer>
                 </div>
@@ -83,13 +105,13 @@
 
             <!-- Right Sidebar Column -->
             <div class="w-full lg:w-96 flex-shrink-0">
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl shadow-black/20 p-6 md:p-8">
-                    <h2 class="text-2xl font-bold text-slate-100 mb-6 pb-2 border-b border-slate-700">Project Showcase</h2>
+                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 md:p-8">
+                    <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 pb-2 border-b border-slate-200 dark:border-slate-700">Project Showcase</h2>
                     <div class="space-y-6">
                         
                         <!-- Applications Section -->
                         <section>
-                            <h3 class="text-lg font-semibold text-slate-300 mb-3">Applications</h3>
+                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-300 mb-3">Applications</h3>
                             <div class="grid grid-cols-1 gap-3">
                                 <a href="#" class="project-link flex items-center p-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13V7m0 13a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2m9-4l-5.447-2.724A1 1 0 0012 3.618v10.764a1 1 0 001.447.894L18 13m0-4V7" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Digital Cartographer's Desk</h4><p class="text-xs text-amber-200 font-normal">Crafting maps for forgotten worlds.</p></div></a>
                                 <a href="#" class="project-link flex items-center p-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Radionuclides Identification Tool</h4><p class="text-xs text-cyan-200 font-normal">Analyzing isotopes with precision.</p></div></a>
@@ -103,7 +125,7 @@
 
                         <!-- Games Section -->
                         <section>
-                            <h3 class="text-lg font-semibold text-slate-300 mb-3">Games</h3>
+                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-300 mb-3">Games</h3>
                             <div class="grid grid-cols-1 gap-3">
                                 <a href="#" class="project-link flex items-center p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Wayfinder: Echoes of the Void</h4><p class="text-xs text-indigo-200 font-normal">Embark on an interstellar journey.</p></div></a>
                                 <a href="#" class="project-link flex items-center p-3 bg-rose-600 hover:bg-rose-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Realms of Rust and Ruin</h4><p class="text-xs text-rose-200 font-normal">Survive in a post-apocalyptic world.</p></div></a>
@@ -117,7 +139,7 @@
 
                          <!-- Creative Writing Section -->
                         <section>
-                            <h3 class="text-lg font-semibold text-slate-300 mb-3">Creative Writing</h3>
+                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-300 mb-3">Creative Writing</h3>
                             <div class="grid grid-cols-1 gap-3">
                                 <a href="#" class="project-link flex items-center p-3 bg-stone-600 hover:bg-stone-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Cartographers of Ruin - A Novel</h4><p class="text-xs text-stone-200 font-normal">A hard sci-fi space opera.</p></div></a>
                                 <a href="#" class="project-link flex items-center p-3 bg-violet-600 hover:bg-violet-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Whispers of Respite</h4><p class="text-xs text-violet-200 font-normal">A short story.</p></div></a>
@@ -127,7 +149,7 @@
 
                         <!-- Study Guides Section -->
                         <section>
-                            <h3 class="text-lg font-semibold text-slate-300 mb-3">Study Guides</h3>
+                            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-300 mb-3">Study Guides</h3>
                             <div class="grid grid-cols-1 gap-3">
                                 <a href="#" class="project-link flex items-center p-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-9-5.747h18" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">CHP Study Guide</h4><p class="text-xs text-orange-200 font-normal">Your guide to certification success.</p></div></a>
                                 <a href="#" class="project-link flex items-center p-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M15 3v4m-2-2h4M3 17v4m2-2H3m14-4v4m2-2h-4m-4-7a4 4 0 11-8 0 4 4 0 018 0z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Environmental Protection Manager</h4><p class="text-xs text-emerald-200 font-normal">Tools for environmental compliance.</p></div></a>
@@ -147,6 +169,43 @@
             const content = document.getElementById('content-container');
             if(content) {
                 content.classList.remove('opacity-0');
+            }
+        });
+        
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+        // Change the icons inside the button based on previous settings
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        themeToggleBtn.addEventListener('click', function() {
+            // toggle icons
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            // if set via local storage previously
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            // if NOT set via local storage previously
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
             }
         });
     </script>
