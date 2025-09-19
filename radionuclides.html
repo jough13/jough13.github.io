@@ -8301,7 +8301,7 @@
                   };
               
                   return (
-                      <button onClick={handleCopy} className="p-2 text-slate-400 hover:text-sky-500 transition-colors" title="Copy to clipboard">
+                      <button onClick={handleCopy} className="p-2 text-slate-400 hover:text-sky-500 transition-colors" title="Copy to clipboard" aria-label="Copy result to clipboard">
                           <Icon path={copied ? ICONS.check : ICONS.copy} className="w-5 h-5" />
                       </button>
                   );
@@ -8979,7 +8979,7 @@
          // The rest of the component's JSX remains the same...
          const { expression, result, history, memory } = calcState;
          const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
-         const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
+         const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'eV to Joules (e)', value: 1.60217663e-19 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
                   
          const getButtonClass = (btn) => {
              if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
@@ -9913,11 +9913,11 @@
                       {/* The "Clear Nuclide" button */}
               
                       <button
-                          onClick={onClear}
-                          className="absolute top-1 right-1 p-2 rounded-full text-slate-400 hover:text-sky-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                          title="Change nuclide"
+         onClick={onClear}
+         className="absolute top-1 right-1 p-2 rounded-full text-slate-400 hover:text-sky-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+         title="Change nuclide"
          aria-label="Clear selected nuclide"
-                      >
+         >
                           <Icon path={ICONS.clear} className="w-5 h-5" />
                       </button>
                   </div>
@@ -13782,10 +13782,15 @@
                      </ul>
                      
                      <h3 className="mt-6">MARSSIM Formulas</h3>
-                     <h4 className="italic mt-4">Static Count MDA (NUREG-1507)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>LLD (counts) = 3.29 · √(R<sub>b</sub>·t<sub>g</sub>·(1 + t<sub>g</sub>/t<sub>b</sub>)) + 3</pre>
-                     </div>
+         <h4 className="italic mt-4">Static Count MDA (NUREG-1507)</h4>
+         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+         <pre>LLD (counts) = 2.71 + 4.65 · √(R<sub>b</sub> · t<sub>s</sub>)</pre>
+         </div>
+         <ul>
+         <li><code>LLD</code> = Lower Limit of Detection (net counts)</li>
+         <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
+         <li><code>t<sub>s</sub></code> = Sample count time (min)</li>
+         </ul>
                      <ul>
                          <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
                          <li><code>t<sub>g</sub></code>, <code>t<sub>b</sub></code> = Gross (sample) and background count times (min)</li>
@@ -14757,10 +14762,13 @@
                       </div>
               
                       {comparisonList.length === 0 ? (
-                          <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
-                              <h3 className="text-lg font-semibold">The Comparison Table is Empty</h3>
-                              <p className="text-slate-500 dark:text-slate-400 mt-2">Use the search box or a nuclide's detail card to add to the comparison.</p>
-                          </div>
+         <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg">
+         <Icon path={ICONS.compare} className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto" />
+         <h3 className="mt-4 text-lg font-semibold text-slate-600 dark:text-slate-300">The Comparison Table is Empty</h3>
+         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+         Use the search box above to add a nuclide, or click the "Add to Compare" button on any nuclide's detail card.
+         </p>
+         </div>
                       ) : (
                           <div className="overflow-x-auto">
                               <table className="w-full min-w-[600px] text-left border-collapse">
@@ -15366,8 +15374,27 @@
                          </div>
                         {result.type === 'gamma' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
                         {result.type === 'beta_skin' && (<><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400"><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</div></>)}
-                        {result.type === 'beta_air' && (<>{result.isBeyondRange ? (<p className="text-4xl font-bold text-slate-600 dark:text-slate-300 my-1">0</p>) : (<p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>)}<div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">{result.isBeyondRange && <p className="font-semibold text-amber-600 dark:text-amber-400">Distance is beyond the beta's maximum range in air.</p>}<p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</div></>)}
-                        {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</>}
+         
+                   {result.type === 'beta_air' && (
+         result.isBeyondRange ? (
+         <div className="p-3 my-1 bg-amber-100 dark:bg-amber-900/50 rounded-lg border border-amber-300 dark:border-amber-700">
+            <p className="text-xl font-bold text-amber-700 dark:text-amber-300">0 {result.dose.unit}</p>
+            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Target is beyond the beta's maximum range.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+         </div>
+         ) : (
+         <>
+            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
+            <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
+                <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+                <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
+                {result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}
+            </div>
+         </>
+         )
+         )}
+         
+         {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</>}
                         {result.type === 'internal' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
                     </div>)}
                 </div>
