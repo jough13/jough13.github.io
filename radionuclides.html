@@ -10379,6 +10379,10 @@
          
          // This variable will hold the correct total time for the chart's x-axis.
          // It defaults to the user's input but will be updated if time is calculated.
+         
+         
+         
+         
          let finalTimeForChart = t_input;
          
          if (calculationMode === MODE_REMAINING) {
@@ -10393,11 +10397,11 @@
             const timeInBestUnit = timeInSeconds / unitConversions[bestUnit];
             setResult({ label: 'Time Elapsed', value: timeInBestUnit.toPrecision(4), unit: bestUnit });
          
-            // --- FIX APPLIED HERE ---
+         
             // Update the chart's total time with the calculated result.
             // This converts the result (in seconds) back to the user's selected time unit to match the chart's axis.
             finalTimeForChart = timeInSeconds / unitConversions[timeUnit];
-            // -------------------------
+         
          
          } else if (calculationMode === MODE_INITIAL) {
             if (isNaN(At) || isNaN(t_seconds)) throw new Error('Remaining activity and time must be valid numbers.');
@@ -15624,7 +15628,6 @@
          }
          };
          
-         
          const handleClearInputs = () => {
          setCalcMode(MODE_FROM_SOURCE);
          setInputMode(INPUT_MODE_DB);
@@ -17517,8 +17520,8 @@
                           for (const rule of sheet.cssRules) {
                               // ADDED: .origin-sample-marker to ensure the origin point is styled correctly
                               if (rule.selectorText === '.grid-sample-marker' || rule.selectorText === '.biased-sample-marker' || rule.selectorText === '.origin-sample-marker') {
-                                  customMarkerStyles += rule.cssText;
-                              }
+                                      customMarkerStyles += rule.cssText;
+                                  }
                           }
                       } catch (e) { console.warn("Could not read CSS rules from a stylesheet:", e); }
                   }
@@ -17639,16 +17642,17 @@
              // ADDED: Define the custom icon for the drawing cursor
              const biasMarkerIcon = new L.DivIcon({ className: 'leaflet-draw-biased-marker-icon', iconSize: new L.Point(12, 12), iconAnchor: new L.Point(8, 8) });
          
-const yourStadiaApiKey = 'a7f8d6b2-37be-4661-afa4-0409424b5708';
-
-osmLayerRef.current = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key={apiKey}', {
-    attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-    maxNativeZoom: 19,
-    maxZoom: 21,
-    apiKey: yourStadiaApiKey
-});
-
+         const yourStadiaApiKey = 'a7f8d6b2-37be-4661-afa4-0409424b5708';
+         
+         osmLayerRef.current = L.tileLayer('https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png?api_key={apiKey}', {
+         attribution: '&copy; <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+         maxNativeZoom: 19,
+         maxZoom: 21,
+         apiKey: yourStadiaApiKey
+         });
+         
              satelliteLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri', maxNativeZoom: 19, maxZoom: 21 });
+         
              const baseMaps = { "Street Map": osmLayerRef.current, "Satellite": satelliteLayerRef.current };
          
              mapRef.current = L.map('marssim-map', { layers: [osmLayerRef.current] }).setView([37.207, -76.51], 13);
