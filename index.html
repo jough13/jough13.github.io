@@ -34,7 +34,20 @@
             transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
         }
 
-        .project-link, .sidebar-card {
+        /* Animated Gradient Background for Light Mode */
+        .light-mode-gradient {
+            background: linear-gradient(-45deg, #e0f2fe, #bae6fd, #c0e7fd, #e0f2fe);
+            background-size: 400% 400%;
+            animation: gradientBG 20s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .project-link, .sidebar-card, .social-icon {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
@@ -44,6 +57,10 @@
         }
         .dark .sidebar-card:hover {
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .social-icon:hover {
+            transform: scale(1.15);
         }
 
         /* Color-specific hover effects for project links */
@@ -68,7 +85,7 @@
         .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
     </style>
 </head>
-<body class="bg-sky-100 text-slate-800 dark:bg-slate-900 dark:text-slate-300 antialiased">
+<body class="light-mode-gradient text-slate-800 dark:bg-slate-900 dark:text-slate-300 antialiased">
 
     <!-- Main container -->
     <main id="content-container" class="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
@@ -103,7 +120,7 @@
                     </article>
                     <!-- Footer Section within the card -->
                     <footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
-                        <p class="text-slate-500">Thanks for stopping by. <span class="italic">Pants suck.</span></p>
+                        <p class="text-slate-500">Thanks for stopping by. Pants suck.</p>
                     </footer>
                 </div>
             </div>
@@ -115,7 +132,7 @@
                     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">About Me</h2>
                         <p class="text-slate-600 dark:text-slate-400">
-                            Just a placeholder blurb for now. This is where a short, engaging bio about Jough Donakowski will go, giving visitors a quick glimpse into who he is and what this site is all about.
+                           I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything. I believe the influence of Kierkegaard on Camus is underestimated. I believe Dennis Gabor may very well have been the Antichrist. I believe Hobbes is just Rousseau in a dark mirror. I believe, with Hegel, that transcendence is absorption. I could interface you guys right under the table,' I say. 'I'm not just a creatus, manufactured, conditioned, bred for a function.'
                         </p>
                          <p class="text-slate-600 dark:text-slate-400 mt-4">
                             For a more formal overview, check out my <a href="#" class="text-sky-500 hover:underline">professional biography</a>.
@@ -126,27 +143,27 @@
                     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Connect</h2>
                         <div class="flex flex-wrap gap-4">
-                            <a href="https://www.facebook.com/jough.donakowski/" class="text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Facebook">
+                            <a href="https://www.facebook.com/jough.donakowski/" class="social-icon text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Facebook">
                                 <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33V21.878A10.001 10.001 0 0022 12z" clip-rule="evenodd"></svg>
                                 <span class="sr-only">Facebook</span>
                             </a>
-                            <a href="https://www.linkedin.com/in/jough-donakowski-536207361/" class="text-blue-700 hover:text-blue-800 dark:text-blue-600 dark:hover:text-blue-500 transition-colors" title="LinkedIn">
+                            <a href="https://www.linkedin.com/in/jough-donakowski-536207361/" class="social-icon text-blue-700 hover:text-blue-800 dark:text-blue-600 dark:hover:text-blue-500 transition-colors" title="LinkedIn">
                                 <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg>
                                 <span class="sr-only">LinkedIn</span>
                             </a>
-                            <a href="https://github.com/jough13" class="text-gray-800 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors" title="GitHub">
+                            <a href="https://github.com/jough13" class="social-icon text-gray-800 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors" title="GitHub">
                                 <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg>
                                 <span class="sr-only">GitHub</span>
                             </a>
-                            <a href="https://www.deviantart.com/jough" class="text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="DeviantArt">
+                            <a href="https://www.deviantart.com/jough" class="social-icon text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="DeviantArt">
                                <img src="da.png" alt="DeviantArt Icon" class="w-8 h-8">
                                 <span class="sr-only">DeviantArt</span>
                             </a>
-                            <a href="https://discord.com/users/error30303" class="text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="Discord: @error30303">
+                            <a href="https://discord.com/users/error30303" class="social-icon text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="Discord: @error30303">
                                 <img src="discord.png" alt="Discord Icon" class="w-8 h-8">
                                 <span class="sr-only">Discord</span>
                             </a>
-                            <a href="https://kcsoccerjournal.com" class="text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="KC Soccer Journal">
+                            <a href="https://kcsoccerjournal.com" class="social-icon text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" title="KC Soccer Journal">
                                 <img src="kcsj.png" alt="KC Soccer Journal Icon" class="w-8 h-8">
                                 <span class="sr-only">KC Soccer Journal</span>
                             </a>
