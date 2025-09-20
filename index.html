@@ -177,9 +177,14 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </main>
+    <footer class="text-center p-4 mt-4">
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+            Version 1.0 | Last Updated: <span id="lastUpdated"></span>
+        </p>
+    </footer>
+
 
     <script>
         // Simple script to fade in the content on page load for a smooth effect
@@ -225,6 +230,13 @@
                     localStorage.setItem('color-theme', 'dark');
                 }
             }
+        });
+
+        // Set the last updated date
+        document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
     </script>
 
