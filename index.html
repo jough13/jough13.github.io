@@ -80,6 +80,13 @@
             position: relative;
             z-index: 1;
         }
+        
+        #dust-trigger {
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 4px;
+        }
 
         /* Color-specific hover effects for project links */
         .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
@@ -122,7 +129,7 @@
                     <!-- Header -->
                     <header class="mb-6 header-content">
                         <h1 class="text-4xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-600 mb-2">
-                            Pardon the Dust.
+                            Pardon the <span id="dust-trigger">Dust.</span>
                         </h1>
                         <p class="text-lg text-slate-600 dark:text-slate-400">
                             This little corner of the web is getting a facelift. I'm busy tinkering behind the scenes, but I'll be back with a fresh coat of paint soon.
@@ -333,6 +340,9 @@
         const ctx = canvas.getContext('2d');
         let particles = [];
         const mouse = { x: null, y: null };
+        let isEffectActive = false;
+        let effectTimeout;
+        const dustTrigger = document.getElementById('dust-trigger');
 
         function resizeCanvas() {
             const container = canvas.parentElement;
@@ -343,9 +353,24 @@
         window.addEventListener('resize', resizeCanvas);
         
         canvas.parentElement.addEventListener('mousemove', (event) => {
-            const rect = canvas.getBoundingClientRect();
-            mouse.x = event.clientX - rect.left;
-            mouse.y = event.clientY - rect.top;
+            if(isEffectActive) {
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = event.clientX - rect.left;
+                mouse.y = event.clientY - rect.top;
+            }
+        });
+        
+        canvas.parentElement.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        dustTrigger.addEventListener('mouseover', () => {
+            isEffectActive = true;
+            clearTimeout(effectTimeout); // Clear any previous timeout to reset the timer
+            effectTimeout = setTimeout(() => {
+                isEffectActive = false;
+            }, 8000); // 8 seconds
         });
 
         class Particle {
@@ -381,9 +406,12 @@
         }
 
         function handleParticles() {
-            for (let i = 0; i < 5; i++) {
-                if (mouse.x || mouse.y) particles.push(new Particle());
+            if (mouse.x || mouse.y) {
+                 for (let i = 0; i < 5; i++) {
+                    particles.push(new Particle());
+                }
             }
+           
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update();
                 particles[i].draw();
@@ -396,7 +424,9 @@
         
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            handleParticles();
+            if(isEffectActive) {
+                 handleParticles();
+            }
             requestAnimationFrame(animate);
         }
 
