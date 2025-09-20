@@ -31,14 +31,17 @@
         /* Use the Inter font family defined in the <link> tag */
         body {
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
-        }
-
-        /* Animated Gradient Background for Light Mode */
-        .light-mode-gradient {
+            transition: background-color 0.5s ease-in-out, color 0.3s ease-in-out;
             background: linear-gradient(-45deg, #e0f2fe, #bae6fd, #c0e7fd, #e0f2fe);
             background-size: 400% 400%;
             animation: gradientBG 20s ease infinite;
+        }
+
+        /* Dark mode background gradient */
+        .dark body {
+             background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #0f172a);
+             background-size: 400% 400%;
+             animation: gradientBG 20s ease infinite;
         }
 
         @keyframes gradientBG {
@@ -85,7 +88,7 @@
         .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
     </style>
 </head>
-<body class="light-mode-gradient text-slate-800 dark:bg-slate-900 dark:text-slate-300 antialiased">
+<body class="text-slate-800 dark:text-slate-300 antialiased">
 
     <!-- Main container -->
     <main id="content-container" class="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
@@ -95,7 +98,7 @@
             <!-- Main Content Column -->
             <div class="flex-1">
                 <!-- Content Card -->
-                <div class="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12">
+                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12">
                     <button id="theme-toggle" type="button" class="absolute top-6 right-6 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5">
                         <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
                         <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
@@ -129,10 +132,10 @@
             <div class="w-full lg:w-96 flex-shrink-0">
                 <div class="space-y-8">
                     <!-- About Me Card -->
-                    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
+                    <div class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">About Me</h2>
                         <p class="text-slate-600 dark:text-slate-400">
-                           I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything. I believe the influence of Kierkegaard on Camus is underestimated. I believe Dennis Gabor may very well have been the Antichrist. I believe Hobbes is just Rousseau in a dark mirror. I believe, with Hegel, that transcendence is absorption. I could interface you guys right under the table,' I say. 'I'm not just a creatus, manufactured, conditioned, bred for a function.'
+                           I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything.
                         </p>
                          <p class="text-slate-600 dark:text-slate-400 mt-4">
                             For a more formal overview, check out my <a href="#" class="text-sky-500 hover:underline">professional biography</a>.
@@ -140,7 +143,7 @@
                     </div>
 
                      <!-- Social Links Card -->
-                    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
+                    <div class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Connect</h2>
                         <div class="flex flex-wrap gap-4">
                             <a href="https://www.facebook.com/jough.donakowski/" class="social-icon text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Facebook">
@@ -171,7 +174,7 @@
                     </div>
 
                     <!-- Links Card -->
-                    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
+                    <div class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Explore</h2>
                         <div class="grid grid-cols-1 gap-3">
                             <a href="#" class="project-link flex items-center p-3 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg><span class="ml-4 font-semibold text-sm">Photography</span></a>
@@ -183,7 +186,7 @@
                     </div>
 
                     <!-- Projects Card -->
-                    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
+                    <div class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card">
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-6 pb-2 border-b border-slate-200 dark:border-slate-700">Project Showcase</h2>
                         <div class="space-y-6">
                             <!-- Applications Section -->
