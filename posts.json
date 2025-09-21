@@ -1,7 +1,26 @@
-{
-    "title": "A Placeholder Post",
+[
+  {
+    "title": "My First Blog Post",
     "date": "2025-09-21",
-    "file": "posts/09212025.md",
-    "summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.",
-    "tags": ["tech", "personal"]
+    "file": "posts/first-post.md",
+    "summary": "This is a short teaser about the first post. It's about setting up the blog and what I plan to write about in the future.",
+    "category": "blog",
+    "tags": ["personal", "webdev"]
+  },
+  {
+    "title": "The Wonders of Photosynthesis",
+    "date": "2025-09-20",
+    "file": "science/photosynthesis-deep-dive.md",
+    "summary": "A deep dive into the chemical reactions that power our planet. We'll explore chlorophyll, light-dependent reactions, and the Calvin cycle.",
+    "category": "science",
+    "tags": ["biology", "chemistry"]
+  },
+  {
+    "title": "The Perfect Lasagna Recipe",
+    "date": "2025-09-19",
+    "file": "recipes/perfect-lasagna.md",
+    "summary": "Learn how to make the best lasagna of your life with this simple, step-by-step family recipe. Perfect for a cozy night in.",
+    "category": "recipes",
+    "tags": ["food", "italian", "cooking"]
   }
+]
