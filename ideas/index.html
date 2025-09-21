@@ -296,8 +296,8 @@
                 const response = await fetch('../posts.json'); 
                 const posts = await response.json();
                 
-                // Filter posts for the 'thoughts and ideas' category
-                const filteredPosts = posts.filter(post => post.category === 'thoughts and ideas');
+                // Filter posts for the 'ideas' category
+                const filteredPosts = posts.filter(post => post.category === 'ideas');
 
                 postsContainer.innerHTML = ''; // Clear the 'Loading...' message
 
