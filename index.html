@@ -227,55 +227,61 @@
 
     <script>
         // --- Function to load blog posts (UPDATED) ---
-        async function loadPosts() {
-            const postsContainer = document.getElementById('posts-container');
-            if (!postsContainer) return;
+async function loadPosts() {
+    const postsContainer = document.getElementById('posts-container');
+    if (!postsContainer) return;
 
-            try {
-                const response = await fetch('posts.json');
-                const posts = await response.json();
-                postsContainer.innerHTML = '';
+    try {
+        const response = await fetch('posts.json');
+        const posts = await response.json();
+        postsContainer.innerHTML = ''; // Clear "Loading..." text
 
-                if (posts.length === 0) {
-                    postsContainer.innerHTML = '<p>No posts found. Write your first post!</p>';
-                    return;
-                }
-
-                for (const post of posts) {
-                    const postResponse = await fetch(post.file);
-                    if (!postResponse.ok) { 
-                        console.error(`Could not fetch post: ${post.file}`);
-                        continue; 
-                    }
-
-                    const postMarkdown = await postResponse.text();
-                    const postHtml = marked.parse(postMarkdown); // Convert Markdown to HTML
-                    
-                    const articleElement = document.createElement('article');
-                    articleElement.className = 'mb-12';
-                    
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'short', day: 'numeric'
-                    });
-                    
-                    articleElement.innerHTML = `
-                        <div class="prose prose-lg dark:prose-invert text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
-                            <h2>
-                                <strong>${post.title}</strong>
-                                <span class="block text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">${postDate}</span>
-                            </h2>
-                            ${postHtml}
-                        </div>
-                    `;
-                    
-                    postsContainer.appendChild(articleElement);
-                }
-            } catch (error) {
-                postsContainer.innerHTML = '<p>Sorry, an error occurred while loading the posts. Make sure you have a `posts.json` file.</p>';
-                console.error('Error loading posts:', error);
-            }
+        if (posts.length === 0) {
+            postsContainer.innerHTML = '<p>No posts found yet!</p>';
+            return;
         }
 
+        for (const post of posts) {
+            const articleElement = document.createElement('article');
+            articleElement.className = 'mb-12';
+            
+            // Format the date
+            const postDate = new Date(post.date).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+            // Create HTML for the tags
+            const tagsHtml = post.tags.map(tag => `
+                <span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300">${tag}</span>
+            `).join(' '); // .join(' ') removes the comma between tags
+
+            // Create the final HTML for the post entry on the main page
+            articleElement.innerHTML = `
+                <div class="prose prose-lg dark:prose-invert max-w-none">
+                    <h2 class="mb-1">
+                        <a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500">
+                            <strong>${post.title}</strong>
+                        </a>
+                    </h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0">
+                        ${postDate}
+                    </p>
+                    <p class="not-prose text-slate-600 dark:text-slate-400">
+                        ${post.summary}
+                    </p>
+                    <div class="not-prose mt-4">
+                        ${tagsHtml}
+                    </div>
+                </div>
+            `;
+            
+            postsContainer.appendChild(articleElement);
+        }
+    } catch (error) {
+        postsContainer.innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
+        console.error('Error loading posts:', error);
+    }
+}
         // --- App Initialization ---
         function initApp() {
             fadeInContent();
