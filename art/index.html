@@ -296,8 +296,8 @@
                 const response = await fetch('../posts.json'); 
                 const posts = await response.json();
                 
-                // Filter posts for the 'art and music' category
-                const filteredPosts = posts.filter(post => post.category === 'art and music');
+                // Filter posts for the 'art' category
+                const filteredPosts = posts.filter(post => post.category === 'art');
 
                 postsContainer.innerHTML = ''; // Clear the 'Loading...' message
 
