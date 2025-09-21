@@ -219,23 +219,20 @@
     
     <footer class="text-center p-4 mt-4">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.0 | Last Updated: September 21, 2025
+            Version 1.1 | Last Updated: September 21, 2025
         </p>
     </footer>
 
 
     <script>
-        // --- NEW: Function to load blog posts ---
+        // --- Function to load blog posts (UPDATED) ---
         async function loadPosts() {
             const postsContainer = document.getElementById('posts-container');
             if (!postsContainer) return;
 
             try {
-                // 1. Fetch the list of posts from our JSON file
                 const response = await fetch('posts.json');
                 const posts = await response.json();
-
-                // Clear loading text and prepare for posts
                 postsContainer.innerHTML = '';
 
                 if (posts.length === 0) {
@@ -243,31 +240,31 @@
                     return;
                 }
 
-                // 2. Loop through each post object
                 for (const post of posts) {
                     const postResponse = await fetch(post.file);
+                    if (!postResponse.ok) { 
+                        console.error(`Could not fetch post: ${post.file}`);
+                        continue; 
+                    }
                     const postHtml = await postResponse.text();
-
-                    // 3. Create a container for the post
-                    const articleElement = document.createElement('article');
-                    articleElement.className = 'mb-12'; // Add space between posts
                     
-                    // Format the date nicely
+                    const articleElement = document.createElement('article');
+                    articleElement.className = 'mb-12';
+                    
                     const postDate = new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric'
+                        year: 'numeric', month: 'short', day: 'numeric'
                     });
                     
-                    // 4. Combine the metadata and post content into a single block
                     articleElement.innerHTML = `
                         <div class="prose prose-lg dark:prose-invert text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
-                            <p class="text-sm text-slate-500 dark:text-slate-400 m-0">
-                                ${postDate}
-                            </p>
+                            <h2>
+                                <strong>${post.title}</strong>
+                                <span class="block text-sm font-normal text-slate-500 dark:text-slate-400 mt-1">${postDate}</span>
+                            </h2>
                             ${postHtml}
                         </div>
                     `;
                     
-                    // 5. Add the complete post to the page
                     postsContainer.appendChild(articleElement);
                 }
             } catch (error) {
@@ -276,14 +273,13 @@
             }
         }
 
-
         // --- App Initialization ---
         function initApp() {
             fadeInContent();
             setupThemeToggle();
             setupInteractiveHeader();
             setupScrollToTop();
-            loadPosts(); // <-- We call the new function here!
+            loadPosts(); 
         }
 
         // --- Core Functions ---
@@ -298,7 +294,7 @@
             const themeToggleBtn = document.getElementById('theme-toggle');
             const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
             const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            
+
             if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 themeToggleLightIcon.classList.remove('hidden');
             } else {
@@ -450,7 +446,6 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
         }
-
 
         // --- Run Application ---
         window.addEventListener('load', initApp);
