@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="">
 <head>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
@@ -246,7 +247,9 @@
                         console.error(`Could not fetch post: ${post.file}`);
                         continue; 
                     }
-                    const postHtml = await postResponse.text();
+
+                    const postMarkdown = await postResponse.text();
+                    const postHtml = marked.parse(postMarkdown); // Convert Markdown to HTML
                     
                     const articleElement = document.createElement('article');
                     articleElement.className = 'mb-12';
