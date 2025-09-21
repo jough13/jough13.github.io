@@ -2,8 +2,8 @@
 <html lang="en" class="">
 <head>
 
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css](https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css)">
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js](https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js)"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <meta charset="UTF-8">
@@ -115,7 +115,7 @@
                             <img src="assets/me.jpg" alt="A picture of Jough Donakowski" class="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-sky-800">
                             <div class="flex-1">
                                 <p class="text-slate-600 dark:text-slate-400">
-                                   I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything.
+                                    I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything.
                                 </p>
                             </div>
                         </div>
@@ -229,6 +229,12 @@
                 const postDate = new Date(postMeta.date).toLocaleDateString('en-US', {
                     year: 'numeric', month: 'long', day: 'numeric'
                 });
+
+                // START: EDITED SECTION - Prepare category info
+                const categoryName = postMeta.category.charAt(0).toUpperCase() + postMeta.category.slice(1);
+                // Assumes your category pages will live in a directory named after the category
+                const categoryUrl = `${postMeta.category}/index.html`; 
+                // END: EDITED SECTION
                 
                 // Update the page title
                 document.title = `${postMeta.title} | Jough Donakowski`;
@@ -236,6 +242,11 @@
                 // Display the full post
                 postContainer.innerHTML = `
                     <div class="prose prose-lg dark:prose-invert max-w-none">
+                        <!-- START: EDITED SECTION - Added category badge -->
+                        <div class="not-prose mb-4">
+                            <a href="${categoryUrl}" class="bg-sky-100 text-sky-800 text-sm font-medium me-2 px-3 py-1 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${categoryName}</a>
+                        </div>
+                        <!-- END: EDITED SECTION -->
                         <h1><strong>${postMeta.title}</strong></h1>
                         <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
                         ${postHtml}
