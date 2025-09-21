@@ -1,74 +1,23 @@
-=========================
-My Coding Adventures
+Jough Donakowski's Personal Website & Blog
+This is the source code for my personal website and blog, a place to share my projects, writing, and various interests.
 
-This repository hosts the source code for my exciting game development projects.
+Current Status
+The site is currently a single-page placeholder while the full blog is under construction. It is built to be easily expandable when new content is ready.
 
-Project 1: Wayfinder: Echoes of the Void
-Description:
-Embark on an interstellar journey through the vastness of space. Wayfinder: Echoes of the Void is a story-driven space exploration and adventure game where players navigate diverse star systems, uncover ancient alien mysteries, engage in tactical ship combat, and make choices that shape the narrative.
+Tech Stack
+HTML5 with semantic tags for better structure and accessibility.
 
-Features:
+Tailwind CSS for styling.
 
-Expansive procedurally generated galaxy with unique planets and anomalies.
+Vanilla JavaScript for interactivity (theme toggle, header particle effect).
 
-Deep branching narrative with multiple endings and impactful player choices.
+Hosted On
+This project is proudly hosted on Netlify.
 
-Upgradeable and customizable spacecraft with various weapon and module options.
+Getting Started
+Since this is a simple static site, you can open the index.html file directly in your browser to view it locally.
 
-Encounter diverse alien species, some friendly, some hostile.
+Future Plans
+The long-term goal is to migrate this single-page site to a Static Site Generator (SSG) like Astro or Eleventy to make managing blog content easier and more scalable.
 
-Technologies Used:
-
-HTML, CSS, JavaScript
-
-Phaser 3 for game logic and rendering.
-
-How to Run/Install:
-
-Clone this repository (or the specific project folder if separate).
-
-Open the space_Explorer.html file in your web browser.
-
-Ensure your browser supports modern JavaScript features.
-
-Project 2: Realms of Rust and Ruin
-Description:
-Realms of Rust and Ruin plunges you into a desolate, post-apocalyptic world. As a survivor, you must scavenge for scarce resources, craft essential tools and weapons, build and fortify a defensible shelter, and contend with mutated creatures, environmental hazards, and desperate rival survivors. This is an open-world survival RPG with base-building and crafting elements.
-
-Features:
-
-Dynamic survival mechanics including hunger, thirst, fatigue, and radiation exposure.
-
-Extensive crafting system with hundreds of items, from basic tools to advanced technology.
-
-Modular base-building system allowing for creative and strategic shelter design.
-
-Challenging AI for both creatures and human NPCs with varying behaviors.
-
-Technologies Used:
-
-HTML, CSS, JavaScript
-
-PixiJS for 2D rendering and effects.
-
-How to Run/Install:
-
-Clone this repository (or the specific project folder if separate).
-
-Open the realms.html file in your web browser.
-
-A modern web browser is required. For best performance, use a hardware-accelerated browser.
-
-General Notes
-Both projects are currently under development.
-
-Feedback and contributions are welcome! (Optional: Consider adding a link to your GitHub issues page or a contribution guide).
-
-Contact
-Jough Donakwoski
-
-github.com/jough13
-
-joughdonakowski@gmail.com
-
-Thank you for checking out my projects!
+Version 1.0
