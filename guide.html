@@ -80,33 +80,73 @@
                             <li><strong>Place the file:</strong> Place this file inside a relevant folder, such as <code>/posts/</code>, <code>/science/</code>, or <code>/recipes/</code>. Keeping things organized helps! The path you choose is important for Step 2.</li>
                         </ul>
                         
-                        <h3>Writing in Markdown</h3>
-                        <p>Here’s a more detailed example of what you can include in your Markdown file:</p>
-                        <pre><code class="language-markdown"># This is a Major Heading (H1)
+                        <h2>A Quick Guide to Markdown Formatting</h2>
+                        <p>Markdown is designed to be easy-to-read and easy-to-write. Here are the most common formatting options you'll need.</p>
 
-This is the introduction to my post. It can be a few sentences long. Markdown makes it easy to format text. You can make things **bold**, *italic*, or even ***both***.
+                        <h3>Headings</h3>
+                        <p>Use the hash symbol (<code>#</code>) to create headings. More hashes mean a smaller heading level. Your blog's styling will automatically handle the font sizes.</p>
+                        <pre><code class="language-markdown"># This is a Level 1 Heading (for the main title)
+## This is a Level 2 Heading (for major sections)
+### This is a Level 3 Heading (for sub-sections)
+</code></pre>
 
-![A descriptive caption for an image](../assets/placeholder.png)
-*A photo caption can be added in italics below the image.*
+                        <h3>Text Styles</h3>
+                        <p>You can easily emphasize text with bold, italic, or strikethrough styling.</p>
+                        <pre><code class="language-markdown">*This text will be italic.*
+_This will also be italic._
 
-## This is a Sub-heading (H2)
+**This text will be bold.**
+__This will also be bold.__
 
-You can use sub-headings to structure your article.
+~~This text will be strikethrough.~~
+</code></pre>
 
-> This is a blockquote. It's great for quoting people or highlighting a key passage. It adds a nice visual separation.
+                        <h3>Lists</h3>
+                        <p>You can create both unordered (bulleted) and ordered (numbered) lists.</p>
+                        <h4>Unordered Lists</h4>
+                        <p>Use asterisks, pluses, or hyphens interchangeably.</p>
+                        <pre><code class="language-markdown">* Item 1
+* Item 2
+  * A nested item
+- Item 3
+</code></pre>
+                        <h4>Ordered Lists</h4>
+                        <p>Use numbers followed by a period.</p>
+                        <pre><code class="language-markdown">1. First item
+2. Second item
+3. Third item
+</code></pre>
 
-Here is a list of things:
-1.  First item (ordered list)
-2.  Second item
-3.  Third item
+                        <h3>Links & Images</h3>
+                        <p>Create links to other websites and embed images directly into your post.</p>
+                        <pre><code class="language-markdown">This is a link to [Google](https://www.google.com).
 
-And here's some code, which is useful for technical posts:
-\`\`\`javascript
+![This is the alt text for an image](../assets/placeholder.png)
+</code></pre>
+                        <p><strong>Note on images:</strong> The path to the image is relative to your <code>.md</code> file's location. If your post is in <code>/science/</code>, you might need to use <code>../assets/your-image.jpg</code> to go up one directory level first.</p>
+
+                        <h3>Blockquotes</h3>
+                        <p>Use the greater-than symbol (<code>&gt;</code>) to create a blockquote, which is perfect for quoting sources or emphasizing a paragraph.</p>
+                        <pre><code class="language-markdown">> This is a blockquote. It will be indented and styled to stand out from the rest of the text.
+</code></pre>
+
+                        <h3>Code</h3>
+                        <h4>Inline Code</h4>
+                        <p>Wrap a piece of text in backticks (<code>`</code>) to format it as inline code. For example, `const variable = "hello";`.</p>
+                        
+                        <h4>Fenced Code Blocks</h4>
+                        <p>For longer snippets of code, use three backticks to create a fenced code block. You can also specify the language for syntax highlighting.</p>
+                        <pre><code class="language-markdown">```javascript
 function greet() {
   console.log("Hello, world!");
 }
-\`\`\`
+```
 </code></pre>
+
+                        <h3>Horizontal Rule</h3>
+                        <p>To create a thematic break or a horizontal line, use three or more hyphens, asterisks, or underscores on a line by themselves.</p>
+                        <pre><code class="language-markdown">---</code></pre>
+
 
                         <h2>Step 2: Registering Your Post (posts.json)</h2>
                         <p>Your <code>.md</code> file contains the content, but the website doesn't know it exists yet. To make it appear, you must add an entry to the <code>posts.json</code> file. This file acts as a master list or "manifest" for all your posts.</p>
