@@ -1,0 +1,14 @@
+# Netlify configuration file
+[build]
+  # This tells Netlify that there is no build command needed for this simple HTML site.
+  # When you add a Static Site Generator later, you will update this command.
+  command = ""
+  # The folder to publish. For a single HTML file, the root directory is fine.
+  publish = "/"
+
+# This rule ensures that any direct navigation to a non-existent page still loads the main app.
+# It's good practice for single-page applications.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
