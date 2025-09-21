@@ -1,114 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
+    <!-- This head section is copied from your existing pages to ensure consistent styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Posting Guide</title>
+    
+    <title>Posting Guide | Jough Donakowski</title>
+    <meta name="description" content="A guide on how to create and manage posts for the blog.">
+    <meta name="keywords" content="Jough Donakowski, personal blog, projects, writing, tech, creative, guide">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
 
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    
     <style>
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --bg-light-start: #e0f2fe;
+            --bg-dark-start: #0f172a;
+        }
+        html { scroll-behavior: smooth; }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-sans);
+            transition: background-color 0.5s ease-in-out, color 0.3s ease-in-out;
+            background-color: var(--bg-light-start);
         }
-        /* Style for the code examples */
-        .code-example {
-            background-color: #f3f4f6;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 0.5rem;
-            margin-bottom: 1.5rem;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            color: #1f2937;
+        .dark body { background-color: var(--bg-dark-start); }
+        .main-card, .project-link, .sidebar-card, .social-icon { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .main-card:hover, .sidebar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
+        .dark .main-card:hover, .dark .sidebar-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="text-slate-800 dark:text-slate-300 antialiased">
 
-    <div class="max-w-4xl mx-auto p-8">
-        <article class="prose lg:prose-xl">
-            <h1>📝 Markdown Posting Guide</h1>
-            <p class="lead">Welcome to your new blog! This guide covers everything you need to know to write and format your posts using Markdown.</p>
+    <main id="content-container" class="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="flex flex-col lg:flex-row lg:space-x-8 space-y-8 lg:space-y-0">
+            <article class="flex-1">
+                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden main-card">
+                    <div class="mb-8">
+                        <a href="index.html" class="text-sky-500 hover:underline">&larr; Back to home</a>
+                    </div>
+                    
+                    <div class="prose prose-lg dark:prose-invert max-w-none">
+                        <h1><strong>How to Create a New Blog Post</strong></h1>
+                        <p class="text-base text-slate-500 dark:text-slate-400 mt-0">A detailed, step-by-step guide to adding content to your site.</p>
+                        
+                        <p>Welcome to the user guide! This document explains how to add a new post to your blog. The system is designed to be simple, using two key parts for every post: a Markdown file for your content and an entry in the <code>posts.json</code> file to make it appear on the site.</p>
 
-            <hr>
+                        <h2>Step 1: Crafting Your Content (The .md File)</h2>
+                        <p>First, you need to write the actual content of your post. We do this in a simple text file with the <code>.md</code> extension, which stands for Markdown. Markdown is a lightweight language for formatting text.</p>
+                        
+                        <h3>File Naming and Location</h3>
+                        <ul>
+                            <li><strong>Create the file:</strong> Create a new file and save it with a descriptive name. Use lowercase letters, numbers, and hyphens. For example, <code>a-guide-to-photosynthesis.md</code> is better than <code>A Guide to Photosynthesis!!.md</code>.</li>
+                            <li><strong>Place the file:</strong> Place this file inside a relevant folder, such as <code>/posts/</code>, <code>/science/</code>, or <code>/recipes/</code>. Keeping things organized helps! The path you choose is important for Step 2.</li>
+                        </ul>
+                        
+                        <h3>Writing in Markdown</h3>
+                        <p>Here’s a more detailed example of what you can include in your Markdown file:</p>
+                        <pre><code class="language-markdown"># This is a Major Heading (H1)
 
-            <h2>Your Posting Workflow</h2>
-            <p>Adding a new post is a two-step process:</p>
-            <ol>
-                <li><strong>Create your post file:</strong> Write your content in a new file and save it with a `.md` extension inside your `posts/` folder (e.g., `my-new-post.md`).</li>
-                <li><strong>Update the manifest:</strong> Open `posts.json` and add an entry for your new post at the top of the list. Make sure the `"file"` property points to your new `.md` file.</li>
-            </ol>
+This is the introduction to my post. It can be a few sentences long. Markdown makes it easy to format text. You can make things **bold**, *italic*, or even ***both***.
 
-            <hr>
+![A descriptive caption for an image](../assets/placeholder.png)
+*A photo caption can be added in italics below the image.*
 
-            <h2>Basic Formatting</h2>
+## This is a Sub-heading (H2)
 
-            <h3>Headings</h3>
-            <p>Use the hash symbol (<code>#</code>) to create headings. More hashes mean a smaller heading level.</p>
-            <div class="code-example">
-# This is a Heading 1 (used for post titles automatically)
-## This is a Heading 2
-### This is a Heading 3
-            </div>
+You can use sub-headings to structure your article.
 
-            <h3>Text Styles</h3>
-            <p>You can easily make text bold, italic, or create links.</p>
-            <div class="code-example">
-*This text will be italic.*
-**This text will be bold.**
-[This is a link to Google](https://www.google.com)
-            </div>
+> This is a blockquote. It's great for quoting people or highlighting a key passage. It adds a nice visual separation.
 
-            <hr>
+Here is a list of things:
+1.  First item (ordered list)
+2.  Second item
+3.  Third item
 
-            <h2>Adding Content</h2>
-
-            <h3>Images</h3>
-            <p>First, place your image file in the <code>assets/images/</code> folder. Then, use the following syntax in your post:</p>
-            <div class="code-example">
-![A description of the image for accessibility](assets/images/your-image-name.jpg)
-            </div>
-
-            <h3>Lists</h3>
-            <p>You can create bulleted (unordered) or numbered (ordered) lists.</p>
-            <div class="code-example">
-* An item in a bulleted list
-* Another item
-
-1. The first item in a numbered list
-2. The second item
-            </div>
-
-            <h3>Blockquotes</h3>
-            <p>To create a blockquote, start the line with a <code>></code> symbol. This is great for quoting people.</p>
-            <div class="code-example">
-> "The journey of a thousand miles begins with a single step."
-            </div>
-
-            <hr>
-
-            <h2>Advanced Content</h2>
-
-            <h3>Code Blocks</h3>
-            <p>Showcase code snippets by wrapping them in triple backticks (<code>```</code>). You can specify the programming language for syntax highlighting.</p>
-            <div class="code-example">
-```javascript
+And here's some code, which is useful for technical posts:
+\`\`\`javascript
 function greet() {
   console.log("Hello, world!");
 }
+\`\`\`
+</code></pre>
 
-                <iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="YouTube video player" frameborder="0" allowfullscreen></iframe>
-</div>
+                        <h2>Step 2: Registering Your Post (posts.json)</h2>
+                        <p>Your <code>.md</code> file contains the content, but the website doesn't know it exists yet. To make it appear, you must add an entry to the <code>posts.json</code> file. This file acts as a master list or "manifest" for all your posts.</p>
+                        
+                        <h3>The Structure of a Post Entry</h3>
+                        <p>Open <code>posts.json</code> and add a new JSON object to the <strong>top of the list</strong> (this ensures newest posts appear first). It must have the following structure:</p>
+                        <pre><code class="language-json">{
+  "title": "The Title of Your New Post",
+  "date": "YYYY-MM-DD",
+  "file": "path/to/your/markdown-file.md",
+  "summary": "A short, one-or-two-sentence teaser that appears on the homepage.",
+  "category": "the-main-category",
+  "tags": ["tag1", "a-second-tag", "another"]
+}
+</code></pre>
+                        
+                        <h3>Field Explanations:</h3>
+                        <ul>
+                            <li><code>title</code>: The full title of your post, which will be displayed in large text.</li>
+                            <li><code>date</code>: The publication date. Use the <strong>YYYY-MM-DD</strong> format for consistency.</li>
+                            <li><code>file</code>: <strong>This is crucial!</strong> It's the exact path to the <code>.md</code> file you created in Step 1. For example, <code>"science/photosynthesis-deep-dive.md"</code>.</li>
+                            <li><code>summary</code>: A brief description shown on the main blog page. Keep it concise and engaging.</li>
+                            <li><code>category</code>: Choose one of the existing site categories: <code>ideas</code>, <code>science</code>, <code>recipes</code>, <code>art</code>, or <code>links</code>. This ensures consistent navigation and styling.</li>
+                            <li><code>tags</code>: A list of lowercase keywords. These are more specific than the category. For example, a post in <code>recipes</code> might have tags like <code>italian</code>, <code>pasta</code>, <code>vegetarian</code>.</li>
+                        </ul>
+                        
+                        <h3>Practical Example</h3>
+                        <p>Imagine this is the top of your <code>posts.json</code> file:</p>
+                        <pre><code class="language-json">[
+  {
+    "title": "My First Blog Post",
+    "date": "2025-09-21",
+    "file": "posts/09212025.md",
+    "summary": "This is a short teaser about the first post...",
+    "category": "ideas",
+    "tags": ["personal", "webdev", "meta"]
+  }
+]</code></pre>
+                        <p>To add a new post about lasagna, you would add it to the top:</p>
+                        <pre><code class="language-json">[
+  {
+    "title": "The Perfect Lasagna Recipe",
+    "date": "2025-09-22",
+    "file": "recipes/perfect-lasagna.md",
+    "summary": "Learn how to make the best lasagna of your life...",
+    "category": "recipes",
+    "tags": ["food", "italian", "cooking"]
+  },
+  {
+    "title": "My First Blog Post",
+    "date": "2025-09-21",
+    "file": "posts/09212025.md",
+    "summary": "This is a short teaser about the first post...",
+    "category": "ideas",
+    "tags": ["personal", "webdev", "meta"]
+  }
+]</code></pre>
+                        <p>Notice the comma <code>,</code> added after the closing brace <code>}</code> of the new entry, separating it from the next one.</p>
 
-                </article>
-</div>
+                        <hr>
 
-    </body>
+                        <h3>Troubleshooting & Tips</h3>
+                        <p><strong>My post isn't showing up!</strong></p>
+                        <ul>
+                            <li><strong>Check the <code>file</code> path:</strong> This is the most common error. Double-check the path in <code>posts.json</code> to make sure it exactly matches the folder and filename of your <code>.md</code> file.</li>
+                            <li><strong>Check JSON syntax:</strong> A missing comma between post entries, or an extra comma after the very last entry, will break the file. You can use an online "JSON validator" to check your file for errors.</li>
+                        </ul>
+                        <p><strong>Images in my post are broken.</strong></p>
+                        <ul>
+                            <li>Image paths in your Markdown file are relative to the location of the <code>.md</code> file itself. If your post is at <code>science/my-post.md</code> and your image is at <code>assets/images/diagram.png</code>, the Markdown path would likely be <code>../assets/images/diagram.png</code> (the <code>../</code> means "go up one directory").</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Sidebar is included to maintain the site's layout -->
+            <aside class="w-full lg:w-80 flex-shrink-0">
+                <div class="space-y-8">
+                    <section class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card" aria-labelledby="about-me-heading">
+                        <h2 id="about-me-heading" class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">About Me</h2>
+                        <div class="flex items-center gap-4">
+                            <img src="assets/me.jpg" alt="A picture of Jough Donakowski" class="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-sky-800">
+                            <div class="flex-1">
+                                <p class="text-slate-600 dark:text-slate-400">
+                                    I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything.
+                                </p>
+                            </div>
+                        </div>
+                         <p class="text-slate-600 dark:text-slate-400 mt-4">
+                            For a more formal overview, check out my <a href="#" class="text-sky-500 hover:underline">professional biography</a> or <a href="mailto:joughdonakowski@gmail.com" class="text-sky-500 hover:underline">get in touch</a>.
+                        </p>
+                    </section>
+                     <section class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card" aria-labelledby="connect-heading">
+                        <h2 id="connect-heading" class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Connect</h2>
+                        <div class="flex items-center justify-between">
+                            <a href="https://www.facebook.com/jough.donakowski/" class="social-icon text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400" title="Facebook"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33V21.878A10.001 10.001 0 0022 12z" clip-rule="evenodd"></svg></a>
+                            <a href="https://www.linkedin.com/in/jough-donakowski-536207361/" class="social-icon text-blue-700 hover:text-blue-800 dark:text-blue-600" title="LinkedIn"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg></a>
+                            <a href="https://github.com/jough13" class="social-icon text-gray-800 hover:text-black dark:text-gray-300 dark:hover:text-white" title="GitHub"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg></a>
+                            <a href="https://www.deviantart.com/jough" class="social-icon text-slate-500 hover:text-sky-500" title="DeviantArt"><img src="assets/da.png" alt="DeviantArt Icon" class="w-8 h-8"></a>
+                            <a href="https://discord.com/users/error30303" class="social-icon text-slate-500 hover:text-sky-500" title="Discord"><img src="assets/discord.png" alt="Discord Icon" class="w-8 h-8"></a>
+                            <a href="https://kcsoccerjournal.com" class="social-icon text-slate-500 hover:text-sky-500" title="KC Soccer Journal"><img src="assets/kcsj.png" alt="KC Soccer Journal Icon" class="w-8 h-8"></a>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+        </div>
+    </main>
+    
+    <script>
+        // Initialize highlight.js for code blocks
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        });
+    </script>
+</body>
 </html>
+
