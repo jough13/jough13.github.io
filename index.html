@@ -44,31 +44,17 @@
         :root {
             --font-sans: 'Inter', sans-serif;
             --bg-light-start: #e0f2fe;
-            --bg-light-mid: #bae6fd;
-            --bg-light-end: #c0e7fd;
             --bg-dark-start: #0f172a;
-            --bg-dark-mid: #1e293b;
-            --bg-dark-end: #334155;
         }
 
         body {
             font-family: var(--font-sans);
             transition: background-color 0.5s ease-in-out, color 0.3s ease-in-out;
-            background: linear-gradient(-45deg, var(--bg-light-start), var(--bg-light-mid), var(--bg-light-end), var(--bg-light-start));
-            background-size: 400% 400%;
-            animation: gradientBG 20s ease infinite;
+            background-color: var(--bg-light-start);
         }
 
         .dark body {
-             background: linear-gradient(-45deg, var(--bg-dark-start), var(--bg-dark-mid), var(--bg-dark-end), var(--bg-dark-start));
-             background-size: 400% 400%;
-             animation: gradientBG 20s ease infinite;
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+             background-color: var(--bg-dark-start);
         }
 
         .main-card, .project-link, .sidebar-card, .social-icon {
