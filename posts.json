@@ -2,6 +2,8 @@
   {
     "title": "A Placeholder Post",
     "date": "2025-09-21",
-    "file": "posts/09212025.html"
+    "file": "posts/my-first-post.md",
+    "summary": "This is a short teaser about the post content...",
+    "tags": ["tech", "personal"]
   }
 ]
