@@ -4,8 +4,8 @@
     "date": "2025-09-21",
     "file": "posts/09212025.md",
     "summary": "This is a short teaser about the first post. It's about setting up the blog and what I plan to write about in the future.",
-    "category": "blog",
-    "tags": ["personal", "webdev"]
+    "category": "ideas",
+    "tags": ["personal", "webdev", "meta"]
   },
   {
     "title": "The Wonders of Photosynthesis",
@@ -13,7 +13,7 @@
     "file": "science/photosynthesis-deep-dive.md",
     "summary": "A deep dive into the chemical reactions that power our planet. We'll explore chlorophyll, light-dependent reactions, and the Calvin cycle.",
     "category": "science",
-    "tags": ["biology", "chemistry"]
+    "tags": ["biology", "chemistry", "nature"]
   },
   {
     "title": "The Perfect Lasagna Recipe",
@@ -22,5 +22,29 @@
     "summary": "Learn how to make the best lasagna of your life with this simple, step-by-step family recipe. Perfect for a cozy night in.",
     "category": "recipes",
     "tags": ["food", "italian", "cooking"]
+  },
+  {
+    "title": "Creating Atmosphere in Digital Painting",
+    "date": "2025-09-18",
+    "file": "art/digital-painting-atmosphere.md",
+    "summary": "Exploring techniques for using light, color, and composition to create a strong sense of atmosphere in your digital artwork.",
+    "category": "art",
+    "tags": ["art", "digital art", "tutorial", "painting"]
+  },
+  {
+    "title": "A Few of My Favorite Things This Week",
+    "date": "2025-09-17",
+    "file": "links/favorite-links-09172025.md",
+    "summary": "A curated list of the most interesting articles, tools, and videos I've come across on the web this week. A must-read for the curious mind.",
+    "category": "links",
+    "tags": ["roundup", "links", "tech", "design"]
+  },
+  {
+    "title": "On the Importance of Doing Nothing",
+    "date": "2025-09-16",
+    "file": "ideas/on-doing-nothing.md",
+    "summary": "In a world obsessed with productivity, there's a forgotten power in intentional boredom and letting your mind wander. Let's explore it.",
+    "category": "ideas",
+    "tags": ["philosophy", "life", "mindfulness"]
   }
 ]
