@@ -71,15 +71,15 @@
             100% { background-position: 0% 50%; }
         }
 
-        .project-link, .sidebar-card, .social-icon {
+        .main-card, .project-link, .sidebar-card, .social-icon {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .sidebar-card:hover {
+        .main-card:hover, .sidebar-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.05);
         }
-        .dark .sidebar-card:hover {
+        .dark .main-card:hover, .dark .sidebar-card:hover {
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         
@@ -141,7 +141,7 @@
             <!-- Main Content: <article> is used for self-contained content like a blog post -->
             <article class="flex-1">
                 <!-- Content Card -->
-                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden">
+                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden main-card">
                     <canvas id="interactive-header-canvas"></canvas>
                     <button id="theme-toggle" type="button" class="absolute top-6 right-6 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5 z-10">
                         <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
