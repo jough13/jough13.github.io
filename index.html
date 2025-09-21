@@ -110,6 +110,19 @@
                             This little corner of the web is getting a facelift. I'm busy tinkering behind the scenes, but I'll be back with a fresh coat of paint soon.
                         </p>
                     </header>
+                    
+                    <!-- Search Bar -->
+                    <div class="mb-8 header-content">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                </svg>
+                            </div>
+                            <input type="text" id="searchInput" class="block w-full p-4 ps-10 text-sm text-slate-900 border border-slate-300 rounded-lg bg-slate-50 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white dark:focus:ring-sky-500 dark:focus:border-sky-500" placeholder="Search posts by title, tag, or content...">
+                        </div>
+                    </div>
+
                     <div class="header-content" id="posts-container">
                         <p class="text-slate-500">Loading posts...</p>
                     </div>
@@ -220,45 +233,52 @@
         </p>
     </footer>
     <script>
-        // --- Post Loading Logic ---
-        async function loadPosts() {
+        // --- Globals ---
+        let allPosts = []; // To store all posts after fetching
+
+        // --- Post Rendering Logic ---
+        function renderPosts(postsToRender) {
             const postsContainer = document.getElementById('posts-container');
             if (!postsContainer) return;
 
+            postsContainer.innerHTML = ''; // Clear existing posts
+
+            if (postsToRender.length === 0) {
+                postsContainer.innerHTML = '<p>No posts match your search.</p>';
+                return;
+            }
+
+            for (const post of postsToRender) {
+                const articleElement = document.createElement('article');
+                articleElement.className = 'mb-12';
+                
+                const postDate = new Date(post.date).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                
+                const tagsHtml = post.tags.map(tag => `<span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300">${tag}</span>`).join(' ');
+
+                articleElement.innerHTML = `
+                    <div class="prose prose-lg dark:prose-invert max-w-none">
+                        <h2 class="mb-1">
+                            <a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500">
+                                <strong>${post.title}</strong>
+                            </a>
+                        </h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                        <p class="not-prose text-slate-600 dark:text-slate-400">${post.summary}</p>
+                        <div class="not-prose mt-4">${tagsHtml}</div>
+                    </div>`;
+                postsContainer.appendChild(articleElement);
+            }
+        }
+
+        // --- Post Loading Logic ---
+        async function loadPosts() {
             try {
-                // Fetch from the root directory
                 const response = await fetch('posts.json');
-                const allPosts = await response.json();
-
-                postsContainer.innerHTML = ''; // Clear the 'Loading...' message
-
-                if (allPosts.length === 0) {
-                    postsContainer.innerHTML = '<p>No posts found yet!</p>';
-                    return;
-                }
-
-                for (const post of allPosts) {
-                    const articleElement = document.createElement('article');
-                    articleElement.className = 'mb-12';
-                    
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                    
-                    const tagsHtml = post.tags.map(tag => `<span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300">${tag}</span>`).join(' ');
-
-                    articleElement.innerHTML = `
-                        <div class="prose prose-lg dark:prose-invert max-w-none">
-                            <h2 class="mb-1">
-                                <a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500">
-                                    <strong>${post.title}</strong>
-                                </a>
-                            </h2>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                            <p class="not-prose text-slate-600 dark:text-slate-400">${post.summary}</p>
-                            <div class="not-prose mt-4">${tagsHtml}</div>
-                        </div>`;
-                    postsContainer.appendChild(articleElement);
-                }
+                allPosts = await response.json(); // Store posts in the global variable
+                renderPosts(allPosts); // Initial render of all posts
             } catch (error) {
+                const postsContainer = document.getElementById('posts-container');
                 postsContainer.innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
                 console.error('Error loading posts:', error);
             }
@@ -270,6 +290,7 @@
             setupThemeToggle();
             setupInteractiveHeader();
             setupScrollToTop();
+            setupSearch(); // Setup the search listener
             loadPosts(); 
         }
 
@@ -279,6 +300,21 @@
             if(content) {
                 content.classList.remove('opacity-0');
             }
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredPosts = allPosts.filter(post => {
+                    const titleMatch = post.title.toLowerCase().includes(searchTerm);
+                    const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
+                    const categoryMatch = post.category.toLowerCase().includes(searchTerm);
+                    const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    return titleMatch || summaryMatch || categoryMatch || tagsMatch;
+                });
+                renderPosts(filteredPosts);
+            });
         }
 
         function setupThemeToggle() {
