@@ -360,10 +360,10 @@
             let particles = [];
             const mouse = { x: null, y: null };
             let isEffectActive = false;
-            let effectTimeout;
+            let isFading = false; // Controls the fade-out period
+            let effectTimeout, fadeTimeout;
             const dustTrigger = document.getElementById('dust-trigger');
 
-            // Corrected resizeCanvas function for High-DPI screens
             function resizeCanvas() {
                 const container = canvas.parentElement;
                 const dpr = window.devicePixelRatio || 1;
@@ -393,14 +393,22 @@
             if (dustTrigger) {
                 dustTrigger.addEventListener('mouseover', () => {
                     isEffectActive = true;
+                    isFading = false; // Reset fade state on new mouseover
                     clearTimeout(effectTimeout);
+                    clearTimeout(fadeTimeout);
+                    
+                    // After 4 seconds, stop creating new particles
+                    fadeTimeout = setTimeout(() => {
+                        isFading = true;
+                    }, 4000);
+                    
+                    // After 8 seconds, stop the animation entirely
                     effectTimeout = setTimeout(() => {
                         isEffectActive = false;
                     }, 8000);
                 });
             }
 
-            // Corrected Particle Class with attraction and size fix
             class Particle {
                 constructor() {
                     this.x = mouse.x || Math.random() * (canvas.width / (window.devicePixelRatio || 1));
@@ -433,14 +441,15 @@
                 }
             }
 
-            // Corrected handleParticles function
             function handleParticles() {
-                if (mouse.x || mouse.y) {
+                // Only create new particles if we are not in the "fading" phase
+                if ((mouse.x || mouse.y) && !isFading) {
                      for (let i = 0; i < 5; i++) {
                         particles.push(new Particle());
                     }
                 }
                
+                // Update and draw all existing particles
                 for (let i = 0; i < particles.length; i++) {
                     particles[i].update();
                     particles[i].draw();
@@ -488,4 +497,3 @@
     </script>
 </body>
 </html>
-
