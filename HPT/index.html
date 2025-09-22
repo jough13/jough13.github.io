@@ -6867,8 +6867,8 @@
               // --- APPLICATION METADATA & CONSTANTS
               //==============================================================================
               
-              const VERSION = '3.5.8';
-              const LAST_UPDATED = 'September 19, 2025';
+              const VERSION = '3.6';
+              const LAST_UPDATED = 'September 22, 2025';
               
               // NEW: A global constant for all navigation views
               
@@ -8935,7 +8935,8 @@
          }, [setCalcState, addToast]);
          
          const handleClear = React.useCallback(() => {
-             setCalcState(currentState => ({ ...currentState, expression: '', result: '' }));
+         // This now resets everything to its initial state
+         setCalcState(currentState => ({ ...currentState, expression: '', result: '', history: [], memory: 0 }));
          }, [setCalcState]);
          
          const handleBackspace = React.useCallback(() => {
@@ -15026,10 +15027,10 @@
          
          const availableNuclides = React.useMemo(() => {
          switch (calcMode) {
-            case CALC_MODE_GAMMA: return gammaNuclides;
-            case CALC_MODE_BETA: case CALC_MODE_BREMS: return betaNuclides;
-            case CALC_MODE_INTERNAL: return dosimetryNuclides;
-            default: return [];
+         case CALC_MODE_GAMMA: return gammaNuclides;
+         case CALC_MODE_BETA: case CALC_MODE_BREMS: return betaNuclides;
+         case CALC_MODE_INTERNAL: return dosimetryNuclides;
+         default: return [];
          }
          }, [calcMode, gammaNuclides, betaNuclides, dosimetryNuclides]);
          
@@ -15048,120 +15049,112 @@
          }, [calcMode]);
          
          React.useEffect(() => {
-         // If a nuclide is selected but it's not in the list of available nuclides for the current mode...
          if (nuclideSymbol && !availableNuclides.find(n => n.symbol === nuclideSymbol)) {
-             setNuclideSymbol(''); // ...clear the invalid selection.
+         setNuclideSymbol(''); 
          }
          }, [calcMode, availableNuclides, nuclideSymbol]);
          
          React.useEffect(() => {
          if (preselectedNuclide) {
-            const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
-            const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
+         const isGamma = gammaNuclides.some(n => n.symbol === preselectedNuclide);
+         const isBeta = betaNuclides.some(n => n.symbol === preselectedNuclide);
          
-         // If a nuclide is being sent, always switch to the database input mode.
          setInputMode(INPUT_MODE_DB);
          
-            if (isGamma) { setCalcMode(CALC_MODE_GAMMA); setNuclideSymbol(preselectedNuclide); } 
-            else if (isBeta) { setCalcMode(CALC_MODE_BETA); setNuclideSymbol(preselectedNuclide); }
+         if (isGamma) { setCalcMode(CALC_MODE_GAMMA); setNuclideSymbol(preselectedNuclide); } 
+         else if (isBeta) { setCalcMode(CALC_MODE_BETA); setNuclideSymbol(preselectedNuclide); }
          }
          }, [preselectedNuclide, gammaNuclides, betaNuclides]);
          
          React.useEffect(() => {
          if (calcMode === CALC_MODE_INTERNAL && intakeRoute === 'inhalation' && availableClasses.length > 0) {
-            if (!availableClasses.includes(solubility)) { setSolubility(availableClasses[0]); }
+         if (!availableClasses.includes(solubility)) { setSolubility(availableClasses[0]); }
          } else { setSolubility(''); }
          }, [calcMode, intakeRoute, availableClasses, solubility]);
          
          React.useEffect(() => {
          if (!isInitialMount.current) {
-            if (geometryMode === GEOMETRY_POINT) { setActivityUnit('mCi'); } 
-            else if (geometryMode === GEOMETRY_LINE) { setLinearActivityUnit('mCi/m'); } 
-            else if (geometryMode === GEOMETRY_AREA) { setArealActivityUnit('µCi/cm²'); }
+         setActivity('1'); 
+         if (geometryMode === GEOMETRY_POINT) { setActivityUnit('mCi'); } 
+         else if (geometryMode === GEOMETRY_LINE) { setLinearActivityUnit('mCi/m'); } 
+         else if (geometryMode === GEOMETRY_AREA) { setArealActivityUnit('µCi/cm²'); }
          }
          }, [geometryMode]);
          
-         // --- THIS IS THE CORRECTED CALCULATION LOGIC ---
          React.useEffect(() => {
          try {
-            setError(''); setResult(null);
-            const activityValue = parseFloat(activity);
-            const distanceValue = parseFloat(distance);
-            switch (calcMode) {
-                case CALC_MODE_GAMMA: {
-                    let gammaConstant;
-                    if (inputMode === INPUT_MODE_DB) {
-                        if (!selectedNuclide) throw new Error('Please select a radionuclide or switch to Manual Input.');
-                        if (!selectedNuclide.gammaConstant) throw new Error(`${selectedNuclide.name} has no gamma constant defined.`);
-                        gammaConstant = parseFloat(selectedNuclide.gammaConstant);
-                    } else {
-                        gammaConstant = parseFloat(manualGammaConstant);
-                        if (isNaN(gammaConstant) || gammaConstant <= 0) throw new Error('Please enter a valid, positive Gamma Constant.');
-                    }
-                    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
-                    const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-                    let doseRateR_hr = 0;
-                    switch (geometryMode) {
-                        case GEOMETRY_POINT: { const activityInCi = activityValue * activityFactorsCi[activityUnit]; doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2); break; }
-                        case GEOMETRY_LINE: { const len_val = parseFloat(lineLength); if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.'); const len_m = len_val * distanceFactorsM[lineLengthUnit]; const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit]; doseRateR_hr = ((2 * gammaConstant * linearActivityCi_per_m) / distanceInM) * Math.atan(len_m / (2 * distanceInM)); break; }
-                        case GEOMETRY_AREA: { const rad_val = parseFloat(diskRadius); if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.'); const rad_m = rad_val * distanceFactorsM[diskRadiusUnit]; const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit]; doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + Math.pow(rad_m / distanceInM, 2)); break; }
-                    }
-                    const doseRate_mrem_hr = doseRateR_hr * 1000;
-                    const newResult = { type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') };
-                    setResult(newResult);
-                    break;
-                }
-               
+         setError(''); setResult(null);
+         const activityValue = parseFloat(activity);
+         const distanceValue = parseFloat(distance);
+         switch (calcMode) {
+           case CALC_MODE_GAMMA: {
+               let gammaConstant;
+               if (inputMode === INPUT_MODE_DB) {
+                   if (!selectedNuclide) throw new Error('Please select a radionuclide or switch to Manual Input.');
+                   if (!selectedNuclide.gammaConstant) throw new Error(`${selectedNuclide.name} has no gamma constant defined.`);
+                   gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+               } else {
+                   gammaConstant = parseFloat(manualGammaConstant);
+                   if (isNaN(gammaConstant) || gammaConstant <= 0) throw new Error('Please enter a valid, positive Gamma Constant.');
+               }
+               if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) throw new Error('Invalid activity or distance.');
+               const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+               let doseRateR_hr = 0;
+               switch (geometryMode) {
+                   case GEOMETRY_POINT: { const activityInCi = activityValue * activityFactorsCi[activityUnit]; doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2); break; }
+                   case GEOMETRY_LINE: { const len_val = parseFloat(lineLength); if (isNaN(len_val) || len_val <= 0) throw new Error('Line length must be a positive number.'); const len_m = len_val * distanceFactorsM[lineLengthUnit]; const linearActivityCi_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit]; doseRateR_hr = ((2 * gammaConstant * linearActivityCi_per_m) / distanceInM) * Math.atan(len_m / (2 * distanceInM)); break; }
+                   case GEOMETRY_AREA: { const rad_val = parseFloat(diskRadius); if (isNaN(rad_val) || rad_val <= 0) throw new Error('Disk radius must be a positive number.'); const rad_m = rad_val * distanceFactorsM[diskRadiusUnit]; const arealActivityCi_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit]; doseRateR_hr = Math.PI * gammaConstant * arealActivityCi_per_m2 * Math.log(1 + Math.pow(rad_m / distanceInM, 2)); break; }
+               }
+               const doseRate_mrem_hr = doseRateR_hr * 1000;
+               const newResult = { type: 'gamma', dose: formatSensibleUnit(doseRate_mrem_hr, 'doseRate') };
+               setResult(newResult);
+               break;
+           }
+          
          case CALC_MODE_BETA:
          case CALC_MODE_BREMS: {
          const sourcesToCalculate = [];
          let sourceNote = null;
          
-         // --- 1. Identify all contributing beta sources ---
          if (inputMode === INPUT_MODE_DB) {
          if (!selectedNuclide) {
-            throw new Error('Please select a radionuclide or switch to Manual Input.');
+         throw new Error('Please select a radionuclide or switch to Manual Input.');
          }
          
-         // Add the parent nuclide to the list if it's a beta emitter
          if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
-            sourcesToCalculate.push(selectedNuclide);
+         sourcesToCalculate.push(selectedNuclide);
          }
          
-         // Add the daughter nuclide if it's also a beta emitter (assumes equilibrium)
          if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
-            const daughter = radionuclides.find(n => n.symbol === selectedNuclide.daughterEmissions.from);
-            if (daughter && daughter.emissionEnergies?.beta?.length > 0) {
-                sourcesToCalculate.push(daughter);
-            }
+         const daughter = radionuclides.find(n => n.symbol === selectedNuclide.daughterEmissions.from);
+         if (daughter && daughter.emissionEnergies?.beta?.length > 0) {
+           sourcesToCalculate.push(daughter);
+         }
          }
          
          if (sourcesToCalculate.length === 0) {
-            throw new Error(`${selectedNuclide.name} has no defined beta emissions.`);
+         throw new Error(`${selectedNuclide.name} has no defined beta emissions.`);
          }
          
-         // Create a note for the UI if multiple sources are contributing to the dose
          if (sourcesToCalculate.length > 1) {
-            sourceNote = `Based on summed contributions from ${sourcesToCalculate.map(s => s.symbol).join(' & ')} in equilibrium.`;
+         sourceNote = `Based on summed contributions from ${sourcesToCalculate.map(s => s.symbol).join(' & ')} in equilibrium.`;
          }
          
-         } else { // Manual Mode
+         } else { 
          const E_max_manual = parseFloat(manualBetaEnergy);
          if (isNaN(E_max_manual) || E_max_manual <= 0) {
-            throw new Error('Please enter a valid, positive Max Beta Energy.');
+         throw new Error('Please enter a valid, positive Max Beta Energy.');
          }
-         // Create a temporary "source" object for the calculation loop
          sourcesToCalculate.push({
-            manual: true,
-            emissionEnergies: { beta: [`${E_max_manual} MeV`] },
-            avgBetaEnergy: (E_max_manual / 3).toString()
+         manual: true,
+         emissionEnergies: { beta: [`${E_max_manual} MeV`] },
+         avgBetaEnergy: (E_max_manual / 3).toString()
          });
          }
          
-         // --- 2. Calculate and sum the dose from each source ---
          let totalDoseRate_mrem_hr = 0;
          let totalBremsstrahlungFraction = 0;
-         let primaryE_max = 0; // Use the highest E_max for range calculations
+         let primaryE_max = 0; 
          
          if (isNaN(activityValue)) throw new Error('Invalid activity value.');
          
@@ -15171,39 +15164,38 @@
          if (E_max > primaryE_max) primaryE_max = E_max;
          
          if (calcMode === CALC_MODE_BETA) {
-            if (betaMode === BETA_MODE_SKIN) {
-                const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
-                totalDoseRate_mrem_hr += (2.13 * concentration_uCi_per_cm2 * E_avg) * 1000;
-            } else { // Dose in Air
-                const activityInCi = activityValue * activityFactorsCi[activityUnit];
-                const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
-                totalDoseRate_mrem_hr += ((400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2)) * 1000;
-            }
-         } else { // Bremsstrahlung
-            const activityInCi = activityValue * activityFactorsCi[activityUnit];
-            const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
-            const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
-            totalDoseRate_mrem_hr += doseRate_rad_hr_at_1m * 1000; // Doses are additive
-            totalBremsstrahlungFraction += 3.5e-4 * Z * E_max;
+         if (betaMode === BETA_MODE_SKIN) {
+           const concentration_uCi_per_cm2 = activityValue * concentrationFactors_uCi_per_cm2[activityUnit];
+           totalDoseRate_mrem_hr += (2.13 * concentration_uCi_per_cm2 * E_avg) * 1000;
+         } else { 
+           const activityInCi = activityValue * activityFactorsCi[activityUnit];
+           const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
+           totalDoseRate_mrem_hr += ((400 * (activityInCi * 1000) * E_avg) / Math.pow(distance_cm, 2)) * 1000;
+         }
+         } else { 
+         const activityInCi = activityValue * activityFactorsCi[activityUnit];
+         const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
+         const doseRate_rad_hr_at_1m = 0.57 * activityInCi * Z * Math.pow(E_max, 2);
+         totalDoseRate_mrem_hr += doseRate_rad_hr_at_1m * 1000; 
+         totalBremsstrahlungFraction += 3.5e-4 * Z * E_max;
          }
          }
          
-         // --- 3. Format and set the final result ---
          if (calcMode === CALC_MODE_BETA) {
          if (betaMode === BETA_MODE_SKIN) {
-            setResult({ type: 'beta_skin', dose: formatSensibleUnit(totalDoseRate_mrem_hr, 'doseRate'), e_max: primaryE_max, sourceNote: sourceNote });
-         } else { // Dose in Air
-            if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
-            const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
-            let range_m;
-            if (primaryE_max > 0.8) { range_m = (542 * primaryE_max - 133) / (SHIELDING_MATERIALS['Water'].density * 1000); } 
-            else { const range_mg_cm2 = 407 * Math.pow(primaryE_max, 1.38); range_m = (range_mg_cm2 / 1.225) / 100; }
-            const range_cm = range_m * 100;
-            const isBeyondRange = distance_cm >= range_cm;
-            const finalDoseRate = isBeyondRange ? 0 : totalDoseRate_mrem_hr;
-            setResult({ type: 'beta_air', dose: formatSensibleUnit(finalDoseRate, 'doseRate'), e_max: primaryE_max, isBeyondRange: isBeyondRange, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2), sourceNote: sourceNote });
+         setResult({ type: 'beta_skin', dose: formatSensibleUnit(totalDoseRate_mrem_hr, 'doseRate'), e_max: primaryE_max, sourceNote: sourceNote });
+         } else { 
+         if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
+         const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
+         let range_m;
+         if (primaryE_max > 0.8) { range_m = (542 * primaryE_max - 133) / (SHIELDING_MATERIALS['Water'].density * 1000); } 
+         else { const range_mg_cm2 = 407 * Math.pow(primaryE_max, 1.38); range_m = (range_mg_cm2 / 1.225) / 100; }
+         const range_cm = range_m * 100;
+         const isBeyondRange = distance_cm >= range_cm;
+         const finalDoseRate = isBeyondRange ? 0 : totalDoseRate_mrem_hr;
+         setResult({ type: 'beta_air', dose: formatSensibleUnit(finalDoseRate, 'doseRate'), e_max: primaryE_max, isBeyondRange: isBeyondRange, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2), sourceNote: sourceNote });
          }
-         } else { // Bremsstrahlung
+         } else { 
          if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
          const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
          const finalDoseRate = totalDoseRate_mrem_hr / Math.pow(distanceInM, 2);
@@ -15211,70 +15203,71 @@
          }
          break;
          }
-                case CALC_MODE_INTERNAL: {
-                    if (!selectedNuclide) { throw new Error("Please select a radionuclide for internal dose calculation.")}
-                    const intake = parseFloat(intakeAmount); if (isNaN(intake) || intake < 0) throw new Error('Invalid intake amount.');
-                    const intakeInMuCi = intake * intakeUnitFactors[intakeUnit]; let aliKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
-                    const ALI = selectedNuclide.dosimetry.ALI[aliKey]; if (!ALI) throw new Error(`ALI value for ${aliKey} not found for this nuclide.`);
-                    const cede_mrem = (intakeInMuCi / ALI) * 5000;
-                    const newResult = { type: 'internal', dose: formatSensibleUnit(cede_mrem, 'dose') };
-                    setResult(newResult);
-                    break;
-                }
-                default: throw new Error("Calculation mode not implemented.");
-            }
+           case CALC_MODE_INTERNAL: {
+               if (!selectedNuclide) { throw new Error("Please select a radionuclide for internal dose calculation.")}
+               const intake = parseFloat(intakeAmount); if (isNaN(intake) || intake < 0) throw new Error('Invalid intake amount.');
+               const intakeInMuCi = intake * intakeUnitFactors[intakeUnit]; let aliKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
+               const ALI = selectedNuclide.dosimetry.ALI[aliKey]; if (!ALI) throw new Error(`ALI value for ${aliKey} not found for this nuclide.`);
+               const cede_mrem = (intakeInMuCi / ALI) * 5000;
+               const newResult = { type: 'internal', dose: formatSensibleUnit(cede_mrem, 'dose') };
+               setResult(newResult);
+               break;
+           }
+           default: throw new Error("Calculation mode not implemented.");
+         }
          } catch (e) { setError(e.message); }
-         }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode, radionuclides ]); // Added radionuclides to dependency array
+         }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode, radionuclides ]);
          
          const handleSaveToHistory = () => {
-             if (!result) return;
-             let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
-             switch(result.type) {
-                 case 'gamma':
-                     historyEntry.type = 'Gamma Dose Rate';
-                     historyEntry.icon = ICONS.doseRate;
-                     historyEntry.inputs = `${activity} ${activityUnit} at ${distance} ${distanceUnit}`;
-                     historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
-                     break;
-                 case 'beta_skin':
-                     historyEntry.type = 'Beta Skin Dose';
-                     historyEntry.icon = ICONS.doseRate;
-                     historyEntry.inputs = `${activity} ${activityUnit}`;
-                     historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
-                     break;
-                 case 'beta_air':
-                      historyEntry.type = 'Beta Air Dose';
-                      historyEntry.icon = ICONS.doseRate;
-                      historyEntry.inputs = `${activity} ${activityUnit} at ${distance} ${distanceUnit}`;
-                      historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
-                      break;
-                 case 'bremsstrahlung':
-                     historyEntry.type = 'Bremsstrahlung Dose';
-                     historyEntry.icon = ICONS.shield;
-                     historyEntry.inputs = `${activity} ${activityUnit} behind ${shieldMaterial}`;
-                     historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
-                     break;
-                 case 'internal':
-                     historyEntry.type = 'Internal Dose (CEDE)';
-                     historyEntry.icon = ICONS.internalDose;
-                     historyEntry.inputs = `${intakeAmount} ${intakeUnit} via ${intakeRoute}`;
-                     historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
-                     break;
-             }
-             addHistory(historyEntry);
-             addToast("Calculation saved to history!");
+         if (!result) return;
+         let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
+         switch(result.type) {
+            case 'gamma':
+                historyEntry.type = 'Gamma Dose Rate';
+                historyEntry.icon = ICONS.doseRate;
+                historyEntry.inputs = `${activity} ${activityUnit} at ${distance} ${distanceUnit}`;
+                historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
+                break;
+            case 'beta_skin':
+                historyEntry.type = 'Beta Skin Dose';
+                historyEntry.icon = ICONS.doseRate;
+                historyEntry.inputs = `${activity} ${activityUnit}`;
+                historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
+                break;
+            case 'beta_air':
+                 historyEntry.type = 'Beta Air Dose';
+                 historyEntry.icon = ICONS.doseRate;
+                 historyEntry.inputs = `${activity} ${activityUnit} at ${distance} ${distanceUnit}`;
+                 historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
+                 break;
+            case 'bremsstrahlung':
+                historyEntry.type = 'Bremsstrahlung Dose';
+                historyEntry.icon = ICONS.shield;
+                historyEntry.inputs = `${activity} ${activityUnit} behind ${shieldMaterial}`;
+                historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
+                break;
+            case 'internal':
+                historyEntry.type = 'Internal Dose (CEDE)';
+                historyEntry.icon = ICONS.internalDose;
+                historyEntry.inputs = `${intakeAmount} ${intakeUnit} via ${intakeRoute}`;
+                historyEntry.result = `${result.dose.value} ${result.dose.unit}`;
+                break;
+         }
+         addHistory(historyEntry);
+         addToast("Calculation saved to history!");
          };
          
          const resultTitles = { 'gamma': 'Gamma Dose Rate', 'beta_skin': 'Beta Skin Dose (Surface)', 'beta_air': 'Beta Dose in Air (Point)', 'bremsstrahlung': 'Bremsstrahlung Dose Rate', 'internal': 'Committed Effective Dose (CEDE)' };
          const handleNuclideSelect = React.useCallback((symbol) => {
          setNuclideSymbol(symbol); const nuclideToSet = availableNuclides.find(n => n.symbol === symbol);
          if (nuclideToSet && nuclideToSet.dosimetry) {
-            setIntakeRoute('inhalation'); const newAvailableClasses = Object.keys(nuclideToSet.dosimetry?.ALI || {}).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
-            if (newAvailableClasses.length > 0) { setSolubility(newAvailableClasses[0]); } else { setSolubility(''); }
+         setIntakeRoute('inhalation'); const newAvailableClasses = Object.keys(nuclideToSet.dosimetry?.ALI || {}).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
+         if (newAvailableClasses.length > 0) { setSolubility(newAvailableClasses[0]); } else { setSolubility(''); }
          } else { setSolubility(''); setIntakeRoute('inhalation'); }
          }, [availableNuclides]);
          
          const handleClearInputs = () => {
+         // 1. Reset state variables to their defaults
          setCalcMode(CALC_MODE_GAMMA);
          setInputMode(INPUT_MODE_DB);
          setGeometryMode(GEOMETRY_POINT);
@@ -15299,106 +15292,121 @@
          setBetaMode(BETA_MODE_SKIN);
          setResult(null);
          setError('');
+         
+         // 2. Define all localStorage keys for this component
+         const keysToClear = [
+            'doseRate_calcMode', 'doseRate_inputMode', 'doseRate_geometryMode',
+            'doseRate_activity', 'doseRate_activityUnit', 'doseRate_distance',
+            'doseRate_distanceUnit', 'doseRate_lineLength', 'doseRate_lineLengthUnit',
+            'doseRate_diskRadius', 'doseRate_diskRadiusUnit', 'doseRate_shieldMaterial',
+            'doseRate_linearActivityUnit', 'doseRate_arealActivityUnit',
+            'doseRate_intakeRoute', 'doseRate_solubility', 'doseRate_intakeAmount',
+            'doseRate_intakeUnit', 'doseRate_nuclideSymbol',
+            'doseRate_manualGammaConstant', 'doseRate_manualBetaEnergy', 'doseRate_betaMode'
+         ];
+         
+         // 3. Remove them from localStorage
+         keysToClear.forEach(key => localStorage.removeItem(key));
          };
          
          return (
          <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Dose Calculator</h2>
-                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                    </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => setCalcMode(CALC_MODE_GAMMA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_GAMMA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
-                    <button onClick={() => setCalcMode(CALC_MODE_BETA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta</button>
-                    <button onClick={() => setCalcMode(CALC_MODE_BREMS)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BREMS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Brems.</button>
-                    <button onClick={() => setCalcMode(CALC_MODE_INTERNAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_INTERNAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Internal</button>
-                </div>
-                <div className="space-y-3">
-                    {(calcMode === CALC_MODE_GAMMA || calcMode === CALC_MODE_BETA || calcMode === CALC_MODE_BREMS) && (
-                        <div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-                            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                                <button onClick={() => setInputMode(INPUT_MODE_DB)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>From Database</button>
-                                <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Manual Input</button>
-                            </div>
-                            {inputMode === INPUT_MODE_DB ? (
-                                <div className="animate-fade-in">
-                                    {selectedNuclide ? ( 
-                                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> 
-                                    ) : ( 
-                                        <>
-                                            <SearchableSelect options={availableNuclides} onSelect={handleNuclideSelect} placeholder={`Select a ${calcMode} emitter...`} />
-                                            {calcMode === CALC_MODE_GAMMA && <QuickNuclideSelector onSelect={handleNuclideSelect} />}
-                                        </>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="animate-fade-in p-2">
-                                    <label className="block text-sm font-medium">{calcMode === CALC_MODE_GAMMA ? 'Gamma Constant (Γ)' : 'Max Beta Energy (Eₘₐₓ)'}</label>
-                                    <div className="relative">
-                                        {calcMode === CALC_MODE_GAMMA ? (
-                                            <input type="number" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} placeholder="e.g., 0.33 for Cs-137" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                        ) : (
-                                            <input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} placeholder="e.g., 2.28 for Y-90" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                                        )}
-                                        <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-500 dark:text-slate-400">{calcMode === CALC_MODE_GAMMA ? 'R·m²/hr·Ci' : 'MeV'}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {calcMode === CALC_MODE_INTERNAL && ( <>{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={dosimetryNuclides} onSelect={handleNuclideSelect} placeholder="Select an internal emitter..." /> )}</> )}
-                    {inputMode === INPUT_MODE_DB && selectedNuclide?.dosimetry && (<div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs"><h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">10 CFR 20 Appendix B Values:</h4><ul className="list-disc list-inside space-y-1">{selectedNuclide.dosimetry?.ALI && Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">ALI ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val} µCi</span></li>))}{selectedNuclide.dosimetry?.DAC && Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">DAC ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span></li>))}</ul></div>)}
-                    {calcMode === CALC_MODE_BREMS && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>)}
-                    {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit('mCi'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
+         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+           <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold text-slate-800 dark:text-white">Dose Calculator</h2>
+               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+               </button>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+               <button onClick={() => setCalcMode(CALC_MODE_GAMMA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_GAMMA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
+               <button onClick={() => setCalcMode(CALC_MODE_BETA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta</button>
+               <button onClick={() => setCalcMode(CALC_MODE_BREMS)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BREMS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Brems.</button>
+               <button onClick={() => setCalcMode(CALC_MODE_INTERNAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_INTERNAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Internal</button>
+           </div>
+           <div className="space-y-3">
+               {(calcMode === CALC_MODE_GAMMA || calcMode === CALC_MODE_BETA || calcMode === CALC_MODE_BREMS) && (
+                   <div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                       <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                           <button onClick={() => setInputMode(INPUT_MODE_DB)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>From Database</button>
+                           <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Manual Input</button>
+                       </div>
+                       {inputMode === INPUT_MODE_DB ? (
+                           <div className="animate-fade-in">
+                               {selectedNuclide ? ( 
+                                   <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> 
+                               ) : ( 
+                                   <>
+                                       <SearchableSelect options={availableNuclides} onSelect={handleNuclideSelect} placeholder={`Select a ${calcMode} emitter...`} />
+                                       {calcMode === CALC_MODE_GAMMA && <QuickNuclideSelector onSelect={handleNuclideSelect} />}
+                                   </>
+                               )}
+                           </div>
+                       ) : (
+                           <div className="animate-fade-in p-2">
+                               <label className="block text-sm font-medium">{calcMode === CALC_MODE_GAMMA ? 'Gamma Constant (Γ)' : 'Max Beta Energy (Eₘₐₓ)'}</label>
+                               <div className="relative">
+                                   {calcMode === CALC_MODE_GAMMA ? (
+                                       <input type="number" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} placeholder="e.g., 0.33 for Cs-137" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                                   ) : (
+                                       <input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} placeholder="e.g., 2.28 for Y-90" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                                   )}
+                                   <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-500 dark:text-slate-400">{calcMode === CALC_MODE_GAMMA ? 'R·m²/hr·Ci' : 'MeV'}</span>
+                               </div>
+                           </div>
+                       )}
+                   </div>
+               )}
+               {calcMode === CALC_MODE_INTERNAL && ( <>{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={dosimetryNuclides} onSelect={handleNuclideSelect} placeholder="Select an internal emitter..." /> )}</> )}
+               {inputMode === INPUT_MODE_DB && selectedNuclide?.dosimetry && (<div className="p-3 my-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in text-xs"><h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-1">10 CFR 20 Appendix B Values:</h4><ul className="list-disc list-inside space-y-1">{selectedNuclide.dosimetry?.ALI && Object.entries(selectedNuclide.dosimetry.ALI).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">ALI ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val} µCi</span></li>))}{selectedNuclide.dosimetry?.DAC && Object.entries(selectedNuclide.dosimetry.DAC).map(([key, val]) => (<li key={key}><span className="font-medium text-slate-700 dark:text-slate-200">DAC ({key.replace('inhalation_', 'Inh. ')}):</span><span className="text-slate-700 dark:text-slate-200">{val.toExponential(2)} µCi/mL</span></li>))}</ul></div>)}
+               {calcMode === CALC_MODE_BREMS && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELDING_MATERIALS).map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>)}
+               {calcMode === CALC_MODE_BETA && (<div className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 animate-fade-in"><div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg"><button onClick={() => { setBetaMode(BETA_MODE_SKIN); setActivityUnit('µCi/cm²'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Skin Dose (Surface)</button><button onClick={() => { setBetaMode(BETA_MODE_AIR); setActivityUnit('mCi'); }} className={`p-2 rounded-md text-sm font-semibold transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose in Air (Point)</button></div>
          
          <ContextualNote>
-                                <strong>Note:</strong> Beta dose calculations are based on standard empirical formulas and should be considered estimates for operational purposes.
-                            </ContextualNote>
+                           <strong>Note:</strong> Beta dose calculations are based on standard empirical formulas and should be considered estimates for operational purposes.
+                       </ContextualNote>
          
          {betaMode === BETA_MODE_SKIN ? (<div className="animate-fade-in"><label className="block text-sm font-medium">Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{concentrationUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>) : (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div><div><label className="block text-sm font-medium">Distance to Source</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}</div>)}
-                    {calcMode === CALC_MODE_GAMMA && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Geometry</label><div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setGeometryMode(GEOMETRY_POINT)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_POINT ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Point</button><button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Line</button><button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Area (Disk)</button></div></div>{geometryMode === GEOMETRY_POINT && (<div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Linear Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{(geometryMode === GEOMETRY_LINE || geometryMode === GEOMETRY_AREA) && (<div className="space-y-4">{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}</div>)}<div><Tooltip text="Assumes a perpendicular distance from the center of the source." widthClass="w-72"><label className="block text-sm font-medium">Distance from Source</label></Tooltip><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
-                    {calcMode === CALC_MODE_INTERNAL && (<div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium">Intake Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>{intakeRoute === 'inhalation' && (<div><label className="block text-sm font-medium">Solubility Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} disabled={availableClasses.length === 0} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div>)}</div><div><label className="block text-sm font-medium">Intake Amount</label><div className="flex"><input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
-                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
-                    {result && (<div className="text-center p-6 bg-sky-50 dark:bg-sky-900/50 rounded-lg mt-4 border-2 border-sky-500">
-                         <div className="flex justify-between items-center -mt-2 -mb-2">
-                             <div></div> {/* Spacer */}
-                             <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">{resultTitles[result.type]}</p>
-                             <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                    <Icon path={ICONS.notepad} className="w-5 h-5" />
-                                </button>
-                             </Tooltip>
-                         </div>
-                        {result.type === 'gamma' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
-                        {result.type === 'beta_skin' && (<><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400"><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</div></>)}
+               {calcMode === CALC_MODE_GAMMA && (<div className="space-y-3 animate-fade-in"><div><label className="block text-sm font-medium">Source Geometry</label><div className="grid grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"><button onClick={() => setGeometryMode(GEOMETRY_POINT)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_POINT ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Point</button><button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Line</button><button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Area (Disk)</button></div></div>{geometryMode === GEOMETRY_POINT && (<div><label className="block text-sm font-medium">Source Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Linear Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{linearActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Areal Activity Concentration</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{arealActivityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{(geometryMode === GEOMETRY_LINE || geometryMode === GEOMETRY_AREA) && (<div className="space-y-4">{geometryMode === GEOMETRY_LINE && (<div><label className="block text-sm font-medium">Line Length</label><div className="flex"><input type="number" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}{geometryMode === GEOMETRY_AREA && (<div><label className="block text-sm font-medium">Disk Radius</label><div className="flex"><input type="number" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>)}</div>)}<div><Tooltip text="Assumes a perpendicular distance from the center of the source." widthClass="w-72"><label className="block text-sm font-medium">Distance from Source</label></Tooltip><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
+               {calcMode === CALC_MODE_INTERNAL && (<div className="space-y-3 animate-fade-in p-4 border border-slate-200 dark:border-slate-700 rounded-lg"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium">Intake Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>{intakeRoute === 'inhalation' && (<div><label className="block text-sm font-medium">Solubility Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} disabled={availableClasses.length === 0} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select></div>)}</div><div><label className="block text-sm font-medium">Intake Amount</label><div className="flex"><input type="number" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{intakeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div>)}
+               {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+               {result && (<div className="text-center p-6 bg-sky-50 dark:bg-sky-900/50 rounded-lg mt-4 border-2 border-sky-500">
+                    <div className="flex justify-between items-center -mt-2 -mb-2">
+                        <div></div> 
+                        <p className="font-semibold block text-sm text-sky-700 dark:text-sky-300">{resultTitles[result.type]}</p>
+                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                           <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                               <Icon path={ICONS.notepad} className="w-5 h-5" />
+                           </button>
+                        </Tooltip>
+                    </div>
+                   {result.type === 'gamma' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
+                   {result.type === 'beta_skin' && (<><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400"><p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>{result.sourceNote && <p className="text-xs italic">{result.sourceNote}</p>}</div></>)}
          
-                   {result.type === 'beta_air' && (
+              {result.type === 'beta_air' && (
          result.isBeyondRange ? (
          <div className="p-3 my-1 bg-amber-100 dark:bg-amber-900/50 rounded-lg border border-amber-300 dark:border-amber-700">
-            <p className="text-xl font-bold text-amber-700 dark:text-amber-300">0 {result.dose.unit}</p>
-            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Target is beyond the beta's maximum range.</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+         <p className="text-xl font-bold text-amber-700 dark:text-amber-300">0 {result.dose.unit}</p>
+         <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Target is beyond the beta's maximum range.</p>
+         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
          </div>
          ) : (
          <>
-            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
-            <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
-                <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
-                <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
-                {result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}
-            </div>
+         <p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p>
+         <div className="mt-4 pt-4 border-t border-sky-200 dark:border-sky-800 text-sm text-slate-500 dark:text-slate-400">
+           <p>Max Range: <strong>{result.range_m} m / {result.range_ft} ft</strong></p>
+           <p>Max Energy (Eₘₐₓ): <strong>{result.e_max} MeV</strong></p>
+           {result.sourceNote && <p className="text-xs italic">{result.sourceNote}</p>}
+         </div>
          </>
          )
          )}
          
-         {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>{result.sourceNote && <p className="text-xs italic">Based on <strong>{result.sourceNote}</strong> daughter emission.</p>}</>}
-                        {result.type === 'internal' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
-                    </div>)}
-                </div>
-            </div>
+         {result.type === 'bremsstrahlung' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p><p className="text-sm font-medium text-slate-600 dark:text-slate-300">~{result.bremsstrahlungFraction}% of beta energy converted to X-rays.</p>{result.sourceNote && <p className="text-xs italic">{result.sourceNote}</p>}</>}
+                   {result.type === 'internal' && <><p className="text-4xl font-bold text-sky-600 dark:text-sky-400 my-1">{result.dose.value}<span className="text-3xl ml-2 opacity-75">{result.dose.unit}</span></p></>}
+               </div>)}
+           </div>
+         </div>
          </div>
          );
          };
@@ -15480,153 +15488,142 @@
          localStorage.setItem('shielding_targetDoseRateUnit', targetDoseRateUnit);
          }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
          
-         // --- NEWLY ADDED EFFECT TO PREVENT THIS BUG ---
-         React.useEffect(() => {
-             if (nuclideSymbol) {
-                 const validMaterials = availableMaterials;
-                 if (validMaterials.length > 0 && !validMaterials.includes(shieldMaterial)) {
-                     setShieldMaterial(validMaterials[0]);
-                 }
-             }
-         }, [nuclideSymbol, shieldMaterial, availableMaterials]);
-         // ---------------------------------------------
-         
          React.useEffect(() => {
          if (nuclideSymbol) {
-             const validMaterials = availableMaterials;
-             if (validMaterials.length > 0 && !validMaterials.includes(shieldMaterial)) {
-                 setShieldMaterial(validMaterials[0]);
-             }
+            const validMaterials = availableMaterials;
+            if (validMaterials.length > 0 && !validMaterials.includes(shieldMaterial)) {
+                setShieldMaterial(validMaterials[0]);
+            }
          }
          }, [nuclideSymbol, shieldMaterial, availableMaterials]);
          
          React.useEffect(() => {
          if (preselectedNuclide) {
-            if (shieldingNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(MODE_FROM_SOURCE); } 
-            else if (betaNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(CALC_MODE_BETA); }
+         if (shieldingNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(MODE_FROM_SOURCE); } 
+         else if (betaNuclides.find(n => n.symbol === preselectedNuclide)) { setNuclideSymbol(preselectedNuclide); setCalcMode(CALC_MODE_BETA); }
          }
          }, [preselectedNuclide, shieldingNuclides, betaNuclides]);
          
          React.useEffect(() => {
          try {
-            setError('');
-            if (calcMode === CALC_MODE_BETA) {
-                let E_max;
-                if (inputMode === INPUT_MODE_DB) {
-                    const nuclide = betaNuclides.find(n => n.symbol === nuclideSymbol);
-                    if (!nuclide) { throw new Error('Please select a beta-emitting radionuclide.'); }
-                    E_max = parseEnergyToMeV(nuclide.emissionEnergies.beta);
-                } else {
-                    E_max = parseFloat(manualBetaEnergy);
-                    if (isNaN(E_max) || E_max <= 0) { throw new Error('Please enter a valid, positive Max Beta Energy.'); }
-                }
-                let range_mg_cm2;
-                if (E_max > 0.8) { range_mg_cm2 = 542 * E_max - 133; } 
-                else if (E_max >= 0.15) { range_mg_cm2 = 407 * Math.pow(E_max, 1.38); } 
-                else { throw new Error('Beta energy is too low for this range calculation.'); }
-                const materialDensity = SHIELDING_MATERIALS[shieldMaterial]?.density;
-                if (!materialDensity) { throw new Error('Selected material density not found.'); }
-                const requiredThickness_cm = range_mg_cm2 / (materialDensity * 1000);
-                const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
-                const bremsstrahlungFraction = 3.5e-4 * Z * E_max;
-                setResult({ type: 'beta', thickness: formatSensibleUnit(requiredThickness_cm, 'distance'), bremsstrahlungFraction: (bremsstrahlungFraction * 100).toPrecision(2) });
-            } else { // Gamma Modes
-                let hvl_cm;
-                if (useManualHVL) { hvl_cm = parseFloat(manualHVL); } 
-                else if (calcMode === MODE_GENERIC) { hvl_cm = HVL_DATA['Cs-137'][shieldMaterial]; } 
-                else if (nuclideSymbol) { const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol); if (!nuclide) return; hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
-                else { return; }
-                if (isNaN(hvl_cm) || hvl_cm <= 0) { setError('Please select a material or enter a valid HVL value.'); return; }
-                if (calcMode === MODE_GENERIC) {
-                    const knownRateVal = parseFloat(knownDoseRate);
-                    const thicknessVal = parseFloat(shieldThickness);
-                    if (isNaN(knownRateVal) || isNaN(thicknessVal) || knownRateVal < 0 || thicknessVal < 0) { if (knownDoseRate && shieldThickness) setError("Please enter valid positive numbers."); return; }
-                    const knownRate_mrem_hr = knownRateVal * doseRateFactors[knownDoseRateUnit];
-                    const thickness_cm = thicknessVal * thicknessFactors[thicknessUnit];
-                    const finalRate_mrem_hr = knownRate_mrem_hr * Math.pow(0.5, thickness_cm / hvl_cm);
-                    setResult({ type: 'genericRateFinal', initial: formatSensibleUnit(knownRate_mrem_hr, 'doseRate'), final: formatSensibleUnit(finalRate_mrem_hr, 'doseRate') });
-                } else if (nuclideSymbol) {
-                    const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol);
-                    if (!nuclide) return;
-                    const activityValue = parseFloat(activity);
-                    const distanceValue = parseFloat(distance);
-                    const thicknessValue = parseFloat(shieldThickness);
-                    if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0 || isNaN(thicknessValue) || thicknessValue < 0) { if (activity && distance && shieldThickness) setError("Please enter valid positive numbers."); return; }
-                    const gammaConstant = parseFloat(nuclide.gammaConstant);
-                    const activityInCi = activityValue * activityFactors[activityUnit];
-                    const distanceInM = distanceValue * distanceFactors[distanceUnit];
-                    const unshieldedRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-                    const unshielded_mrem_hr = unshieldedRateR_hr * 1000;
-                    const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
-                    let buildupFactor = 1;
-                    if (useBuildup && thicknessInCm > 0) {
-                        const mu = Math.log(2) / hvl_cm;
-                        const meanFreePaths = mu * thicknessInCm;
-                        const k = BUILDUP_K_FACTORS[shieldMaterial] || 0.1;
-                        buildupFactor = 1 + (k * meanFreePaths);
-                    }
-                    if (calcMode === MODE_FROM_SOURCE) {
-                       const shieldedRateR_hr = buildupFactor * unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
-                       const shielded_mrem_hr = shieldedRateR_hr * 1000;
-                       const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate'), buildup: buildupFactor.toFixed(2) };
-                       setResult(newResult);
-                   } else {
-                        const targetRateValue = parseFloat(targetDoseRate);
-                        if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
-                        const targetRateR_hr = targetRateValue * (doseRateFactors[targetDoseRateUnit] / 1000);
-                        if (targetRateR_hr >= unshieldedRateR_hr * (useBuildup ? 5 : 1)) { setError('Target dose rate is higher than the unshielded dose rate. No shielding is required.'); return; }
-                        let requiredThickness_cm = hvl_cm * Math.log2(unshieldedRateR_hr / targetRateR_hr);
-                        if (useBuildup) {
-                            for (let i=0; i < 5; i++) {
-                                const mu = Math.log(2) / hvl_cm;
-                                const meanFreePaths = mu * requiredThickness_cm;
-                                const k = BUILDUP_K_FACTORS[shieldMaterial] || 0.1;
-                                const B = 1 + (k * meanFreePaths);
-                                requiredThickness_cm = hvl_cm * Math.log2((unshieldedRateR_hr * B) / targetRateR_hr);
-                            }
-                        }
-                        setResult({ type: 'thickness', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), thickness: formatSensibleUnit(requiredThickness_cm, 'distance') });
-                    }
-                }
-            }
+         setError('');
+         if (calcMode === CALC_MODE_BETA) {
+           let E_max;
+           if (inputMode === INPUT_MODE_DB) {
+               const nuclide = betaNuclides.find(n => n.symbol === nuclideSymbol);
+               if (!nuclide) { throw new Error('Please select a beta-emitting radionuclide.'); }
+               E_max = parseEnergyToMeV(nuclide.emissionEnergies.beta);
+           } else {
+               E_max = parseFloat(manualBetaEnergy);
+               if (isNaN(E_max) || E_max <= 0) { throw new Error('Please enter a valid, positive Max Beta Energy.'); }
+           }
+           let range_mg_cm2;
+           if (E_max > 0.8) { range_mg_cm2 = 542 * E_max - 133; } 
+           else if (E_max >= 0.15) { range_mg_cm2 = 407 * Math.pow(E_max, 1.38); } 
+           else { throw new Error('Beta energy is too low for this range calculation.'); }
+           const materialDensity = SHIELDING_MATERIALS[shieldMaterial]?.density;
+           if (!materialDensity) { throw new Error('Selected material density not found.'); }
+           const requiredThickness_cm = range_mg_cm2 / (materialDensity * 1000);
+           const Z = SHIELDING_MATERIALS[shieldMaterial].Z;
+           const bremsstrahlungFraction = 3.5e-4 * Z * E_max;
+           setResult({ type: 'beta', thickness: formatSensibleUnit(requiredThickness_cm, 'distance'), bremsstrahlungFraction: (bremsstrahlungFraction * 100).toPrecision(2) });
+         } else { 
+           let hvl_cm;
+           if (useManualHVL) { hvl_cm = parseFloat(manualHVL); } 
+           else if (calcMode === MODE_GENERIC) { hvl_cm = HVL_DATA['Cs-137'][shieldMaterial]; } 
+           else if (nuclideSymbol) { const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol); if (!nuclide) return; hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
+           else { return; }
+           if (isNaN(hvl_cm) || hvl_cm <= 0) { setError('Please select a material or enter a valid HVL value.'); return; }
+           if (calcMode === MODE_GENERIC) {
+               const knownRateVal = parseFloat(knownDoseRate);
+               const thicknessVal = parseFloat(shieldThickness);
+               if (isNaN(knownRateVal) || isNaN(thicknessVal) || knownRateVal < 0 || thicknessVal < 0) { if (knownDoseRate && shieldThickness) setError("Please enter valid positive numbers."); return; }
+               const knownRate_mrem_hr = knownRateVal * doseRateFactors[knownDoseRateUnit];
+               const thickness_cm = thicknessVal * thicknessFactors[thicknessUnit];
+               const finalRate_mrem_hr = knownRate_mrem_hr * Math.pow(0.5, thickness_cm / hvl_cm);
+               setResult({ type: 'genericRateFinal', initial: formatSensibleUnit(knownRate_mrem_hr, 'doseRate'), final: formatSensibleUnit(finalRate_mrem_hr, 'doseRate') });
+           } else if (nuclideSymbol) {
+               const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol);
+               if (!nuclide) return;
+               const activityValue = parseFloat(activity);
+               const distanceValue = parseFloat(distance);
+               const thicknessValue = parseFloat(shieldThickness);
+               if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0 || isNaN(thicknessValue) || thicknessValue < 0) { if (activity && distance && shieldThickness) setError("Please enter valid positive numbers."); return; }
+               const gammaConstant = parseFloat(nuclide.gammaConstant);
+               const activityInCi = activityValue * activityFactors[activityUnit];
+               const distanceInM = distanceValue * distanceFactors[distanceUnit];
+               const unshieldedRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+               const unshielded_mrem_hr = unshieldedRateR_hr * 1000;
+               const thicknessInCm = thicknessValue * thicknessFactors[thicknessUnit];
+               let buildupFactor = 1;
+               if (useBuildup && thicknessInCm > 0) {
+                   const mu = Math.log(2) / hvl_cm;
+                   const meanFreePaths = mu * thicknessInCm;
+                   const k = BUILDUP_K_FACTORS[shieldMaterial] || 0.1;
+                   buildupFactor = 1 + (k * meanFreePaths);
+               }
+               if (calcMode === MODE_FROM_SOURCE) {
+                  const shieldedRateR_hr = buildupFactor * unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
+                  const shielded_mrem_hr = shieldedRateR_hr * 1000;
+                  const newResult = { type: 'doseRate', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), shielded: formatSensibleUnit(shielded_mrem_hr, 'doseRate'), buildup: buildupFactor.toFixed(2) };
+                  setResult(newResult);
+              } else {
+                   const targetRateValue = parseFloat(targetDoseRate);
+                   if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
+                   const targetRateR_hr = targetRateValue * (doseRateFactors[targetDoseRateUnit] / 1000);
+                   if (targetRateR_hr >= unshieldedRateR_hr * (useBuildup ? 5 : 1)) { setError('Target dose rate is higher than the unshielded dose rate. No shielding is required.'); return; }
+                   let requiredThickness_cm = hvl_cm * Math.log2(unshieldedRateR_hr / targetRateR_hr);
+                   if (useBuildup) {
+                       for (let i=0; i < 5; i++) {
+                           const mu = Math.log(2) / hvl_cm;
+                           const meanFreePaths = mu * requiredThickness_cm;
+                           const k = BUILDUP_K_FACTORS[shieldMaterial] || 0.1;
+                           const B = 1 + (k * meanFreePaths);
+                           requiredThickness_cm = hvl_cm * Math.log2((unshieldedRateR_hr * B) / targetRateR_hr);
+                       }
+                   }
+                   setResult({ type: 'thickness', unshielded: formatSensibleUnit(unshielded_mrem_hr, 'doseRate'), thickness: formatSensibleUnit(requiredThickness_cm, 'distance') });
+               }
+           }
+         }
          } catch (e) { setError(e.message); setResult(null); }
          }, [calcMode, inputMode, useManualHVL, useBuildup, nuclideSymbol, activity, activityUnit, distance, distanceUnit, knownDoseRate, knownDoseRateUnit, manualHVL, manualBetaEnergy, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit]);
          
          const handleSaveToHistory = () => {
-             if (!result) return;
-             let historyEntry = { id: Date.now(), view: VIEWS.SHIELDING };
+         if (!result) return;
+         let historyEntry = { id: Date.now(), view: VIEWS.SHIELDING };
          
-             switch(result.type) {
-                 case 'doseRate':
-                     historyEntry.type = 'Gamma Shielding';
-                     historyEntry.icon = ICONS.shield;
-                     historyEntry.inputs = `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`;
-                     historyEntry.result = `${result.shielded.value} ${result.shielded.unit}`;
-                     break;
-                 case 'thickness':
-                     historyEntry.type = 'Gamma Shielding';
-                     historyEntry.icon = ICONS.shield;
-                     historyEntry.inputs = `Target: ${targetDoseRate} ${targetDoseRateUnit}`;
-                     historyEntry.result = `${result.thickness.value} ${result.thickness.unit} ${shieldMaterial}`;
-                     break;
-                 case 'genericRateFinal':
-                     historyEntry.type = 'Generic Shielding';
-                     historyEntry.icon = ICONS.shield;
-                     historyEntry.inputs = `${knownDoseRate} ${knownDoseRateUnit} -> ?`;
-                     historyEntry.result = `${result.final.value} ${result.final.unit}`;
-                     break;
-                 case 'beta':
-                     historyEntry.type = 'Beta Shielding';
-                     historyEntry.icon = ICONS.shield;
-                     historyEntry.inputs = `${nuclideSymbol || 'Manual'} Eₘₐₓ`;
-                     historyEntry.result = `${result.thickness.value} ${result.thickness.unit} ${shieldMaterial}`;
-                     break;
-                 default:
-                     return;
-             }
+         switch(result.type) {
+            case 'doseRate':
+                historyEntry.type = 'Gamma Shielding';
+                historyEntry.icon = ICONS.shield;
+                historyEntry.inputs = `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`;
+                historyEntry.result = `${result.shielded.value} ${result.shielded.unit}`;
+                break;
+            case 'thickness':
+                historyEntry.type = 'Gamma Shielding';
+                historyEntry.icon = ICONS.shield;
+                historyEntry.inputs = `Target: ${targetDoseRate} ${targetDoseRateUnit}`;
+                historyEntry.result = `${result.thickness.value} ${result.thickness.unit} ${shieldMaterial}`;
+                break;
+            case 'genericRateFinal':
+                historyEntry.type = 'Generic Shielding';
+                historyEntry.icon = ICONS.shield;
+                historyEntry.inputs = `${knownDoseRate} ${knownDoseRateUnit} -> ?`;
+                historyEntry.result = `${result.final.value} ${result.final.unit}`;
+                break;
+            case 'beta':
+                historyEntry.type = 'Beta Shielding';
+                historyEntry.icon = ICONS.shield;
+                historyEntry.inputs = `${nuclideSymbol || 'Manual'} Eₘₐₓ`;
+                historyEntry.result = `${result.thickness.value} ${result.thickness.unit} ${shieldMaterial}`;
+                break;
+            default:
+                return;
+         }
          
-             addHistory(historyEntry);
-             addToast("Calculation saved to history!");
+         addHistory(historyEntry);
+         addToast("Calculation saved to history!");
          };
          
          const handleModeChange = (mode) => {
@@ -15636,26 +15633,19 @@
          setUseManualHVL(false);
          setUseBuildup(false);
          setNuclideSymbol('');
-         
-         
          setInputMode(INPUT_MODE_DB);
-         
-         // --- FIX APPLIED HERE ---
-         // If we are switching TO a beta mode, default to a beta shield.
          if (mode === CALC_MODE_BETA) {
          setShieldMaterial('Plastic');
          } 
-         // If we are switching FROM beta mode to a gamma mode...
          else if (calcMode === CALC_MODE_BETA) {
-         // ...and the current shield is a beta-only shield...
          if (betaShieldMaterials.includes(shieldMaterial)) {
-            // ...reset it to a default gamma shield.
-            setShieldMaterial('Lead');
+         setShieldMaterial('Lead');
          }
          }
          };
          
          const handleClearInputs = () => {
+         // 1. Reset all state variables to their default values
          setCalcMode(MODE_FROM_SOURCE);
          setInputMode(INPUT_MODE_DB);
          setUseManualHVL(false);
@@ -15676,158 +15666,169 @@
          setTargetDoseRateUnit('mrem/hr');
          setResult(null);
          setError('');
+         
+         // 2. Define all localStorage keys for this component
+         const keysToClear = [
+            'shielding_calcMode', 'shielding_inputMode', 'shielding_useManualHVL', 
+            'shielding_useBuildup', 'shielding_nuclideSymbol', 'shielding_activity', 
+            'shielding_activityUnit', 'shielding_distance', 'shielding_distanceUnit', 
+            'shielding_knownDoseRate', 'shielding_knownDoseRateUnit', 'shielding_manualHVL', 
+            'shielding_manualBetaEnergy', 'shielding_shieldMaterial', 'shielding_shieldThickness', 
+            'shielding_thicknessUnit', 'shielding_targetDoseRate', 'shielding_targetDoseRateUnit'
+         ];
+         
+         // 3. Remove each key from localStorage
+         keysToClear.forEach(key => localStorage.removeItem(key));
          };
          
          return (
          <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shielding Calculator</h2>
-                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                    </button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => handleModeChange(MODE_FROM_SOURCE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_FROM_SOURCE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Dose</button>
-                    <button onClick={() => handleModeChange(MODE_FIND_THICKNESS)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_FIND_THICKNESS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Thick</button>
-                    <button onClick={() => handleModeChange(MODE_GENERIC)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_GENERIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Generic Photon</button>
-                    <button onClick={() => handleModeChange(CALC_MODE_BETA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta Range</button>
-                </div>
-                <div className="space-y-4">
-                    {calcMode === CALC_MODE_BETA ? (
-                        <div className="animate-fade-in space-y-4">
-                            <p className="text-sm text-center text-slate-500 dark:text-slate-400">Calculates the shield thickness required to stop all beta particles.</p>
-                            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                                <button onClick={() => setInputMode(INPUT_MODE_DB)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>From Database</button>
-                                <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Manual Input</button>
-                            </div>
-                            {inputMode === INPUT_MODE_DB ? ( <div className="animate-fade-in">{nuclideSymbol ? ( <CalculatorNuclideInfo nuclide={betaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={betaNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder={`Select a beta emitter...`} /> )}</div> ) : ( <div className="animate-fade-in p-2"><label className="block text-sm font-medium">Max Beta Energy (Eₘₐₓ)</label><div className="relative"><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} placeholder="e.g., 2.28 for Y-90" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-500 dark:text-slate-400">MeV</span></div></div> )}
-                            <div>
-                                <label className="block text-sm font-medium">Shield Material</label>
-                                <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                                    {betaShieldMaterials.map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="animate-fade-in space-y-4">
-                            {calcMode !== MODE_GENERIC && (
-                                <div className="animate-fade-in space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium">Radionuclide</label>
-                                        <div className="mt-1">
-                                            {nuclideSymbol ? <CalculatorNuclideInfo nuclide={shieldingNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> : (
-                                                <>
-                                                    <SearchableSelect options={shieldingNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Select a gamma emitter..." />
-                                                    <QuickNuclideSelector onSelect={(symbol) => setNuclideSymbol(symbol)} />
-                                                </>
-                                            )}
-                                        </div>
+         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+           <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shielding Calculator</h2>
+               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+               </button>
+           </div>
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+               <button onClick={() => handleModeChange(MODE_FROM_SOURCE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_FROM_SOURCE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Dose</button>
+               <button onClick={() => handleModeChange(MODE_FIND_THICKNESS)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_FIND_THICKNESS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Thick</button>
+               <button onClick={() => handleModeChange(MODE_GENERIC)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === MODE_GENERIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Generic Photon</button>
+               <button onClick={() => handleModeChange(CALC_MODE_BETA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Beta Range</button>
+           </div>
+           <div className="space-y-4">
+               {calcMode === CALC_MODE_BETA ? (
+                   <div className="animate-fade-in space-y-4">
+                       <p className="text-sm text-center text-slate-500 dark:text-slate-400">Calculates the shield thickness required to stop all beta particles.</p>
+                       <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                           <button onClick={() => setInputMode(INPUT_MODE_DB)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>From Database</button>
+                           <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Manual Input</button>
+                       </div>
+                       {inputMode === INPUT_MODE_DB ? ( <div className="animate-fade-in">{nuclideSymbol ? ( <CalculatorNuclideInfo nuclide={betaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> ) : ( <SearchableSelect options={betaNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder={`Select a beta emitter...`} /> )}</div> ) : ( <div className="animate-fade-in p-2"><label className="block text-sm font-medium">Max Beta Energy (Eₘₐₓ)</label><div className="relative"><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} placeholder="e.g., 2.28 for Y-90" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-500 dark:text-slate-400">MeV</span></div></div> )}
+                       <div>
+                           <label className="block text-sm font-medium">Shield Material</label>
+                           <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                               {betaShieldMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                           </select>
+                       </div>
+                   </div>
+               ) : (
+                   <div className="animate-fade-in space-y-4">
+                       {calcMode !== MODE_GENERIC && (
+                           <div className="animate-fade-in space-y-4">
+                               <div>
+                                   <label className="block text-sm font-medium">Radionuclide</label>
+                                   <div className="mt-1">
+                                       {nuclideSymbol ? <CalculatorNuclideInfo nuclide={shieldingNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> : (
+                                           <>
+                                               <SearchableSelect options={shieldingNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Select a gamma emitter..." />
+                                               <QuickNuclideSelector onSelect={(symbol) => setNuclideSymbol(symbol)} />
+                                           </>
+                                       )}
+                                   </div>
          
-                                {nuclideSymbol && complexGammaNuclides.includes(nuclideSymbol) && (
-                                    <ContextualNote type="warning">
-                                        <strong>Beam Hardening:</strong> {nuclideSymbol} has a complex gamma spectrum. For thick shields, the actual dose rate may be higher than calculated as lower-energy gammas are filtered out.
-                                    </ContextualNote>
-                                )}
+                           {nuclideSymbol && complexGammaNuclides.includes(nuclideSymbol) && (
+                               <ContextualNote type="warning">
+                                   <strong>Beam Hardening:</strong> {nuclideSymbol} has a complex gamma spectrum. For thick shields, the actual dose rate may be higher than calculated as lower-energy gammas are filtered out.
+                               </ContextualNote>
+                           )}
          
-         
-         
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                        <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                    </div>
-                                </div>
-                            )}
-                            {calcMode === MODE_GENERIC && (
-                                <div className="animate-fade-in space-y-4">
-                                    <div><label className="block text-sm font-medium">Initial Dose Rate</label><div className="flex"><input type="number" value={knownDoseRate} onChange={e => setKnownDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={knownDoseRateUnit} onChange={e => setKnownDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                </div>
-                            )}
-                            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="block text-sm font-medium">Shield Material / HVL</label>
-                                    <label className="flex items-center gap-2 cursor-pointer"><span className="text-xs text-slate-500">Manual HVL</span><input type="checkbox" checked={useManualHVL} onChange={e => setUseManualHVL(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" /></label>
-                                </div>
-                                {useManualHVL ? ( <div className="relative"><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} placeholder="HVL in cm" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">cm</div></div> ) : ( <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">{calcMode === MODE_GENERIC ? materials.map(m => <option key={m} value={m}>{m}</option>) : availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}</select> )}
-                                {calcMode === MODE_FROM_SOURCE && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
-                                {calcMode === MODE_FIND_THICKNESS && ( <div><label className="block text-sm font-medium">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
-                                {calcMode === MODE_GENERIC && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
-                                <div className="flex items-center justify-end mt-2">
-                                    <Tooltip text="Accounts for the contribution of scattered photons (broad beam geometry), providing a more realistic, conservative result.">
-                                        <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <span className="font-semibold text-slate-600 dark:text-slate-300">Advanced:</span>
-                                            Use Buildup Factor
-                                            <input type="checkbox" checked={useBuildup} onChange={e => setUseBuildup(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                                        </label>
-                                    </Tooltip>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
-                    {result && (
-                        <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
-                            <div className="flex justify-end -mt-2 -mr-2">
-                                <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                                    <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                        <Icon path={ICONS.notepad} className="w-5 h-5" />
-                                    </button>
-                                </Tooltip>
-                            </div>
-                           { result.type === 'doseRate' && <>
-                                <div className="-mt-4">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p>
-                                    <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded.value} {result.unshielded.unit}</p>
-                                </div>
-                                <div className="font-bold text-2xl">↓</div>
-                                <div>
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p>
-                                    <div className="flex items-center justify-center">
-                                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded.value} {result.shielded.unit}</p>
-                                        <CopyButton textToCopy={result.shielded.value} />
-                                    </div>
-                                    {useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}
-                                </div>
-                            </>}
-                           { result.type === 'thickness' && <>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">To reduce from {result.unshielded.value} {result.unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p>
-                                <div className="flex items-center justify-center mt-2">
-                                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} {result.thickness.unit}</p>
-                                    <CopyButton textToCopy={result.thickness.value} />
-                                </div>
-                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {useManualHVL ? 'custom material' : shieldMaterial}</p>
-                            </>}
-                           { result.type === 'genericRateFinal' && <>
-                                <div className="-mt-4">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p>
-                                    <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initial.value} {result.initial.unit}</p>
-                                </div>
-                                <div className="font-bold text-2xl">↓</div>
-                                <div>
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p>
-                                    <div className="flex items-center justify-center">
-                                        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final.value} {result.final.unit}</p>
-                                        <CopyButton textToCopy={result.final.value} />
-                                    </div>
-                                </div>
-                            </>}
-                           { result.type === 'beta' && <>
-                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">Required Beta Shield Thickness</p>
-                                <div className="flex items-center justify-center my-1">
-                                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} <span className="text-2xl opacity-75">{result.thickness.unit}</span></p>
-                                    <CopyButton textToCopy={result.thickness.value} />
-                                </div>
-                                <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {shieldMaterial}</p>
-                                <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-xs text-amber-800 dark:text-amber-200 p-3 rounded-md bg-amber-100 dark:bg-amber-900/50">
-                                    <p className="font-semibold">⚠️ Bremsstrahlung Warning</p>
-                                    <p>Approximately {result.bremsstrahlungFraction}% of the beta energy will be converted to X-rays in this shield. Always use the lowest-Z material practical for primary beta shielding.</p>
-                                </div>
-                            </>}
-                        </div>
-                    )}
-                </div>
-            </div>
+                               </div>
+                               <div className="grid grid-cols-2 gap-4">
+                                   <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                   <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                               </div>
+                           </div>
+                       )}
+                       {calcMode === MODE_GENERIC && (
+                           <div className="animate-fade-in space-y-4">
+                               <div><label className="block text-sm font-medium">Initial Dose Rate</label><div className="flex"><input type="number" value={knownDoseRate} onChange={e => setKnownDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={knownDoseRateUnit} onChange={e => setKnownDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                           </div>
+                       )}
+                       <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                           <div className="flex items-center justify-between mb-2">
+                               <label className="block text-sm font-medium">Shield Material / HVL</label>
+                               <label className="flex items-center gap-2 cursor-pointer"><span className="text-xs text-slate-500">Manual HVL</span><input type="checkbox" checked={useManualHVL} onChange={e => setUseManualHVL(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" /></label>
+                           </div>
+                           {useManualHVL ? ( <div className="relative"><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} placeholder="HVL in cm" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">cm</div></div> ) : ( <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">{calcMode === MODE_GENERIC ? materials.map(m => <option key={m} value={m}>{m}</option>) : availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}</select> )}
+                           {calcMode === MODE_FROM_SOURCE && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
+                           {calcMode === MODE_FIND_THICKNESS && ( <div><label className="block text-sm font-medium">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
+                           {calcMode === MODE_GENERIC && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
+                           <div className="flex items-center justify-end mt-2">
+                               <Tooltip text="Accounts for the contribution of scattered photons (broad beam geometry), providing a more realistic, conservative result.">
+                                   <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                       <span className="font-semibold text-slate-600 dark:text-slate-300">Advanced:</span>
+                                       Use Buildup Factor
+                                       <input type="checkbox" checked={useBuildup} onChange={e => setUseBuildup(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                   </label>
+                               </Tooltip>
+                           </div>
+                       </div>
+                   </div>
+               )}
+               {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+               {result && (
+                   <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
+                       <div className="flex justify-end -mt-2 -mr-2">
+                           <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                               <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                   <Icon path={ICONS.notepad} className="w-5 h-5" />
+                               </button>
+                           </Tooltip>
+                       </div>
+                      { result.type === 'doseRate' && <>
+                           <div className="-mt-4">
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p>
+                               <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.unshielded.value} {result.unshielded.unit}</p>
+                           </div>
+                           <div className="font-bold text-2xl">↓</div>
+                           <div>
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p>
+                               <div className="flex items-center justify-center">
+                                   <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.shielded.value} {result.shielded.unit}</p>
+                                   <CopyButton textToCopy={result.shielded.value} />
+                               </div>
+                               {useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}
+                           </div>
+                       </>}
+                      { result.type === 'thickness' && <>
+                           <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">To reduce from {result.unshielded.value} {result.unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p>
+                           <div className="flex items-center justify-center mt-2">
+                               <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} {result.thickness.unit}</p>
+                               <CopyButton textToCopy={result.thickness.value} />
+                           </div>
+                           <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {useManualHVL ? 'custom material' : shieldMaterial}</p>
+                       </>}
+                      { result.type === 'genericRateFinal' && <>
+                           <div className="-mt-4">
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p>
+                               <p className="text-xl font-bold text-slate-600 dark:text-slate-300">{result.initial.value} {result.initial.unit}</p>
+                           </div>
+                           <div className="font-bold text-2xl">↓</div>
+                           <div>
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p>
+                               <div className="flex items-center justify-center">
+                                   <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.final.value} {result.final.unit}</p>
+                                   <CopyButton textToCopy={result.final.value} />
+                               </div>
+                           </div>
+                       </>}
+                      { result.type === 'beta' && <>
+                           <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">Required Beta Shield Thickness</p>
+                           <div className="flex items-center justify-center my-1">
+                               <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.thickness.value} <span className="text-2xl opacity-75">{result.thickness.unit}</span></p>
+                               <CopyButton textToCopy={result.thickness.value} />
+                           </div>
+                           <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {shieldMaterial}</p>
+                           <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-xs text-amber-800 dark:text-amber-200 p-3 rounded-md bg-amber-100 dark:bg-amber-900/50">
+                               <p className="font-semibold">⚠️ Bremsstrahlung Warning</p>
+                               <p>Approximately {result.bremsstrahlungFraction}% of the beta energy will be converted to X-rays in this shield. Always use the lowest-Z material practical for primary beta shielding.</p>
+                           </div>
+                       </>}
+                   </div>
+               )}
+           </div>
+         </div>
          </div>
          );
          };
@@ -15884,66 +15885,66 @@
          
          React.useEffect(() => {
          if (preselectedNuclide && gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
-            setNuclideSymbol(preselectedNuclide);
-            setInputMode(INPUT_MODE_SOURCE);
+         setNuclideSymbol(preselectedNuclide);
+         setInputMode(INPUT_MODE_SOURCE);
          }
          }, [preselectedNuclide, gammaNuclides]);
          
          const handleCalculate = () => {
          let doseRate_mrem_hr = 0;
          try {
-            if (inputMode === INPUT_MODE_SOURCE) {
-                const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
-                if (!nuclide) { throw new Error('Please select a radionuclide.'); }
-                const activityValue = parseFloat(activity);
-                const distanceValue = parseFloat(distance);
-                if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) { throw new Error('Please enter valid, positive numbers for activity and distance.'); }
-                const gammaConstant = parseFloat(nuclide.gammaConstant);
-                const activityInCi = activityValue * activityFactors[activityUnit];
-                const distanceInM = distanceValue * distanceFactors[distanceUnit];
-                const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-                doseRate_mrem_hr = doseRateR_hr * 1000;
-            } else { // manualRate
-                const manualRate = parseFloat(manualDoseRate);
-                if (isNaN(manualRate) || manualRate < 0) { throw new Error('Please enter a valid, non-negative dose rate.'); }
-                doseRate_mrem_hr = manualRate * doseRateFactors[manualDoseRateUnit];
-            }
-            const limit = parseFloat(doseLimit);
-            const plannedTimeValue = parseFloat(plannedTime);
-            if (isNaN(limit) || isNaN(plannedTimeValue) || limit <= 0 || plannedTimeValue < 0) { throw new Error('Please enter valid, positive numbers for dose limit and planned time.'); }
-            if (doseRate_mrem_hr <= 0) { throw new Error('Dose rate must be greater than zero to calculate stay time.'); }
-            const stayTimeHours = limit / doseRate_mrem_hr;
-            const totalMinutes = stayTimeHours * 60;
-            const minutes = Math.floor(totalMinutes);
-            const seconds = Math.round((totalMinutes - minutes) * 60);
-            const plannedTimeInHours = plannedTimeValue * timeFactors[plannedTimeUnit];
-            const totalDoseReceived = doseRate_mrem_hr * plannedTimeInHours;
-            const isSafe = totalDoseReceived <= limit;
-            setResult({ 
-                 doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), 
-                 stayTime: `${minutes} min ${seconds} sec`, 
-                 totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'), 
-                 isSafe: isSafe,
-                 rawDoseRate_mrem_hr: doseRate_mrem_hr // Store raw value for history
-            });
+         if (inputMode === INPUT_MODE_SOURCE) {
+           const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
+           if (!nuclide) { throw new Error('Please select a radionuclide.'); }
+           const activityValue = parseFloat(activity);
+           const distanceValue = parseFloat(distance);
+           if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) { throw new Error('Please enter valid, positive numbers for activity and distance.'); }
+           const gammaConstant = parseFloat(nuclide.gammaConstant);
+           const activityInCi = activityValue * activityFactors[activityUnit];
+           const distanceInM = distanceValue * distanceFactors[distanceUnit];
+           const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+           doseRate_mrem_hr = doseRateR_hr * 1000;
+         } else { // manualRate
+           const manualRate = parseFloat(manualDoseRate);
+           if (isNaN(manualRate) || manualRate < 0) { throw new Error('Please enter a valid, non-negative dose rate.'); }
+           doseRate_mrem_hr = manualRate * doseRateFactors[manualDoseRateUnit];
+         }
+         const limit = parseFloat(doseLimit);
+         const plannedTimeValue = parseFloat(plannedTime);
+         if (isNaN(limit) || isNaN(plannedTimeValue) || limit <= 0 || plannedTimeValue < 0) { throw new Error('Please enter valid, positive numbers for dose limit and planned time.'); }
+         if (doseRate_mrem_hr <= 0) { throw new Error('Dose rate must be greater than zero to calculate stay time.'); }
+         const stayTimeHours = limit / doseRate_mrem_hr;
+         const totalMinutes = stayTimeHours * 60;
+         const minutes = Math.floor(totalMinutes);
+         const seconds = Math.round((totalMinutes - minutes) * 60);
+         const plannedTimeInHours = plannedTimeValue * timeFactors[plannedTimeUnit];
+         const totalDoseReceived = doseRate_mrem_hr * plannedTimeInHours;
+         const isSafe = totalDoseReceived <= limit;
+         setResult({ 
+            doseRate: formatSensibleUnit(doseRate_mrem_hr, 'doseRate'), 
+            stayTime: `${minutes} min ${seconds} sec`, 
+            totalDoseReceived: formatSensibleUnit(totalDoseReceived, 'dose'), 
+            isSafe: isSafe,
+            rawDoseRate_mrem_hr: doseRate_mrem_hr
+         });
          } catch(e) {
-            setError(e.message);
-            setResult(null);
+         setError(e.message);
+         setResult(null);
          }
          };
          
          const handleSaveToHistory = () => {
-             if (result) {
-                 addHistory({ 
-                     id: Date.now(), 
-                     type: 'Stay Time', 
-                     icon: ICONS.stopwatch, 
-                     inputs: `${result.rawDoseRate_mrem_hr.toPrecision(3)} mrem/hr, ${doseLimit} mrem limit`, 
-                     result: result.stayTime, 
-                     view: VIEWS.STAY_TIME 
-                 });
-                 addToast("Calculation saved to history!");
-             }
+         if (result) {
+            addHistory({ 
+                id: Date.now(), 
+                type: 'Stay Time', 
+                icon: ICONS.stopwatch, 
+                inputs: `${result.rawDoseRate_mrem_hr.toPrecision(3)} mrem/hr, ${doseLimit} mrem limit`, 
+                result: result.stayTime, 
+                view: VIEWS.STAY_TIME 
+            });
+            addToast("Calculation saved to history!");
+         }
          };
          
          React.useEffect(() => {
@@ -15969,101 +15970,105 @@
          setError('');
          setResult(null);
          
-         // 2. Remove all saved data for this component from localStorage
-         Object.keys(localStorage).forEach(key => {
-         if (key.startsWith('stayTime_')) {
-            localStorage.removeItem(key);
-         }
-         });
+         // 2. Define all localStorage keys for this component
+         const keysToClear = [
+            'stayTime_inputMode', 'stayTime_nuclideSymbol', 'stayTime_activity',
+            'stayTime_activityUnit', 'stayTime_distance', 'stayTime_distanceUnit',
+            'stayTime_manualDoseRate', 'stayTime_manualDoseRateUnit', 'stayTime_doseLimit',
+            'stayTime_plannedTime', 'stayTime_plannedTimeUnit'
+         ];
+         
+         // 3. Remove each key from localStorage
+         keysToClear.forEach(key => localStorage.removeItem(key));
          };
          
          return (
          <div className="p-4 animate-fade-in">
-            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time & Dose Calculator</h2>
-                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                    </button>
-                </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => setInputMode(INPUT_MODE_SOURCE)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_SOURCE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Calculate from Source</button>
-                    <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Enter Dose Rate</button>
-                </div>
-                <div className="space-y-4">
-                    {inputMode === INPUT_MODE_SOURCE ? (
-                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
-                            <label className="block text-sm font-semibold">Source Information</label>
-                            {nuclideSymbol && gammaNuclides.find(n => n.symbol === nuclideSymbol) ? ( 
-                                <CalculatorNuclideInfo nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> 
-                            ) : ( 
-                                <>
-                                    <SearchableSelect options={gammaNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Search for a gamma emitter..." />
-                                    <QuickNuclideSelector onSelect={(symbol) => setNuclideSymbol(symbol)} />
-                                </>
-                            )}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
-                            <label className="block text-sm font-semibold">Known Dose Rate</label>
-                            <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-                        </div>
-                    )}
-                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                        <div className="flex justify-between items-center">
-                            <label className="block text-sm font-semibold">Planning</label>
-                        </div>
-                        <div>
-                            <Tooltip text="Common limits: 2 mrem (unrestricted area), 5 mrem (minor), 100 mrem (public annual limit), 5000 mrem (occupational annual limit). Always follow site-specific procedures.">
-                                <label className="block text-xs font-medium">Dose Limit (mrem)</label>
-                            </Tooltip>
-                            <input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                        </div>
-                    </div>
-                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
-                    {result && (
-                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-4">
-                            <div className="flex justify-between items-center">
-                                <div className="text-center w-full">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Dose Rate in Area: <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate.value} {result.doseRate.unit}</span></p>
-                                </div>
-                                <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                                    <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors -mr-2 -mt-2">
-                                        <Icon path={ICONS.notepad} className="w-5 h-5" />
-                                    </button>
-                                </Tooltip>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-center">
-                                <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
+         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+           <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time & Dose Calculator</h2>
+               <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                   <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
+               </button>
+           </div>
+           <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+               <button onClick={() => setInputMode(INPUT_MODE_SOURCE)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_SOURCE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Calculate from Source</button>
+               <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Enter Dose Rate</button>
+           </div>
+           <div className="space-y-4">
+               {inputMode === INPUT_MODE_SOURCE ? (
+                   <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
+                       <label className="block text-sm font-semibold">Source Information</label>
+                       {nuclideSymbol && gammaNuclides.find(n => n.symbol === nuclideSymbol) ? ( 
+                           <CalculatorNuclideInfo nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> 
+                       ) : ( 
+                           <>
+                               <SearchableSelect options={gammaNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Search for a gamma emitter..." />
+                               <QuickNuclideSelector onSelect={(symbol) => setNuclideSymbol(symbol)} />
+                           </>
+                       )}
+                       <div className="grid grid-cols-2 gap-4">
+                           <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                           <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                       </div>
+                   </div>
+               ) : (
+                   <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
+                       <label className="block text-sm font-semibold">Known Dose Rate</label>
+                       <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                   </div>
+               )}
+               <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                   <div className="flex justify-between items-center">
+                       <label className="block text-sm font-semibold">Planning</label>
+                   </div>
+                   <div>
+                       <Tooltip text="Common limits: 2 mrem (unrestricted area), 5 mrem (minor), 100 mrem (public annual limit), 5000 mrem (occupational annual limit). Always follow site-specific procedures.">
+                           <label className="block text-xs font-medium">Dose Limit (mrem)</label>
+                       </Tooltip>
+                       <input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                   </div>
+               </div>
+               {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+               {result && (
+                   <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-4">
+                       <div className="flex justify-between items-center">
+                           <div className="text-center w-full">
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Dose Rate in Area: <span className="font-bold text-slate-700 dark:text-slate-200">{result.doseRate.value} {result.doseRate.unit}</span></p>
+                           </div>
+                           <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                               <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors -mr-2 -mt-2">
+                                   <Icon path={ICONS.notepad} className="w-5 h-5" />
+                               </button>
+                           </Tooltip>
+                       </div>
+                       <div className="grid grid-cols-2 gap-4 text-center">
+                           <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Max Stay Time</p>
+                           
+                               <div className="flex items-center justify-center">
+                                   <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
+                                   <CopyButton textToCopy={result.stayTime} />
+                               </div>
+                           
+                               <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
+                           </div>
+                           <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                               <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
+                         
+                               <div className="flex items-center justify-center">
+                                   <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived.value} {result.totalDoseReceived.unit}</p>
+                                   <CopyButton textToCopy={result.totalDoseReceived.value} />
+                               </div>
                                 
-                                    <div className="flex items-center justify-center">
-                                        <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{result.stayTime}</p>
-                                        <CopyButton textToCopy={result.stayTime} />
-                                    </div>
-                                
-                                    <p className="text-xs text-slate-400">(to reach {doseLimit} mrem)</p>
-                                </div>
-                                <div className={`p-2 rounded-lg ${result.isSafe ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Total Dose Received</p>
-                              
-                                    <div className="flex items-center justify-center">
-                                        <p className={`text-xl font-bold ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.totalDoseReceived.value} {result.totalDoseReceived.unit}</p>
-                                        <CopyButton textToCopy={result.totalDoseReceived.value} />
-                                    </div>
-                                     
-                                    <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
-                                </div>
-                            </div>
-                            {!result.isSafe && <p className="text-center font-bold text-red-500 text-sm">WARNING: Exceeds dose limit!</p>}
-                        </div>
-                    )}
-                </div>
-            </div>
+                               <p className="text-xs text-slate-400">(in {plannedTime} {plannedTimeUnit})</p>
+                           </div>
+                       </div>
+                       {!result.isSafe && <p className="text-center font-bold text-red-500 text-sm">WARNING: Exceeds dose limit!</p>}
+                   </div>
+               )}
+           </div>
+         </div>
          </div>
          );
          };
@@ -18328,85 +18333,97 @@
               // This component provides a user interface for performing two statistical tests from the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM): the Wilcoxon Rank Sum (WRS) test for survey units and the Elevated Measurement Comparison (EMC) Sign Test for localized areas.
               
               const MARSSIM_Statistical_Tests = () => {
-              const TEST_WRS = 'wrs';
-              const TEST_EMC = 'emc';
-              const [activeTest, setActiveTest] = React.useState(TEST_WRS);
+         const TEST_WRS = 'wrs';
+         const TEST_EMC = 'emc';
+         const [activeTest, setActiveTest] = React.useState(TEST_WRS);
+         
+         const [wrs_dcgl, setWrs_dcgl] = React.useState(() => localStorage.getItem('wrs_dcgl') || '5');
+         const [wrs_referenceData, setWrs_referenceData] = React.useState(() => localStorage.getItem('wrs_referenceData') || '1.6\n1.2\n1.4\n1.2\n0.5\n1.5\n0.8\n1.1\n1.9\n1.7\n1.8\n1.8\n1.7\n1.9\n2.1\n1.8\n2.1\n2.4\n2.2\n2.9\n2\n1.7\n2.3\n1.1\n2.3\n0.6\n1.1\n1.1\n1.4\n2.1');
+         const [wrs_surveyData, setWrs_surveyData] = React.useState(() => localStorage.getItem('wrs_surveyData') || '2.928\n3.458\n3.31\n3.198\n2.218\n6.827\n2.269\n4.96\n2.766\n3.29\n10.833\n1.606\n1.856\n3.135\n1.808\n1.873\n3.373\n1.887\n1.457\n5.5\n1.973\n1.915\n2.205\n1.814\n3.7\n2.327\n1.919\n2.677\n3.253\n1.776\n5.201\n4.737\n2.585');
+         const [wrs_alpha, setWrs_alpha] = React.useState(() => localStorage.getItem('wrs_alpha') || '0.05');
+         const [wrs_result, setWrs_result] = React.useState(null);
+         const [wrs_error, setWrs_error] = React.useState('');
+         
+         const [emc_dcglw, setEmc_dcglw] = React.useState(() => localStorage.getItem('emc_dcglw') || '100');
+         const [emc_areaFactor, setEmc_areaFactor] = React.useState(() => localStorage.getItem('emc_areaFactor') || '3');
+         const [emc_emcData, setEmc_emcData] = React.useState(() => localStorage.getItem('emc_emcData') || '120, 150, 95, 250, 180, 210, 190, 280');
+         const [emc_alpha, setEmc_alpha] = React.useState(() => localStorage.getItem('emc_alpha') || '0.05');
+         const [emc_result, setEmc_result] = React.useState(null);
+         const [emc_error, setEmc_error] = React.useState('');
+         
+         const handleWrsClear = () => {
+         // 1. Reset state
+         setWrs_dcgl('5');
+         setWrs_referenceData('1.6\n1.2\n1.4\n1.2\n0.5\n1.5\n0.8\n1.1\n1.9\n1.7\n1.8\n1.8\n1.7\n1.9\n2.1\n1.8\n2.1\n2.4\n2.2\n2.9\n2\n1.7\n2.3\n1.1\n2.3\n0.6\n1.1\n1.1\n1.4\n2.1');
+         setWrs_surveyData('2.928\n3.458\n3.31\n3.198\n2.218\n6.827\n2.269\n4.96\n2.766\n3.29\n10.833\n1.606\n1.856\n3.135\n1.808\n1.873\n3.373\n1.887\n1.457\n5.5\n1.973\n1.915\n2.205\n1.814\n3.7\n2.327\n1.919\n2.677\n3.253\n1.776\n5.201\n4.737\n2.585');
+         setWrs_alpha('0.05');
+         setWrs_result(null);
+         setWrs_error('');
+         // 2. Clear localStorage
+         localStorage.removeItem('wrs_dcgl');
+         localStorage.removeItem('wrs_referenceData');
+         localStorage.removeItem('wrs_surveyData');
+         localStorage.removeItem('wrs_alpha');
+         };
+         
+         const handleEmcClear = () => {
+         // 1. Reset state
+         setEmc_dcglw('100');
+         setEmc_areaFactor('3');
+         setEmc_emcData('120, 150, 95, 250, 180, 210, 190, 280');
+         setEmc_alpha('0.05');
+         setEmc_result(null);
+         setEmc_error('');
+         // 2. Clear localStorage
+         localStorage.removeItem('emc_dcglw');
+         localStorage.removeItem('emc_areaFactor');
+         localStorage.removeItem('emc_emcData');
+         localStorage.removeItem('emc_alpha');
+         };
+         
+         const handleClearActiveCalculator = () => {
+         if (activeTest === TEST_WRS) {
+         handleWrsClear();
+         } else {
+         handleEmcClear();
+         }
+         };
+         
+         return (
+         <div className="p-4 animate-fade-in">
+         <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+           <div className="flex justify-between items-center mb-4">
+               <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Statistical Tests</h2>
+               <ClearButton onClick={handleClearActiveCalculator} />
+           </div>
+           <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+               <button onClick={() => setActiveTest(TEST_WRS)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === TEST_WRS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>WRS Test</button>
+               <button onClick={() => setActiveTest(TEST_EMC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === TEST_EMC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>EMC Sign Test</button>
+           </div>
+           {activeTest === TEST_WRS ? 
+               <WRS_Calculator 
+                   dcgl={wrs_dcgl} setDcgl={setWrs_dcgl}
+                   referenceData={wrs_referenceData} setReferenceData={setWrs_referenceData}
+                   surveyData={wrs_surveyData} setSurveyData={setWrs_surveyData}
+                   alpha={wrs_alpha} setAlpha={setWrs_alpha}
+                   result={wrs_result} setResult={setWrs_result}
+                   error={wrs_error} setError={setWrs_error}
+               /> : 
+               <EMC_Calculator 
+                   dcglw={emc_dcglw} setDcglw={setEmc_dcglw}
+                   areaFactor={emc_areaFactor} setAreaFactor={setEmc_areaFactor}
+                   emcData={emc_emcData} setEmcData={setEmc_emcData}
+                   alpha={emc_alpha} setAlpha={setEmc_alpha}
+                   result={emc_result} setResult={setEmc_result}
+                   error={emc_error} setError={setEmc_error}
+               />
+           }
+         </div>
+         </div>
+         );
+         };
               
-              const [wrs_dcgl, setWrs_dcgl] = React.useState(() => localStorage.getItem('wrs_dcgl') || '5');
-              const [wrs_referenceData, setWrs_referenceData] = React.useState(() => localStorage.getItem('wrs_referenceData') || '1.6\n1.2\n1.4\n1.2\n0.5\n1.5\n0.8\n1.1\n1.9\n1.7\n1.8\n1.8\n1.7\n1.9\n2.1\n1.8\n2.1\n2.4\n2.2\n2.9\n2\n1.7\n2.3\n1.1\n2.3\n0.6\n1.1\n1.1\n1.4\n2.1');
-              const [wrs_surveyData, setWrs_surveyData] = React.useState(() => localStorage.getItem('wrs_surveyData') || '2.928\n3.458\n3.31\n3.198\n2.218\n6.827\n2.269\n4.96\n2.766\n3.29\n10.833\n1.606\n1.856\n3.135\n1.808\n1.873\n3.373\n1.887\n1.457\n5.5\n1.973\n1.915\n2.205\n1.814\n3.7\n2.327\n1.919\n2.677\n3.253\n1.776\n5.201\n4.737\n2.585');
-              const [wrs_alpha, setWrs_alpha] = React.useState(() => localStorage.getItem('wrs_alpha') || '0.05');
-              const [wrs_result, setWrs_result] = React.useState(null);
-              const [wrs_error, setWrs_error] = React.useState('');
-              
-              const [emc_dcglw, setEmc_dcglw] = React.useState(() => localStorage.getItem('emc_dcglw') || '100');
-              const [emc_areaFactor, setEmc_areaFactor] = React.useState(() => localStorage.getItem('emc_areaFactor') || '3');
-              const [emc_emcData, setEmc_emcData] = React.useState(() => localStorage.getItem('emc_emcData') || '120, 150, 95, 250, 180, 210, 190, 280');
-              const [emc_alpha, setEmc_alpha] = React.useState(() => localStorage.getItem('emc_alpha') || '0.05');
-              const [emc_result, setEmc_result] = React.useState(null);
-              const [emc_error, setEmc_error] = React.useState('');
-              
-              const handleWrsClear = () => {
-              setWrs_dcgl('5');
-              setWrs_referenceData('1.6\n1.2\n1.4\n1.2\n0.5\n1.5\n0.8\n1.1\n1.9\n1.7\n1.8\n1.8\n1.7\n1.9\n2.1\n1.8\n2.1\n2.4\n2.2\n2.9\n2\n1.7\n2.3\n1.1\n2.3\n0.6\n1.1\n1.1\n1.4\n2.1');
-              setWrs_surveyData('2.928\n3.458\n3.31\n3.198\n2.218\n6.827\n2.269\n4.96\n2.766\n3.29\n10.833\n1.606\n1.856\n3.135\n1.808\n1.873\n3.373\n1.887\n1.457\n5.5\n1.973\n1.915\n2.205\n1.814\n3.7\n2.327\n1.919\n2.677\n3.253\n1.776\n5.201\n4.737\n2.585');
-              setWrs_alpha('0.05');
-              setWrs_result(null);
-              setWrs_error('');
-              };
-              
-              const handleEmcClear = () => {
-              setEmc_dcglw('100');
-              setEmc_areaFactor('3');
-              setEmc_emcData('120, 150, 95, 250, 180, 210, 190, 280');
-              setEmc_alpha('0.05');
-              setEmc_result(null);
-              setEmc_error('');
-              };
-              
-              const handleClearActiveCalculator = () => {
-              if (activeTest === TEST_WRS) {
-                 handleWrsClear();
-              } else {
-                 handleEmcClear();
-              }
-              };
-              
-              return (
-              <div className="p-4 animate-fade-in">
-                 <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                     <div className="flex justify-between items-center mb-4">
-                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Statistical Tests</h2>
-                         <ClearButton onClick={handleClearActiveCalculator} />
-                     </div>
-                     <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                         <button onClick={() => setActiveTest(TEST_WRS)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === TEST_WRS ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>WRS Test</button>
-                         <button onClick={() => setActiveTest(TEST_EMC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTest === TEST_EMC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>EMC Sign Test</button>
-                     </div>
-                     {activeTest === TEST_WRS ? 
-                         <WRS_Calculator 
-                             dcgl={wrs_dcgl} setDcgl={setWrs_dcgl}
-                             referenceData={wrs_referenceData} setReferenceData={setWrs_referenceData}
-                             surveyData={wrs_surveyData} setSurveyData={setWrs_surveyData}
-                             alpha={wrs_alpha} setAlpha={setWrs_alpha}
-                             result={wrs_result} setResult={setWrs_result}
-                             error={wrs_error} setError={setWrs_error}
-                         /> : 
-                         <EMC_Calculator 
-                             dcglw={emc_dcglw} setDcglw={setEmc_dcglw}
-                             areaFactor={emc_areaFactor} setAreaFactor={setEmc_areaFactor}
-                             emcData={emc_emcData} setEmcData={setEmc_emcData}
-                             alpha={emc_alpha} setAlpha={setEmc_alpha}
-                             result={emc_result} setResult={setEmc_result}
-                             error={emc_error} setError={setEmc_error}
-                         />
-                     }
-                 </div>
-              </div>
-              );
-              };
-              
-              const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, surveyData, setSurveyData, alpha, setAlpha, result, setResult, error, setError }) => {
+         const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, surveyData, setSurveyData, alpha, setAlpha, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const { addToast } = useToast();
          const criticalValueTable = { '0.05': { '5': { '5': 28, '6': 32, '7': 36, '8': 41, '9': 45, '10': 50 }, '6': { '5': 33, '6': 38, '7': 43, '8': 48, '9': 53, '10': 59 }, '7': { '5': 37, '6': 43, '7': 49, '8': 54, '9': 60, '10': 66 }, '8': { '5': 42, '6': 49, '7': 55, '8': 61, '9': 67, '10': 74 }, '9': { '5': 46, '6': 54, '7': 61, '8': 68, '9': 75, '10': 82 }, '10': { '5': 51, '6': 59, '7': 67, '8': 75, '9': 83, '10': 91 }, '11': { '11': 111, '12': 119, '13': 127, '14': 135, '15': 143 }, '12': { '12': 131, '13': 139, '14': 148, '15': 156, '16': 165 }, '13': { '13': 151, '14': 160, '15': 169, '16': 178, '17': 187 }, '14': { '14': 171, '15': 181, '16': 190, '17': 200, '18': 210 }, '15': { '15': 192, '16': 202, '17': 212, '18': 223, '19': 233 } } };
@@ -18430,89 +18447,89 @@
          const dcglExceeded = suData.some(val => val > dcgl_val);
          let combined = [...refData.map(v => ({ value: v + dcgl_val, group: 'ref' })), ...suData.map(v => ({ value: v, group: 'su' }))].sort((a, b) => a.value - b.value);
          for (let i = 0; i < combined.length; i++) {
-            let ties = [i]; const epsilon = 1e-9;
-            while (i + 1 < combined.length && Math.abs(combined[i].value - combined[i + 1].value) < epsilon) { i++; ties.push(i); }
-            if (ties.length > 1) { const avgRank = (ties[0] + 1 + ties[ties.length - 1] + 1) / 2; ties.forEach(index => { combined[index].rank = avgRank; }); } else { combined[i].rank = i + 1; }
+         let ties = [i]; const epsilon = 1e-9;
+         while (i + 1 < combined.length && Math.abs(combined[i].value - combined[i + 1].value) < epsilon) { i++; ties.push(i); }
+         if (ties.length > 1) { const avgRank = (ties[0] + 1 + ties[ties.length - 1] + 1) / 2; ties.forEach(index => { combined[index].rank = avgRank; }); } else { combined[i].rank = i + 1; }
          }
          const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
          const n = refData.length; const m = suData.length; let C_w;
          const tableVal = criticalValueTable[alpha]?.[n]?.[m] || criticalValueTable[alpha]?.[m]?.[n];
          if (tableVal) { C_w = tableVal; } 
          else {
-            const zAlpha = zScores[alpha]; const N = n + m; const mean_W = (n * (N + 1)) / 2; const tieGroups = {};
-            combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
-            const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
-            const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
-            const stdDev_W_corrected = Math.sqrt(variance_W); C_w = Math.round(mean_W + (zAlpha * stdDev_W_corrected) + 0.5);
+         const zAlpha = zScores[alpha]; const N = n + m; const mean_W = (n * (N + 1)) / 2; const tieGroups = {};
+         combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
+         const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
+         const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
+         const stdDev_W_corrected = Math.sqrt(variance_W); C_w = Math.round(mean_W + (zAlpha * stdDev_W_corrected) + 0.5);
          }
          const wrsTestPassed = W_rs >= C_w; let finalConclusion = 'FAIL'; let finalReason = `The rank sum (${W_rs}) is less than the critical value (${C_w}).`;
          if (wrsTestPassed) {
-            if (dcglExceeded) { finalConclusion = 'PASS_EMC'; finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`; } 
-            else { finalConclusion = 'PASS'; finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`; }
+         if (dcglExceeded) { finalConclusion = 'PASS_EMC'; finalReason = `The WRS test passes, but an Elevated Measurement Comparison (EMC) is required because at least one measurement exceeds the DCGL.`; } 
+         else { finalConclusion = 'PASS'; finalReason = `The rank sum (${W_rs}) is greater than or equal to the critical value (${C_w}), and no measurements exceed the DCGL.`; }
          }
          const newResult = { conclusion: finalConclusion, reason: finalReason, n, m, W_rs, C_w, rankedData: combined };
          setResult(newResult);
          };
          
          const handleSaveToHistory = () => {
-             if (result) {
-                 addHistory({
-                     id: Date.now(),
-                     type: 'WRS Test',
-                     icon: ICONS.labStats,
-                     inputs: `n=${result.n}, m=${result.m}`,
-                     result: resultStyles[result.conclusion].display,
-                     view: VIEWS.MARSSIM_TESTS
-                 });
-                 addToast("Calculation saved to history!");
-             }
+         if (result) {
+            addHistory({
+                id: Date.now(),
+                type: 'WRS Test',
+                icon: ICONS.labStats,
+                inputs: `n=${result.n}, m=${result.m}`,
+                result: resultStyles[result.conclusion].display,
+                view: VIEWS.MARSSIM_TESTS
+            });
+            addToast("Calculation saved to history!");
+         }
          };
          
          React.useEffect(() => {
-             handleCalculate();
+         handleCalculate();
          }, [dcgl, referenceData, surveyData, alpha]);
          
          return (
          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <div className="flex justify-between items-center"><label className="block text-sm font-medium">Reference Area Data</label><button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
-                    <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                    <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">Samples (n): {parseData(referenceData).length}</p>
-                </div>
-                <div>
-                    <div className="flex justify-between items-center"><label className="block text-sm font-medium">Survey Unit Data</label><button onClick={() => setSurveyData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
-                    <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                    <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">Samples (m): {parseData(surveyData).length}</p>
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">DCGL</label><input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Significance Level (&alpha;)</label><select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.05">0.05</option><option value="0.025">0.025</option><option value="0.01">0.01</option><option value="0.10">0.10</option></select></div>
-            </div>
-            <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
-                    <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>{resultStyles[result.conclusion].display}</p>
-                    <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>{result.reason}</p>
-                    <details className="mt-4 text-left text-xs"><summary className="cursor-pointer font-semibold">Show Ranked Data Table</summary><div className="mt-2 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 p-2 rounded"><table className="w-full"><thead><tr className="font-bold"><td className="p-1">Value</td><td className="p-1">Group</td><td className="p-1">Rank</td></tr></thead><tbody>{result.rankedData.map((item, i) => (<tr key={i} className={item.group === 'ref' ? 'text-sky-600 dark:text-sky-400' : ''}><td className="p-1 font-mono">{item.value.toFixed(3)}</td><td className="p-1">{item.group.toUpperCase()}</td><td className="p-1">{item.rank}</td></tr>))}</tbody></table></div></details>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                        <p>Reference Samples (n): <span className="font-bold">{result.n}</span></p><p>Survey Samples (m): <span className="font-bold">{result.m}</span></p>
-                        <p>Rank Sum (W&darr;rs): <span className="font-bold">{result.W_rs}</span></p><p>Critical Value (C&darr;w): <span className="font-bold">{result.C_w}</span></p>
-                    </div>
-                </div>
-            )}
-            {!result && !error && (
-                <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
-                    <p className="text-slate-500 dark:text-slate-400">Paste your reference and survey data above to perform the WRS test.</p>
-                </div>
-            )}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div>
+               <div className="flex justify-between items-center"><label className="block text-sm font-medium">Reference Area Data</label><button onClick={() => setReferenceData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
+               <textarea value={referenceData} onChange={e => setReferenceData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+               <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">Samples (n): {parseData(referenceData).length}</p>
+           </div>
+           <div>
+               <div className="flex justify-between items-center"><label className="block text-sm font-medium">Survey Unit Data</label><button onClick={() => setSurveyData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
+               <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+               <p className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 pr-1">Samples (m): {parseData(surveyData).length}</p>
+           </div>
+         </div>
+         <div className="grid grid-cols-2 gap-4">
+           <div><label className="block text-sm font-medium">DCGL</label><input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+           <div><label className="block text-sm font-medium">Significance Level (&alpha;)</label><select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.05">0.05</option><option value="0.025">0.025</option><option value="0.01">0.01</option><option value="0.10">0.10</option></select></div>
+         </div>
+         <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
+         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+         {result && (
+           <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
+               <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>{resultStyles[result.conclusion].display}</p>
+               <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>{result.reason}</p>
+               <details className="mt-4 text-left text-xs"><summary className="cursor-pointer font-semibold">Show Ranked Data Table</summary><div className="mt-2 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 p-2 rounded"><table className="w-full"><thead><tr className="font-bold"><td className="p-1">Value</td><td className="p-1">Group</td><td className="p-1">Rank</td></tr></thead><tbody>{result.rankedData.map((item, i) => (<tr key={i} className={item.group === 'ref' ? 'text-sky-600 dark:text-sky-400' : ''}><td className="p-1 font-mono">{item.value.toFixed(3)}</td><td className="p-1">{item.group.toUpperCase()}</td><td className="p-1">{item.rank}</td></tr>))}</tbody></table></div></details>
+               <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                   <p>Reference Samples (n): <span className="font-bold">{result.n}</span></p><p>Survey Samples (m): <span className="font-bold">{result.m}</span></p>
+                   <p>Rank Sum (W&darr;rs): <span className="font-bold">{result.W_rs}</span></p><p>Critical Value (C&darr;w): <span className="font-bold">{result.C_w}</span></p>
+               </div>
+           </div>
+         )}
+         {!result && !error && (
+           <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
+               <p className="text-slate-500 dark:text-slate-400">Paste your reference and survey data above to perform the WRS test.</p>
+           </div>
+         )}
          </div>
          );
          };
          
-              const EMC_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor, emcData, setEmcData, alpha, setAlpha, result, setResult, error, setError }) => {
+         const EMC_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor, emcData, setEmcData, alpha, setAlpha, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const { addToast } = useToast();
          const signTestCriticalValues = { '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 9, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 }, '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 }, '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 }, '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 } };
@@ -18540,10 +18557,10 @@
          const tableValue = signTestCriticalValues[alpha]?.[n_adjusted];
          if (tableValue !== undefined) { Cs = tableValue; note = `Used MARSSIM Table I.3 for N=${n_adjusted}.`; } 
          else {
-            const zAlpha = zScores[alpha];
-            if (!zAlpha) { setError(`Z-score for alpha=${alpha} not available.`); return; }
-            Cs = Math.ceil((n_adjusted / 2) - 0.5 - (zAlpha * Math.sqrt(n_adjusted) / 2));
-            note = `Used Large Sample Approximation for N=${n_adjusted}.`;
+         const zAlpha = zScores[alpha];
+         if (!zAlpha) { setError(`Z-score for alpha=${alpha} not available.`); return; }
+         Cs = Math.ceil((n_adjusted / 2) - 0.5 - (zAlpha * Math.sqrt(n_adjusted) / 2));
+         note = `Used Large Sample Approximation for N=${n_adjusted}.`;
          }
          const testPassed = S_plus >= Cs;
          const newResult = { conclusion: testPassed ? 'PASS' : 'FAIL', reason: `The number of positive differences (S+) is ${S_plus}, which is ${testPassed ? 'greater than or equal to' : 'less than'} the critical value (${Cs}).`, n: initialData.length, n_adjusted, ties, dcgl_emc: dcgl_emc.toPrecision(4), S_plus, Cs, note };
@@ -18551,58 +18568,58 @@
          };
          
          const handleSaveToHistory = () => {
-             if (result) {
-                 addHistory({
-                     id: Date.now(),
-                     type: 'EMC Sign Test',
-                     icon: ICONS.labStats,
-                     inputs: `N=${result.n}, DCGL_emc=${result.dcgl_emc}`,
-                     result: `EMC AREA ${result.conclusion}ES`,
-                     view: VIEWS.MARSSIM_TESTS
-                 });
-                 addToast("Calculation saved to history!");
-             }
+         if (result) {
+            addHistory({
+                id: Date.now(),
+                type: 'EMC Sign Test',
+                icon: ICONS.labStats,
+                inputs: `N=${result.n}, DCGL_emc=${result.dcgl_emc}`,
+                result: `EMC AREA ${result.conclusion}ES`,
+                view: VIEWS.MARSSIM_TESTS
+            });
+            addToast("Calculation saved to history!");
+         }
          };
          
          React.useEffect(() => {
-             handleCalculate();
+         handleCalculate();
          }, [dcglw, areaFactor, emcData, alpha]);
          
          return (
          <div className="space-y-4">
-            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label htmlFor="emc-dcglw" className="block text-sm font-medium">Widespread DCGL (DCGLw)</label><input id="emc-dcglw" type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label htmlFor="emc-af" className="block text-sm font-medium">Area Factor (AF)</label><input id="emc-af" type="number" value={areaFactor} onChange={e => setAreaFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                </div>
-                <div>
-                   <div className="flex justify-between items-center"><label htmlFor="emc-data" className="block text-sm font-medium">Elevated Area Measurements</label><button onClick={() => setEmcData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
-                   <textarea id="emc-data" value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-                </div>
-                <div><label htmlFor="emc-alpha" className="block text-sm font-medium">Significance Level (&alpha;)</label><select id="emc-alpha" value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.05">0.05</option><option value="0.025">0.025</option><option value="0.01">0.01</option><option value="0.10">0.10</option></select></div>
-            </div>
-            <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>EMC AREA {result.conclusion}ES</p>
-                    <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                        <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p><p>Initial Samples (N): <span className="font-bold">{result.n}</span></p>
-                        <p>Ties Discarded: <span className="font-bold">{result.ties}</span></p><p>Adjusted N': <span className="font-bold">{result.n_adjusted}</span></p>
-                        <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p><p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
-                    </div>
-                     <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
-                </div>
-            )}
-            {!result && !error && (
-                <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
-                    <p className="text-slate-500 dark:text-slate-400">Enter elevated area data and parameters to perform the EMC Sign Test.</p>
-                </div>
-            )}
+         <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div><label htmlFor="emc-dcglw" className="block text-sm font-medium">Widespread DCGL (DCGLw)</label><input id="emc-dcglw" type="number" value={dcglw} onChange={e => setDcglw(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+               <div><label htmlFor="emc-af" className="block text-sm font-medium">Area Factor (AF)</label><input id="emc-af" type="number" value={areaFactor} onChange={e => setAreaFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+           </div>
+           <div>
+              <div className="flex justify-between items-center"><label htmlFor="emc-data" className="block text-sm font-medium">Elevated Area Measurements</label><button onClick={() => setEmcData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
+              <textarea id="emc-data" value={emcData} onChange={e => setEmcData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
+           </div>
+           <div><label htmlFor="emc-alpha" className="block text-sm font-medium">Significance Level (&alpha;)</label><select id="emc-alpha" value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.05">0.05</option><option value="0.025">0.025</option><option value="0.01">0.01</option><option value="0.10">0.10</option></select></div>
+         </div>
+         <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
+         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+         {result && (
+           <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+               <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>EMC AREA {result.conclusion}ES</p>
+               <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
+               <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                   <p>DCGL&darr;emc: <span className="font-bold">{result.dcgl_emc}</span></p><p>Initial Samples (N): <span className="font-bold">{result.n}</span></p>
+                   <p>Ties Discarded: <span className="font-bold">{result.ties}</span></p><p>Adjusted N': <span className="font-bold">{result.n_adjusted}</span></p>
+                   <p>Positive Ranks (S+): <span className="font-bold">{result.S_plus}</span></p><p>Critical Value (Cs): <span className="font-bold">{result.Cs}</span></p>
+               </div>
+                <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-3">{result.note}</p>
+           </div>
+         )}
+         {!result && !error && (
+           <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
+               <p className="text-slate-500 dark:text-slate-400">Enter elevated area data and parameters to perform the EMC Sign Test.</p>
+           </div>
+         )}
          </div>
          );
-         };  
+         };
               
               /**
               * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
