@@ -133,16 +133,16 @@
                             A collection of musings, philosophies, and things I've been thinking about.
                         </p>
                     </header>
-
-                    <!-- Back to Posts Link -->
-                    <div class="mb-8 header-content">
-                        <a href="../index.html" class="text-sky-500 hover:underline">&larr; Back to all posts</a>
-                    </div>
                     
                     <!-- Blog Post Section -->
                     <div id="posts-container" class="header-content">
                         <!-- Posts will be dynamically loaded here -->
                          <p class="text-slate-500">Loading posts...</p>
+                    </div>
+
+                    <!-- Back to Posts Link -->
+                    <div class="mt-8 header-content">
+                        <a href="../index.html" class="text-sky-500 hover:underline">&larr; Back to all posts</a>
                     </div>
                     
                     <!-- Footer Section within the card -->
@@ -272,21 +272,14 @@
             </aside>
         </div>
     </main>
-
-    <!-- Scroll to Top Button -->
-    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg transition-opacity duration-300 z-50">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-        </svg>
+    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
     </button>
-    
     <footer class="text-center p-4 mt-4">
         <p class="text-sm text-slate-500 dark:text-slate-400">
             Version 1.1 | Last Updated: September 21, 2025
         </p>
     </footer>
-
-
     <script>
         // --- Post Loading Logic ---
         async function loadPosts() {
