@@ -282,8 +282,15 @@
                 }
 
                 const postResponse = await fetch(postFile);
-                const postMarkdown = await postResponse.text();
-                const postHtml = marked.parse(postMarkdown);
+                let postHtml = ''; // Default to empty string
+
+                if (postResponse.ok) {
+                    const postMarkdown = await postResponse.text();
+                    postHtml = marked.parse(postMarkdown);
+                } else {
+                    console.error(`Failed to load post content from ${postFile}. Server responded with ${postResponse.status}.`);
+                }
+
                 const postDate = new Date(postMeta.date).toLocaleDateString('en-US', {
                     year: 'numeric', month: 'long', day: 'numeric'
                 });
@@ -334,4 +341,3 @@
     </script>
 </body>
 </html>
-
