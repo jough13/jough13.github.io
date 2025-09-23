@@ -1,5 +1,6 @@
 // A shared place for functions used across multiple pages
 
+// NOTE: This function's fetch path has been updated to '/posts.json'
 function renderPosts(postsToRender, containerId = 'posts-container') {
     const postsContainer = document.getElementById(containerId);
     if (!postsContainer) return;
@@ -18,13 +19,13 @@ function renderPosts(postsToRender, containerId = 'posts-container') {
         const postDate = new Date(post.date).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
         
         const tagsHtml = post.tags.map(tag => `
-            <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>
+            <a href="/tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>
         `).join(' ');
 
         articleElement.innerHTML = `
             <div class="prose prose-lg dark:prose-invert max-w-none">
                 <h2 class="mb-1">
-                    <a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500">
+                    <a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500">
                         <strong>${post.title}</strong>
                     </a>
                 </h2>
@@ -93,12 +94,13 @@ function setupScrollToTop() {
     };
 }
 
+// NOTE: This function's fetch path has been updated to '/posts.json'
 async function generateTagCloud() {
     const tagContainer = document.getElementById('tag-cloud');
     if (!tagContainer) return;
 
     try {
-        const response = await fetch('posts.json');
+        const response = await fetch('/posts.json');
         const posts = await response.json();
 
         // Use a Set to automatically handle duplicates
@@ -111,7 +113,7 @@ async function generateTagCloud() {
         const sortedTags = Array.from(uniqueTags).sort();
 
         const tagsHtml = sortedTags.map(tag => `
-            <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-slate-700 dark:text-slate-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">#${tag}</a>
+            <a href="/tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-slate-700 dark:text-slate-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">#${tag}</a>
         `).join(' ');
 
         tagContainer.innerHTML = tagsHtml;
