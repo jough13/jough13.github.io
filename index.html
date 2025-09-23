@@ -245,266 +245,48 @@
             Version 1.2 | Last Updated: September 22, 2025
         </p>
     </footer>
-    <script>
-        // --- Globals ---
-        let allPosts = []; // To store all posts after fetching
 
-        // --- Post Rendering Logic ---
-        function renderPosts(postsToRender) {
-            const postsContainer = document.getElementById('posts-container');
-            if (!postsContainer) return;
 
-            postsContainer.innerHTML = ''; // Clear existing posts
+<script src="app.js"></script> <script>
+    let allPosts = []; // To store all posts after fetching
 
-            if (postsToRender.length === 0) {
-                postsContainer.innerHTML = '<p>No posts match your search.</p>';
-                return;
-            }
-
-            for (const post of postsToRender) {
-                const articleElement = document.createElement('article');
-                articleElement.className = 'mb-12';
-                
-                const postDate = new Date(post.date).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                
-const tagsHtml = post.tags.map(tag => `
-    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>
-`).join(' ');
-                
-                articleElement.innerHTML = `
-                    <div class="prose prose-lg dark:prose-invert max-w-none">
-                        <h2 class="mb-1">
-                            <a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500">
-                                <strong>${post.title}</strong>
-                            </a>
-                        </h2>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                        <p class="not-prose text-slate-600 dark:text-slate-400">${post.summary}</p>
-                        <div class="not-prose mt-4">${tagsHtml}</div>
-                    </div>`;
-                postsContainer.appendChild(articleElement);
-            }
+    async function loadPosts() {
+        try {
+            const response = await fetch('posts.json');
+            allPosts = await response.json(); 
+            renderPosts(allPosts); 
+        } catch (error) {
+            document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
+            console.error('Error loading posts:', error);
         }
-
-        // --- Post Loading Logic ---
-        async function loadPosts() {
-            try {
-                const response = await fetch('posts.json');
-                allPosts = await response.json(); // Store posts in the global variable
-                renderPosts(allPosts); // Initial render of all posts
-            } catch (error) {
-                const postsContainer = document.getElementById('posts-container');
-                postsContainer.innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading posts:', error);
-            }
-        }
-        
-        // --- App Initialization ---
-        function initApp() {
-            fadeInContent();
-            setupThemeToggle();
-            setupInteractiveHeader();
-            setupScrollToTop();
-            setupSearch(); // Setup the search listener
-            loadPosts(); 
-        }
-
-        // --- Core Functions ---
-        function fadeInContent() {
-            const content = document.getElementById('content-container');
-            if(content) {
-                content.classList.remove('opacity-0');
-            }
-        }
-
-        function setupSearch() {
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const filteredPosts = allPosts.filter(post => {
-                    const titleMatch = post.title.toLowerCase().includes(searchTerm);
-                    const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
-                    const categoryMatch = post.category.toLowerCase().includes(searchTerm);
-                    const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
-                    return titleMatch || summaryMatch || categoryMatch || tagsMatch;
-                });
-                renderPosts(filteredPosts);
+    }
+    
+    function setupSearch() {
+        const searchInput = document.getElementById('searchInput');
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredPosts = allPosts.filter(post => {
+                const titleMatch = post.title.toLowerCase().includes(searchTerm);
+                const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
+                const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                return titleMatch || summaryMatch || tagsMatch;
             });
-        }
+            renderPosts(filteredPosts);
+        });
+    }
 
-        function setupThemeToggle() {
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-            themeToggleBtn.addEventListener('click', function() {
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
-            });
-        }
+    function initApp() {
+        document.getElementById('content-container').classList.remove('opacity-0');
+        setupThemeToggle();
+        setupScrollToTop();
+        generateTagCloud(); // For the sidebar
+        setupSearch(); 
+        loadPosts();
+    }
+    window.addEventListener('load', initApp);
+</script>
+    
 
-        function setupInteractiveHeader() {
-            const canvas = document.getElementById('interactive-header-canvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            const mouse = { x: null, y: null };
-            let isEffectActive = false;
-            let isFading = false; // Controls the fade-out period
-            let effectTimeout, fadeTimeout;
-            const dustTrigger = document.getElementById('dust-trigger');
-
-            function resizeCanvas() {
-                const container = canvas.parentElement;
-                const dpr = window.devicePixelRatio || 1;
-                const rect = container.getBoundingClientRect();
-
-                canvas.width = rect.width * dpr;
-                canvas.height = rect.height * dpr;
-                
-                canvas.style.width = `${rect.width}px`;
-                canvas.style.height = `${rect.height}px`;
-
-                ctx.scale(dpr, dpr);
-            }
-
-            window.addEventListener('resize', resizeCanvas);
-            canvas.parentElement.addEventListener('mousemove', (event) => {
-                if(isEffectActive) {
-                    const rect = canvas.getBoundingClientRect();
-                    mouse.x = event.clientX - rect.left;
-                    mouse.y = event.clientY - rect.top;
-                }
-            });
-            canvas.parentElement.addEventListener('mouseleave', () => {
-                mouse.x = null;
-                mouse.y = null;
-            });
-            if (dustTrigger) {
-                dustTrigger.addEventListener('mouseover', () => {
-                    isEffectActive = true;
-                    isFading = false; // Reset fade state on new mouseover
-                    clearTimeout(effectTimeout);
-                    clearTimeout(fadeTimeout);
-                    
-                    // After 4 seconds, stop creating new particles
-                    fadeTimeout = setTimeout(() => {
-                        isFading = true;
-                    }, 4000);
-                    
-                    // After 8 seconds, stop the animation entirely
-                    effectTimeout = setTimeout(() => {
-                        isEffectActive = false;
-                    }, 8000);
-                });
-            }
-
-            class Particle {
-                constructor() {
-                    this.x = mouse.x || Math.random() * (canvas.width / (window.devicePixelRatio || 1));
-                    this.y = mouse.y || Math.random() * (canvas.height / (window.devicePixelRatio || 1));
-                    this.size = Math.random() * 2 + 1;
-                    this.speedX = Math.random() * 2 - 1;
-                    this.speedY = Math.random() * 2 - 1;
-                    this.color = document.documentElement.classList.contains('dark') ? 'rgba(56, 189, 248, 0.5)' : 'rgba(14, 165, 233, 0.5)';
-                }
-                update() {
-                    if (mouse.x && mouse.y) {
-                        const dx = mouse.x - this.x;
-                        const dy = mouse.y - this.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < 100) {
-                            this.x += dx / 20;
-                            this.y += dy / 20;
-                        }
-                    }
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                    if (this.size > 0.1) this.size -= 0.03;
-                }
-                draw() {
-                    ctx.fillStyle = this.color;
-                    ctx.beginPath();
-                    // We draw the particle at its intended size, the canvas scaling handles the rest.
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            function handleParticles() {
-                // Only create new particles if we are not in the "fading" phase
-                if ((mouse.x || mouse.y) && !isFading) {
-                     for (let i = 0; i < 5; i++) {
-                        particles.push(new Particle());
-                    }
-                }
-                
-                // Update and draw all existing particles
-                for (let i = 0; i < particles.length; i++) {
-                    particles[i].update();
-                    particles[i].draw();
-                    if (particles[i].size <= 0.1) {
-                        particles.splice(i, 1);
-                        i--;
-                    }
-                }
-            }
-            
-            function animate() {
-                // We need to clear the scaled canvas dimensions
-                const scaledWidth = canvas.width / (window.devicePixelRatio || 1);
-                const scaledHeight = canvas.height / (window.devicePixelRatio || 1);
-                ctx.clearRect(0, 0, scaledWidth, scaledHeight);
-                
-                if(isEffectActive) {
-                     handleParticles();
-                }
-                requestAnimationFrame(animate);
-            }
-            resizeCanvas();
-            animate();
-        }
-        
-        function setupScrollToTop() {
-            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-            if (!scrollToTopBtn) return;
-            window.onscroll = function() {
-                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    scrollToTopBtn.classList.remove('hidden');
-                    scrollToTopBtn.classList.remove('opacity-0');
-                } else {
-                    scrollToTopBtn.classList.add('opacity-0');
-                    setTimeout(() => {
-                         scrollToTopBtn.classList.add('hidden');
-                    }, 300);
-                }
-            };
-            scrollToTopBtn.onclick = function() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-        }
-        window.addEventListener('load', initApp);
-    </script>
-</body>
+    
+    </body>
 </html>
