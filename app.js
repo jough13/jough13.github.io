@@ -92,3 +92,32 @@ function setupScrollToTop() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 }
+
+async function generateTagCloud() {
+    const tagContainer = document.getElementById('tag-cloud');
+    if (!tagContainer) return;
+
+    try {
+        const response = await fetch('posts.json');
+        const posts = await response.json();
+
+        // Use a Set to automatically handle duplicates
+        const uniqueTags = new Set();
+        posts.forEach(post => {
+            post.tags.forEach(tag => uniqueTags.add(tag));
+        });
+
+        // Convert Set to an array and sort alphabetically
+        const sortedTags = Array.from(uniqueTags).sort();
+
+        const tagsHtml = sortedTags.map(tag => `
+            <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full dark:bg-slate-700 dark:text-slate-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">#${tag}</a>
+        `).join(' ');
+
+        tagContainer.innerHTML = tagsHtml;
+
+    } catch (error) {
+        tagContainer.innerHTML = '<p class="text-xs text-red-500">Could not load tags.</p>';
+        console.error("Error generating tag cloud:", error);
+    }
+}
