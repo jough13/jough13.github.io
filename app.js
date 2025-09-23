@@ -120,3 +120,4 @@ async function generateTagCloud() {
         tagContainer.innerHTML = '<p class="text-xs text-red-500">Could not load tags.</p>';
         console.error("Error generating tag cloud:", error);
     }
+}
