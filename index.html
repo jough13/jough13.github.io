@@ -267,8 +267,10 @@
                 
                 const postDate = new Date(post.date).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
                 
-                const tagsHtml = post.tags.map(tag => `<span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300">${tag}</span>`).join(' ');
-
+const tagsHtml = post.tags.map(tag => `
+    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>
+`).join(' ');
+                
                 articleElement.innerHTML = `
                     <div class="prose prose-lg dark:prose-invert max-w-none">
                         <h2 class="mb-1">
