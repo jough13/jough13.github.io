@@ -183,7 +183,7 @@
     </button>
     <footer class="text-center p-4 mt-4">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.1 | Last Updated: September 21, 2025
+            Version 1.2 | Last Updated: September 23, 2025
         </p>
     </footer>
 
@@ -194,7 +194,7 @@
                 const response = await fetch('/posts.json');
                 const allPosts = await response.json();
                 
-                // NOTE: Based on your posts.json, the category for this section is 'books'
+                // NOTE: The category in your posts.json is 'books' for this section
                 const filteredPosts = allPosts.filter(post => post.category === 'books');
                 
                 renderPosts(filteredPosts);
