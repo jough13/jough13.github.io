@@ -187,34 +187,49 @@
         </p>
     </footer>
 
-    <script src="../app.js"></script>
-    <script>
-        async function loadCategoryPosts() {
-            try {
-                const response = await fetch('/posts.json');
-                const allPosts = await response.json();
-                
-                // NOTE: The category in your posts.json is 'books' for this section
-                const filteredPosts = allPosts.filter(post => post.category === 'books');
-                
-                renderPosts(filteredPosts);
-
-            } catch (error) {
-                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading category posts:', error);
-            }
-        }
-    
-        function initApp() {
-            document.getElementById('content-container').classList.remove('opacity-0');
-            setupThemeToggle();
-            setupScrollToTop();
-            generateTagCloud();
-            loadCategoryPosts();
+<script src="app.js"></script>
+<script>
+    async function loadAndFilterPosts() {
+        // 1. Get the tag from the URL
+        const params = new URLSearchParams(window.location.search);
+        const tag = params.get('tag');
+        const tagTitleElement = document.getElementById('tag-title');
+        
+        if (!tag) { 
+            tagTitleElement.innerHTML = "Tag not found";
+            document.getElementById('posts-container').innerHTML = "";
+            return; 
         }
 
-        window.addEventListener('load', initApp);
-    </script>
+        // 2. Update the page heading with the tag name
+        tagTitleElement.innerHTML = `Posts tagged with: <span class="text-sky-500">"${tag}"</span>`;
+        document.title = `Posts tagged "${tag}" | Jough Donakowski`;
+
+        try {
+            // 3. Fetch all posts and filter them by the 'tags' array
+            const response = await fetch('/posts.json');
+            const allPosts = await response.json();
+            const filteredPosts = allPosts.filter(post => post.tags.includes(tag));
+            
+            // 4. Render the filtered posts using the shared function
+            renderPosts(filteredPosts);
+
+        } catch (error) {
+            document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
+            console.error('Error loading or filtering posts:', error);
+        }
+    }
+
+    function initApp() {
+        document.getElementById('content-container').classList.remove('opacity-0');
+        setupThemeToggle();
+        setupScrollToTop();
+        generateTagCloud(); // For the sidebar
+        loadAndFilterPosts();
+    }
+
+    window.addEventListener('load', initApp);
+</script>
 
 </body>
 </html>
