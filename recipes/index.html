@@ -190,133 +190,37 @@
     </button>
     <footer class="text-center p-4 mt-4">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.1 | Last Updated: September 21, 2025
+            Version 1.2 | Last Updated: September 23, 2025
         </p>
     </footer>
+
+    <script src="../app.js"></script>
     <script>
-        // --- Post Loading Logic ---
-        async function loadPosts() {
-            const postsContainer = document.getElementById('posts-container');
-            if (!postsContainer) return;
-
+        async function loadCategoryPosts() {
             try {
-                // Fetch from the root directory
-                const response = await fetch('../posts.json'); 
-                const posts = await response.json();
+                const response = await fetch('/posts.json');
+                const allPosts = await response.json();
                 
-                // Filter posts for the 'recipes' category
-                const filteredPosts = posts.filter(post => post.category === 'recipes');
+                const filteredPosts = allPosts.filter(post => post.category === 'recipes');
+                
+                renderPosts(filteredPosts);
 
-                postsContainer.innerHTML = ''; // Clear the 'Loading...' message
-
-                if (filteredPosts.length === 0) {
-                    postsContainer.innerHTML = '<p class="text-slate-500">No posts found in this category yet!</p>';
-                    return;
-                }
-
-                for (const post of filteredPosts) {
-                    const articleElement = document.createElement('article');
-                    articleElement.className = 'mb-12';
-                    
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                    
-                    const tagsHtml = post.tags.map(tag => `<span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300">${tag}</span>`).join(' ');
-
-                    articleElement.innerHTML = `
-                        <div class="prose prose-lg dark:prose-invert max-w-none">
-                            <h2 class="mb-1">
-                                <a href="../post.html?p=${post.file}" class="no-underline hover:text-sky-500">
-                                    <strong>${post.title}</strong>
-                                </a>
-                            </h2>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                            <p class="not-prose text-slate-600 dark:text-slate-400">${post.summary}</p>
-                            <div class="not-prose mt-4">${tagsHtml}</div>
-                        </div>`;
-                    postsContainer.appendChild(articleElement);
-                }
             } catch (error) {
-                postsContainer.innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading posts:', error);
+                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
+                console.error('Error loading category posts:', error);
             }
         }
     
-        // --- App Initialization ---
         function initApp() {
-            fadeInContent();
+            document.getElementById('content-container').classList.remove('opacity-0');
             setupThemeToggle();
             setupScrollToTop();
-            loadPosts(); // Load the filtered posts
+            generateTagCloud();
+            loadCategoryPosts();
         }
 
-        // --- Core Functions ---
-        function fadeInContent() {
-            const content = document.getElementById('content-container');
-            if(content) {
-                content.classList.remove('opacity-0');
-            }
-        }
-
-        function setupThemeToggle() {
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-
-            themeToggleBtn.addEventListener('click', function() {
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
-            });
-        }
-
-        function setupScrollToTop() {
-            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-            if (!scrollToTopBtn) return;
-            
-            window.onscroll = function() {
-                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    scrollToTopBtn.classList.remove('hidden');
-                    scrollToTopBtn.classList.remove('opacity-0');
-                } else {
-                    scrollToTopBtn.classList.add('opacity-0');
-                    setTimeout(() => {
-                         scrollToTopBtn.classList.add('hidden');
-                    }, 300);
-                }
-            };
-
-            scrollToTopBtn.onclick = function() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-        }
-
-
-        // --- Run Application ---
         window.addEventListener('load', initApp);
     </script>
 
 </body>
-</html>
+</html>September
