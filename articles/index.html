@@ -210,7 +210,7 @@
                 // Use the shared renderPosts function from app.js
                 renderPosts(filteredPosts);
 
-            } catch (error)
+            } catch (error) {
                 document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
                 console.error('Error loading category posts:', error);
             }
