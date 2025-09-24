@@ -193,7 +193,7 @@
                 const response = await fetch('/posts.json');
                 const allPosts = await response.json();
                 
-                const filteredPosts = allPosts.filter(post => post.category === 'art');
+                const filteredPosts = allPosts.filter(post => post.tags.includes(tag));
                 
                 renderPosts(filteredPosts);
 
