@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <title>Jough Donakowski | Books and Prose</title>
-    <meta name="description" content="A space for book reviews, thoughts on prose, and literary discussions by Jough Donakowski.">
-    <meta name="keywords" content="Jough Donakowski, blog, books, writing, prose, reviews, literature">
+    <title>Jough Donakowski | Links I Like</title>
+    <meta name="description" content="A curated collection of links and resources that Jough Donakowski finds interesting or useful.">
+    <meta name="keywords" content="Jough Donakowski, blog, links, resources, interesting websites, cool links">
 
-    <meta property="og:title" content="Jough Donakowski | Books and Prose">
-    <meta property="og:description" content="A space for book reviews, thoughts on prose, and literary discussions by Jough Donakowski.">
+    <meta property="og:title" content="Jough Donakowski | Links I Like">
+    <meta property="og:description" content="A curated collection of links and resources that Jough Donakowski finds interesting or useful.">
     <meta property="og:image" content="../assets/me.jpg">
-    <meta property="og:url" content="https://jough13.github.io/books/">
+    <meta property="og:url" content="https://jough13.github.io/links/">
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
     
@@ -65,10 +65,10 @@
                     </button>
                     <header class="mb-6 header-content">
                         <h1 class="text-4xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-600 mb-2">
-                            Books and Prose
+                            Links I Like
                         </h1>
                         <p class="text-lg text-slate-600 dark:text-slate-400">
-                            Reviews, recommendations, and ramblings on the written word.
+                            A collection of websites, tools, and resources I find valuable.
                         </p>
                     </header>
                     
@@ -185,7 +185,7 @@
             </aside>
         </div>
     </main>
-    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-lg p-3 shadow-lg z-50">
+    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg z-50">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
     </button>
     <footer class="text-center p-4 mt-4">
@@ -201,8 +201,7 @@
                 const response = await fetch('/posts.json');
                 const allPosts = await response.json();
                 
-                // NOTE: The category in your posts.json is 'books' for this section
-                const filteredPosts = allPosts.filter(post => post.category === 'books');
+                const filteredPosts = allPosts.filter(post => post.category === 'art');
                 
                 renderPosts(filteredPosts);
 
