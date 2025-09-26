@@ -206,12 +206,10 @@
         }
         
         // --- START: Added Dust Effect Logic ---
-        function setupInteractiveHeader() {
+function setupInteractiveHeader() {
             const canvas = document.getElementById('interactive-header-canvas');
-            // If the canvas element doesn't exist on this page, do nothing.
-            if (!canvas) {
-                return;
-            }
+            if (!canvas) return;
+
             const ctx = canvas.getContext('2d');
             let particles = [];
             const mouse = { x: null, y: null };
@@ -240,40 +238,33 @@
                 mouse.y = null;
             });
             
-            // Only add the event listener if the trigger exists
             if (dustTrigger) {
                 dustTrigger.addEventListener('mouseover', () => {
                     isEffectActive = true;
                     clearTimeout(effectTimeout);
                     effectTimeout = setTimeout(() => {
                         isEffectActive = false;
-                    }, 8000);
+                    }, 8000); 
                 });
             }
 
-
             class Particle {
                 constructor() {
-                    this.x = mouse.x || Math.random() * canvas.width;
-                    this.y = mouse.y || Math.random() * canvas.height;
-                    this.size = Math.random() * 2 + 1;
-                    this.speedX = Math.random() * 2 - 1;
-                    this.speedY = Math.random() * 2 - 1;
-                    this.color = document.documentElement.classList.contains('dark') ? 'rgba(56, 189, 248, 0.5)' : 'rgba(14, 165, 233, 0.5)';
+                    // 1. Force particles to spawn ONLY at the mouse cursor
+                    this.x = mouse.x;
+                    this.y = mouse.y;
+                    // Make particles smaller and slower for a more delicate float
+                    this.size = Math.random() * 1.5 + 1; // Size from 1px to 2.5px
+                    this.speedX = Math.random() * 1 - 0.5; // Slower horizontal drift
+                    this.speedY = Math.random() * 1 - 0.5; // Slower vertical drift
+                    this.color = document.documentElement.classList.contains('dark') ? 'rgba(56, 189, 248, 0.6)' : 'rgba(14, 165, 233, 0.6)';
                 }
                 update() {
-                    if (mouse.x && mouse.y) {
-                        const dx = mouse.x - this.x;
-                        const dy = mouse.y - this.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < 100) {
-                            this.x += dx / 20;
-                            this.y += dy / 20;
-                        }
-                    }
+                    // 2. Removed the magnetic pull. Particles now only drift.
                     this.x += this.speedX;
                     this.y += this.speedY;
-                    if (this.size > 0.1) this.size -= 0.03;
+                    // Shrink over time
+                    if (this.size > 0.2) this.size -= 0.02;
                 }
                 draw() {
                     ctx.fillStyle = this.color;
@@ -284,8 +275,10 @@
             }
 
             function handleParticles() {
-                if (mouse.x || mouse.y) {
-                     for (let i = 0; i < 5; i++) {
+                // Only create particles if the mouse is on the canvas
+                if (mouse.x && mouse.y) {
+                    // 3. Create fewer particles for a cleaner look
+                     for (let i = 0; i < 2; i++) {
                         particles.push(new Particle());
                     }
                 }
@@ -293,7 +286,7 @@
                 for (let i = 0; i < particles.length; i++) {
                     particles[i].update();
                     particles[i].draw();
-                    if (particles[i].size <= 0.1) {
+                    if (particles[i].size <= 0.2) {
                         particles.splice(i, 1);
                         i--;
                     }
@@ -311,6 +304,7 @@
             resizeCanvas();
             animate();
         }
+
         // --- END: Added Dust Effect Logic ---
 
 
