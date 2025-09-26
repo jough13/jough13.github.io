@@ -125,3 +125,87 @@ async function generateTagCloud() {
         console.error("Error generating tag cloud:", error);
     }
 }
+
+function initHeaderCanvas() {
+    const canvas = document.getElementById('interactive-header-canvas');
+    const dustTrigger = document.getElementById('dust-trigger');
+    if (!canvas || !dustTrigger) return; // Exit if elements don't exist
+
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    
+    // Function to check if dark mode is active
+    const isDarkMode = () => document.documentElement.classList.contains('dark');
+
+    // Adjust canvas size to its container
+    function resizeCanvas() {
+        const parent = canvas.parentElement;
+        canvas.width = parent.offsetWidth;
+        canvas.height = parent.offsetHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // Set initial size
+
+    // Defines a single dust particle
+    class Particle {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.random() * 2 + 1; // Particle size
+            this.speedX = Math.random() * 3 - 1.5; // Horizontal movement
+            this.speedY = Math.random() * 3 - 1.5; // Vertical movement
+            this.alpha = 1; // Opacity
+            this.decay = Math.random() * 0.015 + 0.005; // Fade out speed
+        }
+
+        // Move the particle and fade it out
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.alpha -= this.decay;
+        }
+
+        // Draw the particle on the canvas
+        draw() {
+            ctx.globalAlpha = this.alpha;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            // Use a color that works for both light and dark themes
+            ctx.fillStyle = isDarkMode() ? 'rgba(226, 232, 240, 0.7)' : 'rgba(100, 116, 139, 0.7)';
+            ctx.fill();
+        }
+    }
+
+    // Creates a burst of particles when triggered
+    function createDustBurst() {
+        // Find the position of the word "Dust." relative to the canvas
+        const rect = dustTrigger.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        const x = rect.left - canvasRect.left + (rect.width / 2);
+        const y = rect.top - canvasRect.top + (rect.height / 2);
+
+        // Create 30 particles for the effect
+        for (let i = 0; i < 30; i++) {
+            particles.push(new Particle(x, y));
+        }
+    }
+
+    // Listen for mouseover on the word "Dust."
+    dustTrigger.addEventListener('mouseover', createDustBurst);
+
+    // Main animation loop
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas each frame
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            // Remove particles that have faded away
+            if (particles[i].alpha <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        requestAnimationFrame(animate); // Loop forever
+    }
+
+    animate(); // Start the animation loop
+}
