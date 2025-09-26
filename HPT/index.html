@@ -14632,148 +14632,162 @@ sourceRef: {
               */
               
               const SearchableSelect = ({ options, onSelect, placeholder }) => {
-              
-              const [inputValue, setInputValue] = React.useState('');
-              const [isOpen, setIsOpen] = React.useState(false);
-              const [activeIndex, setActiveIndex] = React.useState(-1);
-              const containerRef = React.useRef(null);
-              const listRef = React.useRef(null);
-              
-              const handleClear = () => {
-              setInputValue('');
-              setIsOpen(false);
-              setActiveIndex(-1);
-              };
-              
-              const filteredOptions = React.useMemo(() => {
-              if (!inputValue) return [];
-              const normInput = normalizeString(inputValue);
-              const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 };
-              
-              return options
-                  .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
-                  .sort((a, b) => {
-                      const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
-                      const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
-                      if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
-                      const orderA = commonalityOrder[a.commonality] || 0;
-                      const orderB = commonalityOrder[b.commonality] || 0;
-                      if (orderB !== orderA) return orderB - orderA;
-                      return a.name.localeCompare(b.name);
-                  })
-                  .slice(0, 10);
-              }, [inputValue, options]);
-              
-              React.useEffect(() => {
-              const handleClickOutside = (event) => {
-                  if (containerRef.current && !containerRef.current.contains(event.target)) {
-                      setIsOpen(false);
-                  }
-              };
-              document.addEventListener('mousedown', handleClickOutside);
-              return () => document.removeEventListener('mousedown', handleClickOutside);
-              }, []);
-              
-              const handleKeyDown = (e) => {
-              if (filteredOptions.length === 0) return;
-              if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  setActiveIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
-              } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
-              } else if (e.key === 'Enter') {
-                  if (activeIndex > -1 && filteredOptions[activeIndex]) {
-                      handleSelect(filteredOptions[activeIndex]);
-                  } else if (filteredOptions.length > 0) {
-                      handleSelect(filteredOptions[0]);
-                  }
-              } else if (e.key === 'Escape') {
-                  setIsOpen(false);
-              }
-              };
-              
-              React.useEffect(() => {
-              if (activeIndex !== -1 && listRef.current?.children[activeIndex]) {
-                  listRef.current.children[activeIndex].scrollIntoView({ block: 'nearest' });
-              }
-              }, [activeIndex]);
-              
-              const handleSelect = (option) => {
-              onSelect(option.symbol);
-              setInputValue('');
-              setIsOpen(false);
-              setActiveIndex(-1);
-              };
-              
-              return (
-              <div className="relative w-full" ref={containerRef}>
-              <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                   <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
-              </div>
-              <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => {
-                      setInputValue(e.target.value);
-                      setIsOpen(true);
-                      setActiveIndex(-1);
-                  }}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => { if(inputValue) setIsOpen(true); }}
-                  placeholder={placeholder}
-                  className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  autoComplete="off"
-              />
-              
-              {inputValue && (
-                  <button
-                      onClick={handleClear}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none"
-                  >
-                      <Icon path={ICONS.clear} className="w-5 h-5" />
-                  </button>
-              )}
-              </div>
-              {isOpen && filteredOptions.length > 0 && (
-                      <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-72 overflow-y-auto">
-                          {filteredOptions.map((option, index) => {
-                              const styles = CATEGORY_STYLES[option.category] || CATEGORY_STYLES['default'];
-                              return (
-                                  <li
-                                      key={option.symbol}
-                                      onClick={() => handleSelect(option)}
-                                      onMouseEnter={() => setActiveIndex(index)}
-                                      className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${
-                                          index === activeIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''
-                                      }`}
-                                  >
-                                      {option.name} ({option.symbol})
-                                  </li>
-                              )
-                          })}
-                          {/* MODIFIED: Conditionally render the footer */}
-                          {filteredOptions.length > 4 && (
-                              <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
-                                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                                      {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
-                                          const bgColor = styles.border.replace('border-l-', 'bg-');
-                                          return (
-                                              <div key={category} className="flex items-center gap-1.5">
-                                                  <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
-                                                  <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
-                                              </div>
-                                          );
-                                      })}
-                                  </div>
-                              </div>
-                          )}
-                      </ul>
+
+  const [inputValue, setInputValue] = React.useState('');
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [activeIndex, setActiveIndex] = React.useState(-1);
+  const containerRef = React.useRef(null);
+  const listRef = React.useRef(null);
+  const inputRef = React.useRef(null); // Added for auto-focus
+
+  // This effect will run once when the component mounts, focusing the input
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  const handleClear = () => {
+    setInputValue('');
+    setIsOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const filteredOptions = React.useMemo(() => {
+    if (!inputValue) return [];
+    const normInput = normalizeString(inputValue);
+    const commonalityOrder = {
+      'Common': 3,
+      'Moderate': 2,
+      'Rare': 1
+    };
+
+    return options
+      .filter(opt => normalizeString(opt.name).includes(normInput) || normalizeString(opt.symbol).includes(normInput))
+      .sort((a, b) => {
+        const aStartsWith = normalizeString(a.name).startsWith(normInput) || normalizeString(a.symbol).startsWith(normInput);
+        const bStartsWith = normalizeString(b.name).startsWith(normInput) || normalizeString(b.symbol).startsWith(normInput);
+        if (aStartsWith !== bStartsWith) return aStartsWith ? -1 : 1;
+        const orderA = commonalityOrder[a.commonality] || 0;
+        const orderB = commonalityOrder[b.commonality] || 0;
+        if (orderB !== orderA) return orderB - orderA;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 10);
+  }, [inputValue, options]);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleKeyDown = (e) => {
+    if (filteredOptions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
+    } else if (e.key === 'Enter') {
+      if (activeIndex > -1 && filteredOptions[activeIndex]) {
+        handleSelect(filteredOptions[activeIndex]);
+      } else if (filteredOptions.length > 0) {
+        handleSelect(filteredOptions[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeIndex !== -1 && listRef.current?.children[activeIndex]) {
+      listRef.current.children[activeIndex].scrollIntoView({
+        block: 'nearest'
+      });
+    }
+  }, [activeIndex]);
+
+  const handleSelect = (option) => {
+    onSelect(option.symbol);
+    setInputValue('');
+    setIsOpen(false);
+    setActiveIndex(-1);
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setIsOpen(true);
+            setActiveIndex(-1);
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => { if(inputValue) setIsOpen(true); }}
+          placeholder={placeholder}
+          className="w-full p-2 pl-10 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          autoComplete="off"
+        />
+
+        {inputValue && (
+          <button
+            onClick={handleClear}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none"
+          >
+            <Icon path={ICONS.clear} className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      {isOpen && filteredOptions.length > 0 && (
+              <ul ref={listRef} className="absolute z-30 w-full mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-lg max-h-72 overflow-y-auto">
+                  {filteredOptions.map((option, index) => {
+                      const styles = CATEGORY_STYLES[option.category] || CATEGORY_STYLES['default'];
+                      return (
+                          <li
+                              key={option.symbol}
+                              onClick={() => handleSelect(option)}
+                              onMouseEnter={() => setActiveIndex(index)}
+                              className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${
+                                  index === activeIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''
+                              }`}
+                          >
+                              {option.name} ({option.symbol})
+                          </li>
+                      )
+                  })}
+                  {filteredOptions.length > 4 && (
+                      <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
+                          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                              {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
+                                  const bgColor = styles.border.replace('border-l-', 'bg-');
+                                  return (
+                                      <div key={category} className="flex items-center gap-1.5">
+                                          <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
+                                          <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
                   )}
-              </div>
-              );
-              };
+              </ul>
+          )}
+      </div>
+  );
+};
               
               /**
               * @description An advanced view for comparing multiple radionuclides side-by-side.
