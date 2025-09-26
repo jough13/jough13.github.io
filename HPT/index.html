@@ -9440,8 +9440,8 @@ sourceRef: {
                                   <div>
                                       <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
                                       <div className="grid md:grid-cols-3 gap-4 mt-1">
-                                          <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
-                                          <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` (${nuclide.avgBetaEnergy} avg)` : ''}`} unit="MeV" iconSymbol="β"/>
+                                         <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} unit="MeV" iconSymbol="α"/>
+                                          <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` | ${nuclide.avgBetaEnergy} (avg)` : ''}`} unit="MeV" iconSymbol="β"/>
                                           <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} unit="MeV" iconSymbol="γ"/>
                                       </div>
                                   </div>
