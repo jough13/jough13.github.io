@@ -14983,9 +14983,9 @@ sourceRef: {
                         <span className="md:hidden">
                             {formatForMobile(numericVal)}
                         </span>
-                        <span className="hidden md:inline">
-                            {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : numericVal.toPrecision(6)}
-                        </span>
+<span className="hidden md:inline">
+    {isNaN(numericVal) || numericVal === Infinity ? 'N/A' : standardizeScientificDisplay(String(numericVal))}
+</span>
                         {differenceTag}
                     </div>
                 </>
