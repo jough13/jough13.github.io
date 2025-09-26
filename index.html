@@ -11,7 +11,7 @@
 
     <meta property="og:title" content="Jough Donakowski | Blog">
     <meta property="og:description" content="The personal blog and project showcase for Jough Donakowski.">
-    <meta property="og:image" content="assets/me.jpg">
+    <meta property="og:image" content="https://placehold.co/1200x630/0f172a/e0f2fe?text=JD">
     <meta property="og:url" content="https://jough13.github.io/">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
     
@@ -70,10 +70,27 @@
             text-underline-offset: 4px;
         }
         #scrollToTopBtn { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+        
+        /* Color-specific hover effects for project links */
         .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
         .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
         .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
         .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
+        .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
+        .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
+        .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
+        .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
+        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
+        .project-link.bg-teal-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2); }
+        .project-link.bg-orange-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2); }
+        .project-link.bg-stone-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2); }
+        .project-link.bg-lime-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(101, 163, 13, 0.25), 0 6px 6px rgba(101, 163, 13, 0.2); }
+        .project-link.bg-emerald-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2); }
+        .project-link.bg-fuchsia-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2); }
+        .project-link.bg-blue-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2); }
+        .project-link.bg-violet-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25), 0 6px 6px rgba(124, 58, 237, 0.2); }
+        .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
+        .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
         .bg-clip-text { -webkit-background-clip: text; }
     </style>
 </head>
@@ -141,7 +158,7 @@
                     <section class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card" aria-labelledby="about-me-heading">
                         <h2 id="about-me-heading" class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">About Me</h2>
                         <div class="flex items-center gap-4">
-                            <img src="assets/me.jpg" alt="A picture of Jough Donakowski" class="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-sky-800">
+                            <img src="https://placehold.co/80x80/e0f2fe/0f172a?text=Me" alt="A picture of Jough Donakowski" class="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-sky-800">
                             <div class="flex-1">
                                 <p class="text-slate-600 dark:text-slate-400">
                                     I'm not a machine. I feel and believe. I have opinions. Some of them are interesting. I could, if you'd let me, talk and talk. Let's talk about anything.
@@ -155,15 +172,15 @@
                     <section class="bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-6 sidebar-card" aria-labelledby="connect-heading">
                         <h2 id="connect-heading" class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Connect</h2>
                         <div class="flex items-center justify-between">
-                            <a href="https://www.facebook.com/jough.donakowski/" class="social-icon text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400" title="Facebook"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33V21.878A10.001 10.001 0 0022 12z" clip-rule="evenodd"></svg></a>
-                            <a href="https://www.linkedin.com/in/jough-donakowski-536207361/" class="social-icon text-blue-700 hover:text-blue-800 dark:text-blue-600" title="LinkedIn"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg></a>
-                            <a href="https://github.com/jough13" class="social-icon text-gray-800 hover:text-black dark:text-gray-300 dark:hover:text-white" title="GitHub"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg></a>
-                            <a href="https://www.deviantart.com/jough" class="social-icon text-slate-500 hover:text-sky-500" title="DeviantArt"><img src="assets/da.png" alt="DeviantArt Icon" class="w-8 h-8"></a>
-                            <a href="https://discord.com/users/error30303" class="social-icon text-slate-500 hover:text-sky-500" title="Discord"><img src="assets/discord.png" alt="Discord Icon" class="w-8 h-8"></a>
-                            <a href="https://kcsoccerjournal.com" class="social-icon text-slate-500 hover:text-sky-500" title="KC Soccer Journal"><img src="assets/kcsj.png" alt="KC Soccer Journal Icon" class="w-8 h-8"></a>
+                            <a href="#" class="social-icon text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400" title="Facebook"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33V21.878A10.001 10.001 0 0022 12z" clip-rule="evenodd"></svg></a>
+                            <a href="#" class="social-icon text-blue-700 hover:text-blue-800 dark:text-blue-600" title="LinkedIn"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg></a>
+                            <a href="#" class="social-icon text-gray-800 hover:text-black dark:text-gray-300 dark:hover:text-white" title="GitHub"><svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd" /></svg></a>
+                            <a href="#" class="social-icon" title="DeviantArt"><img src="https://placehold.co/32x32/737373/e0f2fe?text=DA" alt="DeviantArt Icon" class="w-8 h-8"></a>
+                            <a href="#" class="social-icon" title="Discord"><img src="https://placehold.co/32x32/737373/e0f2fe?text=D" alt="Discord Icon" class="w-8 h-8"></a>
+                            <a href="#" class="social-icon" title="KC Soccer Journal"><img src="https://placehold.co/32x32/737373/e0f2fe?text=KCSJ" alt="KC Soccer Journal Icon" class="w-8 h-8"></a>
                         </div>
                     </section>
-                    </div>
+                </div>
             </aside>
         </div>
     </main>
@@ -182,15 +199,62 @@
 
         async function loadPosts() {
             try {
-                const response = await fetch('/posts.json');
-                allPosts = await response.json(); 
-                renderPosts(allPosts); 
+                // In a real scenario, you'd fetch this from a server.
+                // For this example, we'll use a mock list.
+                allPosts = [
+                    {
+                        "title": "A Placeholder Post",
+                        "summary": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                        "tags": ["example", "tech", "writing"]
+                    },
+                     {
+                        "title": "Another Day, Another Post",
+                        "summary": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+                        "tags": ["journal", "life", "thoughts"]
+                    }
+                ];
+                renderPosts(allPosts);
+                generateTagCloud();
             } catch (error) {
                 document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
                 console.error('Error loading posts:', error);
             }
         }
+
+        function renderPosts(posts) {
+            const container = document.getElementById('posts-container');
+            if (!posts.length) {
+                container.innerHTML = '<p class="text-slate-500">No posts found.</p>';
+                return;
+            }
+            container.innerHTML = posts.map(post => `
+                <article class="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 mb-12 pb-8 border-b border-slate-200 dark:border-slate-700">
+                    <h2>${post.title}</h2>
+                    <p>${post.summary}</p>
+                    <div class="flex flex-wrap gap-2">
+                        ${post.tags.map(tag => `<span class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded dark:bg-sky-900 dark:text-sky-300">${tag}</span>`).join('')}
+                    </div>
+                </article>
+            `).join('');
+        }
         
+        function generateTagCloud() {
+            const tagCloud = document.getElementById('tag-cloud');
+            const allTags = allPosts.flatMap(post => post.tags);
+            const uniqueTags = [...new Set(allTags)];
+
+            if(!uniqueTags.length) {
+                tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+                return;
+            }
+            
+            tagCloud.innerHTML = uniqueTags.map(tag => `
+                <button class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors">
+                    ${tag}
+                </button>
+            `).join('');
+        }
+
         function setupSearch() {
             const searchInput = document.getElementById('searchInput');
             searchInput.addEventListener('input', (e) => {
@@ -205,8 +269,8 @@
             });
         }
         
-        // --- START: Added Dust Effect Logic ---
-function setupInteractiveHeader() {
+     
+        function setupInteractiveHeader() {
             const canvas = document.getElementById('interactive-header-canvas');
             if (!canvas) return;
 
@@ -250,20 +314,16 @@ function setupInteractiveHeader() {
 
             class Particle {
                 constructor() {
-                    // 1. Force particles to spawn ONLY at the mouse cursor
                     this.x = mouse.x;
                     this.y = mouse.y;
-                    // Make particles smaller and slower for a more delicate float
-                    this.size = Math.random() * 1.5 + 1; // Size from 1px to 2.5px
-                    this.speedX = Math.random() * 1 - 0.5; // Slower horizontal drift
-                    this.speedY = Math.random() * 1 - 0.5; // Slower vertical drift
+                    this.size = Math.random() * 1.5 + 1;
+                    this.speedX = Math.random() * 1 - 0.5;
+                    this.speedY = Math.random() * 1 - 0.5;
                     this.color = document.documentElement.classList.contains('dark') ? 'rgba(56, 189, 248, 0.6)' : 'rgba(14, 165, 233, 0.6)';
                 }
                 update() {
-                    // 2. Removed the magnetic pull. Particles now only drift.
                     this.x += this.speedX;
                     this.y += this.speedY;
-                    // Shrink over time
                     if (this.size > 0.2) this.size -= 0.02;
                 }
                 draw() {
@@ -275,9 +335,7 @@ function setupInteractiveHeader() {
             }
 
             function handleParticles() {
-                // Only create particles if the mouse is on the canvas
                 if (mouse.x && mouse.y) {
-                    // 3. Create fewer particles for a cleaner look
                      for (let i = 0; i < 2; i++) {
                         particles.push(new Particle());
                     }
@@ -305,18 +363,74 @@ function setupInteractiveHeader() {
             animate();
         }
 
-        // --- END: Added Dust Effect Logic ---
+        function setupThemeToggle() {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+            
+            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                themeToggleLightIcon.classList.remove('hidden');
+            } else {
+                themeToggleDarkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', function() {
+                themeToggleDarkIcon.classList.toggle('hidden');
+                themeToggleLightIcon.classList.toggle('hidden');
+
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                }
+            });
+        }
+        
+        function setupScrollToTop() {
+            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+            if(!scrollToTopBtn) return;
+
+            window.onscroll = function() {
+                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                    scrollToTopBtn.classList.remove('hidden');
+                    scrollToTopBtn.classList.remove('opacity-0');
+                } else {
+                    scrollToTopBtn.classList.add('opacity-0');
+                    setTimeout(() => {
+                         if (document.body.scrollTop <= 300 && document.documentElement.scrollTop <= 300) {
+                            scrollToTopBtn.classList.add('hidden');
+                         }
+                    }, 300);
+                }
+            };
+
+            scrollToTopBtn.onclick = function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+        }
 
 
         function initApp() {
             document.getElementById('content-container').classList.remove('opacity-0');
-            setupThemeToggle(); // This function comes from your app.js file
-            setupScrollToTop(); // This function comes from your app.js file
-            generateTagCloud(); // This function comes from your app.js file
+            setupThemeToggle(); 
+            setupScrollToTop(); 
+            
             setupSearch(); 
             loadPosts();
         
-            setupInteractiveHeader(); // Changed this from initHeaderCanvas() and added the function above
+            setupInteractiveHeader(); 
         }
         
         window.addEventListener('load', initApp);
@@ -324,3 +438,4 @@ function setupInteractiveHeader() {
     
 </body>
 </html>
+
