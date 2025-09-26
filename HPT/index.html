@@ -403,7 +403,11 @@
                A2: 0.2,
                unit: 'TBq'
              },
-             gammaConstant: '0.844 R·m²/hr·Ci',
+             gammaConstant: '0.84397 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_D: 400,
@@ -443,7 +447,11 @@
                A2: 0.001,
                unit: 'TBq'
              },
-             gammaConstant: '0.012 R·m²/hr·Ci',
+             gammaConstant: '0.313723 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 0.006,
@@ -484,7 +492,11 @@
                A2: 0.6,
                unit: 'TBq'
              },
-             gammaConstant: '1.07 R·m²/hr·Ci',
+             gammaConstant: '1.06671 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_D: 80,
@@ -664,7 +676,11 @@
              },
              halfLife: '10.51 years',
              decayConstant: '0.0659 year⁻¹',
-             gammaConstant: '0.30 R·m²/hr·Ci',
+             gammaConstant: '0.45547 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '9.3 x 10^12 Bq/g',
              parent: 'Lanthanum-133',
              daughter: 'Cesium-133 (stable)',
@@ -1519,7 +1535,13 @@
              },
              halfLife: '30.08 years',
              decayConstant: '0.0230 year⁻¹',
-             gammaConstant: '0.33 R·m²/hr·Ci',
+             // Note: Cs-137 itself is a beta emitter. The gamma comes from its daughter, Ba-137m.
+// Using the Ba-137m value is standard practice.
+gammaConstant: '0.39997 R·m²/hr·Ci', 
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '3.21 x 10^12 Bq/g',
              parent: 'Uranium Fission',
              daughter: 'Barium-137m (IT) -> Barium-137 (stable)',
@@ -1561,7 +1583,11 @@
              avgBetaEnergy: '0.106 MeV',
              halfLife: '5.27 years',
              decayConstant: '0.131 year⁻¹',
-             gammaConstant: '1.32 R·m²/hr·Ci',
+             gammaConstant: '1.37011 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '4.18 x 10^13 Bq/g',
              parent: 'Cobalt-59 (n,γ)',
              daughter: 'Nickel-60 (stable)',
@@ -1785,7 +1811,11 @@
                A2: 1,
                unit: 'TBq'
              },
-             gammaConstant: '0.744 R·m²/hr·Ci',
+            gammaConstant: '0.74444 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 30,
@@ -1828,7 +1858,11 @@
                A2: 0.6,
                unit: 'TBq'
              },
-             gammaConstant: '0.756 R·m²/hr·Ci',
+             gammaConstant: '0.75554 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 30,
@@ -1930,7 +1964,11 @@
                A2: 9,
                unit: 'TBq'
              },
-             gammaConstant: '0.11 R·m²/hr·Ci',
+             gammaConstant: '0.172383 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_Y: 9,
@@ -2173,7 +2211,11 @@
                A2: 0.6,
                unit: 'TBq'
              },
-             gammaConstant: '0.23 R·m²/hr·Ci',
+             gammaConstant: '0.291634 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 200,
@@ -2402,7 +2444,11 @@
                A2: 3,
                unit: 'TBq'
              },
-             gammaConstant: '0.07 R·m²/hr·Ci',
+             gammaConstant: '0.274984 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_D: 4,
@@ -2468,7 +2514,12 @@
              avgBetaEnergy: '0.202 MeV',
              halfLife: '8.02 days',
              decayConstant: '0.0864 day⁻¹',
-             gammaConstant: '0.22 R·m²/hr·Ci',
+             gammaConstant: '0.282939 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  decayConstant: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '4.6 x 10^15 Bq/g',
              parent: 'Tellurium-131',
              daughter: 'Xenon-131 (stable)',
@@ -2511,7 +2562,11 @@
              avgBetaEnergy: '0.224 MeV',
              halfLife: '73.83 days',
              decayConstant: '0.00939 day⁻¹',
-             gammaConstant: '0.48 R·m²/hr·Ci',
+             gammaConstant: '0.59163 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '3.41 x 10^14 Bq/g',
              parent: 'Iridium-191 (n,γ)',
              daughter: 'Platinum-192 (stable) / Osmium-192 (stable)',
@@ -3131,7 +3186,11 @@
              },
              halfLife: '312.1 days',
              decayConstant: '0.00222 day⁻¹',
-             gammaConstant: '0.47 R·m²/hr·Ci',
+             gammaConstant: '0.51134 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '2.56 x 10^14 Bq/g',
              parent: 'Iron-54 (d,2n)',
              daughter: 'Chromium-54 (stable)',
@@ -3189,7 +3248,11 @@
                A2: 0.6,
                unit: 'TBq'
              },
-             gammaConstant: '0.07 R·m²/hr·Ci',
+             gammaConstant: '0.112924 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_D: 200,
@@ -4248,52 +4311,96 @@
              regGuideCategory: 'transuranics',
              ansiCategory: 'alpha_very_high'
            },
-           {
-             name: 'Radium-226',
-             symbol: 'Ra-226',
-             emissionType: ['Alpha', 'Gamma'],
-             emissionEnergies: {
-               alpha: ['4.784 MeV'],
-               beta: [],
-               gamma: ['0.186 MeV']
-             },
-             daughterEmissions: {
-               from: 'Rn-222',
-               alpha: ['5.490 MeV']
-             },
-             halfLife: '1600 years',
-             decayConstant: '4.33 x 10⁻⁴ year⁻¹',
-             gammaConstant: '0.825 R·m²/hr·Ci',
-             specificActivity: '3.7 x 10^10 Bq/g',
-             parent: 'Thorium-230',
-             daughter: 'Radon-222 (α)',
-             commonUses: ['Historical medical brachytherapy', 'Neutron sources (Ra-Be)', 'Luminescent paint (historical)', 'Calibration sources'],
-             category: 'Natural',
-             decaySeriesId: 'U-238-series',
-             commonality: 'Common',
-             commonalityReason: 'Historically significant for its use in medicine and luminous paint; the direct parent of Radon-222 gas.',
-             sourceRef: {
-               halfLife: 'nndc',
-               gammaConstant: 'hps'
-             },
-             shipping: {
-               A1: 0.3,
-               A2: 0.002,
-               unit: 'TBq'
-             },
-             dosimetry: {
-               ALI: {
-                 inhalation_W: 0.2,
-                 ingestion: 0.7
-               },
-               DAC: {
-                 inhalation_W: 9e-11
-               },
-               sourceRef: '10CFR20'
-             },
-             regGuideCategory: 'transuranics',
-             ansiCategory: 'alpha_very_high'
-           },
+{
+  name: 'Radium-226 in Equilibrium',
+  symbol: 'Ra-226 eq',
+  emissionType: ['Alpha', 'Beta', 'Gamma'],
+  emissionEnergies: {
+    alpha: ['4.784 MeV (Ra-226)'],
+    beta: ['3.27 MeV (Bi-214 max)'],
+    gamma: ['0.186 MeV (Ra-226)', '0.609 MeV (Bi-214)', '1.764 MeV (Bi-214)']
+  },
+  halfLife: '1600 years',
+  decayConstant: '4.33 x 10⁻⁴ year⁻¹',
+  // This standard value assumes equilibrium with progeny (Rn-222, Pb-214, Bi-214).
+  gammaConstant: '0.825 R·m²/hr·Ci',
+  specificActivity: '3.7 x 10^10 Bq/g',
+  parent: 'Thorium-230',
+  daughter: 'Radon-222 (α)',
+  commonUses: ['Sealed brachytherapy sources', 'Calibration sources (aged >30 days)', 'Industrial radiography (historical)'],
+  category: 'Natural',
+  decaySeriesId: 'U-238-series',
+  commonality: 'Common',
+  commonalityReason: 'Represents an aged Ra-226 source where gamma-emitting daughters contribute significantly to the dose rate.',
+  sourceRef: {
+    halfLife: 'nndc',
+    gammaConstant: 'hps' // The original HPS source is appropriate for this standard operational value
+  },
+  shipping: {
+    A1: 0.3,
+    A2: 0.002,
+    unit: 'TBq'
+  },
+  dosimetry: {
+    ALI: {
+      inhalation_W: 0.2,
+      ingestion: 0.7
+    },
+    DAC: {
+      inhalation_W: 9e-11
+    },
+    sourceRef: '10CFR20'
+  },
+  regGuideCategory: 'transuranics',
+  ansiCategory: 'alpha_very_high'
+},
+{
+  name: 'Radium-226',
+  symbol: 'Ra-226',
+  emissionType: ['Alpha', 'Gamma'],
+  emissionEnergies: {
+    alpha: ['4.784 MeV'],
+    beta: [],
+    gamma: ['0.186 MeV']
+  },
+  daughterEmissions: {
+    from: 'Rn-222',
+    alpha: ['5.490 MeV']
+  },
+  halfLife: '1600 years',
+  decayConstant: '4.33 x 10⁻⁴ year⁻¹',
+  // This value is for Ra-226 only, without progeny in equilibrium.
+  gammaConstant: '0.0121138 R·m²/hr·Ci',
+  specificActivity: '3.7 x 10^10 Bq/g',
+  parent: 'Thorium-230',
+  daughter: 'Radon-222 (α)',
+  commonUses: ['Freshly separated sources', 'Neutron sources (Ra-Be)', 'Luminescent paint (historical)'],
+  category: 'Natural',
+  decaySeriesId: 'U-238-series',
+  commonality: 'Common',
+  commonalityReason: 'Historically significant nuclide. This entry represents the nuclide without its gamma-emitting progeny.',
+  sourceRef: {
+    halfLife: 'nndc',
+    gammaConstant: 'plexus_nsd' // Citing the new source
+  },
+  shipping: {
+    A1: 0.3,
+    A2: 0.002,
+    unit: 'TBq'
+  },
+  dosimetry: {
+    ALI: {
+      inhalation_W: 0.2,
+      ingestion: 0.7
+    },
+    DAC: {
+      inhalation_W: 9e-11
+    },
+    sourceRef: '10CFR20'
+  },
+  regGuideCategory: 'transuranics',
+  ansiCategory: 'alpha_very_high'
+},
            {
              name: 'Radium-228',
              symbol: 'Ra-228',
@@ -4460,7 +4567,11 @@
              avgBetaEnergy: '0.357 MeV',
              halfLife: '3.718 days',
              decayConstant: '0.186 day⁻¹',
-             gammaConstant: '0.08 R·m²/hr·Ci',
+             gammaConstant: '0.0181633 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              parent: 'Tungsten-186 (n,γ)',
              daughter: 'Osmium-186 (stable)',
              commonUses: ['Radiotherapy for bone pain palliation'],
@@ -4913,7 +5024,11 @@
                A2: 0.5,
                unit: 'TBq'
              },
-             gammaConstant: '1.17 R·m²/hr·Ci',
+             gammaConstant: '1.16735 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 90,
@@ -5054,7 +5169,11 @@
                A2: 0.4,
                unit: 'TBq'
              },
-             gammaConstant: '1.65 R·m²/hr·Ci',
+             gammaConstant: '1.65242 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 100,
@@ -5080,7 +5199,11 @@
              avgBetaEnergy: '0.182 MeV',
              halfLife: '2.602 years',
              decayConstant: '0.266 year⁻¹',
-             gammaConstant: '1.20 R·m²/hr·Ci',
+             gammaConstant: '1.3394 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '6.45 x 10^13 Bq/g',
              parent: 'Magnesium-22 (EC)',
              daughter: 'Neon-22 (stable)',
@@ -5157,7 +5280,11 @@
                A2: 0.4,
                unit: 'TBq'
              },
-             gammaConstant: '1.84 R·m²/hr·Ci',
+             gammaConstant: '1.93769 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_D: 200,
@@ -5466,7 +5593,12 @@
                A2: 0.7,
                unit: 'TBq'
              },
-             gammaConstant: '0.08 R·m²/hr·Ci',
+             gammaConstant: '0.1227 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  decayConstant: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              dosimetry: {
                ALI: {
                  inhalation_W: 80000,
@@ -6651,7 +6783,11 @@
              },
              halfLife: '32.02 days',
              decayConstant: '0.0216 day⁻¹',
-             gammaConstant: '0.18 R·m²/hr·Ci',
+             gammaConstant: '0.326969 R·m²/hr·Ci',
+sourceRef: {
+  halfLife: 'nndc',
+  gammaConstant: 'plexus_nsd'
+},
              specificActivity: '1.9 x 10^14 Bq/g',
              parent: 'Lutetium-169',
              daughter: 'Thulium-169 (stable)',
@@ -6915,6 +7051,7 @@
                   nndc: { name: 'NNDC', url: 'https://www.nndc.bnl.gov/nudat3/' },
                   wiki: { name: 'Wikipedia', url: 'https://en.wikipedia.org/' },
                   hps: { name: 'Health Physics Society', url: 'https://hps.org/' },
+                  plexus_nsd: { name: 'Plexus-NSD, Gamma Ray Dose Constants', url: 'http://www.iem-inc.com/information/tools/gamma-ray-dose-constants' },
                   rse: { name: 'Radiation Safety Engineering, Inc.', url: 'https://www.radpro.com/sourcehvl.htm' } // <-- New source added
               };
               
