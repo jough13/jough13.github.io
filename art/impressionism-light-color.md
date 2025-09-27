@@ -1,5 +1,3 @@
-# Capturing a Moment: The Magic of Impressionism
-
 In the mid-19th century, a group of young Parisian artists rebelled against the rigid standards of the French art establishment. Their radical approach, which focused on capturing the fleeting sensory effect of a scene—the "impression"—would become known as Impressionism.
 
 ### A New Way of Seeing
