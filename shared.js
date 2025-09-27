@@ -57,11 +57,9 @@ async function updateFooter() {
     if (!footerElement) return;
 
     try {
-        // --- FIX: Added cache-busting query string to the fetch request ---
         const response = await fetch(`/site-config.json?v=${new Date().getTime()}`);
         const config = await response.json();
         
-        // --- FIX: Added timeZone to prevent off-by-one-day errors ---
         const lastUpdatedDate = new Date(config.lastUpdated).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
@@ -75,10 +73,38 @@ async function updateFooter() {
     }
 }
 
+/**
+ * Finds the active page link in the sidebar and applies a visual highlight.
+ * It compares the current page's URL with the href of each link.
+ */
+function highlightActiveLink() {
+    // Get the current page's path, treating '/' and '/index.html' as the same for matching.
+    let currentPath = window.location.pathname;
+    if (currentPath.endsWith('/')) {
+        currentPath += 'index.html';
+    }
+
+    const navLinks = document.querySelectorAll('aside a.project-link');
+
+    navLinks.forEach(link => {
+        // Get the full path from the link's href attribute for a reliable comparison.
+        const linkPath = new URL(link.href).pathname;
+        
+        // Check if the current page's path exactly matches the link's path.
+        if (currentPath === linkPath) {
+            // Add TailwindCSS classes to create a visual "ring" around the active link.
+            // This is a clear and theme-friendly way to show the active state.
+            link.classList.add('ring-2', 'ring-offset-2', 'ring-sky-400', 'dark:ring-offset-slate-800');
+        }
+    });
+}
+
+
 // Global initialization for shared components
 document.addEventListener('DOMContentLoaded', () => {
     fadeInContent();
     setupThemeToggle();
     setupScrollToTop();
     updateFooter();
+    highlightActiveLink(); // <-- We now call the new function on every page load
 });
