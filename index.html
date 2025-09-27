@@ -283,33 +283,38 @@
             }
         }
 
-        function renderPosts(posts) {
-            const container = document.getElementById('posts-container');
-            if(!container) return;
-            if (posts.length === 0) {
-                container.innerHTML = '<p class="text-slate-500">No posts found.</p>';
-            } else {
-                container.innerHTML = posts.map(post => {
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                    });
-                    const tagsHtml = post.tags.map(tag => `<a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`).join(' ');
-                    
-                    return `
-                    <article class="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 mb-12 pb-8 border-b border-slate-200 dark:border-slate-700">
-                        <h2 class="mb-2"><a href="post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
-                        <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                        <p>${post.summary}</p>
-                        <div class="not-prose flex flex-wrap gap-2">
-                            ${tagsHtml}
-                        </div>
-                    </article>
-                `}).join('');
-            }
-            if(interactiveHeader.canvas) {
-                setTimeout(() => interactiveHeader.resize(), 0);
-            }
-        }
+function renderPosts(posts) {
+    const container = document.getElementById('posts-container');
+    if (!container) return;
+
+    if (posts.length === 0) {
+        container.innerHTML = `<p class="text-slate-500">No posts found.</p>`;
+    } else {
+        container.innerHTML = posts.map((post, index) => {
+            const isLastPost = index === posts.length - 1;
+            // Conditionally add the border and padding classes unless it's the last post
+            const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
+
+            const postDate = new Date(post.date).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+            });
+            const tagsHtml = post.tags.map(t => 
+                `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
+            ).join(' ');
+            
+            return `
+            <article class="${articleClasses}">
+                <h2 class="mb-2"><a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                <p>${post.summary}</p>
+                <div class="not-prose flex flex-wrap gap-2">
+                    ${tagsHtml}
+                </div>
+            </article>
+            `;
+        }).join('');
+    }
+}
         
         function generateTagCloud() {
             const tagCloud = document.getElementById('tag-cloud');
