@@ -15,6 +15,7 @@
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
     
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     
@@ -72,11 +73,22 @@
                         </p>
                     </header>
                     
+                    <div class="mb-8 header-content">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                </svg>
+                            </div>
+                            <input type="text" id="searchInput" class="block w-full p-4 ps-10 text-sm text-slate-900 border border-slate-300 rounded-lg bg-slate-50 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white dark:focus:ring-sky-500 dark:focus:border-sky-500" placeholder="Search posts in this category...">
+                        </div>
+                    </div>
+
                     <div id="posts-container" class="header-content">
                          <p class="text-slate-500">Loading posts...</p>
                     </div>
 
-                    <div class="mt-8 header-content">
+                    <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 header-content">
                         <a href="../index.html" class="text-sky-500 hover:underline">&larr; Back to all posts</a>
                     </div>
                 </div>
@@ -189,37 +201,120 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
     </button>
     <footer class="text-center p-4 mt-4">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.2 | Last Updated: September 23, 2025
-        </p>
+        <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
+            </p>
     </footer>
 
-    <script src="../app.js"></script>
+    <script src="../shared.js"></script>
     <script>
-        async function loadCategoryPosts() {
-            try {
-                const response = await fetch('/posts.json');
-                const allPosts = await response.json();
-                
-                const filteredPosts = allPosts.filter(post => post.category === 'art');
-                
-                renderPosts(filteredPosts);
+        // --- Page-Specific Logic for Category Page ---
 
+        let allPosts = []; // To hold all posts for the tag cloud
+        let categoryPosts = []; // To hold posts for this specific category
+
+        const CATEGORY_NAME = 'links'; // The category for this page
+
+        // Fetches all posts, filters them for the current category, and initiates rendering.
+        async function loadPosts() {
+            try {
+                // The file is in a subdir, so the path to posts.json should be relative to the root
+                const response = await fetch('../posts.json'); 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                allPosts = await response.json();
+                
+                // Filter posts for this category page
+                categoryPosts = allPosts.filter(post => post.category === CATEGORY_NAME);
+
+                renderPosts(categoryPosts); // Render the filtered posts
+                generateTagCloud(); // Generate tag cloud from ALL posts
             } catch (error) {
-                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading category posts:', error);
+                document.getElementById('posts-container').innerHTML = '<p class="text-slate-500">Sorry, an error occurred while loading the posts.</p>';
+                console.error('Error loading posts:', error);
             }
         }
-    
-        function initApp() {
-            document.getElementById('content-container').classList.remove('opacity-0');
-            setupThemeToggle();
-            setupScrollToTop();
-            generateTagCloud();
-            loadCategoryPosts();
+
+        // Renders a list of post objects to the page.
+        function renderPosts(posts) {
+            const container = document.getElementById('posts-container');
+            if(!container) return;
+
+            if (posts.length === 0) {
+                container.innerHTML = `<p class="text-slate-500">No posts found in the "${CATEGORY_NAME}" category yet. Check back soon!</p>`;
+                return;
+            }
+
+            container.innerHTML = posts.map(post => {
+                const postDate = new Date(post.date).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+                });
+                const tagsHtml = post.tags.map(tag => 
+                    `<a href="../tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`
+                ).join(' ');
+                
+                return `
+                <article class="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 mb-12 pb-8 border-b border-slate-200 dark:border-slate-700">
+                    <h2><a href="../post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                    <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                    <p>${post.summary}</p>
+                    <div class="not-prose flex flex-wrap gap-2">
+                        ${tagsHtml}
+                    </div>
+                </article>
+                `;
+            }).join('');
         }
 
-        window.addEventListener('load', initApp);
+        // Generates the tag cloud in the sidebar from ALL posts.
+        function generateTagCloud() {
+            const tagCloud = document.getElementById('tag-cloud');
+            if(!tagCloud) return;
+
+            // Use allPosts to ensure the tag cloud is consistent across the site
+            const allTags = allPosts.flatMap(post => post.tags);
+            const uniqueTags = [...new Set(allTags)];
+
+            if(!uniqueTags.length) {
+                tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+                return;
+            }
+            
+            tagCloud.innerHTML = uniqueTags.sort().map(tag => `
+                <a href="../tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                    #${tag}
+                </a>
+            `).join('');
+        }
+
+        // Sets up the search functionality.
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if(!searchInput) return;
+
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                // Search should only apply to the posts on this category page
+                const filteredPosts = categoryPosts.filter(post => {
+                    if (!post.title || !post.summary || !post.tags) return false;
+                    const titleMatch = post.title.toLowerCase().includes(searchTerm);
+                    const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
+                    const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    return titleMatch || summaryMatch || tagsMatch;
+                });
+                renderPosts(filteredPosts);
+            });
+        }
+
+        // Main initialization function for the page.
+        function initPage() {
+            loadPosts(); 
+            setupSearch();
+        }
+
+        // Run initialization when the DOM is fully loaded.
+        // Note: shared.js handles fadeInContent, setupThemeToggle, setupScrollToTop, and updateFooter.
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 
 </body>
