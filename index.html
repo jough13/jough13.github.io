@@ -441,6 +441,17 @@ const interactiveHeader = {
             }
 
             function animate() {
+
+ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+        // Clear the canvas once and stop the animation loop
+        interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+        return; 
+    }
+
+    interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+
+                
                 interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
 
                 if (isEffectActive && mouse.x !== undefined) {
