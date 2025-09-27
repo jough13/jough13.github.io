@@ -1,5 +1,3 @@
-# Peering into the Past: Webb Telescope's Latest Wonders
-
 The James Webb Space Telescope (JWST) continues to revolutionize our understanding of the cosmos, capturing images of unprecedented depth and clarity. Unlike its predecessor, Hubble, Webb is tuned to observe in the infrared spectrum. This allows it to see through cosmic dust clouds and peer back in time to the very first galaxies forming after the Big Bang.
 
 ### Pillars of Creation Revisited
