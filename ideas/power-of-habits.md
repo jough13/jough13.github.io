@@ -1,5 +1,3 @@
-# Small Changes, Big Results: The Power of Atomic Habits
-
 We often convince ourselves that massive success requires massive action. Whether it's losing weight, building a business, or learning a new skill, we feel pressure to make some earth-shattering improvement that everyone will talk about.
 
 But what if the key to success isn't giant leaps, but tiny, incremental steps? This is the core idea behind the concept of "atomic habits"—small, easy-to-do routines that, over time, compound into remarkable results.
