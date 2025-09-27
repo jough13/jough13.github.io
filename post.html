@@ -152,7 +152,7 @@
                                     <a href="finances/index.html" class="project-link flex items-center p-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-lg"><svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Financial Tool</h4><p class="text-xs text-purple-200">Manage your finances with ease.</p></div></a>
                                     <a href="commodities/index.html" class="project-link flex items-center p-3 bg-lime-600 hover:bg-lime-500 text-white rounded-lg shadow-lg"><svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Rad-Waste Disposal Tool</h4><p class="text-xs text-lime-200">Lookup and disposal requests.</p></div></a>
                                     <a href="salon/service_matrix.html" class="project-link flex items-center p-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg shadow-lg"><svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121M12 12l2.879-2.879M12 12L9.121 14.879" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Salon Service Matrix</h4><p class="text-xs text-fuchsia-200">Organize stylists and services.</p></div></a>
-                                    <a href="hooked/index.html" class="project-link flex items-center p-3 bg-pink-600 hover:bg-pink-500 text-white rounded-lg shadow-lg"><svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13.828 10.12a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Hooked by Emmy</h4><p class="text-xs text-pink-200">Handmade crochet creations.</p></div></a>
+                                    <a href="hooked/index.html" class="project-link flex items-center p-3 bg-pink-600 hover:bg-pink-500 text-white rounded-lg shadow-lg"><svg class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg><div class="ml-4 flex-1"><h4 class="font-semibold text-sm">Hooked by Emmy</h4><p class="text-xs text-pink-200">Handmade crochet creations.</p></div></a>
                                 </div>
                             </section>
                             <section aria-labelledby="games-heading">
@@ -196,78 +196,26 @@
         </div>
     </main>
 
-     <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg z-50">
+    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg z-50">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
     </button>
     <footer class="text-center p-4 mt-4">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.1 | Last Updated: September 21, 2025
+        <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
+            <!-- This content is populated by shared.js -->
         </p>
     </footer>
-    
+
+    <script src="shared.js"></script>
     <script>
-        // --- App Initialization ---
-        function initApp() {
-            fadeInContent();
-            setupThemeToggle();
-            setupScrollToTop();
-            loadSinglePost(); 
-        }
+        // --- Page-Specific Logic for Single Post Page ---
 
-        // --- Core Functions ---
-        function fadeInContent() {
-            const content = document.getElementById('content-container');
-            if(content) {
-                // Use a short delay to ensure the DOM is ready before fading in
-                setTimeout(() => {
-                    content.classList.remove('opacity-0');
-                }, 100);
-            }
-        }
-
-        function setupThemeToggle() {
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            if(!themeToggleBtn) return;
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-
-            themeToggleBtn.addEventListener('click', function() {
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
-            });
-        }
-        
         async function loadSinglePost() {
             const postContainer = document.getElementById('post-content-container');
             const params = new URLSearchParams(window.location.search);
             const postFile = params.get('p');
 
             if (!postFile) {
-                postContainer.innerHTML = "<div class='prose dark:prose-invert'><h2>Post not found.</h2><p>Please check the URL and try again.</p></div>";
+                postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Please check the URL and try again. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
                 return;
             }
 
@@ -277,67 +225,61 @@
                 const postMeta = posts.find(post => post.file === postFile);
 
                 if (!postMeta) {
-                    postContainer.innerHTML = "<div class='prose dark:prose-invert'><h2>Post not found.</h2><p>Could not find this post in the manifest.</p></div>";
+                    postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Could not find this post in the manifest. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
                     return;
                 }
 
                 const postResponse = await fetch(postFile);
-                let postHtml = ''; // Default to empty string
-
-                if (postResponse.ok) {
-                    const postMarkdown = await postResponse.text();
-                    postHtml = marked.parse(postMarkdown);
-                } else {
-                    console.error(`Failed to load post content from ${postFile}. Server responded with ${postResponse.status}.`);
+                if (!postResponse.ok) {
+                    throw new Error(`Failed to load post content from ${postFile}. Server responded with ${postResponse.status}.`);
                 }
-
+                const postMarkdown = await postResponse.text();
+                const postHtml = marked.parse(postMarkdown);
+                
                 const postDate = new Date(postMeta.date).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'long', day: 'numeric'
+                    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
                 });
+
                 const categoryName = postMeta.category.charAt(0).toUpperCase() + postMeta.category.slice(1);
                 const categoryUrl = `${postMeta.category}/index.html`; 
                 
+                // Update the document's title to reflect the post title
                 document.title = `${postMeta.title} | Jough Donakowski`;
+
+                const tagsHtml = postMeta.tags.map(tag => 
+                    `<a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`
+                ).join(' ');
 
                 postContainer.innerHTML = `
                     <div class="prose prose-lg dark:prose-invert max-w-none">
-                        <div class="not-prose mb-4">
-                            <a href="${categoryUrl}" class="bg-sky-100 text-sky-800 text-sm font-medium me-2 px-3 py-1 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${categoryName}</a>
+                        <div class="not-prose mb-6">
+                            <a href="${categoryUrl}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                                ${categoryName}
+                            </a>
                         </div>
                         <h1><strong>${postMeta.title}</strong></h1>
                         <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
                         ${postHtml}
+                        <div class="not-prose mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2">
+                            ${tagsHtml}
+                        </div>
                     </div>
                 `;
 
             } catch (error) {
-                postContainer.innerHTML = "<div class='prose dark:prose-invert'><h2>Error</h2><p>Sorry, there was a problem loading this post.</p></div>";
+                postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Error</h2><p>Sorry, there was a problem loading this post. Please try again later.</p></div>";
                 console.error("Error loading single post:", error);
             }
         }
         
-        function setupScrollToTop() {
-            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-            if (!scrollToTopBtn) return;
-            
-            window.onscroll = function() {
-                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    scrollToTopBtn.classList.remove('hidden');
-                    scrollToTopBtn.classList.remove('opacity-0');
-                } else {
-                    scrollToTopBtn.classList.add('opacity-0');
-                    setTimeout(() => {
-                         scrollToTopBtn.classList.add('hidden');
-                    }, 300);
-                }
-            };
-
-            scrollToTopBtn.onclick = function() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
+        // Main initialization function for the page.
+        function initPage() {
+            loadSinglePost(); 
         }
 
-        window.addEventListener('load', initApp);
+        // Run initialization when the DOM is fully loaded.
+        // shared.js handles fadeInContent, setupThemeToggle, setupScrollToTop, and updateFooter.
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
