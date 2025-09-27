@@ -1,5 +1,3 @@
-# Review: 'Dune' by Frank Herbert
-
 Frank Herbert's *Dune* is more than just a science fiction novel; it's a sprawling epic that has defined the genre for generations. First published in 1965, its intricate world-building, complex characters, and profound themes feel just as relevant today as they did over half a century ago.
 
 ### A World of Sand and Spice
