@@ -6,11 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <title>Jough Donakowski | Blog</title>
-    <meta name="description" content="The personal blog and project showcase for Jough Donakowski. A place for writing, projects, and various interests.">
-    <meta name="keywords" content="Jough Donakowski, personal blog, projects, writing, tech, creative">
-
-    <meta property="og:title" content="Jough Donakowski | Blog">
-    <meta property="og:description" content="The personal blog and project showcase for Jough Donakowski.">
+    <meta name="description" content="The personal blog and project showcase for Jo<script> for Jough Donakowski.">
     <meta property="og:image" content="https://placehold.co/1200x630/0f172a/e0f2fe?text=JD">
     <meta property="og:url" content="https://jough13.github.io/">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
@@ -355,6 +351,115 @@
             setupSearch();
         }
 
+const interactiveHeader = {
+            canvas: null,
+            ctx: null,
+            resize: () => {}
+        };
+
+        function setupInteractiveHeader() {
+            interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
+            if (!interactiveHeader.canvas) return;
+
+            interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
+            let particles = [];
+            const mouse = { x: undefined, y: undefined };
+            let isEffectActive = false;
+            let effectTimeout;
+            const dustTrigger = document.getElementById('dust-trigger');
+
+            interactiveHeader.resize = () => {
+                const dpr = window.devicePixelRatio || 1;
+                const rect = { width: window.innerWidth, height: window.innerHeight };
+                interactiveHeader.canvas.width = rect.width * dpr;
+                interactiveHeader.canvas.height = rect.height * dpr;
+                interactiveHeader.ctx.scale(dpr, dpr);
+            };
+
+            window.addEventListener('resize', interactiveHeader.resize);
+
+            document.addEventListener('mousemove', (event) => {
+                if (isEffectActive) {
+                    mouse.x = event.clientX;
+                    mouse.y = event.clientY;
+                }
+            });
+
+            document.addEventListener('mouseleave', () => {
+                mouse.x = undefined;
+                mouse.y = undefined;
+            });
+
+            if (dustTrigger) {
+                dustTrigger.addEventListener('mouseover', () => {
+                    isEffectActive = true;
+                    clearTimeout(effectTimeout);
+                    effectTimeout = setTimeout(() => {
+                        isEffectActive = false;
+                    }, 5000);
+                });
+            }
+
+            class Particle {
+                constructor() {
+                    this.x = mouse.x;
+                    this.y = mouse.y;
+                    this.speedX = Math.random() * 0.5 - 0.25;
+                    this.speedY = Math.random() * 0.5 - 0.25;
+                    this.initialLife = this.life = Math.random() * 30 + 30;
+                    this.radius = Math.random() * 1.5 + 0.5;
+                    this.color = document.documentElement.classList.contains('dark') 
+                        ? 'rgba(107, 224, 255, 1)' 
+                        : 'rgba(0, 149, 255, 1)';
+                }
+
+                update() {
+                    this.life--;
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                }
+
+                draw() {
+                    const opacity = Math.max(0, this.life / this.initialLife);
+                    const ctx = interactiveHeader.ctx;
+                    
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
+                    
+                    ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            function animate() {
+                interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+
+                if (isEffectActive && mouse.x !== undefined) {
+                     for (let i = 0; i < 3; i++) {
+                        particles.push(new Particle());
+                    }
+                }
+                
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.update();
+                    p.draw();
+                    if (p.life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+                
+                requestAnimationFrame(animate);
+            }
+
+            interactiveHeader.resize();
+            animate();
+        }
+        
         document.addEventListener('DOMContentLoaded', initPage);
 
     </script>
