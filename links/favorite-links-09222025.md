@@ -1,5 +1,3 @@
-# Weekly Finds: AI Tools and Long-Form Reads
-
 Another week, another collection of interesting things from around the web. This week is focused on a couple of neat AI tools and some longer articles that are worth your time.
 
 ### AI & Tools
