@@ -60,7 +60,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 10; /* --- FIX: Bring canvas in front of main content --- */
+            z-index: 10;
             pointer-events: none;
         }
         main {
@@ -70,7 +70,7 @@
       
         .header-content { position: relative; } 
         #dust-trigger {
-            cursor: default; /* --- FIX: Changed cursor from pointer to default --- */
+            cursor: default;
             text-decoration: underline;
             text-decoration-style: dotted;
             text-underline-offset: 4px;
@@ -261,205 +261,14 @@
     </button>
     
     <footer class="text-center p-4 mt-4">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.5 | Last Updated: September 28, 2025
+        <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
+            <!-- This will be populated by shared.js -->
         </p>
     </footer>
-
-
+    
+    <script src="shared.js"></script>
     <script>
-        // --- App Initialization ---
-        function initApp() {
-            fadeInContent();
-            setupThemeToggle();
-            setupInteractiveHeader();
-            setupScrollToTop();
-            loadPosts(); 
-            setupSearch();
-        }
-
-        // --- Core Functions ---
-        function fadeInContent() {
-            const content = document.getElementById('content-container');
-            if(content) {
-                content.classList.remove('opacity-0');
-            }
-        }
-
-        function setupThemeToggle() {
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
-            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
-            const body = document.body;
-
-            function setThemeBackground() {
-                if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    body.classList.remove('light-mode-gradient');
-                } else {
-                    body.classList.add('light-mode-gradient');
-                }
-            }
-
-            setThemeBackground();
-            if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                themeToggleLightIcon.classList.remove('hidden');
-            } else {
-                themeToggleDarkIcon.classList.remove('hidden');
-            }
-
-            themeToggleBtn.addEventListener('click', function() {
-                themeToggleDarkIcon.classList.toggle('hidden');
-                themeToggleLightIcon.classList.toggle('hidden');
-
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
-                setThemeBackground();
-            });
-        }
-
-        const interactiveHeader = {
-            canvas: null,
-            ctx: null,
-            resize: () => {}
-        };
-
-        function setupInteractiveHeader() {
-            interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
-            if (!interactiveHeader.canvas) return;
-
-            interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
-            let particles = [];
-            const mouse = { x: undefined, y: undefined };
-            let isEffectActive = false;
-            let effectTimeout;
-            const dustTrigger = document.getElementById('dust-trigger');
-
-            interactiveHeader.resize = () => {
-                const dpr = window.devicePixelRatio || 1;
-                const rect = { width: window.innerWidth, height: window.innerHeight };
-                interactiveHeader.canvas.width = rect.width * dpr;
-                interactiveHeader.canvas.height = rect.height * dpr;
-                interactiveHeader.ctx.scale(dpr, dpr);
-            };
-
-            window.addEventListener('resize', interactiveHeader.resize);
-
-            document.addEventListener('mousemove', (event) => {
-                if (isEffectActive) {
-                    mouse.x = event.clientX;
-                    mouse.y = event.clientY;
-                }
-            });
-
-            document.addEventListener('mouseleave', () => {
-                mouse.x = undefined;
-                mouse.y = undefined;
-            });
-
-            if (dustTrigger) {
-                dustTrigger.addEventListener('mouseover', () => {
-                    isEffectActive = true;
-                    clearTimeout(effectTimeout);
-                    effectTimeout = setTimeout(() => {
-                        isEffectActive = false;
-                    }, 5000);
-                });
-            }
-
-            class Particle {
-                constructor() {
-                    this.x = mouse.x;
-                    this.y = mouse.y;
-                    this.speedX = Math.random() * 0.5 - 0.25;
-                    this.speedY = Math.random() * 0.5 - 0.25;
-                    this.initialLife = this.life = Math.random() * 30 + 30;
-                    this.radius = Math.random() * 1.5 + 0.5;
-                    this.color = document.documentElement.classList.contains('dark') 
-                        ? 'rgba(107, 224, 255, 1)' 
-                        : 'rgba(0, 149, 255, 1)';
-                }
-
-                update() {
-                    this.life--;
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                }
-
-                draw() {
-                    const opacity = Math.max(0, this.life / this.initialLife);
-                    const ctx = interactiveHeader.ctx;
-                    
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
-                    
-                    ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.shadowBlur = 0;
-                }
-            }
-
-            function animate() {
-                interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
-
-                if (isEffectActive && mouse.x !== undefined) {
-                     for (let i = 0; i < 3; i++) {
-                        particles.push(new Particle());
-                    }
-                }
-                
-                for (let i = particles.length - 1; i >= 0; i--) {
-                    const p = particles[i];
-                    p.update();
-                    p.draw();
-                    if (p.life <= 0) {
-                        particles.splice(i, 1);
-                    }
-                }
-                
-                requestAnimationFrame(animate);
-            }
-
-            interactiveHeader.resize();
-            animate();
-        }
-
-        function setupScrollToTop() {
-            const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-            
-            window.onscroll = function() {
-                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    scrollToTopBtn.classList.remove('hidden');
-                    scrollToTopBtn.classList.remove('opacity-0');
-                } else {
-                    scrollToTopBtn.classList.add('opacity-0');
-                    setTimeout(() => {
-                         scrollToTopBtn.classList.add('hidden');
-                    }, 300);
-                }
-            };
-
-            scrollToTopBtn.onclick = function() {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-        }
+        // --- Page-Specific Logic for Blog Index ---
 
         let allPosts = [];
 
@@ -539,8 +348,15 @@
                 renderPosts(filteredPosts);
             });
         }
+        
+        function initPage() {
+            setupInteractiveHeader();
+            loadPosts(); 
+            setupSearch();
+        }
 
-        window.addEventListener('load', initApp);
+        document.addEventListener('DOMContentLoaded', initPage);
+
     </script>
 
 </body>
