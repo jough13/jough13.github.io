@@ -1,5 +1,3 @@
-# The Perfect Old Fashioned: A Timeless Cocktail
-
 The Old Fashioned is the quintessential American cocktail. It's simple, strong, and sophisticated. When made correctly, it's a perfectly balanced drink that highlights the quality of the whiskey. Here's how to make a great one every time.
 
 ### Ingredients
