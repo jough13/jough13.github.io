@@ -51,6 +51,27 @@
         .dark .main-card:hover, .dark .sidebar-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
         .social-icon:hover { transform: scale(1.15); }
         #scrollToTopBtn { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+        /* Color-specific hover effects for project links */
+        .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
+        .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
+        .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
+        .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
+        .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
+        .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
+        .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
+        .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
+        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
+        .project-link.bg-teal-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2); }
+        .project-link.bg-orange-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2); }
+        .project-link.bg-stone-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2); }
+        .project-link.bg-lime-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(101, 163, 13, 0.25), 0 6px 6px rgba(101, 163, 13, 0.2); }
+        .project-link.bg-emerald-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2); }
+        .project-link.bg-fuchsia-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2); }
+        .project-link.bg-blue-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2); }
+        .project-link.bg-violet-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25), 0 6px 6px rgba(124, 58, 237, 0.2); }
+        .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
+        .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
+        .bg-clip-text { -webkit-background-clip: text; }
     </style>
 </head>
 <body class="text-slate-800 dark:text-slate-300 antialiased">
@@ -190,41 +211,83 @@
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
     </button>
     <footer class="text-center p-4 mt-4">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.2 | Last Updated: September 23, 2025
-        </p>
+        <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
+            </p>
     </footer>
 
-    <script src="../app.js"></script>
+    <script src="../shared.js"></script>
     <script>
-        async function loadCategoryPosts() {
+        // --- Page-Specific Logic for Articles Page ---
+
+        let allPosts = [];
+
+        async function loadPosts() {
             try {
-                // Fetch from the root directory using an absolute path
-                const response = await fetch('/posts.json');
-                const allPosts = await response.json();
+                // Fetch from the root directory
+                const response = await fetch('../posts.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                allPosts = await response.json();
                 
                 // Filter posts for the 'articles' category
-                // NOTE: Based on your posts.json, the category for these is actually 'links'
-                const filteredPosts = allPosts.filter(post => post.category === 'links');
+                const category = 'articles'; // Define the category for this page
+                const filteredPosts = allPosts.filter(post => post.category === category);
                 
-                // Use the shared renderPosts function from app.js
                 renderPosts(filteredPosts);
+                generateTagCloud();
 
             } catch (error) {
                 document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading category posts:', error);
+                console.error('Error loading posts:', error);
             }
         }
-    
-        function initApp() {
-            document.getElementById('content-container').classList.remove('opacity-0');
-            setupThemeToggle();
-            setupScrollToTop();
-            generateTagCloud(); // For the sidebar
-            loadCategoryPosts(); // Load the filtered posts for this page
-        }
 
-        window.addEventListener('load', initApp);
+        function renderPosts(posts) {
+            const container = document.getElementById('posts-container');
+            if(!container) return;
+            if (posts.length === 0) {
+                container.innerHTML = '<p class="text-slate-500">No posts found in this category.</p>';
+            } else {
+                container.innerHTML = posts.map(post => {
+                    const postDate = new Date(post.date).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                    const tagsHtml = post.tags.map(tag => `<a href="../tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`).join(' ');
+                    
+                    return `
+                    <article class="prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 mb-12 pb-8 border-b border-slate-200 dark:border-slate-700">
+                        <h2><a href="../post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                        <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                        <p>${post.summary}</p>
+                        <div class="not-prose flex flex-wrap gap-2">
+                            ${tagsHtml}
+                        </div>
+                    </article>
+                `}).join('');
+            }
+        }
+        
+        function generateTagCloud() {
+            const tagCloud = document.getElementById('tag-cloud');
+            if(!tagCloud) return;
+            // Use all posts for the tag cloud to allow cross-category discovery
+            const allTags = allPosts.flatMap(post => post.tags);
+            const uniqueTags = [...new Set(allTags)];
+
+            if(!uniqueTags.length) {
+                tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+                return;
+            }
+            
+            tagCloud.innerHTML = uniqueTags.sort().map(tag => `
+                <a href="../tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                    #${tag}
+                </a>
+            `).join('');
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadPosts);
     </script>
 
 </body>
