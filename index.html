@@ -255,7 +255,7 @@
     
     <footer class="text-center p-4 mt-4">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-            Version 1.2.1 | Last Updated: September 26, 2025
+            Version 1.3 | Last Updated: September 26, 2025
         </p>
     </footer>
 
@@ -267,7 +267,6 @@
             setupThemeToggle();
             setupInteractiveHeader();
             setupScrollToTop();
-            // --- FIX: ADDED MISSING FUNCTION CALLS ---
             loadPosts(); 
             setupSearch();
         }
@@ -326,7 +325,6 @@
             });
         }
 
-        // --- REWRITTEN PARTICLE EFFECT LOGIC ---
         const interactiveHeader = {
             canvas: null,
             ctx: null,
@@ -450,7 +448,6 @@
             };
         }
 
-        // --- NEW AND CORRECTED FUNCTIONS FOR POSTS/TAGS ---
         let allPosts = [];
 
         async function loadPosts() {
@@ -491,7 +488,6 @@
                     </article>
                 `}).join('');
             }
-            // --- FIX --- This is the critical line that fixes the stretching
             if(interactiveHeader.canvas) {
                 interactiveHeader.resize();
             }
@@ -531,7 +527,6 @@
             });
         }
 
-        // --- Run Application ---
         window.addEventListener('load', initApp);
     </script>
 
