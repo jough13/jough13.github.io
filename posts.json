@@ -1,5 +1,53 @@
 [
   {
+    "title": "Peering into the Past: Webb Telescope's Latest Wonders",
+    "date": "2025-09-27",
+    "file": "science/jwst-discoveries.md",
+    "summary": "A look at recent breathtaking images from the JWST and what they teach us about the early universe.",
+    "category": "science",
+    "tags": ["space", "astronomy", "JWST", "science"]
+  },
+  {
+    "title": "The Perfect Old Fashioned: A Timeless Cocktail",
+    "date": "2025-09-26",
+    "file": "recipes/classic-old-fashioned.md",
+    "summary": "Master the art of the classic Old Fashioned with this simple, no-fuss recipe. The perfect drink for any occasion.",
+    "category": "recipes",
+    "tags": ["cocktails", "recipe", "drinks", "classic"]
+  },
+  {
+    "title": "Capturing a Moment: The Magic of Impressionism",
+    "date": "2025-09-25",
+    "file": "art/impressionism-light-color.md",
+    "summary": "Explore how artists like Monet and Renoir broke from tradition to paint with light and color, changing art forever.",
+    "category": "art",
+    "tags": ["art", "art history", "impressionism", "painting"]
+  },
+  {
+    "title": "Small Changes, Big Results: The Power of Atomic Habits",
+    "date": "2025-09-24",
+    "file": "ideas/power-of-habits.md",
+    "summary": "How tiny, incremental changes, rather than massive overhauls, are the key to building lasting habits and achieving your goals.",
+    "category": "ideas",
+    "tags": ["productivity", "habits", "self-improvement", "philosophy"]
+  },
+  {
+    "title": "Review: 'Dune' by Frank Herbert",
+    "date": "2025-09-23",
+    "file": "books/dune-review.md",
+    "summary": "A deep dive into the seminal science fiction classic. We'll explore its themes of politics, religion, and ecology.",
+    "category": "prose",
+    "tags": ["books", "sci-fi", "review", "classics"]
+  },
+  {
+    "title": "Weekly Finds: AI Tools and Long-Form Reads",
+    "date": "2025-09-22",
+    "file": "links/favorite-links-09222025.md",
+    "summary": "A curated list of interesting AI tools that can boost your creativity, plus a few fascinating articles worth your time this week.",
+    "category": "links",
+    "tags": ["links", "AI", "reading", "tools"]
+  },
+  {
     "title": "My First Blog Post",
     "date": "2025-09-21",
     "file": "posts/09212025.md",
