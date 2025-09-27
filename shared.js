@@ -75,25 +75,22 @@ async function updateFooter() {
 
 /**
  * Finds the active page link in the sidebar and applies a visual highlight.
- * It compares the current page's URL with the href of each link.
  */
 function highlightActiveLink() {
-    // Get the current page's path, treating '/' and '/index.html' as the same for matching.
-    let currentPath = window.location.pathname;
-    if (currentPath.endsWith('/')) {
-        currentPath += 'index.html';
-    }
+    // Get the current page's path and clean it up for consistent matching.
+    let currentPath = window.location.pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+    if (currentPath === '') currentPath = '/'; // Standardize the root path.
 
     const navLinks = document.querySelectorAll('aside a.project-link');
 
     navLinks.forEach(link => {
-        // Get the full path from the link's href attribute for a reliable comparison.
-        const linkPath = new URL(link.href).pathname;
-        
-        // Check if the current page's path exactly matches the link's path.
+        // Get the link's path and clean it up the same way.
+        let linkPath = new URL(link.href).pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+        if (linkPath === '') linkPath = '/';
+
+        // Check if the cleaned paths match.
         if (currentPath === linkPath) {
             // Add TailwindCSS classes to create a visual "ring" around the active link.
-            // This is a clear and theme-friendly way to show the active state.
             link.classList.add('ring-2', 'ring-offset-2', 'ring-sky-400', 'dark:ring-offset-slate-800');
         }
     });
@@ -106,5 +103,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupThemeToggle();
     setupScrollToTop();
     updateFooter();
-    highlightActiveLink(); // <-- We now call the new function on every page load
+    highlightActiveLink();
 });
