@@ -57,12 +57,16 @@ async function updateFooter() {
     if (!footerElement) return;
 
     try {
-        const response = await fetch('/site-config.json');
+        // --- FIX: Added cache-busting query string to the fetch request ---
+        const response = await fetch(`/site-config.json?v=${new Date().getTime()}`);
         const config = await response.json();
+        
+        // --- FIX: Added timeZone to prevent off-by-one-day errors ---
         const lastUpdatedDate = new Date(config.lastUpdated).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
+            timeZone: 'UTC' 
         });
         footerElement.textContent = `Version ${config.version} | Last Updated: ${lastUpdatedDate}`;
     } catch (error) {
