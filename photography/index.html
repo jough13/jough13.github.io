@@ -34,7 +34,7 @@
         }
         .light header h1 { color: #111827; }
         .light header p, .light .sort-btn, .light #category-filter { color: #6b7280; }
-        .light header a, .light #theme-toggle { border-color: #e5e7eb; }
+        .light header a, .light #theme-toggle, .light #mobile-options-btn { border-color: #e5e7eb; color: #6b7280; }
         .light .sort-btn:hover, .light #category-filter:hover { color: #111827; }
         .light .sort-btn.active { color: #0ea5e9; }
         .light .gallery-item { background-color: #e5e7eb; }
@@ -46,8 +46,10 @@
         .light #close-modal, .light #prev-photo, .light #next-photo { color: #374151; }
         .light #close-modal:hover, .light #prev-photo:hover, .light #next-photo:hover { color: #111827; }
         .light #toast-notification { background-color: #111827; color: #f9fafb; }
+        .light #back-to-top { background-color: #e5e7eb; color: #374151; }
+        .light footer { color: #9ca3af; }
+        .light #options-panel.open { border-color: #e5e7eb; }
         
-        /* The main photo grid with responsive columns */
         #gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -55,10 +57,10 @@
         }
         
         .gallery-item {
-            aspect-ratio: 4 / 3; /* Maintain a consistent aspect ratio */
+            aspect-ratio: 4 / 3;
             overflow: hidden;
             border-radius: 0.5rem;
-            background-color: #1f2937; /* Slightly lighter gray for placeholder */
+            background-color: #1f2937;
             cursor: pointer;
             position: relative;
         }
@@ -74,55 +76,27 @@
             transform: scale(1.05);
         }
 
-        /* Styles for smart cropping */
-        #photo-girl-at-pole img {
-            object-position: center 25%;
-        }
+        #photo-girl-at-pole img { object-position: center 25%; }
+        #photo-girl-on-stairs img { object-position: center 30%; }
         
-        #photo-girl-on-stairs img {
-            object-position: center 30%;
-        }
+        #lightbox-modal { transition: opacity 0.3s ease-in-out; }
+        .lightbox-content { animation: fadeIn 0.3s ease-in-out; }
         
-        /* Lightbox styles */
-        #lightbox-modal {
-            transition: opacity 0.3s ease-in-out;
+        #toast-notification.show { bottom: 30px; opacity: 1; }
+
+        .sort-btn.active { color: #38bdf8; font-weight: 600; }
+        
+        #category-filter option { background-color: #1f2937; color: #d1d5db; }
+
+        #options-panel.open {
+            display: flex;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #334155;
+            margin-bottom: 1.5rem;
         }
 
-        .lightbox-content {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        /* Toast notification styles */
-        #toast-notification.show {
-            bottom: 30px;
-            opacity: 1;
-        }
+        #back-to-top.show { opacity: 1; pointer-events: auto; cursor: pointer; }
 
-        /* Sort button active state */
-        .sort-btn.active {
-            color: #38bdf8;
-            font-weight: 600;
-        }
-        
-        /* Dropdown options style */
-        #category-filter option {
-            background-color: #1f2937;
-            color: #d1d5db;
-        }
-
-#back-to-top.show {
-    opacity: 1;
-    pointer-events: auto;
-    cursor: pointer;
-}
-
-.light #back-to-top {
-    background-color: #e5e7eb;
-    color: #374151;
-}
-.light footer {
-    color: #9ca3af; /* A muted gray */
-}
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -131,33 +105,38 @@
 </head>
 <body class="antialiased">
 
-    <header class="p-6 md:p-8 flex justify-between items-center">
-        <div class="flex items-center gap-6">
+    <header class="p-6 md:p-8">
+        <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight text-slate-200">Photography</h1>
                 <p class="text-slate-400">Jough Donakowski</p>
             </div>
-            <div id="sort-controls" class="flex items-center gap-4 border-l border-slate-700 pl-6">
-                <select id="category-filter" class="sort-btn bg-transparent text-sm text-slate-400 hover:text-white focus:outline-none focus:ring-0 border-0 p-0 cursor-pointer">
-                    </select>
-                <span class="text-slate-700">|</span>
-                <span class="text-sm font-semibold text-slate-400">Sort by:</span>
-                <button data-sort="date" class="sort-btn text-sm text-slate-400 hover:text-white transition">Date</button>
-                <button data-sort="name" class="sort-btn text-sm text-slate-400 hover:text-white transition">Name</button>
-                <button data-sort="shuffle" class="sort-btn text-sm text-slate-400 hover:text-white transition">Random</button>
+            <div class="flex items-center gap-4">
+                <button id="mobile-options-btn" type="button" class="p-2 rounded-full text-slate-400 border border-slate-600 md:hidden">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <span class="sr-only">Open Options</span>
+                </button>
+                <div id="desktop-controls" class="hidden md:flex items-center gap-4">
+                    <a href="/index.html" class="text-slate-400 hover:text-sky-400 transition-colors border border-slate-600 hover:border-sky-500 rounded-full px-4 py-2 text-sm font-medium">&larr; Back to Blog</a>
+                    <button id="theme-toggle" type="button" class="p-2 rounded-full text-slate-400 border border-slate-600 hover:border-sky-500 hover:text-sky-400 transition-colors focus:outline-none">
+                        <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="flex items-center gap-4">
-            <a href="/index.html" class="text-slate-400 hover:text-sky-400 transition-colors border border-slate-600 hover:border-sky-500 rounded-full px-4 py-2 text-sm font-medium">&larr; Back to Blog</a>
-            <button id="theme-toggle" type="button" class="p-2 rounded-full text-slate-400 border border-slate-600 hover:border-sky-500 hover:text-sky-400 transition-colors focus:outline-none">
-                <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
-            </button>
+        <div id="options-panel" class="hidden md:flex items-center gap-4 px-6 md:px-8 pb-6 md:pb-0 md:pt-4 md:border-none justify-center">
+            <select id="category-filter" class="sort-btn bg-transparent text-sm text-slate-400 hover:text-white focus:outline-none focus:ring-0 border-0 p-0 cursor-pointer">
+                </select>
+            <span class="text-slate-700">|</span>
+            <span class="text-sm font-semibold text-slate-400">Sort by:</span>
+            <button data-sort="date" class="sort-btn text-sm text-slate-400 hover:text-white transition">Date</button>
+            <button data-sort="name" class="sort-btn text-sm text-slate-400 hover:text-white transition">Name</button>
+            <button data-sort="shuffle" class="sort-btn text-sm text-slate-400 hover:text-white transition">Random</button>
         </div>
     </header>
 
-    <main id="gallery-grid" class="p-6 md:p-8 pt-0">
-        </main>
+    <main id="gallery-grid" class="p-6 md:p-8 pt-0"></main>
 
     <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
         <button id="close-modal" class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-50">
@@ -165,7 +144,6 @@
         </button>
         <button id="prev-photo" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
         <button id="next-photo" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
-
         <div class="lightbox-content w-full h-full flex flex-col items-center justify-center gap-4">
             <div class="max-w-screen-lg max-h-[70vh]">
                 <img id="lightbox-img" src="" alt="" class="max-w-full max-h-full h-auto w-auto object-contain rounded-lg shadow-2xl">
@@ -194,13 +172,13 @@
 
     <script src="gallery.js"></script>
 
-    <footer class="text-center p-6 text-xs text-slate-500">
-        <p>&copy; <span id="copyright-year"></span> Joseph Donakowski - All rights reserved.</p>
-    </footer>
-    
     <button id="back-to-top" aria-label="Scroll to top" class="fixed bottom-8 right-8 p-3 rounded-full bg-slate-700 text-white shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
     </button>
     
+    <footer class="text-center p-6 text-xs text-slate-500">
+        <p>&copy; <span id="copyright-year"></span> Joseph Donakowski - All rights reserved.</p>
+    </footer>
+
 </body>
 </html>
