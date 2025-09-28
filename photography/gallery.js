@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderGrid() {
+function renderGrid() {
         if (!photosData.length) {
             galleryGrid.innerHTML = '<p class="text-slate-400">No photos to display.</p>';
             return;
@@ -34,8 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
             item.dataset.index = index;
-            // Note: The photo URLs should be root-relative (start with /)
-            // to ensure they load correctly from the /photos/ page.
+
+            // -- START of new code --
+            // Check the filename and assign a specific ID for custom cropping
+            if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) {
+                item.id = 'photo-girl-at-pole';
+            }
+            if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) {
+                item.id = 'photo-girl-on-stairs';
+            }
+            // -- END of new code --
+
             item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
             item.addEventListener('click', () => openModal(index));
             galleryGrid.appendChild(item);
