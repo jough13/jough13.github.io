@@ -1,5 +1,125 @@
 [
   {
+    "title": "Jellyfish",
+    "date": "2025-07-13",
+    "url": "/assets/photos/519100612_10127462536019610_4999023103261265786_n.jpg",
+    "description": "A translucent jellyfish drifts through a vibrant blue void, its delicate tentacles trailing behind."
+  },
+  {
+    "title": "At the Soundboard",
+    "date": "2025-07-03",
+    "url": "/assets/photos/515249271_10127289063375180_2485088003571479951_n.jpg",
+    "description": "Focused concentration at the mixing board, bathed in the cool light of the studio."
+  },
+  {
+    "title": "Shooting Star",
+    "date": "2025-05-06",
+    "url": "/assets/photos/495641744_10126436524644630_7205895935680775842_n.jpg",
+    "description": "A fleeting meteor streaks across the deep blue twilight sky above a quiet treeline."
+  },
+  {
+    "title": "Kuiper Satellite Cluster",
+    "date": "2025-04-28",
+    "url": "/assets/photos/494221235_10126348552067380_1221621236334560439_n.jpg",
+    "description": "A train of satellites crosses the night, a line of light against a field of faint star trails."
+  },
+  {
+    "title": "Urban Explorer",
+    "date": "2025-04-01",
+    "url": "/assets/photos/488502855_10126031330616710_1337067406177294674_n.jpg",
+    "description": "A portrait alive with color and character, set against a warm, sunlit alley."
+  },
+  {
+    "title": "Cherry Blossoms",
+    "date": "2025-03-29",
+    "url": "/assets/photos/487560509_10125994289846710_5672649869067707411_n.jpg",
+    "description": "A delicate cluster of cherry blossoms bursts forth, set against a soft-focus sky."
+  },
+  {
+    "title": "Lost Highway",
+    "date": "2025-03-27",
+    "url": "/assets/photos/487540880_10125976352558180_4867004633426543626_n.jpg",
+    "description": "Headlights approach on a dark road at dusk, splitting the monochrome landscape."
+  },
+  {
+    "title": "The Big Dipper",
+    "date": "2025-03-11",
+    "url": "/assets/photos/482274981_10125793243345510_5909206558355255708_n.jpg",
+    "description": "The familiar asterism of the Big Dipper hangs clearly in the night sky above the treetops."
+  },
+  {
+    "title": "Comet",
+    "date": "2024-10-17",
+    "url": "/assets/photos/514353651_10127218843621130_8581745721351640041_n.jpg",
+    "description": "A faint comet and its tail are just visible over the silhouette of a house at twilight."
+  },
+  {
+    "title": "Orion and Friends",
+    "date": "2023-01-10",
+    "url": "/assets/photos/orion_and_friends_by_jough_dfmec9c.jpg",
+    "description": "The familiar constellation Orion stands out in a field of stars, a landmark in the deep night."
+  },
+  {
+    "title": "Full Moon",
+    "date": "2023-01-02",
+    "url": "/assets/photos/full_moon_by_jough_dflqjtg.jpg",
+    "description": "A detailed and textured view of the lunar surface, stark and beautiful against the blackness of space."
+  },
+  {
+    "title": "Spring Blossoms",
+    "date": "2016-03-18",
+    "url": "/assets/photos/spring_by_jough_d9vo5iu.jpg",
+    "description": "Dense clusters of white blossoms reach into a bright, clear turquoise sky."
+  },
+  {
+    "title": "Hibiscus Bloom",
+    "date": "2011-06-25",
+    "url": "/assets/photos/lily_1_by_jough_d3jxpay.jpg",
+    "description": "A macro view into the heart of a hibiscus flower, revealing a vivid gradient from yellow to deep pink."
+  },
+  {
+    "title": "A Delicate Balance",
+    "date": "2011-01-28",
+    "url": "/assets/photos/a_delicate_balance_by_jough_d388zmk.jpg",
+    "description": "A moment of serene impossibility, with stones stacked precariously against the ocean's shore."
+  },
+  {
+    "title": "Arch Against the Sky",
+    "date": "2009-10-11",
+    "url": "/assets/photos/arch_again_by_jough_d2bcluc.jpg",
+    "description": "The smooth, sweeping curve of a monument against a vast and wispy blue sky."
+  },
+  {
+    "title": "Stone Stairs",
+    "date": "2009-08-09",
+    "url": "/assets/photos/stairs_by_jough_d271fp0.jpg",
+    "description": "Minimalist architecture in stone and glass, focusing on the clean lines and angles of a modern staircase."
+  },
+  {
+    "title": "By the Pool",
+    "date": "2008-01-04",
+    "url": "/assets/photos/by_the_pool_by_jough_d17x0gt.jpg",
+    "description": "A vibrant close-up of a palm frond, its repeating lines creating a pattern of brilliant green."
+  },
+  {
+    "title": "Whale Shark Exclamation Point",
+    "date": "2007-02-22",
+    "url": "/assets/photos/whale_shark_exclamation_point_by_jough_dte4is.jpg",
+    "description": "Sunlight filters through the water, illuminating the immense form of a whale shark below."
+  },
+  {
+    "title": "Pass the Peanut Butter",
+    "date": "2007-02-22",
+    "url": "/assets/photos/pass_the_peanut_butter_by_jough_dte4a9.jpg",
+    "description": "Ethereal jellyfish trail delicate tentacles through an impossibly blue deep."
+  },
+  {
+    "title": "Tate Observatory Telescope",
+    "date": "2005-07-01",
+    "url": "/assets/photos/470235438_10125175141177210_8716706953444004054_n.jpg",
+    "description": "A vintage telescope points skyward inside the intricate dome of an observatory."
+  },
+  {
     "title": "Orion's Belt",
     "date": "2004-08-01",
     "url": "/assets/photos/orions_belt_by_jough_dcytbq.jpg",
@@ -58,65 +178,5 @@
     "date": "2005-08-15",
     "url": "/assets/photos/girl_on_pillar_by_jough_dcyhs5.jpg",
     "description": "A playful and direct gaze, where vibrant yellow in the foreground and hair creates a striking color harmony."
-  },
-  {
-    "title": "Arch Against the Sky",
-    "date": "2009-10-11",
-    "url": "/assets/photos/arch_again_by_jough_d2bcluc.jpg",
-    "description": "The smooth, sweeping curve of a monument against a vast and wispy blue sky."
-  },
-  {
-    "title": "Pass the Peanut Butter",
-    "date": "2007-02-22",
-    "url": "/assets/photos/pass_the_peanut_butter_by_jough_dte4a9.jpg",
-    "description": "Ethereal jellyfish trail delicate tentacles through an impossibly blue deep."
-  },
-  {
-    "title": "A Delicate Balance",
-    "date": "2011-01-28",
-    "url": "/assets/photos/a_delicate_balance_by_jough_d388zmk.jpg",
-    "description": "A moment of serene impossibility, with stones stacked precariously against the ocean's shore."
-  },
-  {
-    "title": "Spring Blossoms",
-    "date": "2016-03-18",
-    "url": "/assets/photos/spring_by_jough_d9vo5iu.jpg",
-    "description": "Dense clusters of white blossoms reach into a bright, clear turquoise sky."
-  },
-  {
-    "title": "Orion and Friends",
-    "date": "2023-01-10",
-    "url": "/assets/photos/orion_and_friends_by_jough_dfmec9c.jpg",
-    "description": "The familiar constellation Orion stands out in a field of stars, a landmark in the deep night."
-  },
-  {
-    "title": "Whale Shark Exclamation Point",
-    "date": "2007-02-22",
-    "url": "/assets/photos/whale_shark_exclamation_point_by_jough_dte4is.jpg",
-    "description": "Sunlight filters through the water, illuminating the immense form of a whale shark below."
-  },
-  {
-    "title": "By the Pool",
-    "date": "2008-01-04",
-    "url": "/assets/photos/by_the_pool_by_jough_d17x0gt.jpg",
-    "description": "A vibrant close-up of a palm frond, its repeating lines creating a pattern of brilliant green."
-  },
-  {
-    "title": "Hibiscus Bloom",
-    "date": "2011-06-25",
-    "url": "/assets/photos/lily_1_by_jough_d3jxpay.jpg",
-    "description": "A macro view into the heart of a hibiscus flower, revealing a vivid gradient from yellow to deep pink."
-  },
-  {
-    "title": "Full Moon",
-    "date": "2023-01-02",
-    "url": "/assets/photos/full_moon_by_jough_dflqjtg.jpg",
-    "description": "A detailed and textured view of the lunar surface, stark and beautiful against the blackness of space."
-  },
-  {
-    "title": "Stone Stairs",
-    "date": "2009-08-09",
-    "url": "/assets/photos/stairs_by_jough_d271fp0.jpg",
-    "description": "Minimalist architecture in stone and glass, focusing on the clean lines and angles of a modern staircase."
   }
 ]
