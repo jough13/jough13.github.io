@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jough Donakowski | Photography</title>
     <meta name="description" content="A curated collection of moments captured through the lens by Jough Donakowski.">
-    <link rel="icon" href="data:image/svg+xml,...">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%23d1d5db' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%239ca3af'/></svg>">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,47 +13,66 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
+        /* A minimalist, museum-like style */
         body {
-            background-color: #111827;
+            background-color: #111827; /* Dark gray-blue */
             font-family: 'Inter', sans-serif;
-            color: #d1d5db;
+            color: #d1d5db; /* Light gray */
             overflow-x: hidden;
         }
+        
+        /* The main photo grid with responsive columns */
         #gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 1rem;
         }
+        
         .gallery-item {
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 4 / 3; /* Maintain a consistent aspect ratio */
             overflow: hidden;
             border-radius: 0.5rem;
-            background-color: #1f2937;
+            background-color: #1f2937; /* Slightly lighter gray for placeholder */
             cursor: pointer;
             position: relative;
         }
+
         .gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s;
         }
+        
         .gallery-item:hover img {
             transform: scale(1.05);
         }
-                #photo-girl-at-pole img {
+
+        /* New styles for smart cropping */
+        #photo-girl-at-pole img {
             object-position: center 25%; /* Shifts focus up from the center (50%) */
         }
         
         #photo-girl-on-stairs img {
             object-position: center 30%; /* Shifts focus up, a little less than the other */
         }
+        
+        /* Lightbox styles for the full-screen view */
         #lightbox-modal {
             transition: opacity 0.3s ease-in-out;
         }
+
+        /* Fade-in animation for modal content */
         .lightbox-content {
             animation: fadeIn 0.3s ease-in-out;
         }
+
+        /* New styles for the toast notification */
+        #toast-notification.show {
+            bottom: 30px; /* Position it on screen */
+            opacity: 1;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -77,6 +96,7 @@
         <button id="close-modal" class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-50">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
+        
         <button id="prev-photo" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
         <button id="next-photo" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
 
@@ -88,21 +108,24 @@
                 <h3 id="lightbox-title" class="text-2xl font-bold"></h3>
                 <p id="lightbox-date" class="text-slate-400 mb-2"></p>
                 <p id="lightbox-desc" class="text-slate-300"></p>
-
                 <div id="lightbox-actions" class="mt-4 flex items-center justify-center gap-4">
-                    <a id="lightbox-directlink" href="#" target="_blank" class="inline-flex items-center gap-2 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors">
+                    <button id="lightbox-directlink" class="inline-flex items-center gap-2 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                        Direct Link
-                    </a>
+                        Copy Link
+                    </button>
                     <a id="lightbox-download" href="#" download class="inline-flex items-center gap-2 text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                         Download
                     </a>
                 </div>
-                </div>
+            </div>
         </div>
     </div>
     
+    <div id="toast-notification" class="fixed bottom-[-100px] left-1/2 -translate-x-1/2 bg-white text-gray-800 text-sm font-semibold py-2 px-4 rounded-full shadow-lg transition-all duration-300 ease-in-out">
+        Link Copied!
+    </div>
+
     <script src="gallery.js"></script>
 
 </body>
