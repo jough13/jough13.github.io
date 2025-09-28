@@ -1,6 +1,5 @@
-// In /photos/gallery.js
-
 document.addEventListener('DOMContentLoaded', () => {
+    // ... (all your const declarations for DOM elements remain the same)
     const galleryGrid = document.getElementById('gallery-grid');
     const modal = document.getElementById('lightbox-modal');
     const lightboxImg = document.getElementById('lightbox-img');
@@ -18,8 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPhotoIndex = 0;
     let toastTimeout;
 
-    // --- NEW FUNCTION ---
-    // Shows the toast message, then hides it after 3 seconds
+    // --- NEW SHUFFLE FUNCTION ---
+    // Randomizes the order of an array in place.
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]]; // ES6 swap
+        }
+    }
+
     function showToast(message) {
         clearTimeout(toastTimeout);
         toast.textContent = message;
@@ -34,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('photos.json'); 
             if (!response.ok) throw new Error('Photo data not found.');
             photosData = await response.json();
+            
+            // --- ADD THIS LINE TO SHUFFLE THE DATA ---
+            shuffleArray(photosData);
+
             renderGrid();
         } catch (error) {
             galleryGrid.innerHTML = `<p class="text-red-400 col-span-full">${error.message}</p>`;
@@ -75,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxDate.textContent = photo.date;
         lightboxDesc.textContent = photo.description;
 
-        // Only need to set the download link's href now
         downloadBtn.href = photo.url;
         
         modal.classList.remove('hidden');
@@ -103,12 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(prevIndex);
     });
 
-    // --- UPDATED EVENT LISTENER ---
     copyLinkBtn.addEventListener('click', () => {
         const photo = photosData[currentPhotoIndex];
         if (!photo) return;
         
-        // Create the full URL to copy
         const urlToCopy = window.location.origin + photo.url;
 
         navigator.clipboard.writeText(urlToCopy).then(() => {
