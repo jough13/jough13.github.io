@@ -150,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.dataset.photoUrl = photo.url; 
             if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) item.id = 'photo-girl-at-pole';
             if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) item.id = 'photo-girl-on-stairs';
+            if (photo.url.includes('502840987_10126712263367020_6856360398918489354_n.jpg')) item.id = 'photo-kid-with-cello';
             item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
             item.addEventListener('click', () => {
                 const originalIndex = photosToDisplay.findIndex(p => p.url === item.dataset.photoUrl);
