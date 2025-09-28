@@ -1,14 +1,62 @@
 [
   {
-    "title": "Golden Gate Sundown",
-    "date": "2024-08-15",
-    "url": "/assets/photos/golden-gate.jpg",
-    "description": "The Golden Gate Bridge awash in the warm light of a late summer sunset."
+    "title": "Orion's Belt",
+    "date": "August 2004",
+    "url": "/assets/photos/orions_belt_by_jough_dcytbq.jpg",
+    "description": "Long exposure captures the gentle arc of stars trailing through a deep magenta night sky."
   },
   {
-    "title": "Forest Light",
-    "date": "2023-11-02",
-    "url": "/assets/photos/forest-light.jpg",
-    "description": "Sunbeams piercing through the dense canopy of a redwood forest."
+    "title": "Framed Basilica",
+    "date": "Summer 2003",
+    "url": "/assets/photos/framed_basillica_bw_by_jough_dcyso7.jpg",
+    "description": "A study in composition, with a distant basilica perfectly framed by a rustic, silhouetted sculpture."
+  },
+  {
+    "title": "Girl at Door",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_at_door_by_jough_dcyhgd.jpg",
+    "description": "A quiet, contemplative moment against the stark white texture of a weathered, snow-dusted door."
+  },
+  {
+    "title": "Fireworks at the Taste",
+    "date": "2004-07-04",
+    "url": "/assets/photos/fireworks_at_the_taste_by_jough_d55zv3.jpg",
+    "description": "Vibrant bursts of light illuminate a festive night, with a Ferris wheel standing sentinel over the celebration."
+  },
+  {
+    "title": "Girl at Pole",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_at_pole_by_jough_dcytyn~2.jpg",
+    "description": "A portrait alive with color, where fiery red hair contrasts with the cool, smooth lines of an urban setting."
+  },
+  {
+    "title": "Girl on Stairs",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_on_stairs_by_jough_dcyic1.jpg",
+    "description": "Sun-bleached highlights catch the light as the subject gazes away, framed by the repeating lines of stone steps."
+  },
+  {
+    "title": "Bottom of a Sculpture",
+    "date": "Summer 2003",
+    "url": "/assets/photos/bottom_of_a_sculpture_by_jough_dcytr8.jpg",
+    "description": "An abstract, high-contrast view of intersecting industrial forms, exploring shape and negative space."
+  },
+  {
+    "title": "Girl at Wall",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_at_wall_by_jough_dcyh6i.jpg",
+    "description": "A soft-focus portrait capturing a subtle expression, with warm and cool tones blending in the background."
+  },
+  {
+    "title": "Girl at Window",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_at_window_by_jough_dcyh90.jpg",
+    "description": "A candid moment of curiosity, as the subject peers into the weathered frame of an old window."
+  },
+  {
+    "title": "Girl on Pillar",
+    "date": "2005-08-15",
+    "url": "/assets/photos/girl_on_pillar_by_jough_dcyhs5.jpg",
+    "description": "A playful and direct gaze, where vibrant yellow in the foreground and hair creates a striking color harmony."
   }
 ]
