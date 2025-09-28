@@ -1,5 +1,47 @@
 [
   {
+    "title": "Mexican Breakfast",
+    "date": "2025-07-13",
+    "url": "/assets/photos/517915080_10127462548409780_1103771351592032157_n.jpg",
+    "description": "A delicious breakfast torta with a side of potatoes, enjoyed in Baltimore.",
+    "category": "Urban"
+  },
+  {
+    "title": "Baltimore Canal",
+    "date": "2025-07-13",
+    "url": "/assets/photos/517429671_10127462546164280_6059905535463430076_n.jpg",
+    "description": "A view down a calm canal splitting modern and classic architecture in Baltimore.",
+    "category": "Urban"
+  },
+  {
+    "title": "Potted Plant",
+    "date": "2025-07-13",
+    "url": "/assets/photos/518713739_10127462545665280_2266249474075863103_n.jpg",
+    "description": "A hanging pothos plant silhouetted against a bright window in a Baltimore restaurant.",
+    "category": "Nature"
+  },
+  {
+    "title": "Chinchilla",
+    "date": "2025-06-22",
+    "url": "/assets/photos/510478078_10127056314899990_2440308931264815415_n.jpg",
+    "description": "A curious chinchilla with long whiskers peeks over the edge of its wooden house.",
+    "category": "Nature"
+  },
+  {
+    "title": "Kid with Cello",
+    "date": "2025-05-30",
+    "url": "/assets/photos/502840987_10126712263367020_6856360398918489354_n.jpg",
+    "description": "A black and white portrait of a young musician with their cello, ready for a trip.",
+    "category": "Portraits"
+  },
+  {
+    "title": "Frothy Moon Brewhouse",
+    "date": "2025-05-02",
+    "url": "/assets/photos/495059922_10126395409374960_2898963621788600066_n.jpg",
+    "description": "The glowing sign of a brewhouse at night, surrounded by a field of illuminated flowers.",
+    "category": "Urban"
+  },
+  {
     "title": "Shrimp Fra Diavolo",
     "date": "2025-07-13",
     "url": "/assets/photos/518668289_10127462544712190_4900606376751675751_n.jpg",
