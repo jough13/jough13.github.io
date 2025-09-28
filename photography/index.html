@@ -120,7 +120,9 @@
     background-color: #e5e7eb;
     color: #374151;
 }
-        
+.light footer {
+    color: #9ca3af; /* A muted gray */
+}
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
@@ -192,6 +194,10 @@
 
     <script src="gallery.js"></script>
 
+    <footer class="text-center p-6 text-xs text-slate-500">
+        <p>&copy; <span id="copyright-year"></span> Joseph Donakowski - All rights reserved.</p>
+    </footer>
+    
     <button id="back-to-top" aria-label="Scroll to top" class="fixed bottom-8 right-8 p-3 rounded-full bg-slate-700 text-white shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
     </button>
