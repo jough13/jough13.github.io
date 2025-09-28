@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (all your const declarations for DOM elements remain the same)
+    // DOM Elements
     const galleryGrid = document.getElementById('gallery-grid');
     const modal = document.getElementById('lightbox-modal');
     const lightboxImg = document.getElementById('lightbox-img');
@@ -12,17 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyLinkBtn = document.getElementById('lightbox-directlink');
     const downloadBtn = document.getElementById('lightbox-download');
     const toast = document.getElementById('toast-notification');
+    const sortControls = document.getElementById('sort-controls');
 
+    // State
     let photosData = [];
     let currentPhotoIndex = 0;
     let toastTimeout;
 
-    // --- NEW SHUFFLE FUNCTION ---
-    // Randomizes the order of an array in place.
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]]; // ES6 swap
+            [array[i], array[j]] = [array[j], array[i]];
         }
     }
 
@@ -41,35 +41,58 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error('Photo data not found.');
             photosData = await response.json();
             
-            // --- ADD THIS LINE TO SHUFFLE THE DATA ---
-            shuffleArray(photosData);
-
+            // Initial sort by newest date first
+            sortPhotos('date');
             renderGrid();
+            updateActiveSortButton('date');
+
         } catch (error) {
             galleryGrid.innerHTML = `<p class="text-red-400 col-span-full">${error.message}</p>`;
         }
     }
 
-    function renderGrid() {
-        if (!photosData.length) {
-            galleryGrid.innerHTML = '<p class="text-slate-400">No photos to display.</p>';
-            return;
+    // --- NEW SORTING LOGIC ---
+    function sortPhotos(sortBy) {
+        switch(sortBy) {
+            case 'date':
+                photosData.sort((a, b) => new Date(b.date) - new Date(a.date)); // Newest first
+                break;
+            case 'name':
+                photosData.sort((a, b) => a.title.localeCompare(b.title)); // A-Z
+                break;
+            case 'shuffle':
+                shuffleArray(photosData);
+                break;
         }
+    }
+
+    function updateActiveSortButton(activeSort) {
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            if (btn.dataset.sort === activeSort) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    function renderGrid() {
         galleryGrid.innerHTML = '';
         photosData.forEach((photo, index) => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
-            item.dataset.index = index;
+            // Use the photo URL as a unique key for the index, since the array index will change
+            item.dataset.photoUrl = photo.url; 
 
-            if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) {
-                item.id = 'photo-girl-at-pole';
-            }
-            if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) {
-                item.id = 'photo-girl-on-stairs';
-            }
+            if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) item.id = 'photo-girl-at-pole';
+            if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) item.id = 'photo-girl-on-stairs';
             
             item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
-            item.addEventListener('click', () => openModal(index));
+            item.addEventListener('click', () => {
+                // Find the correct index in the currently sorted array before opening
+                const originalIndex = photosData.findIndex(p => p.url === item.dataset.photoUrl);
+                openModal(originalIndex);
+            });
             galleryGrid.appendChild(item);
         });
     }
@@ -82,9 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxImg.src = photo.url;
         lightboxImg.alt = photo.title;
         lightboxTitle.textContent = photo.title;
-        lightboxDate.textContent = photo.date;
+        lightboxDate.textContent = new Date(photo.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
         lightboxDesc.textContent = photo.description;
-
         downloadBtn.href = photo.url;
         
         modal.classList.remove('hidden');
@@ -97,33 +119,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- EVENT LISTENERS ---
+    sortControls.addEventListener('click', (e) => {
+        if (e.target.classList.contains('sort-btn')) {
+            const sortBy = e.target.dataset.sort;
+            sortPhotos(sortBy);
+            renderGrid();
+            updateActiveSortButton(sortBy);
+        }
+    });
+
     closeModalBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-
-    nextBtn.addEventListener('click', () => {
-        const nextIndex = (currentPhotoIndex + 1) % photosData.length;
-        openModal(nextIndex);
-    });
-
-    prevBtn.addEventListener('click', () => {
-        const prevIndex = (currentPhotoIndex - 1 + photosData.length) % photosData.length;
-        openModal(prevIndex);
-    });
-
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    nextBtn.addEventListener('click', () => openModal((currentPhotoIndex + 1) % photosData.length));
+    prevBtn.addEventListener('click', () => openModal((currentPhotoIndex - 1 + photosData.length) % photosData.length));
+    
     copyLinkBtn.addEventListener('click', () => {
         const photo = photosData[currentPhotoIndex];
         if (!photo) return;
-        
         const urlToCopy = window.location.origin + photo.url;
-
-        navigator.clipboard.writeText(urlToCopy).then(() => {
-            showToast('Link Copied!');
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-            showToast('Error copying link.');
-        });
+        navigator.clipboard.writeText(urlToCopy)
+            .then(() => showToast('Link Copied!'))
+            .catch(err => console.error('Failed to copy text: ', err));
     });
 
     document.addEventListener('keydown', (e) => {
