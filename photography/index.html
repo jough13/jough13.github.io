@@ -1,1 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jough Donakowski | Photography</title>
+    <meta name="description" content="A curated collection of moments captured through the lens by Jough Donakowski.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%23d1d5db' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%239ca3af'/></svg>">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* A minimalist, museum-like style */
+        body {
+            background-color: #111827; /* Dark gray-blue */
+            font-family: 'Inter', sans-serif;
+            color: #d1d5db; /* Light gray */
+            overflow-x: hidden;
+        }
+        
+        /* The main photo grid with responsive columns */
+        #gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+        
+        .gallery-item {
+            aspect-ratio: 4 / 3; /* Maintain a consistent aspect ratio */
+            overflow: hidden;
+            border-radius: 0.5rem;
+            background-color: #1f2937; /* Slightly lighter gray for placeholder */
+            cursor: pointer;
+            position: relative;
+        }
 
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s;
+        }
+        
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        /* Lightbox styles for the full-screen view */
+        #lightbox-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Fade-in animation for modal content */
+        .lightbox-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="p-6 md:p-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-200">Photography</h1>
+            <p class="text-slate-400">Jough Donakowski</p>
+        </div>
+        <a href="/index.html" class="text-slate-400 hover:text-sky-400 transition-colors border border-slate-600 hover:border-sky-500 rounded-full px-4 py-2 text-sm font-medium">&larr; Back to Blog</a>
+    </header>
+
+    <main id="gallery-grid" class="p-6 md:p-8 pt-0">
+        </main>
+
+    <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <button id="close-modal" class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-50">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        
+        <button id="prev-photo" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+        <button id="next-photo" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors z-50 p-2"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+
+        <div class="lightbox-content w-full h-full flex flex-col items-center justify-center gap-4">
+            <div class="max-w-screen-lg max-h-[70vh]">
+                <img id="lightbox-img" src="" alt="" class="max-w-full max-h-full h-auto w-auto object-contain rounded-lg shadow-2xl">
+            </div>
+            <div id="lightbox-details" class="text-center text-white p-4 max-w-2xl">
+                <h3 id="lightbox-title" class="text-2xl font-bold"></h3>
+                <p id="lightbox-date" class="text-slate-400 mb-2"></p>
+                <p id="lightbox-desc" class="text-slate-300"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const galleryGrid = document.getElementById('gallery-grid');
+            const modal = document.getElementById('lightbox-modal');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxTitle = document.getElementById('lightbox-title');
+            const lightboxDate = document.getElementById('lightbox-date');
+            const lightboxDesc = document.getElementById('lightbox-desc');
+            const closeModalBtn = document.getElementById('close-modal');
+            const nextBtn = document.getElementById('next-photo');
+            const prevBtn = document.getElementById('prev-photo');
+
+            let photosData = [];
+            let currentPhotoIndex = 0;
+
+            // Fetches photo data and initializes the gallery
+            async function initGallery() {
+                try {
+                    const response = await fetch('/photos.json');
+                    if (!response.ok) throw new Error('Photo data not found.');
+                    photosData = await response.json();
+                    renderGrid();
+                } catch (error) {
+                    galleryGrid.innerHTML = `<p class="text-red-400 col-span-full">${error.message}</p>`;
+                }
+            }
+
+            // Renders all photo thumbnails into the main grid
+            function renderGrid() {
+                if (!photosData.length) {
+                    galleryGrid.innerHTML = '<p class="text-slate-400">No photos to display.</p>';
+                    return;
+                }
+                galleryGrid.innerHTML = ''; // Clear any loading messages
+                photosData.forEach((photo, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'gallery-item';
+                    item.dataset.index = index;
+                    item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
+                    item.addEventListener('click', () => openModal(index));
+                    galleryGrid.appendChild(item);
+                });
+            }
+
+            // Opens the lightbox modal with the selected photo's details
+            function openModal(index) {
+                if (index < 0 || index >= photosData.length) return;
+                currentPhotoIndex = index;
+                const photo = photosData[index];
+                
+                lightboxImg.src = photo.url;
+                lightboxImg.alt = photo.title;
+                lightboxTitle.textContent = photo.title;
+                lightboxDate.textContent = photo.date;
+                lightboxDesc.textContent = photo.description;
+                
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
+
+            // Closes the lightbox modal
+            function closeModal() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+            
+            // --- Event Listeners ---
+            closeModalBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => {
+                // Close if the user clicks on the dark backdrop, but not the content
+                if (e.target === modal) closeModal();
+            });
+
+            nextBtn.addEventListener('click', () => {
+                const nextIndex = (currentPhotoIndex + 1) % photosData.length;
+                openModal(nextIndex);
+            });
+
+            prevBtn.addEventListener('click', () => {
+                const prevIndex = (currentPhotoIndex - 1 + photosData.length) % photosData.length;
+                openModal(prevIndex);
+            });
+
+            // Keyboard navigation for accessibility and power users
+            document.addEventListener('keydown', (e) => {
+                if (modal.classList.contains('hidden')) return;
+                if (e.key === 'Escape') closeModal();
+                if (e.key === 'ArrowRight') nextBtn.click();
+                if (e.key === 'ArrowLeft') prevBtn.click();
+            });
+
+            // Start the whole process!
+            initGallery();
+        });
+    </script>
+</body>
+</html>
