@@ -18,12 +18,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
     const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
     const backToTopBtn = document.getElementById('back-to-top');
+    const copyrightYearSpan = document.getElementById('copyright-year');
 
     // State
-    let allPhotos = []; // This will hold the original, unmodified list of all photos
-    let photosToDisplay = []; // This will hold the currently filtered and sorted list
+    let allPhotos = [];
+    let photosToDisplay = [];
     let currentPhotoIndex = 0;
     let toastTimeout;
+
+    function updateCopyrightYear() {
+        if (copyrightYearSpan) {
+            copyrightYearSpan.textContent = new Date().getFullYear();
+        }
+    }
 
     function setupThemeToggle() {
         if (localStorage.getItem('theme') === 'light') {
@@ -209,5 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Everything ---
     setupThemeToggle();
     setupBackToTopButton();
+    updateCopyrightYear();
     initGallery();
 });
