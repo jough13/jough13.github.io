@@ -14,12 +14,52 @@ document.addEventListener('DOMContentLoaded', () => {
     const toast = document.getElementById('toast-notification');
     const sortControls = document.getElementById('sort-controls');
     const categoryFilter = document.getElementById('category-filter');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+    const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+    const backToTopBtn = document.getElementById('back-to-top');
 
     // State
     let allPhotos = []; // This will hold the original, unmodified list of all photos
     let photosToDisplay = []; // This will hold the currently filtered and sorted list
     let currentPhotoIndex = 0;
     let toastTimeout;
+
+    function setupThemeToggle() {
+        if (localStorage.getItem('theme') === 'light') {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (document.documentElement.classList.toggle('light')) {
+                localStorage.setItem('theme', 'light');
+            } else {
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+    }
+    
+    function setupBackToTopButton() {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 400) {
+                backToTopBtn.classList.add('show');
+            } else {
+                backToTopBtn.classList.remove('show');
+            }
+        });
+
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
 
     function showToast(message) {
         clearTimeout(toastTimeout);
@@ -38,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             populateCategoryFilter();
             
-            // Set initial state: sorted by date (newest first) with no filter
             document.querySelector('.sort-btn[data-sort="date"]').classList.add('active');
             updateGallery();
 
@@ -59,16 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateGallery() {
-        // 1. Apply Filter
         const selectedCategory = categoryFilter.value;
         let filteredPhotos = allPhotos;
         if (selectedCategory !== 'all') {
             filteredPhotos = allPhotos.filter(p => p.category === selectedCategory);
         }
 
-        // 2. Apply Sort
         const activeSortBtn = document.querySelector('.sort-btn.active');
-        const sortBy = activeSortBtn ? activeSortBtn.dataset.sort : 'date'; // Default to date sort
+        const sortBy = activeSortBtn ? activeSortBtn.dataset.sort : 'date';
 
         switch(sortBy) {
             case 'date':
@@ -120,7 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxImg.src = photo.url;
         lightboxImg.alt = photo.title;
         lightboxTitle.textContent = photo.title;
-        // Format the date for better readability
         lightboxDate.textContent = new Date(photo.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
         lightboxDesc.textContent = photo.description;
         downloadBtn.href = photo.url;
@@ -170,5 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'ArrowLeft') prevBtn.click();
     });
 
+    // --- Initialize Everything ---
+    setupThemeToggle();
+    setupBackToTopButton();
     initGallery();
 });
