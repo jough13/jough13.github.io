@@ -1,5 +1,26 @@
 [
   {
+    "title": "Busch Gardens Christmas",
+    "date": "2024-12-04",
+    "url": "/assets/photos/469048221_10124986160456090_3238783639173978084_n.jpg",
+    "description": "A festive Christmas wreath with a glowing lantern at its center, surrounded by green ornaments.",
+    "category": "Urban"
+  },
+  {
+    "title": "Northern Lights in Williamsburg",
+    "date": "2024-10-10",
+    "url": "/assets/photos/515700870_10127292613046610_3044901870669769925_n.jpg",
+    "description": "A rare view of the aurora borealis painting the suburban night sky in shades of purple and blue.",
+    "category": "Astrophotography"
+  },
+  {
+    "title": "Wood Art Sculpture",
+    "date": "2024-09-27",
+    "url": "/assets/photos/514440785_10127185696627970_7528556938916433573_n.jpg",
+    "description": "An intricate lattice of white wooden beams creates a complex interplay of light, shadow, and geometric patterns.",
+    "category": "Architecture"
+  },
+  {
     "title": "Back Yard Sunset",
     "date": "2024-08-11",
     "url": "/assets/photos/511011927_10127110390332390_4792547849607882039_n.jpg",
@@ -116,13 +137,6 @@
     "date": "2025-03-11",
     "url": "/assets/photos/482274981_10125793243345510_5909206558355255708_n.jpg",
     "description": "The familiar asterism of the Big Dipper hangs clearly in the night sky above the treetops.",
-    "category": "Astrophotography"
-  },
-  {
-    "title": "Northern Lights",
-    "date": "2024-10-11",
-    "url": "/assets/photos/515906854_10127305156195040_4136973789167002692_n.jpg",
-    "description": "A gradient of purple and blue aurora borealis glows in the twilight sky above the silhouette of a house and trees.",
     "category": "Astrophotography"
   },
   {
