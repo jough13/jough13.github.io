@@ -3,198 +3,231 @@
     "title": "Jellyfish",
     "date": "2025-07-13",
     "url": "/assets/photos/519100612_10127462536019610_4999023103261265786_n.jpg",
-    "description": "A translucent jellyfish drifts through a vibrant blue void, its delicate tentacles trailing behind."
+    "description": "A translucent jellyfish drifts through a vibrant blue void, its delicate tentacles trailing behind.",
+    "category": "Nature"
   },
   {
     "title": "At the Soundboard",
     "date": "2025-07-03",
     "url": "/assets/photos/515249271_10127289063375180_2485088003571479951_n.jpg",
-    "description": "Focused concentration at the mixing board, bathed in the cool light of the studio."
+    "description": "Focused concentration at the mixing board, bathed in the cool light of the studio.",
+    "category": "Portraits"
   },
   {
     "title": "Shooting Star",
     "date": "2025-05-06",
     "url": "/assets/photos/495641744_10126436524644630_7205895935680775842_n.jpg",
-    "description": "A fleeting meteor streaks across the deep blue twilight sky above a quiet treeline."
+    "description": "A fleeting meteor streaks across the deep blue twilight sky above a quiet treeline.",
+    "category": "Astrophotography"
   },
   {
     "title": "Kuiper Satellite Cluster",
     "date": "2025-04-28",
     "url": "/assets/photos/494221235_10126348552067380_1221621236334560439_n.jpg",
-    "description": "A train of satellites crosses the night, a line of light against a field of faint star trails."
+    "description": "A train of satellites crosses the night, a line of light against a field of faint star trails.",
+    "category": "Astrophotography"
   },
   {
     "title": "Urban Explorer",
     "date": "2025-04-01",
     "url": "/assets/photos/488502855_10126031330616710_1337067406177294674_n.jpg",
-    "description": "A portrait alive with color and character, set against a warm, sunlit alley."
+    "description": "A portrait alive with color and character, set against a warm, sunlit alley.",
+    "category": "Portraits"
   },
   {
     "title": "Cherry Blossoms",
     "date": "2025-03-29",
     "url": "/assets/photos/487560509_10125994289846710_5672649869067707411_n.jpg",
-    "description": "A delicate cluster of cherry blossoms bursts forth, set against a soft-focus sky."
+    "description": "A delicate cluster of cherry blossoms bursts forth, set against a soft-focus sky.",
+    "category": "Nature"
   },
   {
     "title": "Lost Highway",
     "date": "2025-03-27",
     "url": "/assets/photos/487540880_10125976352558180_4867004633426543626_n.jpg",
-    "description": "Headlights approach on a dark road at dusk, splitting the monochrome landscape."
+    "description": "Headlights approach on a dark road at dusk, splitting the monochrome landscape.",
+    "category": "Urban"
   },
   {
     "title": "The Big Dipper",
     "date": "2025-03-11",
     "url": "/assets/photos/482274981_10125793243345510_5909206558355255708_n.jpg",
-    "description": "The familiar asterism of the Big Dipper hangs clearly in the night sky above the treetops."
+    "description": "The familiar asterism of the Big Dipper hangs clearly in the night sky above the treetops.",
+    "category": "Astrophotography"
   },
   {
     "title": "Northern Lights",
     "date": "2024-10-11",
     "url": "/assets/photos/515906854_10127305156195040_4136973789167002692_n.jpg",
-    "description": "A gradient of purple and blue aurora borealis glows in the twilight sky above the silhouette of a house and trees."
+    "description": "A gradient of purple and blue aurora borealis glows in the twilight sky above the silhouette of a house and trees.",
+    "category": "Astrophotography"
   },
   {
     "title": "Comet",
     "date": "2024-10-17",
     "url": "/assets/photos/514353651_10127218843621130_8581745721351640041_n.jpg",
-    "description": "A faint comet and its tail are just visible over the silhouette of a house at twilight."
+    "description": "A faint comet and its tail are just visible over the silhouette of a house at twilight.",
+    "category": "Astrophotography"
   },
   {
     "title": "Presidential Head",
     "date": "2024-08-31",
     "url": "/assets/photos/488211122_10126065724396300_5347873821384311049_n.jpg",
-    "description": "The weathered and cracked visage of a presidential statue stares forward, a monument in decay."
+    "description": "The weathered and cracked visage of a presidential statue stares forward, a monument in decay.",
+    "category": "Architecture"
   },
   {
     "title": "Solar Eclipse",
     "date": "2024-04-08",
     "url": "/assets/photos/484906150_10125890658434890_7239841208966123821_n.jpg",
-    "description": "The crescent of a solar eclipse glows with a warm, hazy corona against the stark blackness of the sky."
+    "description": "The crescent of a solar eclipse glows with a warm, hazy corona against the stark blackness of the sky.",
+    "category": "Astrophotography"
   },
   {
     "title": "Orion and Friends",
     "date": "2023-01-10",
     "url": "/assets/photos/orion_and_friends_by_jough_dfmec9c.jpg",
-    "description": "The familiar constellation Orion stands out in a field of stars, a landmark in the deep night."
+    "description": "The familiar constellation Orion stands out in a field of stars, a landmark in the deep night.",
+    "category": "Astrophotography"
   },
   {
     "title": "Full Moon",
     "date": "2023-01-02",
     "url": "/assets/photos/full_moon_by_jough_dflqjtg.jpg",
-    "description": "A detailed and textured view of the lunar surface, stark and beautiful against the blackness of space."
+    "description": "A detailed and textured view of the lunar surface, stark and beautiful against the blackness of space.",
+    "category": "Astrophotography"
   },
   {
     "title": "Spring Blossoms",
     "date": "2016-03-18",
     "url": "/assets/photos/spring_by_jough_d9vo5iu.jpg",
-    "description": "Dense clusters of white blossoms reach into a bright, clear turquoise sky."
+    "description": "Dense clusters of white blossoms reach into a bright, clear turquoise sky.",
+    "category": "Nature"
   },
   {
     "title": "Hibiscus Bloom",
     "date": "2011-06-25",
     "url": "/assets/photos/lily_1_by_jough_d3jxpay.jpg",
-    "description": "A macro view into the heart of a hibiscus flower, revealing a vivid gradient from yellow to deep pink."
+    "description": "A macro view into the heart of a hibiscus flower, revealing a vivid gradient from yellow to deep pink.",
+    "category": "Nature"
   },
   {
     "title": "A Delicate Balance",
     "date": "2011-01-28",
     "url": "/assets/photos/a_delicate_balance_by_jough_d388zmk.jpg",
-    "description": "A moment of serene impossibility, with stones stacked precariously against the ocean's shore."
+    "description": "A moment of serene impossibility, with stones stacked precariously against the ocean's shore.",
+    "category": "Nature"
   },
   {
     "title": "Arch Against the Sky",
     "date": "2009-10-11",
     "url": "/assets/photos/arch_again_by_jough_d2bcluc.jpg",
-    "description": "The smooth, sweeping curve of a monument against a vast and wispy blue sky."
+    "description": "The smooth, sweeping curve of a monument against a vast and wispy blue sky.",
+    "category": "Architecture"
   },
   {
     "title": "Stone Stairs",
     "date": "2009-08-09",
     "url": "/assets/photos/stairs_by_jough_d271fp0.jpg",
-    "description": "Minimalist architecture in stone and glass, focusing on the clean lines and angles of a modern staircase."
+    "description": "Minimalist architecture in stone and glass, focusing on the clean lines and angles of a modern staircase.",
+    "category": "Architecture"
   },
   {
     "title": "By the Pool",
     "date": "2008-01-04",
     "url": "/assets/photos/by_the_pool_by_jough_d17x0gt.jpg",
-    "description": "A vibrant close-up of a palm frond, its repeating lines creating a pattern of brilliant green."
+    "description": "A vibrant close-up of a palm frond, its repeating lines creating a pattern of brilliant green.",
+    "category": "Nature"
   },
   {
     "title": "Whale Shark Exclamation Point",
     "date": "2007-02-22",
     "url": "/assets/photos/whale_shark_exclamation_point_by_jough_dte4is.jpg",
-    "description": "Sunlight filters through the water, illuminating the immense form of a whale shark below."
+    "description": "Sunlight filters through the water, illuminating the immense form of a whale shark below.",
+    "category": "Nature"
   },
   {
     "title": "Pass the Peanut Butter",
     "date": "2007-02-22",
     "url": "/assets/photos/pass_the_peanut_butter_by_jough_dte4a9.jpg",
-    "description": "Ethereal jellyfish trail delicate tentacles through an impossibly blue deep."
+    "description": "Ethereal jellyfish trail delicate tentacles through an impossibly blue deep.",
+    "category": "Nature"
   },
   {
     "title": "Tate Observatory Telescope",
     "date": "2005-07-01",
     "url": "/assets/photos/470235438_10125175141177210_8716706953444004054_n.jpg",
-    "description": "A vintage telescope points skyward inside the intricate dome of an observatory."
+    "description": "A vintage telescope points skyward inside the intricate dome of an observatory.",
+    "category": "Architecture"
   },
   {
     "title": "Orion's Belt",
     "date": "2004-08-01",
     "url": "/assets/photos/orions_belt_by_jough_dcytbq.jpg",
-    "description": "Long exposure captures the gentle arc of stars trailing through a deep magenta night sky."
+    "description": "Long exposure captures the gentle arc of stars trailing through a deep magenta night sky.",
+    "category": "Astrophotography"
   },
   {
     "title": "Framed Basilica",
     "date": "2003-06-01",
     "url": "/assets/photos/framed_basillica_bw_by_jough_dcyso7.jpg",
-    "description": "A study in composition, with a distant basilica perfectly framed by a rustic, silhouetted sculpture."
+    "description": "A study in composition, with a distant basilica perfectly framed by a rustic, silhouetted sculpture.",
+    "category": "Architecture"
   },
   {
     "title": "Girl at Door",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_at_door_by_jough_dcyhgd.jpg",
-    "description": "A quiet, contemplative moment against the stark white texture of a weathered, snow-dusted door."
+    "description": "A quiet, contemplative moment against the stark white texture of a weathered, snow-dusted door.",
+    "category": "Portraits"
   },
   {
     "title": "Fireworks at the Taste",
     "date": "2004-07-04",
     "url": "/assets/photos/fireworks_at_the_taste_by_jough_d55zv3.jpg",
-    "description": "Vibrant bursts of light illuminate a festive night, with a Ferris wheel standing sentinel over the celebration."
+    "description": "Vibrant bursts of light illuminate a festive night, with a Ferris wheel standing sentinel over the celebration.",
+    "category": "Urban"
   },
   {
     "title": "Girl at Pole",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_at_pole_by_jough_dcytyn~2.jpg",
-    "description": "A portrait alive with color, where fiery red hair contrasts with the cool, smooth lines of an urban setting."
+    "description": "A portrait alive with color, where fiery red hair contrasts with the cool, smooth lines of an urban setting.",
+    "category": "Portraits"
   },
   {
     "title": "Girl on Stairs",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_on_stairs_by_jough_dcyic1.jpg",
-    "description": "Sun-bleached highlights catch the light as the subject gazes away, framed by the repeating lines of stone steps."
+    "description": "Sun-bleached highlights catch the light as the subject gazes away, framed by the repeating lines of stone steps.",
+    "category": "Portraits"
   },
   {
     "title": "Bottom of a Sculpture",
     "date": "2003-06-01",
     "url": "/assets/photos/bottom_of_a_sculpture_by_jough_dcytr8.jpg",
-    "description": "An abstract, high-contrast view of intersecting industrial forms, exploring shape and negative space."
+    "description": "An abstract, high-contrast view of intersecting industrial forms, exploring shape and negative space.",
+    "category": "Architecture"
   },
   {
     "title": "Girl at Wall",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_at_wall_by_jough_dcyh6i.jpg",
-    "description": "A soft-focus portrait capturing a subtle expression, with warm and cool tones blending in the background."
+    "description": "A soft-focus portrait capturing a subtle expression, with warm and cool tones blending in the background.",
+    "category": "Portraits"
   },
   {
     "title": "Girl at Window",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_at_window_by_jough_dcyh90.jpg",
-    "description": "A candid moment of curiosity, as the subject peers into the weathered frame of an old window."
+    "description": "A candid moment of curiosity, as the subject peers into the weathered frame of an old window.",
+    "category": "Portraits"
   },
   {
     "title": "Girl on Pillar",
     "date": "2005-08-15",
     "url": "/assets/photos/girl_on_pillar_by_jough_dcyhs5.jpg",
-    "description": "A playful and direct gaze, where vibrant yellow in the foreground and hair creates a striking color harmony."
+    "description": "A playful and direct gaze, where vibrant yellow in the foreground and hair creates a striking color harmony.",
+    "category": "Portraits"
   }
 ]
