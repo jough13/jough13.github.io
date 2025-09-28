@@ -19,12 +19,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
     const backToTopBtn = document.getElementById('back-to-top');
     const copyrightYearSpan = document.getElementById('copyright-year');
+    const mobileOptionsBtn = document.getElementById('mobile-options-btn');
+    const optionsPanel = document.getElementById('options-panel');
+    const desktopControls = document.getElementById('desktop-controls');
 
     // State
     let allPhotos = [];
     let photosToDisplay = [];
     let currentPhotoIndex = 0;
     let toastTimeout;
+
+    function setupMobileControls() {
+        mobileOptionsBtn.addEventListener('click', () => {
+            optionsPanel.classList.toggle('open');
+            // Move desktop controls (back button, theme toggle) into the panel when open on mobile
+            // for a unified menu experience.
+            if (optionsPanel.classList.contains('open')) {
+                optionsPanel.appendChild(desktopControls);
+            } else {
+                document.querySelector('header .flex.justify-between .flex.items-center.gap-4').appendChild(desktopControls);
+            }
+        });
+    }
 
     function updateCopyrightYear() {
         if (copyrightYearSpan) {
@@ -85,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             populateCategoryFilter();
             
-            document.querySelector('.sort-btn[data-sort="date"]').classList.add('active');
+            document.querySelector('button[data-sort="date"]').classList.add('active');
             updateGallery();
 
         } catch (error) {
@@ -180,9 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     categoryFilter.addEventListener('change', updateGallery);
 
-    sortControls.addEventListener('click', (e) => {
+    optionsPanel.addEventListener('click', (e) => {
         if (e.target.classList.contains('sort-btn')) {
-            document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#options-panel .sort-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
             updateGallery();
         }
@@ -214,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initialize Everything ---
+    setupMobileControls();
     setupThemeToggle();
     setupBackToTopButton();
     updateCopyrightYear();
