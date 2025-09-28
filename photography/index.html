@@ -77,17 +77,29 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        .sort-btn.active {
+    color: #38bdf8; /* A bright sky blue */
+    font-weight: 600;
+}
     </style>
 </head>
 <body class="antialiased">
 
-    <header class="p-6 md:p-8 flex justify-between items-center">
+<header class="p-6 md:p-8 flex justify-between items-center">
+    <div class="flex items-center gap-6">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-slate-200">Photography</h1>
             <p class="text-slate-400">Jough Donakowski</p>
         </div>
-        <a href="/index.html" class="text-slate-400 hover:text-sky-400 transition-colors border border-slate-600 hover:border-sky-500 rounded-full px-4 py-2 text-sm font-medium">&larr; Back to Blog</a>
-    </header>
+        <div id="sort-controls" class="flex items-center gap-4 border-l border-slate-700 pl-6">
+            <span class="text-sm font-semibold text-slate-400">Sort by:</span>
+            <button data-sort="date" class="sort-btn text-sm text-slate-400 hover:text-white transition">Date</button>
+            <button data-sort="name" class="sort-btn text-sm text-slate-400 hover:text-white transition">Name</button>
+            <button data-sort="shuffle" class="sort-btn text-sm text-slate-400 hover:text-white transition">Random</button>
+        </div>
+        </div>
+    <a href="/index.html" class="text-slate-400 hover:text-sky-400 transition-colors border border-slate-600 hover:border-sky-500 rounded-full px-4 py-2 text-sm font-medium">&larr; Back to Blog</a>
+</header>
 
     <main id="gallery-grid" class="p-6 md:p-8 pt-0">
         </main>
