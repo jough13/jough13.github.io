@@ -1,3 +1,5 @@
+// In /photos/gallery.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const galleryGrid = document.getElementById('gallery-grid');
     const modal = document.getElementById('lightbox-modal');
@@ -8,16 +10,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal');
     const nextBtn = document.getElementById('next-photo');
     const prevBtn = document.getElementById('prev-photo');
-    const directLinkBtn = document.getElementById('lightbox-directlink');
+    const copyLinkBtn = document.getElementById('lightbox-directlink');
     const downloadBtn = document.getElementById('lightbox-download');
+    const toast = document.getElementById('toast-notification');
 
     let photosData = [];
     let currentPhotoIndex = 0;
+    let toastTimeout;
 
-    // Fetches photo data and initializes the gallery
+    // --- NEW FUNCTION ---
+    // Shows the toast message, then hides it after 3 seconds
+    function showToast(message) {
+        clearTimeout(toastTimeout);
+        toast.textContent = message;
+        toast.classList.add('show');
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
     async function initGallery() {
         try {
-            // It fetches the JSON file from the same directory
             const response = await fetch('photos.json'); 
             if (!response.ok) throw new Error('Photo data not found.');
             photosData = await response.json();
@@ -27,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Renders all photo thumbnails into the main grid
     function renderGrid() {
         if (!photosData.length) {
             galleryGrid.innerHTML = '<p class="text-slate-400">No photos to display.</p>';
@@ -39,23 +51,19 @@ document.addEventListener('DOMContentLoaded', () => {
             item.className = 'gallery-item';
             item.dataset.index = index;
 
-            // Check the filename and assign a specific ID for custom cropping
             if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) {
                 item.id = 'photo-girl-at-pole';
             }
             if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) {
                 item.id = 'photo-girl-on-stairs';
             }
-
-            // Note: The photo URLs should be root-relative (start with /)
-            // to ensure they load correctly from the /photos/ page.
+            
             item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
             item.addEventListener('click', () => openModal(index));
             galleryGrid.appendChild(item);
         });
     }
 
-    // Opens the lightbox modal with the selected photo's details
     function openModal(index) {
         if (index < 0 || index >= photosData.length) return;
         currentPhotoIndex = index;
@@ -67,24 +75,21 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxDate.textContent = photo.date;
         lightboxDesc.textContent = photo.description;
 
-        // Set the href for the direct link and download buttons
-        directLinkBtn.href = photo.url;
+        // Only need to set the download link's href now
         downloadBtn.href = photo.url;
         
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
 
-    // Closes the lightbox modal
     function closeModal() {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
     }
     
-    // --- Event Listeners ---
+    // --- EVENT LISTENERS ---
     closeModalBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
-        // Close if the user clicks on the dark backdrop, but not the content
         if (e.target === modal) closeModal();
     });
 
@@ -98,7 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(prevIndex);
     });
 
-    // Keyboard navigation for accessibility and power users
+    // --- UPDATED EVENT LISTENER ---
+    copyLinkBtn.addEventListener('click', () => {
+        const photo = photosData[currentPhotoIndex];
+        if (!photo) return;
+        
+        // Create the full URL to copy
+        const urlToCopy = window.location.origin + photo.url;
+
+        navigator.clipboard.writeText(urlToCopy).then(() => {
+            showToast('Link Copied!');
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            showToast('Error copying link.');
+        });
+    });
+
     document.addEventListener('keydown', (e) => {
         if (modal.classList.contains('hidden')) return;
         if (e.key === 'Escape') closeModal();
@@ -106,6 +126,5 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'ArrowLeft') prevBtn.click();
     });
 
-    // Start the whole process!
     initGallery();
 });
