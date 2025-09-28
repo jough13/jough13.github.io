@@ -32,8 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupMobileControls() {
         mobileOptionsBtn.addEventListener('click', () => {
             optionsPanel.classList.toggle('open');
-            // Move desktop controls (back button, theme toggle) into the panel when open on mobile
-            // for a unified menu experience.
             if (optionsPanel.classList.contains('open')) {
                 optionsPanel.appendChild(desktopControls);
             } else {
@@ -54,11 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             themeToggleDarkIcon.classList.remove('hidden');
         }
-
         themeToggleBtn.addEventListener('click', () => {
             themeToggleDarkIcon.classList.toggle('hidden');
             themeToggleLightIcon.classList.toggle('hidden');
-
             if (document.documentElement.classList.toggle('light')) {
                 localStorage.setItem('theme', 'light');
             } else {
@@ -75,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 backToTopBtn.classList.remove('show');
             }
         });
-
         backToTopBtn.addEventListener('click', () => {
             window.scrollTo({
                 top: 0,
@@ -98,12 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('photos.json'); 
             if (!response.ok) throw new Error('Photo data not found.');
             allPhotos = await response.json();
-            
             populateCategoryFilter();
-            
             document.querySelector('button[data-sort="date"]').classList.add('active');
             updateGallery();
-
         } catch (error) {
             galleryGrid.innerHTML = `<p class="text-red-400 col-span-full">${error.message}</p>`;
         }
@@ -126,10 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCategory !== 'all') {
             filteredPhotos = allPhotos.filter(p => p.category === selectedCategory);
         }
-
         const activeSortBtn = document.querySelector('.sort-btn.active');
         const sortBy = activeSortBtn ? activeSortBtn.dataset.sort : 'date';
-
         switch(sortBy) {
             case 'date':
                 filteredPhotos.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -144,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 break;
         }
-
         photosToDisplay = filteredPhotos;
         renderGrid();
     }
@@ -159,10 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
             item.dataset.photoUrl = photo.url; 
-
             if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) item.id = 'photo-girl-at-pole';
             if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) item.id = 'photo-girl-on-stairs';
-            
             item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
             item.addEventListener('click', () => {
                 const originalIndex = photosToDisplay.findIndex(p => p.url === item.dataset.photoUrl);
@@ -186,6 +173,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+
+        // Preload the next and previous images for a smoother experience
+        const nextIndex = (currentPhotoIndex + 1) % photosToDisplay.length;
+        if (nextIndex !== index) {
+            const nextImage = new Image();
+            nextImage.src = photosToDisplay[nextIndex].url;
+        }
+        const prevIndex = (currentPhotoIndex - 1 + photosToDisplay.length) % photosToDisplay.length;
+        if (prevIndex !== index) {
+            const prevImage = new Image();
+            prevImage.src = photosToDisplay[prevIndex].url;
+        }
     }
 
     function closeModal() {
