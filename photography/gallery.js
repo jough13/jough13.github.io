@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileOptionsBtn = document.getElementById('mobile-options-btn');
     const optionsPanel = document.getElementById('options-panel');
     const desktopControls = document.getElementById('desktop-controls');
+    const mainContent = document.querySelector('main');
+    const headerContent = document.querySelector('header');
 
     // State
     let allPhotos = [];
@@ -151,10 +153,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (photo.url.includes('girl_at_pole_by_jough_dcytyn~2.jpg')) item.id = 'photo-girl-at-pole';
             if (photo.url.includes('girl_on_stairs_by_jough_dcyic1.jpg')) item.id = 'photo-girl-on-stairs';
             if (photo.url.includes('502840987_10126712263367020_6856360398918489354_n.jpg')) item.id = 'photo-kid-with-cello';
-            item.innerHTML = `<img src="${photo.url}" alt="${photo.title}" loading="lazy">`;
+            
+            item.innerHTML = `
+                <img src="${photo.url}" alt="${photo.title}" loading="lazy">
+                <div class="error-message">
+                    <p class="font-semibold">Image failed to load</p>
+                    <p class="text-xs">${photo.title}</p>
+                </div>
+            `;
+
+            const img = item.querySelector('img');
+            
+            img.onerror = () => {
+                item.classList.add('has-error');
+            };
+            
             item.addEventListener('click', () => {
-                const originalIndex = photosToDisplay.findIndex(p => p.url === item.dataset.photoUrl);
-                openModal(originalIndex);
+                if (!item.classList.contains('has-error')) {
+                    const originalIndex = photosToDisplay.findIndex(p => p.url === item.dataset.photoUrl);
+                    openModal(originalIndex);
+                }
             });
             galleryGrid.appendChild(item);
         });
@@ -175,7 +193,9 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
 
-        // Preload the next and previous images for a smoother experience
+        mainContent.setAttribute('aria-hidden', 'true');
+        headerContent.setAttribute('aria-hidden', 'true');
+
         const nextIndex = (currentPhotoIndex + 1) % photosToDisplay.length;
         if (nextIndex !== index) {
             const nextImage = new Image();
@@ -191,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function closeModal() {
         modal.classList.add('hidden');
         document.body.style.overflow = 'auto';
+        mainContent.setAttribute('aria-hidden', 'false');
+        headerContent.setAttribute('aria-hidden', 'false');
     }
     
     // --- Event Listeners ---
