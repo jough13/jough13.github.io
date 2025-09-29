@@ -460,5 +460,26 @@
     "url": "/assets/photos/470235010_10125155285657830_6527339626053420434_n.jpg",
     "description": "A brilliant orange and red sunrise breaks over a line of trees in Yorktown, VA.",
     "category": "Nature"
+  },
+  {
+    "title": "Girl at Virginia Aquarium",
+    "date": "2023-01-07",
+    "url": "/assets/photos/505205708_10126843641858470_75591810392479317_n.jpg",
+    "description": "A child gazes thoughtfully into the deep blue of an aquarium tank.",
+    "category": "Portraits"
+  },
+  {
+    "title": "Sunset in Virginia",
+    "date": "2022-10-05",
+    "url": "/assets/photos/489444818_10126062953424350_1858600177776474387_n.jpg",
+    "description": "A beautiful pink and orange sunset sky seen through the silhouettes of trees.",
+    "category": "Nature"
+  },
+  {
+    "title": "Red Hotel Hallway",
+    "date": "2022-06-21",
+    "url": "/assets/photos/507178975_10126922542216520_5167356489428341910_n.jpg",
+    "description": "A long, atmospheric hotel hallway bathed in a moody red and green light.",
+    "category": "Urban"
   }
 ]
