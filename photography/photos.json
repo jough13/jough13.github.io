@@ -397,5 +397,26 @@
     "url": "/assets/photos/488182436_10126037524668780_6647062486564046934_n.jpg",
     "description": "Cypress trees stand in the glowing blue-green water at Radium Springs in Georgia.",
     "category": "Nature"
+  },
+    {
+    "title": "Night Stars",
+    "date": "2022-05-31",
+    "url": "/assets/photos/505928783_10126855695817240_1787590897086856699_n.jpg",
+    "description": "A clear, dark night sky filled with stars above the silhouette of treetops.",
+    "category": "Astrophotography"
+  },
+  {
+    "title": "Waning Moon",
+    "date": "2022-05-17",
+    "url": "/assets/photos/503512092_10126772809801480_632372861059787258_n.jpg",
+    "description": "The moon in its waning phase, with the earth's shadow creeping across its cratered surface.",
+    "category": "Astrophotography"
+  },
+  {
+    "title": "Okinawa at Night",
+    "date": "2022-01-10",
+    "url": "/assets/photos/472818244_10125344544800990_3086376779904195263_n.jpg",
+    "description": "The warm city lights of Okinawa illuminate the streets below a dark night sky.",
+    "category": "Urban"
   }
 ]
