@@ -98,31 +98,34 @@
 
         #back-to-top.show { opacity: 1; pointer-events: auto; cursor: pointer; }
 
-        .gallery-item .error-message {
-            display: none;
-            color: #f87171;
+        .gallery-item .error-message { display: none; color: #f87171; }
+        .light .gallery-item .error-message { color: #ef4444; }
+        .gallery-item.has-error { display: flex; align-items: center; justify-content: center; text-align: center; padding: 1rem; cursor: default; }
+        .gallery-item.has-error img { display: none; }
+        .gallery-item.has-error .error-message { display: block; }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #6b7280;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
         }
-        .light .gallery-item .error-message {
-            color: #ef4444;
-        }
-        .gallery-item.has-error {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 1rem;
-            cursor: default;
-        }
-        .gallery-item.has-error img {
-            display: none;
-        }
-        .gallery-item.has-error .error-message {
-            display: block;
+        .light .loader {
+            border-color: #d1d5db;
+            border-bottom-color: transparent;
         }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -159,7 +162,11 @@
         </div>
     </header>
 
-    <main id="gallery-grid" class="p-6 md:p-8 pt-0"></main>
+    <main id="gallery-grid" class="p-6 md:p-8 pt-0">
+        <div id="loading-indicator" class="col-span-full flex justify-center items-center p-12">
+            <div class="loader"></div>
+        </div>
+    </main>
 
     <div id="lightbox-modal" role="dialog" aria-modal="true" aria-labelledby="lightbox-title" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
         <button id="close-modal" class="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-50">
