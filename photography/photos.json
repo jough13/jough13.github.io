@@ -439,5 +439,26 @@
     "url": "/assets/photos/481814962_10125715710891170_6933387626420859198_n.jpg",
     "description": "A tropical Mai Tai cocktail, complete with an orchid and orange slice garnish.",
     "category": "Urban"
+  },
+  {
+    "title": "Davanni's Pizza",
+    "date": "2023-07-26",
+    "url": "/assets/photos/468335230_10124857028916730_2869538613750055413_n.jpg",
+    "description": "A close-up of a delicious half pepperoni, half sausage and green pepper pizza.",
+    "category": "Urban"
+  },
+  {
+    "title": "Cummer Museum Sculpture",
+    "date": "2023-07-13",
+    "url": "/assets/photos/510471395_10127048802939020_5954618275643629903_n.jpg",
+    "description": "Looking up through a modern wooden art structure at the Cummer Museum in Jacksonville, FL.",
+    "category": "Architecture"
+  },
+  {
+    "title": "Yorktown Sunrise",
+    "date": "2023-01-19",
+    "url": "/assets/photos/470235010_10125155285657830_6527339626053420434_n.jpg",
+    "description": "A brilliant orange and red sunrise breaks over a line of trees in Yorktown, VA.",
+    "category": "Nature"
   }
 ]
