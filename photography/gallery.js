@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyLinkBtn = document.getElementById('lightbox-directlink');
     const downloadBtn = document.getElementById('lightbox-download');
     const toast = document.getElementById('toast-notification');
-    const sortControls = document.getElementById('sort-controls');
+    const optionsPanel = document.getElementById('options-panel');
     const categoryFilter = document.getElementById('category-filter');
     const themeToggleBtn = document.getElementById('theme-toggle');
     const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
@@ -20,8 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToTopBtn = document.getElementById('back-to-top');
     const copyrightYearSpan = document.getElementById('copyright-year');
     const mobileOptionsBtn = document.getElementById('mobile-options-btn');
-    const optionsPanel = document.getElementById('options-panel');
-    const desktopControls = document.getElementById('desktop-controls');
     const mainContent = document.querySelector('main');
     const headerContent = document.querySelector('header');
 
@@ -34,11 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupMobileControls() {
         mobileOptionsBtn.addEventListener('click', () => {
             optionsPanel.classList.toggle('open');
-            if (optionsPanel.classList.contains('open')) {
-                optionsPanel.appendChild(desktopControls);
-            } else {
-                document.querySelector('header .flex.justify-between .flex.items-center.gap-4').appendChild(desktopControls);
-            }
         });
     }
 
