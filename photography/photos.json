@@ -376,5 +376,26 @@
     "url": "/assets/photos/girl_on_pillar_by_jough_dcyhs5.jpg",
     "description": "A playful and direct gaze, where vibrant yellow in the foreground and hair creates a striking color harmony.",
     "category": "Portraits"
+  },
+  {
+    "title": "Honey the Cat",
+    "date": "2024-12-27",
+    "url": "/assets/photos/471805144_10125200730845310_1047085251201790592_n.jpg",
+    "description": "Honey the cat resting peacefully on a skein of teal yarn.",
+    "category": "Nature"
+  },
+  {
+    "title": "Radium Springs",
+    "date": "2024-04-24",
+    "url": "/assets/photos/487432724_10126037524673770_8158264677158658207_n.jpg",
+    "description": "The beautiful turquoise water of Radium Springs, framed by Spanish moss.",
+    "category": "Nature"
+  },
+  {
+    "title": "Radium Springs Cypress",
+    "date": "2024-04-24",
+    "url": "/assets/photos/488182436_10126037524668780_6647062486564046934_n.jpg",
+    "description": "Cypress trees stand in the glowing blue-green water at Radium Springs in Georgia.",
+    "category": "Nature"
   }
 ]
