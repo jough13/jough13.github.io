@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('button[data-sort="date"]').classList.add('active');
             updateGallery();
         } catch (error) {
+            document.getElementById('loading-indicator')?.remove();
             galleryGrid.innerHTML = `<p class="text-red-400 col-span-full">${error.message}</p>`;
         }
     }
@@ -141,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function renderGrid() {
+        document.getElementById('loading-indicator')?.remove();
         galleryGrid.innerHTML = '';
         if (photosToDisplay.length === 0) {
             galleryGrid.innerHTML = '<p class="text-slate-400 text-center col-span-full">No photos match the selected category.</p>';
@@ -161,13 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-xs">${photo.title}</p>
                 </div>
             `;
-
             const img = item.querySelector('img');
-            
             img.onerror = () => {
                 item.classList.add('has-error');
             };
-            
             item.addEventListener('click', () => {
                 if (!item.classList.contains('has-error')) {
                     const originalIndex = photosToDisplay.findIndex(p => p.url === item.dataset.photoUrl);
@@ -192,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-
         mainContent.setAttribute('aria-hidden', 'true');
         headerContent.setAttribute('aria-hidden', 'true');
 
