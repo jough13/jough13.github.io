@@ -628,5 +628,26 @@
     "url": "/assets/photos/476382391_10125490461737280_7151275811265956950_n.jpg",
     "description": "A delicious-looking pizza topped with sausage, spinach, peppers, and onions.",
     "category": "Urban"
+  },
+  {
+    "title": "Stairs at the VMFA",
+    "date": "2024-09-27",
+    "url": "/assets/photos/513932192_10127185696692840_7897816533986463741_n.jpg",
+    "description": "The elegant marble and metal staircase at the Virginia Museum of Fine Art.",
+    "category": "Architecture"
+  },
+  {
+    "title": "Dōtonbori at Night",
+    "date": "2021-10-12",
+    "url": "/assets/photos/504113837_10126771737749880_3835452159091173081_n.jpg",
+    "description": "Neon signs reflect on the Dōtonbori canal in Osaka, Japan, at night.",
+    "category": "Urban"
+  },
+  {
+    "title": "Uranium Glass Platter",
+    "date": "2021-09-07",
+    "url": "/assets/photos/494428781_10126386225045430_5713227700095050899_n.jpg",
+    "description": "A vintage uranium glass platter glows a brilliant green under a UV light.",
+    "category": "Urban"
   }
 ]
