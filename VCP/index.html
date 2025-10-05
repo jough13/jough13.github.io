@@ -1,19 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vibe Code Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/one-dark.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/one-dark.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
@@ -26,8 +38,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/display/placeholder.min.js"></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
@@ -35,7 +53,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/annotatescrollbar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.js"></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" id="hljs-theme">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
+      id="hljs-theme"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -47,11 +69,11 @@
     <script src="https://unpkg.com/prettier@3.2.5/plugins/postcss.js"></script>
 
     <script>
-        // Immediately apply theme to prevent flash
-        const savedTheme = localStorage.getItem('theme_preference') || 'dark';
-        if (savedTheme === 'light') {
-            document.documentElement.classList.add('light');
-        }
+      // Immediately apply theme to prevent flash
+      const savedTheme = localStorage.getItem('theme_preference') || 'light';
+      if (savedTheme === 'light') {
+          document.documentElement.classList.add('light');
+      }
     </script>
 
     <style>
@@ -88,7 +110,7 @@
       .themed-button { background-color: #374151; } /* bg-gray-700 */
       .themed-button:hover { background-color: #4b5563; } /* bg-gray-600 */
       .util-btn-panel { background-color: rgba(17, 24, 39, 0.6); } /* bg-gray-900 with opacity */
-      
+
       /* --- LIGHT MODE --- */
       html.light {
         background-color: #f3f4f6; /* bg-gray-100 */
@@ -129,10 +151,10 @@
         transition: border-color 0.2s;
       }
       .CodeMirror { height: 100% !important; font-family: 'Fira Code', monospace; font-size: 14px; background-color: transparent;}
-      
+
       .cm-s-one-dark.CodeMirror { color: #abb2bf; } /* Lighter text for dark mode */
       .cm-s-one-dark.CodeMirror .CodeMirror-gutters {
-          background: #21252b; 
+          background: #21252b;
           border-right: 1px solid #374151;
       }
       .cm-s-one-dark .CodeMirror-linenumber { color: #636d83; }
@@ -191,7 +213,7 @@
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 10px; }
       ::-webkit-scrollbar-thumb:hover { background: #718096; }
-      
+
       .chat-container, .code-editor-container {
         position: relative;
         overflow: auto;
@@ -266,1025 +288,1213 @@
         #resizer.horizontal { cursor: ns-resize !important; }
       }
     </style>
-</head>
-<body class="h-screen flex flex-col antialiased">
+  </head>
+  <body class="h-screen flex flex-col antialiased">
     <div class="container mx-auto p-4 md:p-8 flex flex-col h-full">
-      <header class="flex-shrink-0 flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-        <h1 class="text-3xl font-bold mb-4 sm:mb-0">
-          Vibe Code Portal ✨
-        </h1>
-        <div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 w-full sm:w-auto">
-            <div class="flex items-center gap-x-2">
-                <label for="file-upload" title="Load File from Disk" class="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm cursor-pointer">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    <span>Load</span>
-                </label>
-                <input type="file" id="file-upload" class="hidden">
-                <button id="saveFileBtn" title="Save Current File" class="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    <span>Save</span>
-                </button>
-                <button id="downloadProjectBtn" title="Download All Files as .zip" class="flex items-center gap-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Download</span>
-                </button>
-            </div>
-            <div class="flex items-center gap-x-2">
-                 <button id="clearHistory" title="Clear Chat History" class="flex items-center gap-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    <span>Clear Chat</span>
-                </button>
-                <div class="h-6 w-px bg-gray-600 dark:bg-gray-700 mx-1"></div>
-                 <button id="viewToggleBtn" class="p-2 rounded-lg themed-button transition" title="Cycle View">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                 </button>
-                 <button id="settingsBtn" class="p-2 rounded-lg themed-button transition" title="Settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                 </button>
-                 <button id="themeToggle" class="p-2 rounded-lg themed-button transition" title="Toggle Theme">
-                 </button>
-            </div>
+      <header
+        class="flex-shrink-0 flex flex-col sm:flex-row justify-between items-center mb-4 gap-4"
+      >
+        <h1 class="text-3xl font-bold mb-4 sm:mb-0">Vibe Code Portal ✨</h1>
+        <div
+          class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2 w-full sm:w-auto"
+        >
+          <div class="flex items-center gap-x-2">
+            <label
+              for="file-upload"
+              title="Load File from Disk"
+              class="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Load</span>
+            </label>
+            <input type="file" id="file-upload" class="hidden" />
+            <button
+              id="saveFileBtn"
+              title="Save Current File"
+              class="flex items-center gap-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                ></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Save</span>
+            </button>
+            <button
+              id="downloadProjectBtn"
+              title="Download All Files as .zip"
+              class="flex items-center gap-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-x-2">
+            <button
+              id="clearHistory"
+              title="Clear Chat History"
+              class="flex items-center gap-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path
+                  d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                ></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <span>Clear Chat</span>
+            </button>
+            <div class="h-6 w-px bg-gray-600 dark:bg-gray-700 mx-1"></div>
+            <button
+              id="viewToggleBtn"
+              class="p-2 rounded-lg themed-button transition"
+              title="Cycle View"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+            </button>
+            <button
+              id="settingsBtn"
+              class="p-2 rounded-lg themed-button transition"
+              title="Settings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                  d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                ></path>
+              </svg>
+            </button>
+            <button
+              id="themeToggle"
+              class="p-2 rounded-lg themed-button transition"
+              title="Toggle Theme"
+            ></button>
+          </div>
         </div>
       </header>
 
       <main id="main-content" class="flex-grow flex flex-row gap-2 min-h-0">
         <div id="chat-pane" class="flex flex-col w-1/2">
-            <div id="chat" class="flex-grow chat-container min-h-0">
-                <div class="m-auto text-gray-500">Your conversation will appear here...</div>
+          <div id="chat" class="flex-grow chat-container min-h-0">
+            <div class="m-auto text-gray-500">
+              Your conversation will appear here...
             </div>
-            <div class="flex flex-col pt-4 flex-shrink-0">
-                <textarea id="promptInput" class="code-editor w-full" placeholder="Ask a follow-up question..."></textarea>
-                <div class="mt-4">
-                    <button id="generateButton" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition w-full disabled:bg-gray-500 disabled:cursor-not-allowed">Send</button>
-                    <button id="stopButton" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition w-full">Stop Generating</button>
-                </div>
+          </div>
+          <div class="flex flex-col pt-4 flex-shrink-0">
+            <textarea
+              id="promptInput"
+              class="code-editor w-full"
+              placeholder="Ask a follow-up question..."
+            ></textarea>
+            <div class="mt-4">
+              <button
+                id="generateButton"
+                class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition w-full disabled:bg-gray-500 disabled:cursor-not-allowed"
+              >
+                Send
+              </button>
+              <button
+                id="stopButton"
+                class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition w-full"
+              >
+                Stop Generating
+              </button>
             </div>
+          </div>
         </div>
-        
+
         <div id="resizer" class="resizer mx-1"></div>
 
-        <div id="code-pane" class="flex flex-col flex-1 code-editor-view overflow-hidden">
-             <div class="flex-shrink-0 flex items-center border-b border-base">
-                <div id="code-tabs-container" class="flex items-center pl-4"></div>
-                <button id="add-code-tab-btn" class="ml-2 px-3 text-lg font-semibold text-gray-400 hover:text-white transition-colors">+</button>
+        <div
+          id="code-pane"
+          class="flex flex-col flex-1 code-editor-view overflow-hidden"
+        >
+          <div class="flex-shrink-0 flex items-center border-b border-base">
+            <div id="code-tabs-container" class="flex items-center pl-4"></div>
+            <button
+              id="add-code-tab-btn"
+              class="ml-2 px-3 text-lg font-semibold text-gray-400 hover:text-white transition-colors"
+            >
+              +
+            </button>
+          </div>
+          <div
+            id="codeMirrorEditor"
+            class="flex-grow relative overflow-y-auto"
+          ></div>
+          <div
+            class="p-4 flex justify-between items-center gap-4 flex-shrink-0 border-t border-base"
+          >
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <label
+                  for="languageSelector"
+                  class="text-sm font-medium text-gray-400"
+                  >Language:</label
+                >
+                <select id="languageSelector" class="rounded-lg p-2 text-sm">
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                  <option value="text/x-c++src">C++</option>
+                  <option value="text/html">HTML</option>
+                  <option value="css">CSS</option>
+                  <option value="sql">SQL</option>
+                </select>
+              </div>
+              <button
+                id="formatCodeBtn"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition text-sm"
+              >
+                Format Code
+              </button>
             </div>
-            <div id="codeMirrorEditor" class="flex-grow relative overflow-y-auto"></div>
-            <div class="p-4 flex justify-between items-center gap-4 flex-shrink-0 border-t border-base">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <label for="languageSelector" class="text-sm font-medium text-gray-400">Language:</label>
-                        <select id="languageSelector" class="rounded-lg p-2 text-sm">
-                            <option value="javascript">JavaScript</option>
-                            <option value="python">Python</option>
-                            <option value="text/x-c++src">C++</option>
-                            <option value="text/html">HTML</option>
-                            <option value="css">CSS</option>
-                            <option value="sql">SQL</option>
-                        </select>
-                    </div>
-                    <button id="formatCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded-lg transition text-sm">Format Code</button>
-                </div>
-                <button id="sendToChatBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition text-sm">Discuss this Code</button>
-            </div>
+            <button
+              id="sendToChatBtn"
+              class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition text-sm"
+            >
+              Discuss this Code
+            </button>
+          </div>
         </div>
       </main>
 
-       <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-200 ease-out modal-hidden">
+      <div
+        id="settingsModal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-all duration-200 ease-out modal-hidden"
+      >
         <div class="modal-content shadow-xl p-6 w-full max-w-md">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Settings</h2>
-                <button id="closeSettingsBtn" class="text-2xl">&times;</button>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">Settings</h2>
+            <button id="closeSettingsBtn" class="text-2xl">&times;</button>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <label for="apiKeyInput" class="text-sm font-medium"
+                >API Key:</label
+              >
+              <div class="flex items-center space-x-2 mt-1">
+                <input
+                  type="password"
+                  id="apiKeyInput"
+                  class="settings-input w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                />
+                <button
+                  id="saveApiKey"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition text-sm"
+                >
+                  Save
+                </button>
+              </div>
+              <p id="apiKeyStatus" class="text-sm text-green-400 mt-1 h-4"></p>
             </div>
-            <div class="space-y-4">
-                <div>
-                    <label for="apiKeyInput" class="text-sm font-medium">API Key:</label>
-                    <div class="flex items-center space-x-2 mt-1">
-                        <input type="password" id="apiKeyInput" class="settings-input w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                        <button id="saveApiKey" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition text-sm">Save</button>
-                    </div>
-                     <p id="apiKeyStatus" class="text-sm text-green-400 mt-1 h-4"></p>
-                </div>
-                <div>
-                    <label for="modelNameInput" class="text-sm font-medium">Model Name:</label>
-                    <input type="text" id="modelNameInput" class="settings-input w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition mt-1">
-                </div>
-                 <div>
-                    <label for="systemPrompt" class="text-sm font-medium">AI Persona (System Prompt)</label>
-                    <textarea id="systemPrompt" rows="12" class="system-prompt w-full mt-1 rounded-lg p-2 text-sm" placeholder="e.g., You are a senior Go developer..."></textarea>
-                </div>
+            <div>
+              <label for="modelNameInput" class="text-sm font-medium"
+                >Model Name:</label
+              >
+              <input
+                type="text"
+                id="modelNameInput"
+                class="settings-input w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition mt-1"
+              />
             </div>
+            <div>
+              <label for="systemPrompt" class="text-sm font-medium"
+                >AI Persona (System Prompt)</label
+              >
+              <textarea
+                id="systemPrompt"
+                rows="12"
+                class="system-prompt w-full mt-1 rounded-lg p-2 text-sm"
+                placeholder="e.g., You are a senior Go developer..."
+              ></textarea>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <div id="context-menu">
-        <ul>
-            </ul>
+      <ul></ul>
     </div>
 
     <script type="module">
-      import { GoogleGenerativeAI } from "https://cdn.jsdelivr.net/npm/@google/generative-ai/+esm";
+            import { GoogleGenerativeAI } from "https://cdn.jsdelivr.net/npm/@google/generative-ai/+esm";
 
-      document.addEventListener('DOMContentLoaded', () => {
-        // DOM Element References
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const saveApiKeyBtn = document.getElementById('saveApiKey');
-        const clearHistoryBtn = document.getElementById('clearHistory');
-        const themeToggleBtn = document.getElementById('themeToggle');
-        const apiKeyStatus = document.getElementById('apiKeyStatus');
-        const promptInput = document.getElementById('promptInput');
-        const generateButton = document.getElementById('generateButton');
-        const stopButton = document.getElementById('stopButton');
-        const chatContainer = document.getElementById('chat');
-        const codeTabsContainer = document.getElementById('code-tabs-container');
-        const addCodeTabBtn = document.getElementById('add-code-tab-btn');
-        const systemPromptInput = document.getElementById('systemPrompt');
-        const sendToChatBtn = document.getElementById('sendToChatBtn');
-        const languageSelector = document.getElementById('languageSelector');
-        const formatCodeBtn = document.getElementById('formatCodeBtn');
-        const resizer = document.getElementById('resizer');
-        const chatPane = document.getElementById('chat-pane');
-        const codePane = document.getElementById('code-pane');
-        const settingsBtn = document.getElementById('settingsBtn');
-        const settingsModal = document.getElementById('settingsModal');
-        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-        const downloadProjectBtn = document.getElementById('downloadProjectBtn');
-        const viewToggleBtn = document.getElementById('viewToggleBtn');
-        const modelNameInput = document.getElementById('modelNameInput');
-        const saveFileBtn = document.getElementById('saveFileBtn');
-        const fileUploadInput = document.getElementById('file-upload');
-        const contextMenu = document.getElementById('context-menu');
+            document.addEventListener('DOMContentLoaded', () => {
+              // DOM Element References
+              const apiKeyInput = document.getElementById('apiKeyInput');
+              const saveApiKeyBtn = document.getElementById('saveApiKey');
+              const clearHistoryBtn = document.getElementById('clearHistory');
+              const themeToggleBtn = document.getElementById('themeToggle');
+              const apiKeyStatus = document.getElementById('apiKeyStatus');
+              const promptInput = document.getElementById('promptInput');
+              const generateButton = document.getElementById('generateButton');
+              const stopButton = document.getElementById('stopButton');
+              const chatContainer = document.getElementById('chat');
+              const codeTabsContainer = document.getElementById('code-tabs-container');
+              const addCodeTabBtn = document.getElementById('add-code-tab-btn');
+              const systemPromptInput = document.getElementById('systemPrompt');
+              const sendToChatBtn = document.getElementById('sendToChatBtn');
+              const languageSelector = document.getElementById('languageSelector');
+              const formatCodeBtn = document.getElementById('formatCodeBtn');
+              const resizer = document.getElementById('resizer');
+              const chatPane = document.getElementById('chat-pane');
+              const codePane = document.getElementById('code-pane');
+              const settingsBtn = document.getElementById('settingsBtn');
+              const settingsModal = document.getElementById('settingsModal');
+              const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+              const downloadProjectBtn = document.getElementById('downloadProjectBtn');
+              const viewToggleBtn = document.getElementById('viewToggleBtn');
+              const modelNameInput = document.getElementById('modelNameInput');
+              const saveFileBtn = document.getElementById('saveFileBtn');
+              const fileUploadInput = document.getElementById('file-upload');
+              const contextMenu = document.getElementById('context-menu');
 
 
-        const GEMINI_API_KEY_LS_KEY = 'gemini_api_key';
-        const CHAT_HISTORY_LS_KEY = 'chat_history';
-        const THEME_LS_KEY = 'theme_preference';
-        const SYSTEM_PROMPT_LS_KEY = 'system_prompt';
-        const CODE_TABS_LS_KEY = 'code_tabs';
-        const PANE_POSITION_LS_KEY = 'pane_position';
-        const VIEW_MODE_LS_KEY = 'view_mode';
-        const MODEL_NAME_LS_KEY = 'model_name';
-        
-        let chatHistory = [];
-        let codeTabs = [];
-        let activeCodeTabId = null;
-        let nextCodeTabId = 1;
-        let codeMirrorEditor;
-        let tabClickTimeout = null;
-        let currentView = 'split';
-        let abortController = null;
+              const GEMINI_API_KEY_LS_KEY = 'gemini_api_key';
+              const CHAT_HISTORY_LS_KEY = 'chat_history';
+              const THEME_LS_KEY = 'theme_preference';
+              const SYSTEM_PROMPT_LS_KEY = 'system_prompt';
+              const CODE_TABS_LS_KEY = 'code_tabs';
+              const PANE_POSITION_LS_KEY = 'pane_position';
+              const VIEW_MODE_LS_KEY = 'view_mode';
+              const MODEL_NAME_LS_KEY = 'model_name';
 
-        // --- Context Menu Logic ---
-        const aiActions = [
-            { 
-                label: 'Explain Selection', 
-                prompt: (language, code) => `You are an expert code explainer. Your goal is to make complex code easy to understand for developers of all skill levels. Break down the following ${language} code snippet, explaining its purpose, logic, and any key patterns or syntax used. Use Markdown for clarity.\n\n\`\`\`${language}\n${code}\n\`\`\``
-            },
-            {
-                label: 'Refactor Selection',
-                isMultiStep: true, // Flag for multi-step actions
-                steps: [
-                    // Step 1: Analysis Prompt
-                    (language, code) => `You are a senior software architect. Analyze the following code and create a concise, step-by-step plan for refactoring it to improve readability, efficiency, and maintainability. Output ONLY the plan as a numbered list. Do not write the full refactored code yet. The code is:\n\n\`\`\`${language}\n${code}\n\`\`\``,
-                    // Step 2: Execution Prompt
-                    (language, code, plan) => `An expert architect has provided the following plan to refactor a piece of code:\n\nPLAN:\n${plan}\n\nNow, using the plan above, execute the refactoring on the original code below. Provide ONLY the final, complete, refactored code block. Do not include any extra explanations or markdown fences.\n\nORIGINAL CODE:\n\`\`\`${language}\n${code}\n\`\`\``
-                ]
-            },
-            {
-                label: 'Find Potential Bugs',
-                prompt: (language, code) => `You are a senior quality assurance engineer. Your task is to perform a code review on the following ${language} snippet and identify any potential bugs, logic errors, or edge cases that might not be handled. Explain each issue you find and suggest a fix.\n\n\`\`\`${language}\n${code}\n\`\`\``
-            },
-            {
-                label: 'Add Docs & Comments',
-                prompt: (language, code) => `You are an expert at writing clear and concise technical documentation. Add detailed comments and a formal documentation block (like JSDoc, DocString, etc., appropriate for the language) to the following ${language} code snippet. The goal is to make it crystal clear what the code does, what its parameters are, and what it returns. Provide only the updated code with the new documentation.\n\n\`\`\`${language}\n${code}\n\`\`\``
-            }
-        ];
+              let chatHistory = [];
+              let codeTabs = [];
+              let activeCodeTabId = null;
+              let nextCodeTabId = 1;
+              let codeMirrorEditor;
+              let tabClickTimeout = null;
+              let currentView = 'split';
+              let abortController = null;
 
-        const showContextMenu = (e) => {
-            contextMenu.style.display = 'block';
-            contextMenu.style.left = `${e.clientX + 5}px`;
-            contextMenu.style.top = `${e.clientY + 5}px`;
+              // --- Context Menu Logic ---
+              const aiActions = [
+                  {
+                      label: 'Explain Selection',
+                      prompt: (language, code) => `You are an expert code explainer. Your goal is to make complex code easy to understand for developers of all skill levels. Break down the following ${language} code snippet, explaining its purpose, logic, and any key patterns or syntax used. Use Markdown for clarity.\n\n\`\`\`${language}\n${code}\n\`\`\``
+                  },
+                  {
+                      label: 'Refactor Selection',
+                      isMultiStep: true, // Flag for multi-step actions
+                      steps: [
+                          // Step 1: Analysis Prompt
+                          (language, code) => `You are a senior software architect. Analyze the following code and create a concise, step-by-step plan for refactoring it to improve readability, efficiency, and maintainability. Output ONLY the plan as a numbered list. Do not write the full refactored code yet. The code is:\n\n\`\`\`${language}\n${code}\n\`\`\``,
+                          // Step 2: Execution Prompt
+                          (language, code, plan) => `An expert architect has provided the following plan to refactor a piece of code:\n\nPLAN:\n${plan}\n\nNow, using the plan above, execute the refactoring on the original code below. Provide ONLY the final, complete, refactored code block. Do not include any extra explanations or markdown fences.\n\nORIGINAL CODE:\n\`\`\`${language}\n${code}\n\`\`\``
+                      ]
+                  },
+                  {
+                      label: 'Find Potential Bugs',
+                      prompt: (language, code) => `You are a senior quality assurance engineer. Your task is to perform a code review on the following ${language} snippet and identify any potential bugs, logic errors, or edge cases that might not be handled. Explain each issue you find and suggest a fix.\n\n\`\`\`${language}\n${code}\n\`\`\``
+                  },
+                  {
+                      label: 'Add Docs & Comments',
+                      prompt: (language, code) => `You are an expert at writing clear and concise technical documentation. Add detailed comments and a formal documentation block (like JSDoc, DocString, etc., appropriate for the language) to the following ${language} code snippet. The goal is to make it crystal clear what the code does, what its parameters are, and what it returns. Provide only the updated code with the new documentation.\n\n\`\`\`${language}\n${code}\n\`\`\``
+                  }
+              ];
 
-            const menuList = contextMenu.querySelector('ul');
-            menuList.innerHTML = ''; 
+              const showContextMenu = (e) => {
+                  contextMenu.style.display = 'block';
+                  contextMenu.style.left = `${e.clientX + 5}px`;
+                  contextMenu.style.top = `${e.clientY + 5}px`;
 
-            aiActions.forEach(action => {
-                const listItem = document.createElement('li');
-                listItem.textContent = action.label;
-                listItem.addEventListener('click', () => {
-                    if (action.isMultiStep) {
-                        handleMultiStepAction(action);
-                    } else {
-                        const selectedCode = codeMirrorEditor.getSelection();
-                        const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-                        const language = activeTab ? activeTab.language : 'code';
-                        if (selectedCode && language) {
-                            const finalPrompt = action.prompt(language, selectedCode);
-                            callGeminiApi(finalPrompt);
-                        }
-                    }
-                    hideContextMenu();
-                });
-                menuList.appendChild(listItem);
+                  const menuList = contextMenu.querySelector('ul');
+                  menuList.innerHTML = '';
+
+                  aiActions.forEach(action => {
+                      const listItem = document.createElement('li');
+                      listItem.textContent = action.label;
+                      listItem.addEventListener('click', () => {
+                          if (action.isMultiStep) {
+                              handleMultiStepAction(action);
+                          } else {
+                              const selectedCode = codeMirrorEditor.getSelection();
+                              const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                              const language = activeTab ? activeTab.language : 'code';
+                              if (selectedCode && language) {
+                                  const finalPrompt = action.prompt(language, selectedCode);
+                                  callGeminiApi(finalPrompt);
+                              }
+                          }
+                          hideContextMenu();
+                      });
+                      menuList.appendChild(listItem);
+                  });
+              };
+
+              const hideContextMenu = () => {
+                  if (contextMenu.style.display === 'block') {
+                      contextMenu.style.display = 'none';
+                  }
+              };
+
+              window.addEventListener('click', hideContextMenu);
+
+              // --- CodeMirror Initialization ---
+              const getSearchState = (cm) => {
+                  return cm.state.search || (cm.state.search = {});
+              };
+
+              const parseQuery = (query) => {
+                  const escaped = query.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+                  return new RegExp(escaped, "i");
+              };
+
+              CodeMirror.commands.find = (cm) => {
+                  const template = `
+                      <div class="CodeMirror-search-field">
+                          Search: <input type="text" class="CodeMirror-search-field" placeholder="Enter for next, Shift-Enter for prev" style="width: 15em">
+                          <span style="color: #888" class="CodeMirror-search-hint">(Use /re/ syntax for regexp)</span>
+                      </div>`;
+
+                  cm.openDialog(template, null, {
+                      closeOnEnter: false,
+                      onClose: () => {
+                          cm.execCommand("clearSearch");
+                          cm.focus();
+                      },
+                      onKeyDown: (e, query, close) => {
+                          if (e.key === 'Escape') {
+                              e.preventDefault();
+                              close();
+                              return;
+                          }
+                          if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (!query) {
+                                  cm.execCommand("clearSearch");
+                                  return;
+                              }
+                              const state = getSearchState(cm);
+                              state.query = parseQuery(query);
+                              CodeMirror.commands[e.shiftKey ? "findPrev" : "findNext"](cm);
+                          }
+                      },
+                      onGossip: (el) => {
+                          const input = el.querySelector("input");
+                          const state = getSearchState(cm);
+                          if (state && state.query) {
+                              const queryText = state.query.source.replace(/\\/g, '');
+                              input.value = queryText;
+                              input.select();
+                          }
+                      }
+                  });
+              };
+
+              const initializeCodeMirror = (theme) => {
+                  codeMirrorEditor = CodeMirror(document.getElementById('codeMirrorEditor'), {
+                      value: "// Your code here...\n",
+                      mode: "javascript",
+                      theme: theme === 'light' ? 'eclipse' : 'one-dark',
+                      lineNumbers: true,
+                      lineWrapping: true,
+                      autoCloseBrackets: true,
+                      matchBrackets: true,
+                      styleActiveLine: true,
+                  });
+
+                  codeMirrorEditor.on('contextmenu', (cm, e) => {
+                      if (cm.getSelection().length > 0) {
+                          e.preventDefault();
+                          showContextMenu(e);
+                      }
+                  });
+
+                   codeMirrorEditor.on('change', () => {
+                      if(activeCodeTabId) {
+                          const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                          if(activeTab) {
+                              activeTab.content = codeMirrorEditor.getValue();
+                              saveCodeTabs();
+                          }
+                      }
+                  });
+              };
+
+              // --- Pane Resizing Logic ---
+              const activateResizer = (e) => {
+                  e.preventDefault();
+                  window.addEventListener('mousemove', resize);
+                  window.addEventListener('mouseup', stopResize);
+              };
+
+              const resize = (e) => {
+                  const mainContent = document.getElementById('main-content');
+                  const totalWidth = mainContent.offsetWidth;
+                  const newChatWidth = e.clientX - mainContent.offsetLeft;
+                  const newCodeWidth = totalWidth - newChatWidth - resizer.offsetWidth;
+
+                  if (newChatWidth > 100 && newCodeWidth > 100) {
+                      const chatPercentage = (newChatWidth / totalWidth) * 100;
+                      chatPane.style.width = `${chatPercentage}%`;
+                      localStorage.setItem(PANE_POSITION_LS_KEY, chatPercentage);
+                  }
+              };
+
+              const stopResize = () => {
+                  window.removeEventListener('mousemove', resize);
+              };
+
+              const loadPanePosition = () => {
+                  const savedPosition = localStorage.getItem(PANE_POSITION_LS_KEY);
+                  if(savedPosition) {
+                      chatPane.style.width = `${savedPosition}%`;
+                  }
+              }
+
+              // --- View Management ---
+              const applyView = (view) => {
+                  currentView = view;
+                  localStorage.setItem(VIEW_MODE_LS_KEY, view);
+                  chatPane.style.display = 'none';
+                  codePane.style.display = 'none';
+                  resizer.style.display = 'none';
+                  if (view === 'split') {
+                      chatPane.style.display = 'flex';
+                      codePane.style.display = 'flex';
+                      resizer.style.display = 'block';
+                      const savedPosition = localStorage.getItem(PANE_POSITION_LS_KEY);
+                      chatPane.style.width = savedPosition ? `${savedPosition}%` : '50%';
+                      codePane.style.width = '';
+                      if (codeMirrorEditor) setTimeout(() => codeMirrorEditor.refresh(), 10);
+                  } else if (view === 'chat') {
+                      chatPane.style.display = 'flex';
+                      chatPane.style.width = '100%';
+                  } else if (view === 'code') {
+                      codePane.style.display = 'flex';
+                      codePane.style.width = '100%';
+                       if (codeMirrorEditor) setTimeout(() => codeMirrorEditor.refresh(), 10);
+                  }
+              };
+
+              const cycleView = () => {
+                  const views = ['split', 'chat', 'code'];
+                  const currentIndex = views.indexOf(currentView);
+                  const nextIndex = (currentIndex + 1) % views.length;
+                  applyView(views[nextIndex]);
+              };
+
+              const loadView = () => {
+                  const savedView = localStorage.getItem(VIEW_MODE_LS_KEY) || 'split';
+                  applyView(savedView);
+              };
+
+              // --- Tab Management ---
+              const switchCodeTab = (tabId) => {
+                  if(activeCodeTabId) {
+                      const oldTab = codeTabs.find(t => t.id === activeCodeTabId);
+                      if (oldTab) oldTab.content = codeMirrorEditor.getValue();
+                  }
+                  activeCodeTabId = tabId;
+                  const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                  if (activeTab) {
+                      codeMirrorEditor.setValue(activeTab.content);
+                      languageSelector.value = activeTab.language || 'javascript';
+                      codeMirrorEditor.setOption('mode', languageSelector.value);
+                  }
+                  codeMirrorEditor.refresh();
+                  renderCodeTabs();
+              };
+
+              const renderCodeTabs = () => {
+                  codeTabsContainer.innerHTML = '';
+                  codeTabs.forEach(tab => {
+                      const tabEl = document.createElement('button');
+                      tabEl.classList.add('code-tab', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'transition-colors', 'flex', 'items-center', 'gap-2', 'border-b-2');
+                      tabEl.classList.toggle('active', tab.id === activeCodeTabId);
+                      const tabName = document.createElement('span');
+                      tabName.textContent = tab.name;
+                      tabEl.appendChild(tabName);
+                      tabEl.addEventListener('click', () => {
+                          if (tabClickTimeout) {
+                              clearTimeout(tabClickTimeout);
+                              tabClickTimeout = null;
+                              renameTab(tab.id, tabName);
+                          } else {
+                              tabClickTimeout = setTimeout(() => {
+                                  switchCodeTab(tab.id);
+                                  tabClickTimeout = null;
+                              }, 200);
+                          }
+                      });
+                      const closeBtn = document.createElement('span');
+                      closeBtn.innerHTML = '&times;';
+                      closeBtn.classList.add('ml-2', 'text-gray-500', 'hover:text-white', 'cursor-pointer');
+                      closeBtn.onclick = (e) => {
+                          e.stopPropagation();
+                          closeCodeTab(tab.id);
+                      };
+                      tabEl.appendChild(closeBtn);
+                      codeTabsContainer.appendChild(tabEl);
+                  });
+              };
+
+              // ⭐ POLISH: Tab renaming now updates the language mode automatically
+              const renameTab = (tabId, tabNameElement) => {
+                  const input = document.createElement('input');
+                  input.type = 'text';
+                  input.value = tabNameElement.textContent;
+                  input.className = 'bg-transparent text-sm font-semibold p-0 border-0 focus:ring-0 w-20';
+                  tabNameElement.replaceWith(input);
+                  setTimeout(() => {
+                      input.focus();
+                      input.select();
+                  }, 0);
+                  const finishEditing = () => {
+                      const newName = input.value.trim();
+                      const tab = codeTabs.find(t => t.id === tabId);
+                      if (newName && tab) {
+                          tab.name = newName;
+                          tab.language = getLanguageModeFromFilename(newName); // Update language
+                          // If the renamed tab is the active one, update the editor
+                          if(tab.id === activeCodeTabId) {
+                              languageSelector.value = tab.language;
+                              codeMirrorEditor.setOption('mode', tab.language);
+                          }
+                      }
+                      saveCodeTabs();
+                      renderCodeTabs();
+                  };
+                  input.addEventListener('blur', finishEditing);
+                  input.addEventListener('keydown', (e) => {
+                      if (e.key === 'Enter') finishEditing();
+                      else if (e.key === 'Escape') {
+                          renderCodeTabs(); // Cancel rename
+                      }
+                  });
+              };
+
+              // ⭐ POLISH: New tabs are created without a default extension
+              const addCodeTab = (name = null, content = null, language = null) => {
+                  const newTab = {
+                      id: nextCodeTabId,
+                      name: name || `File_${nextCodeTabId}`,
+                      content: content !== null ? content : ``,
+                      language: language || 'javascript'
+                  };
+                  codeTabs.push(newTab);
+                  nextCodeTabId++;
+                  saveCodeTabs();
+                  switchCodeTab(newTab.id);
+              };
+
+              const closeCodeTab = (tabId) => {
+                  if (codeTabs.length <= 1) return;
+                  codeTabs = codeTabs.filter(t => t.id !== tabId);
+                  saveCodeTabs();
+                  if (activeCodeTabId === tabId) {
+                      switchCodeTab(codeTabs[0].id);
+                  } else {
+                       renderCodeTabs();
+                  }
+              };
+
+              // --- File Save/Load Logic ---
+              const getLanguageModeFromFilename = (filename) => {
+                  const extension = filename.split('.').pop().toLowerCase();
+                  const modeMap = {
+                      'js': 'javascript', 'mjs': 'javascript',
+                      'py': 'python',
+                      'cpp': 'text/x-c++src', 'cxx': 'text/x-c++src', 'h': 'text/x-c++src',
+                      'html': 'text/html', 'htm': 'text/html',
+                      'css': 'css',
+                      'sql': 'sql'
+                  };
+                  return modeMap[extension] || 'javascript';
+              };
+
+              const saveCurrentFile = () => {
+                  const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                  if (!activeTab) return;
+                  const blob = new Blob([activeTab.content], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = activeTab.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+              };
+
+              const loadFile = (event) => {
+                  const file = event.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                      const content = e.target.result;
+                      const name = file.name;
+                      const language = getLanguageModeFromFilename(name);
+                      addCodeTab(name, content, language);
+                  };
+                  reader.onerror = (e) => {
+                      console.error("Error reading file:", e);
+                      alert("Failed to read the selected file.");
+                  };
+                  reader.readAsText(file);
+                  event.target.value = null;
+              };
+
+              // --- Theme Management ---
+              const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-300"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+              const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+
+              const applyTheme = (theme) => {
+                  const hljsTheme = document.getElementById('hljs-theme');
+                  if (theme === 'light') {
+                      document.documentElement.classList.add('light');
+                      themeToggleBtn.innerHTML = moonIcon;
+                      if(codeMirrorEditor) codeMirrorEditor.setOption("theme", "eclipse");
+                      if(hljsTheme) hljsTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css';
+                  } else {
+                      document.documentElement.classList.remove('light');
+                      themeToggleBtn.innerHTML = sunIcon;
+                      if(codeMirrorEditor) codeMirrorEditor.setOption("theme", "one-dark");
+                      if(hljsTheme) hljsTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
+                  }
+              };
+
+              const toggleTheme = () => {
+                  const currentTheme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+                  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                  localStorage.setItem(THEME_LS_KEY, newTheme);
+                  applyTheme(newTheme);
+              };
+
+      const loadTheme = () => {
+          const savedTheme = localStorage.getItem(THEME_LS_KEY) || 'light';
+          applyTheme(savedTheme);
+          return savedTheme;
+      };
+
+              // --- Data Management (API Key, History, Prompts, Code Tabs) ---
+              const loadApiKey = () => {
+                  const savedKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
+                  if (savedKey) apiKeyInput.value = savedKey;
+              };
+
+              const saveApiKey = () => {
+                  const key = apiKeyInput.value.trim();
+                  if (key) {
+                      localStorage.setItem(GEMINI_API_KEY_LS_KEY, key);
+                      apiKeyStatus.textContent = 'API Key saved!';
+                  } else {
+                      apiKeyStatus.textContent = 'Please enter a valid API Key.';
+                  }
+                  setTimeout(() => apiKeyStatus.textContent = '', 3000);
+              };
+
+              const loadModelName = () => {
+                  const savedModel = localStorage.getItem(MODEL_NAME_LS_KEY) || 'gemini-2.5-pro';
+                  modelNameInput.value = savedModel;
+              };
+
+              const saveModelName = () => {
+                  localStorage.setItem(MODEL_NAME_LS_KEY, modelNameInput.value.trim());
+              };
+
+              const loadSystemPrompt = () => {
+                  const savedPrompt = localStorage.getItem(SYSTEM_PROMPT_LS_KEY);
+                  if (savedPrompt) {
+                      systemPromptInput.value = savedPrompt;
+                  } else {
+                      const defaultPrompt = `# CORE IDENTITY & PERSONA
+
+      You are 'Vibe' 🧑‍💻, an AI Principal Engineer and world-class programming mentor.
+
+      Your personality is that of an exceptionally patient, articulate, and deeply knowledgeable technical lead. Your voice is calm, clear, and encouraging—like a trusted colleague who is genuinely invested in the user's success. You find joy in untangling complex problems and illuminating the "why" behind the "what." You are collaborative, slightly informal, and always approachable.
+
+      # GRAND STRATEGY: THE MENTOR'S PATH
+
+      Your ultimate goal is **Empowerment over Answers**. You are not a code vending machine. Your primary function is to elevate the user's skills and understanding.
+
+      1.  **Teach the "How":** Don't just provide a solution; guide the user through the thought process required to arrive at that solution. Use the Socratic method when appropriate, asking leading questions to help them discover the answer themselves.
+      2.  **Illuminate the "Why":** Always explain the underlying principles and trade-offs of a solution. Why is this approach better than another? What are the long-term implications?
+      3.  **Leverage Full Context:** You will be given context from the user's entire project. You MUST treat this as your single source of truth. Your architectural suggestions, code style, and library choices must be consistent with the provided files.
+
+      # TACTICAL DIRECTIVES: METHODOLOGY
+
+      ### 1. On Receiving a Request: The Analysis Phase (Your Internal Monologue)
+      Before writing a single word of your response, you will silently perform this analysis:
+          a. **Identify the User's Core Intent:** What is the fundamental problem they are trying to solve?
+          b. **Scan All Provided Context:** Meticulously review every file provided. Look for existing patterns, libraries, variable naming conventions, and architectural choices.
+          c. **Formulate a High-Level Plan:** Based on your analysis, create a mental outline of the best possible solution that fits within the user's existing project.
+          d. **Anticipate Follow-up Questions:** What will the user likely ask next after you provide your answer? Prepare to address this proactively.
+
+      ### 2. Structuring Your Response: The Communication Protocol
+      You MUST follow this structured format for all non-trivial responses to ensure clarity and consistency.
+
+          ### 🎯 Goal
+          A single, concise sentence summarizing what the user is trying to achieve.
+
+          ### 🧠 My Thought Process
+          A numbered, step-by-step breakdown of your reasoning. Explain *how* you arrived at the solution, referencing the project context where relevant. This is the most critical part of your mentoring role.
+
+          ### ✨ The Solution
+          The complete, production-ready code block. The code must be clean, well-commented, and robust.
+
+          ### 🔍 Deeper Dive & Alternatives (Optional)
+          Use this section to explain key concepts, discuss trade-offs (e.g., performance vs. readability), or mention alternative ways to solve the problem.
+
+          ### 🚀 Next Steps
+          Proactively suggest the user's next logical action. (e.g., "Now that this is done, you'll probably want to connect it to the front-end," or "Remember to install the library with \`npm install...\`").
+
+      ### 3. Handling Specific Task Types
+      * **For Debugging:** Act like a detective. Ask for error messages. Suggest where to place \`console.log\` statements. Guide the user to find the root cause rather than just fixing it for them.
+      * **For New Features:** Act like an architect. Discuss where the new code should live within the existing file structure. Consider its impact on other files and suggest a modular, scalable design.
+      * **For Refactoring:** Focus on measurable improvements. Explain the "before" and "after" logic. Justify your changes with principles like SOLID, DRY, or by pointing out performance gains (e.g., "This reduces algorithmic complexity...").
+      * **For Simple Questions:** Answer directly and clearly, but always provide a small, practical code example to ground the concept in reality.
+
+      # ABSOLUTE CONSTRAINTS (DO NOT DEVIATE)
+      * **NEVER** be condescending, lecturing, or patronizing. Your tone is always one of a collaborative peer.
+      * **NEVER** apologize or use self-referential phrases like "As an AI..." or "I am just a language model."
+      * **NEVER** invent libraries, functions, or APIs. If you don't know, say you don't know or ask for more context.
+      * **ALWAYS** ask clarifying questions if the user's request is ambiguous. Do not make assumptions.`;
+                      systemPromptInput.value = defaultPrompt;
+                  }
+              };
+
+              const saveSystemPrompt = () => {
+                  localStorage.setItem(SYSTEM_PROMPT_LS_KEY, systemPromptInput.value.trim());
+              };
+
+              const loadHistory = () => {
+                  const savedHistory = localStorage.getItem(CHAT_HISTORY_LS_KEY);
+                  if (savedHistory) {
+                      let loadedHistory = JSON.parse(savedHistory);
+                      chatHistory = loadedHistory.map(item => {
+                          if (item.parts && typeof item.parts === 'string') {
+                              return { ...item, parts: [{ text: item.parts }] };
+                          }
+                          return item;
+                      });
+                      renderHistory();
+                  }
+              };
+
+              const saveHistory = () => localStorage.setItem(CHAT_HISTORY_LS_KEY, JSON.stringify(chatHistory));
+
+              const clearHistory = () => {
+                  chatHistory = [];
+                  saveHistory();
+                  renderHistory();
+              };
+
+               const saveCodeTabs = () => localStorage.setItem(CODE_TABS_LS_KEY, JSON.stringify(codeTabs));
+
+              const loadCodeTabs = () => {
+                  const savedTabs = localStorage.getItem(CODE_TABS_LS_KEY);
+                  if (savedTabs) {
+                      codeTabs = JSON.parse(savedTabs);
+                      if (codeTabs.length > 0) {
+                           nextCodeTabId = Math.max(...codeTabs.map(t => t.id)) + 1;
+                      }
+                  }
+                  if (codeTabs.length === 0) {
+                       addCodeTab();
+                  } else {
+                      switchCodeTab(codeTabs[0].id);
+                  }
+              };
+
+              const downloadProject = () => {
+                  const zip = new JSZip();
+                  codeTabs.forEach(tab => {
+                      zip.file(tab.name, tab.content);
+                  });
+                  zip.generateAsync({type:"blob"}).then(function(content) {
+                      const link = document.createElement('a');
+                      link.href = URL.createObjectURL(content);
+                      link.download = "vibe-code-project.zip";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                  });
+              };
+
+              // --- Code Formatting ---
+              const formatCode = async () => {
+                  if (!codeMirrorEditor || typeof prettier === 'undefined' || typeof prettierPlugins === 'undefined') {
+                      console.error("Editor or Prettier library not available.");
+                      alert("Formatting library not loaded.");
+                      return;
+                  }
+                  const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                  if (!activeTab) return;
+                  const code = codeMirrorEditor.getValue();
+                  const language = activeTab.language;
+                  let parser;
+                  let plugin;
+                  switch (language) {
+                      case 'javascript':
+                          parser = 'babel';
+                          plugin = prettierPlugins.babel;
+                          break;
+                      case 'css':
+                          parser = 'css';
+                          plugin = prettierPlugins.postcss;
+                          break;
+                      case 'text/html':
+                          parser = 'html';
+                          plugin = prettierPlugins.html;
+                          break;
+                      default:
+                          alert(`Formatting for the '${language}' language is not supported yet.`);
+                          return;
+                  }
+                  try {
+                      const formattedCode = await prettier.format(code, {
+                          parser: parser,
+                          plugins: [plugin, prettierPlugins.estree],
+                      });
+                      codeMirrorEditor.setValue(formattedCode);
+                  } catch (error) {
+                      console.error("Code formatting failed:", error);
+                      alert("Could not format code. Please check for syntax errors.");
+                  }
+              };
+
+              const renderHistory = (isStreaming = false) => {
+                  chatContainer.innerHTML = '';
+                  if (chatHistory.length === 0) {
+                      chatContainer.innerHTML = `<div class="m-auto text-gray-500">Your conversation will appear here...</div>`;
+                      return;
+                  }
+                  chatHistory.forEach(message => {
+                      if (!message.parts || !Array.isArray(message.parts) || message.parts.length === 0) return;
+                      const messageContent = message.parts[0].text || '';
+                      const messageWrapper = document.createElement('div');
+                      messageWrapper.classList.add('flex', 'items-start', 'gap-3', 'w-full');
+                      const iconEl = document.createElement('div');
+                      iconEl.classList.add('w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'flex-shrink-0', 'mt-1', 'user-icon');
+                      const contentEl = document.createElement('div');
+                      contentEl.classList.add('p-3', 'rounded-xl', 'max-w-[85%]', 'break-words');
+                      if (message.role === 'user') {
+                          messageWrapper.classList.add('justify-end');
+                          iconEl.classList.add('bg-indigo-500');
+                          iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+                          contentEl.classList.add('bg-indigo-600', 'text-white');
+                          contentEl.textContent = messageContent;
+                          messageWrapper.appendChild(contentEl);
+                          messageWrapper.appendChild(iconEl);
+                      } else {
+                          messageWrapper.classList.add('justify-start');
+                          iconEl.classList.add('bg-gray-600', 'model-icon');
+                          iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-300"><path d="m12 3-1.9 4.2-4.3.6 3.1 3- L 7.5 18 12 15.8 16.5 18 l -1.4-7.2 3.1-3 -4.3-.6 z"/></svg>`;
+                          contentEl.classList.add('model-message-content');
+                          contentEl.innerHTML = marked.parse(messageContent);
+                          messageWrapper.appendChild(iconEl);
+                          messageWrapper.appendChild(contentEl);
+                      }
+                      chatContainer.appendChild(messageWrapper);
+                  });
+                  if (!isStreaming) {
+                      addUtilityButtonsAndHighlight();
+                  }
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
+              };
+
+              const addUtilityButtonsAndHighlight = () => {
+                   document.querySelectorAll('.model-message-content pre').forEach(preEl => {
+                      if (preEl.querySelector('.util-btn-container')) return;
+                      const buttonContainer = document.createElement('div');
+                      buttonContainer.classList.add('util-btn-container', 'absolute', 'top-2', 'right-2', 'flex', 'gap-2', 'z-10', 'p-1', 'rounded-lg', 'util-btn-panel');
+                      const copyBtn = document.createElement('button');
+                      copyBtn.textContent = 'Copy';
+                      copyBtn.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-white', 'text-xs', 'px-2', 'py-1', 'rounded', 'transition-colors');
+                      const insertBtn = document.createElement('button');
+                      insertBtn.textContent = 'Insert';
+                      insertBtn.classList.add('bg-teal-600', 'hover:bg-teal-500', 'text-white', 'text-xs', 'px-2', 'py-1', 'rounded', 'transition-colors');
+                      const codeText = preEl.querySelector('code')?.textContent || '';
+                      copyBtn.onclick = () => {
+                          navigator.clipboard.writeText(codeText).then(() => {
+                              copyBtn.textContent = 'Copied!';
+                              setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                          }).catch(err => console.error('Failed to copy text: ', err));
+                      };
+                      insertBtn.onclick = () => {
+                          if (codeTabs.length === 0) addCodeTab();
+                          const targetTabId = activeCodeTabId || codeTabs[0].id;
+                          const targetTab = codeTabs.find(t => t.id === targetTabId);
+                          if(targetTab) {
+                              codeMirrorEditor.setValue(codeText);
+                              targetTab.content = codeText;
+                              saveCodeTabs();
+                              switchCodeTab(targetTabId);
+                          }
+                      };
+                      buttonContainer.appendChild(insertBtn);
+                      buttonContainer.appendChild(copyBtn);
+                      preEl.appendChild(buttonContainer);
+                  });
+                  document.querySelectorAll('.model-message-content pre code').forEach(hljs.highlightElement);
+              };
+
+              // --- Gemini API and Multi-Step Logic ---
+
+              const buildMasterPrompt = (prompt) => {
+                  let projectContext = "Here is the full context of the user's project with all open files:\n\n";
+                  if (codeTabs.length > 0) {
+                      codeTabs.forEach(tab => {
+                          projectContext += `--- FILE: ${tab.name} ---\n`;
+                          projectContext += `${tab.content}\n\n`;
+                      });
+                  } else {
+                      projectContext += "There are no open files.\n\n";
+                  }
+                  projectContext += "--- END OF CONTEXT ---\n\nNow, based on the full project context, please fulfill the user's request:\n\n";
+                  return projectContext + prompt;
+              };
+
+              const getInternalGeminiResponse = async (prompt) => {
+                  const apiKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
+                  if (!apiKey) throw new Error("API Key not set.");
+
+                  const masterPrompt = buildMasterPrompt(prompt);
+                  const genAI = new GoogleGenerativeAI(apiKey);
+                  const modelName = modelNameInput.value.trim() || 'gemini-2.5-pro';
+                  const model = genAI.getGenerativeModel({ model: modelName });
+
+                  const result = await model.generateContent(masterPrompt);
+                  return result.response.text();
+              };
+
+              const streamResponse = async (prompt, targetElement, historyEntryToUpdate) => {
+                   const apiKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
+                  if (!apiKey) {
+                      targetElement.innerHTML = "Error: API Key is not set.";
+                      return;
+                  }
+
+                  abortController = new AbortController();
+                  generateButton.classList.add('hidden');
+                  stopButton.classList.remove('hidden');
+
+                  try {
+                      const masterPrompt = buildMasterPrompt(prompt);
+                      const genAI = new GoogleGenerativeAI(apiKey);
+                      const modelName = modelNameInput.value.trim() || 'gemini-2.5-pro';
+                      const model = genAI.getGenerativeModel({ model: modelName });
+
+                      const result = await model.generateContentStream(masterPrompt);
+                      let text = '';
+                      for await (const chunk of result.stream) {
+                          if (abortController.signal.aborted) {
+                              text += '\n\n[Generation stopped by user]';
+                              break;
+                          }
+                          text += chunk.text();
+                          targetElement.innerHTML = marked.parse(text);
+                      }
+                      historyEntryToUpdate.parts[0].text = text;
+                      saveHistory();
+                      addUtilityButtonsAndHighlight();
+                  } catch(error) {
+                      console.error('Error in streamResponse:', error);
+                      const errorMessage = error instanceof Error ? error.message : String(error);
+                      const finalErrorText = `An error occurred: ${errorMessage}.`;
+                      targetElement.innerHTML = finalErrorText;
+                      historyEntryToUpdate.parts[0].text = finalErrorText;
+                      saveHistory();
+                  } finally {
+                      generateButton.classList.remove('hidden');
+                      stopButton.classList.add('hidden');
+                      abortController = null;
+                  }
+              };
+
+              const callGeminiApi = async (prompt) => {
+                  chatHistory.push({ role: 'user', parts: [{ text: prompt }] });
+                  const modelHistoryEntry = { role: 'model', parts: [{ text: '' }] };
+                  chatHistory.push(modelHistoryEntry);
+                  renderHistory(true);
+                  const modelResponseContainer = chatContainer.lastChild.querySelector('.model-message-content');
+
+                  promptInput.value = '';
+
+                  modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Generating...</span></div>`;
+                  await streamResponse(prompt, modelResponseContainer, modelHistoryEntry);
+              };
+
+              const handleMultiStepAction = async (action) => {
+                  const selectedCode = codeMirrorEditor.getSelection();
+                  const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                  const language = activeTab ? activeTab.language : 'code';
+
+                  const userPromptText = `${action.label}:\n\n\`\`\`${language}\n${selectedCode}\n\`\`\``;
+                  chatHistory.push({ role: 'user', parts: [{ text: userPromptText }] });
+                  const modelHistoryEntry = { role: 'model', parts: [{ text: '' }] };
+                  chatHistory.push(modelHistoryEntry);
+                  renderHistory(true);
+                  const modelResponseContainer = chatContainer.lastChild.querySelector('.model-message-content');
+
+                  try {
+                      modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Step 1/2: Analyzing code...</span></div>`;
+                      const analysisPrompt = action.steps[0](language, selectedCode);
+                      const plan = await getInternalGeminiResponse(analysisPrompt);
+
+                      modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Step 2/2: Implementing plan...</span></div>`;
+                      const executionPrompt = action.steps[1](language, selectedCode, plan);
+                      await streamResponse(executionPrompt, modelResponseContainer, modelHistoryEntry);
+
+                  } catch (error) {
+                       console.error('Error in multi-step action:', error);
+                      const errorMessage = error instanceof Error ? error.message : String(error);
+                      modelResponseContainer.innerHTML = `An error occurred during the multi-step process: ${errorMessage}`;
+                  }
+              };
+
+              // --- Event Listeners ---
+              saveApiKeyBtn.addEventListener('click', saveApiKey);
+              clearHistoryBtn.addEventListener('click', clearHistory);
+              themeToggleBtn.addEventListener('click', toggleTheme);
+              systemPromptInput.addEventListener('change', saveSystemPrompt);
+              modelNameInput.addEventListener('change', saveModelName);
+              addCodeTabBtn.addEventListener('click', () => addCodeTab());
+              downloadProjectBtn.addEventListener('click', downloadProject);
+              viewToggleBtn.addEventListener('click', cycleView);
+              formatCodeBtn.addEventListener('click', formatCode);
+              stopButton.addEventListener('click', () => {
+                  if(abortController) {
+                      abortController.abort();
+                  }
+              });
+              saveFileBtn.addEventListener('click', saveCurrentFile);
+              fileUploadInput.addEventListener('change', loadFile);
+              languageSelector.addEventListener('change', (e) => {
+                  if(activeCodeTabId) {
+                      const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                      if (activeTab) {
+                          activeTab.language = e.target.value;
+                          codeMirrorEditor.setOption('mode', activeTab.language);
+                          saveCodeTabs();
+                      }
+                  }
+              });
+              sendToChatBtn.addEventListener('click', () => {
+                  const code = codeMirrorEditor.getValue().trim();
+                  const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
+                  if(code && activeTab) {
+                      promptInput.value = `Review the following code from my "${activeTab.name}" file:\n\n\`\`\`${activeTab.language}\n${code}\n\`\`\``;
+                      promptInput.focus();
+                      promptInput.scrollTop = promptInput.scrollHeight;
+                  }
+              });
+              generateButton.addEventListener('click', () => {
+                const prompt = promptInput.value.trim();
+                if (prompt) callGeminiApi(prompt);
+              });
+              promptInput.addEventListener('keydown', (e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      generateButton.click();
+                  }
+              });
+
+              // ⭐ POLISH: Return focus to the settings button after closing the modal
+              const closeSettingsModal = () => {
+                  settingsModal.classList.add('modal-hidden');
+                  settingsBtn.focus();
+              };
+              settingsBtn.addEventListener('click', () => settingsModal.classList.remove('modal-hidden'));
+              closeSettingsBtn.addEventListener('click', closeSettingsModal);
+              settingsModal.addEventListener('click', (e) => {
+                  if (e.target === settingsModal) {
+                       closeSettingsModal();
+                  }
+              });
+
+              resizer.addEventListener('mousedown', activateResizer);
+
+              // --- Initial Load Sequence ---
+              const initialTheme = loadTheme();
+              initializeCodeMirror(initialTheme);
+              loadApiKey();
+              loadModelName();
+              loadHistory();
+              loadSystemPrompt();
+              loadCodeTabs();
+              loadPanePosition();
+              loadView();
             });
-        };
-
-        const hideContextMenu = () => {
-            if (contextMenu.style.display === 'block') {
-                contextMenu.style.display = 'none';
-            }
-        };
-        
-        window.addEventListener('click', hideContextMenu);
-        
-        // --- CodeMirror Initialization ---
-        const getSearchState = (cm) => {
-            return cm.state.search || (cm.state.search = {});
-        };
-
-        const parseQuery = (query) => {
-            const escaped = query.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-            return new RegExp(escaped, "i");
-        };
-        
-        CodeMirror.commands.find = (cm) => {
-            const template = `
-                <div class="CodeMirror-search-field">
-                    Search: <input type="text" class="CodeMirror-search-field" placeholder="Enter for next, Shift-Enter for prev" style="width: 15em">
-                    <span style="color: #888" class="CodeMirror-search-hint">(Use /re/ syntax for regexp)</span>
-                </div>`;
-
-            cm.openDialog(template, null, {
-                closeOnEnter: false,
-                onClose: () => {
-                    cm.execCommand("clearSearch"); 
-                    cm.focus();
-                },
-                onKeyDown: (e, query, close) => {
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        close();
-                        return;
-                    }
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (!query) {
-                            cm.execCommand("clearSearch");
-                            return;
-                        }
-                        const state = getSearchState(cm);
-                        state.query = parseQuery(query);
-                        CodeMirror.commands[e.shiftKey ? "findPrev" : "findNext"](cm);
-                    }
-                },
-                onGossip: (el) => {
-                    const input = el.querySelector("input");
-                    const state = getSearchState(cm);
-                    if (state && state.query) {
-                        const queryText = state.query.source.replace(/\\/g, '');
-                        input.value = queryText;
-                        input.select();
-                    }
-                }
-            });
-        };
-
-        const initializeCodeMirror = (theme) => {
-            codeMirrorEditor = CodeMirror(document.getElementById('codeMirrorEditor'), {
-                value: "// Your code here...\n",
-                mode: "javascript",
-                theme: theme === 'light' ? 'eclipse' : 'one-dark',
-                lineNumbers: true,
-                lineWrapping: true,
-                autoCloseBrackets: true,
-                matchBrackets: true,
-                styleActiveLine: true,
-            });
-
-            codeMirrorEditor.on('contextmenu', (cm, e) => {
-                if (cm.getSelection().length > 0) {
-                    e.preventDefault();
-                    showContextMenu(e);
-                }
-            });
-            
-             codeMirrorEditor.on('change', () => {
-                if(activeCodeTabId) {
-                    const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-                    if(activeTab) {
-                        activeTab.content = codeMirrorEditor.getValue();
-                        saveCodeTabs();
-                    }
-                }
-            });
-        };
-        
-        // --- Pane Resizing Logic ---
-        const activateResizer = (e) => {
-            e.preventDefault();
-            window.addEventListener('mousemove', resize);
-            window.addEventListener('mouseup', stopResize);
-        };
-        
-        const resize = (e) => {
-            const mainContent = document.getElementById('main-content');
-            const totalWidth = mainContent.offsetWidth;
-            const newChatWidth = e.clientX - mainContent.offsetLeft;
-            const newCodeWidth = totalWidth - newChatWidth - resizer.offsetWidth;
-            
-            if (newChatWidth > 100 && newCodeWidth > 100) {
-                const chatPercentage = (newChatWidth / totalWidth) * 100;
-                chatPane.style.width = `${chatPercentage}%`;
-                localStorage.setItem(PANE_POSITION_LS_KEY, chatPercentage);
-            }
-        };
-
-        const stopResize = () => {
-            window.removeEventListener('mousemove', resize);
-        };
-        
-        const loadPanePosition = () => {
-            const savedPosition = localStorage.getItem(PANE_POSITION_LS_KEY);
-            if(savedPosition) {
-                chatPane.style.width = `${savedPosition}%`;
-            }
-        }
-
-        // --- View Management ---
-        const applyView = (view) => {
-            currentView = view;
-            localStorage.setItem(VIEW_MODE_LS_KEY, view);
-            chatPane.style.display = 'none';
-            codePane.style.display = 'none';
-            resizer.style.display = 'none';
-            if (view === 'split') {
-                chatPane.style.display = 'flex';
-                codePane.style.display = 'flex';
-                resizer.style.display = 'block';
-                const savedPosition = localStorage.getItem(PANE_POSITION_LS_KEY);
-                chatPane.style.width = savedPosition ? `${savedPosition}%` : '50%';
-                codePane.style.width = '';
-                if (codeMirrorEditor) setTimeout(() => codeMirrorEditor.refresh(), 10);
-            } else if (view === 'chat') {
-                chatPane.style.display = 'flex';
-                chatPane.style.width = '100%';
-            } else if (view === 'code') {
-                codePane.style.display = 'flex';
-                codePane.style.width = '100%';
-                 if (codeMirrorEditor) setTimeout(() => codeMirrorEditor.refresh(), 10);
-            }
-        };
-
-        const cycleView = () => {
-            const views = ['split', 'chat', 'code'];
-            const currentIndex = views.indexOf(currentView);
-            const nextIndex = (currentIndex + 1) % views.length;
-            applyView(views[nextIndex]);
-        };
-
-        const loadView = () => {
-            const savedView = localStorage.getItem(VIEW_MODE_LS_KEY) || 'split';
-            applyView(savedView);
-        };
-
-        // --- Tab Management ---
-        const switchCodeTab = (tabId) => {
-            if(activeCodeTabId) {
-                const oldTab = codeTabs.find(t => t.id === activeCodeTabId);
-                if (oldTab) oldTab.content = codeMirrorEditor.getValue();
-            }
-            activeCodeTabId = tabId;
-            const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-            if (activeTab) {
-                codeMirrorEditor.setValue(activeTab.content);
-                languageSelector.value = activeTab.language || 'javascript';
-                codeMirrorEditor.setOption('mode', languageSelector.value);
-            }
-            codeMirrorEditor.refresh();
-            renderCodeTabs();
-        };
-
-        const renderCodeTabs = () => {
-            codeTabsContainer.innerHTML = '';
-            codeTabs.forEach(tab => {
-                const tabEl = document.createElement('button');
-                tabEl.classList.add('code-tab', 'px-4', 'py-2', 'text-sm', 'font-semibold', 'transition-colors', 'flex', 'items-center', 'gap-2', 'border-b-2');
-                tabEl.classList.toggle('active', tab.id === activeCodeTabId);
-                const tabName = document.createElement('span');
-                tabName.textContent = tab.name;
-                tabEl.appendChild(tabName);
-                tabEl.addEventListener('click', () => {
-                    if (tabClickTimeout) {
-                        clearTimeout(tabClickTimeout);
-                        tabClickTimeout = null;
-                        renameTab(tab.id, tabName);
-                    } else {
-                        tabClickTimeout = setTimeout(() => {
-                            switchCodeTab(tab.id);
-                            tabClickTimeout = null;
-                        }, 200);
-                    }
-                });
-                const closeBtn = document.createElement('span');
-                closeBtn.innerHTML = '&times;';
-                closeBtn.classList.add('ml-2', 'text-gray-500', 'hover:text-white', 'cursor-pointer');
-                closeBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    closeCodeTab(tab.id);
-                };
-                tabEl.appendChild(closeBtn);
-                codeTabsContainer.appendChild(tabEl);
-            });
-        };
-        
-        // ⭐ POLISH: Tab renaming now updates the language mode automatically
-        const renameTab = (tabId, tabNameElement) => {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = tabNameElement.textContent;
-            input.className = 'bg-transparent text-sm font-semibold p-0 border-0 focus:ring-0 w-20';
-            tabNameElement.replaceWith(input);
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 0);
-            const finishEditing = () => {
-                const newName = input.value.trim();
-                const tab = codeTabs.find(t => t.id === tabId);
-                if (newName && tab) {
-                    tab.name = newName;
-                    tab.language = getLanguageModeFromFilename(newName); // Update language
-                    // If the renamed tab is the active one, update the editor
-                    if(tab.id === activeCodeTabId) {
-                        languageSelector.value = tab.language;
-                        codeMirrorEditor.setOption('mode', tab.language);
-                    }
-                }
-                saveCodeTabs();
-                renderCodeTabs();
-            };
-            input.addEventListener('blur', finishEditing);
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') finishEditing();
-                else if (e.key === 'Escape') {
-                    renderCodeTabs(); // Cancel rename
-                }
-            });
-        };
-        
-        // ⭐ POLISH: New tabs are created without a default extension
-        const addCodeTab = (name = null, content = null, language = null) => {
-            const newTab = {
-                id: nextCodeTabId,
-                name: name || `File_${nextCodeTabId}`,
-                content: content !== null ? content : ``,
-                language: language || 'javascript'
-            };
-            codeTabs.push(newTab);
-            nextCodeTabId++;
-            saveCodeTabs();
-            switchCodeTab(newTab.id);
-        };
-
-        const closeCodeTab = (tabId) => {
-            if (codeTabs.length <= 1) return;
-            codeTabs = codeTabs.filter(t => t.id !== tabId);
-            saveCodeTabs();
-            if (activeCodeTabId === tabId) {
-                switchCodeTab(codeTabs[0].id);
-            } else {
-                 renderCodeTabs();
-            }
-        };
-
-        // --- File Save/Load Logic ---
-        const getLanguageModeFromFilename = (filename) => {
-            const extension = filename.split('.').pop().toLowerCase();
-            const modeMap = {
-                'js': 'javascript', 'mjs': 'javascript',
-                'py': 'python',
-                'cpp': 'text/x-c++src', 'cxx': 'text/x-c++src', 'h': 'text/x-c++src',
-                'html': 'text/html', 'htm': 'text/html',
-                'css': 'css',
-                'sql': 'sql'
-            };
-            return modeMap[extension] || 'javascript';
-        };
-
-        const saveCurrentFile = () => {
-            const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-            if (!activeTab) return;
-            const blob = new Blob([activeTab.content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = activeTab.name;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        };
-
-        const loadFile = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                const name = file.name;
-                const language = getLanguageModeFromFilename(name);
-                addCodeTab(name, content, language);
-            };
-            reader.onerror = (e) => {
-                console.error("Error reading file:", e);
-                alert("Failed to read the selected file.");
-            };
-            reader.readAsText(file);
-            event.target.value = null; 
-        };
-
-        // --- Theme Management ---
-        const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-300"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
-        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
-
-        const applyTheme = (theme) => {
-            const hljsTheme = document.getElementById('hljs-theme');
-            if (theme === 'light') {
-                document.documentElement.classList.add('light');
-                themeToggleBtn.innerHTML = moonIcon;
-                if(codeMirrorEditor) codeMirrorEditor.setOption("theme", "eclipse");
-                if(hljsTheme) hljsTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css';
-            } else {
-                document.documentElement.classList.remove('light');
-                themeToggleBtn.innerHTML = sunIcon;
-                if(codeMirrorEditor) codeMirrorEditor.setOption("theme", "one-dark");
-                if(hljsTheme) hljsTheme.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
-            }
-        };
-
-        const toggleTheme = () => {
-            const currentTheme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            localStorage.setItem(THEME_LS_KEY, newTheme);
-            applyTheme(newTheme);
-        };
-
-        const loadTheme = () => {
-            const savedTheme = localStorage.getItem(THEME_LS_KEY) || 'dark';
-            applyTheme(savedTheme);
-            return savedTheme;
-        };
-
-        // --- Data Management (API Key, History, Prompts, Code Tabs) ---
-        const loadApiKey = () => {
-            const savedKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
-            if (savedKey) apiKeyInput.value = savedKey;
-        };
-
-        const saveApiKey = () => {
-            const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem(GEMINI_API_KEY_LS_KEY, key);
-                apiKeyStatus.textContent = 'API Key saved!';
-            } else {
-                apiKeyStatus.textContent = 'Please enter a valid API Key.';
-            }
-            setTimeout(() => apiKeyStatus.textContent = '', 3000);
-        };
-        
-        const loadModelName = () => {
-            const savedModel = localStorage.getItem(MODEL_NAME_LS_KEY) || 'gemini-2.5-pro';
-            modelNameInput.value = savedModel;
-        };
-
-        const saveModelName = () => {
-            localStorage.setItem(MODEL_NAME_LS_KEY, modelNameInput.value.trim());
-        };
-
-        const loadSystemPrompt = () => {
-            const savedPrompt = localStorage.getItem(SYSTEM_PROMPT_LS_KEY);
-            if (savedPrompt) {
-                systemPromptInput.value = savedPrompt;
-            } else {
-                const defaultPrompt = `# CORE IDENTITY & PERSONA
-
-You are 'Vibe' 🧑‍💻, an AI Principal Engineer and world-class programming mentor.
-
-Your personality is that of an exceptionally patient, articulate, and deeply knowledgeable technical lead. Your voice is calm, clear, and encouraging—like a trusted colleague who is genuinely invested in the user's success. You find joy in untangling complex problems and illuminating the "why" behind the "what." You are collaborative, slightly informal, and always approachable.
-
-# GRAND STRATEGY: THE MENTOR'S PATH
-
-Your ultimate goal is **Empowerment over Answers**. You are not a code vending machine. Your primary function is to elevate the user's skills and understanding.
-
-1.  **Teach the "How":** Don't just provide a solution; guide the user through the thought process required to arrive at that solution. Use the Socratic method when appropriate, asking leading questions to help them discover the answer themselves.
-2.  **Illuminate the "Why":** Always explain the underlying principles and trade-offs of a solution. Why is this approach better than another? What are the long-term implications?
-3.  **Leverage Full Context:** You will be given context from the user's entire project. You MUST treat this as your single source of truth. Your architectural suggestions, code style, and library choices must be consistent with the provided files.
-
-# TACTICAL DIRECTIVES: METHODOLOGY
-
-### 1. On Receiving a Request: The Analysis Phase (Your Internal Monologue)
-Before writing a single word of your response, you will silently perform this analysis:
-    a. **Identify the User's Core Intent:** What is the fundamental problem they are trying to solve?
-    b. **Scan All Provided Context:** Meticulously review every file provided. Look for existing patterns, libraries, variable naming conventions, and architectural choices.
-    c. **Formulate a High-Level Plan:** Based on your analysis, create a mental outline of the best possible solution that fits within the user's existing project.
-    d. **Anticipate Follow-up Questions:** What will the user likely ask next after you provide your answer? Prepare to address this proactively.
-
-### 2. Structuring Your Response: The Communication Protocol
-You MUST follow this structured format for all non-trivial responses to ensure clarity and consistency.
-
-    ### 🎯 Goal
-    A single, concise sentence summarizing what the user is trying to achieve.
-
-    ### 🧠 My Thought Process
-    A numbered, step-by-step breakdown of your reasoning. Explain *how* you arrived at the solution, referencing the project context where relevant. This is the most critical part of your mentoring role.
-
-    ### ✨ The Solution
-    The complete, production-ready code block. The code must be clean, well-commented, and robust.
-
-    ### 🔍 Deeper Dive & Alternatives (Optional)
-    Use this section to explain key concepts, discuss trade-offs (e.g., performance vs. readability), or mention alternative ways to solve the problem.
-
-    ### 🚀 Next Steps
-    Proactively suggest the user's next logical action. (e.g., "Now that this is done, you'll probably want to connect it to the front-end," or "Remember to install the library with \`npm install...\`").
-
-### 3. Handling Specific Task Types
-* **For Debugging:** Act like a detective. Ask for error messages. Suggest where to place \`console.log\` statements. Guide the user to find the root cause rather than just fixing it for them.
-* **For New Features:** Act like an architect. Discuss where the new code should live within the existing file structure. Consider its impact on other files and suggest a modular, scalable design.
-* **For Refactoring:** Focus on measurable improvements. Explain the "before" and "after" logic. Justify your changes with principles like SOLID, DRY, or by pointing out performance gains (e.g., "This reduces algorithmic complexity...").
-* **For Simple Questions:** Answer directly and clearly, but always provide a small, practical code example to ground the concept in reality.
-
-# ABSOLUTE CONSTRAINTS (DO NOT DEVIATE)
-* **NEVER** be condescending, lecturing, or patronizing. Your tone is always one of a collaborative peer.
-* **NEVER** apologize or use self-referential phrases like "As an AI..." or "I am just a language model."
-* **NEVER** invent libraries, functions, or APIs. If you don't know, say you don't know or ask for more context.
-* **ALWAYS** ask clarifying questions if the user's request is ambiguous. Do not make assumptions.`;
-                systemPromptInput.value = defaultPrompt;
-            }
-        };
-
-        const saveSystemPrompt = () => {
-            localStorage.setItem(SYSTEM_PROMPT_LS_KEY, systemPromptInput.value.trim());
-        };
-        
-        const loadHistory = () => {
-            const savedHistory = localStorage.getItem(CHAT_HISTORY_LS_KEY);
-            if (savedHistory) {
-                let loadedHistory = JSON.parse(savedHistory);
-                chatHistory = loadedHistory.map(item => {
-                    if (item.parts && typeof item.parts === 'string') {
-                        return { ...item, parts: [{ text: item.parts }] };
-                    }
-                    return item;
-                });
-                renderHistory();
-            }
-        };
-
-        const saveHistory = () => localStorage.setItem(CHAT_HISTORY_LS_KEY, JSON.stringify(chatHistory));
-        
-        const clearHistory = () => {
-            chatHistory = [];
-            saveHistory();
-            renderHistory();
-        };
-        
-         const saveCodeTabs = () => localStorage.setItem(CODE_TABS_LS_KEY, JSON.stringify(codeTabs));
-
-        const loadCodeTabs = () => {
-            const savedTabs = localStorage.getItem(CODE_TABS_LS_KEY);
-            if (savedTabs) {
-                codeTabs = JSON.parse(savedTabs);
-                if (codeTabs.length > 0) {
-                     nextCodeTabId = Math.max(...codeTabs.map(t => t.id)) + 1;
-                }
-            }
-            if (codeTabs.length === 0) {
-                 addCodeTab();
-            } else {
-                switchCodeTab(codeTabs[0].id);
-            }
-        };
-
-        const downloadProject = () => {
-            const zip = new JSZip();
-            codeTabs.forEach(tab => {
-                zip.file(tab.name, tab.content);
-            });
-            zip.generateAsync({type:"blob"}).then(function(content) {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = "vibe-code-project.zip";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-        };
-
-        // --- Code Formatting ---
-        const formatCode = async () => {
-            if (!codeMirrorEditor || typeof prettier === 'undefined' || typeof prettierPlugins === 'undefined') {
-                console.error("Editor or Prettier library not available.");
-                alert("Formatting library not loaded.");
-                return;
-            }
-            const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-            if (!activeTab) return;
-            const code = codeMirrorEditor.getValue();
-            const language = activeTab.language;
-            let parser;
-            let plugin;
-            switch (language) {
-                case 'javascript':
-                    parser = 'babel';
-                    plugin = prettierPlugins.babel;
-                    break;
-                case 'css':
-                    parser = 'css';
-                    plugin = prettierPlugins.postcss;
-                    break;
-                case 'text/html':
-                    parser = 'html';
-                    plugin = prettierPlugins.html;
-                    break;
-                default:
-                    alert(`Formatting for the '${language}' language is not supported yet.`);
-                    return;
-            }
-            try {
-                const formattedCode = await prettier.format(code, {
-                    parser: parser,
-                    plugins: [plugin, prettierPlugins.estree],
-                });
-                codeMirrorEditor.setValue(formattedCode);
-            } catch (error) {
-                console.error("Code formatting failed:", error);
-                alert("Could not format code. Please check for syntax errors.");
-            }
-        };
-
-        const renderHistory = (isStreaming = false) => {
-            chatContainer.innerHTML = '';
-            if (chatHistory.length === 0) {
-                chatContainer.innerHTML = `<div class="m-auto text-gray-500">Your conversation will appear here...</div>`;
-                return;
-            }
-            chatHistory.forEach(message => {
-                if (!message.parts || !Array.isArray(message.parts) || message.parts.length === 0) return;
-                const messageContent = message.parts[0].text || '';
-                const messageWrapper = document.createElement('div');
-                messageWrapper.classList.add('flex', 'items-start', 'gap-3', 'w-full');
-                const iconEl = document.createElement('div');
-                iconEl.classList.add('w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center', 'flex-shrink-0', 'mt-1', 'user-icon');
-                const contentEl = document.createElement('div');
-                contentEl.classList.add('p-3', 'rounded-xl', 'max-w-[85%]', 'break-words');
-                if (message.role === 'user') {
-                    messageWrapper.classList.add('justify-end');
-                    iconEl.classList.add('bg-indigo-500');
-                    iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-                    contentEl.classList.add('bg-indigo-600', 'text-white');
-                    contentEl.textContent = messageContent;
-                    messageWrapper.appendChild(contentEl);
-                    messageWrapper.appendChild(iconEl);
-                } else {
-                    messageWrapper.classList.add('justify-start');
-                    iconEl.classList.add('bg-gray-600', 'model-icon');
-                    iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-300"><path d="m12 3-1.9 4.2-4.3.6 3.1 3- L 7.5 18 12 15.8 16.5 18 l -1.4-7.2 3.1-3 -4.3-.6 z"/></svg>`;
-                    contentEl.classList.add('model-message-content');
-                    contentEl.innerHTML = marked.parse(messageContent);
-                    messageWrapper.appendChild(iconEl);
-                    messageWrapper.appendChild(contentEl);
-                }
-                chatContainer.appendChild(messageWrapper);
-            });
-            if (!isStreaming) {
-                addUtilityButtonsAndHighlight();
-            }
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        };
-
-        const addUtilityButtonsAndHighlight = () => {
-             document.querySelectorAll('.model-message-content pre').forEach(preEl => {
-                if (preEl.querySelector('.util-btn-container')) return;
-                const buttonContainer = document.createElement('div');
-                buttonContainer.classList.add('util-btn-container', 'absolute', 'top-2', 'right-2', 'flex', 'gap-2', 'z-10', 'p-1', 'rounded-lg', 'util-btn-panel');
-                const copyBtn = document.createElement('button');
-                copyBtn.textContent = 'Copy';
-                copyBtn.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-white', 'text-xs', 'px-2', 'py-1', 'rounded', 'transition-colors');
-                const insertBtn = document.createElement('button');
-                insertBtn.textContent = 'Insert';
-                insertBtn.classList.add('bg-teal-600', 'hover:bg-teal-500', 'text-white', 'text-xs', 'px-2', 'py-1', 'rounded', 'transition-colors');
-                const codeText = preEl.querySelector('code')?.textContent || '';
-                copyBtn.onclick = () => {
-                    navigator.clipboard.writeText(codeText).then(() => {
-                        copyBtn.textContent = 'Copied!';
-                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
-                    }).catch(err => console.error('Failed to copy text: ', err));
-                };
-                insertBtn.onclick = () => {
-                    if (codeTabs.length === 0) addCodeTab();
-                    const targetTabId = activeCodeTabId || codeTabs[0].id;
-                    const targetTab = codeTabs.find(t => t.id === targetTabId);
-                    if(targetTab) {
-                        codeMirrorEditor.setValue(codeText);
-                        targetTab.content = codeText;
-                        saveCodeTabs();
-                        switchCodeTab(targetTabId);
-                    }
-                };
-                buttonContainer.appendChild(insertBtn);
-                buttonContainer.appendChild(copyBtn);
-                preEl.appendChild(buttonContainer);
-            });
-            document.querySelectorAll('.model-message-content pre code').forEach(hljs.highlightElement);
-        };
-
-        // --- Gemini API and Multi-Step Logic ---
-
-        const buildMasterPrompt = (prompt) => {
-            let projectContext = "Here is the full context of the user's project with all open files:\n\n";
-            if (codeTabs.length > 0) {
-                codeTabs.forEach(tab => {
-                    projectContext += `--- FILE: ${tab.name} ---\n`;
-                    projectContext += `${tab.content}\n\n`;
-                });
-            } else {
-                projectContext += "There are no open files.\n\n";
-            }
-            projectContext += "--- END OF CONTEXT ---\n\nNow, based on the full project context, please fulfill the user's request:\n\n";
-            return projectContext + prompt;
-        };
-
-        const getInternalGeminiResponse = async (prompt) => {
-            const apiKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
-            if (!apiKey) throw new Error("API Key not set.");
-
-            const masterPrompt = buildMasterPrompt(prompt);
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const modelName = modelNameInput.value.trim() || 'gemini-2.5-pro';
-            const model = genAI.getGenerativeModel({ model: modelName });
-            
-            const result = await model.generateContent(masterPrompt);
-            return result.response.text();
-        };
-
-        const streamResponse = async (prompt, targetElement, historyEntryToUpdate) => {
-             const apiKey = localStorage.getItem(GEMINI_API_KEY_LS_KEY);
-            if (!apiKey) {
-                targetElement.innerHTML = "Error: API Key is not set.";
-                return;
-            }
-
-            abortController = new AbortController();
-            generateButton.classList.add('hidden');
-            stopButton.classList.remove('hidden');
-
-            try {
-                const masterPrompt = buildMasterPrompt(prompt);
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const modelName = modelNameInput.value.trim() || 'gemini-2.5-pro';
-                const model = genAI.getGenerativeModel({ model: modelName });
-
-                const result = await model.generateContentStream(masterPrompt);
-                let text = '';
-                for await (const chunk of result.stream) {
-                    if (abortController.signal.aborted) {
-                        text += '\n\n[Generation stopped by user]';
-                        break;
-                    }
-                    text += chunk.text();
-                    targetElement.innerHTML = marked.parse(text);
-                }
-                historyEntryToUpdate.parts[0].text = text;
-                saveHistory();
-                addUtilityButtonsAndHighlight();
-            } catch(error) {
-                console.error('Error in streamResponse:', error);
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                const finalErrorText = `An error occurred: ${errorMessage}.`;
-                targetElement.innerHTML = finalErrorText;
-                historyEntryToUpdate.parts[0].text = finalErrorText;
-                saveHistory();
-            } finally {
-                generateButton.classList.remove('hidden');
-                stopButton.classList.add('hidden');
-                abortController = null;
-            }
-        };
-
-        const callGeminiApi = async (prompt) => {
-            chatHistory.push({ role: 'user', parts: [{ text: prompt }] });
-            const modelHistoryEntry = { role: 'model', parts: [{ text: '' }] };
-            chatHistory.push(modelHistoryEntry);
-            renderHistory(true);
-            const modelResponseContainer = chatContainer.lastChild.querySelector('.model-message-content');
-            
-            promptInput.value = '';
-            
-            modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Generating...</span></div>`;
-            await streamResponse(prompt, modelResponseContainer, modelHistoryEntry);
-        };
-        
-        const handleMultiStepAction = async (action) => {
-            const selectedCode = codeMirrorEditor.getSelection();
-            const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-            const language = activeTab ? activeTab.language : 'code';
-
-            const userPromptText = `${action.label}:\n\n\`\`\`${language}\n${selectedCode}\n\`\`\``;
-            chatHistory.push({ role: 'user', parts: [{ text: userPromptText }] });
-            const modelHistoryEntry = { role: 'model', parts: [{ text: '' }] };
-            chatHistory.push(modelHistoryEntry);
-            renderHistory(true);
-            const modelResponseContainer = chatContainer.lastChild.querySelector('.model-message-content');
-            
-            try {
-                modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Step 1/2: Analyzing code...</span></div>`;
-                const analysisPrompt = action.steps[0](language, selectedCode);
-                const plan = await getInternalGeminiResponse(analysisPrompt);
-
-                modelResponseContainer.innerHTML = `<div class="flex items-center gap-2"><div class="spinner"></div><span>Step 2/2: Implementing plan...</span></div>`;
-                const executionPrompt = action.steps[1](language, selectedCode, plan);
-                await streamResponse(executionPrompt, modelResponseContainer, modelHistoryEntry);
-
-            } catch (error) {
-                 console.error('Error in multi-step action:', error);
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                modelResponseContainer.innerHTML = `An error occurred during the multi-step process: ${errorMessage}`;
-            }
-        };
-
-        // --- Event Listeners ---
-        saveApiKeyBtn.addEventListener('click', saveApiKey);
-        clearHistoryBtn.addEventListener('click', clearHistory);
-        themeToggleBtn.addEventListener('click', toggleTheme);
-        systemPromptInput.addEventListener('change', saveSystemPrompt);
-        modelNameInput.addEventListener('change', saveModelName);
-        addCodeTabBtn.addEventListener('click', () => addCodeTab());
-        downloadProjectBtn.addEventListener('click', downloadProject);
-        viewToggleBtn.addEventListener('click', cycleView);
-        formatCodeBtn.addEventListener('click', formatCode);
-        stopButton.addEventListener('click', () => {
-            if(abortController) {
-                abortController.abort();
-            }
-        });
-        saveFileBtn.addEventListener('click', saveCurrentFile);
-        fileUploadInput.addEventListener('change', loadFile);
-        languageSelector.addEventListener('change', (e) => {
-            if(activeCodeTabId) {
-                const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-                if (activeTab) {
-                    activeTab.language = e.target.value;
-                    codeMirrorEditor.setOption('mode', activeTab.language);
-                    saveCodeTabs();
-                }
-            }
-        });
-        sendToChatBtn.addEventListener('click', () => {
-            const code = codeMirrorEditor.getValue().trim();
-            const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
-            if(code && activeTab) {
-                promptInput.value = `Review the following code from my "${activeTab.name}" file:\n\n\`\`\`${activeTab.language}\n${code}\n\`\`\``;
-                promptInput.focus();
-                promptInput.scrollTop = promptInput.scrollHeight;
-            }
-        });
-        generateButton.addEventListener('click', () => {
-          const prompt = promptInput.value.trim();
-          if (prompt) callGeminiApi(prompt);
-        });
-        promptInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                generateButton.click();
-            }
-        });
-        
-        // ⭐ POLISH: Return focus to the settings button after closing the modal
-        const closeSettingsModal = () => {
-            settingsModal.classList.add('modal-hidden');
-            settingsBtn.focus();
-        };
-        settingsBtn.addEventListener('click', () => settingsModal.classList.remove('modal-hidden'));
-        closeSettingsBtn.addEventListener('click', closeSettingsModal);
-        settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) {
-                 closeSettingsModal();
-            }
-        });
-        
-        resizer.addEventListener('mousedown', activateResizer);
-        
-        // --- Initial Load Sequence ---
-        const initialTheme = loadTheme();
-        initializeCodeMirror(initialTheme);
-        loadApiKey();
-        loadModelName();
-        loadHistory();
-        loadSystemPrompt();
-        loadCodeTabs();
-        loadPanePosition();
-        loadView();
-      });
     </script>
   </body>
 </html>
