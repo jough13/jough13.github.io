@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aethelgard: The Amulet</title>
+    <title>The Amulet</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,12 +12,21 @@
 <body>
 
     <div id="game-container">
-        <h1>Aethelgard: The Amulet</h1>
+        <h1>The Amulet</h1>
         <div id="game-output">
             </div>
         <div id="input-area">
             <input type="text" id="player-input" placeholder="Type your action..." disabled>
             <button id="submit-btn" disabled>Send</button>
+        </div>
+    </div>
+
+    <div id="api-key-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Enter the Ancient Cipher</h2>
+            <p>To awaken the world, you must provide your secret API Key.</p>
+            <input type="password" id="api-key-input" placeholder="Paste your key here...">
+            <button id="api-key-submit-btn">Begin</button>
         </div>
     </div>
 
