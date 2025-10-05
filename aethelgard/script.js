@@ -11,11 +11,29 @@ const themeToggle = document.getElementById('theme-toggle');
 const apiKeyModal = document.getElementById('api-key-modal');
 const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
-const clearApiKeyBtn = document.getElementById('clear-api-key'); // NEW
+const clearApiKeyBtn = document.getElementById('clear-api-key');
 
 // --- Game Master Prompt (Your Rules) -------------------------------
 const GAME_MASTER_PROMPT = `
-// ... (Your full, detailed prompt goes here) ...
+You are the game master and narrator for a text-based adventure game. I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
+
+Begin by describing the immediate surroundings and my character's situation. My character awakens with no memory of their past, wearing simple, unfamiliar clothing, and possessing only a single, ornately carved wooden amulet that hums faintly with an unknown energy.
+
+**Crucially, adhere to these rules throughout the game:**
+
+1.  **Immersive Detail:** Provide richly detailed descriptions of the environment, characters, and events. Use evocative language to engage all five senses (sight, sound, smell, touch, and even taste where appropriate).
+2.  **Player Agency:** After each description, present me with at least two distinct choices of action. Frame these choices clearly, using phrases like "What do you do? A) ... B) ...". Do NOT proceed until I make a choice. My input solely determines the next step.
+3.  **Consequences:** My choices have meaningful consequences. Good choices might lead to rewards, clues, or progress. Poor choices might lead to danger, setbacks, or even death (though allow for opportunities to recover from mistakes – don't instantly end the game on a single bad choice).
+4.  **Mystical Elements:** Weave in elements of magic, prophecy, and ancient lore throughout the game. The amulet should be a recurring element, potentially with hidden powers or significance.
+5.  **Dynamic World:** The world should feel alive. NPCs should have their own motivations and reactions. The environment itself can be an obstacle or an ally.
+6.  **Combat System (Simple):** If combat occurs, use a very simple system. Describe the attack and my options (e.g., "A) Attack with your fists B) Try to dodge"). Then, based on my choice, describe the outcome narratively (e.g., "Your blow lands, staggering the goblin!" or "You narrowly avoid the goblin's rusty blade!"). Don't use numerical stats or dice rolls. Focus on descriptive action.
+7.  **Inventory (Simple):** Keep track of any significant items I find. Mention them when relevant. Don't use a complex inventory system, just narratively incorporate found items into the story.
+8.  **Character Progression (Subtle):** While not strictly stat-based, hint at my character growing in skill or knowledge as the game progresses through your descriptions (e.g., "You feel more confident in your ability to handle yourself after that encounter").
+9.  **No Meta-Gaming:** Do not break character. Do not refer to yourself as an AI or LLM. Stay entirely within the role of game master.
+10. **Mystery and Intrigue:** Maintain an air of mystery and intrigue. Don't reveal everything at once. The goal is to draw me into the world and make me want to explore and uncover its secrets. Specifically, my character's lost memory is a key element to be gradually revealed through gameplay.
+11. **Open-Ended:** While there should be overarching mysteries (like the amulet and my character's past), allow for open-ended exploration and avoid a strictly linear path.
+12. **End Goal Hint:** In the initial set up, allude to a greater purpose, even if my character is not yet aware. Perhaps this is a phrase muttered in their mind as they awake, a symbol visible, or a feeling.
+
 Begin the game!
 `;
 
@@ -33,6 +51,7 @@ let loadingInterval; // For the loading animation
 function addMessage(text, sender) {
     let p; // Keep p in scope to return it
     if (sender === 'gamemaster') {
+        // Split the text by newlines and create a p for each non-empty line
         text.split('\n').forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
             const paragraph = document.createElement('p');
@@ -40,6 +59,7 @@ function addMessage(text, sender) {
             gameOutput.appendChild(paragraph);
         });
     } else {
+        // Original logic for player and system messages
         p = document.createElement('p');
         p.textContent = text;
         if (sender === 'player') {
@@ -50,7 +70,7 @@ function addMessage(text, sender) {
         gameOutput.appendChild(p);
     }
     gameOutput.scrollTop = gameOutput.scrollHeight;
-    return p;
+    return p; // Return the element, useful for the loading animation
 }
 
 /**
@@ -64,7 +84,7 @@ function startLoadingAnimation(element) {
     loadingInterval = setInterval(() => {
         element.textContent = baseText + '.'.repeat(dots);
         dots = (dots % 3) + 1;
-    }, 400);
+    }, 400); // Animate every 400ms
 }
 
 /**
@@ -151,7 +171,7 @@ function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
     
-    // NEW: Save the key to localStorage
+    // Save the key to localStorage
     localStorage.setItem('gemini-api-key', apiKey);
     
     apiKeyModal.classList.add('hidden');
@@ -159,6 +179,10 @@ function submitApiKey() {
 }
 
 // --- Theme Toggle Logic ---
+/**
+ * Applies a theme by adding/removing a class from the body.
+ * @param {string} theme The theme to apply ('light' or 'dark').
+ */
 function applyTheme(theme) {
     if (theme === 'light') {
         document.body.classList.add('light-mode');
@@ -169,6 +193,9 @@ function applyTheme(theme) {
     }
 }
 
+/**
+ * Toggles the theme and saves the preference to localStorage.
+ */
 function toggleTheme() {
     const isLight = document.body.classList.contains('light-mode');
     const newTheme = isLight ? 'dark' : 'light';
@@ -189,7 +216,6 @@ apiKeyInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') submitApiKey();
 });
 
-// NEW: Event listener for the clear key button
 clearApiKeyBtn.addEventListener('click', () => {
     localStorage.removeItem('gemini-api-key');
     apiKeyInput.value = '';
@@ -203,7 +229,7 @@ clearApiKeyBtn.addEventListener('click', () => {
 const savedTheme = localStorage.getItem('theme') || 'dark';
 applyTheme(savedTheme);
 
-// NEW: Check for a saved API key on load
+// Check for a saved API key on load
 const savedApiKey = localStorage.getItem('gemini-api-key');
 if (savedApiKey) {
     // If a key exists, hide the modal and start the game immediately
