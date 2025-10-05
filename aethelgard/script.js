@@ -5,12 +5,18 @@ import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 const gameOutput = document.getElementById('game-output');
 const playerInput = document.getElementById('player-input');
 const submitBtn = document.getElementById('submit-btn');
+const themeToggle = document.getElementById('theme-toggle');
+
+// Modal DOM Elements
+const apiKeyModal = document.getElementById('api-key-modal');
+const apiKeyInput = document.getElementById('api-key-input');
+const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 
 // --- Game Master Prompt (Your Rules) -------------------------------
 const GAME_MASTER_PROMPT = `
-You are the game master and narrator for a text-based adventure game.  I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
+You are the game master and narrator for a text-based adventure game. I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
 
-Begin by describing the immediate surroundings and my character's situation.  My character awakens with no memory of their past, wearing simple, unfamiliar clothing, and possessing only a single, ornately carved wooden amulet that hums faintly with an unknown energy.
+Begin by describing the immediate surroundings and my character's situation. My character awakens with no memory of their past, wearing simple, unfamiliar clothing, and possessing only a single, ornately carved wooden amulet that hums faintly with an unknown energy.
 
 **Crucially, adhere to these rules throughout the game:**
 
@@ -22,26 +28,12 @@ Begin by describing the immediate surroundings and my character's situation.  My
 6.  **Combat System (Simple):** If combat occurs, use a very simple system. Describe the attack and my options (e.g., "A) Attack with your fists B) Try to dodge"). Then, based on my choice, describe the outcome narratively (e.g., "Your blow lands, staggering the goblin!" or "You narrowly avoid the goblin's rusty blade!"). Don't use numerical stats or dice rolls. Focus on descriptive action.
 7.  **Inventory (Simple):** Keep track of any significant items I find. Mention them when relevant. Don't use a complex inventory system, just narratively incorporate found items into the story.
 8.  **Character Progression (Subtle):** While not strictly stat-based, hint at my character growing in skill or knowledge as the game progresses through your descriptions (e.g., "You feel more confident in your ability to handle yourself after that encounter").
-9. **No Meta-Gaming:** Do not break character. Do not refer to yourself as an AI or LLM. Stay entirely within the role of game master.
+9.  **No Meta-Gaming:** Do not break character. Do not refer to yourself as an AI or LLM. Stay entirely within the role of game master.
 10. **Mystery and Intrigue:** Maintain an air of mystery and intrigue. Don't reveal everything at once. The goal is to draw me into the world and make me want to explore and uncover its secrets. Specifically, my character's lost memory is a key element to be gradually revealed through gameplay.
 11. **Open-Ended:** While there should be overarching mysteries (like the amulet and my character's past), allow for open-ended exploration and avoid a strictly linear path.
 12. **End Goal Hint:** In the initial set up, allude to a greater purpose, even if my character is not yet aware. Perhaps this is a phrase muttered in their mind as they awake, a symbol visible, or a feeling.
 
 Begin the game!
-
-Key improvements in this prompt:
- * Explicit Roles: Clearly defines the LLM's role (game master/narrator) and your role (player).
- * Detailed Setting: Provides a specific fantasy setting ("Aethelgard") with key elements to inspire the LLM.
- * Intriguing Starting Point: The amnesiac protagonist with a mysterious amulet immediately creates a compelling hook.
- * Comprehensive Rules: The numbered list provides clear and detailed instructions on how the LLM should behave, ensuring a consistent and engaging game experience.  These rules cover immersion, player choice, consequences, and the specific fantasy elements desired.
- * Simple Systems: The prompt outlines simplified combat and inventory systems, keeping the focus on narrative description rather than complex mechanics.
- * Character Progression: Includes subtle character progression to give a sense of accomplishment.
- * No Meta-Gaming: Explicitly prohibits the LLM from breaking character.
- * Mystery and Intrigue: Emphasizes the importance of maintaining a sense of mystery.
- * Open-Endedness: Encourages non-linear gameplay and exploration.
- * End Goal Hint: Provides a suggestion to make sure a more cohesive story arises.
- * "Begin the game!": A clear call to action.
-This prompt is designed to be very specific and guiding, minimizing the chances of the LLM going off-track and maximizing the chances of a truly immersive and enjoyable text adventure. It balances structure with creative freedom, allowing the LLM to build a compelling world while still adhering to the core principles of a good text-based adventure.
 `;
 
 // --- Game Logic ------------------------------------------------------
@@ -71,13 +63,11 @@ async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
-    // Display player's action
     addMessage(`> ${inputText}`, 'player');
     playerInput.value = '';
 
-    // Disable input while waiting for the AI
     setLoadingState(true);
-    addMessage('Aethelgard responds...', 'system');
+    addMessage('The Amulet hums in response...', 'system');
     
     try {
         const result = await chat.sendMessage(inputText);
@@ -88,7 +78,6 @@ async function handlePlayerInput() {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
     } finally {
-        // Re-enable input
         setLoadingState(false);
     }
 }
@@ -105,39 +94,74 @@ function setLoadingState(isLoading) {
     }
 }
 
-/**
- * Initializes the game and the AI model.
- */
-async function startGame() {
-    // ⚠️ IMPORTANT: This is for local development only.
-    // Do not expose your API key in client-side code in production.
-    const API_KEY = window.prompt("Please enter your Google AI API Key:");
-    if (!API_KEY) {
-        addMessage("API Key not provided. The world of Aethelgard cannot be loaded.", 'system');
-        return;
-    }
 
-    addMessage("Connecting to the world of Aethelgard...", 'system');
+/**
+ * Initializes the AI model and starts the game narrative.
+ * This is now separate from the initial page load.
+ * @param {string} apiKey The user-provided API key.
+ */
+async function initializeAI(apiKey) {
+    addMessage("Connecting to the world of The Amulet...", 'system');
     
     try {
-        const genAI = new GoogleGenerativeAI(API_KEY);
+        const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
         chat = model.startChat({ history: [] });
 
-        // Kick off the game with the main prompt
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
         const text = response.text();
         addMessage(text, 'gamemaster');
 
-        setLoadingState(false); // Enable input for the player
+        setLoadingState(false);
     } catch (error) {
         console.error("Initialization Error:", error);
-        addMessage("Failed to initialize the game. Please check your API key and refresh the page.", 'system');
+        addMessage("The cipher was incorrect or the connection failed. Please check your API key and refresh the page to try again.", 'system');
     }
 }
 
+/**
+ * Handles the submission of the API key from the modal.
+ */
+function submitApiKey() {
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) {
+        // You could add a visual shake or an error message here later
+        return; 
+    }
+    
+    // Hide the modal and start the game
+    apiKeyModal.classList.add('hidden');
+    initializeAI(apiKey);
+}
+
+// --- Theme Toggle Logic ---
+/**
+ * Applies a theme by adding/removing a class from the body.
+ * @param {string} theme The theme to apply ('light' or 'dark').
+ */
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        themeToggle.textContent = '☀️';
+    } else {
+        document.body.classList.remove('light-mode');
+        themeToggle.textContent = '🌙';
+    }
+}
+
+/**
+ * Toggles the theme and saves the preference to localStorage.
+ */
+function toggleTheme() {
+    const isLight = document.body.classList.contains('light-mode');
+    const newTheme = isLight ? 'dark' : 'light';
+    localStorage.setItem('theme', newTheme);
+    applyTheme(newTheme);
+}
+
 // --- Event Listeners -----------------------------------------------
+// Game input listeners
 submitBtn.addEventListener('click', handlePlayerInput);
 playerInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -145,5 +169,22 @@ playerInput.addEventListener('keydown', (event) => {
     }
 });
 
+// Theme toggle listener
+themeToggle.addEventListener('click', toggleTheme);
+
+// Modal input listeners
+apiKeySubmitBtn.addEventListener('click', submitApiKey);
+apiKeyInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        submitApiKey();
+    }
+});
+
 // --- Start the game! -----------------------------------------------
-startGame();
+// The page starts by making the modal visible and focusing the input.
+apiKeyModal.classList.remove('hidden');
+apiKeyInput.focus();
+
+// Apply saved theme on load
+const savedTheme = localStorage.getItem('theme') || 'dark';
+applyTheme(savedTheme);
