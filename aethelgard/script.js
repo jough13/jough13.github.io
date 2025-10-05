@@ -38,22 +38,62 @@ Begin the game!
 
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
+let loadingInterval; // NEW: For the loading animation
 
 /**
  * Appends a message to the game output and scrolls to the bottom.
+ * NEW: Now splits gamemaster messages into multiple paragraphs.
  * @param {string} text The message text.
  * @param {string} sender 'gamemaster', 'player', or 'system'.
+ * @returns {HTMLElement} The created paragraph element (for system messages).
  */
 function addMessage(text, sender) {
-    const p = document.createElement('p');
-    p.textContent = text;
-    if (sender === 'player') {
-        p.className = 'player-text';
-    } else if (sender === 'system') {
-        p.className = 'loading-text';
+    let p; // Keep p in scope to return it
+    if (sender === 'gamemaster') {
+        // Split the text by newlines and create a p for each non-empty line
+        text.split('\n').forEach(paragraphText => {
+            if (paragraphText.trim() === '') return;
+            const paragraph = document.createElement('p');
+            paragraph.textContent = paragraphText;
+            gameOutput.appendChild(paragraph);
+        });
+    } else {
+        // Original logic for player and system messages
+        p = document.createElement('p');
+        p.textContent = text;
+        if (sender === 'player') {
+            p.className = 'player-text';
+        } else if (sender === 'system') {
+            p.className = 'loading-text';
+        }
+        gameOutput.appendChild(p);
     }
-    gameOutput.appendChild(p);
-    gameOutput.scrollTop = gameOutput.scrollHeight; // Auto-scroll
+    gameOutput.scrollTop = gameOutput.scrollHeight;
+    return p; // Return the element, useful for the loading animation
+}
+
+/**
+ * Starts a simple "..." animation on a given element.
+ * NEW: Loading indicator function.
+ * @param {HTMLElement} element The text element to animate.
+ */
+function startLoadingAnimation(element) {
+    stopLoadingAnimation(); // Stop any previous animation
+    const baseText = element.textContent;
+    let dots = 1;
+    loadingInterval = setInterval(() => {
+        element.textContent = baseText + '.'.repeat(dots);
+        dots = (dots % 3) + 1;
+    }, 400); // Animate every 400ms
+}
+
+/**
+ * Stops the loading animation.
+ * NEW: Loading indicator function.
+ */
+function stopLoadingAnimation() {
+    clearInterval(loadingInterval);
+    loadingInterval = null;
 }
 
 /**
@@ -67,17 +107,19 @@ async function handlePlayerInput() {
     playerInput.value = '';
 
     setLoadingState(true);
-    addMessage('The Amulet hums in response...', 'system');
-    
+    const loadingMessage = addMessage('The Amulet hums in response', 'system');
+    startLoadingAnimation(loadingMessage); // NEW: Start animation
+
     try {
         const result = await chat.sendMessage(inputText);
         const response = result.response;
-        const text = response.text();
-        addMessage(text, 'gamemaster');
+        addMessage(response.text(), 'gamemaster'); // The updated addMessage handles formatting
     } catch (error) {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
     } finally {
+        stopLoadingAnimation(); // NEW: Stop animation
+        loadingMessage.remove(); // NEW: Remove the loading message
         setLoadingState(false);
     }
 }
@@ -101,22 +143,26 @@ function setLoadingState(isLoading) {
  * @param {string} apiKey The user-provided API key.
  */
 async function initializeAI(apiKey) {
-    addMessage("Connecting to the world of The Amulet...", 'system');
-    
+    const loadingMessage = addMessage("Connecting to the world of The Amulet", 'system');
+    startLoadingAnimation(loadingMessage); // NEW: Start animation
+
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
+
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
-        const text = response.text();
-        addMessage(text, 'gamemaster');
+        addMessage(response.text(), 'gamemaster');
 
         setLoadingState(false);
     } catch (error) {
         console.error("Initialization Error:", error);
         addMessage("The cipher was incorrect or the connection failed. Please check your API key and refresh the page to try again.", 'system');
+    } finally {
+        stopLoadingAnimation(); // NEW: Stop animation
+        loadingMessage.remove(); // NEW: Remove the loading message
     }
 }
 
@@ -126,11 +172,9 @@ async function initializeAI(apiKey) {
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
-        // You could add a visual shake or an error message here later
         return; 
     }
     
-    // Hide the modal and start the game
     apiKeyModal.classList.add('hidden');
     initializeAI(apiKey);
 }
