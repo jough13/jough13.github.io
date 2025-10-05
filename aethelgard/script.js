@@ -13,6 +13,10 @@ const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
 
+// Loading Screen DOM Elements
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingText = document.getElementById('loading-text');
+
 // --- Game Master Prompt (Your Rules) -------------------------------
 const GAME_MASTER_PROMPT = `
 You are the game master and narrator for a text-based adventure game. I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
@@ -39,63 +43,46 @@ Begin the game!
 
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
-let loadingInterval; // For the loading animation
 
 /**
  * Appends a message to the game output and scrolls to the bottom.
- * Splits gamemaster messages into multiple paragraphs.
  * @param {string} text The message text.
  * @param {string} sender 'gamemaster', 'player', or 'system'.
- * @returns {HTMLElement} The created paragraph element (for system messages).
  */
 function addMessage(text, sender) {
-    let p; 
     if (sender === 'gamemaster') {
         text.split('\n').forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
             const paragraph = document.createElement('p');
-            
-            // NEW: Convert Markdown to safe HTML
             const unsafeHtml = marked.parse(paragraphText);
             const safeHtml = DOMPurify.sanitize(unsafeHtml);
-            paragraph.innerHTML = safeHtml; // Use .innerHTML instead of .textContent
-
+            paragraph.innerHTML = safeHtml;
             gameOutput.appendChild(paragraph);
         });
     } else {
-        p = document.createElement('p');
+        const p = document.createElement('p');
         p.textContent = text;
-        if (sender === 'player') {
-            p.className = 'player-text';
-        } else if (sender === 'system') {
-            p.className = 'loading-text';
-        }
+        if (sender === 'player') p.className = 'player-text';
+        else if (sender === 'system') p.className = 'loading-text';
         gameOutput.appendChild(p);
     }
     gameOutput.scrollTop = gameOutput.scrollHeight;
-    return p;
 }
 
 /**
- * Starts a simple "..." animation on a given element.
- * @param {HTMLElement} element The text element to animate.
+ * Shows the loading overlay with a specific message.
+ * @param {string} message The text to display under the spinner.
  */
-function startLoadingAnimation(element) {
-    stopLoadingAnimation();
-    const baseText = element.textContent;
-    let dots = 1;
-    loadingInterval = setInterval(() => {
-        element.textContent = baseText + '.'.repeat(dots);
-        dots = (dots % 3) + 1;
-    }, 400);
+function showLoadingScreen(message) {
+    loadingText.textContent = message;
+    loadingOverlay.classList.remove('hidden');
 }
 
 /**
- * Stops the loading animation.
+ * Hides the loading overlay.
  */
-function stopLoadingAnimation() {
-    clearInterval(loadingInterval);
-    loadingInterval = null;
+function hideLoadingScreen() {
+    loadingOverlay.classList.add('hidden');
 }
 
 /**
@@ -109,8 +96,7 @@ async function handlePlayerInput() {
     playerInput.value = '';
 
     setLoadingState(true);
-    const loadingMessage = addMessage('The Amulet hums in response', 'system');
-    startLoadingAnimation(loadingMessage);
+    showLoadingScreen('The Amulet hums in response...');
 
     try {
         const result = await chat.sendMessage(inputText);
@@ -120,8 +106,7 @@ async function handlePlayerInput() {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
     } finally {
-        stopLoadingAnimation();
-        loadingMessage.remove();
+        hideLoadingScreen();
         setLoadingState(false);
     }
 }
@@ -138,18 +123,18 @@ function setLoadingState(isLoading) {
     }
 }
 
-
 /**
  * Initializes the AI model and starts the game narrative.
  * @param {string} apiKey The user-provided API key.
  */
 async function initializeAI(apiKey) {
-    const loadingMessage = addMessage("Connecting to the world of The Amulet", 'system');
-    startLoadingAnimation(loadingMessage);
+    showLoadingScreen("Connecting to the world of The Amulet...");
+    // Clear any previous game text
+    gameOutput.innerHTML = '';
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
 
         chat = model.startChat({ history: [] });
 
@@ -160,10 +145,11 @@ async function initializeAI(apiKey) {
         setLoadingState(false);
     } catch (error) {
         console.error("Initialization Error:", error);
-        addMessage("The cipher was incorrect or the connection failed. Please check your API key and refresh the page to try again.", 'system');
+        // If init fails, re-show the modal for a new key
+        apiKeyModal.classList.remove('hidden');
+        addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
     } finally {
-        stopLoadingAnimation();
-        loadingMessage.remove();
+        hideLoadingScreen();
     }
 }
 
@@ -218,18 +204,15 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.focus();
 });
 
-
 // --- Start the game! -----------------------------------------------
 // Apply saved theme on load
 const savedTheme = localStorage.getItem('theme') || 'dark';
 applyTheme(savedTheme);
 
-// Check for a saved API key on load
+// ALWAYS show the modal, but pre-fill the key if it exists.
 const savedApiKey = localStorage.getItem('gemini-api-key');
 if (savedApiKey) {
-    apiKeyModal.classList.add('hidden');
-    initializeAI(savedApiKey);
-} else {
-    apiKeyModal.classList.remove('hidden');
-    apiKeyInput.focus();
+    apiKeyInput.value = savedApiKey;
 }
+apiKeyModal.classList.remove('hidden');
+apiKeyInput.focus();
