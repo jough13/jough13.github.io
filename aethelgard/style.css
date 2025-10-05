@@ -226,3 +226,17 @@ h1 {
 .modal-content button:hover {
     background-color: var(--accent-color-hover);
 }
+
+/* --- New Modal Text Styles --- */
+.modal-content .key-reset-text {
+    margin-top: 15px;
+    margin-bottom: -10px; /* Pull it a little closer to the bottom */
+    font-size: 0.8em;
+    color: var(--system-text-color);
+}
+
+.modal-content #clear-api-key {
+    color: var(--player-text-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
