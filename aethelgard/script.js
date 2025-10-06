@@ -264,7 +264,7 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
         chat = model.startChat({ history: [] });
 
@@ -283,17 +283,30 @@ async function initializeAI(apiKey) {
         
         // 3. Failure! Show an error and make sure the modal is visible again.
         addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
-        apiKeyModal.classList.remove('hidden'); 
-        setLoadingState(false); // Re-enable input so the user can try again
+        // Make modal visible again by removing animation/hidden classes
+        apiKeyModal.classList.remove('hiding');
+        apiKeyModal.classList.remove('hidden');
+        setLoadingState(false); 
     }
 }
 
+// ** MODIFIED FUNCTION FOR FADE-OUT ANIMATION **
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
+
     localStorage.setItem('gemini-api-key', apiKey);
-    apiKeyModal.classList.add('hidden');
+
+    // 1. Start the fade-out animation by adding the 'hiding' class
+    apiKeyModal.classList.add('hiding');
+
+    // 2. Call the AI initialization immediately so the user doesn't wait
     initializeAI(apiKey);
+
+    // 3. After the animation is done (500ms), add 'hidden' to remove it completely
+    setTimeout(() => {
+        apiKeyModal.classList.add('hidden');
+    }, 500); // This duration should match the transition time in your CSS
 }
 
 function applyTheme(theme) {
@@ -339,7 +352,11 @@ applyTheme(savedTheme);
 
 const savedApiKey = localStorage.getItem('gemini-api-key');
 if (savedApiKey) {
+    apiKeyModal.classList.remove('hidden'); // Ensure it's not hidden
+    apiKeyModal.classList.remove('hiding'); // Ensure it's not hiding
     apiKeyInput.value = savedApiKey;
+} else {
+    apiKeyModal.classList.remove('hidden');
+    apiKeyModal.classList.remove('hiding');
 }
-apiKeyModal.classList.remove('hidden');
 apiKeyInput.focus();
