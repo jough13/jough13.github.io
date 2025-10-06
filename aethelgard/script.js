@@ -62,8 +62,8 @@ const loadingMessages = {
     ]
 };
 
-// ** NEW ** - The amount of space (in pixels) to leave above the player's text after scrolling.
-const SCROLL_PADDING = 60;
+// The amount of space (in pixels) to leave above the scroll target.
+const SCROLL_PADDING = 40;
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
@@ -228,16 +228,18 @@ function getLoadingContext(inputText) {
 }
 
 // ** MODIFIED FUNCTION **
-// The scrolling logic is updated here with the new padding.
+// The scrolling logic is updated here to focus on the previous choices.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
+    
+    // ** NEW **: Get a reference to the last set of choices BEFORE adding new content.
+    const choiceContainers = gameOutput.querySelectorAll('.choice-container');
+    const lastChoiceContainer = choiceContainers.length > 0 ? choiceContainers[choiceContainers.length - 1] : null;
 
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
-    const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
-
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     playerInput.value = '';
@@ -261,15 +263,27 @@ async function handlePlayerInput(customDisplayText = null) {
 
         addMessage(response.text(), 'gamemaster');
         
-        if (lastPlayerMessage) {
-            // Calculate the desired scroll position: the top of the player's message minus our padding.
-            const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
-            
-            // Use scrollTo for smooth scrolling to the calculated position.
-            gameOutput.scrollTo({
-                top: desiredScrollPosition,
-                behavior: 'smooth'
-            });
+        // ** NEW SCROLL LOGIC **
+        // If there was a previous choice container, scroll to show the last two options.
+        if (lastChoiceContainer) {
+            const choices = lastChoiceContainer.querySelectorAll('.choice-btn');
+            let targetElement = null;
+
+            if (choices.length > 1) {
+                // Target the second-to-last choice button.
+                targetElement = choices[choices.length - 2];
+            } else if (choices.length > 0) {
+                // If there's only one, target that one.
+                targetElement = choices[0];
+            }
+
+            if (targetElement) {
+                const desiredScrollPosition = targetElement.offsetTop - SCROLL_PADDING;
+                gameOutput.scrollTo({
+                    top: desiredScrollPosition,
+                    behavior: 'smooth'
+                });
+            }
         }
 
     } catch (error) {
