@@ -280,7 +280,7 @@ h1 {
     }
 }
 
-/* --- NEW: Clickable Choice Styles --- */
+/* --- Clickable Choice Styles --- */
 
 .choice-container {
     display: flex;
@@ -313,4 +313,56 @@ h1 {
     color: var(--system-text-color);
     cursor: not-allowed;
     border-color: var(--container-bg);
+}
+
+/* --- NEW: Visual Flourish Styles --- */
+
+/* 1. Vignette Effect */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 100px rgba(0,0,0,0.3);
+    pointer-events: none; /* Allows clicking through the vignette */
+    z-index: 999;
+}
+
+/* 2. Text Fade-In Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* 3. Stylized Drop Cap */
+.gm-first-paragraph::first-letter {
+    font-size: 3em;
+    color: var(--accent-color);
+    float: left;
+    line-height: 0.8;
+    margin-right: 8px;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+/* 4. Thematic Turn Divider */
+.turn-divider::after {
+    content: '';
+    display: block;
+    width: 80%;
+    margin: 2em auto 1.5em; /* top, horizontal, bottom */
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
 }
