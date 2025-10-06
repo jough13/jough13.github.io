@@ -270,7 +270,7 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
         chat = model.startChat({ history: [] });
 
