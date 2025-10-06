@@ -60,8 +60,9 @@ const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decr
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
+
 //-- GM DIRECTIVE --//
-You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
+You are the Game Master (GM) and Narrator for "The A-text-adventure-game-The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
 
 //-- TONE & PROSE PROTOCOL --//
 Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
@@ -78,7 +79,11 @@ Your narrative voice is evocative but disciplined. The goal is a natural, immers
 //-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events, following the prose protocol.
-2.  **Present Choices:** Provide 2 to 4 distinct, bolded options for the player.
+2.  **Present Choices:** This is a critical instruction. You MUST provide 2 to 4 options. Each option must be on its own new line.
+    * **The correct format is:** \`**A)** Choice text here.\`
+    * The letter (e.g., A, B, C) and the closing parenthesis ')' must be enclosed together in double asterisks.
+    * Use a parenthesis ')', not a period '.'.
+    * Avoid other formats like using single asterisks or no asterisks at all.
 3.  **Await Input:** Pause and wait for the player's response.
 4.  **Narrate the Outcome:** Describe the result of the choice with clarity.
 
@@ -241,9 +246,6 @@ async function handlePlayerInput() {
         const scrollPosition = gameOutput.scrollHeight;
         const result = await chat.sendMessage(inputText);
         const response = result.response;
-
-        console.log("Raw AI Response:", response.text());
-        
         addMessage(response.text(), 'gamemaster');
         gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
     } catch (error) {
