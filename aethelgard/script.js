@@ -162,6 +162,10 @@ async function initializeAI(apiKey) {
         isGameReady = true;
 
         setLoadingState(false);
+        
+        // Force the scroll window to the top after setup is complete.
+        gameOutput.scrollTop = 0;
+
     } catch (error) {
         console.error("Initialization Error:", error);
         // If init fails, re-show the modal for a new key
