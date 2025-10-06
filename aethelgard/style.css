@@ -236,50 +236,6 @@ h1 {
     cursor: pointer;
 }
 
-/* --- Loading Screen Styles --- */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    color: var(--text-color);
-}
-
-.hidden {
-    display: none;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid var(--border-color);
-    border-top-color: var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-#loading-text {
-    margin-top: 20px;
-    font-size: 1.2em;
-    color: var(--system-text-color);
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 /* --- Clickable Choice Styles --- */
 
 .choice-container {
@@ -315,7 +271,7 @@ h1 {
     border-color: var(--container-bg);
 }
 
-/* --- NEW: Visual Flourish Styles --- */
+/* --- Visual Flourish Styles --- */
 
 /* 1. Vignette Effect */
 body::before {
@@ -365,4 +321,22 @@ body::before {
     margin: 2em auto 1.5em; /* top, horizontal, bottom */
     height: 1px;
     background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
+}
+
+/* --- NEW: Inline Loader Styles --- */
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+#inline-loader p {
+    font-style: italic;
+    color: var(--system-text-color);
+    text-align: center;
+    animation: pulse 2s infinite ease-in-out;
 }
