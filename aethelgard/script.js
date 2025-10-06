@@ -13,6 +13,16 @@ const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
 
+// ** NEW ** - An array of phrases for player actions to add variety
+const actionPhrases = [
+    "I decide to",
+    "I choose to",
+    "I am going to",
+    "I'll try to",
+    "My next move is to",
+    "I will"
+];
+
 // Thematic loading messages based on player intent
 const loadingMessages = {
     perception: [
@@ -115,31 +125,29 @@ Guide the story through three acts.
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
 
-// ** MODIFIED FUNCTION 1 **
-// This function now builds a full sentence from the chosen option.
+// ** MODIFIED FUNCTION **
+// This function now randomly picks a phrase from the actionPhrases array.
 function handleChoiceClick(event) {
     const button = event.target;
-    const choiceLetter = button.dataset.choice; // The letter ('A', 'B', etc.) for the AI
-    let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim(); // The full text of the choice
+    const choiceLetter = button.dataset.choice;
+    let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // Make the text lowercase for a natural sentence
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
-    const playerDisplayMessage = `I decide to ${choiceText}.`;
+    // Randomly select an action phrase
+    const randomIndex = Math.floor(Math.random() * actionPhrases.length);
+    const randomPhrase = actionPhrases[randomIndex];
+    const playerDisplayMessage = `${randomPhrase} ${choiceText}.`;
 
-    // The AI still receives the simple letter, but the player sees the full sentence.
     playerInput.value = choiceLetter;
     handlePlayerInput(playerDisplayMessage);
 
-    // Disable all buttons to prevent multiple clicks
     const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
     buttons.forEach(button => {
         button.disabled = true;
     });
 }
 
-// ** MODIFIED FUNCTION 2 **
-// This function now prepends the ">" to player text for consistency.
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
@@ -189,7 +197,7 @@ function addMessage(text, sender) {
         const p = document.createElement('p');
         
         if (sender === 'player') {
-            p.textContent = `> ${text}`; // Prepend ">" here for all player inputs
+            p.textContent = `> ${text}`;
             p.classList.add('player-text', 'fade-in', 'turn-divider');
         } else if (sender === 'system') {
             p.textContent = text;
@@ -218,13 +226,10 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// ** MODIFIED FUNCTION 3 **
-// Now accepts an optional 'customDisplayText' for showing the full sentence.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
-    // Use the custom sentence if provided; otherwise, use the typed text.
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
@@ -245,7 +250,6 @@ async function handlePlayerInput(customDisplayText = null) {
 
     try {
         const scrollPosition = gameOutput.scrollHeight;
-        // IMPORTANT: We still send the simple inputText (the letter) to the AI
         const result = await chat.sendMessage(inputText);
         const response = result.response;
         
