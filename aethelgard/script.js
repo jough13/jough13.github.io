@@ -13,10 +13,6 @@ const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
 
-// Loading Screen DOM Elements
-const loadingOverlay = document.getElementById('loading-overlay');
-const loadingText = document.getElementById('loading-text');
-
 // Thematic loading messages based on player intent
 const loadingMessages = {
     perception: [
@@ -56,7 +52,7 @@ const loadingMessages = {
     ]
 };
 
-const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decrease for less
+const SCROLL_CONTEXT_OFFSET = 120;
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
@@ -79,7 +75,7 @@ Your narrative voice is evocative but disciplined. The goal is a natural, immers
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events, following the prose protocol.
 2.  **Present Choices:** This is a critical instruction. You MUST provide 2 to 4 options. Each option must be on its own new line.
-    * **The correct format is:** \`**A)** Choice text here.\`
+    * **The correct format is:** **A)** Choice text here.
     * The letter (e.g., A, B, C) and the closing parenthesis ')' must be enclosed together in double asterisks.
     * Use a parenthesis ')', not a period '.'.
     * Avoid other formats like using single asterisks or no asterisks at all.
@@ -130,17 +126,11 @@ function handleChoiceClick(event) {
     });
 }
 
-// --- UPDATED: addMessage now adds classes for visual flourishes ---
-/**
- * Appends a message to the game output, adding classes for animations and styling.
- * @param {string} text The message text.
- * @param {string} sender 'gamemaster', 'player', or 'system'.
- */
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
         let choiceContainer = null;
-        let isFirstParagraph = true; // For applying the drop cap
+        let isFirstGMParagraph = true;
 
         paragraphs.forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
@@ -151,45 +141,44 @@ function addMessage(text, sender) {
             if (match) {
                 if (!choiceContainer) {
                     choiceContainer = document.createElement('div');
-                    choiceContainer.className = 'choice-container fade-in'; // Add fade-in to container
+                    choiceContainer.classList.add('choice-container', 'fade-in');
                     gameOutput.appendChild(choiceContainer);
                 }
 
                 const choiceLetter = match[1];
                 const choiceText = match[2].trim();
+
                 const button = document.createElement('button');
-                button.className = 'choice-btn';
+                button.classList.add('choice-btn');
                 button.textContent = `${choiceLetter}) ${choiceText}`;
                 button.dataset.choice = choiceLetter;
                 button.addEventListener('click', handleChoiceClick);
+
                 choiceContainer.appendChild(button);
             } else {
                 choiceContainer = null;
-                const paragraph = document.createElement('p');
-                
-                // Add classes for styling
-                paragraph.className = 'fade-in';
-                if (isFirstParagraph) {
-                    paragraph.classList.add('gm-first-paragraph');
-                    isFirstParagraph = false;
+                const p = document.createElement('p');
+                p.classList.add('fade-in');
+
+                if (isFirstGMParagraph) {
+                    p.classList.add('gm-first-paragraph');
+                    isFirstGMParagraph = false;
                 }
 
                 const unsafeHtml = marked.parse(paragraphText);
                 const safeHtml = DOMPurify.sanitize(unsafeHtml);
-                paragraph.innerHTML = safeHtml;
-                gameOutput.appendChild(paragraph);
+                p.innerHTML = safeHtml;
+                gameOutput.appendChild(p);
             }
         });
     } else {
         const p = document.createElement('p');
         p.textContent = text;
-        
-        // Add classes for styling
-        p.classList.add('fade-in');
+
         if (sender === 'player') {
-            p.className = 'player-text fade-in turn-divider';
+            p.classList.add('player-text', 'fade-in', 'turn-divider');
         } else if (sender === 'system') {
-            p.className = 'loading-text fade-in';
+            p.classList.add('loading-text', 'fade-in');
         }
         
         gameOutput.appendChild(p);
@@ -214,18 +203,8 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-function showLoadingScreen(context = 'default') {
-    const messageList = loadingMessages[context] || loadingMessages.default;
-    const randomIndex = Math.floor(Math.random() * messageList.length);
-    loadingText.textContent = messageList[randomIndex];
-    loadingOverlay.classList.remove('hidden');
-    void loadingOverlay.offsetHeight;
-}
 
-function hideLoadingScreen() {
-    loadingOverlay.classList.add('hidden');
-}
-
+// --- UPDATED: The core logic for the new inline loader is here ---
 async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -236,22 +215,35 @@ async function handlePlayerInput() {
     playerInput.value = '';
     setLoadingState(true);
 
+    // 1. Create and display the inline loader
     const context = getLoadingContext(inputText);
-    showLoadingScreen(context);
+    const messageList = loadingMessages[context] || loadingMessages.default;
+    const randomIndex = Math.floor(Math.random() * messageList.length);
+    const loader = document.createElement('div');
+    loader.id = 'inline-loader';
+    loader.className = 'fade-in';
+    loader.innerHTML = `<p>${messageList[randomIndex]}</p>`;
+    gameOutput.appendChild(loader);
+    gameOutput.scrollTop = gameOutput.scrollHeight;
 
     try {
         const scrollPosition = gameOutput.scrollHeight;
         const result = await chat.sendMessage(inputText);
         const response = result.response;
+        
+        // 2. Remove the inline loader BEFORE adding the new message
+        loader.remove();
+
         addMessage(response.text(), 'gamemaster');
         gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
-    } catch (error)
-        {
+    } catch (error) {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
         gameOutput.scrollTop = gameOutput.scrollHeight;
     } finally {
-        hideLoadingScreen();
+        // 3. Ensure loader is gone and restore input
+        const finalLoader = document.getElementById('inline-loader');
+        if (finalLoader) finalLoader.remove();
         setLoadingState(false);
     }
 }
@@ -265,8 +257,9 @@ function setLoadingState(isLoading) {
 }
 
 async function initializeAI(apiKey) {
-    showLoadingScreen('default');
+    // Show a system message in the chat window during initialization
     gameOutput.innerHTML = '';
+    addMessage("Connecting to the ancient world...", 'system');
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -277,8 +270,8 @@ async function initializeAI(apiKey) {
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
 
-        console.log("Raw AI Response:", response.text());
-
+        // Clear "Connecting..." message before showing the game start
+        gameOutput.innerHTML = ''; 
         addMessage(response.text(), 'gamemaster');
 
         setLoadingState(false);
@@ -287,8 +280,6 @@ async function initializeAI(apiKey) {
         console.error("Initialization Error:", error);
         apiKeyModal.classList.remove('hidden');
         addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
-    } finally {
-        hideLoadingScreen();
     }
 }
 
