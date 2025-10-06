@@ -270,12 +270,15 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
+
+        console.log("Raw AI Response:", response.text());
+
         addMessage(response.text(), 'gamemaster');
 
         setLoadingState(false);
