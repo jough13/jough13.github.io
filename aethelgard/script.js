@@ -115,17 +115,31 @@ Guide the story through three acts.
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
 
+// ** MODIFIED FUNCTION 1 **
+// This function now builds a full sentence from the chosen option.
 function handleChoiceClick(event) {
-    const choice = event.target.dataset.choice;
-    playerInput.value = choice;
-    handlePlayerInput();
+    const button = event.target;
+    const choiceLetter = button.dataset.choice; // The letter ('A', 'B', etc.) for the AI
+    let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim(); // The full text of the choice
 
+    // Make the text lowercase for a natural sentence
+    choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
+
+    const playerDisplayMessage = `I decide to ${choiceText}.`;
+
+    // The AI still receives the simple letter, but the player sees the full sentence.
+    playerInput.value = choiceLetter;
+    handlePlayerInput(playerDisplayMessage);
+
+    // Disable all buttons to prevent multiple clicks
     const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
     buttons.forEach(button => {
         button.disabled = true;
     });
 }
 
+// ** MODIFIED FUNCTION 2 **
+// This function now prepends the ">" to player text for consistency.
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
@@ -173,11 +187,12 @@ function addMessage(text, sender) {
         });
     } else {
         const p = document.createElement('p');
-        p.textContent = text;
-
+        
         if (sender === 'player') {
+            p.textContent = `> ${text}`; // Prepend ">" here for all player inputs
             p.classList.add('player-text', 'fade-in', 'turn-divider');
         } else if (sender === 'system') {
+            p.textContent = text;
             p.classList.add('loading-text', 'fade-in');
         }
         
@@ -203,11 +218,16 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-async function handlePlayerInput() {
+// ** MODIFIED FUNCTION 3 **
+// Now accepts an optional 'customDisplayText' for showing the full sentence.
+async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
-    addMessage(`> ${inputText}`, 'player');
+    // Use the custom sentence if provided; otherwise, use the typed text.
+    const displayMessage = customDisplayText || inputText;
+    addMessage(displayMessage, 'player');
+    
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     playerInput.value = '';
@@ -225,6 +245,7 @@ async function handlePlayerInput() {
 
     try {
         const scrollPosition = gameOutput.scrollHeight;
+        // IMPORTANT: We still send the simple inputText (the letter) to the AI
         const result = await chat.sendMessage(inputText);
         const response = result.response;
         
@@ -287,7 +308,6 @@ function submitApiKey() {
 
     localStorage.setItem('gemini-api-key', apiKey);
     
-    // Forcefully hide the modal by directly changing its style.
     apiKeyModal.style.display = 'none';
 
     initializeAI(apiKey);
@@ -311,7 +331,7 @@ function toggleTheme() {
 }
 
 // --- Event Listeners -----------------------------------------------
-submitBtn.addEventListener('click', handlePlayerInput);
+submitBtn.addEventListener('click', () => handlePlayerInput());
 playerInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') handlePlayerInput();
 });
@@ -338,15 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedApiKey = localStorage.getItem('gemini-api-key');
     if (savedApiKey) {
         apiKeyInput.value = savedApiKey;
-        // Also apply the direct style fix here for auto-start
         apiKeyModal.style.display = 'none';
         initializeAI(savedApiKey);
     } else {
-        // If no key, show the modal.
-        apiKeyModal.style.display = 'flex'; // Use flex to match the CSS
+        apiKeyModal.style.display = 'flex';
         apiKeyInput.focus();
     }
 
-    // This reveals the content after setup is done.
     document.body.classList.remove('loading');
 });
