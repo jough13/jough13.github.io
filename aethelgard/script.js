@@ -13,7 +13,7 @@ const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
 
-// ** NEW ** - An array of phrases for player actions to add variety
+// An array of phrases for player actions to add variety
 const actionPhrases = [
     "I decide to",
     "I choose to",
@@ -126,11 +126,17 @@ Guide the story through three acts.
 let chat; // This will hold our chat session
 
 // ** MODIFIED FUNCTION **
-// This function now randomly picks a phrase from the actionPhrases array.
+// This function now replaces second-person pronouns with first-person pronouns.
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
+
+    // ** NEW PRONOUN FIX **
+    // Replace "yourself" with "myself" and "your" with "my" for a natural player voice.
+    // The \b ensures we only replace whole words.
+    choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
+    choiceText = choiceText.replace(/\byour\b/gi, 'my');
 
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
