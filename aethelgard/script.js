@@ -281,7 +281,6 @@ async function initializeAI(apiKey) {
     }
 }
 
-// ** MODIFIED FUNCTION FOR THE FIX **
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
@@ -289,7 +288,6 @@ function submitApiKey() {
     localStorage.setItem('gemini-api-key', apiKey);
     
     // Forcefully hide the modal by directly changing its style.
-    // This overrides any conflicting CSS rules.
     apiKeyModal.style.display = 'none';
 
     initializeAI(apiKey);
@@ -333,7 +331,6 @@ clearApiKeyBtn.addEventListener('click', () => {
 });
 
 // --- Start the game! -----------------------------------------------
-// ** MODIFIED STARTUP LOGIC FOR THE FIX **
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
@@ -349,4 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKeyModal.style.display = 'flex'; // Use flex to match the CSS
         apiKeyInput.focus();
     }
+
+    // This reveals the content after setup is done.
+    document.body.classList.remove('loading');
 });
