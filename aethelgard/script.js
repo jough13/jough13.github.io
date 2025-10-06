@@ -52,6 +52,7 @@ Begin the game!
 
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
+let isGameReady = false; // Flag to control initial scroll behavior
 
 /**
  * Appends a message to the game output and scrolls to the bottom.
@@ -75,7 +76,11 @@ function addMessage(text, sender) {
         else if (sender === 'system') p.className = 'loading-text';
         gameOutput.appendChild(p);
     }
-    gameOutput.scrollTop = gameOutput.scrollHeight;
+
+    // Only scroll if the initial world has been loaded.
+    if (isGameReady) {
+        gameOutput.scrollTop = gameOutput.scrollHeight;
+    }
 }
 
 /**
@@ -145,13 +150,16 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
 
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
         addMessage(response.text(), 'gamemaster');
+
+        // The game is now set up. Enable auto-scrolling for all future messages.
+        isGameReady = true;
 
         setLoadingState(false);
     } catch (error) {
