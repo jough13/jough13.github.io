@@ -76,6 +76,9 @@ function addMessage(text, sender) {
 function showLoadingScreen(message) {
     loadingText.textContent = message;
     loadingOverlay.classList.remove('hidden');
+    
+    // This new line forces the browser to repaint, ensuring the animation starts.
+    void loadingOverlay.offsetHeight; 
 }
 
 /**
