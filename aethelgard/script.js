@@ -17,7 +17,7 @@ const clearApiKeyBtn = document.getElementById('clear-api-key');
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.getElementById('loading-text');
 
-// --- NEW: Thematic loading messages based on player intent ---
+// Thematic loading messages based on player intent
 const loadingMessages = {
     perception: [
         "Your eyes adjust to the details...",
@@ -56,36 +56,38 @@ const loadingMessages = {
     ]
 };
 
-
 const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decrease for less
 
-// --- Game Master Prompt (Using the Precision Prose v6.0) ---
+// --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
-You are the Game Master (GM) and Narrator for the text-based adventure, "The Amulet of Aethelgard." Your purpose is to build an atmospheric world using precise, singular descriptions. The prose must be clean and confident.
+You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
 
 //-- TONE & PROSE PROTOCOL --//
-Your narrative voice is defined by clarity and deliberate word choice.
-1.  **The Rule of One:** This is your most important stylistic rule. Assign only ONE primary descriptive adjective to any given noun in a sentence. Do not stack descriptors.
-2.  **Sentence Structure:** Use clear, effective sentences. To describe multiple qualities of an object, use separate sentences or rephrase. Let the prose breathe.
-3.  **Guiding Principle:** "Show, Don't Tell." This rule is best served by adhering to The Rule of One. Describe a "gnarled root" or a "cold wind," not a "frighteningly spooky place."
-4.  **Style Example:**
-    * **AVOID (Stacking Descriptors):** "You awaken with a slow, drifting consciousness under an immense, ancient tree."
-    * **USE THIS STYLE (Applying the Rule of One):** "You awaken with a slow consciousness. Above you is an ancient tree. Its roots are gnarled, forming a cradle."
+Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
+1.  **Principle of Purposeful Description:** This is your core style guide. Every descriptive word should have a distinct purpose.
+    * Avoid using multiple adjectives that convey the same meaning (e.g., "the huge, massive rock").
+    * Using two distinct descriptors is allowed, but should be done with intention, not as a default (e.g., "a tall, slender tree" is good; "an immense, ancient tree" is pushing the limit).
+    * Prefer one strong adjective over two weak ones.
+2.  **Sentence Rhythm:** Vary your sentence structure to create a smooth, natural flow. Avoid both long, complex sentences and a long series of short, simple ones.
+3.  **Style Example:**
+    * **AVOID (Too Sparse):** "You awaken in a hollow. An ancient tree is above you. The forest is dense."
+    * **AVOID (Too Rich):** "You awaken with a slow, drifting consciousness under an immense, ancient tree with gnarled, twisting roots."
+    * **USE THIS STYLE (Balanced):** "You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the afternoon light."
 
 //-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
-1.  **Describe the Scene:** Detail the environment and events, strictly following the prose protocol.
+1.  **Describe the Scene:** Detail the environment and events, following the prose protocol.
 2.  **Present Choices:** Provide 2 to 4 distinct, bolded options for the player.
 3.  **Await Input:** Pause and wait for the player's response.
-4.  **Narrate the Outcome:** Describe the result of the choice with clarity and precision.
+4.  **Narrate the Outcome:** Describe the result of the choice with clarity.
 
 //-- WORLD KNOWLEDGE (GM EYES ONLY) --//
 This is your secret knowledge. Use it to build a consistent world, revealing it gradually.
-* **The 'Sundered Star':** A powerful crystal called the 'Nexus'. It once stabilized the world's magic before it was shattered.
+* **The 'Sundered Star':** A powerful crystal called the 'Nexus' that once stabilized the world's magic before it was shattered.
 * **The Amulet:** The player's amulet is the 'Heartwood Fragment,' the central piece of the Nexus.
 * **The Amnesia:** The player was the Nexus's guardian. Its shattering destroyed their memory. The phrase *"The Sundered Star must be made whole"* is the echo of a forgotten purpose.
-* **The Gloom:** A magical decay from the cataclysm site. It deadens sound and dulls color. A sense of melancholy follows it.
+* **The Gloom:** A magical decay from the cataclysm site. It deadens sound and dulls color. A sense of deep melancholy follows it.
 
 //-- NARRATIVE PACING & ARC --//
 Guide the story through three acts.
@@ -94,8 +96,8 @@ Guide the story through three acts.
 * **Act III: The Convergence.** Goal: Confront the source of the Sundering and decide the world's fate.
 
 //-- GAMEPLAY SUB-SYSTEMS --//
-1.  **NPC Protocol:** NPCs have clear motivations. Their dialogue is purposeful.
-2.  **Exploration Protocol:** Reward curiosity with useful items or environmental clues.
+1.  **NPC Protocol:** NPCs have clear motivations. Their dialogue is purposeful and reflects their personality.
+2.  **Exploration Protocol:** Reward curiosity with useful items or interesting environmental clues.
 3.  **The Amulet's Power:** The amulet's power grows as fragments are found.
     * **Tier 1 (Start):** Hums with a noticeable energy near magic.
     * **Tier 2 (2-3 Fragments):** Can produce a soft light that guides you.
@@ -103,7 +105,7 @@ Guide the story through three acts.
 4.  **Failure States:** Failure results in a narrative complication, not a "game over."
 
 //-- INITIALIZATION --//
-**Directive:** Begin the game. You awaken in a hollow at the base of an ancient tree. Moss covers the ground. The surrounding forest is dense. Shadows are long in the late afternoon. Your mind is empty, save for a single thought: *"The Sundered Star must be made whole."* Execute Act I.
+**Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Execute Act I.
 `;
 
 // --- Game Logic ------------------------------------------------------
@@ -133,7 +135,6 @@ function addMessage(text, sender) {
     }
 }
 
-// --- NEW: Helper function to determine loading message context ---
 /**
  * Determines the context of the player's input based on keywords.
  * @param {string} inputText The player's submitted text.
@@ -156,7 +157,6 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// --- UPDATED: showLoadingScreen now accepts a context ---
 /**
  * Shows the loading overlay with a dynamic, contextual message.
  * @param {string} context The theme of the message to display.
@@ -177,7 +177,6 @@ function hideLoadingScreen() {
     loadingOverlay.classList.add('hidden');
 }
 
-// --- UPDATED: handlePlayerInput now determines and passes the context ---
 /**
  * Handles sending the player's message to the Gemini API.
  */
@@ -185,34 +184,24 @@ async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
-    // 1. Add player's text and scroll to the absolute bottom to keep the input in view.
     addMessage(`> ${inputText}`, 'player');
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     playerInput.value = '';
     setLoadingState(true);
 
-    // Get context and show the reactive loading screen
     const context = getLoadingContext(inputText);
     showLoadingScreen(context);
 
     try {
-        // 2. BEFORE getting the API response, get the current height. This marks the top of the new content.
         const scrollPosition = gameOutput.scrollHeight;
-
         const result = await chat.sendMessage(inputText);
         const response = result.response;
-
-        // 3. Add the new prose from the API.
         addMessage(response.text(), 'gamemaster');
-
-        // 4. Set the scroll position to slightly before the new text for context.
         gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
-
     } catch (error) {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
-        // If there's an error, scroll to the bottom to make sure the error message is visible.
         gameOutput.scrollTop = gameOutput.scrollHeight;
     } finally {
         hideLoadingScreen();
@@ -237,13 +226,12 @@ function setLoadingState(isLoading) {
  * @param {string} apiKey The user-provided API key.
  */
 async function initializeAI(apiKey) {
-    showLoadingScreen('default'); // Use default messages for the initial setup
-    // Clear any previous game text
+    showLoadingScreen('default');
     gameOutput.innerHTML = '';
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); // Using 2.5 Pro
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
         chat = model.startChat({ history: [] });
 
@@ -252,13 +240,9 @@ async function initializeAI(apiKey) {
         addMessage(response.text(), 'gamemaster');
 
         setLoadingState(false);
-        
-        // Force the scroll window to the top after setup is complete.
         gameOutput.scrollTop = 0;
-
     } catch (error) {
         console.error("Initialization Error:", error);
-        // If init fails, re-show the modal for a new key
         apiKeyModal.classList.remove('hidden');
         addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
     } finally {
@@ -272,9 +256,7 @@ async function initializeAI(apiKey) {
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
-    
     localStorage.setItem('gemini-api-key', apiKey);
-    
     apiKeyModal.classList.add('hidden');
     initializeAI(apiKey);
 }
@@ -318,11 +300,9 @@ clearApiKeyBtn.addEventListener('click', () => {
 });
 
 // --- Start the game! -----------------------------------------------
-// Apply saved theme on load
 const savedTheme = localStorage.getItem('theme') || 'dark';
 applyTheme(savedTheme);
 
-// ALWAYS show the modal, but pre-fill the key if it exists.
 const savedApiKey = localStorage.getItem('gemini-api-key');
 if (savedApiKey) {
     apiKeyInput.value = savedApiKey;
