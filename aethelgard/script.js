@@ -241,6 +241,9 @@ async function handlePlayerInput() {
         const scrollPosition = gameOutput.scrollHeight;
         const result = await chat.sendMessage(inputText);
         const response = result.response;
+
+        console.log("Raw AI Response:", response.text());
+        
         addMessage(response.text(), 'gamemaster');
         gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
     } catch (error) {
