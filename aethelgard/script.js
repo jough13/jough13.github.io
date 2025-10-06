@@ -26,6 +26,8 @@ const loadingMessages = [
     "Consulting the celestial patterns..."
 ];
 
+const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decrease for less
+
 // --- Game Master Prompt (Your Rules) -------------------------------
 const GAME_MASTER_PROMPT = `
 You are the game master and narrator for a text-based adventure game. I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
@@ -120,8 +122,8 @@ async function handlePlayerInput() {
         // 3. Add the new prose from the API.
         addMessage(response.text(), 'gamemaster');
 
-        // 4. Set the scroll position to the spot we saved, bringing the user to the start of the new text.
-        gameOutput.scrollTop = scrollPosition;
+        // 4. Set the scroll position to slightly before the new text for context.
+        gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
 
     } catch (error) {
         console.error("Error sending message:", error);
@@ -157,7 +159,7 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
 
         chat = model.startChat({ history: [] });
 
