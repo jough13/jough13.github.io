@@ -17,20 +17,50 @@ const clearApiKeyBtn = document.getElementById('clear-api-key');
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.getElementById('loading-text');
 
-// Thematic loading messages
-const loadingMessages = [
-    "The Amulet hums in response...",
-    "Whispers echo from the ancient stones...",
-    "Weaving the threads of fate...",
-    "The world holds its breath...",
-    "Consulting the celestial patterns..."
-];
+// --- NEW: Thematic loading messages based on player intent ---
+const loadingMessages = {
+    perception: [
+        "Your eyes adjust to the details...",
+        "A hidden truth brushes against your mind...",
+        "The world reveals a secret...",
+        "Focusing on the unseen...",
+        "The patterns become clear..."
+    ],
+    action: [
+        "You commit to your course...",
+        "The world shifts in response to your will...",
+        "Fate's loom trembles...",
+        "A breath held, a step taken...",
+        "The die is cast..."
+    ],
+    social: [
+        "Choosing your words with care...",
+        "The currents of conversation shift...",
+        "A fragile trust is tested...",
+        "You offer a piece of yourself...",
+        "The air hangs heavy with unspoken words..."
+    ],
+    magic: [
+        "The Amulet hums in response...",
+        "Weaving the threads of ethereal energy...",
+        "The air crackles with latent power...",
+        "A whisper on the edge of reality...",
+        "The ancient forces stir..."
+    ],
+    default: [
+        "The world holds its breath...",
+        "Consulting the celestial patterns...",
+        "The ancient stones whisper...",
+        "Time stretches and bends...",
+        "Destiny considers your move..."
+    ]
+};
+
 
 const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decrease for less
-const GAME_MASTER_PROMPT = 
 
-`
-
+// --- Game Master Prompt (Using the Precision Prose v6.0) ---
+const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
 You are the Game Master (GM) and Narrator for the text-based adventure, "The Amulet of Aethelgard." Your purpose is to build an atmospheric world using precise, singular descriptions. The prose must be clean and confident.
 
@@ -103,12 +133,38 @@ function addMessage(text, sender) {
     }
 }
 
+// --- NEW: Helper function to determine loading message context ---
 /**
- * Shows the loading overlay with a dynamic, random message.
+ * Determines the context of the player's input based on keywords.
+ * @param {string} inputText The player's submitted text.
+ * @returns {string} The key for the loadingMessages object (e.g., 'perception').
  */
-function showLoadingScreen() {
-    const randomIndex = Math.floor(Math.random() * loadingMessages.length);
-    loadingText.textContent = loadingMessages[randomIndex];
+function getLoadingContext(inputText) {
+    const lowerInput = inputText.toLowerCase();
+    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) {
+        return 'perception';
+    }
+    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) {
+        return 'social';
+    }
+    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) {
+        return 'magic';
+    }
+    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) {
+        return 'action';
+    }
+    return 'default';
+}
+
+// --- UPDATED: showLoadingScreen now accepts a context ---
+/**
+ * Shows the loading overlay with a dynamic, contextual message.
+ * @param {string} context The theme of the message to display.
+ */
+function showLoadingScreen(context = 'default') {
+    const messageList = loadingMessages[context] || loadingMessages.default;
+    const randomIndex = Math.floor(Math.random() * messageList.length);
+    loadingText.textContent = messageList[randomIndex];
     loadingOverlay.classList.remove('hidden');
     // This line forces the browser to repaint, ensuring the animation starts.
     void loadingOverlay.offsetHeight;
@@ -121,6 +177,7 @@ function hideLoadingScreen() {
     loadingOverlay.classList.add('hidden');
 }
 
+// --- UPDATED: handlePlayerInput now determines and passes the context ---
 /**
  * Handles sending the player's message to the Gemini API.
  */
@@ -134,7 +191,10 @@ async function handlePlayerInput() {
 
     playerInput.value = '';
     setLoadingState(true);
-    showLoadingScreen();
+
+    // Get context and show the reactive loading screen
+    const context = getLoadingContext(inputText);
+    showLoadingScreen(context);
 
     try {
         // 2. BEFORE getting the API response, get the current height. This marks the top of the new content.
@@ -177,13 +237,13 @@ function setLoadingState(isLoading) {
  * @param {string} apiKey The user-provided API key.
  */
 async function initializeAI(apiKey) {
-    showLoadingScreen();
+    showLoadingScreen('default'); // Use default messages for the initial setup
     // Clear any previous game text
     gameOutput.innerHTML = '';
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); // Using 2.5 Pro
 
         chat = model.startChat({ history: [] });
 
