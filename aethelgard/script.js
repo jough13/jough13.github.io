@@ -203,8 +203,6 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-
-// --- UPDATED: The core logic for the new inline loader is here ---
 async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -215,7 +213,6 @@ async function handlePlayerInput() {
     playerInput.value = '';
     setLoadingState(true);
 
-    // 1. Create and display the inline loader
     const context = getLoadingContext(inputText);
     const messageList = loadingMessages[context] || loadingMessages.default;
     const randomIndex = Math.floor(Math.random() * messageList.length);
@@ -231,7 +228,6 @@ async function handlePlayerInput() {
         const result = await chat.sendMessage(inputText);
         const response = result.response;
         
-        // 2. Remove the inline loader BEFORE adding the new message
         loader.remove();
 
         addMessage(response.text(), 'gamemaster');
@@ -241,7 +237,6 @@ async function handlePlayerInput() {
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
         gameOutput.scrollTop = gameOutput.scrollHeight;
     } finally {
-        // 3. Ensure loader is gone and restore input
         const finalLoader = document.getElementById('inline-loader');
         if (finalLoader) finalLoader.remove();
         setLoadingState(false);
@@ -257,56 +252,47 @@ function setLoadingState(isLoading) {
 }
 
 async function initializeAI(apiKey) {
-    // 1. Clear the screen and show the initial connecting message
     gameOutput.innerHTML = '';
     addMessage("Connecting to the ancient world...", 'system');
-    setLoadingState(true); // Disable input while connecting
+    setLoadingState(true); 
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
 
-        // 2. Success! Clear the "Connecting..." message and add the game's opening text.
         gameOutput.innerHTML = ''; 
         addMessage(response.text(), 'gamemaster');
-
-        setLoadingState(false); // Re-enable input
+        setLoadingState(false);
         gameOutput.scrollTop = 0;
 
     } catch (error) {
-        console.error("Initialization Error:", error);
+        console.error("CRITICAL INITIALIZATION ERROR:", error);
+        gameOutput.innerHTML = ''; 
+        addMessage("Connection failed. The API key may be invalid or there could be a network issue.", 'system');
+        addMessage("Please refresh the page and try again with a valid key.", 'system');
         
-        // 3. Failure! Show an error and make sure the modal is visible again.
-        addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
-        // Make modal visible again by removing animation/hidden classes
-        apiKeyModal.classList.remove('hiding');
-        apiKeyModal.classList.remove('hidden');
-        setLoadingState(false); 
+        setLoadingState(true);
+        playerInput.placeholder = "Refresh to try again.";
     }
 }
 
-// ** MODIFIED FUNCTION FOR FADE-OUT ANIMATION **
+// ** MODIFIED FUNCTION FOR THE FIX **
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
 
     localStorage.setItem('gemini-api-key', apiKey);
+    
+    // Forcefully hide the modal by directly changing its style.
+    // This overrides any conflicting CSS rules.
+    apiKeyModal.style.display = 'none';
 
-    // 1. Start the fade-out animation by adding the 'hiding' class
-    apiKeyModal.classList.add('hiding');
-
-    // 2. Call the AI initialization immediately so the user doesn't wait
     initializeAI(apiKey);
-
-    // 3. After the animation is done (500ms), add 'hidden' to remove it completely
-    setTimeout(() => {
-        apiKeyModal.classList.add('hidden');
-    }, 500); // This duration should match the transition time in your CSS
 }
 
 function applyTheme(theme) {
@@ -347,16 +333,20 @@ clearApiKeyBtn.addEventListener('click', () => {
 });
 
 // --- Start the game! -----------------------------------------------
-const savedTheme = localStorage.getItem('theme') || 'dark';
-applyTheme(savedTheme);
+// ** MODIFIED STARTUP LOGIC FOR THE FIX **
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(savedTheme);
 
-const savedApiKey = localStorage.getItem('gemini-api-key');
-if (savedApiKey) {
-    apiKeyModal.classList.remove('hidden'); // Ensure it's not hidden
-    apiKeyModal.classList.remove('hiding'); // Ensure it's not hiding
-    apiKeyInput.value = savedApiKey;
-} else {
-    apiKeyModal.classList.remove('hidden');
-    apiKeyModal.classList.remove('hiding');
-}
-apiKeyInput.focus();
+    const savedApiKey = localStorage.getItem('gemini-api-key');
+    if (savedApiKey) {
+        apiKeyInput.value = savedApiKey;
+        // Also apply the direct style fix here for auto-start
+        apiKeyModal.style.display = 'none';
+        initializeAI(savedApiKey);
+    } else {
+        // If no key, show the modal.
+        apiKeyModal.style.display = 'flex'; // Use flex to match the CSS
+        apiKeyInput.focus();
+    }
+});
