@@ -158,6 +158,11 @@ h1 {
   background: var(--system-text-color);
 }
 
+/* --- Utility Styles --- */
+.hidden {
+    display: none;
+}
+
 /* --- Modal Styles --- */
 .modal-overlay {
     background-color: var(--modal-overlay-bg);
@@ -323,7 +328,7 @@ body::before {
     background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
 }
 
-/* --- NEW: Inline Loader Styles --- */
+/* --- Inline Loader Styles --- */
 
 @keyframes pulse {
     0%, 100% {
