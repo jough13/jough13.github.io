@@ -17,6 +17,15 @@ const clearApiKeyBtn = document.getElementById('clear-api-key');
 const loadingOverlay = document.getElementById('loading-overlay');
 const loadingText = document.getElementById('loading-text');
 
+// Thematic loading messages
+const loadingMessages = [
+    "The Amulet hums in response...",
+    "Whispers echo from the ancient stones...",
+    "Weaving the threads of fate...",
+    "The world holds its breath...",
+    "Consulting the celestial patterns..."
+];
+
 // --- Game Master Prompt (Your Rules) -------------------------------
 const GAME_MASTER_PROMPT = `
 You are the game master and narrator for a text-based adventure game. I am the sole player. The setting is a mystical, high-fantasy world called "Aethelgard," filled with ancient magic, forgotten gods, mythical creatures, and perilous landscapes.
@@ -70,15 +79,14 @@ function addMessage(text, sender) {
 }
 
 /**
- * Shows the loading overlay with a specific message.
- * @param {string} message The text to display under the spinner.
+ * Shows the loading overlay with a dynamic, random message.
  */
-function showLoadingScreen(message) {
-    loadingText.textContent = message;
+function showLoadingScreen() {
+    const randomIndex = Math.floor(Math.random() * loadingMessages.length);
+    loadingText.textContent = loadingMessages[randomIndex];
     loadingOverlay.classList.remove('hidden');
-    
-    // This new line forces the browser to repaint, ensuring the animation starts.
-    void loadingOverlay.offsetHeight; 
+    // This line forces the browser to repaint, ensuring the animation starts.
+    void loadingOverlay.offsetHeight;
 }
 
 /**
@@ -99,7 +107,7 @@ async function handlePlayerInput() {
     playerInput.value = '';
 
     setLoadingState(true);
-    showLoadingScreen('The Amulet hums in response...');
+    showLoadingScreen();
 
     try {
         const result = await chat.sendMessage(inputText);
@@ -131,13 +139,13 @@ function setLoadingState(isLoading) {
  * @param {string} apiKey The user-provided API key.
  */
 async function initializeAI(apiKey) {
-    showLoadingScreen("Connecting to the world of The Amulet...");
+    showLoadingScreen();
     // Clear any previous game text
     gameOutput.innerHTML = '';
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
 
         chat = model.startChat({ history: [] });
 
