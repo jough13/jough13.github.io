@@ -257,29 +257,34 @@ function setLoadingState(isLoading) {
 }
 
 async function initializeAI(apiKey) {
-    // Show a system message in the chat window during initialization
+    // 1. Clear the screen and show the initial connecting message
     gameOutput.innerHTML = '';
     addMessage("Connecting to the ancient world...", 'system');
+    setLoadingState(true); // Disable input while connecting
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
 
-        // Clear "Connecting..." message before showing the game start
+        // 2. Success! Clear the "Connecting..." message and add the game's opening text.
         gameOutput.innerHTML = ''; 
         addMessage(response.text(), 'gamemaster');
 
-        setLoadingState(false);
+        setLoadingState(false); // Re-enable input
         gameOutput.scrollTop = 0;
+
     } catch (error) {
         console.error("Initialization Error:", error);
-        apiKeyModal.classList.remove('hidden');
+        
+        // 3. Failure! Show an error and make sure the modal is visible again.
         addMessage("The cipher was incorrect or the connection failed. Please check your API key and try again.", 'system');
+        apiKeyModal.classList.remove('hidden'); 
+        setLoadingState(false); // Re-enable input so the user can try again
     }
 }
 
