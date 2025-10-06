@@ -54,7 +54,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: background-color 0.3s, border-color 0.3s;
+    transition: background-color 0.3s, border-color 0.3s, opacity 0.5s ease-in-out;
 }
 
 h1 {
@@ -344,4 +344,39 @@ body::before {
     color: var(--system-text-color);
     text-align: center;
     animation: pulse 2s infinite ease-in-out;
+}
+
+/* --- Pre-loader and FOUC Prevention --- */
+
+/* Style for the loading spinner */
+#loader {
+    border: 5px solid var(--subtle-border-color);
+    border-top: 5px solid var(--accent-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    margin-top: -25px; /* Half of height */
+    margin-left: -25px; /* Half of width */
+    z-index: 2000;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Hide the loader when the body no longer has the loading class */
+body:not(.loading) #loader {
+    display: none;
+}
+
+/* While loading, hide the game and modal */
+.loading #game-container,
+.loading #api-key-modal {
+    opacity: 0;
+    visibility: hidden;
 }
