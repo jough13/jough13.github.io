@@ -60,9 +60,8 @@ const SCROLL_CONTEXT_OFFSET = 120; // in pixels; increase for more context, decr
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
-
 //-- GM DIRECTIVE --//
-You are the Game Master (GM) and Narrator for "The A-text-adventure-game-The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
+You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
 
 //-- TONE & PROSE PROTOCOL --//
 Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
@@ -76,10 +75,14 @@ Your narrative voice is evocative but disciplined. The goal is a natural, immers
     * **AVOID (Too Rich):** "You awaken with a slow, drifting consciousness under an immense, ancient tree with gnarled, twisting roots."
     * **USE THIS STYLE (Balanced):** "You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the afternoon light."
 
-/-- CORE GAMEPLAY LOOP --//
+//-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events, following the prose protocol.
-2.  **Present Choices:** Provide 2 to 4 distinct, bolded options for the player. This is the primary way the story progresses.
+2.  **Present Choices:** This is a critical instruction. You MUST provide 2 to 4 options. Each option must be on its own new line.
+    * **The correct format is:** \`**A)** Choice text here.\`
+    * The letter (e.g., A, B, C) and the closing parenthesis ')' must be enclosed together in double asterisks.
+    * Use a parenthesis ')', not a period '.'.
+    * Avoid other formats like using single asterisks or no asterisks at all.
 3.  **Handle Custom Input:** The player may occasionally type a custom action instead of choosing an option. If they do, you must:
     a. Narrate a logical, brief outcome for their custom action.
     b. If the action is impossible or nonsensical, state that clearly but gently (e.g., "You try to lift the boulder, but it is far too heavy.").
@@ -116,58 +119,61 @@ Guide the story through three acts.
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
 
-// --- NEW: This function handles when a choice button is clicked ---
 function handleChoiceClick(event) {
     const choice = event.target.dataset.choice;
     playerInput.value = choice;
     handlePlayerInput();
 
-    // Disable all choice buttons after one is clicked
     const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
     buttons.forEach(button => {
         button.disabled = true;
     });
 }
 
-// --- UPDATED: addMessage now creates buttons for choices ---
+// --- UPDATED: addMessage now adds classes for visual flourishes ---
 /**
- * Appends a message to the game output, converting choices into buttons.
+ * Appends a message to the game output, adding classes for animations and styling.
  * @param {string} text The message text.
  * @param {string} sender 'gamemaster', 'player', or 'system'.
  */
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
-        let choiceContainer = null; // To group choice buttons together
+        let choiceContainer = null;
+        let isFirstParagraph = true; // For applying the drop cap
 
         paragraphs.forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
 
-            // Regex to find choice patterns like "**A)** ..."
             const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
             const match = paragraphText.match(choiceRegex);
 
             if (match) {
-                // If this is the first choice button, create a container for them.
                 if (!choiceContainer) {
                     choiceContainer = document.createElement('div');
-                    choiceContainer.className = 'choice-container';
+                    choiceContainer.className = 'choice-container fade-in'; // Add fade-in to container
                     gameOutput.appendChild(choiceContainer);
                 }
 
                 const choiceLetter = match[1];
                 const choiceText = match[2].trim();
-
                 const button = document.createElement('button');
                 button.className = 'choice-btn';
                 button.textContent = `${choiceLetter}) ${choiceText}`;
-                button.dataset.choice = choiceLetter; // Store the letter to send back
+                button.dataset.choice = choiceLetter;
                 button.addEventListener('click', handleChoiceClick);
-
                 choiceContainer.appendChild(button);
             } else {
-                choiceContainer = null; // Reset container if a non-choice paragraph appears
+                choiceContainer = null;
                 const paragraph = document.createElement('p');
+                
+                // Add classes for styling
+                paragraph.className = 'fade-in';
+                if (isFirstParagraph) {
+                    paragraph.classList.add('gm-first-paragraph');
+                    isFirstParagraph = false;
+                }
+
                 const unsafeHtml = marked.parse(paragraphText);
                 const safeHtml = DOMPurify.sanitize(unsafeHtml);
                 paragraph.innerHTML = safeHtml;
@@ -177,18 +183,20 @@ function addMessage(text, sender) {
     } else {
         const p = document.createElement('p');
         p.textContent = text;
-        if (sender === 'player') p.className = 'player-text';
-        else if (sender === 'system') p.className = 'loading-text';
+        
+        // Add classes for styling
+        p.classList.add('fade-in');
+        if (sender === 'player') {
+            p.className = 'player-text fade-in turn-divider';
+        } else if (sender === 'system') {
+            p.className = 'loading-text fade-in';
+        }
+        
         gameOutput.appendChild(p);
     }
 }
 
 
-/**
- * Determines the context of the player's input based on keywords.
- * @param {string} inputText The player's submitted text.
- * @returns {string} The key for the loadingMessages object (e.g., 'perception').
- */
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
     if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) {
@@ -206,29 +214,18 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-/**
- * Shows the loading overlay with a dynamic, contextual message.
- * @param {string} context The theme of the message to display.
- */
 function showLoadingScreen(context = 'default') {
     const messageList = loadingMessages[context] || loadingMessages.default;
     const randomIndex = Math.floor(Math.random() * messageList.length);
     loadingText.textContent = messageList[randomIndex];
     loadingOverlay.classList.remove('hidden');
-    // This line forces the browser to repaint, ensuring the animation starts.
     void loadingOverlay.offsetHeight;
 }
 
-/**
- * Hides the loading overlay.
- */
 function hideLoadingScreen() {
     loadingOverlay.classList.add('hidden');
 }
 
-/**
- * Handles sending the player's message to the Gemini API.
- */
 async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -248,7 +245,8 @@ async function handlePlayerInput() {
         const response = result.response;
         addMessage(response.text(), 'gamemaster');
         gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
-    } catch (error) {
+    } catch (error)
+        {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
         gameOutput.scrollTop = gameOutput.scrollHeight;
@@ -258,10 +256,6 @@ async function handlePlayerInput() {
     }
 }
 
-/**
- * Toggles the UI between loading and interactive states.
- * @param {boolean} isLoading
- */
 function setLoadingState(isLoading) {
     playerInput.disabled = isLoading;
     submitBtn.disabled = isLoading;
@@ -270,10 +264,6 @@ function setLoadingState(isLoading) {
     }
 }
 
-/**
- * Initializes the AI model and starts the game narrative.
- * @param {string} apiKey The user-provided API key.
- */
 async function initializeAI(apiKey) {
     showLoadingScreen('default');
     gameOutput.innerHTML = '';
@@ -299,9 +289,6 @@ async function initializeAI(apiKey) {
     }
 }
 
-/**
- * Handles the submission of the API key from the modal.
- */
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
@@ -310,7 +297,6 @@ function submitApiKey() {
     initializeAI(apiKey);
 }
 
-// --- Theme Toggle Logic ---
 function applyTheme(theme) {
     if (theme === 'light') {
         document.body.classList.add('light-mode');
