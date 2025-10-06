@@ -62,7 +62,8 @@ const loadingMessages = {
     ]
 };
 
-const SCROLL_CONTEXT_OFFSET = 120;
+// ** REMOVED ** - The old scroll offset constant is no longer needed.
+// const SCROLL_CONTEXT_OFFSET = 120;
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
@@ -125,22 +126,16 @@ Guide the story through three acts.
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
 
-// ** MODIFIED FUNCTION **
-// This function now replaces second-person pronouns with first-person pronouns.
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // ** NEW PRONOUN FIX **
-    // Replace "yourself" with "myself" and "your" with "my" for a natural player voice.
-    // The \b ensures we only replace whole words.
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
 
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
-    // Randomly select an action phrase
     const randomIndex = Math.floor(Math.random() * actionPhrases.length);
     const randomPhrase = actionPhrases[randomIndex];
     const playerDisplayMessage = `${randomPhrase} ${choiceText}.`;
@@ -232,6 +227,8 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
+// ** MODIFIED FUNCTION **
+// The scrolling logic is updated here.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -239,6 +236,10 @@ async function handlePlayerInput(customDisplayText = null) {
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
+    // Get a reference to the player's message we just added
+    const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
+
+    // Scroll to the bottom immediately so the user sees the loading message
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     playerInput.value = '';
@@ -255,14 +256,18 @@ async function handlePlayerInput(customDisplayText = null) {
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     try {
-        const scrollPosition = gameOutput.scrollHeight;
         const result = await chat.sendMessage(inputText);
         const response = result.response;
         
         loader.remove();
 
         addMessage(response.text(), 'gamemaster');
-        gameOutput.scrollTop = scrollPosition - SCROLL_CONTEXT_OFFSET;
+        
+        // After the GM's response, scroll the player's message to the top of the view
+        if (lastPlayerMessage) {
+            lastPlayerMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
     } catch (error) {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
