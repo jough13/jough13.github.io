@@ -250,34 +250,19 @@ h1 {
     align-items: center;
     z-index: 2000;
     color: var(--text-color);
-    transition: opacity 0.4s ease-in-out;
 }
 
 .hidden {
-    opacity: 0;
-    pointer-events: none;
+    display: none;
 }
 
 .spinner {
-    display: flex;
-    justify-content: space-around;
-    width: 70px;
-}
-
-.spinner div {
-    width: 15px;
-    height: 15px;
-    background-color: var(--accent-color);
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--border-color);
+    border-top-color: var(--accent-color);
     border-radius: 50%;
-    animation: bounce 1.4s infinite ease-in-out both;
-}
-
-.spinner div:nth-child(1) {
-    animation-delay: -0.32s;
-}
-
-.spinner div:nth-child(2) {
-    animation-delay: -0.16s;
+    animation: spin 1s linear infinite;
 }
 
 #loading-text {
@@ -286,10 +271,46 @@ h1 {
     color: var(--system-text-color);
 }
 
-@keyframes bounce {
-    0%, 80%, 100% {
-        transform: scale(0);
-    } 40% {
-        transform: scale(1.0);
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
     }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --- NEW: Clickable Choice Styles --- */
+
+.choice-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Adds space between choice buttons */
+    margin-bottom: 1em;
+}
+
+.choice-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--subtle-border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Lora', serif;
+    font-size: 1em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.choice-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
+
+.choice-btn:disabled {
+    background-color: var(--container-bg);
+    color: var(--system-text-color);
+    cursor: not-allowed;
+    border-color: var(--container-bg);
 }
