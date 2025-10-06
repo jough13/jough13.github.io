@@ -52,10 +52,9 @@ Begin the game!
 
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
-let isGameReady = false; // Flag to control initial scroll behavior
 
 /**
- * Appends a message to the game output and scrolls to the bottom.
+ * Appends a message to the game output without controlling the scroll.
  * @param {string} text The message text.
  * @param {string} sender 'gamemaster', 'player', or 'system'.
  */
@@ -75,11 +74,6 @@ function addMessage(text, sender) {
         if (sender === 'player') p.className = 'player-text';
         else if (sender === 'system') p.className = 'loading-text';
         gameOutput.appendChild(p);
-    }
-
-    // Only scroll if the initial world has been loaded.
-    if (isGameReady) {
-        gameOutput.scrollTop = gameOutput.scrollHeight;
     }
 }
 
@@ -108,19 +102,32 @@ async function handlePlayerInput() {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
+    // 1. Add player's text and scroll to the absolute bottom to keep the input in view.
     addMessage(`> ${inputText}`, 'player');
-    playerInput.value = '';
+    gameOutput.scrollTop = gameOutput.scrollHeight;
 
+    playerInput.value = '';
     setLoadingState(true);
     showLoadingScreen();
 
     try {
+        // 2. BEFORE getting the API response, get the current height. This marks the top of the new content.
+        const scrollPosition = gameOutput.scrollHeight;
+
         const result = await chat.sendMessage(inputText);
         const response = result.response;
+
+        // 3. Add the new prose from the API.
         addMessage(response.text(), 'gamemaster');
+
+        // 4. Set the scroll position to the spot we saved, bringing the user to the start of the new text.
+        gameOutput.scrollTop = scrollPosition;
+
     } catch (error) {
         console.error("Error sending message:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
+        // If there's an error, scroll to the bottom to make sure the error message is visible.
+        gameOutput.scrollTop = gameOutput.scrollHeight;
     } finally {
         hideLoadingScreen();
         setLoadingState(false);
@@ -150,16 +157,13 @@ async function initializeAI(apiKey) {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" }); 
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" }); 
 
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
         addMessage(response.text(), 'gamemaster');
-
-        // The game is now set up. Enable auto-scrolling for all future messages.
-        isGameReady = true;
 
         setLoadingState(false);
         
