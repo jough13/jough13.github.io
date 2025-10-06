@@ -111,20 +111,63 @@ Guide the story through three acts.
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
 
+// --- NEW: This function handles when a choice button is clicked ---
+function handleChoiceClick(event) {
+    const choice = event.target.dataset.choice;
+    playerInput.value = choice;
+    handlePlayerInput();
+
+    // Disable all choice buttons after one is clicked
+    const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
+    buttons.forEach(button => {
+        button.disabled = true;
+    });
+}
+
+// --- UPDATED: addMessage now creates buttons for choices ---
 /**
- * Appends a message to the game output without controlling the scroll.
+ * Appends a message to the game output, converting choices into buttons.
  * @param {string} text The message text.
  * @param {string} sender 'gamemaster', 'player', or 'system'.
  */
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
-        text.split('\n').forEach(paragraphText => {
+        const paragraphs = text.split('\n');
+        let choiceContainer = null; // To group choice buttons together
+
+        paragraphs.forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
-            const paragraph = document.createElement('p');
-            const unsafeHtml = marked.parse(paragraphText);
-            const safeHtml = DOMPurify.sanitize(unsafeHtml);
-            paragraph.innerHTML = safeHtml;
-            gameOutput.appendChild(paragraph);
+
+            // Regex to find choice patterns like "**A)** ..."
+            const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
+            const match = paragraphText.match(choiceRegex);
+
+            if (match) {
+                // If this is the first choice button, create a container for them.
+                if (!choiceContainer) {
+                    choiceContainer = document.createElement('div');
+                    choiceContainer.className = 'choice-container';
+                    gameOutput.appendChild(choiceContainer);
+                }
+
+                const choiceLetter = match[1];
+                const choiceText = match[2].trim();
+
+                const button = document.createElement('button');
+                button.className = 'choice-btn';
+                button.textContent = `${choiceLetter}) ${choiceText}`;
+                button.dataset.choice = choiceLetter; // Store the letter to send back
+                button.addEventListener('click', handleChoiceClick);
+
+                choiceContainer.appendChild(button);
+            } else {
+                choiceContainer = null; // Reset container if a non-choice paragraph appears
+                const paragraph = document.createElement('p');
+                const unsafeHtml = marked.parse(paragraphText);
+                const safeHtml = DOMPurify.sanitize(unsafeHtml);
+                paragraph.innerHTML = safeHtml;
+                gameOutput.appendChild(paragraph);
+            }
         });
     } else {
         const p = document.createElement('p');
@@ -134,6 +177,7 @@ function addMessage(text, sender) {
         gameOutput.appendChild(p);
     }
 }
+
 
 /**
  * Determines the context of the player's input based on keywords.
