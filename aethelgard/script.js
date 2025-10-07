@@ -6,7 +6,8 @@ const gameOutput = document.getElementById('game-output');
 const playerInput = document.getElementById('player-input');
 const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
-const settingsBtn = document.getElementById('settings-btn'); // New
+const settingsBtn = document.getElementById('settings-btn');
+const toast = document.getElementById('toast-notification'); // New
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -15,11 +16,22 @@ const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
 
 // Settings Modal
-const settingsModal = document.getElementById('settings-modal'); // New
-const closeSettingsBtn = settingsModal.querySelector('.modal-close-btn'); // New
-const saveBtn = document.getElementById('save-btn'); // New
-const loadBtn = document.getElementById('load-btn'); // New
-const resetBtn = document.getElementById('reset-btn'); // New
+const settingsModal = document.getElementById('settings-modal');
+const closeSettingsBtn = settingsModal.querySelector('.modal-close-btn');
+const saveBtn = document.getElementById('save-btn');
+const loadBtn = document.getElementById('load-btn');
+const resetBtn = document.getElementById('reset-btn');
+
+// Reset Confirmation Modal
+const confirmResetModal = document.getElementById('confirm-reset-modal');
+const cancelResetBtn = document.getElementById('cancel-reset-btn');
+const confirmResetBtn = document.getElementById('confirm-reset-btn');
+
+// Load Confirmation Modal
+const confirmLoadModal = document.getElementById('confirm-load-modal'); // New
+const cancelLoadBtn = document.getElementById('cancel-load-btn'); // New
+const confirmLoadBtn = document.getElementById('confirm-load-btn'); // New
+
 
 // An array of phrases for player actions to add variety
 const actionPhrases = [
@@ -132,6 +144,22 @@ Guide the story through three acts.
 
 // --- Game Logic ------------------------------------------------------
 let chat; // This will hold our chat session
+let genAI; // To re-initialize chat after loading
+
+// ** NEW ** - Helper function for toast notifications
+function showToast(message) {
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+    // The animation will hide it automatically after it finishes
+}
+
+// ** NEW ** - Re-attaches listeners to choice buttons after loading a game
+function reattachChoiceButtonListeners() {
+    const buttons = gameOutput.querySelectorAll('.choice-btn:not([disabled])');
+    buttons.forEach(button => {
+        button.addEventListener('click', handleChoiceClick);
+    });
+}
 
 function handleChoiceClick(event) {
     const button = event.target;
@@ -299,7 +327,7 @@ async function initializeAI(apiKey) {
     setLoadingState(true); 
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         chat = model.startChat({ history: [] });
@@ -371,7 +399,7 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.focus();
 });
 
-// ** NEW - Settings Modal Listeners **
+// Settings Modal Listeners
 settingsBtn.addEventListener('click', () => {
     settingsModal.classList.remove('hidden');
 });
@@ -380,25 +408,86 @@ closeSettingsBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
 });
 
-saveBtn.addEventListener('click', () => {
-    console.log("Save functionality to be implemented.");
-    alert("Save functionality is not yet implemented.");
-    settingsModal.classList.add('hidden');
-});
+// ** UPDATED - Save, Load, and Reset Listeners **
 
-loadBtn.addEventListener('click', () => {
-    console.log("Load functionality to be implemented.");
-    alert("Load functionality is not yet implemented.");
-    settingsModal.classList.add('hidden');
-});
-
-resetBtn.addEventListener('click', () => {
-    console.log("Reset functionality to be implemented.");
-    if (confirm("Are you sure you want to reset the game? All progress will be lost.")) {
-        // This would be where you clear all game data and refresh the page.
-        alert("Reset functionality is not yet implemented.");
+// Save Button
+saveBtn.addEventListener('click', async () => {
+    if (!chat) return;
+    try {
+        const history = await chat.getHistory();
+        localStorage.setItem('savedGameHistory', JSON.stringify(history));
+        localStorage.setItem('savedGameHTML', gameOutput.innerHTML);
+        showToast("Game Saved!");
+    } catch (error) {
+        console.error("Error saving game:", error);
+        showToast("Could not save game.");
     }
     settingsModal.classList.add('hidden');
+});
+
+// Load Button - shows confirmation modal first
+loadBtn.addEventListener('click', () => {
+    if (!localStorage.getItem('savedGameHistory')) {
+        showToast("No saved game found.");
+        return;
+    }
+    settingsModal.classList.add('hidden');
+    confirmLoadModal.classList.remove('hidden');
+});
+
+// Reset Button - shows confirmation modal first
+resetBtn.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+    confirmResetModal.classList.remove('hidden');
+});
+
+// Cancel Load Button
+cancelLoadBtn.addEventListener('click', () => {
+    confirmLoadModal.classList.add('hidden');
+});
+
+// Confirm Load Button
+confirmLoadBtn.addEventListener('click', () => {
+    const savedHistoryJSON = localStorage.getItem('savedGameHistory');
+    const savedHTML = localStorage.getItem('savedGameHTML');
+    const apiKey = localStorage.getItem('gemini-api-key');
+
+    if (savedHistoryJSON && savedHTML && apiKey) {
+        const savedHistory = JSON.parse(savedHistoryJSON);
+        
+        // Re-initialize the AI model with the saved history
+        genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        chat = model.startChat({ history: savedHistory });
+        
+        // Restore the visual game log
+        gameOutput.innerHTML = savedHTML;
+        
+        // Re-attach listeners to the now-visible choice buttons
+        reattachChoiceButtonListeners();
+        
+        // Scroll to the bottom of the loaded content
+        gameOutput.scrollTop = gameOutput.scrollHeight;
+        
+        showToast("Game Loaded!");
+    } else {
+        showToast("Could not load game data.");
+    }
+    confirmLoadModal.classList.add('hidden');
+});
+
+// Cancel Reset Button
+cancelResetBtn.addEventListener('click', () => {
+    confirmResetModal.classList.add('hidden');
+});
+
+// Confirm Reset Button
+confirmResetBtn.addEventListener('click', () => {
+    confirmResetModal.classList.add('hidden');
+    localStorage.removeItem('gemini-api-key');
+    localStorage.removeItem('savedGameHistory');
+    localStorage.removeItem('savedGameHTML');
+    location.reload();
 });
 
 
