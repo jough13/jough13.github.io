@@ -8,7 +8,7 @@ const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
 const toast = document.getElementById('toast-notification');
-const inventoryList = document.getElementById('inventory-list'); // New inventory element
+const inventoryList = document.getElementById('inventory-list');
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -33,11 +33,6 @@ const confirmLoadModal = document.getElementById('confirm-load-modal');
 const cancelLoadBtn = document.getElementById('cancel-load-btn');
 const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
-// An array of phrases for player actions to add variety
-const actionPhrases = [
-    "I decide to", "I choose to", "I am going to", "I'll try to", "My next move is to", "I will"
-];
-
 // Thematic loading messages based on player intent
 const loadingMessages = {
     perception: ["Your eyes adjust to the details...", "A hidden truth brushes against your mind...", "The world reveals a secret...", "Focusing on the unseen...", "The patterns become clear..."],
@@ -49,7 +44,7 @@ const loadingMessages = {
 
 const SCROLL_PADDING = 40;
 
-// --- UPDATED GAME MASTER PROMPT ---
+// --- GAME MASTER PROMPT with Inventory Protocol ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
 You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
@@ -67,7 +62,7 @@ The game operates on a turn-based loop.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
 
-//-- NEW INVENTORY PROTOCOL --//
+//-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
 2. At the end of EVERY response where the player's inventory changes (they gain or lose an item), you MUST include a special inventory tag on a new line.
 3. The format is critical: [INVENTORY: Item 1, Item 2, A Rusty Key]
@@ -123,54 +118,67 @@ function handleChoiceClick(event) {
     });
 }
 
+// --- UPDATED addMessage Function ---
+// This function now handles inventory parsing and choice button creation again.
 function addMessage(text, sender) {
-    const p = document.createElement('p');
-    if (sender === 'player') {
-        p.textContent = `> ${text}`;
-        p.classList.add('player-text', 'fade-in', 'turn-divider');
-    } else if (sender === 'system') {
-        p.innerHTML = text;
-        p.classList.add('loading-text', 'fade-in');
-    }
-    gameOutput.appendChild(p);
-}
-
-// NEW function to process the final response after streaming
-function processFinalResponse(fullText) {
-    // 1. Handle Inventory
-    const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-    const inventoryMatch = fullText.match(inventoryRegex);
-    if (inventoryMatch) {
-        const lastMatch = inventoryMatch[inventoryMatch.length - 1];
-        const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
-        inventoryList.textContent = items || "Empty";
-    }
-
-    // 2. Create Choice Buttons
-    const textWithoutTags = fullText.replace(inventoryRegex, '').trim();
-    const paragraphs = textWithoutTags.split('\n');
-    let choiceContainer = null;
-    paragraphs.forEach(paragraphText => {
-        const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
-        const match = paragraphText.match(choiceRegex);
-        if (match) {
-            if (!choiceContainer) {
-                choiceContainer = document.createElement('div');
-                choiceContainer.classList.add('choice-container', 'fade-in');
-                gameOutput.appendChild(choiceContainer);
-            }
-            const button = document.createElement('button');
-            button.classList.add('choice-btn');
-            button.textContent = `${match[1]}) ${match[2].trim()}`;
-            button.dataset.choice = match[1];
-            button.addEventListener('click', handleChoiceClick);
-            choiceContainer.appendChild(button);
-        } else {
-            choiceContainer = null; // A line of text resets the button group
+    if (sender === 'gamemaster') {
+        // 1. Handle Inventory Parsing
+        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
+        const inventoryMatch = text.match(inventoryRegex);
+        if (inventoryMatch) {
+            const lastMatch = inventoryMatch[inventoryMatch.length - 1];
+            const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
+            inventoryList.textContent = items || "Empty";
         }
-    });
-}
+        const narrativeText = text.replace(inventoryRegex, '').trim();
 
+        // 2. Handle Narrative and Choice Button Rendering
+        const paragraphs = narrativeText.split('\n');
+        let choiceContainer = null;
+        let isFirstGMParagraph = true;
+
+        paragraphs.forEach(paragraphText => {
+            if (paragraphText.trim() === '') return;
+            const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
+            const match = paragraphText.match(choiceRegex);
+
+            if (match) {
+                if (!choiceContainer) {
+                    choiceContainer = document.createElement('div');
+                    choiceContainer.classList.add('choice-container', 'fade-in');
+                    gameOutput.appendChild(choiceContainer);
+                }
+                const button = document.createElement('button');
+                button.classList.add('choice-btn');
+                button.textContent = `${match[1]}) ${match[2].trim()}`;
+                button.dataset.choice = match[1];
+                button.addEventListener('click', handleChoiceClick);
+                choiceContainer.appendChild(button);
+            } else {
+                choiceContainer = null; // A line of text resets the button group
+                const p = document.createElement('p');
+                p.classList.add('fade-in');
+                if (isFirstGMParagraph) {
+                    p.classList.add('gm-first-paragraph');
+                    isFirstGMParagraph = false;
+                }
+                p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
+                gameOutput.appendChild(p);
+            }
+        });
+    } else {
+        // This part handles player and system messages
+        const p = document.createElement('p');
+        if (sender === 'player') {
+            p.textContent = `> ${text}`;
+            p.classList.add('player-text', 'fade-in', 'turn-divider');
+        } else if (sender === 'system') {
+            p.innerHTML = text;
+            p.classList.add('loading-text', 'fade-in');
+        }
+        gameOutput.appendChild(p);
+    }
+}
 
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
@@ -181,7 +189,7 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// --- REBUILT handlePlayerInput function for STREAMING ---
+// --- REVERTED handlePlayerInput to non-streaming ---
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -204,27 +212,11 @@ async function handlePlayerInput(customDisplayText = null) {
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     try {
-        const result = await chat.sendMessageStream(inputText);
-        loader.remove(); // Remove the "thinking" message once streaming starts
-
-        let fullResponseText = "";
-        const responseElement = document.createElement('p');
-        responseElement.classList.add('fade-in', 'gm-first-paragraph');
-        gameOutput.appendChild(responseElement);
-
-        for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
-            fullResponseText += chunkText;
-
-            // Remove inventory tags before rendering the stream
-            const cleanStreamText = fullResponseText.replace(/\[INVENTORY:.*?\]/g, "");
-            responseElement.innerHTML = DOMPurify.sanitize(marked.parse(cleanStreamText));
-            
-            gameOutput.scrollTop = gameOutput.scrollHeight;
-        }
-
-        // Now that the stream is complete, process for inventory and choices
-        processFinalResponse(fullResponseText);
+        const result = await chat.sendMessage(inputText);
+        const response = result.response;
+        
+        loader.remove();
+        addMessage(response.text(), 'gamemaster');
         
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
@@ -241,7 +233,6 @@ async function handlePlayerInput(customDisplayText = null) {
     }
 }
 
-
 function setLoadingState(isLoading) {
     playerInput.disabled = isLoading;
     submitBtn.disabled = isLoading;
@@ -251,6 +242,7 @@ function setLoadingState(isLoading) {
     }
 }
 
+// --- REVERTED initializeAI to non-streaming ---
 async function initializeAI(apiKey) {
     gameOutput.innerHTML = '';
     addMessage('Connecting to the ancient world...<br><span class="mini-loader"></span>', 'system');
@@ -261,24 +253,11 @@ async function initializeAI(apiKey) {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         chat = model.startChat({ history: [] });
 
-        // Use the new streaming logic for initialization too
-        const result = await chat.sendMessageStream(GAME_MASTER_PROMPT);
-        gameOutput.innerHTML = ''; // Clear connecting message
+        const result = await chat.sendMessage(GAME_MASTER_PROMPT);
+        const response = result.response;
 
-        let fullResponseText = "";
-        const responseElement = document.createElement('p');
-        responseElement.classList.add('fade-in', 'gm-first-paragraph');
-        gameOutput.appendChild(responseElement);
-
-        for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
-            fullResponseText += chunkText;
-            const cleanStreamText = fullResponseText.replace(/\[INVENTORY:.*?\]/g, "");
-            responseElement.innerHTML = DOMPurify.sanitize(marked.parse(cleanStreamText));
-            gameOutput.scrollTop = gameOutput.scrollHeight;
-        }
-        
-        processFinalResponse(fullResponseText);
+        gameOutput.innerHTML = ''; 
+        addMessage(response.text(), 'gamemaster');
         setLoadingState(false);
         gameOutput.scrollTop = 0;
 
@@ -316,7 +295,7 @@ function toggleTheme() {
     applyTheme(newTheme);
 }
 
-// --- Event Listeners -----------------------------------------------
+// --- Event Listeners ---
 submitBtn.addEventListener('click', () => handlePlayerInput());
 playerInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') handlePlayerInput();
@@ -404,7 +383,7 @@ confirmResetBtn.addEventListener('click', () => {
     location.reload();
 });
 
-// --- Start the game! -----------------------------------------------
+// --- Start the game! ---
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
