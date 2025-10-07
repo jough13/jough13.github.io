@@ -162,7 +162,7 @@ function reattachChoiceButtonListeners() {
 }
 
 // ** MODIFIED FUNCTION **
-// This function now replaces more pronouns to be grammatically correct.
+// Added another pronoun replacement for "you've".
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
@@ -170,6 +170,7 @@ function handleChoiceClick(event) {
 
     // ** EXPANDED PRONOUN FIX **
     // The order is important: replace more specific phrases first.
+    choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
