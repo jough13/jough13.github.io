@@ -62,9 +62,6 @@ const loadingMessages = {
     ]
 };
 
-// The amount of space (in pixels) to leave above the scroll target.
-const SCROLL_PADDING = 30;
-
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
@@ -149,11 +146,7 @@ function handleChoiceClick(event) {
     });
 }
 
-// ** MODIFIED FUNCTION 1 **
-// This function now returns the first HTML element it creates.
 function addMessage(text, sender) {
-    let firstElement = null;
-
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
         let choiceContainer = null;
@@ -169,7 +162,6 @@ function addMessage(text, sender) {
                 if (!choiceContainer) {
                     choiceContainer = document.createElement('div');
                     choiceContainer.classList.add('choice-container', 'fade-in');
-                    if (!firstElement) firstElement = choiceContainer; // Capture the first element
                     gameOutput.appendChild(choiceContainer);
                 }
 
@@ -192,8 +184,6 @@ function addMessage(text, sender) {
                     p.classList.add('gm-first-paragraph');
                     isFirstGMParagraph = false;
                 }
-                
-                if (!firstElement) firstElement = p; // Capture the first element
 
                 const unsafeHtml = marked.parse(paragraphText);
                 const safeHtml = DOMPurify.sanitize(unsafeHtml);
@@ -212,11 +202,8 @@ function addMessage(text, sender) {
             p.classList.add('loading-text', 'fade-in');
         }
         
-        if (!firstElement) firstElement = p; // Capture the first element
         gameOutput.appendChild(p);
     }
-    
-    return firstElement; // Return the reference to the first element created
 }
 
 
@@ -237,15 +224,18 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// ** MODIFIED FUNCTION 2 **
-// This now uses the returned element from addMessage as the scroll target.
+// ** MODIFIED FUNCTION **
+// This now implements the scrolling logic shown in your screenshot.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
-    
+
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
+    // Get a reference to the player's message we just added.
+    const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
+
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     playerInput.value = '';
@@ -267,16 +257,12 @@ async function handlePlayerInput(customDisplayText = null) {
         
         loader.remove();
 
-        // Capture the first element of the GM's response.
-        const gmResponseElement = addMessage(response.text(), 'gamemaster');
+        addMessage(response.text(), 'gamemaster');
         
-        // If we have a valid element from the GM's response, scroll to it with padding.
-        if (gmResponseElement) {
-            const desiredScrollPosition = gmResponseElement.offsetTop - SCROLL_PADDING;
-            gameOutput.scrollTo({
-                top: desiredScrollPosition,
-                behavior: 'smooth'
-            });
+        // ** NEW SCROLL LOGIC **
+        // After the GM's response, scroll the player's own message to the very top.
+        if (lastPlayerMessage) {
+            lastPlayerMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
     } catch (error) {
