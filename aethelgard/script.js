@@ -53,11 +53,12 @@ You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your p
 Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
 1.  **Principle of Purposeful Description:** Every descriptive word should have a distinct purpose. Avoid using multiple adjectives that convey the same meaning. Prefer one strong adjective over two weak ones.
 2.  **Sentence Rhythm:** Vary your sentence structure to create a smooth, natural flow.
+3.  **Be Concise:** Keep your narrative descriptions to 2-3 paragraphs. Be evocative but not overly verbose.
 
 //-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events.
-2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text.
+2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text. Do not end choices with a period.
 3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
@@ -101,11 +102,10 @@ function handleChoiceClick(event) {
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // --- FIX ---
-    // This new line removes any trailing punctuation (like a period) from the AI's choice.
+    // This removes any trailing punctuation (like a period) from the AI's choice.
     choiceText = choiceText.replace(/[.,;:]+$/, "");
 
-    // The pronoun fix remains unchanged.
+    // The pronoun fix.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
@@ -125,8 +125,7 @@ function handleChoiceClick(event) {
     });
 }
 
-// --- UPDATED addMessage Function ---
-// This function now handles inventory parsing and choice button creation again.
+
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         // 1. Handle Inventory Parsing
@@ -187,6 +186,7 @@ function addMessage(text, sender) {
     }
 }
 
+
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
     if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
@@ -196,7 +196,7 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// --- REVERTED handlePlayerInput to non-streaming ---
+
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -249,15 +249,24 @@ function setLoadingState(isLoading) {
     }
 }
 
-// --- REVERTED initializeAI to non-streaming ---
+
 async function initializeAI(apiKey) {
     gameOutput.innerHTML = '';
     addMessage('Connecting to the ancient world...<br><span class="mini-loader"></span>', 'system');
     setLoadingState(true); 
 
     try {
+        // Manually parse the initial prompt to set the starting inventory.
+        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
+        const initialInventoryMatch = GAME_MASTER_PROMPT.match(inventoryRegex);
+        if (initialInventoryMatch) {
+            const lastMatch = initialInventoryMatch[initialInventoryMatch.length - 1];
+            const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
+            inventoryList.textContent = items || "Empty";
+        }
+
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
@@ -365,7 +374,7 @@ confirmLoadBtn.addEventListener('click', () => {
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         chat = model.startChat({ history: savedHistory });
         
         gameOutput.innerHTML = savedHTML;
