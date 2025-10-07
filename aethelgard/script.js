@@ -333,7 +333,7 @@ function setLoadingState(isLoading) {
 
 async function initializeAI(apiKey) {
     gameOutput.innerHTML = '';
-    addMessage('Connecting to the ancient world... <span class="mini-loader"></span>', 'system');
+    addMessage('Connecting to the ancient world...<br><span class="mini-loader"></span>', 'system');
     setLoadingState(true); 
 
     try {
