@@ -88,6 +88,27 @@ h1 {
     user-select: none;
 }
 
+/* --- NEW INVENTORY STYLE --- */
+#inventory-container {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    font-size: 0.9em;
+    color: var(--system-text-color);
+    transition: background-color 0.3s;
+}
+
+#inventory-container strong {
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+#inventory-list {
+    color: var(--accent-color);
+    font-style: italic;
+}
+
+
 #game-output {
     flex-grow: 1;
     padding: 20px;
@@ -393,6 +414,18 @@ body:not(.loading) #loader {
     visibility: hidden;
 }
 
+/* --- Mini Loader for System Messages --- */
+.mini-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--subtle-border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-top: 15px; /* Adds space below the text */
+}
+
 /* --- Footer & Settings Styles --- */
 footer {
     padding: 8px 15px;
@@ -477,16 +510,4 @@ footer {
 
 #toast-notification:not(.hidden) {
     animation: fadeInOut 3s ease-in-out forwards;
-}
-
-/* --- Mini Loader for System Messages --- */
-.mini-loader {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--subtle-border-color);
-    border-top-color: var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-top: 15px; /* Adds space below the text */
 }
