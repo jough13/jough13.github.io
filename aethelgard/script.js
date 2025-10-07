@@ -246,7 +246,7 @@ function addMessage(text, sender) {
             p.textContent = `> ${text}`;
             p.classList.add('player-text', 'fade-in', 'turn-divider');
         } else if (sender === 'system') {
-            p.textContent = text;
+            p.innerHTML = text; // Allows us to render the loader's HTML span
             p.classList.add('loading-text', 'fade-in');
         }
         
@@ -333,7 +333,7 @@ function setLoadingState(isLoading) {
 
 async function initializeAI(apiKey) {
     gameOutput.innerHTML = '';
-    addMessage("Connecting to the ancient world...", 'system');
+    addMessage('Connecting to the ancient world... <span class="mini-loader"></span>', 'system');
     setLoadingState(true); 
 
     try {
