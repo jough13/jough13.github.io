@@ -488,6 +488,5 @@ footer {
     border-top-color: var(--accent-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    vertical-align: middle;
-    margin-left: 10px;
+    margin-top: 15px; /* Adds space below the text */
 }
