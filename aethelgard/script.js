@@ -63,7 +63,7 @@ const loadingMessages = {
 };
 
 // The amount of space (in pixels) to leave above the scroll target.
-const SCROLL_PADDING = 40;
+const SCROLL_PADDING = 30;
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
@@ -149,7 +149,11 @@ function handleChoiceClick(event) {
     });
 }
 
+// ** MODIFIED FUNCTION 1 **
+// This function now returns the first HTML element it creates.
 function addMessage(text, sender) {
+    let firstElement = null;
+
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
         let choiceContainer = null;
@@ -165,6 +169,7 @@ function addMessage(text, sender) {
                 if (!choiceContainer) {
                     choiceContainer = document.createElement('div');
                     choiceContainer.classList.add('choice-container', 'fade-in');
+                    if (!firstElement) firstElement = choiceContainer; // Capture the first element
                     gameOutput.appendChild(choiceContainer);
                 }
 
@@ -187,6 +192,8 @@ function addMessage(text, sender) {
                     p.classList.add('gm-first-paragraph');
                     isFirstGMParagraph = false;
                 }
+                
+                if (!firstElement) firstElement = p; // Capture the first element
 
                 const unsafeHtml = marked.parse(paragraphText);
                 const safeHtml = DOMPurify.sanitize(unsafeHtml);
@@ -205,8 +212,11 @@ function addMessage(text, sender) {
             p.classList.add('loading-text', 'fade-in');
         }
         
+        if (!firstElement) firstElement = p; // Capture the first element
         gameOutput.appendChild(p);
     }
+    
+    return firstElement; // Return the reference to the first element created
 }
 
 
@@ -227,16 +237,12 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// ** MODIFIED FUNCTION **
-// The scrolling logic is updated here to focus on the previous choices.
+// ** MODIFIED FUNCTION 2 **
+// This now uses the returned element from addMessage as the scroll target.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
     
-    // ** NEW **: Get a reference to the last set of choices BEFORE adding new content.
-    const choiceContainers = gameOutput.querySelectorAll('.choice-container');
-    const lastChoiceContainer = choiceContainers.length > 0 ? choiceContainers[choiceContainers.length - 1] : null;
-
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
@@ -261,29 +267,16 @@ async function handlePlayerInput(customDisplayText = null) {
         
         loader.remove();
 
-        addMessage(response.text(), 'gamemaster');
+        // Capture the first element of the GM's response.
+        const gmResponseElement = addMessage(response.text(), 'gamemaster');
         
-        // ** NEW SCROLL LOGIC **
-        // If there was a previous choice container, scroll to show the last two options.
-        if (lastChoiceContainer) {
-            const choices = lastChoiceContainer.querySelectorAll('.choice-btn');
-            let targetElement = null;
-
-            if (choices.length > 1) {
-                // Target the second-to-last choice button.
-                targetElement = choices[choices.length - 2];
-            } else if (choices.length > 0) {
-                // If there's only one, target that one.
-                targetElement = choices[0];
-            }
-
-            if (targetElement) {
-                const desiredScrollPosition = targetElement.offsetTop - SCROLL_PADDING;
-                gameOutput.scrollTo({
-                    top: desiredScrollPosition,
-                    behavior: 'smooth'
-                });
-            }
+        // If we have a valid element from the GM's response, scroll to it with padding.
+        if (gmResponseElement) {
+            const desiredScrollPosition = gmResponseElement.offsetTop - SCROLL_PADDING;
+            gameOutput.scrollTo({
+                top: desiredScrollPosition,
+                behavior: 'smooth'
+            });
         }
 
     } catch (error) {
