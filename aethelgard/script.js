@@ -1,5 +1,4 @@
-// This tells the browser we are using the Google AI SDK.
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+// This file no longer needs the Google AI SDK, as all AI calls happen on the server.
 
 // --- DOM Elements ----------------------------------------------------
 const gameOutput = document.getElementById('game-output');
@@ -8,12 +7,6 @@ const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
 const toast = document.getElementById('toast-notification');
-
-// API Key Modal
-const apiKeyModal = document.getElementById('api-key-modal');
-const apiKeyInput = document.getElementById('api-key-input');
-const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
-const clearApiKeyBtn = document.getElementById('clear-api-key');
 
 // Settings Modal
 const settingsModal = document.getElementById('settings-modal');
@@ -32,59 +25,20 @@ const confirmLoadModal = document.getElementById('confirm-load-modal');
 const cancelLoadBtn = document.getElementById('cancel-load-btn');
 const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
-
-// An array of phrases for player actions to add variety
+// --- Game Constants ----------------------------------------------------
 const actionPhrases = [
-    "I decide to",
-    "I choose to",
-    "I am going to",
-    "I'll try to",
-    "My next move is to",
-    "I will"
+    "I decide to", "I choose to", "I am going to", "I'll try to", "My next move is to", "I will"
 ];
 
-// Thematic loading messages based on player intent
 const loadingMessages = {
-    perception: [
-        "Your eyes adjust to the details...",
-        "A hidden truth brushes against your mind...",
-        "The world reveals a secret...",
-        "Focusing on the unseen...",
-        "The patterns become clear..."
-    ],
-    action: [
-        "You commit to your course...",
-        "The world shifts in response to your will...",
-        "Fate's loom trembles...",
-        "A breath held, a step taken...",
-        "The die is cast..."
-    ],
-    social: [
-        "Choosing your words with care...",
-        "The currents of conversation shift...",
-        "A fragile trust is tested...",
-        "You offer a piece of yourself...",
-        "The air hangs heavy with unspoken words..."
-    ],
-    magic: [
-        "The Amulet hums in response...",
-        "Weaving the threads of ethereal energy...",
-        "The air crackles with latent power...",
-        "A whisper on the edge of reality...",
-        "The ancient forces stir..."
-    ],
-    default: [
-        "The world holds its breath...",
-        "Consulting the celestial patterns...",
-        "The ancient stones whisper...",
-        "Time stretches and bends...",
-        "Destiny considers your move..."
-    ]
+    perception: ["Your eyes adjust to the details...", "A hidden truth brushes against your mind...", "The world reveals a secret..."],
+    action: ["You commit to your course...", "The world shifts in response to your will...", "Fate's loom trembles..."],
+    social: ["Choosing your words with care...", "The currents of conversation shift...", "A fragile trust is tested..."],
+    magic: ["The Amulet hums in response...", "Weaving the threads of ethereal energy...", "The air crackles with latent power..."],
+    default: ["The world holds its breath...", "Consulting the celestial patterns...", "Destiny considers your move..."]
 };
 
 const SCROLL_PADDING = 40;
-
-// --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
 You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
@@ -143,8 +97,7 @@ Guide the story through three acts.
 `;
 
 // --- Game Logic ------------------------------------------------------
-let chat; // This will hold our chat session
-let genAI; // To re-initialize chat after loading
+let gameHistory = []; // The entire game state is now stored in this array.
 
 // Helper function for toast notifications
 function showToast(message) {
@@ -161,37 +114,33 @@ function reattachChoiceButtonListeners() {
     });
 }
 
-// ** MODIFIED FUNCTION **
-// Added another pronoun replacement for "you've".
+// Handles clicking a choice button
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // ** EXPANDED PRONOUN FIX **
-    // The order is important: replace more specific phrases first.
+    // Pronoun fix
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
-    // A general "you" -> "I" or "me" is avoided as it's hard to get right without full sentence analysis.
-
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
     const randomIndex = Math.floor(Math.random() * actionPhrases.length);
-    const randomPhrase = actionPhrases[randomIndex];
-    const playerDisplayMessage = `${randomPhrase} ${choiceText}.`;
+    const playerDisplayMessage = `${actionPhrases[randomIndex]} ${choiceText}.`;
 
     playerInput.value = choiceLetter;
     handlePlayerInput(playerDisplayMessage);
 
-    const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
-    buttons.forEach(button => {
-        button.disabled = true;
+    const allButtons = document.querySelectorAll('.choice-btn');
+    allButtons.forEach(btn => {
+        btn.disabled = true;
     });
 }
 
+// Adds a message to the game output window
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         const paragraphs = text.split('\n');
@@ -200,7 +149,6 @@ function addMessage(text, sender) {
 
         paragraphs.forEach(paragraphText => {
             if (paragraphText.trim() === '') return;
-
             const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
             const match = paragraphText.match(choiceRegex);
 
@@ -210,36 +158,26 @@ function addMessage(text, sender) {
                     choiceContainer.classList.add('choice-container', 'fade-in');
                     gameOutput.appendChild(choiceContainer);
                 }
-
-                const choiceLetter = match[1];
-                const choiceText = match[2].trim();
-
                 const button = document.createElement('button');
                 button.classList.add('choice-btn');
-                button.textContent = `${choiceLetter}) ${choiceText}`;
-                button.dataset.choice = choiceLetter;
+                button.textContent = `${match[1]}) ${match[2].trim()}`;
+                button.dataset.choice = match[1];
                 button.addEventListener('click', handleChoiceClick);
-
                 choiceContainer.appendChild(button);
             } else {
                 choiceContainer = null;
                 const p = document.createElement('p');
                 p.classList.add('fade-in');
-
                 if (isFirstGMParagraph) {
                     p.classList.add('gm-first-paragraph');
                     isFirstGMParagraph = false;
                 }
-
-                const unsafeHtml = marked.parse(paragraphText);
-                const safeHtml = DOMPurify.sanitize(unsafeHtml);
-                p.innerHTML = safeHtml;
+                p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
                 gameOutput.appendChild(p);
             }
         });
     } else {
         const p = document.createElement('p');
-        
         if (sender === 'player') {
             p.textContent = `> ${text}`;
             p.classList.add('player-text', 'fade-in', 'turn-divider');
@@ -247,45 +185,35 @@ function addMessage(text, sender) {
             p.textContent = text;
             p.classList.add('loading-text', 'fade-in');
         }
-        
         gameOutput.appendChild(p);
     }
 }
 
-
+// Chooses a thematic loading message
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
-    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) {
-        return 'perception';
-    }
-    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) {
-        return 'social';
-    }
-    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) {
-        return 'magic';
-    }
-    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) {
-        return 'action';
-    }
+    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
+    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) return 'social';
+    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) return 'magic';
+    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) return 'action';
     return 'default';
 }
 
+// Main function to handle player input and communication with the backend
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
-    if (inputText === '' || !chat) return;
+    if (inputText === '') return;
 
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
-    
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
-
     gameOutput.scrollTop = gameOutput.scrollHeight;
-
     playerInput.value = '';
     setLoadingState(true);
 
+    // Add loading message
     const context = getLoadingContext(inputText);
-    const messageList = loadingMessages[context] || loadingMessages.default;
+    const messageList = loadingMessages[context];
     const randomIndex = Math.floor(Math.random() * messageList.length);
     const loader = document.createElement('div');
     loader.id = 'inline-loader';
@@ -295,32 +223,46 @@ async function handlePlayerInput(customDisplayText = null) {
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     try {
-        const result = await chat.sendMessage(inputText);
-        const response = result.response;
-        
-        loader.remove();
+        // Send the history and new message to our secure serverless function
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                history: gameHistory,
+                message: inputText
+            }),
+        });
 
-        addMessage(response.text(), 'gamemaster');
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const gmResponseText = data.text;
+
+        // Update the local game history
+        gameHistory.push({ role: 'user', parts: [{ text: inputText }] });
+        gameHistory.push({ role: 'model', parts: [{ text: gmResponseText }] });
+
+        loader.remove();
+        addMessage(gmResponseText, 'gamemaster');
         
+        // Scroll to the previous player message for context
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
-            gameOutput.scrollTo({
-                top: desiredScrollPosition,
-                behavior: 'smooth'
-            });
+            gameOutput.scrollTo({ top: desiredScrollPosition, behavior: 'smooth' });
         }
 
     } catch (error) {
-        console.error("Error sending message:", error);
+        console.error("Error communicating with server:", error);
         addMessage("A strange force interferes with your connection... Please try again.", 'system');
-        gameOutput.scrollTop = gameOutput.scrollHeight;
+        if (loader) loader.remove();
     } finally {
-        const finalLoader = document.getElementById('inline-loader');
-        if (finalLoader) finalLoader.remove();
         setLoadingState(false);
     }
 }
 
+// Disables/enables input during AI responses
 function setLoadingState(isLoading) {
     playerInput.disabled = isLoading;
     submitBtn.disabled = isLoading;
@@ -329,47 +271,49 @@ function setLoadingState(isLoading) {
     }
 }
 
-async function initializeAI(apiKey) {
+// Starts a new game by fetching the initial message from the GM
+async function startNewGame() {
     gameOutput.innerHTML = '';
+    gameHistory = [];
     addMessage("Connecting to the ancient world...", 'system');
-    setLoadingState(true); 
+    setLoadingState(true);
 
     try {
-        genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        // This is the very first call to the AI with the main prompt
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                history: [],
+                message: GAME_MASTER_PROMPT
+            }),
+        });
 
-        chat = model.startChat({ history: [] });
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+        }
 
-        const result = await chat.sendMessage(GAME_MASTER_PROMPT);
-        const response = result.response;
+        const data = await response.json();
+        const gmResponseText = data.text;
+        
+        // The GM prompt is the first "user" message, and the response is the first "model" message
+        gameHistory.push({ role: 'user', parts: [{ text: GAME_MASTER_PROMPT }] });
+        gameHistory.push({ role: 'model', parts: [{ text: gmResponseText }] });
 
-        gameOutput.innerHTML = ''; 
-        addMessage(response.text(), 'gamemaster');
-        setLoadingState(false);
-        gameOutput.scrollTop = 0;
+        gameOutput.innerHTML = ''; // Clear "Connecting..." message
+        addMessage(gmResponseText, 'gamemaster');
 
     } catch (error) {
         console.error("CRITICAL INITIALIZATION ERROR:", error);
-        gameOutput.innerHTML = ''; 
-        addMessage("Connection failed. The API key may be invalid or there could be a network issue.", 'system');
-        addMessage("Please refresh the page and try again with a valid key.", 'system');
-        
-        setLoadingState(true);
-        playerInput.placeholder = "Refresh to try again.";
+        gameOutput.innerHTML = '';
+        addMessage("Connection failed. The ancient world is unreachable. Please refresh to try again.", 'system');
+    } finally {
+        setLoadingState(false);
     }
 }
 
-function submitApiKey() {
-    const apiKey = apiKeyInput.value.trim();
-    if (!apiKey) return;
 
-    localStorage.setItem('gemini-api-key', apiKey);
-    
-    apiKeyModal.style.display = 'none';
-
-    initializeAI(apiKey);
-}
-
+// --- Theme Management ---
 function applyTheme(theme) {
     if (theme === 'light') {
         document.body.classList.add('light-mode');
@@ -395,18 +339,6 @@ playerInput.addEventListener('keydown', (event) => {
 
 themeToggle.addEventListener('click', toggleTheme);
 
-apiKeySubmitBtn.addEventListener('click', submitApiKey);
-apiKeyInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') submitApiKey();
-});
-
-clearApiKeyBtn.addEventListener('click', () => {
-    localStorage.removeItem('gemini-api-key');
-    apiKeyInput.value = '';
-    apiKeyInput.placeholder = 'Key cleared. Please enter a new one.';
-    apiKeyInput.focus();
-});
-
 // Settings Modal Listeners
 settingsBtn.addEventListener('click', () => {
     settingsModal.classList.remove('hidden');
@@ -417,11 +349,13 @@ closeSettingsBtn.addEventListener('click', () => {
 });
 
 // Save Button
-saveBtn.addEventListener('click', async () => {
-    if (!chat) return;
+saveBtn.addEventListener('click', () => {
+    if (gameHistory.length === 0) {
+        showToast("Nothing to save yet.");
+        return;
+    };
     try {
-        const history = await chat.getHistory();
-        localStorage.setItem('savedGameHistory', JSON.stringify(history));
+        localStorage.setItem('savedGameHistory', JSON.stringify(gameHistory));
         localStorage.setItem('savedGameHTML', gameOutput.innerHTML);
         showToast("Game Saved!");
     } catch (error) {
@@ -431,7 +365,7 @@ saveBtn.addEventListener('click', async () => {
     settingsModal.classList.add('hidden');
 });
 
-// Load Button - shows confirmation modal first
+// Load Button - shows confirmation modal
 loadBtn.addEventListener('click', () => {
     if (!localStorage.getItem('savedGameHistory')) {
         showToast("No saved game found.");
@@ -441,7 +375,7 @@ loadBtn.addEventListener('click', () => {
     confirmLoadModal.classList.remove('hidden');
 });
 
-// Reset Button - shows confirmation modal first
+// Reset Button - shows confirmation modal
 resetBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
     confirmResetModal.classList.remove('hidden');
@@ -456,26 +390,20 @@ cancelLoadBtn.addEventListener('click', () => {
 confirmLoadBtn.addEventListener('click', () => {
     const savedHistoryJSON = localStorage.getItem('savedGameHistory');
     const savedHTML = localStorage.getItem('savedGameHTML');
-    const apiKey = localStorage.getItem('gemini-api-key');
 
-    if (savedHistoryJSON && savedHTML && apiKey) {
-        const savedHistory = JSON.parse(savedHistoryJSON);
-        
-        genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        chat = model.startChat({ history: savedHistory });
-        
+    if (savedHistoryJSON && savedHTML) {
+        gameHistory = JSON.parse(savedHistoryJSON);
         gameOutput.innerHTML = savedHTML;
         
-        reattachChoiceButtonListeners();
+        reattachChoiceButtonListeners(); // Crucial for making old buttons clickable again
         
         gameOutput.scrollTop = gameOutput.scrollHeight;
-        
         showToast("Game Loaded!");
     } else {
         showToast("Could not load game data.");
     }
     confirmLoadModal.classList.add('hidden');
+    setLoadingState(false);
 });
 
 // Cancel Reset Button
@@ -486,27 +414,19 @@ cancelResetBtn.addEventListener('click', () => {
 // Confirm Reset Button
 confirmResetBtn.addEventListener('click', () => {
     confirmResetModal.classList.add('hidden');
-    localStorage.removeItem('gemini-api-key');
+    // We only clear game data now, not API keys
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
-    location.reload();
+    startNewGame(); // Start a fresh game
 });
-
 
 // --- Start the game! -----------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
 
-    const savedApiKey = localStorage.getItem('gemini-api-key');
-    if (savedApiKey) {
-        apiKeyInput.value = savedApiKey;
-        apiKeyModal.style.display = 'none';
-        initializeAI(savedApiKey);
-    } else {
-        apiKeyModal.style.display = 'flex';
-        apiKeyInput.focus();
-    }
+    // No more API key checks, just start the game!
+    startNewGame();
 
     document.body.classList.remove('loading');
 });
