@@ -62,6 +62,9 @@ const loadingMessages = {
     ]
 };
 
+// ** NEW ** - The amount of space (in pixels) to leave above the player's text.
+const SCROLL_PADDING = 40;
+
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
@@ -225,7 +228,7 @@ function getLoadingContext(inputText) {
 }
 
 // ** MODIFIED FUNCTION **
-// This now implements the scrolling logic shown in your screenshot.
+// This now uses the padding constant for the final scroll position.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -233,7 +236,6 @@ async function handlePlayerInput(customDisplayText = null) {
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     
-    // Get a reference to the player's message we just added.
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
 
     gameOutput.scrollTop = gameOutput.scrollHeight;
@@ -259,10 +261,15 @@ async function handlePlayerInput(customDisplayText = null) {
 
         addMessage(response.text(), 'gamemaster');
         
-        // ** NEW SCROLL LOGIC **
-        // After the GM's response, scroll the player's own message to the very top.
         if (lastPlayerMessage) {
-            lastPlayerMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Calculate the position of the player's message and subtract the padding.
+            const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
+            
+            // Smoothly scroll to that final position.
+            gameOutput.scrollTo({
+                top: desiredScrollPosition,
+                behavior: 'smooth'
+            });
         }
 
     } catch (error) {
