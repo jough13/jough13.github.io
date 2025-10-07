@@ -1,0 +1,21 @@
+{
+  "name": "amulet-of-aethelgard",
+  "version": "1.0.0",
+  "description": "A text-based adventure game powered by Gemini.",
+  "main": "script.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ttrpg",
+    "ai",
+    "gemini",
+    "text-adventure"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.14.1"
+  }
+}
