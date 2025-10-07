@@ -8,6 +8,7 @@ const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
 const toast = document.getElementById('toast-notification');
+const inventoryList = document.getElementById('inventory-list'); // New inventory element
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -32,159 +33,87 @@ const confirmLoadModal = document.getElementById('confirm-load-modal');
 const cancelLoadBtn = document.getElementById('cancel-load-btn');
 const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
-
 // An array of phrases for player actions to add variety
 const actionPhrases = [
-    "I decide to",
-    "I choose to",
-    "I am going to",
-    "I'll try to",
-    "My next move is to",
-    "I will"
+    "I decide to", "I choose to", "I am going to", "I'll try to", "My next move is to", "I will"
 ];
 
 // Thematic loading messages based on player intent
 const loadingMessages = {
-    perception: [
-        "Your eyes adjust to the details...",
-        "A hidden truth brushes against your mind...",
-        "The world reveals a secret...",
-        "Focusing on the unseen...",
-        "The patterns become clear..."
-    ],
-    action: [
-        "You commit to your course...",
-        "The world shifts in response to your will...",
-        "Fate's loom trembles...",
-        "A breath held, a step taken...",
-        "The die is cast..."
-    ],
-    social: [
-        "Choosing your words with care...",
-        "The currents of conversation shift...",
-        "A fragile trust is tested...",
-        "You offer a piece of yourself...",
-        "The air hangs heavy with unspoken words..."
-    ],
-    magic: [
-        "The Amulet hums in response...",
-        "Weaving the threads of ethereal energy...",
-        "The air crackles with latent power...",
-        "A whisper on the edge of reality...",
-        "The ancient forces stir..."
-    ],
-    default: [
-        "The world holds its breath...",
-        "Consulting the celestial patterns...",
-        "The ancient stones whisper...",
-        "Time stretches and bends...",
-        "Destiny considers your move..."
-    ]
+    perception: ["Your eyes adjust to the details...", "A hidden truth brushes against your mind...", "The world reveals a secret...", "Focusing on the unseen...", "The patterns become clear..."],
+    action: ["You commit to your course...", "The world shifts in response to your will...", "Fate's loom trembles...", "A breath held, a step taken...", "The die is cast..."],
+    social: ["Choosing your words with care...", "The currents of conversation shift...", "A fragile trust is tested...", "You offer a piece of yourself...", "The air hangs heavy with unspoken words..."],
+    magic: ["The Amulet hums in response...", "Weaving the threads of ethereal energy...", "The air crackles with latent power...", "A whisper on the edge of reality...", "The ancient forces stir..."],
+    default: ["The world holds its breath...", "Consulting the celestial patterns...", "The ancient stones whisper...", "Time stretches and bends...", "Destiny considers your move..."]
 };
 
 const SCROLL_PADDING = 40;
 
-// --- Game Master Prompt (Purposeful Prose v7.0) ---
+// --- UPDATED GAME MASTER PROMPT ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
 You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
 
 //-- TONE & PROSE PROTOCOL --//
 Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
-1.  **Principle of Purposeful Description:** This is your core style guide. Every descriptive word should have a distinct purpose.
-    * Avoid using multiple adjectives that convey the same meaning (e.g., "the huge, massive rock").
-    * Using two distinct descriptors is allowed, but should be done with intention, not as a default (e.g., "a tall, slender tree" is good; "an immense, ancient tree" is pushing the limit).
-    * Prefer one strong adjective over two weak ones.
-2.  **Sentence Rhythm:** Vary your sentence structure to create a smooth, natural flow. Avoid both long, complex sentences and a long series of short, simple ones.
-3.  **Style Example:**
-    * **AVOID (Too Sparse):** "You awaken in a hollow. An ancient tree is above you. The forest is dense."
-    * **AVOID (Too Rich):** "You awaken with a slow, drifting consciousness under an immense, ancient tree with gnarled, twisting roots."
-    * **USE THIS STYLE (Balanced):** "You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the afternoon light."
+1.  **Principle of Purposeful Description:** Every descriptive word should have a distinct purpose. Avoid using multiple adjectives that convey the same meaning. Prefer one strong adjective over two weak ones.
+2.  **Sentence Rhythm:** Vary your sentence structure to create a smooth, natural flow.
 
 //-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
-1.  **Describe the Scene:** Detail the environment and events, following the prose protocol.
-2.  **Present Choices:** This is a critical instruction. You MUST provide 2 to 4 options. Each option must be on its own new line.
-    * **The correct format is:** **A)** Choice text here.
-    * The letter (e.g., A, B, C) and the closing parenthesis ')' must be enclosed together in double asterisks.
-    * Use a parenthesis ')', not a period '.'.
-    * Avoid other formats like using single asterisks or no asterisks at all.
-3.  **Handle Custom Input:** The player may occasionally type a custom action instead of choosing an option. If they do, you must:
-    a. Narrate a logical, brief outcome for their custom action.
-    b. If the action is impossible or nonsensical, state that clearly but gently (e.g., "You try to lift the boulder, but it is far too heavy.").
-    c. After narrating the outcome of their action, you MUST present a new set of choices to guide the story forward. This is essential to keep the game moving.
+1.  **Describe the Scene:** Detail the environment and events.
+2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text.
+3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
 4.  **Await Input:** Pause and wait for the player's response.
-5.  **Narrate the Outcome:** Describe the result of the player's chosen option with clarity.
+5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
+
+//-- NEW INVENTORY PROTOCOL --//
+1. You are responsible for tracking the player's inventory.
+2. At the end of EVERY response where the player's inventory changes (they gain or lose an item), you MUST include a special inventory tag on a new line.
+3. The format is critical: [INVENTORY: Item 1, Item 2, A Rusty Key]
+4. If the inventory is empty, use [INVENTORY: Empty]
+5. Only include this tag if the inventory has changed in that turn.
 
 //-- WORLD KNOWLEDGE (GM EYES ONLY) --//
-This is your secret knowledge. Use it to build a consistent world, revealing it gradually.
-* **The 'Sundered Star':** A powerful crystal called the 'Nexus' that once stabilized the world's magic before it was shattered.
-* **The Amulet:** The player's amulet is the 'Heartwood Fragment,' the central piece of the Nexus.
-* **The Amnesia:** The player was the Nexus's guardian. Its shattering destroyed their memory. The phrase *"The Sundered Star must be made whole"* is the echo of a forgotten purpose.
-* **The Gloom:** A magical decay from the cataclysm site. It deadens sound and dulls color. A sense of deep melancholy follows it.
-
-//-- NARRATIVE PACING & ARC --//
-Guide the story through three acts.
-* **Act I: The Awakening.** Goal: Establish the quiet world and the amulet's significance.
-* **Act II: The Echoes.** Goal: Uncover the history of the cataclysm.
-* **Act III: The Convergence.** Goal: Confront the source of the Sundering and decide the world's fate.
-
-//-- GAMEPLAY SUB-SYSTEMS --//
-1.  **NPC Protocol:** NPCs have clear motivations. Their dialogue is purposeful and reflects their personality.
-2.  **Exploration Protocol:** Reward curiosity with useful items or interesting environmental clues.
-3.  **The Amulet's Power:** The amulet's power grows as fragments are found.
-    * **Tier 1 (Start):** Hums with a noticeable energy near magic.
-    * **Tier 2 (2-3 Fragments):** Can produce a soft light that guides you.
-    * **Tier 3 (4+ Fragments):** Can reveal faint echoes of past events.
-4.  **Failure States:** Failure results in a narrative complication, not a "game over."
+* **The 'Sundered Star':** A powerful crystal, the 'Nexus', that shattered.
+* **The Amulet:** The player's amulet is the 'Heartwood Fragment,' the central piece.
+* **The Amnesia:** The player was the Nexus's guardian. Its shattering destroyed their memory.
+* **The Gloom:** A magical decay from the cataclysm site.
 
 //-- INITIALIZATION --//
-**Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Execute Act I.
+**Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Your only possession is the amulet around your neck. Execute Act I.
+[INVENTORY: Amulet of Aethelgard]
 `;
 
 // --- Game Logic ------------------------------------------------------
-let chat; // This will hold our chat session
-let genAI; // To re-initialize chat after loading
+let chat;
+let genAI;
 
-// Helper function for toast notifications
 function showToast(message) {
     toast.textContent = message;
     toast.classList.remove('hidden');
-    // The animation will hide it automatically after it finishes
 }
 
-// Re-attaches listeners to choice buttons after loading a game
 function reattachChoiceButtonListeners() {
     const buttons = gameOutput.querySelectorAll('.choice-btn:not([disabled])');
     buttons.forEach(button => {
         button.addEventListener('click', handleChoiceClick);
     });
 }
+
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // The pronoun fix you have is great and remains unchanged.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
-    
-    // This converts the choice (e.g., "Look at the amulet") into a lowercase phrase.
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
-    // --- MODIFICATION START ---
-    // We remove the random action phrases.
-    // const randomIndex = Math.floor(Math.random() * actionPhrases.length);
-    // const randomPhrase = actionPhrases[randomIndex];
-    
-    // We now construct the message directly in the active, present tense
-    // and ensure it ends with three periods for consistency.
-    const playerDisplayMessage = `I ${choiceText}..`;
-    // --- MODIFICATION END ---
-
+    const playerDisplayMessage = `I ${choiceText}...`;
     playerInput.value = choiceLetter;
     handlePlayerInput(playerDisplayMessage);
 
@@ -195,94 +124,72 @@ function handleChoiceClick(event) {
 }
 
 function addMessage(text, sender) {
-    if (sender === 'gamemaster') {
-        const paragraphs = text.split('\n');
-        let choiceContainer = null;
-        let isFirstGMParagraph = true;
-
-        paragraphs.forEach(paragraphText => {
-            if (paragraphText.trim() === '') return;
-
-            const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
-            const match = paragraphText.match(choiceRegex);
-
-            if (match) {
-                if (!choiceContainer) {
-                    choiceContainer = document.createElement('div');
-                    choiceContainer.classList.add('choice-container', 'fade-in');
-                    gameOutput.appendChild(choiceContainer);
-                }
-
-                const choiceLetter = match[1];
-                const choiceText = match[2].trim();
-
-                const button = document.createElement('button');
-                button.classList.add('choice-btn');
-                button.textContent = `${choiceLetter}) ${choiceText}`;
-                button.dataset.choice = choiceLetter;
-                button.addEventListener('click', handleChoiceClick);
-
-                choiceContainer.appendChild(button);
-            } else {
-                choiceContainer = null;
-                const p = document.createElement('p');
-                p.classList.add('fade-in');
-
-                if (isFirstGMParagraph) {
-                    p.classList.add('gm-first-paragraph');
-                    isFirstGMParagraph = false;
-                }
-
-                const unsafeHtml = marked.parse(paragraphText);
-                const safeHtml = DOMPurify.sanitize(unsafeHtml);
-                p.innerHTML = safeHtml;
-                gameOutput.appendChild(p);
-            }
-        });
-    } else {
-        const p = document.createElement('p');
-        
-        if (sender === 'player') {
-            p.textContent = `> ${text}`;
-            p.classList.add('player-text', 'fade-in', 'turn-divider');
-        } else if (sender === 'system') {
-            p.innerHTML = text; // Allows us to render the loader's HTML span
-            p.classList.add('loading-text', 'fade-in');
-        }
-        
-        gameOutput.appendChild(p);
+    const p = document.createElement('p');
+    if (sender === 'player') {
+        p.textContent = `> ${text}`;
+        p.classList.add('player-text', 'fade-in', 'turn-divider');
+    } else if (sender === 'system') {
+        p.innerHTML = text;
+        p.classList.add('loading-text', 'fade-in');
     }
+    gameOutput.appendChild(p);
+}
+
+// NEW function to process the final response after streaming
+function processFinalResponse(fullText) {
+    // 1. Handle Inventory
+    const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
+    const inventoryMatch = fullText.match(inventoryRegex);
+    if (inventoryMatch) {
+        const lastMatch = inventoryMatch[inventoryMatch.length - 1];
+        const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
+        inventoryList.textContent = items || "Empty";
+    }
+
+    // 2. Create Choice Buttons
+    const textWithoutTags = fullText.replace(inventoryRegex, '').trim();
+    const paragraphs = textWithoutTags.split('\n');
+    let choiceContainer = null;
+    paragraphs.forEach(paragraphText => {
+        const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
+        const match = paragraphText.match(choiceRegex);
+        if (match) {
+            if (!choiceContainer) {
+                choiceContainer = document.createElement('div');
+                choiceContainer.classList.add('choice-container', 'fade-in');
+                gameOutput.appendChild(choiceContainer);
+            }
+            const button = document.createElement('button');
+            button.classList.add('choice-btn');
+            button.textContent = `${match[1]}) ${match[2].trim()}`;
+            button.dataset.choice = match[1];
+            button.addEventListener('click', handleChoiceClick);
+            choiceContainer.appendChild(button);
+        } else {
+            choiceContainer = null; // A line of text resets the button group
+        }
+    });
 }
 
 
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
-    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) {
-        return 'perception';
-    }
-    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) {
-        return 'social';
-    }
-    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) {
-        return 'magic';
-    }
-    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) {
-        return 'action';
-    }
+    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
+    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) return 'social';
+    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) return 'magic';
+    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) return 'action';
     return 'default';
 }
 
+// --- REBUILT handlePlayerInput function for STREAMING ---
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
-    
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
-
     gameOutput.scrollTop = gameOutput.scrollHeight;
-
     playerInput.value = '';
     setLoadingState(true);
 
@@ -297,25 +204,36 @@ async function handlePlayerInput(customDisplayText = null) {
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     try {
-        const result = await chat.sendMessage(inputText);
-        const response = result.response;
-        
-        loader.remove();
+        const result = await chat.sendMessageStream(inputText);
+        loader.remove(); // Remove the "thinking" message once streaming starts
 
-        addMessage(response.text(), 'gamemaster');
+        let fullResponseText = "";
+        const responseElement = document.createElement('p');
+        responseElement.classList.add('fade-in', 'gm-first-paragraph');
+        gameOutput.appendChild(responseElement);
+
+        for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            fullResponseText += chunkText;
+
+            // Remove inventory tags before rendering the stream
+            const cleanStreamText = fullResponseText.replace(/\[INVENTORY:.*?\]/g, "");
+            responseElement.innerHTML = DOMPurify.sanitize(marked.parse(cleanStreamText));
+            
+            gameOutput.scrollTop = gameOutput.scrollHeight;
+        }
+
+        // Now that the stream is complete, process for inventory and choices
+        processFinalResponse(fullResponseText);
         
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
-            gameOutput.scrollTo({
-                top: desiredScrollPosition,
-                behavior: 'smooth'
-            });
+            gameOutput.scrollTo({ top: desiredScrollPosition, behavior: 'smooth' });
         }
 
     } catch (error) {
         console.error("Error sending message:", error);
-        addMessage("A strange force interferes with your connection... Please try again.", 'system');
-        gameOutput.scrollTop = gameOutput.scrollHeight;
+        addMessage("A strange force interferes with your connection...", 'system');
     } finally {
         const finalLoader = document.getElementById('inline-loader');
         if (finalLoader) finalLoader.remove();
@@ -323,10 +241,12 @@ async function handlePlayerInput(customDisplayText = null) {
     }
 }
 
+
 function setLoadingState(isLoading) {
     playerInput.disabled = isLoading;
     submitBtn.disabled = isLoading;
-    if (!isLoading) {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isLoading && !isTouchDevice) {
         playerInput.focus();
     }
 }
@@ -339,14 +259,26 @@ async function initializeAI(apiKey) {
     try {
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
         chat = model.startChat({ history: [] });
 
-        const result = await chat.sendMessage(GAME_MASTER_PROMPT);
-        const response = result.response;
+        // Use the new streaming logic for initialization too
+        const result = await chat.sendMessageStream(GAME_MASTER_PROMPT);
+        gameOutput.innerHTML = ''; // Clear connecting message
 
-        gameOutput.innerHTML = ''; 
-        addMessage(response.text(), 'gamemaster');
+        let fullResponseText = "";
+        const responseElement = document.createElement('p');
+        responseElement.classList.add('fade-in', 'gm-first-paragraph');
+        gameOutput.appendChild(responseElement);
+
+        for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            fullResponseText += chunkText;
+            const cleanStreamText = fullResponseText.replace(/\[INVENTORY:.*?\]/g, "");
+            responseElement.innerHTML = DOMPurify.sanitize(marked.parse(cleanStreamText));
+            gameOutput.scrollTop = gameOutput.scrollHeight;
+        }
+        
+        processFinalResponse(fullResponseText);
         setLoadingState(false);
         gameOutput.scrollTop = 0;
 
@@ -354,8 +286,6 @@ async function initializeAI(apiKey) {
         console.error("CRITICAL INITIALIZATION ERROR:", error);
         gameOutput.innerHTML = ''; 
         addMessage("Connection failed. The API key may be invalid or there could be a network issue.", 'system');
-        addMessage("Please refresh the page and try again with a valid key.", 'system');
-        
         setLoadingState(true);
         playerInput.placeholder = "Refresh to try again.";
     }
@@ -364,11 +294,8 @@ async function initializeAI(apiKey) {
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
-
     localStorage.setItem('gemini-api-key', apiKey);
-    
     apiKeyModal.style.display = 'none';
-
     initializeAI(apiKey);
 }
 
@@ -409,22 +336,16 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.focus();
 });
 
-// Settings Modal Listeners
-settingsBtn.addEventListener('click', () => {
-    settingsModal.classList.remove('hidden');
-});
+settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
-closeSettingsBtn.addEventListener('click', () => {
-    settingsModal.classList.add('hidden');
-});
-
-// Save Button
 saveBtn.addEventListener('click', async () => {
     if (!chat) return;
     try {
         const history = await chat.getHistory();
         localStorage.setItem('savedGameHistory', JSON.stringify(history));
         localStorage.setItem('savedGameHTML', gameOutput.innerHTML);
+        localStorage.setItem('savedInventory', inventoryList.textContent); // Save inventory
         showToast("Game Saved!");
     } catch (error) {
         console.error("Error saving game:", error);
@@ -433,7 +354,6 @@ saveBtn.addEventListener('click', async () => {
     settingsModal.classList.add('hidden');
 });
 
-// Load Button - shows confirmation modal first
 loadBtn.addEventListener('click', () => {
     if (!localStorage.getItem('savedGameHistory')) {
         showToast("No saved game found.");
@@ -443,36 +363,29 @@ loadBtn.addEventListener('click', () => {
     confirmLoadModal.classList.remove('hidden');
 });
 
-// Reset Button - shows confirmation modal first
 resetBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
     confirmResetModal.classList.remove('hidden');
 });
 
-// Cancel Load Button
-cancelLoadBtn.addEventListener('click', () => {
-    confirmLoadModal.classList.add('hidden');
-});
+cancelLoadBtn.addEventListener('click', () => confirmLoadModal.classList.add('hidden'));
 
-// Confirm Load Button
 confirmLoadBtn.addEventListener('click', () => {
     const savedHistoryJSON = localStorage.getItem('savedGameHistory');
     const savedHTML = localStorage.getItem('savedGameHTML');
+    const savedInventory = localStorage.getItem('savedInventory');
     const apiKey = localStorage.getItem('gemini-api-key');
 
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
-        
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         chat = model.startChat({ history: savedHistory });
         
         gameOutput.innerHTML = savedHTML;
-        
+        inventoryList.textContent = savedInventory || "Empty"; // Load inventory
         reattachChoiceButtonListeners();
-        
         gameOutput.scrollTop = gameOutput.scrollHeight;
-        
         showToast("Game Loaded!");
     } else {
         showToast("Could not load game data.");
@@ -480,20 +393,16 @@ confirmLoadBtn.addEventListener('click', () => {
     confirmLoadModal.classList.add('hidden');
 });
 
-// Cancel Reset Button
-cancelResetBtn.addEventListener('click', () => {
-    confirmResetModal.classList.add('hidden');
-});
+cancelResetBtn.addEventListener('click', () => confirmResetModal.classList.add('hidden'));
 
-// Confirm Reset Button
 confirmResetBtn.addEventListener('click', () => {
     confirmResetModal.classList.add('hidden');
     localStorage.removeItem('gemini-api-key');
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
+    localStorage.removeItem('savedInventory'); // Clear inventory save
     location.reload();
 });
-
 
 // --- Start the game! -----------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
