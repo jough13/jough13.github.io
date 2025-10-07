@@ -6,12 +6,20 @@ const gameOutput = document.getElementById('game-output');
 const playerInput = document.getElementById('player-input');
 const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const settingsBtn = document.getElementById('settings-btn'); // New
 
-// Modal DOM Elements
+// API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
 const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
+
+// Settings Modal
+const settingsModal = document.getElementById('settings-modal'); // New
+const closeSettingsBtn = settingsModal.querySelector('.modal-close-btn'); // New
+const saveBtn = document.getElementById('save-btn'); // New
+const loadBtn = document.getElementById('load-btn'); // New
+const resetBtn = document.getElementById('reset-btn'); // New
 
 // An array of phrases for player actions to add variety
 const actionPhrases = [
@@ -62,7 +70,6 @@ const loadingMessages = {
     ]
 };
 
-// ** NEW ** - The amount of space (in pixels) to leave above the player's text.
 const SCROLL_PADDING = 40;
 
 // --- Game Master Prompt (Purposeful Prose v7.0) ---
@@ -227,8 +234,6 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-// ** MODIFIED FUNCTION **
-// This now uses the padding constant for the final scroll position.
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -262,10 +267,7 @@ async function handlePlayerInput(customDisplayText = null) {
         addMessage(response.text(), 'gamemaster');
         
         if (lastPlayerMessage) {
-            // Calculate the position of the player's message and subtract the padding.
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
-            
-            // Smoothly scroll to that final position.
             gameOutput.scrollTo({
                 top: desiredScrollPosition,
                 behavior: 'smooth'
@@ -368,6 +370,37 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.placeholder = 'Key cleared. Please enter a new one.';
     apiKeyInput.focus();
 });
+
+// ** NEW - Settings Modal Listeners **
+settingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('hidden');
+});
+
+closeSettingsBtn.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+});
+
+saveBtn.addEventListener('click', () => {
+    console.log("Save functionality to be implemented.");
+    alert("Save functionality is not yet implemented.");
+    settingsModal.classList.add('hidden');
+});
+
+loadBtn.addEventListener('click', () => {
+    console.log("Load functionality to be implemented.");
+    alert("Load functionality is not yet implemented.");
+    settingsModal.classList.add('hidden');
+});
+
+resetBtn.addEventListener('click', () => {
+    console.log("Reset functionality to be implemented.");
+    if (confirm("Are you sure you want to reset the game? All progress will be lost.")) {
+        // This would be where you clear all game data and refresh the page.
+        alert("Reset functionality is not yet implemented.");
+    }
+    settingsModal.classList.add('hidden');
+});
+
 
 // --- Start the game! -----------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
