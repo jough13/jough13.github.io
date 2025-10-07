@@ -478,3 +478,16 @@ footer {
 #toast-notification:not(.hidden) {
     animation: fadeInOut 3s ease-in-out forwards;
 }
+
+/* --- Mini Loader for System Messages --- */
+.mini-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--subtle-border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    vertical-align: middle;
+    margin-left: 10px;
+}
