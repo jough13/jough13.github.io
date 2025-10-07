@@ -101,14 +101,21 @@ function handleChoiceClick(event) {
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
+    // --- FIX ---
+    // This new line removes any trailing punctuation (like a period) from the AI's choice.
+    choiceText = choiceText.replace(/[.,;:]+$/, "");
+
+    // The pronoun fix remains unchanged.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
+    
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
     const playerDisplayMessage = `I ${choiceText}...`;
+    
     playerInput.value = choiceLetter;
     handlePlayerInput(playerDisplayMessage);
 
