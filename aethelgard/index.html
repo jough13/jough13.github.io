@@ -17,6 +17,8 @@
 
     <div id="loader"></div>
 
+    <div id="toast-notification" class="hidden"></div>
+
     <div id="game-container">
         <h1>The Amulet</h1>
         <div id="settings-btn">⚙️</div>
@@ -51,6 +53,28 @@
                 <button id="save-btn">Save Game</button>
                 <button id="load-btn">Load Game</button>
                 <button id="reset-btn" class="destructive">Reset Game</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-reset-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Confirm Reset</h2>
+            <p>Are you sure you want to reset the game? All progress and your saved API key will be lost permanently.</p>
+            <div class="confirm-actions">
+                <button id="cancel-reset-btn" class="neutral-btn">Cancel</button>
+                <button id="confirm-reset-btn" class="destructive">Confirm Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-load-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Load Saved Game</h2>
+            <p>This will overwrite your current session. Are you sure you want to load your last save?</p>
+            <div class="confirm-actions">
+                <button id="cancel-load-btn" class="neutral-btn">Cancel</button>
+                <button id="confirm-load-btn">Confirm Load</button>
             </div>
         </div>
     </div>
