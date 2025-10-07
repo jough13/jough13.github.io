@@ -7,7 +7,7 @@ const playerInput = document.getElementById('player-input');
 const submitBtn = document.getElementById('submit-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
-const toast = document.getElementById('toast-notification'); // New
+const toast = document.getElementById('toast-notification');
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -28,9 +28,9 @@ const cancelResetBtn = document.getElementById('cancel-reset-btn');
 const confirmResetBtn = document.getElementById('confirm-reset-btn');
 
 // Load Confirmation Modal
-const confirmLoadModal = document.getElementById('confirm-load-modal'); // New
-const cancelLoadBtn = document.getElementById('cancel-load-btn'); // New
-const confirmLoadBtn = document.getElementById('confirm-load-btn'); // New
+const confirmLoadModal = document.getElementById('confirm-load-modal');
+const cancelLoadBtn = document.getElementById('cancel-load-btn');
+const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
 
 // An array of phrases for player actions to add variety
@@ -146,14 +146,14 @@ Guide the story through three acts.
 let chat; // This will hold our chat session
 let genAI; // To re-initialize chat after loading
 
-// ** NEW ** - Helper function for toast notifications
+// Helper function for toast notifications
 function showToast(message) {
     toast.textContent = message;
     toast.classList.remove('hidden');
     // The animation will hide it automatically after it finishes
 }
 
-// ** NEW ** - Re-attaches listeners to choice buttons after loading a game
+// Re-attaches listeners to choice buttons after loading a game
 function reattachChoiceButtonListeners() {
     const buttons = gameOutput.querySelectorAll('.choice-btn:not([disabled])');
     buttons.forEach(button => {
@@ -161,13 +161,20 @@ function reattachChoiceButtonListeners() {
     });
 }
 
+// ** MODIFIED FUNCTION **
+// This function now replaces more pronouns to be grammatically correct.
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
+    // ** EXPANDED PRONOUN FIX **
+    // The order is important: replace more specific phrases first.
+    choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
+    choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
+    // A general "you" -> "I" or "me" is avoided as it's hard to get right without full sentence analysis.
 
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
@@ -408,8 +415,6 @@ closeSettingsBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
 });
 
-// ** UPDATED - Save, Load, and Reset Listeners **
-
 // Save Button
 saveBtn.addEventListener('click', async () => {
     if (!chat) return;
@@ -455,18 +460,14 @@ confirmLoadBtn.addEventListener('click', () => {
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
         
-        // Re-initialize the AI model with the saved history
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         chat = model.startChat({ history: savedHistory });
         
-        // Restore the visual game log
         gameOutput.innerHTML = savedHTML;
         
-        // Re-attach listeners to the now-visible choice buttons
         reattachChoiceButtonListeners();
         
-        // Scroll to the bottom of the loaded content
         gameOutput.scrollTop = gameOutput.scrollHeight;
         
         showToast("Game Loaded!");
