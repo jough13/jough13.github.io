@@ -182,7 +182,7 @@ function handleChoiceClick(event) {
     
     // We now construct the message directly in the active, present tense
     // and ensure it ends with three periods for consistency.
-    const playerDisplayMessage = `I ${choiceText}...`;
+    const playerDisplayMessage = `I ${choiceText}..`;
     // --- MODIFICATION END ---
 
     playerInput.value = choiceLetter;
