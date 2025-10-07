@@ -160,28 +160,30 @@ function reattachChoiceButtonListeners() {
         button.addEventListener('click', handleChoiceClick);
     });
 }
-
-// ** MODIFIED FUNCTION **
-// Added another pronoun replacement for "you've".
 function handleChoiceClick(event) {
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // ** EXPANDED PRONOUN FIX **
-    // The order is important: replace more specific phrases first.
+    // The pronoun fix you have is great and remains unchanged.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
-    // A general "you" -> "I" or "me" is avoided as it's hard to get right without full sentence analysis.
-
+    
+    // This converts the choice (e.g., "Look at the amulet") into a lowercase phrase.
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
-    const randomIndex = Math.floor(Math.random() * actionPhrases.length);
-    const randomPhrase = actionPhrases[randomIndex];
-    const playerDisplayMessage = `${randomPhrase} ${choiceText}.`;
+    // --- MODIFICATION START ---
+    // We remove the random action phrases.
+    // const randomIndex = Math.floor(Math.random() * actionPhrases.length);
+    // const randomPhrase = actionPhrases[randomIndex];
+    
+    // We now construct the message directly in the active, present tense
+    // and ensure it ends with three periods for consistency.
+    const playerDisplayMessage = `I ${choiceText}...`;
+    // --- MODIFICATION END ---
 
     playerInput.value = choiceLetter;
     handlePlayerInput(playerDisplayMessage);
