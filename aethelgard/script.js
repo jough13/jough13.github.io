@@ -12,6 +12,12 @@ const inventoryList = document.getElementById('inventory-list');
 const inventoryContainer = document.getElementById('inventory-container');
 const gameTooltip = document.getElementById('game-tooltip');
 
+// NEW Hugging Face Key Modal elements
+const hfKeyModal = document.getElementById('hf-key-modal');
+const hfKeyInput = document.getElementById('hf-key-input');
+const hfKeySubmitBtn = document.getElementById('hf-key-submit-btn');
+const hfCloseBtn = hfKeyModal.querySelector('.modal-close-btn');
+
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
 const apiKeyInput = document.getElementById('api-key-input');
@@ -235,24 +241,67 @@ function addMessage(text, sender) {
 }
 
 async function generateAndDisplayImage(narrativeText) {
-    // 1. Create a placeholder for the image.
     const imageContainer = document.createElement('div');
     imageContainer.className = 'image-container loading fade-in';
-    
-    // 2. Select a random loading message and add it to the container.
     const randomIndex = Math.floor(Math.random() * imageLoadingMessages.length);
     const randomMessage = imageLoadingMessages[randomIndex];
     imageContainer.innerHTML = `<p class="image-loading-text">${randomMessage}...</p>`;
-    
     gameOutput.appendChild(imageContainer);
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
-    // --- Hugging Face Logic ---
-    const HF_TOKEN = "Bearer hf_YOUR_NEW_TOKEN_HERE"; 
-    const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
-    const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene from a text-based adventure game depicting: ${narrativeText}`;
+    // This function wraps the modal logic in a Promise
+    const getHfToken = () => {
+        return new Promise((resolve, reject) => {
+            let existingToken = localStorage.getItem('hf-api-token');
+            if (existingToken) {
+                resolve(existingToken);
+                return;
+            }
+
+            // No token found, so we show the modal.
+            hfKeyModal.classList.remove('hidden');
+            hfKeyInput.focus();
+
+            const handleSubmit = () => {
+                const newToken = hfKeyInput.value.trim();
+                if (newToken) {
+                    localStorage.setItem('hf-api-token', newToken);
+                    cleanupAndResolve(newToken);
+                }
+            };
+
+            const handleCancel = () => {
+                cleanupAndResolve(null);
+            };
+
+            const cleanupAndResolve = (token) => {
+                hfKeyModal.classList.add('hidden');
+                hfKeySubmitBtn.removeEventListener('click', handleSubmit);
+                hfKeyInput.removeEventListener('keydown', handleEnter);
+                hfCloseBtn.removeEventListener('click', handleCancel);
+                resolve(token);
+            };
+
+            const handleEnter = (event) => {
+                if (event.key === 'Enter') handleSubmit();
+            };
+
+            hfKeySubmitBtn.addEventListener('click', handleSubmit);
+            hfKeyInput.addEventListener('keydown', handleEnter);
+            hfCloseBtn.addEventListener('click', handleCancel);
+        });
+    };
 
     try {
+        const hfToken = await getHfToken();
+        if (!hfToken) {
+            throw new Error("No Hugging Face token provided by user.");
+        }
+
+        const HF_TOKEN = `Bearer ${hfToken}`; 
+        const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+        const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene depicting: ${narrativeText}`;
+
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { "Authorization": HF_TOKEN, "Content-Type": "application/json" },
@@ -261,7 +310,7 @@ async function generateAndDisplayImage(narrativeText) {
 
         if (!response.ok) {
             if (response.status === 503) {
-                imageContainer.innerHTML = `<p class="image-loading-text">The image model is warming up. Please try again in a moment.</p>`;
+                imageContainer.innerHTML = `<p class="image-loading-text">The image model is warming up. Please try again.</p>`;
                 imageContainer.classList.remove('loading');
                 return;
             }
@@ -273,7 +322,7 @@ async function generateAndDisplayImage(narrativeText) {
         img.src = URL.createObjectURL(imageBlob);
         
         img.onload = () => {
-            imageContainer.innerHTML = ''; // Clear the loading text
+            imageContainer.innerHTML = '';
             imageContainer.appendChild(img);
             imageContainer.classList.remove('loading');
             img.classList.add('loaded');
@@ -281,8 +330,8 @@ async function generateAndDisplayImage(narrativeText) {
         };
         
     } catch (error) {
-        console.error("Failed to generate image:", error);
-        imageContainer.innerHTML = `<p class="image-loading-text">Image generation failed.</p>`;
+        console.error("Failed to generate image:", error.message);
+        imageContainer.innerHTML = `<p class="image-loading-text">Image generation failed or was cancelled.</p>`;
         imageContainer.classList.remove('loading');
     }
 }
@@ -615,6 +664,7 @@ cancelResetBtn.addEventListener('click', () => confirmResetModal.classList.add('
 confirmResetBtn.addEventListener('click', () => {
     confirmResetModal.classList.add('hidden');
     localStorage.removeItem('gemini-api-key');
+    localStorage.removeItem('hf-api-token'); // Add this line
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
     localStorage.removeItem('savedInventoryHTML');
