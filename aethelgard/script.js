@@ -201,11 +201,25 @@ function addMessage(text, sender) {
                 choiceContainer = null;
                 const p = document.createElement('p');
                 p.classList.add('fade-in');
+
+                // Add position relative class and copy button
+                p.classList.add('gm-paragraph');
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = '📋';
+                p.appendChild(copyBtn);
+
                 if (isFirstGMParagraph) {
                     p.classList.add('gm-first-paragraph');
                     isFirstGMParagraph = false;
                 }
-                p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
+                
+                const sanitizedHtml = DOMPurify.sanitize(marked.parse(paragraphText));
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = sanitizedHtml;
+                // Prepend the HTML content before the copy button
+                p.insertAdjacentHTML('afterbegin', tempDiv.innerHTML);
+
                 gameOutput.appendChild(p);
             }
         });
@@ -388,14 +402,10 @@ playerInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') handlePlayerInput();
 });
 
-// NEW Keyboard shortcuts for choices
 document.addEventListener('keydown', (event) => {
-    // Don't trigger if the user is typing in the main input
     if (document.activeElement === playerInput) return;
-
     const key = event.key.toUpperCase();
     if (['A', 'B', 'C', 'D'].includes(key)) {
-        // Find the button that isn't disabled
         const choiceButton = gameOutput.querySelector(`.choice-btn[data-choice='${key}']:not([disabled])`);
         if (choiceButton) {
             choiceButton.click();
@@ -407,14 +417,29 @@ themeToggle.addEventListener('click', toggleTheme);
 
 apiKeySubmitBtn.addEventListener('click', submitApiKey);
 apiKeyInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') submitApiKey();
+    if (event.key === 'Enter') {
+        submitApiKey();
+    }
 });
 
-clearApiKeyBtn.addEventListener('click', () => {
-    localStorage.removeItem('gemini-api-key');
-    apiKeyInput.value = '';
-    apiKeyInput.placeholder = 'Key cleared. Please enter a new one.';
-    apiKeyInput.focus();
+gameOutput.addEventListener('click', (event) => {
+    if (event.target.classList.contains('copy-btn')) {
+        const paragraph = event.target.closest('p');
+        if (paragraph) {
+            // Clone the node to manipulate it without affecting the display
+            const clone = paragraph.cloneNode(true);
+            // Remove the copy button from the clone
+            clone.querySelector('.copy-btn').remove();
+            // Get the text content
+            const textToCopy = clone.textContent || clone.innerText;
+            navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+                showToast("Narrative copied!");
+            }).catch(err => {
+                console.error("Failed to copy text: ", err);
+                showToast("Copy failed.");
+            });
+        }
+    }
 });
 
 inventoryContainer.addEventListener('mouseover', (event) => {
@@ -503,7 +528,7 @@ confirmLoadBtn.addEventListener('click', () => {
         gameOutput.innerHTML = savedHTML;
         inventoryList.innerHTML = savedInventoryHTML || "Empty";
         reattachChoiceButtonListeners();
-        gameOutput.scrollTop = gameOutput.scrollHeight;
+        gameOutput.scrollTo({ top: gameOutput.scrollHeight, behavior: 'smooth' }); // SMOOTH SCROLL
         showToast("Game Loaded!");
     } else {
         showToast("Could not load game data.");
