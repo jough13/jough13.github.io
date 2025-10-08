@@ -70,18 +70,6 @@ h1 {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Style for neutral action buttons like Export */
-.settings-actions .neutral-btn {
-    background-color: transparent;
-    border-color: var(--subtle-border-color);
-    color: var(--text-color);
-}
-
-.settings-actions .neutral-btn:hover {
-    background-color: var(--border-color);
-    border-color: var(--accent-color);
-}
-
 #settings-btn {
     position: absolute;
     top: 15px;
@@ -100,7 +88,7 @@ h1 {
     user-select: none;
 }
 
-/* --- NEW INVENTORY STYLE --- */
+/* --- Inventory Styles --- */
 #inventory-container {
     padding: 8px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -118,6 +106,52 @@ h1 {
 #inventory-list {
     color: var(--accent-color);
     font-style: italic;
+}
+
+#inventory-list .inventory-item {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--subtle-border-color);
+    text-underline-offset: 3px;
+    transition: color 0.2s, text-decoration-color 0.2s;
+    position: relative; /* Needed for the tooltip */
+}
+
+#inventory-list .inventory-item:hover {
+    color: var(--accent-color-hover);
+    text-decoration-color: var(--accent-color-hover);
+}
+
+/* --- CSS Tooltip --- */
+#inventory-list .inventory-item::after {
+    content: attr(data-desc); /* Pulls text from the 'data-desc' attribute */
+    position: absolute;
+    bottom: 125%; /* Position above the item */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    font-size: 0.85em;
+    font-style: normal;
+    text-decoration: none;
+    text-align: center;
+    white-space: nowrap;
+    z-index: 10;
+    
+    /* Hide it by default */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* This makes the tooltip visible on hover */
+#inventory-list .inventory-item:hover::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 
@@ -375,7 +409,7 @@ body::before {
     background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
 }
 
-/* --- Inline Loader Styles --- */
+/* --- Loader Styles --- */
 
 @keyframes pulse {
     0%, 100% {
@@ -393,7 +427,10 @@ body::before {
     animation: pulse 2s infinite ease-in-out;
 }
 
-/* --- Pre-loader and FOUC Prevention --- */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
 #loader {
     border: 5px solid var(--subtle-border-color);
@@ -410,11 +447,6 @@ body::before {
     z-index: 2000;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
 body:not(.loading) #loader {
     display: none;
 }
@@ -426,7 +458,6 @@ body:not(.loading) #loader {
     visibility: hidden;
 }
 
-/* --- Mini Loader for System Messages --- */
 .mini-loader {
     display: inline-block;
     width: 14px;
@@ -435,8 +466,9 @@ body:not(.loading) #loader {
     border-top-color: var(--accent-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-top: 15px; /* Adds space below the text */
+    margin-top: 15px;
 }
+
 
 /* --- Footer & Settings Styles --- */
 footer {
@@ -498,6 +530,19 @@ footer {
     background-color: var(--border-color);
     border-color: var(--accent-color);
 }
+
+/* Style for neutral action buttons like Export */
+.settings-actions .neutral-btn {
+    background-color: transparent;
+    border-color: var(--subtle-border-color);
+    color: var(--text-color);
+}
+
+.settings-actions .neutral-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
+
 
 /* --- Toast Notification Styles --- */
 @keyframes fadeInOut {
