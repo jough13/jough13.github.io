@@ -271,7 +271,7 @@ async function initializeAI(apiKey) {
         }
 
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
@@ -429,7 +429,7 @@ confirmLoadBtn.addEventListener('click', () => {
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
         chat = model.startChat({ history: savedHistory });
         
         gameOutput.innerHTML = savedHTML;
