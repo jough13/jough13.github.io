@@ -338,21 +338,27 @@ async function exportStory() {
 
     const history = await chat.getHistory();
 
-    // These regular expressions are used to identify and remove game elements.
+    // Regular expressions to find and remove game elements
     const inventoryRegex = /\[INVENTORY:.*?\]/g;
-    const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/; // Used to test if a line is a choice
+    const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/; // Tests if a line is a choice
+    
+    // --- NEW REGEX ---
+    // This new regex looks for lines that are questions asking for player action.
+    const actionPromptRegex = /\bwhat\b.*\?$/i; 
 
-    // --- NEW, MORE ROBUST LOGIC ---
     const storyParts = history
         .filter(entry => entry.role === 'model') // Keep only the 'model' (GM) entries
         .map(entry => {
             let text = entry.parts[0].text;
-
-            // First, remove any inventory tags from the whole text block.
             text = text.replace(inventoryRegex, "");
 
-            // Next, split the text into lines, filter out the choice lines, and rejoin.
-            const narrativeLines = text.split('\n').filter(line => !choiceTestRegex.test(line));
+            // --- UPDATED FILTER LOGIC ---
+            // Split text into lines, then filter out both choices AND action prompts.
+            const narrativeLines = text.split('\n').filter(line => {
+                const isChoice = choiceTestRegex.test(line);
+                const isActionPrompt = actionPromptRegex.test(line.trim());
+                return !isChoice && !isActionPrompt;
+            });
             
             return narrativeLines.join('\n').trim();
         });
@@ -361,7 +367,7 @@ async function exportStory() {
     const fullStory = storyParts.join('\n\n').trim();
 
     // Create and trigger the download.
-    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-t' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
