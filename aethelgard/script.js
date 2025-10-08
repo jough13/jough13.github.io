@@ -87,10 +87,20 @@ The game operates on a turn-based loop.
 // --- Game Logic ------------------------------------------------------
 let chat;
 let genAI;
+let toastTimeout; 
 
 function showToast(message) {
+    // If a toast is already active, clear its hide-timer
+    clearTimeout(toastTimeout);
+    
+    // Set the message and remove the hidden class to trigger the animation
     toast.textContent = message;
     toast.classList.remove('hidden');
+
+    // Set a timer that matches the animation duration to re-hide the element
+    toastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000); // The animation is 3 seconds long
 }
 
 function reattachChoiceButtonListeners() {
