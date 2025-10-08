@@ -22,6 +22,7 @@ const closeSettingsBtn = settingsModal.querySelector('.modal-close-btn');
 const saveBtn = document.getElementById('save-btn');
 const loadBtn = document.getElementById('load-btn');
 const resetBtn = document.getElementById('reset-btn');
+const exportBtn = document.getElementById('export-btn');
 
 // Reset Confirmation Modal
 const confirmResetModal = document.getElementById('confirm-reset-modal');
@@ -44,7 +45,7 @@ const loadingMessages = {
 
 const SCROLL_PADDING = 40;
 
-// --- GAME MASTER PROMPT with Inventory Protocol ---
+// --- GAME MASTER PROMPT ---
 const GAME_MASTER_PROMPT = `
 //-- GM DIRECTIVE --//
 You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
@@ -286,6 +287,51 @@ async function initializeAI(apiKey) {
     }
 }
 
+async function exportStory() {
+    if (!chat) {
+        showToast("No story to export yet.");
+        return;
+    }
+    showToast("Preparing your story...");
+
+    // 1. Get the full conversation history
+    const history = await chat.getHistory();
+
+    // 2. Define regular expressions to find and remove game elements
+    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm; // gm = global, multiline
+    const inventoryRegex = /\[INVENTORY:.*?\]/g;
+
+    // 3. Filter for only the AI's responses and clean them up
+    const storyParts = history
+        .filter(entry => entry.role === 'model') // Keep only the 'model' (GM) entries
+        .map(entry => {
+            let text = entry.parts[0].text;
+            // Remove inventory tags and choice prompts
+            text = text.replace(inventoryRegex, "");
+            text = text.replace(choiceRegex, "");
+            // Trim whitespace that might be left after removing lines
+            return text.trim();
+        });
+
+    // 4. Join the cleaned parts into a single story with paragraph breaks
+    const fullStory = storyParts.join('\n\n');
+
+    // 5. Create a virtual link to download the story as a .txt file
+    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'My_Aethelgard_Story.txt';
+    document.body.appendChild(a);
+    a.click(); // Programmatically click the link to trigger the download
+    
+    // 6. Clean up the virtual link
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    settingsModal.classList.add('hidden');
+}
+
 function submitApiKey() {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) return;
@@ -335,7 +381,10 @@ settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidd
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
 saveBtn.addEventListener('click', async () => {
-    if (!chat) return;
+    if (!chat) {
+        showToast("Nothing to save yet.");
+        return;
+    };
     try {
         const history = await chat.getHistory();
         localStorage.setItem('savedGameHistory', JSON.stringify(history));
@@ -362,6 +411,8 @@ resetBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
     confirmResetModal.classList.remove('hidden');
 });
+
+exportBtn.addEventListener('click', exportStory);
 
 cancelLoadBtn.addEventListener('click', () => confirmLoadModal.classList.add('hidden'));
 
