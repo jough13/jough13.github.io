@@ -160,11 +160,6 @@ h1 {
     margin-bottom: 1em;
 }
 
-/* Add position relative for copy button */
-#game-output .gm-paragraph {
-    position: relative;
-}
-
 #game-output .player-text {
     font-style: italic;
     color: var(--player-text-color);
@@ -358,24 +353,6 @@ h1 {
 
 /* --- Visual Flourish Styles --- */
 
-.copy-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    font-size: 1em;
-    cursor: pointer;
-    opacity: 0.3;
-    transition: opacity 0.2s;
-    background: none;
-    border: none;
-    color: var(--text-color);
-    padding: 5px;
-}
-
-.gm-paragraph:hover .copy-btn {
-    opacity: 1;
-}
-
 /* 1. Vignette Effect */
 body::before {
     content: '';
@@ -414,10 +391,6 @@ body::before {
     margin-right: 8px;
     margin-top: 5px;
     font-weight: bold;
-}
-
-.gm-first-paragraph {
-    position: relative;
 }
 
 /* 4. Thematic Turn Divider */
