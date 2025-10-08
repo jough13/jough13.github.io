@@ -70,6 +70,18 @@ h1 {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Style for neutral action buttons like Export */
+.settings-actions .neutral-btn {
+    background-color: transparent;
+    border-color: var(--subtle-border-color);
+    color: var(--text-color);
+}
+
+.settings-actions .neutral-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
+
 #settings-btn {
     position: absolute;
     top: 15px;
