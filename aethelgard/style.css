@@ -336,12 +336,13 @@ h1 {
     text-align: left;
     font-family: 'Lora', serif;
     font-size: 1em;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s ease-out;
 }
 
 .choice-btn:hover {
     background-color: var(--border-color);
     border-color: var(--accent-color);
+    transform: translateY(-2px); /* "Lift" effect */
 }
 
 .choice-btn:disabled {
