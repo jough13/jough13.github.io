@@ -306,37 +306,28 @@ async function initializeAI(apiKey) {
     setLoadingState(true); 
 
     try {
-        // 1. Set the starting inventory correctly from our master prompt.
+        // Step 1: Set the starting inventory correctly from our master prompt.
+        // This is the ground truth.
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
         chat = model.startChat({ history: [] });
 
+        // Step 2: Get the AI's first response.
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
         const responseText = response.text();
 
-        // --- NEW, CORRECTED LOGIC ---
-        // 2. For the first message ONLY, we handle rendering manually to protect the inventory.
-        // We do NOT call addMessage() here, as that would re-run the inventory check.
-        gameOutput.innerHTML = ''; // Clear the "Connecting..." message.
-        
-        // This is a simplified version of addMessage's rendering logic.
-        const narrativeText = responseText.replace(/\[INVENTORY:.*?\]/g, '').trim();
-        const paragraphs = narrativeText.split('\n');
-        paragraphs.forEach((paragraphText, index) => {
-             if (paragraphText.trim() === '') return;
-             // We don't need to look for choices here, as the first message shouldn't have them,
-             // but we render the paragraphs.
-             const p = document.createElement('p');
-             p.classList.add('fade-in');
-             if (index === 0) {
-                 p.classList.add('gm-first-paragraph');
-             }
-             p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
-             gameOutput.appendChild(p);
-        });
+        // Step 3: Clean ONLY the AI's first response of any inventory tags.
+        // This prevents it from overwriting the correct inventory we just set above.
+        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
+        const cleanResponseText = responseText.replace(inventoryRegex, '');
+
+        // Step 4: Pass the cleaned response to our main addMessage function.
+        // It will now render the narrative AND the choice buttons correctly.
+        gameOutput.innerHTML = ''; 
+        addMessage(cleanResponseText, 'gamemaster');
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
