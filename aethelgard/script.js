@@ -304,13 +304,12 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
     turnCounter++;
-    const displayMessage = customDisplayText || inputText; // Bug is fixed here
+    const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
     gameOutput.scrollTop = gameOutput.scrollHeight;
@@ -333,8 +332,9 @@ async function handlePlayerInput(customDisplayText = null) {
         const responseText = response.text();
         
         loader.remove();
-        addMessage(responseText, 'gamemaster');
-        
+
+        // --- ORDER CHANGED ---
+        // 1. Check for and generate the image first.
         if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 6 === 0)) {
             const inventoryRegex = /\[INVENTORY:.*?\]/g;
             const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
@@ -342,6 +342,10 @@ async function handlePlayerInput(customDisplayText = null) {
             generateAndDisplayImage(narrativeForImage);
         }
 
+        // 2. Then, add the text message.
+        addMessage(responseText, 'gamemaster');
+        // --- END CHANGE ---
+        
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
             gameOutput.scrollTo({ top: desiredScrollPosition, behavior: 'smooth' });
@@ -387,11 +391,16 @@ async function initializeAI(apiKey) {
         const cleanResponseText = responseText.replace(inventoryRegex, '');
 
         gameOutput.innerHTML = ''; 
-        addMessage(cleanResponseText, 'gamemaster');
         
+        // --- ORDER CHANGED ---
+        // 1. Generate the image first.
         turnCounter = 1;
         const narrativeForImage = cleanResponseText.split('\n').filter(line => !/^\s*\*\*/.test(line)).join(' ');
         generateAndDisplayImage(narrativeForImage);
+
+        // 2. Then, add the text message.
+        addMessage(cleanResponseText, 'gamemaster');
+        // --- END CHANGE ---
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
