@@ -38,13 +38,11 @@ const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
 // Thematic loading messages based on player intent (dots removed for CSS animation)
 const loadingMessages = {
-    perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear", "Sifting through the noise for a signal", "Your senses stretch into the gloom"],
-    action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast", "A moment of decision, frozen in time", "The world turns upon this single choice"],
-    social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words", "Weighing the weight of your words", "The delicate dance of diplomacy begins"],
-    magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir", "The Amulet's heartbeat quickens", "Drawing power from the unseen world"],
-    stealth: ["Treading softly on the edge of shadows", "Holding your breath as the world passes by", "Weaving a careful deception", "A whisper of movement, unheard", "You become one with the darkness"],
-    memory: ["A fragment of memory surfaces from the depths", "Connecting the scattered echoes of the past", "The fog in your mind begins to thin", "A forgotten truth sparks into light", "The past reaches out to you"],
-    default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move", "The threads of fate are woven", "A silent question hangs in the air"]
+    perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear"],
+    action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast"],
+    social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words"],
+    magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir"],
+    default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move"]
 };
 
 const SCROLL_PADDING = 40;
@@ -90,7 +88,8 @@ The game operates on a turn-based loop.
 // --- Game Logic ------------------------------------------------------
 let chat;
 let genAI;
-let toastTimeout; 
+let toastTimeout;
+let turnCounter = 0;
 
 function showToast(message) {
     clearTimeout(toastTimeout);
@@ -224,14 +223,79 @@ function addMessage(text, sender) {
     }
 }
 
+async function generateAndDisplayImage(narrativeText) {
+    // 1. Create a placeholder for the image with a loading effect.
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'image-container loading fade-in';
+    gameOutput.appendChild(imageContainer);
+    gameOutput.scrollTop = gameOutput.scrollHeight;
+
+    // --- NEW LOGIC TO GET THE API TOKEN ---
+    let hfToken = localStorage.getItem('hf-api-token');
+
+    if (!hfToken) {
+        hfToken = prompt("To generate images, please enter your Hugging Face API token (it will be saved for future sessions):");
+        
+        if (!hfToken) {
+            // User cancelled or entered nothing
+            imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">Image generation skipped. An API token is required.</p>`;
+            imageContainer.classList.remove('loading');
+            return;
+        }
+        // Save the new token for next time
+        localStorage.setItem('hf-api-token', hfToken);
+    }
+    
+    // --- HUGGING FACE LOGIC ---
+    const HF_TOKEN = `Bearer ${hfToken}`; 
+    const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+    const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene from a text-based adventure game depicting: ${narrativeText}`;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                "Authorization": HF_TOKEN,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ "inputs": imagePrompt }),
+        });
+
+        if (!response.ok) {
+            if (response.status === 503) {
+                imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">The image model is currently warming up. Please try again in a moment.</p>`;
+                imageContainer.classList.remove('loading');
+                return;
+            }
+            throw new Error(`Server error: ${response.statusText}`);
+        }
+
+        const imageBlob = await response.blob();
+        
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(imageBlob);
+        
+        img.onload = () => {
+            imageContainer.classList.remove('loading');
+            img.classList.add('loaded');
+            URL.revokeObjectURL(img.src);
+        };
+        
+        imageContainer.appendChild(img);
+
+    } catch (error) {
+        console.error("Failed to generate image:", error);
+        imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">Image generation failed. The token may be invalid.</p>`;
+        imageContainer.classList.remove('loading');
+    }
+}
+
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
     
-    // New categories are placed first
     if (/\b(remember|recall|think|ponder|study|decipher)\b/.test(lowerInput)) return 'memory';
     if (/\b(sneak|hide|distract|lie|deceive|quietly)\b/.test(lowerInput)) return 'stealth';
     
-    // Existing categories
     if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
     if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) return 'social';
     if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) return 'magic';
@@ -240,21 +304,20 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
+
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
 
-    const displayMessage = customDisplayText || inputText;
+    turnCounter++;
+    const displayMessage = customDisplayText || inputText; // Bug is fixed here
     addMessage(displayMessage, 'player');
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
     gameOutput.scrollTop = gameOutput.scrollHeight;
     playerInput.value = '';
     setLoadingState(true);
 
-    // --- THIS IS THE FIX ---
-    // Analyze the button's text if available, otherwise use the typed text.
     const context = getLoadingContext(customDisplayText || inputText);
-    
     const messageList = loadingMessages[context] || loadingMessages.default;
     const randomIndex = Math.floor(Math.random() * messageList.length);
     const loader = document.createElement('div');
@@ -267,10 +330,18 @@ async function handlePlayerInput(customDisplayText = null) {
     try {
         const result = await chat.sendMessage(inputText);
         const response = result.response;
+        const responseText = response.text();
         
         loader.remove();
-        addMessage(response.text(), 'gamemaster');
+        addMessage(responseText, 'gamemaster');
         
+        if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 6 === 0)) {
+            const inventoryRegex = /\[INVENTORY:.*?\]/g;
+            const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
+            const narrativeForImage = responseText.replace(inventoryRegex, '').split('\n').filter(line => !choiceTestRegex.test(line)).join(' ');
+            generateAndDisplayImage(narrativeForImage);
+        }
+
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
             gameOutput.scrollTo({ top: desiredScrollPosition, behavior: 'smooth' });
@@ -301,6 +372,7 @@ async function initializeAI(apiKey) {
     setLoadingState(true); 
 
     try {
+        turnCounter = 0;
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
@@ -316,6 +388,10 @@ async function initializeAI(apiKey) {
 
         gameOutput.innerHTML = ''; 
         addMessage(cleanResponseText, 'gamemaster');
+        
+        turnCounter = 1;
+        const narrativeForImage = cleanResponseText.split('\n').filter(line => !/^\s*\*\*/.test(line)).join(' ');
+        generateAndDisplayImage(narrativeForImage);
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
@@ -338,24 +414,18 @@ async function exportStory() {
 
     const history = await chat.getHistory();
 
-    // Regular expressions to find and remove game elements
+    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm;
     const inventoryRegex = /\[INVENTORY:.*?\]/g;
-    const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/; // Tests if a line is a choice
-    
-    // --- NEW REGEX ---
-    // This new regex looks for lines that are questions asking for player action.
-    const actionPromptRegex = /\bwhat\b.*\?$/i; 
+    const actionPromptRegex = /\bwhat\b.*\?$/i;
 
     const storyParts = history
-        .filter(entry => entry.role === 'model') // Keep only the 'model' (GM) entries
+        .filter(entry => entry.role === 'model')
         .map(entry => {
             let text = entry.parts[0].text;
             text = text.replace(inventoryRegex, "");
-
-            // --- UPDATED FILTER LOGIC ---
-            // Split text into lines, then filter out both choices AND action prompts.
+            
             const narrativeLines = text.split('\n').filter(line => {
-                const isChoice = choiceTestRegex.test(line);
+                const isChoice = choiceRegex.test(line);
                 const isActionPrompt = actionPromptRegex.test(line.trim());
                 return !isChoice && !isActionPrompt;
             });
@@ -363,11 +433,9 @@ async function exportStory() {
             return narrativeLines.join('\n').trim();
         });
 
-    // Join the cleaned parts from each turn into a single story.
     const fullStory = storyParts.join('\n\n').trim();
 
-    // Create and trigger the download.
-    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-t' });
+    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -432,6 +500,16 @@ apiKeyInput.addEventListener('keydown', (event) => {
     }
 });
 
+document.addEventListener('click', (event) => {
+    if (event.target.classList.contains('modal-overlay')) {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+});
+
 inventoryContainer.addEventListener('mouseover', (event) => {
     if (event.target.classList.contains('inventory-item')) {
         const item = event.target;
@@ -466,17 +544,6 @@ inventoryContainer.addEventListener('click', (event) => {
 
 settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
-
-// Close modals when clicking the overlay
-document.addEventListener('click', (event) => {
-    if (event.target.classList.contains('modal-overlay')) {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            if (!modal.classList.contains('hidden')) {
-                modal.classList.add('hidden');
-            }
-        });
-    }
-});
 
 saveBtn.addEventListener('click', async () => {
     if (!chat) {
