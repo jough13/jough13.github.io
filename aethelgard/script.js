@@ -10,7 +10,6 @@ const settingsBtn = document.getElementById('settings-btn');
 const toast = document.getElementById('toast-notification');
 const inventoryList = document.getElementById('inventory-list');
 const inventoryContainer = document.getElementById('inventory-container');
-
 const gameTooltip = document.getElementById('game-tooltip');
 
 // API Key Modal
@@ -37,13 +36,13 @@ const confirmLoadModal = document.getElementById('confirm-load-modal');
 const cancelLoadBtn = document.getElementById('cancel-load-btn');
 const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
-// Thematic loading messages based on player intent
+// Thematic loading messages based on player intent (dots removed for CSS animation)
 const loadingMessages = {
-    perception: ["Your eyes adjust to the details...", "A hidden truth brushes against your mind...", "The world reveals a secret...", "Focusing on the unseen...", "The patterns become clear..."],
-    action: ["You commit to your course...", "The world shifts in response to your will...", "Fate's loom trembles...", "A breath held, a step taken...", "The die is cast..."],
-    social: ["Choosing your words with care...", "The currents of conversation shift...", "A fragile trust is tested...", "You offer a piece of yourself...", "The air hangs heavy with unspoken words..."],
-    magic: ["The Amulet hums in response...", "Weaving the threads of ethereal energy...", "The air crackles with latent power...", "A whisper on the edge of reality...", "The ancient forces stir..."],
-    default: ["The world holds its breath...", "Consulting the celestial patterns...", "The ancient stones whisper...", "Time stretches and bends...", "Destiny considers your move..."]
+    perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear"],
+    action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast"],
+    social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words"],
+    magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir"],
+    default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move"]
 };
 
 const SCROLL_PADDING = 40;
@@ -92,17 +91,12 @@ let genAI;
 let toastTimeout; 
 
 function showToast(message) {
-    // If a toast is already active, clear its hide-timer
     clearTimeout(toastTimeout);
-    
-    // Set the message and remove the hidden class to trigger the animation
     toast.textContent = message;
     toast.classList.remove('hidden');
-
-    // Set a timer that matches the animation duration to re-hide the element
     toastTimeout = setTimeout(() => {
         toast.classList.add('hidden');
-    }, 3000); // The animation is 3 seconds long
+    }, 3000);
 }
 
 function reattachChoiceButtonListeners() {
@@ -142,29 +136,26 @@ function handleChoiceClick(event) {
 function updateInventoryDisplay(fullText) {
     const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
     const inventoryMatch = fullText.match(inventoryRegex);
-    if (!inventoryMatch) return; // No inventory tag found, do nothing.
+    if (!inventoryMatch) return;
 
     const lastMatch = inventoryMatch[inventoryMatch.length - 1];
     const itemsString = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
 
-    inventoryList.innerHTML = ''; // Clear the old inventory list
+    inventoryList.innerHTML = '';
 
     if (itemsString.toLowerCase() === 'empty' || itemsString === '') {
         inventoryList.textContent = 'Empty';
         return;
     }
 
-    // This new, more robust regex finds items separated by commas.
     const itemParseRegex = /([^,]+?)\s*\((.*?)\)/g;
     let match;
     const items = [];
 
-    // Loop through all items found in the string and add them to an array
     while ((match = itemParseRegex.exec(itemsString)) !== null) {
         items.push({ name: match[1].trim(), desc: match[2].trim() });
     }
 
-    // Loop through the collected items array to build the display
     items.forEach((item, index) => {
         const itemSpan = document.createElement('span');
         itemSpan.textContent = item.name;
@@ -172,7 +163,6 @@ function updateInventoryDisplay(fullText) {
         itemSpan.dataset.desc = item.desc;
         inventoryList.appendChild(itemSpan);
 
-        // Add a comma after each item except the last one
         if (index < items.length - 1) {
             const comma = document.createTextNode(', ');
             inventoryList.appendChild(comma);
@@ -301,23 +291,19 @@ async function initializeAI(apiKey) {
     setLoadingState(true); 
 
     try {
-        // Step 1: Set the starting inventory correctly from our master prompt.
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
         chat = model.startChat({ history: [] });
 
-        // Step 2: Get the AI's first response.
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
         const responseText = response.text();
-
-        // Step 3: Clean ONLY the AI's first response of any inventory tags.
+        
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
         const cleanResponseText = responseText.replace(inventoryRegex, '');
 
-        // Step 4: Pass the cleaned response to our main addMessage function.
         gameOutput.innerHTML = ''; 
         addMessage(cleanResponseText, 'gamemaster');
         
@@ -402,6 +388,21 @@ playerInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') handlePlayerInput();
 });
 
+// NEW Keyboard shortcuts for choices
+document.addEventListener('keydown', (event) => {
+    // Don't trigger if the user is typing in the main input
+    if (document.activeElement === playerInput) return;
+
+    const key = event.key.toUpperCase();
+    if (['A', 'B', 'C', 'D'].includes(key)) {
+        // Find the button that isn't disabled
+        const choiceButton = gameOutput.querySelector(`.choice-btn[data-choice='${key}']:not([disabled])`);
+        if (choiceButton) {
+            choiceButton.click();
+        }
+    }
+});
+
 themeToggle.addEventListener('click', toggleTheme);
 
 apiKeySubmitBtn.addEventListener('click', submitApiKey);
@@ -416,21 +417,18 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.focus();
 });
 
-// --- Tooltip Logic for Inventory Items ---
 inventoryContainer.addEventListener('mouseover', (event) => {
     if (event.target.classList.contains('inventory-item')) {
         const item = event.target;
         const description = item.dataset.desc;
-        const rect = item.getBoundingClientRect(); // Get position of the item
+        const rect = item.getBoundingClientRect();
 
         if (description) {
             gameTooltip.textContent = description;
             gameTooltip.classList.remove('hidden');
 
-            // Position the tooltip centered above the item
             gameTooltip.style.left = `${rect.left + rect.width / 2}px`;
             gameTooltip.style.top = `${rect.top}px`;
-            // This transform ensures it's centered horizontally and sits just above
             gameTooltip.style.transform = 'translate(-50%, -110%)';
         }
     }
