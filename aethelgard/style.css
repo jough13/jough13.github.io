@@ -178,9 +178,8 @@ h1 {
     animation: pulse-bg 2s infinite ease-in-out;
 }
 
-/* NEW: Thematic loading text */
-.image-container.loading::before {
-    content: "The wind is drawing an image of your journey...";
+/* NEW style for the loading text element */
+.image-loading-text {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -190,6 +189,7 @@ h1 {
     font-style: italic;
     text-align: center;
     width: 80%;
+    z-index: 1; /* Ensure it's above the pulsing background */
 }
 
 .image-container img.loaded {
