@@ -46,6 +46,10 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
+button {
+    font-family: inherit;
+}
+
 /* --- JAVASCRIPT-POWERED TOOLTIP --- */
 #game-tooltip {
     position: fixed; /* Positions relative to the viewport, escaping containers */
