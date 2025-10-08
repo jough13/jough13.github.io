@@ -9,6 +9,7 @@ const themeToggle = document.getElementById('theme-toggle');
 const settingsBtn = document.getElementById('settings-btn');
 const toast = document.getElementById('toast-notification');
 const inventoryList = document.getElementById('inventory-list');
+const inventoryContainer = document.getElementById('inventory-container');
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -59,16 +60,16 @@ Your narrative voice is evocative but disciplined. The goal is a natural, immers
 //-- CORE GAMEPLAY LOOP --//
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events.
-2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text. Do not end choices with a period.
-     a. Style Guide for Choices: Try to avoid using "you" as the object of a verb. For example, instead of "Ask him to give you the sword," phrase it as "Ask for the sword." This makes the player's narrated action sound more natural.
+2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text.
+    a. Style Guide for Choices: Try to avoid using "you" as the object of a verb. For example, instead of "Ask him to give you the sword," phrase it as "Ask for the sword." This makes the player's narrated action sound more natural.
 3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
 
 //-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
-2. At the end of EVERY response where the player's inventory changes (they gain or lose an item), you MUST include a special inventory tag on a new line.
-3. The format is critical: [INVENTORY: Item 1, Item 2, A Rusty Key]
+2. At the end of EVERY response where the player's inventory changes, you MUST include a special inventory tag on a new line.
+3. The format is critical: [INVENTORY: Item Name (A brief, evocative description.), Another Item (Its description.)]
 4. If the inventory is empty, use [INVENTORY: Empty]
 5. Only include this tag if the inventory has changed in that turn.
 
@@ -80,7 +81,7 @@ The game operates on a turn-based loop.
 
 //-- INITIALIZATION --//
 **Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Your only possession is the amulet around your neck. Execute Act I.
-[INVENTORY: Amulet of Aethelgard]
+[INVENTORY: Amulet of Aethelgard (A smooth, wooden amulet that hums with a faint, reassuring warmth.)]
 `;
 
 // --- Game Logic ------------------------------------------------------
@@ -104,17 +105,13 @@ function handleChoiceClick(event) {
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
 
-    // This removes any trailing punctuation (like a period) from the AI's choice.
     choiceText = choiceText.replace(/[.,;:]+$/, "");
 
-    // --- UPDATED PRONOUN FIX ---
-    // The order is important: more specific replacements come first.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
-    // This new, more general rule handles the standalone "you".
     choiceText = choiceText.replace(/\byou\b/gi, 'I');
     
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
@@ -130,20 +127,49 @@ function handleChoiceClick(event) {
     });
 }
 
+function updateInventoryDisplay(fullText) {
+    const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
+    const inventoryMatch = fullText.match(inventoryRegex);
+    if (!inventoryMatch) return; // No inventory tag found, do nothing.
+
+    const lastMatch = inventoryMatch[inventoryMatch.length - 1];
+    const itemsString = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
+
+    inventoryList.innerHTML = ''; // Clear the old inventory list
+
+    if (itemsString.toLowerCase() === 'empty') {
+        inventoryList.textContent = 'Empty';
+        return;
+    }
+
+    const itemRegex = /(.+?)\s*\((.*?)\)/g;
+    let match;
+    const items = [];
+
+    while ((match = itemRegex.exec(itemsString)) !== null) {
+        items.push({ name: match[1].trim(), desc: match[2].trim() });
+    }
+
+    items.forEach((item, index) => {
+        const itemSpan = document.createElement('span');
+        itemSpan.textContent = item.name;
+        itemSpan.className = 'inventory-item';
+        itemSpan.dataset.desc = item.desc;
+        inventoryList.appendChild(itemSpan);
+
+        if (index < items.length - 1) {
+            const comma = document.createTextNode(', ');
+            inventoryList.appendChild(comma);
+        }
+    });
+}
 
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
-        // 1. Handle Inventory Parsing
+        updateInventoryDisplay(text);
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const inventoryMatch = text.match(inventoryRegex);
-        if (inventoryMatch) {
-            const lastMatch = inventoryMatch[inventoryMatch.length - 1];
-            const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
-            inventoryList.textContent = items || "Empty";
-        }
         const narrativeText = text.replace(inventoryRegex, '').trim();
 
-        // 2. Handle Narrative and Choice Button Rendering
         const paragraphs = narrativeText.split('\n');
         let choiceContainer = null;
         let isFirstGMParagraph = true;
@@ -166,7 +192,7 @@ function addMessage(text, sender) {
                 button.addEventListener('click', handleChoiceClick);
                 choiceContainer.appendChild(button);
             } else {
-                choiceContainer = null; // A line of text resets the button group
+                choiceContainer = null;
                 const p = document.createElement('p');
                 p.classList.add('fade-in');
                 if (isFirstGMParagraph) {
@@ -178,7 +204,6 @@ function addMessage(text, sender) {
             }
         });
     } else {
-        // This part handles player and system messages
         const p = document.createElement('p');
         if (sender === 'player') {
             p.textContent = `> ${text}`;
@@ -261,14 +286,7 @@ async function initializeAI(apiKey) {
     setLoadingState(true); 
 
     try {
-        // Manually parse the initial prompt to set the starting inventory.
-        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const initialInventoryMatch = GAME_MASTER_PROMPT.match(inventoryRegex);
-        if (initialInventoryMatch) {
-            const lastMatch = initialInventoryMatch[initialInventoryMatch.length - 1];
-            const items = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
-            inventoryList.textContent = items || "Empty";
-        }
+        updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
@@ -298,38 +316,31 @@ async function exportStory() {
     }
     showToast("Preparing your story...");
 
-    // 1. Get the full conversation history
     const history = await chat.getHistory();
 
-    // 2. Define regular expressions to find and remove game elements
-    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm; // gm = global, multiline
+    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm;
     const inventoryRegex = /\[INVENTORY:.*?\]/g;
 
-    // 3. Filter for only the AI's responses and clean them up
     const storyParts = history
-        .filter(entry => entry.role === 'model') // Keep only the 'model' (GM) entries
+        .filter(entry => entry.role === 'model')
         .map(entry => {
             let text = entry.parts[0].text;
-            // Remove inventory tags and choice prompts
             text = text.replace(inventoryRegex, "");
             text = text.replace(choiceRegex, "");
-            // Trim whitespace that might be left after removing lines
+
             return text.trim();
         });
 
-    // 4. Join the cleaned parts into a single story with paragraph breaks
     const fullStory = storyParts.join('\n\n');
 
-    // 5. Create a virtual link to download the story as a .txt file
     const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'My_Aethelgard_Story.txt';
     document.body.appendChild(a);
-    a.click(); // Programmatically click the link to trigger the download
+    a.click();
     
-    // 6. Clean up the virtual link
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
@@ -381,6 +392,15 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.focus();
 });
 
+inventoryContainer.addEventListener('click', (event) => {
+    if (event.target.classList.contains('inventory-item')) {
+        const description = event.target.dataset.desc;
+        if (description) {
+            showToast(description);
+        }
+    }
+});
+
 settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
@@ -393,7 +413,7 @@ saveBtn.addEventListener('click', async () => {
         const history = await chat.getHistory();
         localStorage.setItem('savedGameHistory', JSON.stringify(history));
         localStorage.setItem('savedGameHTML', gameOutput.innerHTML);
-        localStorage.setItem('savedInventory', inventoryList.textContent); // Save inventory
+        localStorage.setItem('savedInventoryHTML', inventoryList.innerHTML);
         showToast("Game Saved!");
     } catch (error) {
         console.error("Error saving game:", error);
@@ -423,7 +443,7 @@ cancelLoadBtn.addEventListener('click', () => confirmLoadModal.classList.add('hi
 confirmLoadBtn.addEventListener('click', () => {
     const savedHistoryJSON = localStorage.getItem('savedGameHistory');
     const savedHTML = localStorage.getItem('savedGameHTML');
-    const savedInventory = localStorage.getItem('savedInventory');
+    const savedInventoryHTML = localStorage.getItem('savedInventoryHTML');
     const apiKey = localStorage.getItem('gemini-api-key');
 
     if (savedHistoryJSON && savedHTML && apiKey) {
@@ -433,7 +453,7 @@ confirmLoadBtn.addEventListener('click', () => {
         chat = model.startChat({ history: savedHistory });
         
         gameOutput.innerHTML = savedHTML;
-        inventoryList.textContent = savedInventory || "Empty"; // Load inventory
+        inventoryList.innerHTML = savedInventoryHTML || "Empty";
         reattachChoiceButtonListeners();
         gameOutput.scrollTop = gameOutput.scrollHeight;
         showToast("Game Loaded!");
@@ -450,7 +470,7 @@ confirmResetBtn.addEventListener('click', () => {
     localStorage.removeItem('gemini-api-key');
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
-    localStorage.removeItem('savedInventory'); // Clear inventory save
+    localStorage.removeItem('savedInventoryHTML');
     location.reload();
 });
 
