@@ -338,21 +338,29 @@ async function exportStory() {
 
     const history = await chat.getHistory();
 
-    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm;
+    // These regular expressions are used to identify and remove game elements.
     const inventoryRegex = /\[INVENTORY:.*?\]/g;
+    const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/; // Used to test if a line is a choice
 
+    // --- NEW, MORE ROBUST LOGIC ---
     const storyParts = history
-        .filter(entry => entry.role === 'model')
+        .filter(entry => entry.role === 'model') // Keep only the 'model' (GM) entries
         .map(entry => {
             let text = entry.parts[0].text;
-            text = text.replace(inventoryRegex, "");
-            text = text.replace(choiceRegex, "");
 
-            return text.trim();
+            // First, remove any inventory tags from the whole text block.
+            text = text.replace(inventoryRegex, "");
+
+            // Next, split the text into lines, filter out the choice lines, and rejoin.
+            const narrativeLines = text.split('\n').filter(line => !choiceTestRegex.test(line));
+            
+            return narrativeLines.join('\n').trim();
         });
 
-    const fullStory = storyParts.join('\n\n');
+    // Join the cleaned parts from each turn into a single story.
+    const fullStory = storyParts.join('\n\n').trim();
 
+    // Create and trigger the download.
     const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
