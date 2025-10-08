@@ -148,13 +148,15 @@ h1 {
     text-decoration-color: var(--accent-color-hover);
 }
 
+/* --- AI Image Styles --- */
 .image-container {
-    width: 40%; /* Changed to 40% */
-    margin: 0 auto 1em; /* This will keep it centered */
+    width: 40%;
+    margin: 0 auto 1em;
     aspect-ratio: 16 / 9;
     background-color: var(--input-bg);
     border-radius: 5px;
     overflow: hidden;
+    position: relative; /* Needed for the loading text */
 }
 
 .image-container img {
@@ -163,6 +165,35 @@ h1 {
     object-fit: cover;
     opacity: 0;
     transition: opacity 0.5s ease-in-out;
+}
+
+/* Loading state styles */
+@keyframes pulse-bg {
+    0% { background-color: var(--input-bg); }
+    50% { background-color: var(--border-color); }
+    100% { background-color: var(--input-bg); }
+}
+
+.image-container.loading {
+    animation: pulse-bg 2s infinite ease-in-out;
+}
+
+/* NEW: Thematic loading text */
+.image-container.loading::before {
+    content: "The wind is drawing an image of your journey...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--system-text-color);
+    font-size: 0.9em;
+    font-style: italic;
+    text-align: center;
+    width: 80%;
+}
+
+.image-container img.loaded {
+    opacity: 1;
 }
 
 /* Loading state styles */
