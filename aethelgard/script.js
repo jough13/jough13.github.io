@@ -149,31 +149,40 @@ function updateInventoryDisplay(fullText) {
 
     inventoryList.innerHTML = ''; // Clear the old inventory list
 
-    if (itemsString.toLowerCase() === 'empty') {
+    if (itemsString.toLowerCase() === 'empty' || itemsString === '') {
         inventoryList.textContent = 'Empty';
         return;
     }
 
-    const itemRegex = /(.+?)\s*\((.*?)\)/g;
-    let match;
-    const items = [];
+    // --- FIX START ---
+    // 1. Split the string into individual item parts first.
+    // This prevents the parsing regex from capturing the comma separator.
+    const itemParts = itemsString.split(/\s*,\s*/);
+    const itemParseRegex = /(.+?)\s*\((.*?)\)/; // A non-global regex to parse one part at a time
 
-    while ((match = itemRegex.exec(itemsString)) !== null) {
-        items.push({ name: match[1].trim(), desc: match[2].trim() });
-    }
+    itemParts.forEach((part, index) => {
+        if (part.trim() === '') return; // Skip any empty parts that might result from splitting
 
-    items.forEach((item, index) => {
-        const itemSpan = document.createElement('span');
-        itemSpan.textContent = item.name;
-        itemSpan.className = 'inventory-item';
-        itemSpan.dataset.desc = item.desc;
-        inventoryList.appendChild(itemSpan);
+        // 2. Parse the name and description from each individual part.
+        const match = part.match(itemParseRegex);
+        if (match) {
+            const name = match[1].trim();
+            const desc = match[2].trim();
 
-        if (index < items.length - 1) {
-            const comma = document.createTextNode(', ');
-            inventoryList.appendChild(comma);
+            const itemSpan = document.createElement('span');
+            itemSpan.textContent = name;
+            itemSpan.className = 'inventory-item';
+            itemSpan.dataset.desc = desc;
+            inventoryList.appendChild(itemSpan);
+
+            // 3. Add a comma separator after each item except the last one.
+            if (index < itemParts.length - 1) {
+                const comma = document.createTextNode(', ');
+                inventoryList.appendChild(comma);
+            }
         }
     });
+    // --- FIX END ---
 }
 
 function addMessage(text, sender) {
