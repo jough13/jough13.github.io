@@ -232,7 +232,6 @@ function getLoadingContext(inputText) {
     return 'default';
 }
 
-
 async function handlePlayerInput(customDisplayText = null) {
     const inputText = playerInput.value.trim();
     if (inputText === '' || !chat) return;
@@ -244,7 +243,10 @@ async function handlePlayerInput(customDisplayText = null) {
     playerInput.value = '';
     setLoadingState(true);
 
-    const context = getLoadingContext(inputText);
+    // --- THIS IS THE FIX ---
+    // Analyze the button's text if available, otherwise use the typed text.
+    const context = getLoadingContext(customDisplayText || inputText);
+    
     const messageList = loadingMessages[context] || loadingMessages.default;
     const randomIndex = Math.floor(Math.random() * messageList.length);
     const loader = document.createElement('div');
