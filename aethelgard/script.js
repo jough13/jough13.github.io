@@ -60,6 +60,7 @@ Your narrative voice is evocative but disciplined. The goal is a natural, immers
 The game operates on a turn-based loop.
 1.  **Describe the Scene:** Detail the environment and events.
 2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text. Do not end choices with a period.
+     a. Style Guide for Choices: Try to avoid using "you" as the object of a verb. For example, instead of "Ask him to give you the sword," phrase it as "Ask for the sword." This makes the player's narrated action sound more natural.
 3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
@@ -106,12 +107,15 @@ function handleChoiceClick(event) {
     // This removes any trailing punctuation (like a period) from the AI's choice.
     choiceText = choiceText.replace(/[.,;:]+$/, "");
 
-    // The pronoun fix.
+    // --- UPDATED PRONOUN FIX ---
+    // The order is important: more specific replacements come first.
     choiceText = choiceText.replace(/\byou've\b/gi, "I've");
     choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
     choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
     choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
     choiceText = choiceText.replace(/\byour\b/gi, 'my');
+    // This new, more general rule handles the standalone "you".
+    choiceText = choiceText.replace(/\byou\b/gi, 'I');
     
     choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
 
@@ -267,7 +271,7 @@ async function initializeAI(apiKey) {
         }
 
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         chat = model.startChat({ history: [] });
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
@@ -425,7 +429,7 @@ confirmLoadBtn.addEventListener('click', () => {
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
         genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         chat = model.startChat({ history: savedHistory });
         
         gameOutput.innerHTML = savedHTML;
