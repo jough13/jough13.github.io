@@ -154,35 +154,30 @@ function updateInventoryDisplay(fullText) {
         return;
     }
 
-    // --- FIX START ---
-    // 1. Split the string into individual item parts first.
-    // This prevents the parsing regex from capturing the comma separator.
-    const itemParts = itemsString.split(/\s*,\s*/);
-    const itemParseRegex = /(.+?)\s*\((.*?)\)/; // A non-global regex to parse one part at a time
+    // This new, more robust regex finds items separated by commas.
+    const itemParseRegex = /([^,]+?)\s*\((.*?)\)/g;
+    let match;
+    const items = [];
 
-    itemParts.forEach((part, index) => {
-        if (part.trim() === '') return; // Skip any empty parts that might result from splitting
+    // Loop through all items found in the string and add them to an array
+    while ((match = itemParseRegex.exec(itemsString)) !== null) {
+        items.push({ name: match[1].trim(), desc: match[2].trim() });
+    }
 
-        // 2. Parse the name and description from each individual part.
-        const match = part.match(itemParseRegex);
-        if (match) {
-            const name = match[1].trim();
-            const desc = match[2].trim();
+    // Loop through the collected items array to build the display
+    items.forEach((item, index) => {
+        const itemSpan = document.createElement('span');
+        itemSpan.textContent = item.name;
+        itemSpan.className = 'inventory-item';
+        itemSpan.dataset.desc = item.desc;
+        inventoryList.appendChild(itemSpan);
 
-            const itemSpan = document.createElement('span');
-            itemSpan.textContent = name;
-            itemSpan.className = 'inventory-item';
-            itemSpan.dataset.desc = desc;
-            inventoryList.appendChild(itemSpan);
-
-            // 3. Add a comma separator after each item except the last one.
-            if (index < itemParts.length - 1) {
-                const comma = document.createTextNode(', ');
-                inventoryList.appendChild(comma);
-            }
+        // Add a comma after each item except the last one
+        if (index < items.length - 1) {
+            const comma = document.createTextNode(', ');
+            inventoryList.appendChild(comma);
         }
     });
-    // --- FIX END ---
 }
 
 function addMessage(text, sender) {
@@ -307,7 +302,6 @@ async function initializeAI(apiKey) {
 
     try {
         // Step 1: Set the starting inventory correctly from our master prompt.
-        // This is the ground truth.
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
@@ -320,12 +314,10 @@ async function initializeAI(apiKey) {
         const responseText = response.text();
 
         // Step 3: Clean ONLY the AI's first response of any inventory tags.
-        // This prevents it from overwriting the correct inventory we just set above.
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
         const cleanResponseText = responseText.replace(inventoryRegex, '');
 
         // Step 4: Pass the cleaned response to our main addMessage function.
-        // It will now render the narrative AND the choice buttons correctly.
         gameOutput.innerHTML = ''; 
         addMessage(cleanResponseText, 'gamemaster');
         
