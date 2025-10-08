@@ -38,11 +38,13 @@ const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
 // Thematic loading messages based on player intent (dots removed for CSS animation)
 const loadingMessages = {
-    perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear"],
-    action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast"],
-    social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words"],
-    magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir"],
-    default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move"]
+    perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear", "Sifting through the noise for a signal", "Your senses stretch into the gloom"],
+    action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast", "A moment of decision, frozen in time", "The world turns upon this single choice"],
+    social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words", "Weighing the weight of your words", "The delicate dance of diplomacy begins"],
+    magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir", "The Amulet's heartbeat quickens", "Drawing power from the unseen world"],
+    stealth: ["Treading softly on the edge of shadows", "Holding your breath as the world passes by", "Weaving a careful deception", "A whisper of movement, unheard", "You become one with the darkness"],
+    memory: ["A fragment of memory surfaces from the depths", "Connecting the scattered echoes of the past", "The fog in your mind begins to thin", "A forgotten truth sparks into light", "The past reaches out to you"],
+    default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move", "The threads of fate are woven", "A silent question hangs in the air"]
 };
 
 const SCROLL_PADDING = 40;
@@ -222,13 +224,19 @@ function addMessage(text, sender) {
     }
 }
 
-
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
+    
+    // New categories are placed first
+    if (/\b(remember|recall|think|ponder|study|decipher)\b/.test(lowerInput)) return 'memory';
+    if (/\b(sneak|hide|distract|lie|deceive|quietly)\b/.test(lowerInput)) return 'stealth';
+    
+    // Existing categories
     if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
     if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) return 'social';
     if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) return 'magic';
     if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) return 'action';
+    
     return 'default';
 }
 
