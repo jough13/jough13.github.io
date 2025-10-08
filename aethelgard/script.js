@@ -45,6 +45,17 @@ const loadingMessages = {
     default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move"]
 };
 
+// New array for randomized image loading messages
+const imageLoadingMessages = [
+    "The wind draws an image of your journey",
+    "A vision coalesces from the ether",
+    "The amulet hums, painting the world in light",
+    "Memory takes form on a canvas of thought",
+    "The Sundered Star reveals a glimpse of what is to come",
+    "The Gloom parts to show you a scene",
+    "The world's breath crystallizes into an image"
+];
+
 const SCROLL_PADDING = 40;
 
 // --- GAME MASTER PROMPT ---
@@ -224,46 +235,33 @@ function addMessage(text, sender) {
 }
 
 async function generateAndDisplayImage(narrativeText) {
-    // 1. Create a placeholder for the image with a loading effect.
+    // 1. Create a placeholder for the image.
     const imageContainer = document.createElement('div');
     imageContainer.className = 'image-container loading fade-in';
+    
+    // 2. Select a random loading message and add it to the container.
+    const randomIndex = Math.floor(Math.random() * imageLoadingMessages.length);
+    const randomMessage = imageLoadingMessages[randomIndex];
+    imageContainer.innerHTML = `<p class="image-loading-text">${randomMessage}...</p>`;
+    
     gameOutput.appendChild(imageContainer);
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
-    // --- NEW LOGIC TO GET THE API TOKEN ---
-    let hfToken = localStorage.getItem('hf-api-token');
-
-    if (!hfToken) {
-        hfToken = prompt("To generate images, please enter your Hugging Face API token (it will be saved for future sessions):");
-        
-        if (!hfToken) {
-            // User cancelled or entered nothing
-            imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">Image generation skipped. An API token is required.</p>`;
-            imageContainer.classList.remove('loading');
-            return;
-        }
-        // Save the new token for next time
-        localStorage.setItem('hf-api-token', hfToken);
-    }
-    
-    // --- HUGGING FACE LOGIC ---
-    const HF_TOKEN = `Bearer ${hfToken}`; 
+    // --- Hugging Face Logic ---
+    const HF_TOKEN = "Bearer hf_YOUR_NEW_TOKEN_HERE"; 
     const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
     const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene from a text-based adventure game depicting: ${narrativeText}`;
 
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
-            headers: {
-                "Authorization": HF_TOKEN,
-                "Content-Type": "application/json",
-            },
+            headers: { "Authorization": HF_TOKEN, "Content-Type": "application/json" },
             body: JSON.stringify({ "inputs": imagePrompt }),
         });
 
         if (!response.ok) {
             if (response.status === 503) {
-                imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">The image model is currently warming up. Please try again in a moment.</p>`;
+                imageContainer.innerHTML = `<p class="image-loading-text">The image model is warming up. Please try again in a moment.</p>`;
                 imageContainer.classList.remove('loading');
                 return;
             }
@@ -271,21 +269,20 @@ async function generateAndDisplayImage(narrativeText) {
         }
 
         const imageBlob = await response.blob();
-        
         const img = document.createElement('img');
         img.src = URL.createObjectURL(imageBlob);
         
         img.onload = () => {
+            imageContainer.innerHTML = ''; // Clear the loading text
+            imageContainer.appendChild(img);
             imageContainer.classList.remove('loading');
             img.classList.add('loaded');
             URL.revokeObjectURL(img.src);
         };
         
-        imageContainer.appendChild(img);
-
     } catch (error) {
         console.error("Failed to generate image:", error);
-        imageContainer.innerHTML = `<p style="color: var(--system-text-color); text-align: center; padding: 20px;">Image generation failed. The token may be invalid.</p>`;
+        imageContainer.innerHTML = `<p class="image-loading-text">Image generation failed.</p>`;
         imageContainer.classList.remove('loading');
     }
 }
