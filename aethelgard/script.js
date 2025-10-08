@@ -11,6 +11,8 @@ const toast = document.getElementById('toast-notification');
 const inventoryList = document.getElementById('inventory-list');
 const inventoryContainer = document.getElementById('inventory-container');
 
+const gameTooltip = document.getElementById('game-tooltip');
+
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
 const apiKeyInput = document.getElementById('api-key-input');
@@ -400,6 +402,32 @@ clearApiKeyBtn.addEventListener('click', () => {
     apiKeyInput.value = '';
     apiKeyInput.placeholder = 'Key cleared. Please enter a new one.';
     apiKeyInput.focus();
+});
+
+// --- Tooltip Logic for Inventory Items ---
+inventoryContainer.addEventListener('mouseover', (event) => {
+    if (event.target.classList.contains('inventory-item')) {
+        const item = event.target;
+        const description = item.dataset.desc;
+        const rect = item.getBoundingClientRect(); // Get position of the item
+
+        if (description) {
+            gameTooltip.textContent = description;
+            gameTooltip.classList.remove('hidden');
+
+            // Position the tooltip centered above the item
+            gameTooltip.style.left = `${rect.left + rect.width / 2}px`;
+            gameTooltip.style.top = `${rect.top}px`;
+            // This transform ensures it's centered horizontally and sits just above
+            gameTooltip.style.transform = 'translate(-50%, -110%)';
+        }
+    }
+});
+
+inventoryContainer.addEventListener('mouseout', (event) => {
+    if (event.target.classList.contains('inventory-item')) {
+        gameTooltip.classList.add('hidden');
+    }
 });
 
 inventoryContainer.addEventListener('click', (event) => {
