@@ -443,6 +443,17 @@ inventoryContainer.addEventListener('click', (event) => {
 settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
+// Close modals when clicking the overlay
+document.addEventListener('click', (event) => {
+    if (event.target.classList.contains('modal-overlay')) {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            if (!modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+});
+
 saveBtn.addEventListener('click', async () => {
     if (!chat) {
         showToast("Nothing to save yet.");
