@@ -401,20 +401,27 @@ body::before {
 
 /* --- Loader Styles --- */
 
-@keyframes pulse {
-    0%, 100% {
-        opacity: 0.6;
-    }
-    50% {
-        opacity: 1;
-    }
+/* NEW Animation for thinking indicator dots */
+@keyframes ellipsis {
+  0% { content: "."; }
+  33% { content: ".."; }
+  66% { content: "..."; }
+  100% { content: "."; }
 }
 
 #inline-loader p {
     font-style: italic;
     color: var(--system-text-color);
     text-align: center;
-    animation: pulse 2s infinite ease-in-out;
+}
+
+/* NEW rule to apply the animation */
+#inline-loader p::after {
+    display: inline-block;
+    width: 20px; /* Give it space to grow */
+    text-align: left;
+    content: ".";
+    animation: ellipsis 1.5s infinite linear;
 }
 
 @keyframes spin {
