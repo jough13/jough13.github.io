@@ -153,10 +153,10 @@ h1 {
     width: 40%;
     margin: 0 auto 1em;
     aspect-ratio: 16 / 9;
-    background-color: var(--input-bg);
+    background-color: transparent; /* Changed from var(--input-bg) to transparent */
     border-radius: 5px;
     overflow: hidden;
-    position: relative; /* Needed for the loading text */
+    position: relative;
 }
 
 .image-container img {
