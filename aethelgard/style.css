@@ -96,7 +96,7 @@ h1 {
 #settings-btn {
     position: absolute;
     top: 15px;
-    left: 20px; /* Changed from 'right' to 'left' */
+    right: 20px;
     font-size: 1.5em;
     cursor: pointer;
     user-select: none;
@@ -105,7 +105,7 @@ h1 {
 #theme-toggle {
     position: absolute;
     top: 15px;
-    right: 20px;
+    left: 20px;
     font-size: 1.5em;
     cursor: pointer;
     user-select: none;
