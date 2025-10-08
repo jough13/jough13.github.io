@@ -299,7 +299,7 @@ async function generateAndDisplayImage(narrativeText) {
         }
 
         const HF_TOKEN = `Bearer ${hfToken}`; 
-        const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+        const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
         const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene depicting: ${narrativeText}`;
 
         const response = await fetch(API_URL, {
