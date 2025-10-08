@@ -1,493 +1,539 @@
-// This tells the browser we are using the Google AI SDK.
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
-
-// --- DOM Elements ----------------------------------------------------
-const gameOutput = document.getElementById('game-output');
-const playerInput = document.getElementById('player-input');
-const submitBtn = document.getElementById('submit-btn');
-const themeToggle = document.getElementById('theme-toggle');
-const settingsBtn = document.getElementById('settings-btn');
-const toast = document.getElementById('toast-notification');
-const inventoryList = document.getElementById('inventory-list');
-const inventoryContainer = document.getElementById('inventory-container');
-
-// API Key Modal
-const apiKeyModal = document.getElementById('api-key-modal');
-const apiKeyInput = document.getElementById('api-key-input');
-const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
-const clearApiKeyBtn = document.getElementById('clear-api-key');
-
-// Settings Modal
-const settingsModal = document.getElementById('settings-modal');
-const closeSettingsBtn = settingsModal.querySelector('.modal-close-btn');
-const saveBtn = document.getElementById('save-btn');
-const loadBtn = document.getElementById('load-btn');
-const resetBtn = document.getElementById('reset-btn');
-const exportBtn = document.getElementById('export-btn');
-
-// Reset Confirmation Modal
-const confirmResetModal = document.getElementById('confirm-reset-modal');
-const cancelResetBtn = document.getElementById('cancel-reset-btn');
-const confirmResetBtn = document.getElementById('confirm-reset-btn');
-
-// Load Confirmation Modal
-const confirmLoadModal = document.getElementById('confirm-load-modal');
-const cancelLoadBtn = document.getElementById('cancel-load-btn');
-const confirmLoadBtn = document.getElementById('confirm-load-btn');
-
-// Thematic loading messages based on player intent
-const loadingMessages = {
-    perception: ["Your eyes adjust to the details...", "A hidden truth brushes against your mind...", "The world reveals a secret...", "Focusing on the unseen...", "The patterns become clear..."],
-    action: ["You commit to your course...", "The world shifts in response to your will...", "Fate's loom trembles...", "A breath held, a step taken...", "The die is cast..."],
-    social: ["Choosing your words with care...", "The currents of conversation shift...", "A fragile trust is tested...", "You offer a piece of yourself...", "The air hangs heavy with unspoken words..."],
-    magic: ["The Amulet hums in response...", "Weaving the threads of ethereal energy...", "The air crackles with latent power...", "A whisper on the edge of reality...", "The ancient forces stir..."],
-    default: ["The world holds its breath...", "Consulting the celestial patterns...", "The ancient stones whisper...", "Time stretches and bends...", "Destiny considers your move..."]
-};
-
-const SCROLL_PADDING = 40;
-
-// --- GAME MASTER PROMPT ---
-const GAME_MASTER_PROMPT = `
-//-- GM DIRECTIVE --//
-You are the Game Master (GM) and Narrator for "The Amulet of Aethelgard." Your purpose is to build an atmospheric world through clear and purposeful prose.
-
-//-- TONE & PROSE PROTOCOL --//
-Your narrative voice is evocative but disciplined. The goal is a natural, immersive reading experience.
-1.  **Principle of Purposeful Description:** Every descriptive word should have a distinct purpose. Avoid using multiple adjectives that convey the same meaning. Prefer one strong adjective over two weak ones.
-2.  **Sentence Rhythm:** Vary your sentence structure to create a smooth, natural flow.
-3.  **Be Concise:** Keep your narrative descriptions to 2-3 paragraphs. Be evocative but not overly verbose.
-
-//-- CORE GAMEPLAY LOOP --//
-The game operates on a turn-based loop.
-1.  **Describe the Scene:** Detail the environment and events.
-2.  **Present Choices:** You MUST provide 2 to 4 options in the format: **A)** Choice text.
-    a. Style Guide for Choices: Try to avoid using "you" as the object of a verb. For example, instead of "Ask him to give you the sword," phrase it as "Ask for the sword." This makes the player's narrated action sound more natural.
-3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
-4.  **Await Input:** Pause and wait for the player's response.
-5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
-
-//-- INVENTORY PROTOCOL --//
-1. You are responsible for tracking the player's inventory.
-2. At the end of EVERY response where the player's inventory changes, you MUST include a special inventory tag on a new line.
-3. The format is critical: [INVENTORY: Item Name (A brief, evocative description.), Another Item (Its description.)]
-4. If the inventory is empty, use [INVENTORY: Empty]
-5. Only include this tag if the inventory has changed in that turn.
-
-//-- WORLD KNOWLEDGE (GM EYES ONLY) --//
-* **The 'Sundered Star':** A powerful crystal, the 'Nexus', that shattered.
-* **The Amulet:** The player's amulet is the 'Heartwood Fragment,' the central piece.
-* **The Amnesia:** The player was the Nexus's guardian. Its shattering destroyed their memory.
-* **The Gloom:** A magical decay from the cataclysm site.
-
-//-- INITIALIZATION --//
-**Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Your only possession is the amulet around your neck. Execute Act I.
-[INVENTORY: Amulet of Aethelgard (A smooth, wooden amulet that hums with a faint, reassuring warmth.)]
-`;
-
-// --- Game Logic ------------------------------------------------------
-let chat;
-let genAI;
-
-function showToast(message) {
-    toast.textContent = message;
-    toast.classList.remove('hidden');
+/* --- Color & Theme Variables --- */
+:root {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --container-bg: #242424;
+    --input-bg: #333;
+    --border-color: #444;
+    --subtle-border-color: #555;
+    --accent-color: #c5b358;
+    --accent-color-hover: #dab630;
+    --accent-text-color: #1a1a1a;
+    --player-text-color: #9ab;
+    --system-text-color: #888;
+    --modal-overlay-bg: rgba(0, 0, 0, 0.75);
+    --destructive-color: #b94a48;
+    --destructive-color-hover: #d35450;
 }
 
-function reattachChoiceButtonListeners() {
-    const buttons = gameOutput.querySelectorAll('.choice-btn:not([disabled])');
-    buttons.forEach(button => {
-        button.addEventListener('click', handleChoiceClick);
-    });
+body.light-mode {
+    --bg-color: #f0f2f5;
+    --text-color: #2c2c2c;
+    --container-bg: #ffffff;
+    --input-bg: #e9e9e9;
+    --border-color: #d1d1d1;
+    --subtle-border-color: #c0c0c0;
+    --accent-color: #8c7a3a;
+    --accent-color-hover: #a18d42;
+    --accent-text-color: #ffffff;
+    --player-text-color: #586e83;
+    --system-text-color: #777;
+    --modal-overlay-bg: rgba(0, 0, 0, 0.4);
+    --destructive-color: #c09891;
+    --destructive-color-hover: #d9aca4;
 }
 
-function handleChoiceClick(event) {
-    const button = event.target;
-    const choiceLetter = button.dataset.choice;
-    let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
-
-    choiceText = choiceText.replace(/[.,;:]+$/, "");
-
-    choiceText = choiceText.replace(/\byou've\b/gi, "I've");
-    choiceText = choiceText.replace(/\byou're\b/gi, "I'm");
-    choiceText = choiceText.replace(/\byou are\b/gi, 'I am');
-    choiceText = choiceText.replace(/\byourself\b/gi, 'myself');
-    choiceText = choiceText.replace(/\byour\b/gi, 'my');
-    choiceText = choiceText.replace(/\byou\b/gi, 'I');
-    
-    choiceText = choiceText.charAt(0).toLowerCase() + choiceText.slice(1);
-
-    const playerDisplayMessage = `I ${choiceText}...`;
-    
-    playerInput.value = choiceLetter;
-    handlePlayerInput(playerDisplayMessage);
-
-    const buttons = document.querySelectorAll('.choice-btn:not([disabled])');
-    buttons.forEach(button => {
-        button.disabled = true;
-    });
+/* --- Main Game Styles --- */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Lora', serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    transition: background-color 0.3s, color 0.3s;
 }
 
-function updateInventoryDisplay(fullText) {
-    const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-    const inventoryMatch = fullText.match(inventoryRegex);
-    if (!inventoryMatch) return; // No inventory tag found, do nothing.
-
-    const lastMatch = inventoryMatch[inventoryMatch.length - 1];
-    const itemsString = lastMatch.replace('[INVENTORY:', '').replace(']', '').trim();
-
-    inventoryList.innerHTML = ''; // Clear the old inventory list
-
-    if (itemsString.toLowerCase() === 'empty') {
-        inventoryList.textContent = 'Empty';
-        return;
-    }
-
-    const itemRegex = /(.+?)\s*\((.*?)\)/g;
-    let match;
-    const items = [];
-
-    while ((match = itemRegex.exec(itemsString)) !== null) {
-        items.push({ name: match[1].trim(), desc: match[2].trim() });
-    }
-
-    items.forEach((item, index) => {
-        const itemSpan = document.createElement('span');
-        itemSpan.textContent = item.name;
-        itemSpan.className = 'inventory-item';
-        itemSpan.dataset.desc = item.desc;
-        inventoryList.appendChild(itemSpan);
-
-        if (index < items.length - 1) {
-            const comma = document.createTextNode(', ');
-            inventoryList.appendChild(comma);
-        }
-    });
+#game-container {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    height: 90vh;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    background-color: var(--container-bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background-color 0.3s, border-color 0.3s, opacity 0.5s ease-in-out;
 }
 
-function addMessage(text, sender) {
-    if (sender === 'gamemaster') {
-        updateInventoryDisplay(text);
-        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const narrativeText = text.replace(inventoryRegex, '').trim();
+h1 {
+    text-align: center;
+    color: var(--accent-color);
+    padding: 15px;
+    margin: 0;
+    font-weight: normal;
+    border-bottom: 1px solid var(--border-color);
+}
 
-        const paragraphs = narrativeText.split('\n');
-        let choiceContainer = null;
-        let isFirstGMParagraph = true;
+/* Style for neutral action buttons like Export */
+.settings-actions .neutral-btn {
+    background-color: transparent;
+    border-color: var(--subtle-border-color);
+    color: var(--text-color);
+}
 
-        paragraphs.forEach(paragraphText => {
-            if (paragraphText.trim() === '') return;
-            const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/;
-            const match = paragraphText.match(choiceRegex);
+.settings-actions .neutral-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
 
-            if (match) {
-                if (!choiceContainer) {
-                    choiceContainer = document.createElement('div');
-                    choiceContainer.classList.add('choice-container', 'fade-in');
-                    gameOutput.appendChild(choiceContainer);
-                }
-                const button = document.createElement('button');
-                button.classList.add('choice-btn');
-                button.textContent = `${match[1]}) ${match[2].trim()}`;
-                button.dataset.choice = match[1];
-                button.addEventListener('click', handleChoiceClick);
-                choiceContainer.appendChild(button);
-            } else {
-                choiceContainer = null;
-                const p = document.createElement('p');
-                p.classList.add('fade-in');
-                if (isFirstGMParagraph) {
-                    p.classList.add('gm-first-paragraph');
-                    isFirstGMParagraph = false;
-                }
-                p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
-                gameOutput.appendChild(p);
-            }
-        });
-    } else {
-        const p = document.createElement('p');
-        if (sender === 'player') {
-            p.textContent = `> ${text}`;
-            p.classList.add('player-text', 'fade-in', 'turn-divider');
-        } else if (sender === 'system') {
-            p.innerHTML = text;
-            p.classList.add('loading-text', 'fade-in');
-        }
-        gameOutput.appendChild(p);
-    }
+#settings-btn {
+    position: absolute;
+    top: 15px;
+    right: 55px;
+    font-size: 1.5em;
+    cursor: pointer;
+    user-select: none;
+}
+
+#theme-toggle {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.5em;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* --- NEW INVENTORY STYLE --- */
+
+.inventory-item {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--subtle-border-color);
+    text-underline-offset: 3px;
+    transition: color 0.2s, text-decoration-color 0.2s;
+}
+
+.inventory-item:hover {
+    color: var(--accent-color-hover);
+    text-decoration-color: var(--accent-color-hover);
+}
+
+#inventory-container {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    font-size: 0.9em;
+    color: var(--system-text-color);
+    transition: background-color 0.3s;
+}
+
+#inventory-container strong {
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+#inventory-list {
+    color: var(--accent-color);
+    font-style: italic;
 }
 
 
-function getLoadingContext(inputText) {
-    const lowerInput = inputText.toLowerCase();
-    if (/\b(look|examine|inspect|observe|read|search)\b/.test(lowerInput)) return 'perception';
-    if (/\b(talk|ask|speak|persuade|intimidate|greet)\b/.test(lowerInput)) return 'social';
-    if (/\b(touch|use|activate|channel|focus|amulet|rune|magic)\b/.test(lowerInput)) return 'magic';
-    if (/\b(go|move|walk|run|climb|open|take|attack)\b/.test(lowerInput)) return 'action';
-    return 'default';
+#game-output {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    line-height: 1.6;
 }
 
+#game-output p {
+    margin-bottom: 1em;
+}
 
-async function handlePlayerInput(customDisplayText = null) {
-    const inputText = playerInput.value.trim();
-    if (inputText === '' || !chat) return;
+#game-output .player-text {
+    font-style: italic;
+    color: var(--player-text-color);
+}
 
-    const displayMessage = customDisplayText || inputText;
-    addMessage(displayMessage, 'player');
-    const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
-    gameOutput.scrollTop = gameOutput.scrollHeight;
-    playerInput.value = '';
-    setLoadingState(true);
+#game-output .loading-text {
+    color: var(--system-text-color);
+    text-align: center;
+}
 
-    const context = getLoadingContext(inputText);
-    const messageList = loadingMessages[context] || loadingMessages.default;
-    const randomIndex = Math.floor(Math.random() * messageList.length);
-    const loader = document.createElement('div');
-    loader.id = 'inline-loader';
-    loader.className = 'fade-in';
-    loader.innerHTML = `<p>${messageList[randomIndex]}</p>`;
-    gameOutput.appendChild(loader);
-    gameOutput.scrollTop = gameOutput.scrollHeight;
+#input-area {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    transition: background-color 0.3s;
+}
 
-    try {
-        const result = await chat.sendMessage(inputText);
-        const response = result.response;
-        
-        loader.remove();
-        addMessage(response.text(), 'gamemaster');
-        
-        if (lastPlayerMessage) {
-            const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
-            gameOutput.scrollTo({ top: desiredScrollPosition, behavior: 'smooth' });
-        }
+#player-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid var(--subtle-border-color);
+    border-radius: 5px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: 'Lora', serif;
+    font-size: 1em;
+}
 
-    } catch (error) {
-        console.error("Error sending message:", error);
-        addMessage("A strange force interferes with your connection...", 'system');
-    } finally {
-        const finalLoader = document.getElementById('inline-loader');
-        if (finalLoader) finalLoader.remove();
-        setLoadingState(false);
+#player-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+#submit-btn {
+    padding: 10px 20px;
+    margin-left: 10px;
+    border: 1px solid var(--accent-color);
+    background-color: var(--accent-color);
+    color: var(--accent-text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+#submit-btn:hover {
+    background-color: var(--accent-color-hover);
+}
+
+#submit-btn:disabled {
+    background-color: var(--subtle-border-color);
+    border-color: var(--subtle-border-color);
+    cursor: not-allowed;
+    color: var(--system-text-color);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--container-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--subtle-border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--system-text-color);
+}
+
+/* --- Utility Styles --- */
+.hidden {
+    display: none !important; /* Use important to ensure it always hides */
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    background-color: var(--modal-overlay-bg);
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--container-bg);
+    padding: 30px;
+    border-radius: 10px;
+    border: 2px solid var(--border-color);
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    position: relative; /* Needed for the close button */
+}
+
+.modal-content h2 {
+    color: var(--accent-color);
+    margin-top: 0;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: var(--system-text-color);
+}
+
+.modal-content input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--subtle-border-color);
+    border-radius: 5px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: 'Lora', serif;
+    font-size: 1em;
+}
+
+.modal-content input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.modal-content button {
+    width: 100%;
+    padding: 12px 20px;
+    border: 1px solid var(--accent-color);
+    background-color: var(--accent-color);
+    color: var(--accent-text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+    background-color: var(--accent-color-hover);
+}
+
+.modal-content .key-reset-text {
+    margin-top: 15px;
+    margin-bottom: -10px;
+    font-size: 0.8em;
+    color: var(--system-text-color);
+}
+
+.modal-content #clear-api-key {
+    color: var(--player-text-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* --- Clickable Choice Styles --- */
+
+.choice-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Adds space between choice buttons */
+    margin-bottom: 1em;
+}
+
+.choice-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--subtle-border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Lora', serif;
+    font-size: 1em;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.choice-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
+
+.choice-btn:disabled {
+    background-color: var(--container-bg);
+    color: var(--system-text-color);
+    cursor: not-allowed;
+    border-color: var(--container-bg);
+}
+
+/* --- Visual Flourish Styles --- */
+
+/* 1. Vignette Effect */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 100px rgba(0,0,0,0.3);
+    pointer-events: none; /* Allows clicking through the vignette */
+    z-index: 999;
+}
+
+/* 2. Text Fade-In Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-function setLoadingState(isLoading) {
-    playerInput.disabled = isLoading;
-    submitBtn.disabled = isLoading;
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (!isLoading && !isTouchDevice) {
-        playerInput.focus();
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* 3. Stylized Drop Cap */
+.gm-first-paragraph::first-letter {
+    font-size: 3em;
+    color: var(--accent-color);
+    float: left;
+    line-height: 0.8;
+    margin-right: 8px;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+/* 4. Thematic Turn Divider */
+.turn-divider::after {
+    content: '';
+    display: block;
+    width: 80%;
+    margin: 2em auto 1.5em; /* top, horizontal, bottom */
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
+}
+
+/* --- Inline Loader Styles --- */
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
     }
 }
 
-
-async function initializeAI(apiKey) {
-    gameOutput.innerHTML = '';
-    addMessage('Connecting to the ancient world...<br><span class="mini-loader"></span>', 'system');
-    setLoadingState(true); 
-
-    try {
-        updateInventoryDisplay(GAME_MASTER_PROMPT);
-
-        genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
-        chat = model.startChat({ history: [] });
-
-        const result = await chat.sendMessage(GAME_MASTER_PROMPT);
-        const response = result.response;
-
-        gameOutput.innerHTML = ''; 
-        addMessage(response.text(), 'gamemaster');
-        setLoadingState(false);
-        gameOutput.scrollTop = 0;
-
-    } catch (error) {
-        console.error("CRITICAL INITIALIZATION ERROR:", error);
-        gameOutput.innerHTML = ''; 
-        addMessage("Connection failed. The API key may be invalid or there could be a network issue.", 'system');
-        setLoadingState(true);
-        playerInput.placeholder = "Refresh to try again.";
-    }
+#inline-loader p {
+    font-style: italic;
+    color: var(--system-text-color);
+    text-align: center;
+    animation: pulse 2s infinite ease-in-out;
 }
 
-async function exportStory() {
-    if (!chat) {
-        showToast("No story to export yet.");
-        return;
-    }
-    showToast("Preparing your story...");
+/* --- Pre-loader and FOUC Prevention --- */
 
-    const history = await chat.getHistory();
-
-    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm;
-    const inventoryRegex = /\[INVENTORY:.*?\]/g;
-
-    const storyParts = history
-        .filter(entry => entry.role === 'model')
-        .map(entry => {
-            let text = entry.parts[0].text;
-            text = text.replace(inventoryRegex, "");
-            text = text.replace(choiceRegex, "");
-
-            return text.trim();
-        });
-
-    const fullStory = storyParts.join('\n\n');
-
-    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'My_Aethelgard_Story.txt';
-    document.body.appendChild(a);
-    a.click();
-    
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    settingsModal.classList.add('hidden');
+#loader {
+    border: 5px solid var(--subtle-border-color);
+    border-top: 5px solid var(--accent-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    margin-top: -25px;
+    margin-left: -25px;
+    z-index: 2000;
 }
 
-function submitApiKey() {
-    const apiKey = apiKeyInput.value.trim();
-    if (!apiKey) return;
-    localStorage.setItem('gemini-api-key', apiKey);
-    apiKeyModal.style.display = 'none';
-    initializeAI(apiKey);
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-function applyTheme(theme) {
-    if (theme === 'light') {
-        document.body.classList.add('light-mode');
-        themeToggle.textContent = '☀️';
-    } else {
-        document.body.classList.remove('light-mode');
-        themeToggle.textContent = '🌙';
-    }
+body:not(.loading) #loader {
+    display: none;
 }
 
-function toggleTheme() {
-    const isLight = document.body.classList.contains('light-mode');
-    const newTheme = isLight ? 'dark' : 'light';
-    localStorage.setItem('theme', newTheme);
-    applyTheme(newTheme);
+.loading #game-container,
+.loading #api-key-modal,
+.loading #settings-modal {
+    opacity: 0;
+    visibility: hidden;
 }
 
-// --- Event Listeners ---
-submitBtn.addEventListener('click', () => handlePlayerInput());
-playerInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') handlePlayerInput();
-});
+/* --- Mini Loader for System Messages --- */
+.mini-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--subtle-border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-top: 15px; /* Adds space below the text */
+}
 
-themeToggle.addEventListener('click', toggleTheme);
+/* --- Footer & Settings Styles --- */
+footer {
+    padding: 8px 15px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75em;
+    color: var(--system-text-color);
+    display: flex;
+    justify-content: space-between;
+}
 
-apiKeySubmitBtn.addEventListener('click', submitApiKey);
-apiKeyInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') submitApiKey();
-});
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 2em;
+    line-height: 1;
+    color: var(--system-text-color);
+    cursor: pointer;
+    transition: color 0.2s;
+}
 
-clearApiKeyBtn.addEventListener('click', () => {
-    localStorage.removeItem('gemini-api-key');
-    apiKeyInput.value = '';
-    apiKeyInput.placeholder = 'Key cleared. Please enter a new one.';
-    apiKeyInput.focus();
-});
+.modal-close-btn:hover {
+    color: var(--text-color);
+}
 
-inventoryContainer.addEventListener('click', (event) => {
-    if (event.target.classList.contains('inventory-item')) {
-        const description = event.target.dataset.desc;
-        if (description) {
-            showToast(description);
-        }
-    }
-});
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
 
-settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+.settings-actions .destructive,
+.confirm-actions .destructive {
+    background-color: var(--destructive-color);
+    border-color: var(--destructive-color);
+}
 
-saveBtn.addEventListener('click', async () => {
-    if (!chat) {
-        showToast("Nothing to save yet.");
-        return;
-    };
-    try {
-        const history = await chat.getHistory();
-        localStorage.setItem('savedGameHistory', JSON.stringify(history));
-        localStorage.setItem('savedGameHTML', gameOutput.innerHTML);
-        localStorage.setItem('savedInventoryHTML', inventoryList.innerHTML);
-        showToast("Game Saved!");
-    } catch (error) {
-        console.error("Error saving game:", error);
-        showToast("Could not save game.");
-    }
-    settingsModal.classList.add('hidden');
-});
+.settings-actions .destructive:hover,
+.confirm-actions .destructive:hover {
+    background-color: var(--destructive-color-hover);
+    border-color: var(--destructive-color-hover);
+}
 
-loadBtn.addEventListener('click', () => {
-    if (!localStorage.getItem('savedGameHistory')) {
-        showToast("No saved game found.");
-        return;
-    }
-    settingsModal.classList.add('hidden');
-    confirmLoadModal.classList.remove('hidden');
-});
+.confirm-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
 
-resetBtn.addEventListener('click', () => {
-    settingsModal.classList.add('hidden');
-    confirmResetModal.classList.remove('hidden');
-});
+.confirm-actions .neutral-btn {
+    background-color: transparent;
+    border-color: var(--subtle-border-color);
+    color: var(--text-color);
+}
 
-exportBtn.addEventListener('click', exportStory);
+.confirm-actions .neutral-btn:hover {
+    background-color: var(--border-color);
+    border-color: var(--accent-color);
+}
 
-cancelLoadBtn.addEventListener('click', () => confirmLoadModal.classList.add('hidden'));
+/* --- Toast Notification Styles --- */
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0; transform: translateY(20px); }
+    15%, 85% { opacity: 1; transform: translateY(0); }
+}
 
-confirmLoadBtn.addEventListener('click', () => {
-    const savedHistoryJSON = localStorage.getItem('savedGameHistory');
-    const savedHTML = localStorage.getItem('savedGameHTML');
-    const savedInventoryHTML = localStorage.getItem('savedInventoryHTML');
-    const apiKey = localStorage.getItem('gemini-api-key');
+#toast-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--accent-color);
+    color: var(--accent-text-color);
+    padding: 12px 25px;
+    border-radius: 25px;
+    z-index: 3000;
+    font-family: sans-serif;
+    font-size: 0.9em;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
 
-    if (savedHistoryJSON && savedHTML && apiKey) {
-        const savedHistory = JSON.parse(savedHistoryJSON);
-        genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
-        chat = model.startChat({ history: savedHistory });
-        
-        gameOutput.innerHTML = savedHTML;
-        inventoryList.innerHTML = savedInventoryHTML || "Empty";
-        reattachChoiceButtonListeners();
-        gameOutput.scrollTop = gameOutput.scrollHeight;
-        showToast("Game Loaded!");
-    } else {
-        showToast("Could not load game data.");
-    }
-    confirmLoadModal.classList.add('hidden');
-});
-
-cancelResetBtn.addEventListener('click', () => confirmResetModal.classList.add('hidden'));
-
-confirmResetBtn.addEventListener('click', () => {
-    confirmResetModal.classList.add('hidden');
-    localStorage.removeItem('gemini-api-key');
-    localStorage.removeItem('savedGameHistory');
-    localStorage.removeItem('savedGameHTML');
-    localStorage.removeItem('savedInventoryHTML');
-    location.reload();
-});
-
-// --- Start the game! ---
-document.addEventListener('DOMContentLoaded', () => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    applyTheme(savedTheme);
-
-    const savedApiKey = localStorage.getItem('gemini-api-key');
-    if (savedApiKey) {
-        apiKeyInput.value = savedApiKey;
-        apiKeyModal.style.display = 'none';
-        initializeAI(savedApiKey);
-    } else {
-        apiKeyModal.style.display = 'flex';
-        apiKeyInput.focus();
-    }
-
-    document.body.classList.remove('loading');
-});
+#toast-notification:not(.hidden) {
+    animation: fadeInOut 3s ease-in-out forwards;
+}
