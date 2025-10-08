@@ -300,13 +300,13 @@ function setLoadingState(isLoading) {
     }
 }
 
-
 async function initializeAI(apiKey) {
     gameOutput.innerHTML = '';
     addMessage('Connecting to the ancient world...<br><span class="mini-loader"></span>', 'system');
     setLoadingState(true); 
 
     try {
+        // 1. Set the starting inventory correctly from our master prompt.
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
@@ -315,9 +315,29 @@ async function initializeAI(apiKey) {
 
         const result = await chat.sendMessage(GAME_MASTER_PROMPT);
         const response = result.response;
+        const responseText = response.text();
 
-        gameOutput.innerHTML = ''; 
-        addMessage(response.text(), 'gamemaster');
+        // --- NEW, CORRECTED LOGIC ---
+        // 2. For the first message ONLY, we handle rendering manually to protect the inventory.
+        // We do NOT call addMessage() here, as that would re-run the inventory check.
+        gameOutput.innerHTML = ''; // Clear the "Connecting..." message.
+        
+        // This is a simplified version of addMessage's rendering logic.
+        const narrativeText = responseText.replace(/\[INVENTORY:.*?\]/g, '').trim();
+        const paragraphs = narrativeText.split('\n');
+        paragraphs.forEach((paragraphText, index) => {
+             if (paragraphText.trim() === '') return;
+             // We don't need to look for choices here, as the first message shouldn't have them,
+             // but we render the paragraphs.
+             const p = document.createElement('p');
+             p.classList.add('fade-in');
+             if (index === 0) {
+                 p.classList.add('gm-first-paragraph');
+             }
+             p.innerHTML = DOMPurify.sanitize(marked.parse(paragraphText));
+             gameOutput.appendChild(p);
+        });
+        
         setLoadingState(false);
         gameOutput.scrollTop = 0;
 
