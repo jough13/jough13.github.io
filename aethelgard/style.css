@@ -140,7 +140,7 @@ h1 {
     text-decoration: none;
     text-align: center;
     white-space: nowrap;
-    z-index: 10;
+    z-index: 10000;
     
     /* Hide it by default */
     opacity: 0;
