@@ -11,6 +11,7 @@ const toast = document.getElementById('toast-notification');
 const inventoryList = document.getElementById('inventory-list');
 const inventoryContainer = document.getElementById('inventory-container');
 const gameTooltip = document.getElementById('game-tooltip');
+const turnCounterDisplay = document.getElementById('turn-counter-display');
 
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
@@ -87,6 +88,34 @@ The game operates on a turn-based loop.
 3.  **Handle Custom Input:** If the player types a custom action, narrate a logical outcome and then present a new set of choices.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
+
+//-- IMAGE PROTOCOL --//
+// You have a library of pre-made images. When you describe a scene that matches one, you MUST output a tag to signal which image to show.
+// The format is: [SCENE_IMAGE: filename.png]
+//
+// CRITICAL PACING RULE: Use these image tags VERY sparingly. An image should only appear for a monumental story beat, like discovering a major landmark or a key artifact for the first time. Do not trigger another image for at least 15-20 turns.
+//
+// Your available images and when to use them are:
+// - 'awakening_hollow.png': For the opening scene where the player awakens in the hollow.
+// - 'winding_gate_scavenger.png': For when the player first meets the scavenger at the ruined archway.
+// - 'gloom_creature.png': For the first time the player sees the Gloom creature at the gate.
+// - 'clasp_and_amulet.png': When the player examines the silver clasp and it glows.
+// - 'ruined_city_vista.png': When the player first sees the vast ruined city from the ridge.
+// - 'nexus_site.png': When the player reaches the shattered, glowing dais in the city courtyard.
+// - 'serpents_coil.png': When the player enters the Citadel chamber and sees the floating jade serpent artifact.
+// - 'sky_iron_key.png': When the Sky-Iron Key rises from the stone ledge in the Fjordlands.
+// - 'foundation_chamber.png': When the player descends into the final, pristine chamber with the central pedestal.
+// - 'nexus_reformed.png': For the climactic moment when the fragments merge in a blinding sphere of light.
+// - 'nexus_whole.png': For the final scene showing the completed, restored Amulet, resting and shimmering with power after the light has faded.
+// - 'gaze_ravine.png': For when the player discovers the corrupted green crystal in the ravine.
+// - 'sentinel_stone.png': When the player finds the colossal standing stone with the carved eye.
+// - 'sarcophagus_chamber.png': For the scene inside the Sentinel with the single granite sarcophagus.
+// - 'luminus_crystal.png': When the player retrieves the glowing blue crystal shard.
+// - 'note_from_l.png': When the player finds the note and silver clasp from their ally.
+// - 'guardian_cavern.png': When the player enters the cavern with the three stone warrior statues.
+// - 'binding_the_guardians.png': For the moment the player magically freezes the stone guardians.
+// - 'meeting_lysander.png': When the player finally meets their ally, Lysander, on the high plateau.
+// - 'heart_of_aethelgard.png': When the player enters the final chamber and sees the last crystal fragment.
 
 //-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
@@ -197,13 +226,17 @@ function updateInventoryDisplay(fullText) {
     });
 }
 
+function updateTurnCounterDisplay() {
+    turnCounterDisplay.textContent = `Turn: ${turnCounter}`;
+}
+
 function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         updateInventoryDisplay(text);
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g; // Added this line
+        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
         let narrativeText = text.replace(inventoryRegex, '').trim();
-        narrativeText = narrativeText.replace(imageRegex, '').trim(); // And this line to clean the text
+        narrativeText = narrativeText.replace(imageRegex, '').trim();
 
         const paragraphs = narrativeText.split('\n');
         let choiceContainer = null;
@@ -263,7 +296,6 @@ function displayStaticImage(imageFilename) {
     imageContainer.className = 'image-container fade-in';
     
     const img = document.createElement('img');
-    // This now points to your /assets/ folder
     img.src = `./assets/${imageFilename}`; 
     
     img.onload = () => { img.classList.add('loaded'); };
@@ -273,7 +305,6 @@ function displayStaticImage(imageFilename) {
     };
     
     imageContainer.appendChild(img);
-    // This correctly appends the image to the end of the current output
     gameOutput.appendChild(imageContainer);
 }
 
@@ -369,16 +400,11 @@ async function generateAndDisplayImage(narrativeText) {
 }
 
 function handleImageTrigger(fullResponseText) {
-    // This function now uses two different trigger mechanisms based on the selected mode.
-    
     if (isLiveImageModeEnabled) {
-        // --- DYNAMIC / PRO MODE ---
-        // The trigger is based on the turn counter.
         if (turnCounter === 1 || turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 9 === 0)) {
-            // Create a clean prompt for the live AI by stripping all tags and choices
             const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
             const narrativeForImage = fullResponseText
-                .replace(/\[.*?\]/g, '') // Removes all tags like [INVENTORY:] or [SCENE_IMAGE:]
+                .replace(/\[.*?\]/g, '')
                 .split('\n')
                 .filter(line => !choiceTestRegex.test(line))
                 .join(' ');
@@ -388,8 +414,6 @@ function handleImageTrigger(fullResponseText) {
             }
         }
     } else {
-        // --- STANDARD / BUDGET MODE ---
-        // The trigger is based on the AI providing a specific tag.
         const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
         const imageMatch = fullResponseText.match(imageRegex);
 
@@ -420,6 +444,7 @@ async function handlePlayerInput(customDisplayText = null) {
     if (inputText === '' || !chat) return;
 
     turnCounter++;
+    updateTurnCounterDisplay();
     const displayMessage = customDisplayText || inputText;
     addMessage(displayMessage, 'player');
     const lastPlayerMessage = gameOutput.querySelector('.player-text:last-of-type');
@@ -478,6 +503,7 @@ async function initializeAI(apiKey) {
 
     try {
         turnCounter = 0;
+        updateTurnCounterDisplay();
         updateInventoryDisplay(GAME_MASTER_PROMPT);
 
         genAI = new GoogleGenerativeAI(apiKey);
@@ -491,18 +517,14 @@ async function initializeAI(apiKey) {
         gameOutput.innerHTML = ''; 
         
         turnCounter = 1;
+        updateTurnCounterDisplay();
 
-        // --- THIS IS THE FIX ---
         if (isLiveImageModeEnabled) {
-            // In Live Mode, the trigger is the turn count, so we check the AI's actual response.
             handleImageTrigger(responseText);
         } else {
-            // In Standard Mode, the trigger for the FIRST image is in our prompt.
             handleImageTrigger(GAME_MASTER_PROMPT);
         }
-        // --- END FIX ---
-
-        // Clean all tags from the text before displaying
+        
         const allTagsRegex = /\[.*?\]/g;
         const cleanResponseText = responseText.replace(allTagsRegex, '');
         addMessage(cleanResponseText, 'gamemaster');
@@ -741,6 +763,11 @@ confirmLoadBtn.addEventListener('click', () => {
 
     if (savedHistoryJSON && savedHTML && apiKey) {
         const savedHistory = JSON.parse(savedHistoryJSON);
+        
+        // Estimate the turn count from the history length
+        turnCounter = Math.ceil((savedHistory.length - 1) / 2);
+        updateTurnCounterDisplay();
+
         genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite-preview-09-2025" });
         chat = model.startChat({ history: savedHistory });
