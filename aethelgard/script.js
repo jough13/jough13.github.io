@@ -612,15 +612,6 @@ inventoryContainer.addEventListener('mouseout', (event) => {
     }
 });
 
-inventoryContainer.addEventListener('click', (event) => {
-    if (event.target.classList.contains('inventory-item')) {
-        const description = event.target.dataset.desc;
-        if (description) {
-            showToast(description);
-        }
-    }
-});
-
 settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
