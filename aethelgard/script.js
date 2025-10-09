@@ -375,22 +375,33 @@ async function generateAndDisplayImage(narrativeText) {
 }
 
 function handleImageTrigger(fullResponseText) {
-    const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
-    const imageMatch = fullResponseText.match(imageRegex);
-
-    if (imageMatch) {
-        const lastMatch = imageMatch[imageMatch.length - 1];
-        const filename = lastMatch.replace('[SCENE_IMAGE:', '').replace(']', '').trim();
-
-        if (isLiveImageModeEnabled) {
+    // This function now uses two different trigger mechanisms based on the selected mode.
+    
+    if (isLiveImageModeEnabled) {
+        // --- DYNAMIC / PRO MODE ---
+        // The trigger is based on the turn counter.
+        if (turnCounter === 1 || turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 9 === 0)) {
+            // Create a clean prompt for the live AI by stripping all tags and choices
             const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
             const narrativeForImage = fullResponseText
-                .replace(/\[.*?\]/g, '')
+                .replace(/\[.*?\]/g, '') // Removes all tags like [INVENTORY:] or [SCENE_IMAGE:]
                 .split('\n')
                 .filter(line => !choiceTestRegex.test(line))
                 .join(' ');
-            generateAndDisplayImage(narrativeForImage);
-        } else {
+            
+            if (narrativeForImage) {
+                generateAndDisplayImage(narrativeForImage);
+            }
+        }
+    } else {
+        // --- STANDARD / BUDGET MODE ---
+        // The trigger is based on the AI providing a specific tag.
+        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
+        const imageMatch = fullResponseText.match(imageRegex);
+
+        if (imageMatch) {
+            const lastMatch = imageMatch[imageMatch.length - 1];
+            const filename = lastMatch.replace('[SCENE_IMAGE:', '').replace(']', '').trim();
             displayStaticImage(filename);
         }
     }
