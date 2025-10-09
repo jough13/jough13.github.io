@@ -279,7 +279,9 @@ function displayStaticImage(imageFilename) {
         imageContainer.remove(); 
     };
     
-    gameOutput.insertBefore(imageContainer, gameOutput.firstChild);
+    // --- THIS LINE IS THE FIX ---
+    // Changed from insertBefore to appendChild to place it at the end.
+    gameOutput.appendChild(imageContainer);
     imageContainer.appendChild(img);
 }
 
@@ -289,7 +291,7 @@ async function generateAndDisplayImage(narrativeText) {
     const randomIndex = Math.floor(Math.random() * imageLoadingMessages.length);
     const randomMessage = imageLoadingMessages[randomIndex];
     imageContainer.innerHTML = `<p class="image-loading-text">${randomMessage}...</p>`;
-    gameOutput.insertBefore(imageContainer, gameOutput.firstChild);
+    gameOutput.appendChild(imageContainer);
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     const getHfToken = () => {
