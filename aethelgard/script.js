@@ -381,7 +381,7 @@ async function handlePlayerInput(customDisplayText = null) {
 
         // --- ORDER CHANGED ---
         // 1. Check for and generate the image first.
-        if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 6 === 0)) {
+        if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 9 === 0)) {
             const inventoryRegex = /\[INVENTORY:.*?\]/g;
             const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
             const narrativeForImage = responseText.replace(inventoryRegex, '').split('\n').filter(line => !choiceTestRegex.test(line)).join(' ');
