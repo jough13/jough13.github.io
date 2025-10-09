@@ -34,7 +34,17 @@ The game operates on a turn-based loop.
 // - 'serpents_coil.png': When the player enters the Citadel chamber and sees the floating jade serpent artifact.
 // - 'sky_iron_key.png': When the Sky-Iron Key rises from the stone ledge in the Fjordlands.
 // - 'foundation_chamber.png': When the player descends into the final, pristine chamber with the central pedestal.
-// - 'nexus_reformed.png': For the final, climactic flash of light as the Nexus is made whole.
+// - 'gaze_ravine.png': For when the player discovers the corrupted green crystal in the ravine.
+// - 'sentinel_stone.png': When the player finds the colossal standing stone with the carved eye.
+// - 'sarcophagus_chamber.png': For the scene inside the Sentinel with the single granite sarcophagus.
+// - 'luminus_crystal.png': When the player retrieves the glowing blue crystal shard.
+// - 'note_from_l.png': When the player finds the note and silver clasp from their ally.
+// - 'guardian_cavern.png': For when the player enters the cavern with the three stone warrior statues.
+// - 'binding_the_guardians.png': For the moment the player magically freezes the stone guardians.
+// - 'meeting_lysander.png': When the player finally meets their ally, Lysander, on the high plateau.
+// - 'heart_of_aethelgard.png': When the player enters the final chamber and sees the last crystal fragment.
+// - 'nexus_reformed.png': For the climactic moment when the fragments merge in a blinding sphere of pure energy and light.
+// - 'nexus_whole.png': For the final scene showing the completed, restored Amulet, resting and shimmering with power after the light has faded.
 
 //-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
