@@ -12,17 +12,17 @@ const inventoryList = document.getElementById('inventory-list');
 const inventoryContainer = document.getElementById('inventory-container');
 const gameTooltip = document.getElementById('game-tooltip');
 
-// NEW Hugging Face Key Modal elements
-const hfKeyModal = document.getElementById('hf-key-modal');
-const hfKeyInput = document.getElementById('hf-key-input');
-const hfKeySubmitBtn = document.getElementById('hf-key-submit-btn');
-const hfCloseBtn = hfKeyModal.querySelector('.modal-close-btn');
-
 // API Key Modal
 const apiKeyModal = document.getElementById('api-key-modal');
 const apiKeyInput = document.getElementById('api-key-input');
 const apiKeySubmitBtn = document.getElementById('api-key-submit-btn');
 const clearApiKeyBtn = document.getElementById('clear-api-key');
+
+// Hugging Face Key Modal
+const hfKeyModal = document.getElementById('hf-key-modal');
+const hfKeyInput = document.getElementById('hf-key-input');
+const hfKeySubmitBtn = document.getElementById('hf-key-submit-btn');
+const hfCloseBtn = hfKeyModal.querySelector('.modal-close-btn');
 
 // Settings Modal
 const settingsModal = document.getElementById('settings-modal');
@@ -31,6 +31,7 @@ const saveBtn = document.getElementById('save-btn');
 const loadBtn = document.getElementById('load-btn');
 const resetBtn = document.getElementById('reset-btn');
 const exportBtn = document.getElementById('export-btn');
+const autoplayToggle = document.getElementById('autoplay-toggle');
 
 // Reset Confirmation Modal
 const confirmResetModal = document.getElementById('confirm-reset-modal');
@@ -48,10 +49,12 @@ const loadingMessages = {
     action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast"],
     social: ["Choosing your words with care", "The currents of conversation shift", "A fragile trust is tested", "You offer a piece of yourself", "The air hangs heavy with unspoken words"],
     magic: ["The Amulet hums in response", "Weaving the threads of ethereal energy", "The air crackles with latent power", "A whisper on the edge of reality", "The ancient forces stir"],
+    stealth: ["Treading softly on the edge of shadows", "Holding your breath as the world passes by", "Weaving a careful deception", "A whisper of movement, unheard", "You become one with the darkness"],
+    memory: ["A fragment of memory surfaces from the depths", "Connecting the scattered echoes of the past", "The fog in your mind begins to thin", "A forgotten truth sparks into light", "The past reaches out to you"],
     default: ["The world holds its breath", "Consulting the celestial patterns", "The ancient stones whisper", "Time stretches and bends", "Destiny considers your move"]
 };
 
-// New array for randomized image loading messages
+// Array for randomized image loading messages
 const imageLoadingMessages = [
     "The wind draws an image of your journey",
     "A vision coalesces from the ether",
@@ -107,6 +110,8 @@ let chat;
 let genAI;
 let toastTimeout;
 let turnCounter = 0;
+let isAutoplayEnabled = false;
+let autoplayTimeout;
 
 function showToast(message) {
     clearTimeout(toastTimeout);
@@ -125,6 +130,7 @@ function reattachChoiceButtonListeners() {
 }
 
 function handleChoiceClick(event) {
+    clearTimeout(autoplayTimeout); // Cancel auto-play timer on manual action
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
@@ -227,6 +233,13 @@ function addMessage(text, sender) {
                 gameOutput.appendChild(p);
             }
         });
+
+        const finalChoiceContainer = gameOutput.querySelector('.choice-container:last-of-type');
+        if (finalChoiceContainer && isAutoplayEnabled) {
+            clearTimeout(autoplayTimeout);
+            autoplayTimeout = setTimeout(pickRandomChoice, 10000);
+        }
+
     } else {
         const p = document.createElement('p');
         if (sender === 'player') {
@@ -249,16 +262,14 @@ async function generateAndDisplayImage(narrativeText) {
     gameOutput.appendChild(imageContainer);
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
-    // This function wraps the modal logic in a Promise
     const getHfToken = () => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             let existingToken = localStorage.getItem('hf-api-token');
             if (existingToken) {
                 resolve(existingToken);
                 return;
             }
 
-            // No token found, so we show the modal.
             hfKeyModal.classList.remove('hidden');
             hfKeyInput.focus();
 
@@ -270,8 +281,9 @@ async function generateAndDisplayImage(narrativeText) {
                 }
             };
 
-            const handleCancel = () => {
-                cleanupAndResolve(null);
+            const handleCancel = () => cleanupAndResolve(null);
+            const handleEnter = (event) => {
+                if (event.key === 'Enter') handleSubmit();
             };
 
             const cleanupAndResolve = (token) => {
@@ -280,10 +292,6 @@ async function generateAndDisplayImage(narrativeText) {
                 hfKeyInput.removeEventListener('keydown', handleEnter);
                 hfCloseBtn.removeEventListener('click', handleCancel);
                 resolve(token);
-            };
-
-            const handleEnter = (event) => {
-                if (event.key === 'Enter') handleSubmit();
             };
 
             hfKeySubmitBtn.addEventListener('click', handleSubmit);
@@ -298,8 +306,8 @@ async function generateAndDisplayImage(narrativeText) {
             throw new Error("No Hugging Face token provided by user.");
         }
 
-        const HF_TOKEN = `Bearer ${hfToken}`; 
-        const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+        const HF_TOKEN = `Bearer ${hfToken}`;
+        const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
         const imagePrompt = `epic fantasy digital painting, atmospheric, detailed, high quality, trending on artstation. A scene depicting: ${narrativeText}`;
 
         const response = await fetch(API_URL, {
@@ -378,9 +386,7 @@ async function handlePlayerInput(customDisplayText = null) {
         const responseText = response.text();
         
         loader.remove();
-
-        // --- ORDER CHANGED ---
-        // 1. Check for and generate the image first.
+        
         if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 9 === 0)) {
             const inventoryRegex = /\[INVENTORY:.*?\]/g;
             const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
@@ -388,9 +394,7 @@ async function handlePlayerInput(customDisplayText = null) {
             generateAndDisplayImage(narrativeForImage);
         }
 
-        // 2. Then, add the text message.
         addMessage(responseText, 'gamemaster');
-        // --- END CHANGE ---
         
         if (lastPlayerMessage) {
             const desiredScrollPosition = lastPlayerMessage.offsetTop - SCROLL_PADDING;
@@ -438,15 +442,11 @@ async function initializeAI(apiKey) {
 
         gameOutput.innerHTML = ''; 
         
-        // --- ORDER CHANGED ---
-        // 1. Generate the image first.
         turnCounter = 1;
         const narrativeForImage = cleanResponseText.split('\n').filter(line => !/^\s*\*\*/.test(line)).join(' ');
         generateAndDisplayImage(narrativeForImage);
 
-        // 2. Then, add the text message.
         addMessage(cleanResponseText, 'gamemaster');
-        // --- END CHANGE ---
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
@@ -460,6 +460,21 @@ async function initializeAI(apiKey) {
     }
 }
 
+function pickRandomChoice() {
+    const availableChoices = document.querySelectorAll('.choice-btn:not([disabled])');
+    if (availableChoices.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableChoices.length);
+        const randomChoice = availableChoices[randomIndex];
+
+        randomChoice.classList.add('autopicked');
+        showToast("Auto-playing next turn...");
+        
+        setTimeout(() => {
+            randomChoice.click();
+        }, 1000);
+    }
+}
+
 async function exportStory() {
     if (!chat) {
         showToast("No story to export yet.");
@@ -468,21 +483,17 @@ async function exportStory() {
     showToast("Preparing your story...");
 
     try {
-        // --- 1. Fetch the CSS content ---
         const cssResponse = await fetch('style.css');
         const cssText = await cssResponse.text();
 
-        // --- 2. Clone and Clean the Game's HTML Output ---
         const storyContainer = document.createElement('div');
         storyContainer.innerHTML = gameOutput.innerHTML;
 
-        // Remove unwanted elements like choice buttons and loading indicators
         storyContainer.querySelectorAll('.choice-container, #inline-loader').forEach(el => el.remove());
 
         const cleanedStoryHtml = storyContainer.innerHTML;
-
-        // --- 3. Build the new, self-contained HTML document ---
         const currentThemeClass = document.body.classList.contains('light-mode') ? 'light-mode' : '';
+        
         const htmlContent = `
             <!DOCTYPE html>
             <html lang="en">
@@ -493,22 +504,16 @@ async function exportStory() {
                 <link rel="preconnect" href="https://fonts.googleapis.com">
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
                 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
-                <style>
-                    ${cssText}
-                </style>
+                <style>${cssText}</style>
             </head>
             <body class="${currentThemeClass}">
                 <div id="game-container">
                     <h1>Your Story</h1>
-                    <div id="game-output">
-                        ${cleanedStoryHtml}
-                    </div>
+                    <div id="game-output">${cleanedStoryHtml}</div>
                 </div>
             </body>
-            </html>
-        `;
+            </html>`;
 
-        // --- 4. Create and Trigger the Download ---
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -615,6 +620,18 @@ inventoryContainer.addEventListener('mouseout', (event) => {
 settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
 closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
+autoplayToggle.addEventListener('change', () => {
+    isAutoplayEnabled = autoplayToggle.checked;
+    localStorage.setItem('autoplay-enabled', isAutoplayEnabled);
+    showToast(`Auto-play ${isAutoplayEnabled ? 'enabled' : 'disabled'}.`);
+    if (isAutoplayEnabled && document.querySelector('.choice-btn:not([disabled])')) {
+        clearTimeout(autoplayTimeout);
+        autoplayTimeout = setTimeout(pickRandomChoice, 10000);
+    } else {
+        clearTimeout(autoplayTimeout);
+    }
+});
+
 saveBtn.addEventListener('click', async () => {
     if (!chat) {
         showToast("Nothing to save yet.");
@@ -679,7 +696,7 @@ cancelResetBtn.addEventListener('click', () => confirmResetModal.classList.add('
 confirmResetBtn.addEventListener('click', () => {
     confirmResetModal.classList.add('hidden');
     localStorage.removeItem('gemini-api-key');
-    localStorage.removeItem('hf-api-token'); // Add this line
+    localStorage.removeItem('hf-api-token');
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
     localStorage.removeItem('savedInventoryHTML');
@@ -690,6 +707,9 @@ confirmResetBtn.addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     applyTheme(savedTheme);
+
+    isAutoplayEnabled = localStorage.getItem('autoplay-enabled') === 'true';
+    autoplayToggle.checked = isAutoplayEnabled;
 
     const savedApiKey = localStorage.getItem('gemini-api-key');
     if (savedApiKey) {
