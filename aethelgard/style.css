@@ -549,6 +549,43 @@ footer {
     color: var(--text-color);
 }
 
+/* --- Custom Thematic Checkbox --- */
+.setting-item input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--input-bg);
+    margin: 0;
+    font: inherit;
+    color: var(--text-color);
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--subtle-border-color);
+    border-radius: 3px;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.setting-item input[type="checkbox"]:hover {
+    border-color: var(--accent-color);
+}
+
+.setting-item input[type="checkbox"]::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em var(--accent-color);
+    /* Creates a checkmark using a clipped box */
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.setting-item input[type="checkbox"]:checked::before {
+    transform: scale(1);
+}
+
 .setting-item {
     display: flex;
     justify-content: space-between;
