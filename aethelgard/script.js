@@ -91,10 +91,17 @@ The game operates on a turn-based loop.
 //-- IMAGE PROTOCOL --//
 // You have a library of pre-made images. When you describe a scene that matches one, you MUST output a tag to signal which image to show.
 // The format is: [SCENE_IMAGE: filename.png]
-// Your available images are:
-// - 'awakening_hollow.png': For the opening scene where the player awakens.
-// - 'ruined_tower_exterior.png': For when the player first sees the ruined tower.
-// - 'gloomy_forest_path.png': For any description of a dark, spooky path in the woods.
+// Your available images and when to use them are:
+// - 'awakening_hollow.png': For the opening scene where the player awakens in the hollow.
+// - 'winding_gate_scavenger.png': For when the player first meets the scavenger at the ruined archway.
+// - 'gloom_creature.png': For the first time the player sees the Gloom creature at the gate.
+// - 'clasp_and_amulet.png': When the player examines the silver clasp and it glows.
+// - 'ruined_city_vista.png': When the player first sees the vast ruined city from the ridge.
+// - 'nexus_site.png': When the player reaches the shattered, glowing dais in the city courtyard.
+// - 'serpents_coil.png': When the player enters the Citadel chamber and sees the floating jade serpent artifact.
+// - 'sky_iron_key.png': When the Sky-Iron Key rises from the stone ledge in the Fjordlands.
+// - 'foundation_chamber.png': When the player descends into the final, pristine chamber with the central pedestal.
+// - 'nexus_reformed.png': For the final, climactic flash of light as the Nexus is made whole.
 
 //-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
@@ -209,9 +216,9 @@ function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         updateInventoryDisplay(text);
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
+        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g; // Added this line
         let narrativeText = text.replace(inventoryRegex, '').trim();
-        narrativeText = narrativeText.replace(imageRegex, '').trim();
+        narrativeText = narrativeText.replace(imageRegex, '').trim(); // And this line to clean the text
 
         const paragraphs = narrativeText.split('\n');
         let choiceContainer = null;
@@ -271,7 +278,8 @@ function displayStaticImage(imageFilename) {
     imageContainer.className = 'image-container fade-in';
     
     const img = document.createElement('img');
-    img.src = `./images/${imageFilename}`; 
+    // This now points to your /assets/ folder
+    img.src = `./assets/${imageFilename}`; 
     
     img.onload = () => { img.classList.add('loaded'); };
     img.onerror = () => { 
@@ -279,10 +287,9 @@ function displayStaticImage(imageFilename) {
         imageContainer.remove(); 
     };
     
-    // --- THIS LINE IS THE FIX ---
-    // Changed from insertBefore to appendChild to place it at the end.
-    gameOutput.appendChild(imageContainer);
     imageContainer.appendChild(img);
+    // This correctly appends the image to the end of the current output
+    gameOutput.appendChild(imageContainer);
 }
 
 async function generateAndDisplayImage(narrativeText) {
