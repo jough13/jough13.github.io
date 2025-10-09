@@ -590,9 +590,20 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-color);
+    padding: 12px 0; /* Increased padding slightly */
     text-align: left;
+    position: relative; /* Needed for the divider */
+}
+
+/* This creates the decorative line, replacing the old border */
+.setting-item:not(:last-of-type)::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--subtle-border-color), transparent);
 }
 
 .settings-actions {
