@@ -506,8 +506,21 @@ async function initializeAI(apiKey) {
         gameOutput.innerHTML = ''; 
         
         turnCounter = 1;
-        handleImageTrigger(responseText);
-        addMessage(responseText, 'gamemaster');
+
+        // --- THIS IS THE FIX ---
+        if (isLiveImageModeEnabled) {
+            // In Live Mode, the trigger is the turn count, so we check the AI's actual response.
+            handleImageTrigger(responseText);
+        } else {
+            // In Standard Mode, the trigger for the FIRST image is in our prompt.
+            handleImageTrigger(GAME_MASTER_PROMPT);
+        }
+        // --- END FIX ---
+
+        // Clean all tags from the text before displaying
+        const allTagsRegex = /\[.*?\]/g;
+        const cleanResponseText = responseText.replace(allTagsRegex, '');
+        addMessage(cleanResponseText, 'gamemaster');
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
