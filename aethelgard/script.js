@@ -467,41 +467,65 @@ async function exportStory() {
     }
     showToast("Preparing your story...");
 
-    const history = await chat.getHistory();
+    try {
+        // --- 1. Fetch the CSS content ---
+        const cssResponse = await fetch('style.css');
+        const cssText = await cssResponse.text();
 
-    const choiceRegex = /^\s*\*\*([A-Z])\)\*\*(.*)/gm;
-    const inventoryRegex = /\[INVENTORY:.*?\]/g;
-    const actionPromptRegex = /\bwhat\b.*\?$/i;
+        // --- 2. Clone and Clean the Game's HTML Output ---
+        const storyContainer = document.createElement('div');
+        storyContainer.innerHTML = gameOutput.innerHTML;
 
-    const storyParts = history
-        .filter(entry => entry.role === 'model')
-        .map(entry => {
-            let text = entry.parts[0].text;
-            text = text.replace(inventoryRegex, "");
-            
-            const narrativeLines = text.split('\n').filter(line => {
-                const isChoice = choiceRegex.test(line);
-                const isActionPrompt = actionPromptRegex.test(line.trim());
-                return !isChoice && !isActionPrompt;
-            });
-            
-            return narrativeLines.join('\n').trim();
-        });
+        // Remove unwanted elements like choice buttons and loading indicators
+        storyContainer.querySelectorAll('.choice-container, #inline-loader').forEach(el => el.remove());
 
-    const fullStory = storyParts.join('\n\n').trim();
+        const cleanedStoryHtml = storyContainer.innerHTML;
 
-    const blob = new Blob([fullStory], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'My_Aethelgard_Story.txt';
-    document.body.appendChild(a);
-    a.click();
-    
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+        // --- 3. Build the new, self-contained HTML document ---
+        const currentThemeClass = document.body.classList.contains('light-mode') ? 'light-mode' : '';
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>The Amulet of Aethelgard - Your Story</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+                <style>
+                    ${cssText}
+                </style>
+            </head>
+            <body class="${currentThemeClass}">
+                <div id="game-container">
+                    <h1>Your Story</h1>
+                    <div id="game-output">
+                        ${cleanedStoryHtml}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
 
-    settingsModal.classList.add('hidden');
+        // --- 4. Create and Trigger the Download ---
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'My_Aethelgard_Story.html';
+        document.body.appendChild(a);
+        a.click();
+        
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Failed to export story:", error);
+        showToast("Export failed.");
+    } finally {
+        settingsModal.classList.add('hidden');
+    }
 }
 
 function submitApiKey() {
