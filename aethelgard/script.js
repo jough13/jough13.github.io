@@ -32,6 +32,7 @@ const loadBtn = document.getElementById('load-btn');
 const resetBtn = document.getElementById('reset-btn');
 const exportBtn = document.getElementById('export-btn');
 const autoplayToggle = document.getElementById('autoplay-toggle');
+const liveImageToggle = document.getElementById('live-image-toggle');
 
 // Reset Confirmation Modal
 const confirmResetModal = document.getElementById('confirm-reset-modal');
@@ -43,7 +44,7 @@ const confirmLoadModal = document.getElementById('confirm-load-modal');
 const cancelLoadBtn = document.getElementById('cancel-load-btn');
 const confirmLoadBtn = document.getElementById('confirm-load-btn');
 
-// Thematic loading messages based on player intent (dots removed for CSS animation)
+// Thematic loading messages based on player intent
 const loadingMessages = {
     perception: ["Your eyes adjust to the details", "A hidden truth brushes against your mind", "The world reveals a secret", "Focusing on the unseen", "The patterns become clear"],
     action: ["You commit to your course", "The world shifts in response to your will", "Fate's loom trembles", "A breath held, a step taken", "The die is cast"],
@@ -87,6 +88,14 @@ The game operates on a turn-based loop.
 4.  **Await Input:** Pause and wait for the player's response.
 5.  **Narrate the Outcome:** Describe the result of the player's chosen option.
 
+//-- IMAGE PROTOCOL --//
+// You have a library of pre-made images. When you describe a scene that matches one, you MUST output a tag to signal which image to show.
+// The format is: [SCENE_IMAGE: filename.png]
+// Your available images are:
+// - 'awakening_hollow.png': For the opening scene where the player awakens.
+// - 'ruined_tower_exterior.png': For when the player first sees the ruined tower.
+// - 'gloomy_forest_path.png': For any description of a dark, spooky path in the woods.
+
 //-- INVENTORY PROTOCOL --//
 1. You are responsible for tracking the player's inventory.
 2. At the end of EVERY response where the player's inventory changes, you MUST include a special inventory tag on a new line.
@@ -102,6 +111,7 @@ The game operates on a turn-based loop.
 
 //-- INITIALIZATION --//
 **Directive:** Begin the game. You awaken in a mossy hollow at the base of an ancient tree. The surrounding forest is dense, its shadows stretching long in the late afternoon light. Your mind is a quiet void, except for a single, persistent thought: *'The Sundered Star must be made whole.'* Your only possession is the amulet around your neck. Execute Act I.
+[SCENE_IMAGE: awakening_hollow.png]
 [INVENTORY: Amulet of Aethelgard (A smooth, wooden amulet that hums with a faint, reassuring warmth.)]
 `;
 
@@ -112,6 +122,7 @@ let toastTimeout;
 let turnCounter = 0;
 let isAutoplayEnabled = false;
 let autoplayTimeout;
+let isLiveImageModeEnabled = false;
 
 function showToast(message) {
     clearTimeout(toastTimeout);
@@ -130,7 +141,7 @@ function reattachChoiceButtonListeners() {
 }
 
 function handleChoiceClick(event) {
-    clearTimeout(autoplayTimeout); // Cancel auto-play timer on manual action
+    clearTimeout(autoplayTimeout);
     const button = event.target;
     const choiceLetter = button.dataset.choice;
     let choiceText = button.textContent.replace(/^[A-Z]\)\s*/, '').trim();
@@ -198,7 +209,9 @@ function addMessage(text, sender) {
     if (sender === 'gamemaster') {
         updateInventoryDisplay(text);
         const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const narrativeText = text.replace(inventoryRegex, '').trim();
+        const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
+        let narrativeText = text.replace(inventoryRegex, '').trim();
+        narrativeText = narrativeText.replace(imageRegex, '').trim();
 
         const paragraphs = narrativeText.split('\n');
         let choiceContainer = null;
@@ -253,13 +266,30 @@ function addMessage(text, sender) {
     }
 }
 
+function displayStaticImage(imageFilename) {
+    const imageContainer = document.createElement('div');
+    imageContainer.className = 'image-container fade-in';
+    
+    const img = document.createElement('img');
+    img.src = `./images/${imageFilename}`; 
+    
+    img.onload = () => { img.classList.add('loaded'); };
+    img.onerror = () => { 
+        console.error(`Failed to load static image: ${imageFilename}`);
+        imageContainer.remove(); 
+    };
+    
+    gameOutput.insertBefore(imageContainer, gameOutput.firstChild);
+    imageContainer.appendChild(img);
+}
+
 async function generateAndDisplayImage(narrativeText) {
     const imageContainer = document.createElement('div');
     imageContainer.className = 'image-container loading fade-in';
     const randomIndex = Math.floor(Math.random() * imageLoadingMessages.length);
     const randomMessage = imageLoadingMessages[randomIndex];
     imageContainer.innerHTML = `<p class="image-loading-text">${randomMessage}...</p>`;
-    gameOutput.appendChild(imageContainer);
+    gameOutput.insertBefore(imageContainer, gameOutput.firstChild);
     gameOutput.scrollTop = gameOutput.scrollHeight;
 
     const getHfToken = () => {
@@ -344,6 +374,28 @@ async function generateAndDisplayImage(narrativeText) {
     }
 }
 
+function handleImageTrigger(fullResponseText) {
+    const imageRegex = /\[SCENE_IMAGE:\s*(.*?)\]/g;
+    const imageMatch = fullResponseText.match(imageRegex);
+
+    if (imageMatch) {
+        const lastMatch = imageMatch[imageMatch.length - 1];
+        const filename = lastMatch.replace('[SCENE_IMAGE:', '').replace(']', '').trim();
+
+        if (isLiveImageModeEnabled) {
+            const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
+            const narrativeForImage = fullResponseText
+                .replace(/\[.*?\]/g, '')
+                .split('\n')
+                .filter(line => !choiceTestRegex.test(line))
+                .join(' ');
+            generateAndDisplayImage(narrativeForImage);
+        } else {
+            displayStaticImage(filename);
+        }
+    }
+}
+
 function getLoadingContext(inputText) {
     const lowerInput = inputText.toLowerCase();
     
@@ -387,13 +439,7 @@ async function handlePlayerInput(customDisplayText = null) {
         
         loader.remove();
         
-        if (turnCounter === 4 || (turnCounter > 4 && (turnCounter - 4) % 9 === 0)) {
-            const inventoryRegex = /\[INVENTORY:.*?\]/g;
-            const choiceTestRegex = /^\s*\*\*[A-Z]\)\*\*/;
-            const narrativeForImage = responseText.replace(inventoryRegex, '').split('\n').filter(line => !choiceTestRegex.test(line)).join(' ');
-            generateAndDisplayImage(narrativeForImage);
-        }
-
+        handleImageTrigger(responseText);
         addMessage(responseText, 'gamemaster');
         
         if (lastPlayerMessage) {
@@ -437,16 +483,11 @@ async function initializeAI(apiKey) {
         const response = result.response;
         const responseText = response.text();
         
-        const inventoryRegex = /\[INVENTORY:\s*(.*?)\]/g;
-        const cleanResponseText = responseText.replace(inventoryRegex, '');
-
         gameOutput.innerHTML = ''; 
         
         turnCounter = 1;
-        const narrativeForImage = cleanResponseText.split('\n').filter(line => !/^\s*\*\*/.test(line)).join(' ');
-        generateAndDisplayImage(narrativeForImage);
-
-        addMessage(cleanResponseText, 'gamemaster');
+        handleImageTrigger(responseText);
+        addMessage(responseText, 'gamemaster');
         
         setLoadingState(false);
         gameOutput.scrollTop = 0;
@@ -632,6 +673,12 @@ autoplayToggle.addEventListener('change', () => {
     }
 });
 
+liveImageToggle.addEventListener('change', () => {
+    isLiveImageModeEnabled = liveImageToggle.checked;
+    localStorage.setItem('live-image-enabled', isLiveImageModeEnabled);
+    showToast(`Dynamic Images ${isLiveImageModeEnabled ? 'enabled' : 'disabled'}.`);
+});
+
 saveBtn.addEventListener('click', async () => {
     if (!chat) {
         showToast("Nothing to save yet.");
@@ -700,6 +747,8 @@ confirmResetBtn.addEventListener('click', () => {
     localStorage.removeItem('savedGameHistory');
     localStorage.removeItem('savedGameHTML');
     localStorage.removeItem('savedInventoryHTML');
+    localStorage.removeItem('autoplay-enabled');
+    localStorage.removeItem('live-image-enabled');
     location.reload();
 });
 
@@ -710,6 +759,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     isAutoplayEnabled = localStorage.getItem('autoplay-enabled') === 'true';
     autoplayToggle.checked = isAutoplayEnabled;
+
+    isLiveImageModeEnabled = localStorage.getItem('live-image-enabled') === 'true';
+    liveImageToggle.checked = isLiveImageModeEnabled;
 
     const savedApiKey = localStorage.getItem('gemini-api-key');
     if (savedApiKey) {
