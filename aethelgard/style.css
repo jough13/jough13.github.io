@@ -153,7 +153,7 @@ h1 {
     width: 40%;
     margin: 0 auto 1em;
     aspect-ratio: 16 / 9;
-    background-color: transparent; /* Changed from var(--input-bg) to transparent */
+    background-color: transparent;
     border-radius: 5px;
     overflow: hidden;
     position: relative;
@@ -162,7 +162,7 @@ h1 {
 .image-container img {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* This ensures the full image is visible */
+    object-fit: contain;
     opacity: 0;
     transition: opacity 0.5s ease-in-out;
 }
@@ -178,7 +178,6 @@ h1 {
     animation: pulse-bg 2s infinite ease-in-out;
 }
 
-/* NEW style for the loading text element */
 .image-loading-text {
     position: absolute;
     top: 50%;
@@ -189,22 +188,7 @@ h1 {
     font-style: italic;
     text-align: center;
     width: 80%;
-    z-index: 1; /* Ensure it's above the pulsing background */
-}
-
-.image-container img.loaded {
-    opacity: 1;
-}
-
-/* Loading state styles */
-@keyframes pulse-bg {
-    0% { background-color: var(--input-bg); }
-    50% { background-color: var(--border-color); }
-    100% { background-color: var(--input-bg); }
-}
-
-.image-container.loading {
-    animation: pulse-bg 2s infinite ease-in-out;
+    z-index: 1;
 }
 
 .image-container img.loaded {
@@ -415,6 +399,13 @@ h1 {
     border-color: var(--container-bg);
 }
 
+/* This style will briefly flash the choice that the game auto-selects */
+.choice-btn.autopicked {
+    border-color: var(--accent-color-hover);
+    box-shadow: 0 0 10px var(--accent-color-hover);
+}
+
+
 /* --- Visual Flourish Styles --- */
 
 /* 1. Vignette Effect */
@@ -564,12 +555,7 @@ footer {
     align-items: center;
     padding: 8px 0;
     border-bottom: 1px solid var(--border-color);
-}
-
-/* This style will briefly flash the choice that the game auto-selects */
-.choice-btn.autopicked {
-    border-color: var(--accent-color-hover);
-    box-shadow: 0 0 10px var(--accent-color-hover);
+    text-align: left;
 }
 
 .settings-actions {
