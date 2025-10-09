@@ -558,6 +558,20 @@ footer {
     color: var(--text-color);
 }
 
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* This style will briefly flash the choice that the game auto-selects */
+.choice-btn.autopicked {
+    border-color: var(--accent-color-hover);
+    box-shadow: 0 0 10px var(--accent-color-hover);
+}
+
 .settings-actions {
     display: flex;
     flex-direction: column;
