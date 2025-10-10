@@ -303,7 +303,7 @@
              },
              halfLife: '9.92 days',
              decayConstant: '0.0693 day⁻¹',
-             specificActivity: '7.8 x 10^13 Bq/g',
+             specificActivity: '2.16e15 Bq/g',
              parent: 'Thorium-229 (α)',
              daughter: 'Francium-221 (α)',
              commonUses: ['Targeted Alpha Therapy (TAT) for cancer, often called an "alpha-emitter generator" for its decay chain.'],
@@ -644,7 +644,7 @@
              avgBetaEnergy: '0.960 MeV',
              halfLife: '1.5 seconds',
              decayConstant: '0.462 s⁻¹',
-             specificActivity: '4.8 x 10^19 Bq/g',
+             specificActivity: '1.28 x 10^21 Bq/g',
              parent: 'Polonium-218',
              daughter: 'Bismuth-214 (α) or Radon-218 (β-)',
              commonUses: ['Intermediate in U-238 decay chain'],
@@ -818,7 +818,7 @@
              },
              halfLife: '2.01 x 10¹⁹ years',
              decayConstant: '3.45 x 10⁻²⁰ year⁻¹',
-             specificActivity: '0.001 Bq/g',
+             specificActivity: '0.0031 Bq/g',
              parent: 'Primordial',
              daughter: 'Thallium-205 (stable)',
              commonUses: ['Considered stable for most practical purposes', 'Recently discovered to be radioactive'],
@@ -2373,7 +2373,7 @@
              avgBetaEnergy: '0.166 MeV',
              halfLife: '4.41 x 10¹⁴ years',
              decayConstant: '1.57 x 10⁻¹⁵ year⁻¹',
-             specificActivity: '2.6 x 10^2 Bq/g',
+             specificActivity: '0.26 Bq/g',
              parent: 'Primordial',
              daughter: 'Tin-115 (stable)',
              commonUses: ['Neutrino mass experiments', 'Research (extremely weak activity)'],
@@ -3876,7 +3876,7 @@
              },
              halfLife: '0.299 microseconds',
              decayConstant: '2.32 x 10⁶ s⁻¹',
-             specificActivity: '2.5 x 10^22 Bq/g',
+             specificActivity: '6.58 x 10^27 Bq/g',
              parent: 'Bismuth-212 (β-)',
              daughter: 'Lead-208 (stable)',
              commonUses: ['Fastest alpha emitter in natural series', 'Research'],
@@ -4638,7 +4638,7 @@
              avgBetaEnergy: '0.001 MeV',
              halfLife: '4.33 x 10¹⁰ years',
              decayConstant: '1.60 x 10⁻¹¹ year⁻¹',
-             specificActivity: '1.03 x 10^6 Bq/g',
+             specificActivity: '1.63 x 10^6 Bq/g',
              parent: 'Primordial',
              daughter: 'Osmium-187 (stable)',
              commonUses: ['Rhenium-Osmium dating (geological)', 'Neutrino mass experiments'],
@@ -5691,7 +5691,7 @@
              avgBetaEnergy: '0.289 MeV',
              halfLife: '2.2 x 10²⁴ years',
              decayConstant: '3.15 x 10⁻²⁵ year⁻¹',
-             specificActivity: '1.4 x 10^-8 Bq/g',
+             specificActivity: '1.25 x 10^-7 Bq/g',
              parent: 'Primordial',
              daughter: 'Xenon-128 (stable)',
              commonUses: ['Longest measured half-life', 'Fundamental physics research'],
@@ -7037,8 +7037,8 @@
               // --- APPLICATION METADATA & CONSTANTS
               //==============================================================================
               
-              const VERSION = '3.6.3';
-              const LAST_UPDATED = 'October 4th, 2025';
+              const VERSION = '3.6.4';
+              const LAST_UPDATED = 'October 10th, 2025';
               
               // NEW: A global constant for all navigation views
               
@@ -9533,12 +9533,11 @@
          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-                            {nuclide.name}
-                        </a>
-                        ({nuclide.symbol})
-                    </h2>
+<h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+    <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+        {nuclide.name}
+    </a> ({nuclide.symbol})
+</h2>
                     {nuclide.commonalityReason ? (
                         <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
                             <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
