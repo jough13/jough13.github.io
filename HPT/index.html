@@ -14469,7 +14469,7 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
          }, [addToast]);
          
          const scrollToMainContent = () => {
-         const isMobile = window.innerWidth < 768;
+   
          if (isMobile && mainContentRef.current) {
             mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
          }
