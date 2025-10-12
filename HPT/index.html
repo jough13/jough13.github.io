@@ -7037,8 +7037,8 @@
               // --- APPLICATION METADATA & CONSTANTS
               //==============================================================================
               
-              const VERSION = '3.6.3';
-              const LAST_UPDATED = 'October 4th, 2025';
+              const VERSION = '3.6.4';
+              const LAST_UPDATED = 'October 12th, 2025';
               
               // NEW: A global constant for all navigation views
               
@@ -9533,11 +9533,11 @@
          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
-<h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-    <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-        {nuclide.name}
-    </a> ({nuclide.symbol})
-</h2>
+         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+         <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+         {nuclide.name}
+         </a> ({nuclide.symbol})
+         </h2>
                     {nuclide.commonalityReason ? (
                         <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
                             <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
@@ -9635,7 +9635,7 @@
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
                         <div className="grid md:grid-cols-3 gap-4 mt-1">
                            <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} iconSymbol="α"/>
-                           <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` | ${nuclide.avgBetaEnergy} MeV (avg)` : ''}`} iconSymbol="β"/>
+                           <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` | ${nuclide.avgBetaEnergy} (avg)` : ''}`} iconSymbol="β"/>
                            <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} iconSymbol="γ"/>
                         </div>
                     </div>
@@ -10609,47 +10609,47 @@
               // This component is a versatile radioactive decay calculator that supports four different modes: calculating remaining activity, finding the time elapsed, determining the initial activity, or calculating the activity of a radioactive daughter product. It visualizes the decay curve and handles various time units and logarithmic scales.         
             
               
-
-
-
-
-
-const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNuclide, setSelectedNuclide, calculationMode, setCalculationMode, initialActivity, setInitialActivity, initialDaughterActivity, setInitialDaughterActivity, remainingActivity, setRemainingActivity, timeElapsed, setTimeElapsed, timeUnit, setTimeUnit, useLogScale, setUseLogScale, theme }) => {
-    const [result, setResult] = React.useState(null);
-    const [chartData, setChartData] = React.useState(null);
-    const [error, setError] = React.useState('');
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-    
-    const MODE_REMAINING = 'findRemaining'; 
-    const MODE_TIME = 'findTime'; 
-    const MODE_INITIAL = 'findInitial'; 
-    const MODE_DAUGHTER = 'findDaughterActivity';
-    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
-    const sortedRadionuclides = React.useMemo(() => { 
-        const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 }; 
-        return [...radionuclides].filter(r => r.halfLife !== 'Stable').sort((a, b) => { 
+         
+         
+         
+         
+         
+         const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNuclide, setSelectedNuclide, calculationMode, setCalculationMode, initialActivity, setInitialActivity, initialDaughterActivity, setInitialDaughterActivity, remainingActivity, setRemainingActivity, timeElapsed, setTimeElapsed, timeUnit, setTimeUnit, useLogScale, setUseLogScale, theme }) => {
+         const [result, setResult] = React.useState(null);
+         const [chartData, setChartData] = React.useState(null);
+         const [error, setError] = React.useState('');
+         const { addHistory } = useCalculationHistory();
+         const { addToast } = useToast();
+         
+         const MODE_REMAINING = 'findRemaining'; 
+         const MODE_TIME = 'findTime'; 
+         const MODE_INITIAL = 'findInitial'; 
+         const MODE_DAUGHTER = 'findDaughterActivity';
+         const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
+         const sortedRadionuclides = React.useMemo(() => { 
+         const commonalityOrder = { 'Common': 3, 'Moderate': 2, 'Rare': 1 }; 
+         return [...radionuclides].filter(r => r.halfLife !== 'Stable').sort((a, b) => { 
             const orderA = commonalityOrder[a.commonality] || 0; 
             const orderB = commonalityOrder[b.commonality] || 0; 
             if (orderA !== orderB) { return orderB - orderA; } 
             return a.name.localeCompare(b.name); 
-        }); 
-    }, [radionuclides]);
-    
-    React.useEffect(() => { 
-        localStorage.setItem('decayCalc_nuclideSymbol', selectedNuclide ? selectedNuclide.symbol : ''); 
-        localStorage.setItem('decayCalc_mode', calculationMode); 
-        localStorage.setItem('decayCalc_initialActivity', initialActivity); 
-        localStorage.setItem('decayCalc_initialDaughterActivity', initialDaughterActivity); 
-        localStorage.setItem('decayCalc_remainingActivity', remainingActivity); 
-        localStorage.setItem('decayCalc_timeElapsed', timeElapsed); 
-        localStorage.setItem('decayCalc_timeUnit', timeUnit); 
-        localStorage.setItem('decayCalc_useLogScale', JSON.stringify(useLogScale)); 
-    }, [selectedNuclide, calculationMode, initialActivity, initialDaughterActivity, remainingActivity, timeElapsed, timeUnit, useLogScale]);
-    
-    const handleNuclideSelect = React.useCallback((symbol) => { 
-        const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol); 
-        if (nuclideToSet) { 
+         }); 
+         }, [radionuclides]);
+         
+         React.useEffect(() => { 
+         localStorage.setItem('decayCalc_nuclideSymbol', selectedNuclide ? selectedNuclide.symbol : ''); 
+         localStorage.setItem('decayCalc_mode', calculationMode); 
+         localStorage.setItem('decayCalc_initialActivity', initialActivity); 
+         localStorage.setItem('decayCalc_initialDaughterActivity', initialDaughterActivity); 
+         localStorage.setItem('decayCalc_remainingActivity', remainingActivity); 
+         localStorage.setItem('decayCalc_timeElapsed', timeElapsed); 
+         localStorage.setItem('decayCalc_timeUnit', timeUnit); 
+         localStorage.setItem('decayCalc_useLogScale', JSON.stringify(useLogScale)); 
+         }, [selectedNuclide, calculationMode, initialActivity, initialDaughterActivity, remainingActivity, timeElapsed, timeUnit, useLogScale]);
+         
+         const handleNuclideSelect = React.useCallback((symbol) => { 
+         const nuclideToSet = sortedRadionuclides.find(n => n.symbol === symbol); 
+         if (nuclideToSet) { 
             setSelectedNuclide(nuclideToSet); 
             const hl_seconds = parseHalfLifeToSeconds(nuclideToSet.halfLife); 
             if (hl_seconds !== Infinity) { 
@@ -10659,25 +10659,25 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 setTimeUnit(bestUnit); 
                 setTimeElapsed(parseFloat(hl_in_best_unit.toPrecision(2)).toString()); 
             } 
-        } 
-    }, [sortedRadionuclides, setSelectedNuclide, setTimeUnit, setTimeElapsed]);
-    
-    React.useEffect(() => { 
-        if (preselectedNuclide) { 
+         } 
+         }, [sortedRadionuclides, setSelectedNuclide, setTimeUnit, setTimeElapsed]);
+         
+         React.useEffect(() => { 
+         if (preselectedNuclide) { 
             handleNuclideSelect(preselectedNuclide); 
-        } 
-    }, [preselectedNuclide, handleNuclideSelect]);
-    
-    React.useEffect(() => { 
-        setResult(null); 
-        setChartData(null); 
-        setError(''); 
-    }, [calculationMode]);
-    
-    const handleCalculate = React.useCallback(() => {
-        if (!selectedNuclide) return;
-        
-        try {
+         } 
+         }, [preselectedNuclide, handleNuclideSelect]);
+         
+         React.useEffect(() => { 
+         setResult(null); 
+         setChartData(null); 
+         setError(''); 
+         }, [calculationMode]);
+         
+         const handleCalculate = React.useCallback(() => {
+         if (!selectedNuclide) return;
+         
+         try {
             setError('');
             const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
             const lambda = Math.log(2) / T_half_seconds;
@@ -10685,11 +10685,11 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
             const At = parseFloat(remainingActivity);
             const t_input = parseFloat(timeElapsed);
             const t_seconds = t_input * unitConversions[timeUnit];
-
+         
             // --- FIX IMPLEMENTED HERE ---
             // 1. Default the chart's time span to the user's input.
             let timeForChart_seconds = t_seconds;
-
+         
             if (calculationMode === MODE_REMAINING) {
                 if (isNaN(A0) || isNaN(t_seconds)) throw new Error('Initial activity and time must be valid numbers.');
                 const finalActivity = A0 * Math.exp(-lambda * t_seconds);
@@ -10703,7 +10703,7 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 
                 // 2. If time was calculated, update the chart's time span to match the result.
                 timeForChart_seconds = timeInSeconds;
-
+         
             } else if (calculationMode === MODE_INITIAL) {
                 if (isNaN(At) || isNaN(t_seconds)) throw new Error('Remaining activity and time must be valid numbers.');
                 const initial = At / Math.exp(-lambda * t_seconds);
@@ -10728,7 +10728,7 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
             }
             
             const labels = [], parentData = [], daughterData = [];
-
+         
             // 3. Use the corrected time variable to build the chart's x-axis.
             const totalTime = timeForChart_seconds / unitConversions[timeUnit];
             const steps = 100;
@@ -10754,21 +10754,21 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 }
             }
             setChartData({ labels, parentData, daughterData: daughterData.length > 0 ? daughterData : null, timeUnit: timeUnit, parentName: selectedNuclide.name, daughterName: calculationMode === MODE_DAUGHTER ? selectedNuclide.daughter.split('(')[0].trim() : null });
-        } catch (e) {
+         } catch (e) {
             setError(e.message);
             setResult(null);
             setChartData(null);
-        }
-    }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, radionuclides]);
-
-    React.useEffect(() => { 
-        if (selectedNuclide) { 
+         }
+         }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, radionuclides]);
+         
+         React.useEffect(() => { 
+         if (selectedNuclide) { 
             handleCalculate(); 
-        } 
-    }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, handleCalculate]);
-    
-    const handleSaveToHistory = () => {
-        if (result && selectedNuclide) {
+         } 
+         }, [selectedNuclide, calculationMode, initialActivity, remainingActivity, timeElapsed, timeUnit, initialDaughterActivity, handleCalculate]);
+         
+         const handleSaveToHistory = () => {
+         if (result && selectedNuclide) {
             let inputs, res;
             if (result.label === 'Remaining Activity') {
                 inputs = `${initialActivity} of ${selectedNuclide.symbol} for ${timeElapsed} ${timeUnit}`;
@@ -10793,11 +10793,11 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 view: VIEWS.CALCULATOR
             });
             addToast("Calculation saved to history!");
-        }
-    };
-    
-    return (
-        <div className="space-y-4">
+         }
+         };
+         
+         return (
+         <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">Calculates remaining activity, time, or daughter products.</p>
             <div>
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
@@ -10870,20 +10870,20 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                     <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
                 </>
             )} 
-        </div>
-    );
-};
+         </div>
+         );
+         };
          
          
-
-
-
-
-
-
-
-
-
+         
+         
+         
+         
+         
+         
+         
+         
+         
          
          
          const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
@@ -14434,8 +14434,7 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 history.replaceState(null, '', `#${VIEWS.HOME}`);
             }
             setActiveView(targetView);
-            // **FIX**: The line that was causing the error has been removed from here.
-            // setPreselectedNuclide(null); // <-- This was the problematic line.
+
             if (targetView === VIEWS.HOME) {
                 setDetailedNuclide(null);
                 setNuclideName(''); 
@@ -14468,12 +14467,12 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
          }
          }, [addToast]);
          
-         const scrollToMainContent = () => {
-   
-         if (isMobile && mainContentRef.current) {
-            mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }
-         };
+const scrollToMainContent = () => {
+
+if (mainContentRef.current) {
+   mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+};
          
          const handleNavClick = (view) => {
          if (view !== VIEWS.DETAIL) {
@@ -14763,6 +14762,11 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
                 return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
          }
          };
+
+
+
+
+         
          
          return (
          <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
@@ -15294,150 +15298,150 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
               * nuclide search).
               */
               
-
-
-
-const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-    const CALC_MODE_GAMMA = 'gamma';
-    const CALC_MODE_BETA = 'beta';
-    const CALC_MODE_BREMS = 'bremsstrahlung';
-    const CALC_MODE_INTERNAL = 'internal';
-    const INPUT_MODE_DB = 'fromSource';
-    const INPUT_MODE_MANUAL = 'manual';
-    const GEOMETRY_POINT = 'point';
-    const GEOMETRY_LINE = 'line';
-    const GEOMETRY_AREA = 'area';
-    const BETA_MODE_SKIN = 'skin';
-    const BETA_MODE_AIR = 'air';
-
-    // --- 1. CONTEXT & DYNAMIC UNITS ---
-    const { settings } = React.useContext(SettingsContext);
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-
-    const activityUnits = React.useMemo(() =>
-        settings.unitSystem === 'si' 
+         
+         
+         
+         const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+         const CALC_MODE_GAMMA = 'gamma';
+         const CALC_MODE_BETA = 'beta';
+         const CALC_MODE_BREMS = 'bremsstrahlung';
+         const CALC_MODE_INTERNAL = 'internal';
+         const INPUT_MODE_DB = 'fromSource';
+         const INPUT_MODE_MANUAL = 'manual';
+         const GEOMETRY_POINT = 'point';
+         const GEOMETRY_LINE = 'line';
+         const GEOMETRY_AREA = 'area';
+         const BETA_MODE_SKIN = 'skin';
+         const BETA_MODE_AIR = 'air';
+         
+         // --- 1. CONTEXT & DYNAMIC UNITS ---
+         const { settings } = React.useContext(SettingsContext);
+         const { addHistory } = useCalculationHistory();
+         const { addToast } = useToast();
+         
+         const activityUnits = React.useMemo(() =>
+         settings.unitSystem === 'si' 
             ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] 
             : ['µCi', 'mCi', 'Ci'],
-        [settings.unitSystem]
-    );
-
-    const distanceUnits = React.useMemo(() =>
-        settings.unitSystem === 'si' 
+         [settings.unitSystem]
+         );
+         
+         const distanceUnits = React.useMemo(() =>
+         settings.unitSystem === 'si' 
             ? ['mm', 'cm', 'm'] 
             : ['in', 'ft', 'm'],
-        [settings.unitSystem]
-    );
-
-    // --- 2. STATE MANAGEMENT ---
-    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || CALC_MODE_GAMMA);
-    const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('doseRate_inputMode') || INPUT_MODE_DB);
-    const [geometryMode, setGeometryMode] = React.useState(() => localStorage.getItem('doseRate_geometryMode') || GEOMETRY_POINT);
-    const [lineLength, setLineLength] = React.useState(() => localStorage.getItem('doseRate_lineLength') || '1');
-    const [lineLengthUnit, setLineLengthUnit] = React.useState(() => localStorage.getItem('doseRate_lineLengthUnit') || 'm');
-    const [linearActivityUnit, setLinearActivityUnit] = React.useState(() => localStorage.getItem('doseRate_linearActivityUnit') || 'mCi/m');
-    const [diskRadius, setDiskRadius] = React.useState(() => localStorage.getItem('doseRate_diskRadius') || '10');
-    const [diskRadiusUnit, setDiskRadiusUnit] = React.useState(() => localStorage.getItem('doseRate_diskRadiusUnit') || 'cm');
-    const [arealActivityUnit, setArealActivityUnit] = React.useState(() => localStorage.getItem('doseRate_arealActivityUnit') || 'µCi/cm²');
-    const [activity, setActivity] = React.useState(() => localStorage.getItem('doseRate_activity') || '1');
-    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || activityUnits[0]);
-    const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
-    const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || distanceUnits[0]);
-    const [shieldMaterial, setShieldMaterial] = React.useState(() => localStorage.getItem('doseRate_shieldMaterial') || 'Plastic');
-    const [intakeRoute, setIntakeRoute] = React.useState(() => localStorage.getItem('doseRate_intakeRoute') || 'inhalation');
-    const [solubility, setSolubility] = React.useState(() => localStorage.getItem('doseRate_solubility') || '');
-    const [intakeAmount, setIntakeAmount] = React.useState(() => localStorage.getItem('doseRate_intakeAmount') || '1');
-    const [intakeUnit, setIntakeUnit] = React.useState(() => localStorage.getItem('doseRate_intakeUnit') || 'µCi');
-    const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('doseRate_nuclideSymbol') || '');
-    const [manualGammaConstant, setManualGammaConstant] = React.useState(() => localStorage.getItem('doseRate_manualGammaConstant') || '');
-    const [manualBetaEnergy, setManualBetaEnergy] = React.useState(() => localStorage.getItem('doseRate_manualBetaEnergy') || '');
-    const [betaMode, setBetaMode] = React.useState(() => localStorage.getItem('doseRate_betaMode') || BETA_MODE_SKIN);
-    const [result, setResult] = React.useState(null);
-    const [error, setError] = React.useState('');
-    const isInitialMount = React.useRef(true);
-    const [skinActivity, setSkinActivity] = React.useState(() => localStorage.getItem('doseRate_skinActivity') || '1000');
-    const [skinActivityUnit, setSkinActivityUnit] = React.useState(() => localStorage.getItem('doseRate_skinActivityUnit') || 'dpm/100cm²');
-
-    // --- 3. useEffect HOOKS ---
-    React.useEffect(() => {
-        localStorage.setItem('doseRate_calcMode', calcMode);
-        localStorage.setItem('doseRate_inputMode', inputMode);
-        localStorage.setItem('doseRate_geometryMode', geometryMode);
-        localStorage.setItem('doseRate_lineLength', lineLength);
-        localStorage.setItem('doseRate_lineLengthUnit', lineLengthUnit);
-        localStorage.setItem('doseRate_linearActivityUnit', linearActivityUnit);
-        localStorage.setItem('doseRate_diskRadius', diskRadius);
-        localStorage.setItem('doseRate_diskRadiusUnit', diskRadiusUnit);
-        localStorage.setItem('doseRate_arealActivityUnit', arealActivityUnit);
-        localStorage.setItem('doseRate_activity', activity);
-        localStorage.setItem('doseRate_activityUnit', activityUnit);
-        localStorage.setItem('doseRate_distance', distance);
-        localStorage.setItem('doseRate_distanceUnit', distanceUnit);
-        localStorage.setItem('doseRate_shieldMaterial', shieldMaterial);
-        localStorage.setItem('doseRate_intakeRoute', intakeRoute);
-        localStorage.setItem('doseRate_solubility', solubility);
-        localStorage.setItem('doseRate_intakeAmount', intakeAmount);
-        localStorage.setItem('doseRate_intakeUnit', intakeUnit);
-        localStorage.setItem('doseRate_nuclideSymbol', nuclideSymbol);
-        localStorage.setItem('doseRate_manualGammaConstant', manualGammaConstant);
-        localStorage.setItem('doseRate_manualBetaEnergy', manualBetaEnergy);
-        localStorage.setItem('doseRate_betaMode', betaMode);
-        localStorage.setItem('doseRate_skinActivity', skinActivity);
-        localStorage.setItem('doseRate_skinActivityUnit', skinActivityUnit);
-    }, [ calcMode, inputMode, geometryMode, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, activity, activityUnit, distance, distanceUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, nuclideSymbol, manualGammaConstant, manualBetaEnergy, betaMode, skinActivity, skinActivityUnit ]);
-
-    React.useEffect(() => {
-        if (!activityUnits.includes(activityUnit)) { setActivityUnit(activityUnits[0]); }
-    }, [activityUnits, activityUnit]);
-    
-    React.useEffect(() => {
-        if (!distanceUnits.includes(distanceUnit)) { setDistanceUnit(distanceUnits[0]); }
-    }, [distanceUnits, distanceUnit]);
-
-    React.useEffect(() => {
-        if (isInitialMount.current) { isInitialMount.current = false; return; }
-        setNuclideSymbol(''); setResult(null); setError(''); setInputMode(INPUT_MODE_DB);
-        setManualGammaConstant(''); setManualBetaEnergy(''); setBetaMode(BETA_MODE_SKIN);
-        setActivityUnit(activityUnits[0]);
-    }, [calcMode, activityUnits]);
-
-    React.useEffect(() => {
-        if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide); }
-    }, [preselectedNuclide]);
-    
-    // --- 4. DATA & FACTORS ---
-    const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
-    const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048, 'km': 1000 };
-    const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
-    const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
-    const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1000, 'Bq': 1/37000, 'kBq': 1/37 };
-    const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
-    
-    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0 || n.daughterEmissions?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.ALI).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-    const availableNuclides = React.useMemo(() => {
-        switch (calcMode) {
+         [settings.unitSystem]
+         );
+         
+         // --- 2. STATE MANAGEMENT ---
+         const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || CALC_MODE_GAMMA);
+         const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('doseRate_inputMode') || INPUT_MODE_DB);
+         const [geometryMode, setGeometryMode] = React.useState(() => localStorage.getItem('doseRate_geometryMode') || GEOMETRY_POINT);
+         const [lineLength, setLineLength] = React.useState(() => localStorage.getItem('doseRate_lineLength') || '1');
+         const [lineLengthUnit, setLineLengthUnit] = React.useState(() => localStorage.getItem('doseRate_lineLengthUnit') || 'm');
+         const [linearActivityUnit, setLinearActivityUnit] = React.useState(() => localStorage.getItem('doseRate_linearActivityUnit') || 'mCi/m');
+         const [diskRadius, setDiskRadius] = React.useState(() => localStorage.getItem('doseRate_diskRadius') || '10');
+         const [diskRadiusUnit, setDiskRadiusUnit] = React.useState(() => localStorage.getItem('doseRate_diskRadiusUnit') || 'cm');
+         const [arealActivityUnit, setArealActivityUnit] = React.useState(() => localStorage.getItem('doseRate_arealActivityUnit') || 'µCi/cm²');
+         const [activity, setActivity] = React.useState(() => localStorage.getItem('doseRate_activity') || '1');
+         const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('doseRate_activityUnit') || activityUnits[0]);
+         const [distance, setDistance] = React.useState(() => localStorage.getItem('doseRate_distance') || '1');
+         const [distanceUnit, setDistanceUnit] = React.useState(() => localStorage.getItem('doseRate_distanceUnit') || distanceUnits[0]);
+         const [shieldMaterial, setShieldMaterial] = React.useState(() => localStorage.getItem('doseRate_shieldMaterial') || 'Plastic');
+         const [intakeRoute, setIntakeRoute] = React.useState(() => localStorage.getItem('doseRate_intakeRoute') || 'inhalation');
+         const [solubility, setSolubility] = React.useState(() => localStorage.getItem('doseRate_solubility') || '');
+         const [intakeAmount, setIntakeAmount] = React.useState(() => localStorage.getItem('doseRate_intakeAmount') || '1');
+         const [intakeUnit, setIntakeUnit] = React.useState(() => localStorage.getItem('doseRate_intakeUnit') || 'µCi');
+         const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('doseRate_nuclideSymbol') || '');
+         const [manualGammaConstant, setManualGammaConstant] = React.useState(() => localStorage.getItem('doseRate_manualGammaConstant') || '');
+         const [manualBetaEnergy, setManualBetaEnergy] = React.useState(() => localStorage.getItem('doseRate_manualBetaEnergy') || '');
+         const [betaMode, setBetaMode] = React.useState(() => localStorage.getItem('doseRate_betaMode') || BETA_MODE_SKIN);
+         const [result, setResult] = React.useState(null);
+         const [error, setError] = React.useState('');
+         const isInitialMount = React.useRef(true);
+         const [skinActivity, setSkinActivity] = React.useState(() => localStorage.getItem('doseRate_skinActivity') || '1000');
+         const [skinActivityUnit, setSkinActivityUnit] = React.useState(() => localStorage.getItem('doseRate_skinActivityUnit') || 'dpm/100cm²');
+         
+         // --- 3. useEffect HOOKS ---
+         React.useEffect(() => {
+         localStorage.setItem('doseRate_calcMode', calcMode);
+         localStorage.setItem('doseRate_inputMode', inputMode);
+         localStorage.setItem('doseRate_geometryMode', geometryMode);
+         localStorage.setItem('doseRate_lineLength', lineLength);
+         localStorage.setItem('doseRate_lineLengthUnit', lineLengthUnit);
+         localStorage.setItem('doseRate_linearActivityUnit', linearActivityUnit);
+         localStorage.setItem('doseRate_diskRadius', diskRadius);
+         localStorage.setItem('doseRate_diskRadiusUnit', diskRadiusUnit);
+         localStorage.setItem('doseRate_arealActivityUnit', arealActivityUnit);
+         localStorage.setItem('doseRate_activity', activity);
+         localStorage.setItem('doseRate_activityUnit', activityUnit);
+         localStorage.setItem('doseRate_distance', distance);
+         localStorage.setItem('doseRate_distanceUnit', distanceUnit);
+         localStorage.setItem('doseRate_shieldMaterial', shieldMaterial);
+         localStorage.setItem('doseRate_intakeRoute', intakeRoute);
+         localStorage.setItem('doseRate_solubility', solubility);
+         localStorage.setItem('doseRate_intakeAmount', intakeAmount);
+         localStorage.setItem('doseRate_intakeUnit', intakeUnit);
+         localStorage.setItem('doseRate_nuclideSymbol', nuclideSymbol);
+         localStorage.setItem('doseRate_manualGammaConstant', manualGammaConstant);
+         localStorage.setItem('doseRate_manualBetaEnergy', manualBetaEnergy);
+         localStorage.setItem('doseRate_betaMode', betaMode);
+         localStorage.setItem('doseRate_skinActivity', skinActivity);
+         localStorage.setItem('doseRate_skinActivityUnit', skinActivityUnit);
+         }, [ calcMode, inputMode, geometryMode, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, activity, activityUnit, distance, distanceUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, nuclideSymbol, manualGammaConstant, manualBetaEnergy, betaMode, skinActivity, skinActivityUnit ]);
+         
+         React.useEffect(() => {
+         if (!activityUnits.includes(activityUnit)) { setActivityUnit(activityUnits[0]); }
+         }, [activityUnits, activityUnit]);
+         
+         React.useEffect(() => {
+         if (!distanceUnits.includes(distanceUnit)) { setDistanceUnit(distanceUnits[0]); }
+         }, [distanceUnits, distanceUnit]);
+         
+         React.useEffect(() => {
+         if (isInitialMount.current) { isInitialMount.current = false; return; }
+         setNuclideSymbol(''); setResult(null); setError(''); setInputMode(INPUT_MODE_DB);
+         setManualGammaConstant(''); setManualBetaEnergy(''); setBetaMode(BETA_MODE_SKIN);
+         setActivityUnit(activityUnits[0]);
+         }, [calcMode, activityUnits]);
+         
+         React.useEffect(() => {
+         if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide); }
+         }, [preselectedNuclide]);
+         
+         // --- 4. DATA & FACTORS ---
+         const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+         const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048, 'km': 1000 };
+         const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
+         const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
+         const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1000, 'Bq': 1/37000, 'kBq': 1/37 };
+         const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
+         
+         const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+         const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0 || n.daughterEmissions?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+         const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.ALI).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
+         const availableNuclides = React.useMemo(() => {
+         switch (calcMode) {
             case CALC_MODE_GAMMA: return gammaNuclides;
             case CALC_MODE_BETA: case CALC_MODE_BREMS: return betaNuclides;
             case CALC_MODE_INTERNAL: return dosimetryNuclides;
             default: return [];
-        }
-    }, [calcMode, gammaNuclides, betaNuclides, dosimetryNuclides]);
-    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
-    const availableClasses = React.useMemo(() => {
-        if (!selectedNuclide || !selectedNuclide.dosimetry?.ALI) return [];
-        return Object.keys(selectedNuclide.dosimetry.ALI).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
-    }, [selectedNuclide]);
-    
-    // --- 5. CALCULATION LOGIC ---
-    React.useEffect(() => {
-        try {
+         }
+         }, [calcMode, gammaNuclides, betaNuclides, dosimetryNuclides]);
+         const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
+         const availableClasses = React.useMemo(() => {
+         if (!selectedNuclide || !selectedNuclide.dosimetry?.ALI) return [];
+         return Object.keys(selectedNuclide.dosimetry.ALI).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
+         }, [selectedNuclide]);
+         
+         // --- 5. CALCULATION LOGIC ---
+         React.useEffect(() => {
+         try {
             setError(''); setResult(null);
             
             const activityValue = parseFloat(activity);
             const distanceValue = parseFloat(distance);
-        
+         
             switch (calcMode) {
                 case CALC_MODE_GAMMA: {
                     let gammaConstant;
@@ -15476,17 +15480,17 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             if (isNaN(activityValue) || activityValue < 0) { if(activity) setError("Invalid areal activity."); return; }
                             const radiusValue = parseFloat(diskRadius);
                             if(isNaN(radiusValue) || radiusValue <= 0) { if(diskRadius) setError("Invalid disk radius."); return; }
-
+         
                             const activity_Ci_per_m2 = activityValue * arealActivityFactorsCi_per_m2[arealActivityUnit];
                             const radius_m = radiusValue * distanceFactorsM[diskRadiusUnit];
-
+         
                             doseRateR_hr = Math.PI * gammaConstant * activity_Ci_per_m2 * Math.log((Math.pow(radius_m, 2) + Math.pow(distanceInM, 2)) / Math.pow(distanceInM, 2));
                             break;
                         }
                         default:
                             throw new Error("Selected geometry not implemented.");
                     }
-
+         
                     const doseRate_mrem_hr = doseRateR_hr * 1000;
                     setResult({ type: 'gamma', rawDoseRate_mrem_hr: doseRate_mrem_hr });
                     break;
@@ -15568,47 +15572,47 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                 }
                 default: throw new Error("Calculation mode not implemented.");
             }
-        } catch (e) { setError(e.message); }
-    }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode, skinActivity, skinActivityUnit, radionuclides ]);
-    
-    // --- 6. HANDLERS ---
-    const handleClearInputs = () => {
-        setCalcMode(CALC_MODE_GAMMA);
-        setInputMode(INPUT_MODE_DB);
-        setGeometryMode(GEOMETRY_POINT);
-        setLineLength('1');
-        setLineLengthUnit('m');
-        setLinearActivityUnit('mCi/m');
-        setDiskRadius('10');
-        setDiskRadiusUnit('cm');
-        setArealActivityUnit('µCi/cm²');
-        setActivity('1');
-        setActivityUnit(activityUnits[0]);
-        setDistance('1');
-        setDistanceUnit(distanceUnits[0]);
-        setShieldMaterial('Plastic');
-        setIntakeRoute('inhalation');
-        setSolubility('');
-        setIntakeAmount('1');
-        setIntakeUnit('µCi');
-        setNuclideSymbol('');
-        setManualGammaConstant('');
-        setManualBetaEnergy('');
-        setBetaMode(BETA_MODE_SKIN);
-        setSkinActivity('1000');
-        setSkinActivityUnit('dpm/100cm²');
-        setResult(null);
-        setError('');
-        Object.keys(localStorage).forEach(key => {
+         } catch (e) { setError(e.message); }
+         }, [ nuclideSymbol, calcMode, inputMode, manualGammaConstant, manualBetaEnergy, geometryMode, activity, activityUnit, linearActivityUnit, arealActivityUnit, distance, distanceUnit, lineLength, lineLengthUnit, diskRadius, diskRadiusUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, betaMode, skinActivity, skinActivityUnit, radionuclides ]);
+         
+         // --- 6. HANDLERS ---
+         const handleClearInputs = () => {
+         setCalcMode(CALC_MODE_GAMMA);
+         setInputMode(INPUT_MODE_DB);
+         setGeometryMode(GEOMETRY_POINT);
+         setLineLength('1');
+         setLineLengthUnit('m');
+         setLinearActivityUnit('mCi/m');
+         setDiskRadius('10');
+         setDiskRadiusUnit('cm');
+         setArealActivityUnit('µCi/cm²');
+         setActivity('1');
+         setActivityUnit(activityUnits[0]);
+         setDistance('1');
+         setDistanceUnit(distanceUnits[0]);
+         setShieldMaterial('Plastic');
+         setIntakeRoute('inhalation');
+         setSolubility('');
+         setIntakeAmount('1');
+         setIntakeUnit('µCi');
+         setNuclideSymbol('');
+         setManualGammaConstant('');
+         setManualBetaEnergy('');
+         setBetaMode(BETA_MODE_SKIN);
+         setSkinActivity('1000');
+         setSkinActivityUnit('dpm/100cm²');
+         setResult(null);
+         setError('');
+         Object.keys(localStorage).forEach(key => {
             if (key.startsWith('doseRate_')) { localStorage.removeItem(key); }
-        });
-    };
-    
-    const handleSaveToHistory = () => {
-        if (!result) return;
-        let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
-        let formattedResult;
-        switch(result.type) {
+         });
+         };
+         
+         const handleSaveToHistory = () => {
+         if (!result) return;
+         let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
+         let formattedResult;
+         switch(result.type) {
           case 'gamma':
           case 'beta_air':
           case 'bremsstrahlung':
@@ -15632,14 +15636,14 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
               historyEntry.inputs = `${intakeAmount} ${intakeUnit} via ${intakeRoute}`;
               historyEntry.result = `${formattedResult.value} ${formattedResult.unit}`;
               break;
-        }
-        addHistory(historyEntry);
-        addToast("Calculation saved to history!");
-    };
-    
-    // --- 7. RENDER (JSX) ---
-    return (
-        <div className="p-4 animate-fade-in">
+         }
+         addHistory(historyEntry);
+         addToast("Calculation saved to history!");
+         };
+         
+         // --- 7. RENDER (JSX) ---
+         return (
+         <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold">Dose & Dose Rate</h2>
@@ -15682,7 +15686,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 <button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Line</button>
                                 <button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Area</button>
                             </div>
-
+         
                             {geometryMode === GEOMETRY_POINT && (
                                 <div className="grid grid-cols-2 gap-4 animate-fade-in">
                                     <div>
@@ -15701,7 +15705,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </div>
                                 </div>
                             )}
-
+         
                             {geometryMode === GEOMETRY_LINE && (
                                 <div className="space-y-4 animate-fade-in">
                                     <div>
@@ -15729,7 +15733,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </div>
                                 </div>
                             )}
-
+         
                             {geometryMode === GEOMETRY_AREA && (
                                 <div className="space-y-4 animate-fade-in">
                                     <div>
@@ -15798,9 +15802,9 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     )}
                 </div>
             </div>
-        </div>
-    );
-};
+         </div>
+         );
+         };
          
               /**
               * @description A calculator for photon shielding with three modes:
@@ -16136,11 +16140,11 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                                                <div className="mt-1">{nuclideSymbol ? <CalculatorNuclideInfo nuclide={shieldingNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => { setNuclideSymbol(''); }} /> : ( <> <SearchableSelect options={shieldingNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Select a gamma emitter..." /> <QuickNuclideSelector onSelect={(symbol) => setNuclideSymbol(symbol)} /> </> )}
                                                 
                                                 {/* NEW: Conditional note for Radium-226 */}
-{nuclideSymbol === 'Ra-226' && (
-    <ContextualNote type="warning">
-        <strong>Note on Ra-226:</strong> The shielding data (HVLs) for this nuclide is based on an aged source in equilibrium with its high-energy gamma-emitting daughter products. This is a conservative assumption.
-    </ContextualNote>
-)}
+         {nuclideSymbol === 'Ra-226' && (
+         <ContextualNote type="warning">
+         <strong>Note on Ra-226:</strong> The shielding data (HVLs) for this nuclide is based on an aged source in equilibrium with its high-energy gamma-emitting daughter products. This is a conservative assumption.
+         </ContextualNote>
+         )}
                                                 
                                                 </div>
                                                {nuclideSymbol && complexGammaNuclides.includes(nuclideSymbol) && ( <ContextualNote type="warning"><strong>Beam Hardening:</strong> {nuclideSymbol} has a complex gamma spectrum. For thick shields, the actual dose rate may be higher than calculated as lower-energy gammas are filtered out.</ContextualNote> )}
