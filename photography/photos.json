@@ -922,5 +922,26 @@
     "url": "/assets/photos/515161850_10127265432776090_7918764265061348170_n.jpg",
     "description": "An interesting square brick wall texture, reminiscent of Q-bert, found in D.C.",
     "category": "Architecture"
+  },
+    {
+    "title": "Ramen in Okinawa",
+    "date": "2018-04-17",
+    "url": "/assets/photos/30127136_...n.jpg",
+    "description": "A delicious bowl of ramen in Okinawa, Japan.",
+    "category": "Urban"
+  },
+  {
+    "title": "House Warming Orchid",
+    "date": "2018-01-14",
+    "url": "/assets/photos/466562043_...n.jpg",
+    "description": "The second blooming of our house warming orchid in Okinawa.",
+    "category": "Nature"
+  },
+  {
+    "title": "Orchids in Washington, DC",
+    "date": "2016-04-30",
+    "url": "/assets/photos/514494294_...n.jpg",
+    "description": "Beautiful orchids on display in Washington, D.C.",
+    "category": "Nature"
   }
 ]
