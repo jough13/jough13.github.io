@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Global State & Constants ---
     let deck = [];
     let hand = [];
-    let discardPile = [];
+
     let workshopStacks = [[], [], [], []];
     let library = [];
     let selectedCard = null;
@@ -99,65 +99,68 @@ document.addEventListener('DOMContentLoaded', () => {
         shuffle(deck);
     }
 
-    function redrawHand() {
-        if (deck.length < HAND_SIZE) {
-            updateMessage("Not enough cards in the deck to redraw!");
-            return;
-        }
-    
-        score -= 1;
-        renderScore();
-    
-        discardPile.push(...hand);
-        hand = [];
-    
-        for (let i = 0; i < HAND_SIZE; i++) {
-            const newCard = drawCard();
-            if (newCard) hand.push(newCard);
-        }
-    
-        updateMessage("Hand discarded and redrawn. (-1 pt)");
-        renderAll();
+function redrawHand() {
+    if (deck.length < HAND_SIZE) {
+        updateMessage("Not enough cards in the deck to redraw!");
+        return;
     }
 
-    function clearStack(stackIndex) {
-        const stack = workshopStacks[stackIndex];
-        if (stack.length === 0) {
-            return;
-        }
+    score -= 1;
+    renderScore();
 
-        score -= 2;
-        renderScore();
+    // The old hand is NOT returned to the deck or discard pile. It is gone forever.
+    hand = []; 
 
-        discardPile.push(...stack);
-
-        workshopStacks[stackIndex] = [];
-        workshopArea.querySelectorAll('.stack')[stackIndex].classList.remove('clue-correct-position', 'clue-wrong-position');
-        updateMessage(`Stack cleared. (-2 pts)`);
-        renderAll();
+    for (let i = 0; i < HAND_SIZE; i++) {
+        const newCard = drawCard();
+        if (newCard) hand.push(newCard);
     }
 
-    function buyCards() {
-        if (score < buyCardsCost) {
-            updateMessage(`You need ${buyCardsCost} points to buy cards.`);
-            return;
-        }
-        if (discardPile.length === 0) {
-            updateMessage("No cards in the discard pile to buy back.");
-            return;
-        }
+    updateMessage("Hand discarded and redrawn. (-1 pt)");
+    renderAll();
+}
 
-        score -= buyCardsCost;
-        const cardsToReturn = discardPile.splice(0, 5);
-        deck.push(...cardsToReturn);
-        shuffle(deck);
-
-        updateMessage(`Bought back ${cardsToReturn.length} cards!`);
-        
-        buyCardsCost += 5;
-        
-        renderAll();
+function clearStack(stackIndex) {
+    const stack = workshopStacks[stackIndex];
+    if (stack.length === 0) {
+        return;
     }
+
+    score -= 2;
+    renderScore();
+
+    // The cards from the stack are now gone forever. We don't add them to any pile.
+
+    workshopStacks[stackIndex] = [];
+    workshopArea.querySelectorAll('.stack')[stackIndex].classList.remove('clue-correct-position', 'clue-wrong-position');
+    updateMessage(`Stack cleared. (-2 pts)`);
+    renderAll();
+}
+
+function buyCards() {
+    if (score < buyCardsCost) {
+        updateMessage(`You need ${buyCardsCost} points to buy cards.`);
+        return;
+    }
+
+    score -= buyCardsCost;
+
+    // Generate 5 new, balanced cards and add them to the deck
+    const newCardPack = 'E'.repeat(2) + 'A'.repeat(2) + 'R'.repeat(1) + 'T'.repeat(1) + 'O'.repeat(1) + 'I'.repeat(1) + 'N'.repeat(1) + 'S'.repeat(1);
+    const newCards = newCardPack.split('').map(char => ({ 
+        text: char, 
+        type: 'letter' 
+    }));
+    
+    deck.push(...newCards);
+    shuffle(deck);
+
+    updateMessage(`Bought 5 new cards!`);
+    
+    buyCardsCost *= 2; // Double the cost for the next purchase
+    
+    renderAll();
+}
 
     function shuffle(array) {
         for (let i = array.length - 1; i > 0; i--) {
@@ -543,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLevel = level;
         deck = [];
         hand = [];
-        discardPile = [];
+
         workshopStacks = [[], [], [], []];
         library = [];
         selectedCard = null;
