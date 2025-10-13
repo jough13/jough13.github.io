@@ -488,3 +488,59 @@ footer {
 body.dark-mode footer {
     color: #777;
 }
+
+/* --- Responsive Design for Mobile --- */
+@media (max-width: 700px) {
+    .header-container {
+        flex-direction: column; /* Stack title and scores vertically */
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .scores-container {
+        display: flex;
+        gap: 20px;
+    }
+
+    #game-board {
+        padding: 10px;
+    }
+    
+    .horizontal-area {
+        gap: 8px;
+    }
+
+    /* Allow the hand to wrap onto multiple lines */
+    #hand-area {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Make cards and fonts slightly smaller */
+    .card, .completed-word {
+        width: 45px;
+        height: 65px;
+    }
+
+    .card-letter {
+        font-size: 22px;
+    }
+    
+    .card-points {
+        font-size: 10px;
+        bottom: 2px;
+        right: 4px;
+    }
+
+    .stack {
+        font-size: 18px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+    
+    h2 {
+        font-size: 18px;
+    }
+}
