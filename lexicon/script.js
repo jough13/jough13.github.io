@@ -260,6 +260,7 @@ function buyCards() {
         renderLibrary();
         renderHighScore();
         renderDeckCount();
+        renderScore();
     }
 
     function renderHand() {
