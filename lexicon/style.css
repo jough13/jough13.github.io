@@ -115,12 +115,10 @@ h1 {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 22px;
-    font-family: monospace;
-    color: var(--main-accent-color);
     cursor: pointer;
     background-color: rgba(0, 123, 255, 0.05);
     transition: background-color 0.2s, border-color 0.2s;
+    position: relative;
 }
 
 .stack:hover {
@@ -265,6 +263,13 @@ input:checked + .slider:before {
     color: var(--completed-word-text);
 }
 
+#redraw-hand-btn:disabled, #buy-cards-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: transparent;
+    color: var(--main-accent-color);
+}
+
 /* --- Styles for Header and Score Display --- */
 .header-container {
     display: flex;
@@ -338,6 +343,35 @@ input:checked + .slider:before {
     font-weight: bold;
 }
 
+/* --- Styles for Stack 'X' Button --- */
+.stack-text {
+    font-size: 22px;
+    font-family: monospace;
+    color: var(--main-accent-color);
+}
+
+.clear-stack-btn {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #ff4d4d;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.stack:hover .clear-stack-btn {
+    display: block;
+}
+
+.clear-stack-btn:hover {
+    color: #cc0000;
+}
+
 /* --- Styles for Rules Button and Modals --- */
 #rules-btn {
     padding: 8px 16px;
@@ -356,7 +390,7 @@ input:checked + .slider:before {
 }
 
 #rules-modal, #game-over-modal {
-    position: fixed; /* Sit on top of the page */
+    position: fixed;
     z-index: 100;
     left: 0;
     top: 0;
@@ -492,7 +526,7 @@ body.dark-mode footer {
 /* --- Responsive Design for Mobile --- */
 @media (max-width: 700px) {
     .header-container {
-        flex-direction: column; /* Stack title and scores vertically */
+        flex-direction: column;
         gap: 10px;
         margin-bottom: 10px;
     }
@@ -510,13 +544,11 @@ body.dark-mode footer {
         gap: 8px;
     }
 
-    /* Allow the hand to wrap onto multiple lines */
     #hand-area {
         flex-wrap: wrap;
         justify-content: center;
     }
 
-    /* Make cards and fonts slightly smaller */
     .card, .completed-word {
         width: 45px;
         height: 65px;
@@ -543,47 +575,4 @@ body.dark-mode footer {
     h2 {
         font-size: 18px;
     }
-}
-
-/* --- Styles for Disabled Buttons --- */
-#redraw-hand-btn:disabled, #buy-cards-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: transparent;
-    color: var(--main-accent-color);
-}
-
-/* Add this to your .stack rule */
-.stack {
-    position: relative; /* Add this line */
-    /* ... all other .stack styles ... */
-}
-
-/* Add these new rules to the bottom of the file */
-.stack-text {
-    font-size: 22px;
-    font-family: monospace;
-    color: var(--main-accent-color);
-}
-
-.clear-stack-btn {
-    display: none; /* Hidden by default */
-    position: absolute;
-    top: 2px;
-    right: 4px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    color: #ff4d4d;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-}
-
-.stack:hover .clear-stack-btn {
-    display: block; /* Show on hover */
-}
-
-.clear-stack-btn:hover {
-    color: #cc0000;
 }
