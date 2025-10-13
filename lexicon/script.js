@@ -110,7 +110,7 @@ function redrawHand() {
         return;
     }
 
-    score -= 1;
+    score -= 2;
     renderScore();
 
     // The old hand is NOT returned to the deck or discard pile. It is gone forever.
@@ -121,7 +121,7 @@ function redrawHand() {
         if (newCard) hand.push(newCard);
     }
 
-    updateMessage("Hand discarded and redrawn. (-1 pt)");
+    updateMessage("Hand discarded and redrawn. (-2 pts)");
     renderAll();
 }
 
