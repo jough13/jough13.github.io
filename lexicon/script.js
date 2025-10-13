@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Global State & Constants ---
     let deck = [];
     let hand = [];
-
     let workshopStacks = [[], [], [], []];
     let library = [];
     let selectedCard = null;
@@ -91,11 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
         shuffle(deck);
     }
 
-function updateButtonStates() {
-        buyCardsBtn.disabled = score < buyCardsCost;
-        redrawHandBtn.disabled = deck.length < HAND_SIZE;
-    }
-
     function createWordDeck() {
         deck = [];
         for (let i = 0; i < 3; i++) {
@@ -104,68 +98,64 @@ function updateButtonStates() {
         shuffle(deck);
     }
 
-function redrawHand() {
-    if (deck.length < HAND_SIZE) {
-        updateMessage("Not enough cards in the deck to redraw!");
-        return;
-    }
-
-    score -= 2;
-    renderScore();
-
-    // The old hand is NOT returned to the deck or discard pile. It is gone forever.
-    hand = []; 
-
-    for (let i = 0; i < HAND_SIZE; i++) {
-        const newCard = drawCard();
-        if (newCard) hand.push(newCard);
-    }
-
-    updateMessage("Hand discarded and redrawn. (-2 pts)");
-    renderAll();
-}
-
-function clearStack(stackIndex) {
-    const stack = workshopStacks[stackIndex];
-    if (stack.length === 0) {
-        return;
-    }
-
-    score -= 2;
-    renderScore();
-
-    // The cards from the stack are now gone forever. We don't add them to any pile.
-
-    workshopStacks[stackIndex] = [];
-    workshopArea.querySelectorAll('.stack')[stackIndex].classList.remove('clue-correct-position', 'clue-wrong-position');
-    updateMessage(`Stack cleared. (-2 pts)`);
-    renderAll();
-}
-
-function buyCards() {
-    if (score < buyCardsCost) {
-        updateMessage(`You need ${buyCardsCost} points to buy cards.`);
-        return;
-    }
-
-    score -= buyCardsCost;
-
-    // Generate 5 new, balanced cards and add them to the deck
-    const newCardPack = 'E'.repeat(2) + 'A'.repeat(2) + 'R'.repeat(1) + 'T'.repeat(1) + 'O'.repeat(1) + 'I'.repeat(1) + 'N'.repeat(1) + 'S'.repeat(1);
-    const newCards = newCardPack.split('').map(char => ({ 
-        text: char, 
-        type: 'letter' 
-    }));
+    function redrawHand() {
+        if (deck.length < HAND_SIZE) {
+            updateMessage("Not enough cards in the deck to redraw!");
+            return;
+        }
     
-    deck.push(...newCards);
-    shuffle(deck);
+        score -= 2;
+        renderScore();
+    
+        hand = []; 
+    
+        for (let i = 0; i < HAND_SIZE; i++) {
+            const newCard = drawCard();
+            if (newCard) hand.push(newCard);
+        }
+    
+        updateMessage("Hand discarded and redrawn. (-2 pts)");
+        renderAll();
+    }
 
-    updateMessage(`Bought 5 new cards!`);
-    
-    buyCardsCost *= 2; // Double the cost for the next purchase
-    
-    renderAll();
-}
+    function clearStack(stackIndex) {
+        const stack = workshopStacks[stackIndex];
+        if (stack.length === 0) {
+            return;
+        }
+
+        score -= 2;
+        renderScore();
+
+        workshopStacks[stackIndex] = [];
+        workshopArea.querySelectorAll('.stack')[stackIndex].classList.remove('clue-correct-position', 'clue-wrong-position');
+        updateMessage(`Stack cleared. (-2 pts)`);
+        renderAll();
+    }
+
+    function buyCards() {
+        if (score < buyCardsCost) {
+            updateMessage(`You need ${buyCardsCost} points to buy cards.`);
+            return;
+        }
+
+        score -= buyCardsCost;
+
+        const newCardPack = 'E'.repeat(2) + 'A'.repeat(2) + 'R'.repeat(1) + 'T'.repeat(1) + 'O'.repeat(1) + 'I'.repeat(1) + 'N'.repeat(1) + 'S'.repeat(1);
+        const newCards = newCardPack.split('').map(char => ({ 
+            text: char, 
+            type: 'letter' 
+        }));
+        
+        deck.push(...newCards);
+        shuffle(deck);
+
+        updateMessage(`Bought ${newCards.length} new cards!`);
+        
+        buyCardsCost *= 2;
+        
+        renderAll();
+    }
 
     function shuffle(array) {
         for (let i = array.length - 1; i > 0; i--) {
@@ -259,15 +249,18 @@ function buyCards() {
         buyCardsBtn.innerText = `Buy 5 Cards (${buyCardsCost} pts)`;
     }
 
+    function updateButtonStates() {
+        buyCardsBtn.disabled = score < buyCardsCost;
+        redrawHandBtn.disabled = deck.length < HAND_SIZE;
+    }
+
     function renderAll() {
         renderHand();
         renderWorkshop();
         renderLibrary();
         renderHighScore();
         renderDeckCount();
-        
         renderScore();
-
         updateButtonStates();
     }
 
@@ -302,7 +295,7 @@ function buyCards() {
         const stacks = workshopArea.querySelectorAll('.stack');
         stacks.forEach((stackEl, index) => {
             const separator = (currentLevel === 1) ? '' : ' ';
-            stackEl.innerText = workshopStacks[index].map(card => card.text).join(separator);
+            stackEl.querySelector('.stack-text').innerText = workshopStacks[index].map(card => card.text).join(separator);
         });
     }
 
@@ -412,7 +405,7 @@ function buyCards() {
             
             let newLetter = prompt("Enter the letter you want to change it to:");
             if (newLetter && newLetter.length === 1 && /[a-zA-Z]/.test(newLetter)) {
-                discardPile.push(stack.pop()); // Add replaced card to discard
+                stack.pop();
                 stack.push({ text: newLetter.toUpperCase(), type: 'letter' });
                 updateMessage("Letter rewritten!");
                 finishMove();
@@ -507,7 +500,7 @@ function buyCards() {
     function updateMessage(msg) {
         messageArea.innerText = msg;
     }
-
+    
     // --- Dev Mode ---
     function toggleDevMode() {
         isDevMode = !isDevMode;
@@ -555,7 +548,6 @@ function buyCards() {
         currentLevel = level;
         deck = [];
         hand = [];
-
         workshopStacks = [[], [], [], []];
         library = [];
         selectedCard = null;
@@ -582,18 +574,13 @@ function buyCards() {
         startScreen.classList.add('hidden');
         gameContainer.classList.remove('hidden');
         renderAll();
-
-updateButtonStates(); 
-
         updateMessage(`Level ${level} started. Good luck!`);
     }
 
     // --- Initial Load ---
     loadHighScore();
     loadDictionary().then(() => {
-
-updateMessage("Select a level to begin!");
-
+        updateMessage("Select a level to begin!");
         startLevel1Btn.addEventListener('click', () => initGame(1));
         startLevel2Btn.addEventListener('click', () => initGame(2));
         redrawHandBtn.addEventListener('click', redrawHand);
@@ -612,7 +599,11 @@ updateMessage("Select a level to begin!");
 
         workshopArea.querySelectorAll('.stack').forEach((stackEl, index) => {
             stackEl.addEventListener('click', onStackClick);
-            stackEl.addEventListener('dblclick', () => clearStack(index));
+            const clearBtn = stackEl.querySelector('.clear-stack-btn');
+            clearBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                clearStack(index);
+            });
         });
     });
 });
