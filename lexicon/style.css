@@ -552,3 +552,38 @@ body.dark-mode footer {
     background-color: transparent;
     color: var(--main-accent-color);
 }
+
+/* Add this to your .stack rule */
+.stack {
+    position: relative; /* Add this line */
+    /* ... all other .stack styles ... */
+}
+
+/* Add these new rules to the bottom of the file */
+.stack-text {
+    font-size: 22px;
+    font-family: monospace;
+    color: var(--main-accent-color);
+}
+
+.clear-stack-btn {
+    display: none; /* Hidden by default */
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #ff4d4d;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.stack:hover .clear-stack-btn {
+    display: block; /* Show on hover */
+}
+
+.clear-stack-btn:hover {
+    color: #cc0000;
+}
