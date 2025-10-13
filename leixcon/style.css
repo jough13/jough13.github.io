@@ -1,0 +1,476 @@
+/* --- Color Palettes using CSS Variables --- */
+:root {
+    /* Light Mode (Default) */
+    --bg-color: #f0f2f5;
+    --text-color: #1c1e21;
+    --board-bg-color: #ffffff;
+    --board-shadow-color: rgba(0, 0, 0, 0.1);
+    --area-bg-color: #e9ebee;
+    --card-bg-color: #ffffff;
+    --card-border-color: #ccd0d5;
+    --card-shadow-color: rgba(0,0,0,0.2);
+    --completed-word-bg: #007bff;
+    --completed-word-text: #ffffff;
+    --main-accent-color: #007bff; /* Blue */
+    --splash-accent-color: #ff8c00; /* Orange */
+}
+
+body.dark-mode {
+    /* Dark Mode Overrides */
+    --bg-color: #1a1a1a;
+    --text-color: #f0f0f0;
+    --board-bg-color: #2c2c2c;
+    --board-shadow-color: rgba(0, 123, 255, 0.1);
+    --area-bg-color: #222;
+    --card-bg-color: #3d3d3d;
+    --card-border-color: #555;
+    --card-shadow-color: rgba(0,0,0,0.3);
+    --completed-word-bg: #007bff;
+    --completed-word-text: #ffffff;
+}
+
+/* --- General Styles --- */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+h1 {
+    font-weight: 300;
+    letter-spacing: 1px;
+}
+
+#game-board {
+    background-color: var(--board-bg-color);
+    border: 1px solid var(--main-accent-color);
+    border-radius: 8px;
+    padding: 20px;
+    width: 90%;
+    max-width: 800px;
+    box-shadow: 0 4px 15px var(--board-shadow-color);
+    transition: background-color 0.3s;
+}
+
+/* --- Game Element Styles --- */
+.game-area h2 {
+    font-weight: 400;
+    border-bottom: 1px solid var(--card-border-color);
+    padding-bottom: 8px;
+    margin-top: 0;
+}
+
+.horizontal-area {
+    display: flex;
+    gap: 12px;
+    min-height: 85px;
+    padding: 10px;
+    background-color: var(--area-bg-color);
+    border-radius: 5px;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.card, .completed-word {
+    width: 55px;
+    height: 75px;
+    border: 2px solid var(--card-border-color);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-color);
+    background-color: var(--card-bg-color);
+    box-shadow: 2px 2px 5px var(--card-shadow-color);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    position: relative;
+}
+
+.card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: var(--main-accent-color);
+}
+
+.card.selected {
+    border-color: var(--splash-accent-color);
+    box-shadow: 0 0 12px var(--splash-accent-color);
+    transform: translateY(-5px);
+}
+
+.stack {
+    width: 100%;
+    min-height: 75px;
+    border: 2px dashed var(--main-accent-color);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    font-family: monospace;
+    color: var(--main-accent-color);
+    cursor: pointer;
+    background-color: rgba(0, 123, 255, 0.05);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.stack:hover {
+    background-color: rgba(0, 123, 255, 0.15);
+}
+
+#message-area {
+    margin-top: 20px;
+    padding: 12px;
+    background-color: var(--board-bg-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 5px;
+    min-height: 2em;
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.completed-word {
+    background-color: var(--completed-word-bg);
+    color: var(--completed-word-text);
+    border-color: var(--main-accent-color);
+    font-size: 14px;
+    font-weight: normal;
+}
+
+
+/* --- Theme Toggle Switch Styles --- */
+.theme-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.icon {
+    font-size: 20px;
+}
+
+.switch-label {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.switch-label input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 28px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--main-accent-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* --- Styles for Start Screen & Level Select --- */
+#start-screen {
+    text-align: center;
+    padding: 40px;
+    background-color: var(--board-bg-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px var(--board-shadow-color);
+}
+
+#start-screen button {
+    font-size: 16px;
+    padding: 12px 24px;
+    margin: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 2px solid var(--main-accent-color);
+    background-color: transparent;
+    color: var(--main-accent-color);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#start-screen button:hover {
+    background-color: var(--main-accent-color);
+    color: #fff;
+}
+
+#high-score-start {
+    font-size: 18px;
+    color: var(--splash-accent-color);
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* --- Styles for Redraw & Buy Buttons --- */
+.hand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#redraw-hand-btn, #buy-cards-btn {
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid var(--main-accent-color);
+    background-color: transparent;
+    color: var(--main-accent-color);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#redraw-hand-btn:hover, #buy-cards-btn:hover {
+    background-color: var(--main-accent-color);
+    color: var(--completed-word-text);
+}
+
+/* --- Styles for Header and Score Display --- */
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    width: 90%;
+    max-width: 800px;
+}
+
+.scores-container {
+    text-align: right;
+}
+
+#score-display {
+    font-size: 22px;
+    font-weight: bold;
+    color: var(--main-accent-color);
+}
+
+#high-score-display {
+    font-size: 14px;
+    color: var(--splash-accent-color);
+}
+
+/* --- Styles for Library & Deck Info --- */
+.library-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.deck-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#deck-count-display {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* --- Styles for Special Tiles --- */
+.card.replace-card {
+    background-color: var(--splash-accent-color);
+    color: white;
+    border-color: #e67e00;
+}
+
+.card.replace-card .card-letter {
+    font-size: 36px;
+}
+
+.card.replace-card.selected {
+    border-color: var(--main-accent-color);
+    box-shadow: 0 0 12px var(--main-accent-color);
+}
+
+/* --- Styles for Card Letter and Points --- */
+.card-letter {
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.card-points {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* --- Styles for Rules Button and Modals --- */
+#rules-btn {
+    padding: 8px 16px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid var(--main-accent-color);
+    background-color: transparent;
+    color: var(--main-accent-color);
+    transition: background-color 0.2s, color 0.2s;
+}
+
+#rules-btn:hover {
+    background-color: var(--main-accent-color);
+    color: var(--completed-word-text);
+}
+
+#rules-modal, #game-over-modal {
+    position: fixed; /* Sit on top of the page */
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+}
+
+#rules-modal:not(.hidden), #game-over-modal:not(.hidden) {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--board-bg-color);
+    padding: 20px 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+    text-align: center;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h2, .modal-content h3 {
+    border-bottom: 1px solid var(--card-border-color);
+    padding-bottom: 5px;
+    margin-top: 0;
+    text-align: left;
+}
+
+.modal-content ul {
+    padding-left: 20px;
+    text-align: left;
+}
+
+.modal-content p, .modal-content li {
+    line-height: 1.6;
+    text-align: left;
+}
+
+#final-score, #final-high-score {
+    font-size: 20px;
+    margin: 10px 0;
+}
+
+#play-again-btn {
+    font-size: 16px;
+    padding: 12px 24px;
+    margin-top: 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 2px solid var(--main-accent-color);
+    background-color: var(--main-accent-color);
+    color: var(--completed-word-text);
+}
+
+.close-btn {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: var(--text-color);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+#score-display.pulse {
+    animation: pulse 0.4s ease-out;
+}
+
+/* --- Styles for Secret Word Clues --- */
+.stack.clue-correct-position {
+    border-style: solid;
+    border-color: #007bff; /* Blue */
+    background-color: rgba(0, 123, 255, 0.15);
+}
+
+.stack.clue-wrong-position {
+    border-style: solid;
+    border-color: #28a745; /* Green */
+    background-color: rgba(40, 167, 69, 0.15);
+}
+
+/* --- Styles for Developer Mode --- */
+#dev-panel {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: #0f0; /* Green text */
+    padding: 8px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 16px;
+    z-index: 200;
+}
+
+body.dev-mode-active #dev-panel {
+    display: block;
+}
