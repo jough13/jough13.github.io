@@ -474,3 +474,17 @@ input:checked + .slider:before {
 body.dev-mode-active #dev-panel {
     display: block;
 }
+
+/* --- Footer Styles --- */
+footer {
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
+    margin-top: 20px;
+    font-size: 12px;
+    color: #888;
+}
+
+body.dark-mode footer {
+    color: #777;
+}
