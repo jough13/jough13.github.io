@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexicon - A Word Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="dev-panel"></div>
+    <div class="header-container">
+        <h1>Lexicon</h1>
+        <button id="rules-btn">Rules</button>
+        <div class="scores-container">
+            <div id="score-display">Score: 0</div>
+            <div id="high-score-display">High Score: 0</div>
+        </div>
+    </div>
+
+    <div class="theme-switcher">
+        <span class="icon">☀️</span>
+        <label for="theme-toggle" class="switch-label">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="icon">🌙</span>
+    </div>
+
+    <div id="start-screen">
+        <h2>Choose a Level</h2>
+        <div id="high-score-start">High Score: 0</div>
+        <button id="start-level-1">Level 1: Spell-a-Thon</button>
+        <button id="start-level-2">Level 2: Sentence Smith</button>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="game-board">
+            <div class="game-area">
+                <div class="library-header">
+                    <h2>Library (Completed Items)</h2>
+                    <div class="deck-info">
+                        <span id="deck-count-display">Cards Left: 0</span>
+                        <button id="buy-cards-btn">Buy 5 Cards (5 pts)</button>
+                    </div>
+                </div>
+                <div id="library-area" class="horizontal-area">
+                    <!-- Completed words or sentences will appear here -->
+                </div>
+            </div>
+    
+            <div class="game-area">
+                <h2>Workshop Stacks</h2>
+                <div id="workshop-area" class="horizontal-area">
+                    <div class="stack" data-stack-id="0"></div>
+                    <div class="stack" data-stack-id="1"></div>
+                    <div class="stack" data-stack-id="2"></div>
+                    <div class="stack" data-stack-id="3"></div>
+                </div>
+            </div>
+    
+            <div class="game-area">
+                <div class="hand-header">
+                    <h2>Your Hand</h2>
+                    <button id="redraw-hand-btn">Redraw</button>
+                </div>
+                <div id="hand-area" class="horizontal-area">
+                    <!-- Player's cards will appear here -->
+                </div>
+            </div>
+        </div>
+        
+        <div id="message-area">
+            Welcome! Click a card in your hand, then a stack to play.
+        </div>
+    </div>
+
+    <div id="rules-modal" class="hidden">
+        <div class="modal-content">
+            <span id="close-modal-btn" class="close-btn">&times;</span>
+            <h2>How to Play Lexicon</h2>
+            
+            <h3>Objective</h3>
+            <p>Score as many points as you can by creating words (Level 1) or sentences (Level 2). Your high score is saved automatically!</p>
+            
+            <h3>Core Gameplay</h3>
+            <ul>
+                <li>Select a card from your hand to highlight it.</li>
+                <li>Click a Workshop Stack to place the selected card.</li>
+                <li>Point values, like in Scrabble, are shown on each letter card.</li>
+            </ul>
+
+            <h3>Level 1: Spell-a-Thon</h3>
+            <ul>
+                <li><strong>Goal:</strong> Spell valid words on the stacks.</li>
+                <li><strong>Scoring:</strong> When you've spelled a word, click the stack again (with no card selected) to score it.</li>
+                <li><strong>Secret Word:</strong> Each game has a secret 4-letter word! The four stacks correspond to the letter positions. When you place the first letter on any stack, you'll get a clue:
+                    <ul>
+                        <li><span style="color: #007bff;"><b>Blue Border:</b></span> Right letter in the right spot!</li>
+                        <li><span style="color: #28a745;"><b>Green Border:</b></span> Right letter, wrong spot.</li>
+                    </ul>
+                </li>
+                <li>Solve the secret word for a big point bonus! A new secret word will then be chosen.</li>
+            </ul>
+            
+            <h3>Level 2: Sentence Smith</h3>
+            <ul>
+                <li><strong>Goal:</strong> Create grammatically correct sentences.</li>
+                <li><strong>Scoring:</strong> Sentences are scored all at once after you place the final punctuation card (e.g., a period).</li>
+            </ul>
+
+            <h3>Special Actions</h3>
+            <ul>
+                <li><b>Redraw Hand (-1 pt):</b> Discards your hand permanently!</li>
+                <li><b>Clear Stack (-2 pts):</b> Stuck on a word? **Double-click** a stack to clear it.</li>
+                <li><b>Rewrite Tile (*):</b> Play the special <strong>*</strong> tile on a stack to replace its last letter with any letter you choose.</li>
+                <li><b>Buy Cards (escalating cost):</b> Need more cards? Spend points to add 5 cards from your discard pile back into the deck.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="hidden">
+        <div class="modal-content">
+            <span id="close-game-over-btn" class="close-btn">&times;</span>
+            <h2 id="game-over-title">Game Over</h2>
+            <p id="game-over-reason">You've run out of cards!</p>
+            <div id="final-score">Final Score: 0</div>
+            <div id="final-high-score">High Score: 0</div>
+            <button id="play-again-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
