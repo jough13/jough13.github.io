@@ -544,3 +544,11 @@ body.dark-mode footer {
         font-size: 18px;
     }
 }
+
+/* --- Styles for Disabled Buttons --- */
+#redraw-hand-btn:disabled, #buy-cards-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: transparent;
+    color: var(--main-accent-color);
+}
