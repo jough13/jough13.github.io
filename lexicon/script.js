@@ -91,6 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
         shuffle(deck);
     }
 
+function updateButtonStates() {
+        buyCardsBtn.disabled = score < buyCardsCost;
+        redrawHandBtn.disabled = deck.length < HAND_SIZE;
+    }
+
     function createWordDeck() {
         deck = [];
         for (let i = 0; i < 3; i++) {
@@ -260,7 +265,10 @@ function buyCards() {
         renderLibrary();
         renderHighScore();
         renderDeckCount();
+        
         renderScore();
+
+        updateButtonStates();
     }
 
     function renderHand() {
@@ -574,12 +582,18 @@ function buyCards() {
         startScreen.classList.add('hidden');
         gameContainer.classList.remove('hidden');
         renderAll();
+
+updateButtonStates(); 
+
         updateMessage(`Level ${level} started. Good luck!`);
     }
 
     // --- Initial Load ---
     loadHighScore();
     loadDictionary().then(() => {
+
+updateMessage("Select a level to begin!");
+
         startLevel1Btn.addEventListener('click', () => initGame(1));
         startLevel2Btn.addEventListener('click', () => initGame(2));
         redrawHandBtn.addEventListener('click', redrawHand);
