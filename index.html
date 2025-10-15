@@ -156,22 +156,42 @@
 
     <script src="shared.js"></script>
     <script>
-        // --- Page-Specific Logic for Blog Index ---
+        // --- Combined Page and Sidebar Logic ---
 
         let allPosts = [];
 
-        async function loadPosts() {
+        async function loadContent() {
             try {
-                const response = await fetch('posts.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                // Use Promise.all to fetch posts and sidebar HTML concurrently
+                const [postsResponse, sidebarResponse] = await Promise.all([
+                    fetch('posts.json'),
+                    fetch('right-sidebar.html')
+                ]);
+
+                if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
+                if (!sidebarResponse.ok) throw new Error(`HTTP error! status: ${sidebarResponse.status}`);
+
+                allPosts = await postsResponse.json();
+                const sidebarHtml = await sidebarResponse.text();
+
+                // Step 1: Inject the sidebar HTML into the placeholder
+                const sidebarContainer = document.getElementById('sidebar-container');
+                if (sidebarContainer) {
+                    sidebarContainer.innerHTML = sidebarHtml;
+                } else {
+                    console.error('Sidebar container not found!');
+                    return; // Stop if the container isn't there
                 }
-                allPosts = await response.json();
+
+                // Step 2: Now that the sidebar is loaded, render posts
                 renderPosts(allPosts);
+
+                // Step 3: And now, generate the tag cloud
                 generateTagCloud();
+
             } catch (error) {
-                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading the posts.</p>';
-                console.error('Error loading posts:', error);
+                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
+                console.error('Error loading content:', error);
             }
         }
 
@@ -184,12 +204,8 @@
             } else {
                 container.innerHTML = posts.map((post, index) => {
                     const isLastPost = index === posts.length - 1;
-                    // Conditionally add the border and padding classes unless it's the last post
                     const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
-
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
-                    });
+                    const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                     const tagsHtml = post.tags.map(t => 
                         `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
                     ).join(' ');
@@ -210,20 +226,22 @@
         
         function generateTagCloud() {
             const tagCloud = document.getElementById('tag-cloud');
-            if(!tagCloud) return;
+            if (!tagCloud) {
+                console.warn('Tag cloud element not found. Was the sidebar loaded correctly?');
+                return;
+            }
             const allTags = allPosts.flatMap(post => post.tags);
             const uniqueTags = [...new Set(allTags)];
 
-            if(!uniqueTags.length) {
+            if (uniqueTags.length === 0) {
                 tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
-                return;
+            } else {
+                tagCloud.innerHTML = uniqueTags.sort().map(tag => `
+                    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                        #${tag}
+                    </a>
+                `).join('');
             }
-            
-            tagCloud.innerHTML = uniqueTags.sort().map(tag => `
-                <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
-                    #${tag}
-                </a>
-            `).join('');
         }
 
         function setupSearch() {
@@ -244,15 +262,11 @@
         
         function initPage() {
             setupInteractiveHeader();
-            loadPosts(); 
+            loadContent(); // This is the new master function
             setupSearch();
         }
 
-        const interactiveHeader = {
-            canvas: null,
-            ctx: null,
-            resize: () => {}
-        };
+        const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
 
         function setupInteractiveHeader() {
             interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
