@@ -162,22 +162,27 @@
     <script src="shared.js"></script>
     <script>
 
-function initializeAndRunCounter() {
-    // Make sure to paste the firebaseConfig object you copied from the Firebase console
-const firebaseConfig = {
-  apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
-  authDomain: "my-blog-counter-b2521.firebaseapp.com",
-  projectId: "my-blog-counter-b2521",
-  storageBucket: "my-blog-counter-b2521.firebasestorage.app",
-  messagingSenderId: "124481622747",
-  appId: "1:124481622747:web:19c183d3bc92b174d472fe",
-  measurementId: "G-K27KZ4BQ80"
-};
+ let database; 
 
-    const app = firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    
-const displayElement = document.getElementById('article-footer-message'); 
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    database = firebase.database(); // Assign the connection to our global variable
+}
+        
+function initializeAndRunCounter() {
+    const displayElement = document.getElementById('article-footer-message'); 
     if (!displayElement) return;
 
     const counterRef = database.ref('pageviews/total');
@@ -235,34 +240,44 @@ const displayElement = document.getElementById('article-footer-message');
             }
         }
 
-        function renderPosts(posts) {
-            const container = document.getElementById('posts-container');
-            if (!container) return;
+function renderPosts(posts) {
+    const container = document.getElementById('posts-container');
+    if (!container) return;
 
-            if (posts.length === 0) {
-                container.innerHTML = `<p class="text-slate-500">No posts found.</p>`;
-            } else {
-                container.innerHTML = posts.map((post, index) => {
-                    const isLastPost = index === posts.length - 1;
-                    const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
-                    const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-                    const tagsHtml = post.tags.map(t => 
-                        `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
-                    ).join(' ');
-                    
-                    return `
-                    <article class="${articleClasses}">
-                        <h2 class="mb-2"><a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
-                        <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                        <p>${post.summary}</p>
-                        <div class="not-prose flex flex-wrap gap-2">
-                            ${tagsHtml}
-                        </div>
-                    </article>
-                    `;
-                }).join('');
-            }
-        }
+    if (posts.length === 0) {
+        container.innerHTML = `<p class="text-slate-500">No posts found.</p>`;
+    } else {
+        container.innerHTML = posts.map((post, index) => {
+            const isLastPost = index === posts.length - 1;
+            const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
+            const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+            const tagsHtml = post.tags.map(t =>
+                `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
+            ).join(' ');
+
+            return `
+            <article class="${articleClasses}">
+                <h2 class="mb-2"><a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                <p>${post.summary}</p>
+                
+                <div class="not-prose flex items-center gap-4 mt-4">
+                    <button data-post-id="${post.file}" class="like-button bg-sky-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-600 transition-colors">
+                        👍 Like
+                    </button>
+                    <span id="like-count-${post.file}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                </div>
+                <div class="not-prose flex flex-wrap gap-2 mt-4">
+                    ${tagsHtml}
+                </div>
+            </article>
+            `;
+        }).join('');
+    }
+
+    // This makes the newly added like buttons interactive
+    setupLikeButtons();
+}
         
         function generateTagCloud() {
             const tagCloud = document.getElementById('tag-cloud');
@@ -301,6 +316,7 @@ const displayElement = document.getElementById('article-footer-message');
         }
             
 function initPage() {
+    initializeFirebase();
     setupInteractiveHeader();
     loadContent(); 
     setupSearch();
@@ -418,6 +434,36 @@ function initPage() {
             interactiveHeader.resize();
             animate();
         }
+
+function setupLikeButtons() {
+    const likeButtons = document.querySelectorAll('.like-button');
+
+    likeButtons.forEach(button => {
+        const postId = button.dataset.postId;
+        const likeCountElement = document.getElementById(`like-count-${postId}`);
+        const likesRef = database.ref(`likes/${postId}`);
+
+        likesRef.get().then((snapshot) => {
+            if (snapshot.exists()) {
+                likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+            }
+        });
+
+        // 2. Listen for clicks to increment the count
+        button.addEventListener('click', () => {
+            likesRef.transaction((currentLikes) => {
+                return (currentLikes || 0) + 1;
+            }, (error, committed, snapshot) => {
+                if (!error && committed) {
+                    // Update the number on the page immediately after a successful like
+                    likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                    button.disabled = true; // Optional: prevent multiple clicks
+                    button.textContent = "Liked!";
+                }
+            });
+        });
+    });
+}
         
         document.addEventListener('DOMContentLoaded', initPage);
     </script>
