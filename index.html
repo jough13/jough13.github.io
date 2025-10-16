@@ -2,6 +2,25 @@
 <html lang="en" class="">
 <head>
 
+    <script>
+        window.addEventListener('load', function() {
+            // Wait until the page is loaded to make sure the footer exists
+            if (window.goatcounter && window.goatcounter.visit_count) {
+                window.goatcounter.visit_count({
+                    // This tells GoatCounter to find the element with id="site-footer-content" 
+                    // and put the counter inside it.
+                    append: '#site-footer-content',
+
+                    // You can choose 'html', 'svg', or 'png'
+                    type: 'html', 
+
+                    // This removes the "by GoatCounter" link
+                    no_branding: true,
+                })
+            }
+        })
+    </script>
+        
 <script data-goatcounter="https://jough.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
     
@@ -263,37 +282,11 @@
                 renderPosts(filteredPosts);
             });
         }
-
-async function loadVisitorCount() {
-            const footerContent = document.getElementById('site-footer-content');
-            if (!footerContent) return;
-
-            try {
-                // This URL provides a public JSON object with your site's stats.
-                // Your GoatCounter dashboard must be set to "Public" for this to work.
-                const response = await fetch('https://jough.goatcounter.com/counter.json');
-                if (!response.ok) throw new Error('Could not fetch stats');
-                
-                const stats = await response.json();
-                
-                // Format the number with commas for readability
-                const totalVisits = parseInt(stats.count, 10).toLocaleString('en-US');
-
-                footerContent.textContent = `Total site visits: ${totalVisits}. Thanks for stopping by!`;
-
-            } catch (error) {
-                console.error('Error loading visitor count:', error);
-                // Display a fallback message if the fetch fails
-                footerContent.textContent = 'Thanks for stopping by!';
-            }
-        }
-
             
         function initPage() {
             setupInteractiveHeader();
             loadContent(); // This is the new master function
             setupSearch();
-            loadVisitorCount(); 
         }
 
         const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
