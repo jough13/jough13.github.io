@@ -191,7 +191,7 @@ const displayElement = document.getElementById('article-footer-message');
         } else if (committed) {
             const visitorNumber = snapshot.val().toLocaleString('en-US');
            
-            displayElement.textContent = `Thanks for stopping by. You've been visitor #${visitorNumber}. Pants suck.`; 
+            displayElement.textContent = `Thanks for stopping by. You've been visitor ${visitorNumber}. Pants suck.`; 
         }
     });
 }
