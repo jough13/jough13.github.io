@@ -267,9 +267,9 @@ function renderPosts(posts) {
                 <p>${post.summary}</p>
                 
                 <div class="not-prose flex items-center gap-4 mt-4">
-                    <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-600 transition-colors">
-                        👍 Like
-                    </button>
+<button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+    👍 Like
+</button>
                     <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
                 </div>
 
