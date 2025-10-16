@@ -205,41 +205,40 @@ function initializeAndRunCounter() {
 
         let allPosts = [];
 
-        async function loadContent() {
-            try {
-                // Use Promise.all to fetch posts and sidebar HTML concurrently
-                const [postsResponse, sidebarResponse] = await Promise.all([
-                    fetch('posts.json'),
-                    fetch('right-sidebar.html')
-                ]);
+async function loadContent() {
+    try {
+        // Use Promise.all to fetch posts and sidebar HTML concurrently
+        const [postsResponse, sidebarResponse] = await Promise.all([
+            fetch('posts.json'),
+            fetch('right-sidebar.html')
+        ]);
 
-                if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
-                if (!sidebarResponse.ok) throw new Error(`HTTP error! status: ${sidebarResponse.status}`);
+        if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
+        if (!sidebarResponse.ok) throw new Error(`HTTP error! status: ${sidebarResponse.status}`);
 
-                allPosts = await postsResponse.json();
-                const sidebarHtml = await sidebarResponse.text();
+        allPosts = await postsResponse.json();
+        const sidebarHtml = await sidebarResponse.text();
 
-                // Step 1: Inject the sidebar HTML into the placeholder
-                const sidebarContainer = document.getElementById('sidebar-container');
-                if (sidebarContainer) {
-                    sidebarContainer.innerHTML = sidebarHtml;
-                } else {
-                    console.error('Sidebar container not found!');
-                    return; // Stop if the container isn't there
-                }
-
-                // Step 2: Now that the sidebar is loaded, render posts
-                renderPosts(allPosts);
-
-                // Step 3: And now, generate the tag cloud
-                generateTagCloud();
-
-            } catch (error) {
-                document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
-                console.error('Error loading content:', error);
-            }
+        // Step 1: Inject the sidebar HTML into the placeholder
+        const sidebarContainer = document.getElementById('sidebar-container');
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = sidebarHtml;
+            // Step 2: NOW that the sidebar is loaded, generate the tag cloud
+            generateTagCloud(); 
+        } else {
+            console.error('Sidebar container not found!');
+            return; // Stop if the container isn't there
         }
 
+        // Step 3: Finally, render the main posts
+        renderPosts(allPosts);
+
+    } catch (error) {
+        document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
+        console.error('Error loading content:', error);
+    }
+}
+        
 function renderPosts(posts) {
     const container = document.getElementById('posts-container');
     if (!container) return;
