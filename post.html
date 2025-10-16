@@ -2,9 +2,6 @@
 <html lang="en" class="">
 <head>
 
-    <script data-goatcounter="https://jough.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -80,7 +77,7 @@
             </article>
 
             <aside id="sidebar-container" class="w-full lg:w-80 flex-shrink-0">
-                </aside>
+            </aside>
         </div>
     </main>
 
@@ -89,12 +86,32 @@
     </button>
     <footer class="text-center p-4 mt-4">
         <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
-            </p>
+        </p>
     </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
 
     <script src="/shared.js"></script>
     <script>
         let allPosts = [];
+        let database;
+
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+        }
 
         async function loadContent() {
             try {
@@ -112,15 +129,13 @@
                 const sidebarContainer = document.getElementById('sidebar-container');
                 if (sidebarContainer) {
                     sidebarContainer.innerHTML = sidebarHtml;
-                } else {
-                    console.error('Sidebar container not found!');
+                    generateTagCloud();
                 }
 
                 await loadSinglePost();
-                generateTagCloud();
 
             } catch (error) {
-                document.getElementById('post-content-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
+                document.getElementById('post-content-container').innerHTML = '<p>Sorry, an error occurred.</p>';
                 console.error('Error loading page content:', error);
             }
         }
@@ -131,29 +146,23 @@
             const postFile = params.get('p');
 
             if (!postFile) {
-                postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Please check the URL and try again. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
+                postContainer.innerHTML = "<div class='prose ...'><h2>Post not found.</h2>...</div>";
                 return;
             }
 
             try {
                 const postMeta = allPosts.find(post => post.file === postFile);
-
                 if (!postMeta) {
-                    postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Could not find this post in the manifest. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
+                    postContainer.innerHTML = "<div class='prose ...'><h2>Post not found.</h2>...</div>";
                     return;
                 }
 
                 const postResponse = await fetch(postFile);
-                if (!postResponse.ok) {
-                    throw new Error(`Failed to load post content from ${postFile}. Server responded with ${postResponse.status}.`);
-                }
+                if (!postResponse.ok) throw new Error(`Failed to load post content from ${postFile}.`);
+                
                 const postMarkdown = await postResponse.text();
                 const postHtml = marked.parse(postMarkdown);
-                
-                const postDate = new Date(postMeta.date).toLocaleDateString('en-US', {
-                    year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
-                });
-
+                const postDate = new Date(postMeta.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                 const categoryName = postMeta.category.charAt(0).toUpperCase() + postMeta.category.slice(1);
                 const categoryUrl = `/${postMeta.category}/index.html`; 
                 
@@ -161,48 +170,84 @@
                 document.querySelector('meta[name="description"]').setAttribute('content', postMeta.summary);
 
                 const tagsHtml = postMeta.tags.map(tag => 
-                    `<a href="/tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`
+                    `<a href="/tag.html?tag=${encodeURIComponent(tag)}" class="...">${tag}</a>`
                 ).join(' ');
+
+                // --- START: ADDED LIKE BUTTON LOGIC ---
+                const sanitizedPostId = postMeta.file.replace(/\./g, '_');
+                const likeButtonHtml = `
+                    <div class="not-prose flex items-center gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+                            👍 Like
+                        </button>
+                        <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                    </div>
+                `;
+                // --- END: ADDED LIKE BUTTON LOGIC ---
 
                 postContainer.innerHTML = `
                     <div class="prose prose-lg dark:prose-invert max-w-none">
                         <div class="not-prose mb-6">
-                            <a href="${categoryUrl}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
-                                ${categoryName}
-                            </a>
+                            <a href="${categoryUrl}" class="bg-slate-200 ...">${categoryName}</a>
                         </div>
                         <h1 class="mb-2"><strong>${postMeta.title}</strong></h1>
                         <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
                         ${postHtml}
-                        <div class="not-prose mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2">
+                        <div class="not-prose mt-8 pt-6 border-t ... flex flex-wrap gap-2">
                             ${tagsHtml}
                         </div>
+                        ${likeButtonHtml}
                     </div>
                 `;
 
+                // --- ACTIVATE THE LIKE BUTTON ---
+                setupLikeButtons();
+
             } catch (error) {
-                postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Error</h2><p>Sorry, there was a problem loading this post. Please try again later.</p></div>";
+                postContainer.innerHTML = "<div class='prose ...'><h2>Error</h2>...</div>";
                 console.error("Error loading single post:", error);
             }
         }
         
-        function generateTagCloud() {
-            const tagCloud = document.getElementById('tag-cloud');
-            if (!tagCloud) return;
+        function setupLikeButtons() {
+            const likeButtons = document.querySelectorAll('.like-button');
+            likeButtons.forEach(button => {
+                const postId = button.dataset.postId;
+                const likeCountElement = document.getElementById(`like-count-${postId}`);
+                if (!likeCountElement) return;
+                
+                const likesRef = database.ref(`likes/${postId}`);
 
-            const uniqueTags = [...new Set(allPosts.flatMap(post => post.tags))];
-            const sortedTags = uniqueTags.sort();
-            
-            const tagsHtml = sortedTags.map(tag => `
-                <a href="/tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
-                    #${tag}
-                </a>
-            `).join(' ');
+                likesRef.get().then((snapshot) => {
+                    if (snapshot.exists()) {
+                        likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                    }
+                });
 
-            tagCloud.innerHTML = tagsHtml;
+                button.addEventListener('click', () => {
+                    likesRef.transaction((currentLikes) => {
+                        return (currentLikes || 0) + 1;
+                    }, (error, committed, snapshot) => {
+                        if (!error && committed) {
+                            likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                            button.disabled = true;
+                            button.textContent = "Liked!";
+                        }
+                    });
+                });
+            });
         }
 
-        document.addEventListener('DOMContentLoaded', loadContent);
+        function generateTagCloud() {
+            // ... your existing generateTagCloud function ...
+        }
+
+        function initPage() {
+            initializeFirebase();
+            loadContent();
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
