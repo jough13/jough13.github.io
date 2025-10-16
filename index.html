@@ -155,8 +155,51 @@
         </p>
 </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    
     <script src="shared.js"></script>
     <script>
+
+function initializeAndRunCounter() {
+
+    const firebaseConfig = {
+  apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+  authDomain: "my-blog-counter-b2521.firebaseapp.com",
+  projectId: "my-blog-counter-b2521",
+  storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+  messagingSenderId: "124481622747",
+  appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+  measurementId: "G-K27KZ4BQ80"
+};
+
+       // 2. Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    
+    // 3. Get a reference to our counter in the database
+    const counterRef = database.ref('pageviews/total');
+    
+    const footerElement = document.getElementById('article-footer-message');
+    if (!footerElement) return;
+
+    // 4. Use a transaction to safely increment the count
+    counterRef.transaction((currentValue) => {
+        // If the counter doesn't exist, initialize it to 1. Otherwise, add 1.
+        return (currentValue || 0) + 1;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.error("Firebase transaction failed:", error);
+            footerElement.textContent = 'Thanks for stopping by. Pants suck.';
+        } else if (committed) {
+            // The transaction was successful. 'snapshot.val()' has the new count.
+            const visitorNumber = snapshot.val().toLocaleString('en-US');
+            footerElement.textContent = `Thanks for stopping by. You are visitor #${visitorNumber}. Pants suck.`;
+        }
+    });
+}
+    
+        
         // --- Combined Page and Sidebar Logic ---
 
         let allPosts = [];
@@ -265,6 +308,7 @@
             setupInteractiveHeader();
             loadContent(); // This is the new master function
             setupSearch();
+            initializeAndRunCounter();
         }
 
         const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
