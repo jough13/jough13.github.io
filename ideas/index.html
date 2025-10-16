@@ -1,11 +1,8 @@
 <!DOCTYPE html>
 <html lang="en" class="">
 <head>
-
-<script data-goatcounter="https://jough.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
     
-    <meta charset="UTF-8">
+    <meta charset="UTF--8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <title>Jough Donakowski | Thoughts and Ideas</title>
@@ -57,15 +54,6 @@
         .social-icon:hover { transform: scale(1.15); }
         .header-content { position: relative; z-index: 1; }
         #scrollToTopBtn { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
-        .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
-        .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
-        .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
-        .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
-        .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
-        .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
-        .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
-        .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
-        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
         .bg-clip-text { -webkit-background-clip: text; }
     </style>
 </head>
@@ -101,7 +89,7 @@
             </article>
 
             <aside id="sidebar-container" class="w-full lg:w-80 flex-shrink-0">
-                </aside>
+            </aside>
             
         </div>
     </main>
@@ -112,16 +100,36 @@
         <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400"></p>
     </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
     <script src="../shared.js"></script>
     <script>
-        const CATEGORY_NAME = "ideas"; // Corrected from "Thoughts and Ideas"
+        const CATEGORY_NAME = "ideas";
         let allPosts = [];
+        let database;
+
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+        }
 
         async function loadContent() {
             try {
                 const [postsResponse, sidebarResponse] = await Promise.all([
                     fetch('../posts.json'),
-                    fetch('../right-sidebar.html') 
+                    fetch('../right-sidebar.html')
                 ]);
 
                 if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
@@ -133,14 +141,13 @@
                 const sidebarContainer = document.getElementById('sidebar-container');
                 if (sidebarContainer) {
                     sidebarContainer.innerHTML = sidebarHtml;
+                    generateTagCloud(); // Call this only after sidebar is loaded
                 } else {
-                    console.error('Sidebar container not found!');
                     return;
                 }
 
                 const categoryPosts = allPosts.filter(post => post.category === CATEGORY_NAME);
                 renderPosts(categoryPosts);
-                generateTagCloud();
 
             } catch (error) {
                 document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
@@ -156,10 +163,11 @@
                 container.innerHTML = `<p class="text-slate-500">No posts found in this category yet.</p>`;
             } else {
                 container.innerHTML = posts.map((post, index) => {
+                    const sanitizedPostId = post.file.replace(/\./g, '_');
                     const isLastPost = index === posts.length - 1;
                     const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
                     const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-                    const tagsHtml = post.tags.map(tag => 
+                    const tagsHtml = post.tags.map(tag =>
                         `<a href="../tag.html?tag=${encodeURIComponent(tag)}" class="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 no-underline transition-colors">${tag}</a>`
                     ).join(' ');
                     
@@ -168,15 +176,53 @@
                         <h2 class="mb-2"><a href="../post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
                         <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
                         <p>${post.summary}</p>
-                        <div class="not-prose flex flex-wrap gap-2">
+                        
+                        <div class="not-prose flex items-center gap-4 mt-4">
+                            <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+                                👍 Like
+                            </button>
+                            <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                        </div>
+
+                        <div class="not-prose flex flex-wrap gap-2 mt-4">
                             ${tagsHtml}
                         </div>
                     </article>
                     `;
                 }).join('');
             }
+            setupLikeButtons();
         }
-        
+
+        function setupLikeButtons() {
+            const likeButtons = document.querySelectorAll('.like-button');
+            likeButtons.forEach(button => {
+                const postId = button.dataset.postId;
+                const likeCountElement = document.getElementById(`like-count-${postId}`);
+                if (!likeCountElement) return;
+                
+                const likesRef = database.ref(`likes/${postId}`);
+
+                likesRef.get().then((snapshot) => {
+                    if (snapshot.exists()) {
+                        likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                    }
+                });
+
+                button.addEventListener('click', () => {
+                    likesRef.transaction((currentLikes) => {
+                        return (currentLikes || 0) + 1;
+                    }, (error, committed, snapshot) => {
+                        if (!error && committed) {
+                            likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                            button.disabled = true;
+                            button.textContent = "Liked!";
+                        }
+                    });
+                });
+            });
+        }
+
         function generateTagCloud() {
             const tagCloud = document.getElementById('tag-cloud');
             if (!tagCloud) {
@@ -196,8 +242,13 @@
                 `).join('');
             }
         }
-        
-        document.addEventListener('DOMContentLoaded', loadContent);
+
+        function initPage() {
+            initializeFirebase();
+            loadContent();
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
