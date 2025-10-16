@@ -2,9 +2,6 @@
 <html lang="en" class="">
 <head>
 
-<script data-goatcounter="https://jough.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
@@ -87,7 +84,7 @@
             </article>
 
             <aside id="sidebar-container" class="w-full lg:w-80 flex-shrink-0">
-                </aside>
+            </aside>
         </div>
     </main>
     <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg z-50">
@@ -97,10 +94,30 @@
         <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400"></p>
     </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+
     <script src="../shared.js"></script>
     <script>
         const CATEGORY_NAME = "art";
         let allPosts = [];
+        let database;
+
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            database = firebase.database();
+        }
 
         async function loadContent() {
             try {
@@ -118,14 +135,13 @@
                 const sidebarContainer = document.getElementById('sidebar-container');
                 if (sidebarContainer) {
                     sidebarContainer.innerHTML = sidebarHtml;
+                    generateTagCloud();
                 } else {
-                    console.error('Sidebar container not found!');
                     return;
                 }
 
                 const categoryPosts = allPosts.filter(post => post.category === CATEGORY_NAME);
                 renderPosts(categoryPosts);
-                generateTagCloud();
 
             } catch (error) {
                 document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
@@ -143,6 +159,7 @@
             }
 
             container.innerHTML = posts.map((post, index) => {
+                const sanitizedPostId = post.file.replace(/\./g, '_');
                 const isLastPost = index === posts.length - 1;
                 const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
                 
@@ -158,14 +175,53 @@
                     <h2 class="mb-2"><a href="../post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
                     <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
                     <p>${post.summary}</p>
-                    <div class="not-prose flex flex-wrap gap-2">
+
+                    <div class="not-prose flex items-center gap-4 mt-4">
+                        <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+                            👍 Like
+                        </button>
+                        <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                    </div>
+
+                    <div class="not-prose flex flex-wrap gap-2 mt-4">
                         ${tagsHtml}
                     </div>
                 </article>
                 `;
             }).join('');
+            
+            setupLikeButtons();
         }
         
+        function setupLikeButtons() {
+            const likeButtons = document.querySelectorAll('.like-button');
+            likeButtons.forEach(button => {
+                const postId = button.dataset.postId;
+                const likeCountElement = document.getElementById(`like-count-${postId}`);
+                if (!likeCountElement) return;
+                
+                const likesRef = database.ref(`likes/${postId}`);
+
+                likesRef.get().then((snapshot) => {
+                    if (snapshot.exists()) {
+                        likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                    }
+                });
+
+                button.addEventListener('click', () => {
+                    likesRef.transaction((currentLikes) => {
+                        return (currentLikes || 0) + 1;
+                    }, (error, committed, snapshot) => {
+                        if (!error && committed) {
+                            likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+                            button.disabled = true;
+                            button.textContent = "Liked!";
+                        }
+                    });
+                });
+            });
+        }
+
         function generateTagCloud() {
             const tagCloud = document.getElementById('tag-cloud');
             if(!tagCloud) return;
@@ -184,7 +240,12 @@
             `).join('');
         }
         
-        document.addEventListener('DOMContentLoaded', loadContent);
+        function initPage() {
+            initializeFirebase();
+            loadContent();
+        }
+
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 
 </body>
