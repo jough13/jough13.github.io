@@ -104,10 +104,6 @@
     <main id="content-container" class="relative w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
         <div class="flex flex-col lg:flex-row lg:space-x-8 space-y-8 lg:space-y-0">
             <article class="flex-1">
-
-<div id="visitor-counter-test-display" class="text-center text-xl font-bold my-4 p-4 bg-yellow-200 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg shadow-md">
-    Loading visitor count...
-</div>
                 
                 <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden main-card">
                     <button id="theme-toggle" type="button" class="absolute top-6 right-6 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5 z-10">
@@ -138,7 +134,7 @@
                         <p class="text-slate-500">Loading posts...</p>
                     </div>
 <footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-center header-content">
-<p class="text-slate-500">Thanks for stopping by. Pants suck.</p>
+<p id="article-footer-message" class="text-slate-500">Thanks for stopping by. Pants suck.</p>
 </footer>
                 </div>
             </article>
@@ -181,11 +177,8 @@ const firebaseConfig = {
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     
-    const displayElement = document.getElementById('visitor-counter-test-display'); 
-    if (!displayElement) {
-        console.error("Test display element not found!");
-        return;
-    }
+const displayElement = document.getElementById('article-footer-message'); 
+    if (!displayElement) return;
 
     const counterRef = database.ref('pageviews/total');
 
@@ -194,14 +187,11 @@ const firebaseConfig = {
     }, (error, committed, snapshot) => {
         if (error) {
             console.error("Firebase transaction failed:", error);
-            displayElement.textContent = 'ERROR: Could not load count.'; 
-            displayElement.classList.replace('bg-yellow-200', 'bg-red-200');
-            displayElement.classList.replace('text-yellow-800', 'text-red-800');
+            // If it fails, the original text will simply remain.
         } else if (committed) {
             const visitorNumber = snapshot.val().toLocaleString('en-US');
-            displayElement.textContent = `You are VISITOR # ${visitorNumber}`; 
-            displayElement.classList.replace('bg-yellow-200', 'bg-green-200');
-            displayElement.classList.replace('text-yellow-800', 'text-green-800');
+           
+            displayElement.textContent = `Thanks for stopping by. You've been visitor #${visitorNumber}. Pants suck.`; 
         }
     });
 }
