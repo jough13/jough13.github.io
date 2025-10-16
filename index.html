@@ -403,6 +403,32 @@
         
         document.addEventListener('DOMContentLoaded', initPage);
 
+// Add this new function inside your main <script> tag
+async function displayCustomVisitorCount() {
+    const footerElement = document.getElementById('site-footer-content');
+    if (!footerElement) return;
+
+    // Set a default message while we fetch the count
+    footerElement.textContent = 'Thanks for stopping by. Pants suck.';
+
+    try {
+        const response = await fetch('https://jough.goatcounter.com/counter.json');
+        if (!response.ok) throw new Error('Response not OK');
+        
+        const stats = await response.json();
+
+        // 'count_unique' is better for "visitor number"
+        const visitorNumber = parseInt(stats.count_unique, 10).toLocaleString('en-US');
+
+        // Construct the exact sentence you want
+        footerElement.textContent = `Thanks for stopping by. You're visitor number ${visitorNumber}. Pants suck.`;
+
+    } catch (error) {
+        console.error('Could not load GoatCounter stats:', error);
+        // If there's an error, the default message will remain.
+    }
+}
+        
     </script>
     <script src="/sidebar-loader.js"></script>
 
