@@ -282,9 +282,25 @@ function setupLikeButtons() {
         });
     });
 }
+        
         function generateTagCloud() {
-            // ... your existing generateTagCloud function ...
+            const tagCloud = document.getElementById('tag-cloud');
+            if (!tagCloud) return;
+
+            const uniqueTags = [...new Set(allPosts.flatMap(post => post.tags))];
+            const sortedTags = uniqueTags.sort();
+            
+            if (sortedTags.length === 0) {
+                 tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+            } else {
+                tagCloud.innerHTML = sortedTags.map(tag => `
+                    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                        #${tag}
+                    </a>
+                `).join(' ');
+            }
         }
+
 
         function initPage() {
             initializeFirebase();
