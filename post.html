@@ -209,35 +209,79 @@ function initializeFirebase() {
             }
         }
         
-        function setupLikeButtons() {
-            const likeButtons = document.querySelectorAll('.like-button');
-            likeButtons.forEach(button => {
-                const postId = button.dataset.postId;
-                const likeCountElement = document.getElementById(`like-count-${postId}`);
-                if (!likeCountElement) return;
-                
-                const likesRef = database.ref(`likes/${postId}`);
+function setupLikeButtons() {
+    // Helper function to get liked posts from localStorage
+    function getLikedPosts() {
+        const liked = localStorage.getItem('likedPosts');
+        return liked ? JSON.parse(liked) : [];
+    }
 
-                likesRef.get().then((snapshot) => {
-                    if (snapshot.exists()) {
-                        likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
-                    }
-                });
+    // Helper function to save liked posts to localStorage
+    function saveLikedPosts(likedPosts) {
+        localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+    }
 
-                button.addEventListener('click', () => {
-                    likesRef.transaction((currentLikes) => {
-                        return (currentLikes || 0) + 1;
-                    }, (error, committed, snapshot) => {
-                        if (!error && committed) {
-                            likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
-                            button.disabled = true;
-                            button.textContent = "Liked!";
-                        }
-                    });
-                });
-            });
+    const likeButtons = document.querySelectorAll('.like-button');
+    let likedPosts = getLikedPosts();
+
+    likeButtons.forEach(button => {
+        const postId = button.dataset.postId;
+        const likeCountElement = document.getElementById(`like-count-${postId}`);
+        if (!likeCountElement) return;
+
+        const likesRef = database.ref(`likes/${postId}`);
+
+        // 1. Set the initial state of the button on page load
+        if (likedPosts.includes(postId)) {
+            button.textContent = 'Unlike';
+            button.classList.replace('bg-sky-500', 'bg-slate-500');
+            button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
         }
 
+        // 2. Fetch and display the current like count from Firebase
+        likesRef.get().then((snapshot) => {
+            if (snapshot.exists()) {
+                likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+            } else {
+                likeCountElement.textContent = '0';
+            }
+        });
+
+        // 3. Listen for clicks to either like or unlike
+        button.addEventListener('click', () => {
+            likedPosts = getLikedPosts(); // Get the latest list in case it changed
+            const isLiked = likedPosts.includes(postId);
+            const increment = isLiked ? -1 : 1; // If liked, subtract 1. If not, add 1.
+
+            // Run the transaction to increment or decrement
+            likesRef.transaction((currentLikes) => {
+                return (currentLikes || 0) + increment;
+            }, (error, committed, snapshot) => {
+                if (!error && committed) {
+                    // Update the number on the page
+                    likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+
+                    // Update localStorage and button appearance
+                    if (isLiked) {
+                        // It was liked, now it's unliked
+                        const updatedLikedPosts = likedPosts.filter(id => id !== postId);
+                        saveLikedPosts(updatedLikedPosts);
+                        button.textContent = '👍 Like';
+                        button.classList.replace('bg-slate-500', 'bg-sky-500');
+                        button.classList.replace('hover:bg-slate-600', 'hover:bg-sky-600');
+                    } else {
+                        // It was not liked, now it is
+                        likedPosts.push(postId);
+                        saveLikedPosts(likedPosts);
+                        button.textContent = 'Unlike';
+                        button.classList.replace('bg-sky-500', 'bg-slate-500');
+                        button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
+                    }
+                }
+            });
+        });
+    });
+}
         function generateTagCloud() {
             // ... your existing generateTagCloud function ...
         }
