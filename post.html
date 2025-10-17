@@ -140,74 +140,80 @@ function initializeFirebase() {
             }
         }
 
-        async function loadSinglePost() {
-            const postContainer = document.getElementById('post-content-container');
-            const params = new URLSearchParams(window.location.search);
-            const postFile = params.get('p');
+async function loadSinglePost() {
+    const postContainer = document.getElementById('post-content-container');
+    const params = new URLSearchParams(window.location.search);
+    const postFile = params.get('p');
 
-            if (!postFile) {
-                postContainer.innerHTML = "<div class='prose ...'><h2>Post not found.</h2>...</div>";
-                return;
-            }
+    if (!postFile) {
+        postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Please check the URL and try again. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
+        return;
+    }
 
-            try {
-                const postMeta = allPosts.find(post => post.file === postFile);
-                if (!postMeta) {
-                    postContainer.innerHTML = "<div class='prose ...'><h2>Post not found.</h2>...</div>";
-                    return;
-                }
+    try {
+        const postMeta = allPosts.find(post => post.file === postFile);
 
-                const postResponse = await fetch(postFile);
-                if (!postResponse.ok) throw new Error(`Failed to load post content from ${postFile}.`);
-                
-                const postMarkdown = await postResponse.text();
-                const postHtml = marked.parse(postMarkdown);
-                const postDate = new Date(postMeta.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
-                const categoryName = postMeta.category.charAt(0).toUpperCase() + postMeta.category.slice(1);
-                const categoryUrl = `/${postMeta.category}/index.html`; 
-                
-                document.title = `${postMeta.title} | Jough Donakowski`;
-                document.querySelector('meta[name="description"]').setAttribute('content', postMeta.summary);
-
-                const tagsHtml = postMeta.tags.map(tag => 
-                    `<a href="/tag.html?tag=${encodeURIComponent(tag)}" class="...">${tag}</a>`
-                ).join(' ');
-
-                // --- START: ADDED LIKE BUTTON LOGIC ---
-                const sanitizedPostId = postMeta.file.replace(/\./g, '_');
-                const likeButtonHtml = `
-                    <div class="not-prose flex items-center gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
-                        <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
-                            👍 Like
-                        </button>
-                        <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
-                    </div>
-                `;
-                // --- END: ADDED LIKE BUTTON LOGIC ---
-
-                postContainer.innerHTML = `
-                    <div class="prose prose-lg dark:prose-invert max-w-none">
-                        <div class="not-prose mb-6">
-                            <a href="${categoryUrl}" class="bg-slate-200 ...">${categoryName}</a>
-                        </div>
-                        <h1 class="mb-2"><strong>${postMeta.title}</strong></h1>
-                        <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
-                        ${postHtml}
-                        <div class="not-prose mt-8 pt-6 border-t ... flex flex-wrap gap-2">
-                            ${tagsHtml}
-                        </div>
-                        ${likeButtonHtml}
-                    </div>
-                `;
-
-                // --- ACTIVATE THE LIKE BUTTON ---
-                setupLikeButtons();
-
-            } catch (error) {
-                postContainer.innerHTML = "<div class='prose ...'><h2>Error</h2>...</div>";
-                console.error("Error loading single post:", error);
-            }
+        if (!postMeta) {
+            postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Post not found.</h2><p>Could not find this post in the manifest. You can return to the <a href='index.html'>main page</a> to find the post you're looking for.</p></div>";
+            return;
         }
+
+        const postResponse = await fetch(postFile);
+        if (!postResponse.ok) {
+            throw new Error(`Failed to load post content from ${postFile}. Server responded with ${postResponse.status}.`);
+        }
+        const postMarkdown = await postResponse.text();
+        const postHtml = marked.parse(postMarkdown);
+        
+        const postDate = new Date(postMeta.date).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+        });
+
+        const categoryName = postMeta.category.charAt(0).toUpperCase() + postMeta.category.slice(1);
+        const categoryUrl = `/${postMeta.category}/index.html`; 
+        
+        document.title = `${postMeta.title} | Jough Donakowski`;
+        document.querySelector('meta[name="description"]').setAttribute('content', postMeta.summary);
+
+        // --- THIS IS THE CORRECTED LINE ---
+        const tagsHtml = postMeta.tags.map(tag => 
+            `<a href="/tag.html?tag=${encodeURIComponent(tag)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${tag}</a>`
+        ).join(' ');
+
+        const sanitizedPostId = postMeta.file.replace(/\./g, '_');
+        const likeButtonHtml = `
+            <div class="not-prose flex items-center gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+                    👍 Like
+                </button>
+                <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+            </div>
+        `;
+
+        postContainer.innerHTML = `
+            <div class="prose prose-lg dark:prose-invert max-w-none">
+                <div class="not-prose mb-6">
+                    <a href="${categoryUrl}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                        ${categoryName}
+                    </a>
+                </div>
+                <h1 class="mb-2"><strong>${postMeta.title}</strong></h1>
+                <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                ${postHtml}
+                <div class="not-prose mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2">
+                    ${tagsHtml}
+                </div>
+                ${likeButtonHtml}
+            </div>
+        `;
+
+        setupLikeButtons();
+
+    } catch (error) {
+        postContainer.innerHTML = "<div class='prose dark:prose-invert max-w-none'><h2>Error</h2><p>Sorry, there was a problem loading this post. Please try again later.</p></div>";
+        console.error("Error loading single post:", error);
+    }
+}
         
 function setupLikeButtons() {
     // Helper function to get liked posts from localStorage
