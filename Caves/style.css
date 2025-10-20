@@ -1,16 +1,40 @@
 :root {
-    --bg-page: #f0f0f0; --bg-container: #ffffff; --bg-panel: #f3f4f6;
-    --text-default: #1f2937; --text-muted: #4b5563; --text-highlight: #4338ca;
-    --border-color: #e5e7eb; --canvas-bg: #ffffff; --canvas-border: #cccccc;
-    --player-color: blue; --terrain-color: #d1d5db;
+    /* MODIFIED: Brighter, more saturated light-theme colors */
+    --bg-page: #f9fafb; 
+    --bg-container: #ffffff; 
+    --bg-panel: #f3f4f6;
+    --text-default: #111827; 
+    --text-muted: #4b5563; 
+    --text-highlight: #4f46e5;
+    --border-color: #d1d5db; 
+    --canvas-bg: #ffffff; 
+    --canvas-border: #9ca3af;
+    --player-color: #2563eb; 
+    --terrain-color: #374151;
 }
 [data-theme="dark"] {
-    --bg-page: #1a202c; --bg-container: #2d3748; --bg-panel: #4a5568;
-    --text-default: #f7fafc; --text-muted: #a0aec0; --text-highlight: #f6e05e;
-    --border-color: #4a5568; --canvas-bg: #000000; --canvas-border: #ffffff;
-    --player-color: #63b3ed; --terrain-color: #4a5568;
+    /* MODIFIED: Brighter, more saturated dark-theme colors */
+    --bg-page: #111827; 
+    --bg-container: #1f2937; 
+    --bg-panel: #374151;
+    --text-default: #f9fafb; 
+    --text-muted: #9ca3af; 
+    --text-highlight: #facc15;
+    --border-color: #4b5563; 
+    --canvas-bg: #000000; 
+    --canvas-border: #9ca3af;
+    --player-color: #60a5fa; 
+    --terrain-color: #d1d5db;
 }
-body { background-color: var(--bg-page); color: var(--text-default); transition: background-color 0.3s, color 0.3s; }
+
+/* MODIFIED: Set a bolder font-weight for the whole page */
+body { 
+    background-color: var(--bg-page); 
+    color: var(--text-default); 
+    transition: background-color 0.3s, color 0.3s; 
+    font-weight: 500;
+}
+
 .game-container { background-color: var(--bg-container); border-color: var(--border-color); }
 .panel { background-color: var(--bg-panel); border-color: var(--border-color); }
 .highlight-text { color: var(--text-highlight); }
@@ -47,7 +71,6 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
     border-color: transparent;
 }
 
-/* MODIFIED: Allow inventory list to wrap */
 #inventoryList {
     flex-wrap: wrap;
 }
@@ -95,7 +118,6 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
     width: 90%;
 }
 
-/* Style for keyboard keys */
 kbd {
     background-color: var(--bg-panel);
     border: 1px solid var(--border-color);
