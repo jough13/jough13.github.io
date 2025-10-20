@@ -636,9 +636,11 @@ document.addEventListener('keydown', (event) => {
                     gameState.lootedTiles.add(tileId);
                     chunkManager.setWorldTile(newX, newY, '.');
                 }
-            } else if (moveCost > 0) logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
-            else logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
-        }
+ } else if (moveCost > 0) {
+    logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+} else {
+    logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
+}
         syncPlayerState();
         playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
         if (gameState.player.health <= 0) {
@@ -657,7 +659,7 @@ const applyTheme = (theme) => {
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('theme', theme);
     ctx.font = `${TILE_SIZE}px monospace`;
-    render(); Redraw the map with the new colors
+    render(); // Redraw the map with the new colors
 };
 
 darkModeToggle.addEventListener('click', () => {
