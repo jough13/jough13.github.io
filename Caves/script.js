@@ -25,8 +25,11 @@ let worldStateListeners = {};
 
 const TILE_DATA = {
     '#': { type: 'lore', message: 'An ancient, weathered stone stands here. The markings are faded.' },
-    '_': { type: 'lore', message: 'A hastily made signpost. It reads: "Beware the northern mountains."' },
-    '<': { type: 'lore', message: 'A dark cave entrance beckons. You feel a cold draft.' },
+    '_': { type: 'lore', message: [ '"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."' ] },
+    '<': { type: 'dungeon_entrance', getCaveId: (x, y) => `cave_${x}_${y}` },
+    '>': { type: 'dungeon_exit' },
+    'C': { type: 'castle_entrance', getCastleId: (x, y) => `castle_${x}_${y}` },
+    'X': { type: 'castle_exit' },
 };
 
 const TILE_SIZE = 14;
@@ -68,21 +71,30 @@ canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
 canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
 
 const DAY_CYCLE_STOPS = [
-    { time: 0,    color: [10, 10, 40], opacity: 0.3 },
-    { time: 350,  color: [20, 20, 80], opacity: 0.35 },
-    { time: 390,  color: [255, 150, 80], opacity: 0.2 },
+    { time: 0,    color: [10, 10, 40], opacity: 0.10 },
+    { time: 350,  color: [20, 20, 80], opacity: 0.12 },
+    { time: 390,  color: [255, 150, 80], opacity: 0.08 },
     { time: 430,  color: [240, 255, 255], opacity: 0.0 },
     { time: 1070, color: [240, 255, 255], opacity: 0.0 },
-    { time: 1110, color: [255, 150, 80], opacity: 0.2 },
-    { time: 1150, color: [20, 20, 80], opacity: 0.35 },
-    { time: 1440, color: [10, 10, 40], opacity: 0.3 }
+    { time: 1110, color: [255, 150, 80], opacity: 0.08 },
+    { time: 1150, color: [20, 20, 80], opacity: 0.12 },
+    { time: 1440, color: [10, 10, 40], opacity: 0.10 }
 ];
+
+function stringToSeed(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0;
+    }
+    return hash;
+}
 
 function getInterpolatedDayCycleColor(hour, minute) {
     const currentTimeInMinutes = hour * 60 + minute;
     let prevStop = DAY_CYCLE_STOPS[0];
     let nextStop = DAY_CYCLE_STOPS[DAY_CYCLE_STOPS.length - 1];
-
     for (let i = 0; i < DAY_CYCLE_STOPS.length; i++) {
         if (DAY_CYCLE_STOPS[i].time >= currentTimeInMinutes) {
             nextStop = DAY_CYCLE_STOPS[i];
@@ -90,16 +102,13 @@ function getInterpolatedDayCycleColor(hour, minute) {
             break;
         }
     }
-    
     const timeRange = nextStop.time - prevStop.time;
     const timeProgress = (timeRange === 0) ? 1 : (currentTimeInMinutes - prevStop.time) / timeRange;
     const lerp = (a, b, t) => a * (1 - t) + b * t;
-
     const r = Math.round(lerp(prevStop.color[0], nextStop.color[0], timeProgress));
     const g = Math.round(lerp(prevStop.color[1], nextStop.color[1], timeProgress));
     const b = Math.round(lerp(prevStop.color[2], nextStop.color[2], timeProgress));
     const opacity = lerp(prevStop.opacity, nextStop.opacity, timeProgress);
-
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
@@ -146,7 +155,7 @@ function Alea(seed) {
 const Perlin = {
     p: [],
     init: function(seed) {
-        const random = Alea(seed);
+        const random = Alea(stringToSeed(seed));
         this.p = new Array(512);
         const p = [];
         for (let i = 0; i < 256; i++) p[i] = i;
@@ -175,9 +184,9 @@ const Perlin = {
 };
 
 const TERRAIN_COST = {
-    '.': 0, '^': 3, '~': Infinity, 'F': 1, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0, '?': 0,
+    '.': 0, '^': 3, '~': Infinity, 'F': 1, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0,
     'E': 0, 'D': 0, 'C': 0, 'W': 0, 'P': 0, '&': 0, '>': 0,
-    '#': 0, '_': 0, '<': 0,
+    '#': 0, '_': 0, '<': 0, '>': 0, 'C': 0, 'X': 0,
 };
 
 const ITEM_DATA = {
@@ -187,7 +196,6 @@ const ITEM_DATA = {
     'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
     '$': { name: 'Gold Coin', type: 'instant', effect: (state) => { state.player.health -= DAMAGE_AMOUNT; logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`); } },
     '!': { name: 'Wit Elixir', type: 'instant', effect: (state) => { state.player.wits += STAT_INCREASE_AMOUNT; logMessage('Wits increased!'); } },
-    '?': { name: 'Lucky Charm', type: 'instant', effect: (state) => { state.player.luck += STAT_INCREASE_AMOUNT; logMessage('Luck increased!'); } },
     'E': { name: 'Constitution Stone', type: 'instant', effect: (state) => { state.player.constitution += STAT_INCREASE_AMOUNT; logMessage('Constitution increased!'); } },
     'D': { name: 'Dexterity Token', type: 'instant', effect: (state) => { state.player.dexterity += STAT_INCREASE_AMOUNT; logMessage('Dexterity increased!'); } },
     'C': { name: 'Charisma Emblem', type: 'instant', effect: (state) => { state.player.charisma += STAT_INCREASE_AMOUNT; logMessage('Charisma increased!'); } },
@@ -198,36 +206,77 @@ const ITEM_DATA = {
 };
 
 const statDisplays = {
-    health: document.getElementById('healthDisplay'),
-    mana: document.getElementById('manaDisplay'),
-    stamina: document.getElementById('staminaDisplay'),
-    psyche: document.getElementById('psycheDisplay'),
-    strength: document.getElementById('strengthDisplay'),
-    wits: document.getElementById('witsDisplay'),
-    constitution: document.getElementById('constitutionDisplay'),
-    dexterity: document.getElementById('dexterityDisplay'),
-    charisma: document.getElementById('charismaDisplay'),
-    luck: document.getElementById('luckDisplay'),
-    willpower: document.getElementById('willpowerDisplay'),
-    perception: document.getElementById('perceptionDisplay'),
-    endurance: document.getElementById('enduranceDisplay'),
-    intuition: document.getElementById('intuitionDisplay')
+    health: document.getElementById('healthDisplay'), mana: document.getElementById('manaDisplay'),
+    stamina: document.getElementById('staminaDisplay'), psyche: document.getElementById('psycheDisplay'),
+    strength: document.getElementById('strengthDisplay'), wits: document.getElementById('witsDisplay'),
+    constitution: document.getElementById('constitutionDisplay'), dexterity: document.getElementById('dexterityDisplay'),
+    charisma: document.getElementById('charismaDisplay'), luck: document.getElementById('luckDisplay'),
+    willpower: document.getElementById('willpowerDisplay'), perception: document.getElementById('perceptionDisplay'),
+    endurance: document.getElementById('enduranceDisplay'), intuition: document.getElementById('intuitionDisplay')
 };
 
 const elevationNoise = Object.create(Perlin);
-elevationNoise.init(Alea(WORLD_SEED + ':elevation')());
+elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
-moistureNoise.init(Alea(WORLD_SEED + ':moisture')());
+moistureNoise.init(WORLD_SEED + ':moisture');
 
 const chunkManager = {
     CHUNK_SIZE: 16,
     loadedChunks: {},
     worldState: {},
+    caveMaps: {},
+    castleMaps: {},
+
+    generateCave(caveId) {
+        if (this.caveMaps[caveId]) return this.caveMaps[caveId];
+        const CAVE_WIDTH = 50;
+        const CAVE_HEIGHT = 50;
+        const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill('▓'));
+        const random = Alea(stringToSeed(caveId));
+        let x = Math.floor(CAVE_WIDTH / 2);
+        let y = Math.floor(CAVE_HEIGHT / 2);
+        const startPos = { x, y };
+        let steps = 1000;
+        while (steps > 0) {
+            map[y][x] = '.';
+            const direction = Math.floor(random() * 4);
+            if (direction === 0 && x > 1) x--;
+            else if (direction === 1 && x < CAVE_WIDTH - 2) x++;
+            else if (direction === 2 && y > 1) y--;
+            else if (direction === 3 && y < CAVE_HEIGHT - 2) y++;
+            steps--;
+        }
+        map[startPos.y][startPos.x] = '>';
+        this.caveMaps[caveId] = map;
+        return map;
+    },
+
+    generateCastle(castleId) {
+        if (this.castleMaps[castleId]) return this.castleMaps[castleId];
+        const baseMap = [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', '▓▒▒▒▒▒▒▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▒▒▓', '▓▒▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▒▓',
+            '▓▒▓..........▓..........▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓..▓............▓..▓▒▓',
+            '▓▒▓..▓............▓..▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓....................▓▒▓',
+            '▓▒▓▓▓▓▓▓.▓▓▓▓▓▓.▓▓▓▓▓▓▓▒▓', '▓▒▒▒▒▒▒▒.▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▓', '▓.......X.......▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+        ];
+        const map = baseMap.map(row => row.split(''));
+        const random = Alea(stringToSeed(castleId));
+        const decorations = ['+', 'o', '$'];
+        for (let i = 0; i < 5; i++) {
+            const y = Math.floor(random() * (map.length - 2)) + 1;
+            const x = Math.floor(random() * (map[0].length - 2)) + 1;
+            if (map[y][x] === '.') {
+                map[y][x] = decorations[Math.floor(random() * decorations.length)];
+            }
+        }
+        this.castleMaps[castleId] = map;
+        return map;
+    },
 
     listenToChunkState(chunkX, chunkY) {
         const chunkId = `${chunkX},${chunkY}`;
         if (worldStateListeners[chunkId]) return;
-
         const docRef = db.collection('worldState').doc(chunkId);
         worldStateListeners[chunkId] = docRef.onSnapshot(doc => {
             this.worldState[chunkId] = doc.exists ? doc.data() : {};
@@ -239,16 +288,11 @@ const chunkManager = {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
-        const localX = worldX % this.CHUNK_SIZE;
-        const localY = worldY % this.CHUNK_SIZE;
-        
-        if (!this.worldState[chunkId]) {
-            this.worldState[chunkId] = {};
-        }
-        
+        const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
         const tileKey = `${localX},${localY}`;
         this.worldState[chunkId][tileKey] = newTile;
-
         db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], { merge: true });
     },
 
@@ -266,34 +310,36 @@ const chunkManager = {
                 else if (elev > 0.8) tile = '^';
                 else if (moist > 0.55) tile = 'F';
                 else tile = '.';
-                
                 const featureRoll = Math.random();
                 if (tile === '.' && featureRoll < 0.005) {
-                    const features = Object.keys(TILE_DATA);
-                    tile = features[Math.floor(Math.random() * features.length)];
+                    let features = Object.keys(TILE_DATA);
+                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && TILE_DATA[f].type !== 'castle_exit');
+                    const featureTile = features[Math.floor(Math.random() * features.length)];
+                    if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
+                        this.setWorldTile(worldX, worldY, featureTile);
+                        chunkData[y][x] = '.';
+                    } else {
+                        chunkData[y][x] = featureTile;
+                    }
+                } else {
+                    chunkData[y][x] = tile;
                 }
-
-                chunkData[y][x] = tile;
             }
         }
         this.loadedChunks[chunkKey] = chunkData;
     },
 
     getTile(worldX, worldY) {
-        if (worldX < 0 || worldX >= WORLD_WIDTH || worldY < 0 || worldY >= WORLD_HEIGHT) { return ' '; }
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
-        
         this.listenToChunkState(chunkX, chunkY);
-
-        const localX = worldX % this.CHUNK_SIZE;
-        const localY = worldY % this.CHUNK_SIZE;
+        const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const tileKey = `${localX},${localY}`;
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
             return this.worldState[chunkId][tileKey];
         }
-
         if (!this.loadedChunks[chunkId]) { this.generateChunk(chunkX, chunkY); }
         const chunk = this.loadedChunks[chunkId];
         return chunk[localY][localX];
@@ -307,15 +353,10 @@ const gameState = {
         strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
         inventory: []
     },
-    messages: [],
-    flags: {
-        hasSeenForestWarning: false
-    },
-    time: {
-        day: 1,
-        hour: 6,
-        minute: 0
-    }
+    lootedTiles: new Set(),
+    mapMode: 'overworld', currentCaveId: null, currentCastleId: null, overworldExit: null,
+    messages: [], flags: { hasSeenForestWarning: false },
+    time: { day: 1, hour: 6, minute: 0 }
 };
 
 ctx.font = `${TILE_SIZE}px monospace`;
@@ -349,21 +390,17 @@ const renderInventory = () => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'inventory-slot p-2 rounded-md';
             itemDiv.title = item.name;
-
             const itemChar = document.createElement('span');
             itemChar.className = 'item-char';
             itemChar.textContent = item.tile;
-
             const itemQuantity = document.createElement('span');
             itemQuantity.className = 'item-quantity';
             itemQuantity.textContent = `x${item.quantity}`;
-            
             const slotNumber = document.createElement('span');
             slotNumber.className = 'absolute top-0 left-1 text-xs highlight-text font-bold';
             if (index < 9) {
                 slotNumber.textContent = index + 1;
             }
-
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
             itemDiv.appendChild(itemQuantity);
@@ -388,7 +425,22 @@ const render = () => {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
-            let tile = chunkManager.getTile(mapX, mapY);
+            let tile;
+            let map;
+            switch (gameState.mapMode) {
+                case 'dungeon':
+                    map = chunkManager.caveMaps[gameState.currentCaveId];
+                    break;
+                case 'castle':
+                    map = chunkManager.castleMaps[gameState.currentCastleId];
+                    break;
+                default:
+                    tile = chunkManager.getTile(mapX, mapY);
+                    break;
+            }
+            if (map) {
+                tile = (map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+            }
             let color = terrainColor;
             switch (tile) {
                 case '~': color = '#60a5fa'; break;
@@ -396,10 +448,16 @@ const render = () => {
                 case '#': color = '#a3a3a3'; break;
                 case '_': color = '#854d0e'; break;
                 case '<': color = '#404040'; break;
+                case '>': color = '#eab308'; break;
+                case 'C': color = '#f59e0b'; break;
+                case 'X': color = '#eab308'; break;
+                case '▒': color = '#a16207'; break;
+                case '▓': color = '#422006'; break;
                 case '+': color = '#FF4500'; break; case 'o': color = '#6a0dad'; break; case 'S': color = '#ADFF2F'; break; case 'Y': color = '#4B0082'; break;
-                case '$': color = '#ffd700'; break; case '!': color = '#d4a017'; break; case '?': color = '#ff69b4'; break; case 'E': color = '#964B00'; break;
-                case 'D': color = '#54876b'; break; case 'C': color = '#ff8c00'; break; case 'W': color = '#800080'; break; case 'P': color = '#00CED1'; break;
-                case '&': color = '#a9a9a9'; break; case '>': color = '#add8e6'; break;
+                case '$': color = '#ffd700'; break; case '!': color = '#d4a017'; break;
+                case 'E': color = '#964B00'; break;
+                case 'D': color = '#54876b'; break; case 'W': color = '#800080'; break; case 'P': color = '#00CED1'; break;
+                case '&': color = '#a9a9a9'; break;
             }
             ctx.fillStyle = color;
             ctx.fillText(tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
@@ -407,6 +465,7 @@ const render = () => {
     }
 
     for (const id in otherPlayers) {
+        if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const otherPlayer = otherPlayers[id];
         const screenX = (otherPlayer.x - startX) * TILE_SIZE;
         const screenY = (otherPlayer.y - startY) * TILE_SIZE;
@@ -414,22 +473,17 @@ const render = () => {
         if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
             const healthPercent = (otherPlayer.health || 0) / (otherPlayer.maxHealth || 10);
             const healthBarWidth = TILE_SIZE;
-            
             ctx.fillStyle = '#333';
             ctx.fillRect(screenX, screenY - 7, healthBarWidth, 5);
-            
             ctx.fillStyle = '#4caf50';
             ctx.fillRect(screenX, screenY - 7, healthBarWidth * healthPercent, 5);
-
             ctx.fillStyle = 'red'; 
             ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
         }
     }
 
     ctx.fillStyle = playerColor;
-    gameState.player.color = playerColor;
     ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-
     const { hour, minute } = gameState.time;
     const overlayColor = getInterpolatedDayCycleColor(hour, minute);
     ctx.fillStyle = overlayColor;
@@ -439,33 +493,17 @@ const render = () => {
 function syncPlayerState() {
     if (onlinePlayerRef) {
         const stateToSync = {
-            x: gameState.player.x,
-            y: gameState.player.y,
-            health: gameState.player.health,
-            maxHealth: gameState.player.maxHealth,
+            x: gameState.player.x, y: gameState.player.y,
+            health: gameState.player.health, maxHealth: gameState.player.maxHealth,
+            mapMode: gameState.mapMode,
+            mapId: gameState.currentCaveId || gameState.currentCastleId || null,
         };
         onlinePlayerRef.set(stateToSync);
     }
 }
 
-helpButton.addEventListener('click', () => {
-    helpModal.classList.remove('hidden');
-});
-
-closeHelpButton.addEventListener('click', () => {
-    helpModal.classList.add('hidden');
-});
-
-// Close modal if user clicks outside of it
-helpModal.addEventListener('click', (event) => {
-    if (event.target === helpModal) {
-        helpModal.classList.add('hidden');
-    }
-});
-
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
-
     const keyNum = parseInt(event.key);
     if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
         const itemIndex = keyNum - 1;
@@ -474,33 +512,19 @@ document.addEventListener('keydown', (event) => {
         if (itemToUse && itemToUse.type === 'consumable') {
             itemToUse.effect(gameState);
             itemToUse.quantity--;
-            if (itemToUse.quantity <= 0) {
-                gameState.player.inventory.splice(itemIndex, 1);
-            }
+            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
             itemUsed = true;
-        } else if (itemToUse) {
-            logMessage(`Cannot use '${itemToUse.name}'.`);
-        } else {
-            logMessage(`No item in slot ${keyNum}.`);
-        }
-        
+        } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
+        else logMessage(`No item in slot ${keyNum}.`);
         if (itemUsed) {
             playerRef.update({ inventory: gameState.player.inventory });
             syncPlayerState();
-            renderStats();
-            advanceTime(); 
-            renderTime();
-            renderInventory();
+            renderStats(); advanceTime(); renderTime(); renderInventory();
         }
-        event.preventDefault();
-        return;
+        event.preventDefault(); return;
     }
-
-    let startX = gameState.player.x;
-    let startY = gameState.player.y;
-    let newX = startX; 
-    let newY = startY;
-    
+    let startX = gameState.player.x, startY = gameState.player.y;
+    let newX = startX, newY = startY;
     switch (event.key) {
         case 'ArrowUp': case 'w': case 'W': newY--; break;
         case 'ArrowDown': case 's': case 'S': newY++; break;
@@ -510,103 +534,119 @@ document.addEventListener('keydown', (event) => {
             if (gameState.player.stamina < gameState.player.maxStamina) {
                 gameState.player.stamina++;
                 logMessage("You rest for a moment, recovering 1 stamina.");
-                syncPlayerState();
-            } else {
-                logMessage("You are already at full stamina.");
-            }
-            renderStats();
-            advanceTime(); renderTime(); 
-            event.preventDefault();
-            return;
+            } else logMessage("You are already at full stamina.");
+            playerRef.update({ stamina: gameState.player.stamina });
+            renderStats(); advanceTime(); renderTime(); event.preventDefault(); return;
         default: return;
     }
     event.preventDefault();
-
     if (newX === startX && newY === startY) return;
 
     (async () => {
-        const newTile = chunkManager.getTile(newX, newY);
-        if (newTile === ' ') { logMessage("You've reached the edge of the known world."); return; }
+        let newTile, map;
+        switch (gameState.mapMode) {
+            case 'dungeon': map = chunkManager.caveMaps[gameState.currentCaveId]; break;
+            case 'castle': map = chunkManager.castleMaps[gameState.currentCastleId]; break;
+            default: newTile = chunkManager.getTile(newX, newY); break;
+        }
+        if (map) newTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+        const tileData = TILE_DATA[newTile];
+        if (tileData) {
+            switch (tileData.type) {
+                case 'dungeon_entrance':
+                    gameState.mapMode = 'dungeon';
+                    gameState.currentCaveId = tileData.getCaveId(newX, newY);
+                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    map = chunkManager.generateCave(gameState.currentCaveId);
+                    for (let y = 0; y < map.length; y++) {
+                        const x = map[y].indexOf('>');
+                        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                    }
+                    logMessage("You enter the dark cave..."); render(); syncPlayerState(); return;
+                case 'dungeon_exit':
+                    gameState.player.x = gameState.overworldExit.x;
+                    gameState.player.y = gameState.overworldExit.y;
+                    gameState.mapMode = 'overworld';
+                    gameState.currentCaveId = null;
+                    gameState.overworldExit = null;
+                    logMessage("You emerge back into the sunlight."); render(); syncPlayerState(); return;
+                case 'castle_entrance':
+                    gameState.mapMode = 'castle';
+                    gameState.currentCastleId = tileData.getCastleId(newX, newY);
+                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    map = chunkManager.generateCastle(gameState.currentCastleId);
+                    for (let y = 0; y < map.length; y++) {
+                        const x = map[y].indexOf('X');
+                        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                    }
+                    logMessage("You enter the castle courtyard."); render(); syncPlayerState(); return;
+                case 'castle_exit':
+                    gameState.player.x = gameState.overworldExit.x;
+                    gameState.player.y = gameState.overworldExit.y;
+                    gameState.mapMode = 'overworld';
+                    gameState.currentCastleId = null;
+                    gameState.overworldExit = null;
+                    logMessage("You leave the castle."); render(); syncPlayerState(); return;
+                case 'lore':
+                    if (Array.isArray(tileData.message)) {
+                        const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
+                        const messageIndex = currentTurn % tileData.message.length;
+                        logMessage(tileData.message[messageIndex]);
+                    } else logMessage(tileData.message);
+                    advanceTime(); renderTime(); return;
+            }
+        }
+        if (gameState.mapMode === 'dungeon' && (newTile === '▓' || newTile === ' ')) { logMessage("The wall is solid rock."); return; }
+        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === ' ')) { logMessage("You bump into the castle wall."); return; }
         const moveCost = TERRAIN_COST[newTile] ?? 0;
         if (moveCost === Infinity) { logMessage("That way is blocked."); return; }
-
-        const tileData = TILE_DATA[newTile];
-        if (tileData && tileData.type === 'lore') {
-            logMessage(tileData.message);
-            advanceTime();
-            renderTime();
-            return;
-        }
-        
         const staminaDeficit = moveCost - gameState.player.stamina;
-        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
-            logMessage("You're too tired, and pushing on would be fatal!");
-            return;
-        }
+        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) { logMessage("You're too tired, and pushing on would be fatal!"); return; }
         
-        // This is a valid move, so update local state
+        // This is a valid move
         gameState.player.x = newX;
         gameState.player.y = newY;
-        
-        if (gameState.player.stamina >= moveCost) {
-            gameState.player.stamina -= moveCost;
-        } else {
+
+        if (gameState.player.stamina >= moveCost) gameState.player.stamina -= moveCost;
+        else {
             gameState.player.stamina = 0;
             gameState.player.health -= staminaDeficit;
             logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
         }
-        
         if (newTile === 'F' && !gameState.flags.hasSeenForestWarning) {
             logMessage("Be careful! Moving through forests costs stamina.");
             gameState.flags.hasSeenForestWarning = true;
         } else {
             const itemData = ITEM_DATA[newTile];
+            const tileId = `${newX},${newY}`;
             if (itemData) {
-                if (itemData.type === 'consumable') {
-                    const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                    if (existingItem) {
-                        existingItem.quantity++;
-                    } else {
-                         const itemForDb = { 
-                            name: itemData.name, 
-                            type: itemData.type, 
-                            quantity: 1, 
-                            tile: newTile 
-                        };
-                        gameState.player.inventory.push(itemForDb);
-                    }
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    playerRef.update({ inventory: gameState.player.inventory });
+                if (gameState.lootedTiles.has(tileId)) {
+                    logMessage(`You see where a ${itemData.name} once was...`);
                 } else {
-                    ITEM_DATA[newTile].effect(gameState);
+                    if (itemData.type === 'consumable') {
+                        const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                        if (existingItem) existingItem.quantity++;
+                        else {
+                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                            gameState.player.inventory.push(itemForDb);
+                        }
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        playerRef.update({ inventory: gameState.player.inventory });
+                    } else ITEM_DATA[newTile].effect(gameState);
+                    gameState.lootedTiles.add(tileId);
+                    chunkManager.setWorldTile(newX, newY, '.');
                 }
-                chunkManager.setWorldTile(newX, newY, '.');
-            } else if (moveCost > 0) {
-                logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
-            } else {
-                logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
-            }
+            } else if (moveCost > 0) logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+            else logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
         }
-        
-        // Now sync all changes to databases
         syncPlayerState();
-        playerRef.update({ 
-            x: gameState.player.x, 
-            y: gameState.player.y,
-            health: gameState.player.health,
-            stamina: gameState.player.stamina,
-        });
-
-
+        playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
         if (gameState.player.health <= 0) {
             gameState.player.health = 0;
             logMessage("You have perished! Game Over.");
             syncPlayerState();
         }
-
-        advanceTime();
-        renderTime();
-        renderStats();
+        advanceTime(); renderTime(); renderStats();
     })();
 });
 
@@ -622,6 +662,20 @@ darkModeToggle.addEventListener('click', () => {
     applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
 });
 
+helpButton.addEventListener('click', () => {
+    helpModal.classList.remove('hidden');
+});
+
+closeHelpButton.addEventListener('click', () => {
+    helpModal.classList.add('hidden');
+});
+
+helpModal.addEventListener('click', (event) => {
+    if (event.target === helpModal) {
+        helpModal.classList.add('hidden');
+    }
+});
+
 chatInput.addEventListener('keydown', (event) => {
     event.stopPropagation();
     if (event.key === 'Enter' && chatInput.value) {
@@ -629,10 +683,8 @@ chatInput.addEventListener('keydown', (event) => {
         chatInput.value = '';
         const messageRef = rtdb.ref('chat').push();
         messageRef.set({
-            senderId: player_id,
-            email: auth.currentUser.email,
-            message: message,
-            timestamp: firebase.database.ServerValue.TIMESTAMP
+            senderId: player_id, email: auth.currentUser.email,
+            message: message, timestamp: firebase.database.ServerValue.TIMESTAMP
         });
     }
 });
@@ -641,22 +693,16 @@ signupButton.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     authError.textContent = '';
-    
     try {
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-
         const playerRef = db.collection('players').doc(user.uid);
         await playerRef.set({
-            x: Math.floor(WORLD_WIDTH / 2),
-            y: Math.floor(WORLD_HEIGHT / 2),
-            health: 10, maxHealth: 10,
-            mana: 10, maxMana: 10,
-            stamina: 10, maxStamina: 10,
-            psyche: 10, maxPsyche: 10,
-            strength: 1, wits: 1, luck: 1,
-            constitution: 1, dexterity: 1, charisma: 1,
-            willpower: 1, perception: 1, endurance: 1, intuition: 1,
+            x: Math.floor(WORLD_WIDTH / 2), y: Math.floor(WORLD_HEIGHT / 2),
+            health: 10, maxHealth: 10, mana: 10, maxMana: 10,
+            stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
+            strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1,
+            charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
             inventory: []
         });
     } catch (error) {
@@ -669,7 +715,6 @@ loginButton.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
     authError.textContent = '';
-
     try {
         await auth.signInWithEmailAndPassword(email, password);
     } catch (error) {
@@ -678,55 +723,45 @@ loginButton.addEventListener('click', async () => {
     }
 });
 
+function clearSessionState() {
+    gameState.lootedTiles.clear();
+}
+
 logoutButton.addEventListener('click', () => {
-    if (playerRef && gameState) {
-        // Save the full final state on logout
-        const finalState = { ...gameState.player };
-        delete finalState.color;
-        delete finalState.character; 
-        playerRef.set(finalState, { merge: true });
-    }
-    if (onlinePlayerRef) {
-        onlinePlayerRef.remove();
-    }
-    if (unsubscribePlayerListener) {
-        unsubscribePlayerListener();
-    }
+    const finalState = { ...gameState.player };
+    delete finalState.color;
+    delete finalState.character; 
+    playerRef.set(finalState, { merge: true });
+    if (onlinePlayerRef) onlinePlayerRef.remove();
+    if (unsubscribePlayerListener) unsubscribePlayerListener();
     Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
     worldStateListeners = {};
+    clearSessionState();
     auth.signOut();
 });
 
 async function startGame(user) {
     player_id = user.uid;
     playerRef = db.collection('players').doc(player_id);
-    
     authContainer.classList.add('hidden');
     gameContainer.classList.remove('hidden');
-
     try {
         const doc = await playerRef.get();
-        if (doc.exists) {
-            const initialPlayerData = doc.data();
-            Object.assign(gameState.player, initialPlayerData);
-        }
+        if (doc.exists) Object.assign(gameState.player, doc.data());
     } catch (error) {
         console.error("Error fetching initial player state:", error);
     }
-    
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
-
     connectedRef.on('value', (snap) => {
         if (snap.val() === true) {
             const stateToSet = {
-                x: gameState.player.x,
-                y: gameState.player.y,
-                health: gameState.player.health,
-                maxHealth: gameState.player.maxHealth,
+                x: gameState.player.x, y: gameState.player.y,
+                health: gameState.player.health, maxHealth: gameState.player.maxHealth,
+                mapMode: gameState.mapMode,
+                mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             };
             onlinePlayerRef.set(stateToSet);
-
             onlinePlayerRef.onDisconnect().remove().then(() => {
                 const finalState = { ...gameState.player };
                 delete finalState.color;
@@ -738,14 +773,12 @@ async function startGame(user) {
 
     rtdb.ref('onlinePlayers').on('value', (snapshot) => {
         const newOtherPlayers = snapshot.val() || {};
-        
         if (newOtherPlayers[player_id]) {
             const myData = newOtherPlayers[player_id];
             gameState.player.x = myData.x;
             gameState.player.y = myData.y;
             delete newOtherPlayers[player_id];
         }
-
         otherPlayers = newOtherPlayers;
         render();
     });
@@ -756,9 +789,7 @@ async function startGame(user) {
             if (playerData.inventory) {
                 playerData.inventory.forEach(item => {
                     const templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
-                    if (templateItem) {
-                        item.effect = templateItem.effect;
-                    }
+                    if (templateItem) item.effect = templateItem.effect;
                 });
                 gameState.player.inventory = playerData.inventory;
                 renderInventory();
@@ -770,16 +801,13 @@ async function startGame(user) {
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
         const messageDiv = document.createElement('div');
-        
         const date = new Date(message.timestamp);
         const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
         if (message.senderId === player_id) {
             messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong class="highlight-text">${message.email}:</strong> ${message.message}`;
         } else {
             messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong>${message.email}:</strong> ${message.message}`;
         }
-        
         chatMessages.prepend(messageDiv);
     });
 
@@ -793,23 +821,19 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (savedTheme) { applyTheme(savedTheme); } 
-        else if (prefersDark) { applyTheme('dark'); } 
-        else { applyTheme('light'); }
-
+        if (savedTheme) applyTheme(savedTheme); 
+        else if (prefersDark) applyTheme('dark'); 
+        else applyTheme('light');
         startGame(user);
     } else {
         authContainer.classList.remove('hidden');
         gameContainer.classList.add('hidden');
         player_id = null;
-        if (onlinePlayerRef) {
-            onlinePlayerRef.remove();
-        }
-        if (unsubscribePlayerListener) {
-            unsubscribePlayerListener();
-        }
+        if (onlinePlayerRef) onlinePlayerRef.remove();
+        if (unsubscribePlayerListener) unsubscribePlayerListener();
         Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
         worldStateListeners = {};
+        clearSessionState();
         console.log("No user is signed in.");
     }
 });
