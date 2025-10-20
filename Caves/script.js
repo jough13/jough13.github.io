@@ -641,6 +641,7 @@ document.addEventListener('keydown', (event) => {
 } else {
     logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
 }
+        }
         syncPlayerState();
         playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
         if (gameState.player.health <= 0) {
@@ -651,8 +652,6 @@ document.addEventListener('keydown', (event) => {
         advanceTime(); renderTime(); renderStats();
     })();
 });
-
-// In script.js
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
