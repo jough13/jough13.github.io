@@ -650,11 +650,14 @@ document.addEventListener('keydown', (event) => {
     })();
 });
 
+// In script.js
+
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('theme', theme);
     ctx.font = `${TILE_SIZE}px monospace`;
+    render(); Redraw the map with the new colors
 };
 
 darkModeToggle.addEventListener('click', () => {
