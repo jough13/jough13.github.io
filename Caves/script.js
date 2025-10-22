@@ -936,6 +936,7 @@ async function startGame(user) {
 
     renderStats();
     syncPlayerState();
+    renderTime();
     logMessage(`Logged in as ${user.email}`);
     updateRegionDisplay();
 }
