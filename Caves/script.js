@@ -1050,7 +1050,7 @@ try {
         }
     });
 
-    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
+const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
         const messageDiv = document.createElement('div');
@@ -1062,6 +1062,8 @@ try {
             messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong>${message.email}:</strong> ${message.message}`;
         }
         chatMessages.prepend(messageDiv);
+        // This keeps the scrollbar at the bottom (most recent message)
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
     renderStats();
