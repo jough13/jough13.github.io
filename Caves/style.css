@@ -9,7 +9,7 @@
     --border-color: #d1d5db; 
     --canvas-bg: #ffffff; 
     --canvas-border: #9ca3af;
-    --player-color: #2563eb; 
+    --player-color: #1e40af; /* MODIFIED: Darker Blue */
     --terrain-color: #374151;
 }
 [data-theme="dark"] {
@@ -23,11 +23,10 @@
     --border-color: #4b5563; 
     --canvas-bg: #000000; 
     --canvas-border: #9ca3af;
-    --player-color: #60a5fa; 
+    --player-color: #3b82f6; /* MODIFIED: Darker, richer blue for dark mode */
     --terrain-color: #d1d5db;
 }
 
-/* MODIFIED: Set a bolder font-weight for the whole page */
 body { 
     background-color: var(--bg-page); 
     color: var(--text-default); 
