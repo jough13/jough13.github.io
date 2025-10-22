@@ -36,7 +36,10 @@
             
             <div class="lg:col-span-2 flex flex-col gap-4">
                 <div id="timePanel" class="panel text-center p-2 rounded-lg border">
-                    <span id="timeDisplay" class="font-bold text-lg highlight-text"></span>
+                    <div class="flex justify-between items-center px-2">
+                        <span id="regionDisplay" class="font-bold text-sm">The Plains</span>
+                        <span id="timeDisplay" class="font-bold highlight-text text-xs"></span>
+                    </div>
                 </div>
                 <div class="relative w-full rounded-xl overflow-hidden flex items-center justify-center">
                     <canvas id="gameCanvas" class="w-full h-full"></canvas>
@@ -83,14 +86,14 @@
                 <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover 1 stamina.</p>
                 <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
                 <p><strong class="highlight-text">Stamina:</strong> Moving through difficult terrain like forests (<span class="text-green-500">F</span>) costs stamina. If you run out, you'll lose health instead!</p>
-                <p><strong class="highlight-text">Exploration:</strong> Look for special landmarks like signposts (<span class="font-bold">_</span>) and weathered stones (<span class="font-bold">#</span>) to uncover lore.</p>
+                <p><strong class="highlight-text">Exploration:</strong> Look for special landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), and caves (<span class="font-bold">⛰</span>) to uncover lore.</p>
             </div>
             <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
         </div>
     </div>
     
     <footer class="text-center text-xs muted-text mt-4">
-        <p>Version 0.1.1 | Last Updated: October 20, 2025</p>
+        <p>Version 0.1.1 | Last Updated: October 21, 2025</p>
     </footer>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
