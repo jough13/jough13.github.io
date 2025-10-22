@@ -650,6 +650,13 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     if (newX === startX && newY === startY) return;
 
+const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
+    const tileAtDestination = chunkManager.getTile(newX, newY);
+    if (obsoleteTiles.includes(tileAtDestination)) {
+        logMessage("You clear away remnants of an older age.");
+        chunkManager.setWorldTile(newX, newY, '.');
+    }
+
     (async () => {
         let newTile, map;
         switch (gameState.mapMode) {
