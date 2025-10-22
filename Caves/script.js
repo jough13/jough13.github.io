@@ -128,8 +128,8 @@ function stringToSeed(str) {
 
 function createDefaultPlayerState() {
     return {
-        x: Math.floor(WORLD_WIDTH / 2),
-        y: Math.floor(WORLD_HEIGHT / 2),
+        x: 0,
+        y: 0,
         health: 10, maxHealth: 10,
         mana: 10, maxMana: 10,
         stamina: 10, maxStamina: 10,
