@@ -476,7 +476,7 @@ const baseMap = [
 
 const gameState = {
     player: {
-        x: Math.floor(WORLD_WIDTH / 2), y: Math.floor(WORLD_HEIGHT / 2), character: '@', color: 'blue',
+        x: 0, y: 0, character: '@', color: 'blue',
         health: 10, maxHealth: 10, mana: 10, maxMana: 10, stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
         strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
         inventory: []
