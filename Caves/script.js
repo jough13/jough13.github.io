@@ -372,7 +372,7 @@ const chunkManager = {
                     const featureTile = features[Math.floor(Math.random() * features.length)];
                     if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
                         this.setWorldTile(worldX, worldY, featureTile);
-                        chunkData[y][x] = '.';
+                        chunkData[y][x] = featureTile;
                     } else {
                         chunkData[y][x] = featureTile;
                     }
