@@ -958,7 +958,7 @@ async function startGame(user) {
 
     canvas.style.visibility = 'hidden';
 
-    try {
+try {
         const doc = await playerRef.get();
         if (doc.exists) {
             let playerData = doc.data();
@@ -967,7 +967,9 @@ async function startGame(user) {
                 playerData = createDefaultPlayerState();
                 await playerRef.set(playerData);
             }
-            Object.assign(gameState.player, playerData);
+            // Merge the loaded data over the default state to fill in missing fields like 'coins'
+            const fullPlayerData = { ...createDefaultPlayerState(), ...playerData };
+            Object.assign(gameState.player, fullPlayerData);
         }
     } catch (error) {
         console.error("Error fetching initial player state:", error);
