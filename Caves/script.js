@@ -759,7 +759,6 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
                         const messageIndex = currentTurn % tileData.message.length;
                         logMessage(tileData.message[messageIndex]);
                     } else logMessage(tileData.message);
-                    return;
             }
         }
         if (gameState.mapMode === 'dungeon' && (newTile === '▓' || newTile === ' ')) { logMessage("The wall is solid rock."); return; }
