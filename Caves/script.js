@@ -86,6 +86,8 @@ const loreModal = document.getElementById('loreModal');
 const closeLoreButton = document.getElementById('closeLoreButton');
 const loreTitle = document.getElementById('loreTitle');
 const loreContent = document.getElementById('loreContent');
+const gameOverModal = document.getElementById('gameOverModal');
+const restartButton = document.getElementById('restartButton');
 
 canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
 canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
@@ -148,6 +150,27 @@ function createDefaultPlayerState() {
         willpower: 1, perception: 1, endurance: 1, intuition: 1,
         inventory: []
     };
+}
+
+async function restartGame() {
+    // Get the default state for a new character
+    const defaultState = createDefaultPlayerState();
+    
+    // Update the current game state in memory
+    Object.assign(gameState.player, defaultState);
+    
+    // Save the new default state to the database
+    await playerRef.set(defaultState);
+    
+    // Update all the UI elements to reflect the new state
+    logMessage("Your adventure begins anew...");
+    renderStats();
+    renderInventory();
+    updateRegionDisplay();
+    render();
+    
+    // Hide the game over screen
+    gameOverModal.classList.add('hidden');
 }
 
 function getInterpolatedDayCycleColor(hour, minute) {
@@ -618,6 +641,8 @@ function updateRegionDisplay() {
     }
 }
 
+restartButton.addEventListener('click', restartGame);
+
 closeLoreButton.addEventListener('click', () => {
     loreModal.classList.add('hidden');
 });
@@ -786,12 +811,13 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
         updateRegionDisplay();
         syncPlayerState();
         playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
-        if (gameState.player.health <= 0) {
-            gameState.player.health = 0;
-            logMessage("You have perished! Game Over.");
-            syncPlayerState();
-        }
-        renderStats();
+if (gameState.player.health <= 0) {
+    gameState.player.health = 0;
+    logMessage("You have perished!");
+    syncPlayerState();
+    gameOverModal.classList.remove('hidden'); // Show the game over screen
+}
+renderStats();
     })();
 });
 
