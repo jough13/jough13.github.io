@@ -480,7 +480,11 @@ const gameState = {
         health: 10, maxHealth: 10, mana: 10, maxMana: 10, stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
         strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
         inventory: [],
-        coins: 0
+        coins: 0,
+        healthRegenProgress: 0,
+        staminaRegenProgress: 0,
+        manaRegenProgress: 0,
+        psycheRegenProgress: 0
     },
 
     lootedTiles: new Set(),
@@ -1041,11 +1045,50 @@ try {
         }
     });
 
-    const timeRef = db.collection("world").doc("time");
+const timeRef = db.collection("world").doc("time");
     timeRef.onSnapshot((doc) => {
         if (doc.exists) {
-            const timeData = doc.data();
-            Object.assign(gameState.time, timeData);
+            const newTime = doc.data();
+            const oldTotalMinutes = (gameState.time.day * 1440) + (gameState.time.hour * 60) + gameState.time.minute;
+            const newTotalMinutes = (newTime.day * 1440) + (newTime.hour * 60) + newTime.minute;
+            const elapsedMinutes = newTotalMinutes - oldTotalMinutes;
+
+            if (elapsedMinutes > 0) {
+                const REGEN_PER_MINUTE = 0.1;
+                const regenAmount = elapsedMinutes * REGEN_PER_MINUTE;
+                const player = gameState.player;
+                let statsUpdated = false;
+
+                // Define a helper function for clarity
+                const applyRegen = (stat, maxStat, progressStat) => {
+                    if (player[stat] < player[maxStat]) {
+                        player[progressStat] += regenAmount;
+                        if (player[progressStat] >= 1) {
+                            const pointsToAdd = Math.floor(player[progressStat]);
+                            player[stat] = Math.min(player[maxStat], player[stat] + pointsToAdd);
+                            player[progressStat] -= pointsToAdd; // Keep the remainder
+                            statsUpdated = true;
+                        }
+                    }
+                };
+
+                if (player.health > 0) applyRegen('health', 'maxHealth', 'healthRegenProgress');
+                applyRegen('stamina', 'maxStamina', 'staminaRegenProgress');
+                applyRegen('mana', 'maxMana', 'manaRegenProgress');
+                applyRegen('psyche', 'maxPsyche', 'psycheRegenProgress');
+
+                if (statsUpdated) {
+                    playerRef.update({
+                        health: player.health,
+                        stamina: player.stamina,
+                        mana: player.mana,
+                        psyche: player.psyche
+                    });
+                    renderStats();
+                }
+            }
+
+            Object.assign(gameState.time, newTime);
             renderTime();
         }
     });
