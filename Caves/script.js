@@ -92,6 +92,30 @@ const DAY_CYCLE_STOPS = [
     { time: 1440, color: [10, 10, 40], opacity: 0.10 }
 ];
 
+function handleAuthError(error) {
+    let friendlyMessage = '';
+    switch (error.code) {
+        case 'auth/invalid-email':
+            friendlyMessage = 'Please enter a valid email address.';
+            break;
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+            friendlyMessage = 'Invalid credentials. Please check your email and password.';
+            break;
+        case 'auth/email-already-in-use':
+            friendlyMessage = 'This email address is already in use.';
+            break;
+        case 'auth/weak-password':
+            friendlyMessage = 'Password must be at least 6 characters long.';
+            break;
+        default:
+            friendlyMessage = 'An unexpected error occurred. Please try again.';
+            break;
+    }
+    authError.textContent = friendlyMessage;
+    console.error("Authentication Error:", error); // Keep the detailed log for yourself
+}
+
 function stringToSeed(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -223,9 +247,9 @@ function getRegionName(regionX, regionY) {
 }
 
 const TERRAIN_COST = {
-    '.': 0, '^': 3, '~': Infinity, 'F': 1, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0,
-    'E': 0, 'D': 0, 'C': 0, 'W': 0, 'P': 0, '&': 0, '>': 0,
-    '#': 0, '_': 0, '<': 0, '>': 0, 'C': 0, 'X': 0, 'B': 0,
+    '^': 3,        // Mountains cost 3 stamina
+    '~': Infinity, // Water is impassable
+    'F': 1,        // Forests cost 1 stamina
 };
 
 const ITEM_DATA = {
@@ -234,14 +258,6 @@ const ITEM_DATA = {
     'S': { name: 'Stamina Crystal', type: 'consumable', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
     'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
     '$': { name: 'Gold Coin', type: 'instant', effect: (state) => { state.player.health -= DAMAGE_AMOUNT; logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`); } },
-    '!': { name: 'Wit Elixir', type: 'instant', effect: (state) => { state.player.wits += STAT_INCREASE_AMOUNT; logMessage('Wits increased!'); } },
-    'E': { name: 'Constitution Stone', type: 'instant', effect: (state) => { state.player.constitution += STAT_INCREASE_AMOUNT; logMessage('Constitution increased!'); } },
-    'D': { name: 'Dexterity Token', type: 'instant', effect: (state) => { state.player.dexterity += STAT_INCREASE_AMOUNT; logMessage('Dexterity increased!'); } },
-    'C': { name: 'Charisma Emblem', type: 'instant', effect: (state) => { state.player.charisma += STAT_INCREASE_AMOUNT; logMessage('Charisma increased!'); } },
-    'W': { name: 'Willpower Shard', type: 'instant', effect: (state) => { state.player.willpower += STAT_INCREASE_AMOUNT; logMessage('Willpower increased!'); } },
-    'P': { name: 'Perception Gem', type: 'instant', effect: (state) => { state.player.perception += STAT_INCREASE_AMOUNT; logMessage('Perception increased!'); } },
-    '&': { name: 'Endurance Rune', type: 'instant', effect: (state) => { state.player.endurance += STAT_INCREASE_AMOUNT; logMessage('Endurance increased!'); } },
-    '>': { name: 'Intuition Crystal', type: 'instant', effect: (state) => { state.player.intuition += STAT_INCREASE_AMOUNT; logMessage('Intuition increased!'); } },
 };
 
 const statDisplays = {
@@ -795,10 +811,9 @@ signupButton.addEventListener('click', async () => {
         const user = userCredential.user;
         const playerRef = db.collection('players').doc(user.uid);
         await playerRef.set(createDefaultPlayerState());
-    } catch (error) {
-        authError.textContent = error.message;
-        console.error("Error signing up:", error);
-    }
+} catch (error) {
+    handleAuthError(error);
+}
 });
 
 loginButton.addEventListener('click', async () => {
@@ -807,10 +822,9 @@ loginButton.addEventListener('click', async () => {
     authError.textContent = '';
     try {
         await auth.signInWithEmailAndPassword(email, password);
-    } catch (error) {
-        authError.textContent = error.message;
-        console.error("Error logging in:", error);
-    }
+} catch (error) {
+    handleAuthError(error);
+}
 });
 
 function clearSessionState() {
