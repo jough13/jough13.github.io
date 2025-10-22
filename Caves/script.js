@@ -141,6 +141,7 @@ function createDefaultPlayerState() {
     return {
         x: 0,
         y: 0,
+        coins: 0,
         health: 10, maxHealth: 10,
         mana: 10, maxMana: 10,
         stamina: 10, maxStamina: 10,
@@ -159,6 +160,11 @@ async function restartGame() {
     // Update the current game state in memory
     Object.assign(gameState.player, defaultState);
     
+    gameState.mapMode = 'overworld';
+    gameState.currentCastleId = null;
+    gameState.currentCaveId = null;
+
+
     // Save the new default state to the database
     await playerRef.set(defaultState);
     
@@ -289,7 +295,20 @@ const ITEM_DATA = {
     'o': { name: 'Mana Orb', type: 'consumable', effect: (state) => { state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); logMessage('Used a Mana Orb. Restored mana!'); } },
     'S': { name: 'Stamina Crystal', type: 'consumable', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
     'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
-    '$': { name: 'Gold Coin', type: 'instant', effect: (state) => { state.player.health -= DAMAGE_AMOUNT; logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`); } },
+    '$': {
+    name: 'Gold Coin',
+    type: 'instant',
+    effect: (state) => {
+        if (Math.random() < 0.05) { // 5% chance of being a trap
+            state.player.health -= DAMAGE_AMOUNT;
+            logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`);
+        } else { // 95% chance of being a reward
+            const amount = Math.floor(Math.random() * 10) + 1; // 1 to 10 coins
+            state.player.coins += amount;
+            logMessage(`You found ${amount} gold coins!`);
+        }
+    }
+},
 };
 
 const statDisplays = {
@@ -299,7 +318,8 @@ const statDisplays = {
     constitution: document.getElementById('constitutionDisplay'), dexterity: document.getElementById('dexterityDisplay'),
     charisma: document.getElementById('charismaDisplay'), luck: document.getElementById('luckDisplay'),
     willpower: document.getElementById('willpowerDisplay'), perception: document.getElementById('perceptionDisplay'),
-    endurance: document.getElementById('enduranceDisplay'), intuition: document.getElementById('intuitionDisplay')
+    endurance: document.getElementById('enduranceDisplay'), intuition: document.getElementById('intuitionDisplay'),
+    coins: document.getElementById('coinsDisplay')
 };
 
 const elevationNoise = Object.create(Perlin);
@@ -829,8 +849,16 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
         
         updateRegionDisplay();
         syncPlayerState();
-        playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
-if (gameState.player.health <= 0) {
+
+playerRef.update({ 
+    x: gameState.player.x, 
+    y: gameState.player.y, 
+    health: gameState.player.health, 
+    stamina: gameState.player.stamina,
+    coins: gameState.player.coins
+});
+
+        if (gameState.player.health <= 0) {
     gameState.player.health = 0;
     logMessage("You have perished!");
     syncPlayerState();
