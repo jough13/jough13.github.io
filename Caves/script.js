@@ -25,14 +25,15 @@ let worldStateListeners = {};
 
 const TILE_DATA = {
     '#': { type: 'lore', message: 'An ancient, weathered stone stands here. The markings are faded.' },
-    '_': { type: 'lore', message: [ '"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."' ] },
-    '<': { type: 'dungeon_entrance', getCaveId: (x, y) => `cave_${x}_${y}` },
+    '☗': { type: 'lore', message: [ '"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."' ] },
+    '⛰': { type: 'dungeon_entrance', getCaveId: (x, y) => `cave_${x}_${y}` },
     '>': { type: 'dungeon_exit' },
-    'C': { type: 'castle_entrance', getCastleId: (x, y) => `castle_${x}_${y}` },
+    '🏰': { type: 'castle_entrance', getCastleId: (x, y) => `castle_${x}_${y}` },
     'X': { type: 'castle_exit' },
+    'B': { type: 'lore', message: 'This is a bounty board, covered in notices.' },
 };
 
-const TILE_SIZE = 14;
+const TILE_SIZE = 12;
 const VIEWPORT_WIDTH = 40;
 const VIEWPORT_HEIGHT = 25;
 const WORLD_WIDTH = 500;
@@ -45,6 +46,15 @@ const STAMINA_RESTORE_AMOUNT = 4;
 const PSYCHE_RESTORE_AMOUNT = 2;
 const STAT_INCREASE_AMOUNT = 1;
 const TURN_DURATION_MINUTES = 10;
+const REGION_SIZE = 160;
+
+const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
+const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
+const DAYS_IN_MONTH = 30;
+
+const NAME_PREFIXES = ["Whispering", "Sunken", "Forgotten", "Broken", "Shrouded", "Glimmering", "Verdant", "Ashen"];
+const NAME_MIDDLES = ["Plains", "Forest", "Hills", "Expanse", "Valley", "Marsh", "Reach", "Woods"];
+const NAME_SUFFIXES = ["of Sorrow", "of the Ancients", "of Ash", "of the King", "of Renewal", "of Despair"];
 
 // DOM Element Selectors
 const timeDisplay = document.getElementById('timeDisplay');
@@ -66,6 +76,7 @@ const chatMessages = document.getElementById('chatMessages');
 const helpButton = document.getElementById('helpButton');
 const helpModal = document.getElementById('helpModal');
 const closeHelpButton = document.getElementById('closeHelpButton');
+const regionDisplay = document.getElementById('regionDisplay');
 
 canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
 canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
@@ -91,6 +102,21 @@ function stringToSeed(str) {
     return hash;
 }
 
+function createDefaultPlayerState() {
+    return {
+        x: Math.floor(WORLD_WIDTH / 2),
+        y: Math.floor(WORLD_HEIGHT / 2),
+        health: 10, maxHealth: 10,
+        mana: 10, maxMana: 10,
+        stamina: 10, maxStamina: 10,
+        psyche: 10, maxPsyche: 10,
+        strength: 1, wits: 1, luck: 1,
+        constitution: 1, dexterity: 1, charisma: 1,
+        willpower: 1, perception: 1, endurance: 1, intuition: 1,
+        inventory: []
+    };
+}
+
 function getInterpolatedDayCycleColor(hour, minute) {
     const currentTimeInMinutes = hour * 60 + minute;
     let prevStop = DAY_CYCLE_STOPS[0];
@@ -112,25 +138,26 @@ function getInterpolatedDayCycleColor(hour, minute) {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-const advanceTime = () => {
-    let time = gameState.time;
-    time.minute += TURN_DURATION_MINUTES;
-    while (time.minute >= 60) {
-        time.minute -= 60;
-        time.hour++;
-        if (time.hour >= 24) {
-            time.hour = 0;
-            time.day++;
-        }
+function getOrdinalSuffix(day) {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+        case 1:  return "st";
+        case 2:  return "nd";
+        case 3:  return "rd";
+        default: return "th";
     }
-};
+}
 
 const renderTime = () => {
     const time = gameState.time;
+    const dayOfWeek = DAYS_OF_WEEK[(time.day - 1) % DAYS_OF_WEEK.length];
+    const month = MONTHS_OF_YEAR[Math.floor((time.day - 1) / DAYS_IN_MONTH) % MONTHS_OF_YEAR.length];
+    const dayOfMonth = ((time.day - 1) % DAYS_IN_MONTH) + 1;
+    const daySuffix = getOrdinalSuffix(dayOfMonth);
     const hour12 = time.hour % 12 === 0 ? 12 : time.hour % 12;
     const ampm = time.hour < 12 ? 'AM' : 'PM';
     const minutePadded = String(time.minute).padStart(2, '0');
-    timeDisplay.textContent = `Day ${time.day}, ${hour12}:${minutePadded} ${ampm}`;
+    timeDisplay.textContent = `${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${time.year} ${time.era} | ${hour12}:${minutePadded} ${ampm}`;
 };
 
 function Alea(seed) {
@@ -183,10 +210,22 @@ const Perlin = {
     scale: n => (1 + n) / 2
 };
 
+function getRegionName(regionX, regionY) {
+    const seed = `${WORLD_SEED}:${regionX},${regionY}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = NAME_PREFIXES[Math.floor(random() * NAME_PREFIXES.length)];
+    const middle = NAME_MIDDLES[Math.floor(random() * NAME_MIDDLES.length)];
+    if (random() > 0.5) {
+        const suffix = NAME_SUFFIXES[Math.floor(random() * NAME_SUFFIXES.length)];
+        return `The ${prefix} ${middle} ${suffix}`;
+    }
+    return `The ${prefix} ${middle}`;
+}
+
 const TERRAIN_COST = {
     '.': 0, '^': 3, '~': Infinity, 'F': 1, '+': 0, 'o': 0, 'S': 0, 'Y': 0, '$': 0, '!': 0,
     'E': 0, 'D': 0, 'C': 0, 'W': 0, 'P': 0, '&': 0, '>': 0,
-    '#': 0, '_': 0, '<': 0, '>': 0, 'C': 0, 'X': 0,
+    '#': 0, '_': 0, '<': 0, '>': 0, 'C': 0, 'X': 0, 'B': 0,
 };
 
 const ITEM_DATA = {
@@ -255,7 +294,7 @@ const chunkManager = {
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
         const baseMap = [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', '▓▒▒▒▒▒▒▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▒▒▓', '▓▒▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▒▓',
-            '▓▒▓..........▓..........▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓..▓............▓..▓▒▓',
+            '▓▒▓..B.......▓..........▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓..▓............▓..▓▒▓',
             '▓▒▓..▓............▓..▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓....................▓▒▓',
             '▓▒▓▓▓▓▓▓.▓▓▓▓▓▓.▓▓▓▓▓▓▓▒▓', '▓▒▒▒▒▒▒▒.▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▓', '▓.......X.......▓',
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
@@ -311,7 +350,7 @@ const chunkManager = {
                 else if (moist > 0.55) tile = 'F';
                 else tile = '.';
                 const featureRoll = Math.random();
-                if (tile === '.' && featureRoll < 0.005) {
+                if (tile === '.' && featureRoll < 0.001) {
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && TILE_DATA[f].type !== 'castle_exit');
                     const featureTile = features[Math.floor(Math.random() * features.length)];
@@ -354,9 +393,10 @@ const gameState = {
         inventory: []
     },
     lootedTiles: new Set(),
+    discoveredRegions: new Set(),
     mapMode: 'overworld', currentCaveId: null, currentCastleId: null, overworldExit: null,
     messages: [], flags: { hasSeenForestWarning: false },
-    time: { day: 1, hour: 6, minute: 0 }
+    time: { day: 1, hour: 6, minute: 0, year: 642, era: "of the Fourth Age" }
 };
 
 ctx.font = `${TILE_SIZE}px monospace`;
@@ -413,7 +453,6 @@ const render = () => {
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
     const playerColor = style.getPropertyValue('--player-color');
-    const terrainColor = style.getPropertyValue('--terrain-color');
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
@@ -421,6 +460,8 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
     
+    const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
+
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
@@ -428,41 +469,69 @@ const render = () => {
             let tile;
             let map;
             switch (gameState.mapMode) {
-                case 'dungeon':
-                    map = chunkManager.caveMaps[gameState.currentCaveId];
-                    break;
-                case 'castle':
-                    map = chunkManager.castleMaps[gameState.currentCastleId];
-                    break;
-                default:
-                    tile = chunkManager.getTile(mapX, mapY);
-                    break;
+                case 'dungeon': map = chunkManager.caveMaps[gameState.currentCaveId]; break;
+                case 'castle': map = chunkManager.castleMaps[gameState.currentCastleId]; break;
+                default: tile = chunkManager.getTile(mapX, mapY); break;
             }
             if (map) {
                 tile = (map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
             }
-            let color = terrainColor;
+
+            let bgColor;
+            let fgChar = null;
+            let fgColor = '#FFFFFF';
+
             switch (tile) {
-                case '~': color = '#60a5fa'; break;
-                case 'F': color = '#228B22'; break;
-                case '#': color = '#a3a3a3'; break;
-                case '_': color = '#854d0e'; break;
-                case '<': color = '#404040'; break;
-                case '>': color = '#eab308'; break;
-                case 'C': color = '#f59e0b'; break;
-                case 'X': color = '#eab308'; break;
-                case '▒': color = '#a16207'; break;
-                case '▓': color = '#422006'; break;
-                case '+': color = '#FF4500'; break; case 'o': color = '#6a0dad'; break; case 'S': color = '#ADFF2F'; break; case 'Y': color = '#4B0082'; break;
-                case '$': color = '#ffd700'; break; case '!': color = '#d4a017'; break;
-                case 'E': color = '#964B00'; break;
-                case 'D': color = '#54876b'; break; case 'W': color = '#800080'; break; case 'P': color = '#00CED1'; break;
-                case '&': color = '#a9a9a9'; break;
+                case '~': bgColor = '#1e3a8a'; break;
+                case '^': bgColor = '#78350f'; break;
+                case 'F': 
+                    bgColor = '#15803d'; 
+                    fgChar = '"'; 
+                    fgColor = '#14532d';
+                    break;
+                case '.': 
+                    bgColor = '#22c55e'; 
+                    fgChar = '.';
+                    fgColor = '#16a34a';
+                    break;
+                case '▓': bgColor = '#422006'; break;
+                case '▒': bgColor = '#a16207'; break;
+                default: 
+                    bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
+                    fgChar = tile;
+                    break;
             }
-            ctx.fillStyle = color;
-            ctx.fillText(tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+            if (fgChar) {
+                switch (fgChar) {
+                    case '⛰': fgColor = '#6b7280'; break;
+                    case '>': fgColor = '#eab308'; break;
+                    case '🏰': fgColor = '#f59e0b'; break;
+                    case 'X': fgColor = '#eab308'; break;
+                    case '☗': fgColor = '#854d0e'; break;
+                    case '+': fgColor = '#FF4500'; break;
+                    case 'o': fgColor = '#6a0dad'; break;
+                    case 'S': fgColor = '#ADFF2F'; break;
+                    case 'Y': fgColor = '#4B0082'; break;
+                    case '$': fgColor = '#ffd700'; break;
+                    case 'B': fgColor = '#fde047'; break;
+                }
+                ctx.fillStyle = fgColor;
+                if (isWideChar(fgChar)) {
+                    ctx.font = `${TILE_SIZE + 2}px monospace`;
+                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 1);
+                } else {
+                    ctx.font = `${TILE_SIZE}px monospace`;
+                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
+            }
         }
     }
+    
+    ctx.font = `${TILE_SIZE}px monospace`;
 
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
@@ -484,6 +553,7 @@ const render = () => {
 
     ctx.fillStyle = playerColor;
     ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    
     const { hour, minute } = gameState.time;
     const overlayColor = getInterpolatedDayCycleColor(hour, minute);
     ctx.fillStyle = overlayColor;
@@ -499,6 +569,26 @@ function syncPlayerState() {
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
         };
         onlinePlayerRef.set(stateToSync);
+    }
+}
+
+function updateRegionDisplay() {
+    if (gameState.mapMode === 'overworld') {
+        const currentRegionX = Math.floor(gameState.player.x / REGION_SIZE);
+        const currentRegionY = Math.floor(gameState.player.y / REGION_SIZE);
+        const regionId = `${currentRegionX},${currentRegionY}`;
+
+        const regionName = getRegionName(currentRegionX, currentRegionY);
+        regionDisplay.textContent = regionName;
+
+        if (!gameState.discoveredRegions.has(regionId)) {
+            logMessage(`You have entered ${regionName}.`);
+            gameState.discoveredRegions.add(regionId);
+        }
+    } else if (gameState.mapMode === 'dungeon') {
+        regionDisplay.textContent = "A Dark Cave";
+    } else if (gameState.mapMode === 'castle') {
+        regionDisplay.textContent = "Castle Courtyard";
     }
 }
 
@@ -519,24 +609,26 @@ document.addEventListener('keydown', (event) => {
         if (itemUsed) {
             playerRef.update({ inventory: gameState.player.inventory });
             syncPlayerState();
-            renderStats(); advanceTime(); renderTime(); renderInventory();
+            renderStats(); 
+            renderInventory();
         }
         event.preventDefault(); return;
     }
     let startX = gameState.player.x, startY = gameState.player.y;
     let newX = startX, newY = startY;
     switch (event.key) {
-        case 'ArrowUp': case 'w': case 'W': newY--; break;
-        case 'ArrowDown': case 's': case 'S': newY++; break;
-        case 'ArrowLeft': case 'a': case 'A': newX--; break;
-        case 'ArrowRight': case 'd': case 'D': newX++; break;
+        case 'ArrowUp': newY--; break;
+        case 'ArrowDown': newY++; break;
+        case 'ArrowLeft': newX--; break;
+        case 'ArrowRight': newX++; break;
         case 'r': case 'R':
             if (gameState.player.stamina < gameState.player.maxStamina) {
                 gameState.player.stamina++;
                 logMessage("You rest for a moment, recovering 1 stamina.");
             } else logMessage("You are already at full stamina.");
             playerRef.update({ stamina: gameState.player.stamina });
-            renderStats(); advanceTime(); renderTime(); event.preventDefault(); return;
+            renderStats(); 
+            event.preventDefault(); return;
         default: return;
     }
     event.preventDefault();
@@ -562,14 +654,14 @@ document.addEventListener('keydown', (event) => {
                         const x = map[y].indexOf('>');
                         if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
                     }
-                    logMessage("You enter the dark cave..."); render(); syncPlayerState(); return;
+                    logMessage("You enter the dark cave..."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'dungeon_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
                     gameState.mapMode = 'overworld';
                     gameState.currentCaveId = null;
                     gameState.overworldExit = null;
-                    logMessage("You emerge back into the sunlight."); render(); syncPlayerState(); return;
+                    logMessage("You emerge back into the sunlight."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'castle_entrance':
                     gameState.mapMode = 'castle';
                     gameState.currentCastleId = tileData.getCastleId(newX, newY);
@@ -579,21 +671,21 @@ document.addEventListener('keydown', (event) => {
                         const x = map[y].indexOf('X');
                         if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
                     }
-                    logMessage("You enter the castle courtyard."); render(); syncPlayerState(); return;
+                    logMessage("You enter the castle courtyard."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'castle_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
                     gameState.mapMode = 'overworld';
                     gameState.currentCastleId = null;
                     gameState.overworldExit = null;
-                    logMessage("You leave the castle."); render(); syncPlayerState(); return;
+                    logMessage("You leave the castle."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'lore':
                     if (Array.isArray(tileData.message)) {
                         const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
                         const messageIndex = currentTurn % tileData.message.length;
                         logMessage(tileData.message[messageIndex]);
                     } else logMessage(tileData.message);
-                    advanceTime(); renderTime(); return;
+                    return;
             }
         }
         if (gameState.mapMode === 'dungeon' && (newTile === '▓' || newTile === ' ')) { logMessage("The wall is solid rock."); return; }
@@ -603,7 +695,6 @@ document.addEventListener('keydown', (event) => {
         const staminaDeficit = moveCost - gameState.player.stamina;
         if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) { logMessage("You're too tired, and pushing on would be fatal!"); return; }
         
-        // This is a valid move
         gameState.player.x = newX;
         gameState.player.y = newY;
 
@@ -618,7 +709,7 @@ document.addEventListener('keydown', (event) => {
             gameState.flags.hasSeenForestWarning = true;
         } else {
             const itemData = ITEM_DATA[newTile];
-            const tileId = `${newX},${newY}`;
+            const tileId = `${newX},${-newY}`;
             if (itemData) {
                 if (gameState.lootedTiles.has(tileId)) {
                     logMessage(`You see where a ${itemData.name} once was...`);
@@ -636,12 +727,14 @@ document.addEventListener('keydown', (event) => {
                     gameState.lootedTiles.add(tileId);
                     chunkManager.setWorldTile(newX, newY, '.');
                 }
- } else if (moveCost > 0) {
-    logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
-} else {
-    logMessage(`Moved to world coordinate (${newX}, ${newY}).`);
-}
+            } else if (moveCost > 0) {
+                logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+            } else {
+                logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
+            }
         }
+        
+        updateRegionDisplay();
         syncPlayerState();
         playerRef.update({ x: gameState.player.x, y: gameState.player.y, health: gameState.player.health, stamina: gameState.player.stamina });
         if (gameState.player.health <= 0) {
@@ -649,7 +742,7 @@ document.addEventListener('keydown', (event) => {
             logMessage("You have perished! Game Over.");
             syncPlayerState();
         }
-        advanceTime(); renderTime(); renderStats();
+        renderStats();
     })();
 });
 
@@ -658,7 +751,7 @@ const applyTheme = (theme) => {
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('theme', theme);
     ctx.font = `${TILE_SIZE}px monospace`;
-    render(); // Redraw the map with the new colors
+    render();
 };
 
 darkModeToggle.addEventListener('click', () => {
@@ -701,14 +794,7 @@ signupButton.addEventListener('click', async () => {
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
         const playerRef = db.collection('players').doc(user.uid);
-        await playerRef.set({
-            x: Math.floor(WORLD_WIDTH / 2), y: Math.floor(WORLD_HEIGHT / 2),
-            health: 10, maxHealth: 10, mana: 10, maxMana: 10,
-            stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
-            strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1,
-            charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
-            inventory: []
-        });
+        await playerRef.set(createDefaultPlayerState());
     } catch (error) {
         authError.textContent = error.message;
         console.error("Error signing up:", error);
@@ -729,6 +815,7 @@ loginButton.addEventListener('click', async () => {
 
 function clearSessionState() {
     gameState.lootedTiles.clear();
+    gameState.discoveredRegions.clear();
 }
 
 logoutButton.addEventListener('click', () => {
@@ -751,10 +838,19 @@ async function startGame(user) {
     gameContainer.classList.remove('hidden');
     try {
         const doc = await playerRef.get();
-        if (doc.exists) Object.assign(gameState.player, doc.data());
+        if (doc.exists) {
+            let playerData = doc.data();
+            if (playerData.health <= 0) {
+                logMessage("You have respawned.");
+                playerData = createDefaultPlayerState();
+                await playerRef.set(playerData);
+            }
+            Object.assign(gameState.player, playerData);
+        }
     } catch (error) {
         console.error("Error fetching initial player state:", error);
     }
+    
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
     connectedRef.on('value', (snap) => {
@@ -801,6 +897,15 @@ async function startGame(user) {
         }
     });
 
+    const timeRef = db.collection("world").doc("time");
+    timeRef.onSnapshot((doc) => {
+        if (doc.exists) {
+            const timeData = doc.data();
+            Object.assign(gameState.time, timeData);
+            renderTime();
+        }
+    });
+    
     const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
@@ -815,10 +920,10 @@ async function startGame(user) {
         chatMessages.prepend(messageDiv);
     });
 
-    renderTime();
     renderStats();
     syncPlayerState();
     logMessage(`Logged in as ${user.email}`);
+    updateRegionDisplay();
 }
 
 auth.onAuthStateChanged((user) => {
