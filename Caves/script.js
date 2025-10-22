@@ -642,11 +642,19 @@ const render = () => {
         }
     }
 
-// Make the player character bold to stand out
+// Make the player character bold and outlined to stand out
     ctx.font = `bold ${TILE_SIZE}px monospace`;
+    
+    // 1. Draw the outline
+    ctx.strokeStyle = '#000000'; // A solid black outline
+    ctx.lineWidth = 2;          // How thick the outline is
+    ctx.strokeText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+
+    // 2. Fill the character with the player color
     ctx.fillStyle = playerColor;
     ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    // Reset the font to normal for any other text
+    
+    // 3. Reset the font to normal for any other text
     ctx.font = `${TILE_SIZE}px monospace`;
     
     const { hour, minute } = gameState.time;
