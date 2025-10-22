@@ -1,6 +1,6 @@
 // --- FIREBASE INITIALIZATION ---
  const firebaseConfig = {
-    apiKey: "AIzaSyDttMG2NlSVyhCfY2A9-2TOuRxiJwAlESE",
+    apiKey: "AIzaSyCkQ7H6KzvnLFTYOblS1l12RR2tv7Os6iY",
     authDomain: "caves-and-castles.firebaseapp.com",
     projectId: "caves-and-castles",
     storageBucket: "caves-and-castles.firebasestorage.app",
