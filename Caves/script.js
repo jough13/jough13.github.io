@@ -479,8 +479,10 @@ const gameState = {
         x: 0, y: 0, character: '@', color: 'blue',
         health: 10, maxHealth: 10, mana: 10, maxMana: 10, stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
         strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
-        inventory: []
+        inventory: [],
+        coins: 0
     },
+    
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
     mapMode: 'overworld', currentCaveId: null, currentCastleId: null, overworldExit: null,
@@ -962,17 +964,20 @@ try {
         const doc = await playerRef.get();
         if (doc.exists) {
             let playerData = doc.data();
-            // If player's health is 0, reset their state to the default spawn.
             if (playerData.health <= 0) {
                 logMessage("You have respawned.");
-                playerData = createDefaultPlayerState(); // This sets x:0, y:0, coins:0
+                playerData = createDefaultPlayerState();
                 await playerRef.set(playerData);
             }
-            // Create a full player object by taking the default state
-            // and overwriting it with the player's saved data.
-            // This guarantees 'coins' and other fields always have a value.
             const fullPlayerData = { ...createDefaultPlayerState(), ...playerData };
             Object.assign(gameState.player, fullPlayerData);
+        } else {
+            // This is the new, crucial part!
+            // It handles users who are logged in but don't have a player document yet.
+            logMessage("Welcome! Creating your character sheet...");
+            const defaultState = createDefaultPlayerState();
+            await playerRef.set(defaultState);
+            Object.assign(gameState.player, defaultState);
         }
     } catch (error) {
         console.error("Error fetching initial player state:", error);
