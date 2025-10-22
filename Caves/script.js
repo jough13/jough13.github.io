@@ -369,6 +369,7 @@ const chunkManager = {
                 if (tile === '.' && featureRoll < 0.001) {
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && TILE_DATA[f].type !== 'castle_exit');
+                    features = features.filter(f => f !== 'B');
                     const featureTile = features[Math.floor(Math.random() * features.length)];
                     if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
                         this.setWorldTile(worldX, worldY, featureTile);
@@ -857,6 +858,9 @@ async function startGame(user) {
     playerRef = db.collection('players').doc(player_id);
     authContainer.classList.add('hidden');
     gameContainer.classList.remove('hidden');
+
+    canvas.style.visibility = 'hidden';
+
     try {
         const doc = await playerRef.get();
         if (doc.exists) {
@@ -871,7 +875,7 @@ async function startGame(user) {
     } catch (error) {
         console.error("Error fetching initial player state:", error);
     }
-    
+
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
     connectedRef.on('value', (snap) => {
@@ -886,7 +890,7 @@ async function startGame(user) {
             onlinePlayerRef.onDisconnect().remove().then(() => {
                 const finalState = { ...gameState.player };
                 delete finalState.color;
-                delete finalState.character; 
+                delete finalState.character;
                 playerRef.set(finalState, { merge: true });
             });
         }
@@ -926,7 +930,7 @@ async function startGame(user) {
             renderTime();
         }
     });
-    
+
     const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
@@ -942,8 +946,10 @@ async function startGame(user) {
     });
 
     renderStats();
-    syncPlayerState();
     renderTime();
+    render();
+    canvas.style.visibility = 'visible';
+    syncPlayerState();
     logMessage(`Logged in as ${user.email}`);
     updateRegionDisplay();
 }
