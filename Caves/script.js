@@ -482,7 +482,7 @@ const gameState = {
         inventory: [],
         coins: 0
     },
-    
+
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
     mapMode: 'overworld', currentCaveId: null, currentCastleId: null, overworldExit: null,
@@ -642,8 +642,12 @@ const render = () => {
         }
     }
 
+// Make the player character bold to stand out
+    ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.fillStyle = playerColor;
     ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    // Reset the font to normal for any other text
+    ctx.font = `${TILE_SIZE}px monospace`;
     
     const { hour, minute } = gameState.time;
     const overlayColor = getInterpolatedDayCycleColor(hour, minute);
