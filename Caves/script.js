@@ -31,6 +31,11 @@ const TILE_DATA = {
     '🏰': { type: 'castle_entrance', getCastleId: (x, y) => `castle_${x}_${y}` },
     'X': { type: 'castle_exit' },
     'B': { type: 'lore', message: 'This is a bounty board, covered in notices.' },
+    '📖': { 
+      type: 'journal', 
+      title: 'The King\'s Lament',
+      content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.` 
+    },
 };
 
 const TILE_SIZE = 12;
@@ -77,6 +82,10 @@ const helpButton = document.getElementById('helpButton');
 const helpModal = document.getElementById('helpModal');
 const closeHelpButton = document.getElementById('closeHelpButton');
 const regionDisplay = document.getElementById('regionDisplay');
+const loreModal = document.getElementById('loreModal');
+const closeLoreButton = document.getElementById('closeLoreButton');
+const loreTitle = document.getElementById('loreTitle');
+const loreContent = document.getElementById('loreContent');
 
 canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
 canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
@@ -311,7 +320,7 @@ const chunkManager = {
         const baseMap = [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', '▓▒▒▒▒▒▒▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▒▒▓', '▓▒▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▒▓',
             '▓▒▓..B.......▓..........▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓..▓............▓..▓▒▓',
-            '▓▒▓..▓............▓..▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓....................▓▒▓',
+            '▓▒▓..▓............▓..▓▒▓', '▓▒▓..▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..▓▒▓', '▓▒▓..........📖.........▓▒▓',
             '▓▒▓▓▓▓▓▓.▓▓▓▓▓▓.▓▓▓▓▓▓▓▒▓', '▓▒▒▒▒▒▒▒.▒▒▒▒▒▒.▒▒▒▒▒▒▒▒▓', '▓.......X.......▓',
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
         ];
@@ -609,6 +618,16 @@ function updateRegionDisplay() {
     }
 }
 
+closeLoreButton.addEventListener('click', () => {
+    loreModal.classList.add('hidden');
+});
+
+loreModal.addEventListener('click', (event) => {
+    if (event.target === loreModal) {
+        loreModal.classList.add('hidden');
+    }
+});
+
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
     const keyNum = parseInt(event.key);
@@ -668,6 +687,12 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
         if (map) newTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
         const tileData = TILE_DATA[newTile];
         if (tileData) {
+            if (tileData.type === 'journal') {
+            loreTitle.textContent = tileData.title;
+            loreContent.textContent = tileData.content;
+            loreModal.classList.remove('hidden');
+            return; // Stop further processing for this move
+        }
             switch (tileData.type) {
                 case 'dungeon_entrance':
                     gameState.mapMode = 'dungeon';
