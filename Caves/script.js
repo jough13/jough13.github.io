@@ -375,7 +375,7 @@ document.addEventListener('keydown', (event) => {
     }
     let startX = gameState.player.x, startY = gameState.player.y;
     let newX = startX, newY = startY;
-    switch (event.key.toLowerCase()) {
+    switch ((event.key || '').toLowerCase()) {
         case 'w': case 'arrowup': newY--; break;
         case 's': case 'arrowdown': newY++; break;
         case 'a': case 'arrowleft': newX--; break;
