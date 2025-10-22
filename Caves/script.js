@@ -962,12 +962,15 @@ try {
         const doc = await playerRef.get();
         if (doc.exists) {
             let playerData = doc.data();
+            // If player's health is 0, reset their state to the default spawn.
             if (playerData.health <= 0) {
                 logMessage("You have respawned.");
-                playerData = createDefaultPlayerState();
+                playerData = createDefaultPlayerState(); // This sets x:0, y:0, coins:0
                 await playerRef.set(playerData);
             }
-            // Merge the loaded data over the default state to fill in missing fields like 'coins'
+            // Create a full player object by taking the default state
+            // and overwriting it with the player's saved data.
+            // This guarantees 'coins' and other fields always have a value.
             const fullPlayerData = { ...createDefaultPlayerState(), ...playerData };
             Object.assign(gameState.player, fullPlayerData);
         }
