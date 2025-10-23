@@ -882,17 +882,17 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
             }
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
-                 case 'dungeon_entrance':
-                    gameState.mapMode = 'dungeon';
-                    gameState.currentCaveId = tileData.getCaveId(newX, newY);
-                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
-                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
-                    const caveMap = chunkManager.generateCave(gameState.currentCaveId);
-                    for (let y = 0; y < caveMap.length; y++) {
-                        const x = caveMap[y].indexOf('>');
-                        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
-                    }
-                    logMessage("You enter the "+ (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') +"..."); updateRegionDisplay(); render(); syncPlayerState(); return;
+case 'dungeon_entrance':
+    gameState.mapMode = 'dungeon';
+    gameState.currentCaveId = tileData.getCaveId(newX, newY);
+    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+    const caveMap = chunkManager.generateCave(gameState.currentCaveId); // MOVED UP: Generate the cave first.
+    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; // NOW, get the theme.
+    for (let y = 0; y < caveMap.length; y++) {
+        const x = caveMap[y].indexOf('>');
+        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+    }
+    logMessage("You enter the "+ (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') +"..."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'dungeon_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
