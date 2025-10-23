@@ -984,7 +984,10 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
             gameOverModal.classList.remove('hidden');
         }
         renderStats();
+    
     })();
+
+});
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
