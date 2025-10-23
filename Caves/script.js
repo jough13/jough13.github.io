@@ -56,8 +56,8 @@ const CAVE_THEMES = {
     FIRE: {
         name: 'A Volcanic Fissure',
         wall: '▓',
-        floor: '~', // Wavy "lava" or hot ground
-        colors: { wall: '#450a0a', floor: '#ef4444' },
+        floor: '.', // Use a standard floor tile
+        colors: { wall: '#450a0a', floor: '#ef4444' }, // The red color makes it look like lava
         decorations: ['+', '$'] // Only healing and gold
     }
 };
@@ -899,7 +899,12 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
                     } else logMessage(tileData.message);
             }
         }
-        if (gameState.mapMode === 'dungeon' && (newTile === '▓' || newTile === ' ')) { logMessage("The wall is solid rock."); return; }
+        if (gameState.mapMode === 'dungeon') {
+            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+            if (theme && (newTile === theme.wall || newTile === ' ')) {
+                logMessage("The wall is solid."); return;
+            }
+        }
         if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === ' ')) { logMessage("You bump into the castle wall."); return; }
         const moveCost = TERRAIN_COST[newTile] ?? 0;
         if (moveCost === Infinity) { logMessage("That way is blocked."); return; }
