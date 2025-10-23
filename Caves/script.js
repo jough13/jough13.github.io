@@ -286,7 +286,6 @@ function getRegionName(regionX, regionY) {
 
 const TERRAIN_COST = {
     '^': 3,        // Mountains cost 3 stamina
-    '≈': 2,        // Swamps cost 2 stamina
     '~': Infinity, // Water is impassable
     'F': 1,        // Forests cost 1 stamina
 };
@@ -433,14 +432,11 @@ const baseMap = [
                 const worldY = chunkY * this.CHUNK_SIZE + y;
                 const elev = elevationNoise.noise(worldX / 70, worldY / 70);
                 const moist = moistureNoise.noise(worldX / 50, worldY / 50);
-
                 let tile = '.';
-                if (elev < 0.35) tile = '~'; // Water
-                else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp: low elevation, very high moisture
-                else if (elev > 0.8) tile = '^'; // Mountain
-                else if (moist > 0.55) tile = 'F'; // Forest
-                else tile = '.'; // Plains
-                
+                if (elev < 0.35) tile = '~';
+                else if (elev > 0.8) tile = '^';
+                else if (moist > 0.55) tile = 'F';
+                else tile = '.';
                 const featureRoll = Math.random();
                 if (tile === '.' && featureRoll < 0.001) {
                     let features = Object.keys(TILE_DATA);
@@ -580,18 +576,24 @@ const render = () => {
             let fgChar = null;
             let fgColor = '#FFFFFF';
 
-                switch (tile) {
+            switch (tile) {
                 case '~': bgColor = '#1e3a8a'; break;
-                case '≈': 
-                    bgColor = '#596643'; // Murky green-brown
-                    fgChar = ',';
-                    fgColor = '#4b5535'; // Slightly darker texture color
-                    break;
                 case '^': bgColor = '#78350f'; break;
                 case 'F': 
                     bgColor = '#15803d'; 
                     fgChar = '"'; 
                     fgColor = '#14532d';
+                    break;
+                case '.': 
+                    bgColor = '#22c55e'; 
+                    fgChar = '.';
+                    fgColor = '#16a34a';
+                    break;
+                case '▓': bgColor = '#422006'; break;
+                case '▒': bgColor = '#a16207'; break;
+                default: 
+                    bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
+                    fgChar = tile;
                     break;
             }
             
