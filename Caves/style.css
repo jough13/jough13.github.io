@@ -85,6 +85,13 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
     position: relative;
     border: 1px solid var(--border-color);
     background-color: var(--bg-page);
+    border-radius: 8px; /* Softer corners */
+    transition: all 0.2s ease-in-out; /* Smooth transition for hover */
+}
+
+.inventory-slot:hover {
+    transform: translateY(-2px); /* Lifts the slot on hover */
+    border-color: var(--text-highlight); /* Highlights on hover */
 }
 
 .inventory-slot .item-char {
