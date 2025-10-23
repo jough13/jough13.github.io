@@ -839,34 +839,60 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
+// --- PASTE THIS NEW BLOCK IN ITS PLACE ---
     (async () => {
-        let newTile, map;
-        switch (gameState.mapMode) {
-            case 'dungeon': map = chunkManager.caveMaps[gameState.currentCaveId]; break;
-            case 'castle': map = chunkManager.castleMaps[gameState.currentCastleId]; break;
-            default: newTile = chunkManager.getTile(newX, newY); break;
+        // 1. Determine the destination tile
+        let newTile;
+        if (gameState.mapMode === 'dungeon') {
+            const map = chunkManager.caveMaps[gameState.currentCaveId];
+            newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+        } else if (gameState.mapMode === 'castle') {
+            const map = chunkManager.castleMaps[gameState.currentCastleId];
+            newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+        } else {
+            newTile = chunkManager.getTile(newX, newY);
         }
-        if (map) newTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+
+        // 2. Perform ALL collision checks immediately.
+        if (gameState.mapMode === 'dungeon') {
+            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+            if (theme && (newTile === theme.wall || newTile === ' ')) {
+                logMessage("The wall is solid.");
+                return; // Stop here if it's a wall
+            }
+        }
+        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
+            logMessage("You bump into the castle wall.");
+            return; // Stop here if it's a wall or rubble
+        }
+        const moveCost = TERRAIN_COST[newTile] ?? 0;
+        if (moveCost === Infinity) {
+            logMessage("That way is blocked.");
+            return; // Stop here if impassable
+        }
+
+        // 3. If no collision, check for special tiles (entrances, lore, etc.)
         const tileData = TILE_DATA[newTile];
         if (tileData) {
             if (tileData.type === 'journal') {
-            loreTitle.textContent = tileData.title;
-            loreContent.textContent = tileData.content;
-            loreModal.classList.remove('hidden');
-            return; // Stop further processing for this move
-        }
+                loreTitle.textContent = tileData.title;
+                loreContent.textContent = tileData.content;
+                loreModal.classList.remove('hidden');
+                return; // Stop processing after showing lore
+            }
+            // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
-                case 'dungeon_entrance':
+                 case 'dungeon_entrance':
                     gameState.mapMode = 'dungeon';
                     gameState.currentCaveId = tileData.getCaveId(newX, newY);
                     gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
                     gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
-                    map = chunkManager.generateCave(gameState.currentCaveId);
-                    for (let y = 0; y < map.length; y++) {
-                        const x = map[y].indexOf('>');
+                    const caveMap = chunkManager.generateCave(gameState.currentCaveId);
+                    for (let y = 0; y < caveMap.length; y++) {
+                        const x = caveMap[y].indexOf('>');
                         if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
                     }
-                    logMessage("You enter the dark cave..."); updateRegionDisplay(); render(); syncPlayerState(); return;
+                    logMessage("You enter the "+ (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') +"..."); updateRegionDisplay(); render(); syncPlayerState(); return;
                 case 'dungeon_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
@@ -878,9 +904,9 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
                     gameState.mapMode = 'castle';
                     gameState.currentCastleId = tileData.getCastleId(newX, newY);
                     gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
-                    map = chunkManager.generateCastle(gameState.currentCastleId);
-                    for (let y = 0; y < map.length; y++) {
-                        const x = map[y].indexOf('X');
+                    const castleMap = chunkManager.generateCastle(gameState.currentCastleId);
+                    for (let y = 0; y < castleMap.length; y++) {
+                        const x = castleMap[y].indexOf('X');
                         if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
                     }
                     logMessage("You enter the castle courtyard."); updateRegionDisplay(); render(); syncPlayerState(); return;
@@ -899,15 +925,8 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
                     } else logMessage(tileData.message);
             }
         }
-        if (gameState.mapMode === 'dungeon') {
-            const theme = CAVE_THEMES[gameState.currentCaveTheme];
-            if (theme && (newTile === theme.wall || newTile === ' ')) {
-                logMessage("The wall is solid."); return;
-            }
-        }
-        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === ' ')) { logMessage("You bump into the castle wall."); return; }
-        const moveCost = TERRAIN_COST[newTile] ?? 0;
-        if (moveCost === Infinity) { logMessage("That way is blocked."); return; }
+        
+        // 4. If the move is valid, calculate stamina and move the player.
         const staminaDeficit = moveCost - gameState.player.stamina;
         if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) { logMessage("You're too tired, and pushing on would be fatal!"); return; }
         
@@ -920,55 +939,52 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
             gameState.player.health -= staminaDeficit;
             logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
         }
-        if (newTile === 'F' && !gameState.flags.hasSeenForestWarning) {
-            logMessage("Be careful! Moving through forests costs stamina.");
-            gameState.flags.hasSeenForestWarning = true;
-        } else {
-            const itemData = ITEM_DATA[newTile];
-            const tileId = `${newX},${-newY}`;
-            if (itemData) {
-                if (gameState.lootedTiles.has(tileId)) {
-                    logMessage(`You see where a ${itemData.name} once was...`);
-                } else {
-                    if (itemData.type === 'consumable') {
-                        const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                        if (existingItem) existingItem.quantity++;
-                        else {
-                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
-                            gameState.player.inventory.push(itemForDb);
-                        }
-                        logMessage(`You picked up a ${itemData.name}.`);
-                        playerRef.update({ inventory: gameState.player.inventory });
-                    } else ITEM_DATA[newTile].effect(gameState);
-                    gameState.lootedTiles.add(tileId);
-                    chunkManager.setWorldTile(newX, newY, '.');
-                }
-            } else if (moveCost > 0) {
-                logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
-            } else {
-                logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
-            }
-        }
         
+        // 5. Handle item pickups and final updates
+        const itemData = ITEM_DATA[newTile];
+        const tileId = `${newX},${-newY}`;
+        if (itemData) {
+            if (gameState.lootedTiles.has(tileId)) {
+                logMessage(`You see where a ${itemData.name} once was...`);
+            } else {
+                if (itemData.type === 'consumable') {
+                    const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                    if (existingItem) existingItem.quantity++;
+                    else {
+                        const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                        gameState.player.inventory.push(itemForDb);
+                    }
+                    logMessage(`You picked up a ${itemData.name}.`);
+                    playerRef.update({ inventory: gameState.player.inventory });
+                } else ITEM_DATA[newTile].effect(gameState);
+                gameState.lootedTiles.add(tileId);
+                chunkManager.setWorldTile(newX, newY, '.');
+            }
+        } else if (moveCost > 0) {
+            logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+        } else {
+            logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
+        }
+
         updateRegionDisplay();
         syncPlayerState();
 
-playerRef.update({ 
-    x: gameState.player.x, 
-    y: gameState.player.y, 
-    health: gameState.player.health, 
-    stamina: gameState.player.stamina,
-    coins: gameState.player.coins // <-- Add this
-});
+        playerRef.update({ 
+            x: gameState.player.x, 
+            y: gameState.player.y, 
+            health: gameState.player.health, 
+            stamina: gameState.player.stamina,
+            coins: gameState.player.coins
+        });
+
         if (gameState.player.health <= 0) {
-    gameState.player.health = 0;
-    logMessage("You have perished!");
-    syncPlayerState();
-    gameOverModal.classList.remove('hidden'); // Show the game over screen
-}
-renderStats();
+            gameState.player.health = 0;
+            logMessage("You have perished!");
+            syncPlayerState();
+            gameOverModal.classList.remove('hidden');
+        }
+        renderStats();
     })();
-});
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
