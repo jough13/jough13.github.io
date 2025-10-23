@@ -38,6 +38,30 @@ const TILE_DATA = {
     },
 };
 
+const CAVE_THEMES = {
+    ROCK: {
+        name: 'A Dark Cave',
+        wall: '▓',
+        floor: '.',
+        colors: { wall: '#422006', floor: '#a16207' },
+        decorations: ['+', 'o', '$', '📖']
+    },
+    ICE: {
+        name: 'A Glacial Cavern',
+        wall: '▒', // A lighter, "icy" wall
+        floor: ':', // A "slick" floor
+        colors: { wall: '#99f6e4', floor: '#e0f2fe' },
+        decorations: ['S', 'Y', '$'] // Stamina/Psyche items are more common
+    },
+    FIRE: {
+        name: 'A Volcanic Fissure',
+        wall: '▓',
+        floor: '~', // Wavy "lava" or hot ground
+        colors: { wall: '#450a0a', floor: '#ef4444' },
+        decorations: ['+', '$'] // Only healing and gold
+    }
+};
+
 const TILE_SIZE = 12;
 const VIEWPORT_WIDTH = 40;
 const VIEWPORT_HEIGHT = 25;
@@ -333,20 +357,30 @@ const chunkManager = {
     loadedChunks: {},
     worldState: {},
     caveMaps: {},
+    caveThemes: {},
     castleMaps: {},
 
 generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
+
+        // 1. Pick a theme for this cave, seeded by its location
+        const randomTheme = Alea(stringToSeed(caveId + ':theme'));
+        const themeKeys = Object.keys(CAVE_THEMES);
+        const chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
+        const theme = CAVE_THEMES[chosenThemeKey];
+        this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
+
+        // 2. Generate the map layout
         const CAVE_WIDTH = 50;
         const CAVE_HEIGHT = 50;
-        const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill('▓'));
+        const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill(theme.wall)); // Use theme's wall
         const random = Alea(stringToSeed(caveId));
         let x = Math.floor(CAVE_WIDTH / 2);
         let y = Math.floor(CAVE_HEIGHT / 2);
         const startPos = { x, y };
         let steps = 1000;
         while (steps > 0) {
-            map[y][x] = '.';
+            map[y][x] = theme.floor; // Use theme's floor
             const direction = Math.floor(random() * 4);
             if (direction === 0 && x > 1) x--;
             else if (direction === 1 && x < CAVE_WIDTH - 2) x++;
@@ -355,13 +389,12 @@ generateCave(caveId) {
             steps--;
         }
 
-        // Add treasure and lore to the cave
-        const decorations = ['+', 'o', '$', '📖'];
-        for (let i = 0; i < 15; i++) { // Try to place 15 items
+        // 3. Place decorations based on the theme
+        for (let i = 0; i < 15; i++) {
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-            if (map[randY][randX] === '.') { // Only place on empty floor
-                map[randY][randX] = decorations[Math.floor(random() * decorations.length)];
+            if (map[randY][randX] === theme.floor) {
+                map[randY][randX] = theme.decorations[Math.floor(random() * theme.decorations.length)];
             }
         }
 
@@ -514,7 +547,7 @@ const gameState = {
 
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
-    mapMode: 'overworld', currentCaveId: null, currentCastleId: null, overworldExit: null,
+    mapMode: 'overworld', currentCaveId: null, currentCaveTheme: null, currentCastleId: null, overworldExit: null,
     messages: [], flags: { hasSeenForestWarning: false },
     time: { day: 1, hour: 6, minute: 0, year: 642, era: "of the Fourth Age" }
 };
@@ -586,23 +619,35 @@ const render = () => {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
-            let tile;
-            let map;
-            switch (gameState.mapMode) {
-                case 'dungeon': map = chunkManager.caveMaps[gameState.currentCaveId]; break;
-                case 'castle': map = chunkManager.castleMaps[gameState.currentCastleId]; break;
-                default: tile = chunkManager.getTile(mapX, mapY); break;
-            }
-            if (map) {
-                tile = (map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-            }
-
+let tile;
             let bgColor;
             let fgChar = null;
             let fgColor = '#FFFFFF';
 
-            switch (tile) {
-                case '~': bgColor = '#1e3a8a'; break;
+            if (gameState.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+
+                if (tile === theme.wall) bgColor = theme.colors.wall;
+                else if (tile === theme.floor) bgColor = theme.colors.floor;
+                else { // It's a decoration or item
+                    bgColor = theme.colors.floor;
+                    fgChar = tile;
+                }
+            } else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                if (tile === '▓') bgColor = '#422006';
+                else if (tile === '▒') bgColor = '#a16207';
+                else {
+                    bgColor = '#a16207';
+                    fgChar = tile;
+                }
+            } else { // Overworld
+                tile = chunkManager.getTile(mapX, mapY);
+                 switch (tile) {
+                    case '~': bgColor = '#1e3a8a'; break;
                 case '≈': 
                     bgColor = '#596643'; // Murky green-brown
                     fgChar = ',';
@@ -630,7 +675,7 @@ const render = () => {
                     fgChar = tile;
                     break;
             }
-            
+              }
             ctx.fillStyle = bgColor;
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
@@ -814,6 +859,7 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
                 case 'dungeon_entrance':
                     gameState.mapMode = 'dungeon';
                     gameState.currentCaveId = tileData.getCaveId(newX, newY);
+                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
                     gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
                     map = chunkManager.generateCave(gameState.currentCaveId);
                     for (let y = 0; y < map.length; y++) {
