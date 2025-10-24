@@ -1166,12 +1166,24 @@ try {
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             };
             onlinePlayerRef.set(stateToSet);
-            onlinePlayerRef.onDisconnect().remove().then(() => {
-                const finalState = { ...gameState.player };
-                delete finalState.color;
-                delete finalState.character;
-                playerRef.set(finalState, { merge: true });
-            });
+            
+onlinePlayerRef.onDisconnect().remove().then(() => {
+        const finalState = { ...gameState.player };
+
+        // ADD THIS BLOCK TO CLEAN THE INVENTORY
+        if (finalState.inventory) {
+            finalState.inventory = finalState.inventory.map(item => ({
+                name: item.name,
+                type: item.type,
+                quantity: item.quantity,
+                tile: item.tile
+            }));
+        }
+        
+        delete finalState.color;
+        delete finalState.character;
+        playerRef.set(finalState, { merge: true });
+    });
         }
     });
 
