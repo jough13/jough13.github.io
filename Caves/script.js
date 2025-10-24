@@ -243,7 +243,13 @@ function createDefaultPlayerState() {
         perception: 1,
         endurance: 1,
         intuition: 1,
-        inventory: []
+        inventory: [],
+
+        level: 1,
+        xp: 0,
+        xpToNextLevel: 100,
+        statPoints: 0,
+        foundLore: [] // Used to track lore/journals for XP
     };
 }
 
@@ -516,7 +522,11 @@ const statDisplays = {
     perception: document.getElementById('perceptionDisplay'),
     endurance: document.getElementById('enduranceDisplay'),
     intuition: document.getElementById('intuitionDisplay'),
-    coins: document.getElementById('coinsDisplay')
+    coins: document.getElementById('coinsDisplay'),
+
+    level: document.getElementById('levelDisplay'),
+    xp: document.getElementById('xpDisplay'),
+    statPoints: document.getElementById('statPointsDisplay')
 };
 
 const elevationNoise = Object.create(Perlin);
@@ -788,13 +798,56 @@ const logMessage = (text) => {
 const renderStats = () => {
     for (const statName in statDisplays) {
         const element = statDisplays[statName];
-        if (element) {
+        if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
-            element.textContent = `${label}: ${value}`;
+
+            if (statName === 'xp') {
+                element.textContent = `XP: ${value} / ${gameState.player.xpToNextLevel}`;
+            } else if (statName === 'statPoints') {
+                if (value > 0) {
+                    element.textContent = `Stat Points: ${value}`;
+                    element.classList.remove('hidden');
+                } else {
+                    element.classList.add('hidden');
+                }
+            } else {
+                element.textContent = `${label}: ${value}`;
+            }
         }
     }
 };
+
+function grantXp(amount) {
+    const player = gameState.player;
+    player.xp += amount;
+    logMessage(`You gained ${amount} XP!`);
+
+    // Check for level up (using 'while' handles multiple level-ups at once)
+    while (player.xp >= player.xpToNextLevel) {
+        player.xp -= player.xpToNextLevel; // Subtract the XP needed, keep the remainder
+        player.level++;
+        player.statPoints++;
+        player.xpToNextLevel = player.level * 100; // The next level costs more
+
+        logMessage(`LEVEL UP! You are now level ${player.level}!`);
+        logMessage(`You have ${player.statPoints} stat point(s) to spend.`);
+        
+        // Optional: Flash the level and stat point displays
+        triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+        triggerStatAnimation(statDisplays.statPoints, 'stat-pulse-purple');
+    }
+
+    // Save the new XP and level state to Firestore
+    playerRef.update({
+        xp: player.xp,
+        level: player.level,
+        xpToNextLevel: player.xpToNextLevel,
+        statPoints: player.statPoints
+    });
+
+    renderStats();
+}
 
 const renderInventory = () => {
     inventoryList.innerHTML = '';
@@ -1029,6 +1082,8 @@ function updateRegionDisplay() {
             gameState.discoveredRegions.add(regionId);
 
             playerRef.update({ discoveredRegions: Array.from(gameState.discoveredRegions) });
+
+            grantXp(50);
         }
     } else if (gameState.mapMode === 'dungeon') {
         regionDisplay.textContent = "A Dark Cave";
@@ -1160,6 +1215,14 @@ document.addEventListener('keydown', (event) => {
         const tileData = TILE_DATA[newTile];
         if (tileData) {
             if (tileData.type === 'journal') {
+
+                const tileId = `${newX},${-newY}`;
+                if (!gameState.foundLore.has(tileId)) {
+                    grantXp(25);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+
                 loreTitle.textContent = tileData.title;
                 loreContent.textContent = tileData.content;
                 loreModal.classList.remove('hidden');
@@ -1233,6 +1296,12 @@ document.addEventListener('keydown', (event) => {
                     syncPlayerState();
                     return;
                 case 'lore':
+                    const tileId = `${newX},${-newY}`;
+                    if (!gameState.foundLore.has(tileId)) {
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                     if (Array.isArray(tileData.message)) {
                         const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
                         const messageIndex = currentTurn % tileData.message.length;
@@ -1443,6 +1512,12 @@ async function startGame(user) {
 
             if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
                 gameState.discoveredRegions = new Set(playerData.discoveredRegions);
+            }
+
+            if (playerData.foundLore && Array.isArray(playerData.foundLore)) {
+                gameState.foundLore = new Set(playerData.foundLore);
+            } else {
+                gameState.foundLore = new Set();
             }
 
         } else {
