@@ -41,10 +41,8 @@ body {
 canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-border); box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
 
 #messageLog { 
-    height: 5rem;
-    overflow-y: scroll;
-    background-color: color-mix(in srgb, var(--bg-panel) 85%, transparent);
-    backdrop-filter: blur(2px);
+
+    
 }
 
 .themed-container {
