@@ -826,8 +826,16 @@ document.addEventListener('keydown', (event) => {
             itemUsed = true;
         } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
         else logMessage(`No item in slot ${keyNum}.`);
-        if (itemUsed) {
-            playerRef.update({ inventory: gameState.player.inventory });
+if (itemUsed) {
+            // Create a "clean" version of the inventory for Firestore, without functions.
+            const inventoryToSave = gameState.player.inventory.map(item => ({
+                name: item.name,
+                type: item.type,
+                quantity: item.quantity,
+                tile: item.tile
+            }));
+
+            playerRef.update({ inventory: inventoryToSave });
             syncPlayerState();
             renderStats(); 
             renderInventory();
@@ -1083,6 +1091,17 @@ function clearSessionState() {
 
 logoutButton.addEventListener('click', () => {
     const finalState = { ...gameState.player };
+
+    // Create a clean version of the inventory before saving
+    if (finalState.inventory) {
+        finalState.inventory = finalState.inventory.map(item => ({
+            name: item.name,
+            type: item.type,
+            quantity: item.quantity,
+            tile: item.tile
+        }));
+    }
+
     delete finalState.color;
     delete finalState.character; 
     playerRef.set(finalState, { merge: true });
