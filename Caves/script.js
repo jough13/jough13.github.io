@@ -234,6 +234,15 @@ function getOrdinalSuffix(day) {
     }
 }
 
+function triggerStatFlash(statElement, positive = true) {
+    const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
+    statElement.classList.add(animationClass);
+    // Remove the class after the animation finishes to allow it to be re-triggered
+    setTimeout(() => {
+        statElement.classList.remove(animationClass);
+    }, 500);
+}
+
 const renderTime = () => {
     const time = gameState.time;
     const dayOfWeek = DAYS_OF_WEEK[(time.day - 1) % DAYS_OF_WEEK.length];
@@ -316,7 +325,20 @@ const TERRAIN_COST = {
 };
 
 const ITEM_DATA = {
-    '+': { name: 'Healing Potion', type: 'consumable', effect: (state) => { state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); } },
+    
+    '+': { 
+    name: 'Healing Potion', 
+    type: 'consumable', 
+    effect: (state) => { 
+        const oldHealth = state.player.health;
+        state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); 
+        if (state.player.health > oldHealth) {
+            triggerStatFlash(statDisplays.health, true); // Flash green
+        }
+        logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); 
+    } 
+},
+
     'o': { name: 'Mana Orb', type: 'consumable', effect: (state) => { state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); logMessage('Used a Mana Orb. Restored mana!'); } },
     'S': { name: 'Stamina Crystal', type: 'consumable', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
     'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
