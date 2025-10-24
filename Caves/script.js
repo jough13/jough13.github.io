@@ -648,7 +648,7 @@ const render = () => {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
-let tile;
+            let tile;
             let bgColor;
             let fgChar = null;
             let fgColor = '#FFFFFF';
@@ -664,49 +664,49 @@ let tile;
                     bgColor = theme.colors.floor;
                     fgChar = tile;
                 }
-} else if (gameState.mapMode === 'castle') {
-    const map = chunkManager.castleMaps[gameState.currentCastleId];
-    tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-    
-    if (tile === '▓' || tile === '▒') { // Group wall and rubble tiles
-        bgColor = '#422006';          // Render both as dark walls
-    } else {
-        bgColor = '#a16207';          // Everything else is a floor
-        fgChar = tile;
-    }
-}
+            } else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                
+                if (tile === '▓' || tile === '▒') { // Group wall and rubble tiles
+                    bgColor = '#422006';          // Render both as dark walls
+                } else {
+                    bgColor = '#a16207';          // Everything else is a floor
+                    fgChar = tile;
+                }
             } else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
                  switch (tile) {
                     case '~': bgColor = '#1e3a8a'; break;
-                case '≈': 
-                    bgColor = '#596643'; // Murky green-brown
-                    fgChar = ',';
-                    fgColor = '#4b5535'; // Slightly darker texture color
-                    break;
-                case '^': 
-                bgColor = '#78350f'; // Brown background
-                fgChar = '^';        // The mountain character
-                fgColor = '#52230a'; // A darker brown for texture
-                break;
-                case 'F': 
-                    bgColor = '#15803d'; 
-                    fgChar = '"'; 
-                    fgColor = '#14532d';
-                    break;
-                case '.': 
-                    bgColor = '#22c55e'; 
-                    fgChar = '.';
-                    fgColor = '#16a34a';
-                    break;
-                case '▓': bgColor = '#422006'; break;
-                case '▒': bgColor = '#a16207'; break;
-                default: 
-                    bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
-                    fgChar = tile;
-                    break;
+                    case '≈': 
+                        bgColor = '#596643'; // Murky green-brown
+                        fgChar = ',';
+                        fgColor = '#4b5535'; // Slightly darker texture color
+                        break;
+                    case '^': 
+                        bgColor = '#78350f'; // Brown background
+                        fgChar = '^';        // The mountain character
+                        fgColor = '#52230a'; // A darker brown for texture
+                        break;
+                    case 'F': 
+                        bgColor = '#15803d'; 
+                        fgChar = '"'; 
+                        fgColor = '#14532d';
+                        break;
+                    case '.': 
+                        bgColor = '#22c55e'; 
+                        fgChar = '.';
+                        fgColor = '#16a34a';
+                        break;
+                    case '▓': bgColor = '#422006'; break;
+                    case '▒': bgColor = '#a16207'; break;
+                    default: 
+                        bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
+                        fgChar = tile;
+                        break;
+                }
             }
-              }
+
             ctx.fillStyle = bgColor;
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
@@ -756,7 +756,7 @@ let tile;
         }
     }
 
-// Make the player character bold and outlined to stand out
+    // Make the player character bold and outlined to stand out
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     
     // 1. Draw the outline
