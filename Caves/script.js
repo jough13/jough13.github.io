@@ -327,35 +327,73 @@ const TERRAIN_COST = {
 const ITEM_DATA = {
     
     '+': { 
-    name: 'Healing Potion', 
-    type: 'consumable', 
-    effect: (state) => { 
-        const oldHealth = state.player.health;
-        state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); 
-        if (state.player.health > oldHealth) {
-            triggerStatFlash(statDisplays.health, true); // Flash green
-        }
-        logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); 
-    } 
-},
+        name: 'Healing Potion', 
+        type: 'consumable', 
+        effect: (state) => { 
+            const oldHealth = state.player.health;
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); 
+            if (state.player.health > oldHealth) {
+                triggerStatFlash(statDisplays.health, true); // Flash green
+            }
+            logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); 
+        } 
+    },
 
-    'o': { name: 'Mana Orb', type: 'consumable', effect: (state) => { state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); logMessage('Used a Mana Orb. Restored mana!'); } },
-    'S': { name: 'Stamina Crystal', type: 'consumable', effect: (state) => { state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); } },
-    'Y': { name: 'Psyche Shard', type: 'consumable', effect: (state) => { state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); logMessage('Used a Psyche Shard. Restored psyche.'); } },
+    'o': { 
+        name: 'Mana Orb', 
+        type: 'consumable', 
+        effect: (state) => { 
+            const oldMana = state.player.mana;
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); 
+            if (state.player.mana > oldMana) {
+                triggerStatFlash(statDisplays.mana, true);
+            }
+            logMessage('Used a Mana Orb. Restored mana!'); 
+        } 
+    },
+
+    'S': { 
+        name: 'Stamina Crystal', 
+        type: 'consumable', 
+        effect: (state) => { 
+            const oldStamina = state.player.stamina;
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); 
+            if (state.player.stamina > oldStamina) {
+                triggerStatFlash(statDisplays.stamina, true);
+            }
+            logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); 
+        } 
+    },
+
+    'Y': { 
+        name: 'Psyche Shard', 
+        type: 'consumable', 
+        effect: (state) => { 
+            const oldPsyche = state.player.psyche;
+            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); 
+            if (state.player.psyche > oldPsyche) {
+                triggerStatFlash(statDisplays.psyche, true);
+            }
+            logMessage('Used a Psyche Shard. Restored psyche.'); 
+        } 
+    },
+
     '$': {
-    name: 'Gold Coin',
-    type: 'instant',
-    effect: (state) => {
-        if (Math.random() < 0.05) { // 5% chance of being a trap
-            state.player.health -= DAMAGE_AMOUNT;
-            logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`);
-        } else { // 95% chance of being a reward
-            const amount = Math.floor(Math.random() * 10) + 1; // 1 to 10 coins
-            state.player.coins += amount;
-            logMessage(`You found ${amount} gold coins!`);
+        name: 'Gold Coin',
+        type: 'instant',
+        effect: (state) => {
+            if (Math.random() < 0.05) { // 5% chance of being a trap
+                state.player.health -= DAMAGE_AMOUNT;
+                triggerStatFlash(statDisplays.health, false); // Flash red
+                logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`);
+            } else { // 95% chance of being a reward
+                const amount = Math.floor(Math.random() * 10) + 1; // 1 to 10 coins
+                state.player.coins += amount;
+                triggerStatFlash(statDisplays.coins, true); // Flash green
+                logMessage(`You found ${amount} gold coins!`);
+            }
         }
-    }
-},
+    },
 };
 
 const statDisplays = {
@@ -1166,7 +1204,7 @@ try {
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             };
             onlinePlayerRef.set(stateToSet);
-            
+
 onlinePlayerRef.onDisconnect().remove().then(() => {
         const finalState = { ...gameState.player };
 
