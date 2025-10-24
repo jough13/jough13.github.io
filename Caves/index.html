@@ -39,25 +39,27 @@
             
             <div class="lg:grid lg:grid-cols-3 lg:gap-6">
     
-                <div class="lg:col-span-3 flex flex-col gap-4">
-                    <div id="timePanel" class="panel p-2 rounded-lg border text-center">
-                        <span id="timeDisplay" class="font-bold"></span>
-                        <h2 id="regionDisplay" class="text-sm muted-text"></h2>
+                <div class="lg:col-span-2 flex flex-col gap-4">
+                    <div class="flex flex-col gap-4">
+                        <div id="timePanel" class="panel p-2 rounded-lg border text-center">
+                            <span id="timeDisplay" class="font-bold"></span>
+                            <h2 id="regionDisplay" class="text-sm muted-text"></h2>
+                        </div>
+                        <div class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
+                            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                        </div>
                     </div>
-                    <div class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
-                        <canvas id="gameCanvas" class="w-full h-full"></canvas>
-                    </div>
-                </div>
-
-                <div class="lg:col-span-2 flex flex-col gap-4 mt-4">
-                    <div id="messageLogPanel" class="panel p-4 w-full rounded-2xl border-2">
-                        <h2 class="text-lg font-bold mb-2">Log</h2>
-                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2"></div>
-                    </div>
-                    <div id="inventoryPanel" class="panel p-4 w-full rounded-2xl border-2">
-                        <h2 class="text-lg font-bold mb-2">Inventory</h2>
-                        <div id="inventoryList" class="flex gap-2">
-                            </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div id="messageLogPanel" class="panel p-4 w-full rounded-2xl border-2">
+                            <h2 class="text-lg font-bold mb-2">Log</h2>
+                            <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2"></div>
+                        </div>
+                        <div id="inventoryPanel" class="panel p-4 w-full rounded-2xl border-2">
+                            <h2 class="text-lg font-bold mb-2">Inventory</h2>
+                            <div id="inventoryList" class="flex gap-2">
+                                </div>
+                        </div>
                     </div>
                 </div>
 
@@ -86,7 +88,7 @@
             </div>
 
             <div id="controls" class="mt-4 text-center">
-                <p class="text-lg">Use <span class="highlight-text font-bold">W, A, S, D</span> or <span class="highlight-text font-bold">Arrow Keys</span> to move.</p>
+                <p class="text-lg">Use <span class="highlight-text font-bold">Arrow Keys</span> to move. <span class="highlight-text font-bold">1-9</span> to use items. <span class="highlight-text font-bold">R</span> to rest.</p>
             </div>
         </div>
     </main>
